@@ -28,6 +28,7 @@ import com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene;
 import com.watabou.input.KeyEvent;
 import com.watabou.noosa.BitmapText;
 import com.watabou.noosa.Game;
+import com.watabou.noosa.Scene;
 import com.watabou.utils.Signal;
 
 /**
@@ -97,11 +98,16 @@ public class ReplayController {
 	private void buildHud(){
 		hud = new BitmapText( PixelScene.pixelFont );
 		hud.visible = true;
+		//without this the text inherits the scene's camera, which follows the hero, so the HUD
+		//scrolls around the map and sits wherever the camera happens to be. Every other overlay in
+		//the game assigns the UI camera explicitly for exactly this reason.
+		hud.camera = PixelScene.uiCamera;
 		Game.scene().addToFront( hud );
 
 		help = new BitmapText( PixelScene.pixelFont );
 		help.visible = true;
 		help.text( "SPACE pause   +/- speed   R restart   ESC quit" );
+		help.camera = PixelScene.uiCamera;
 		Game.scene().addToFront( help );
 	}
 
@@ -123,11 +129,40 @@ public class ReplayController {
 				} else if (event.code == Input.Keys.R){
 					player.restart();
 					return true;
+				} else if (event.code == Input.Keys.ESCAPE){
+					//A window on top of the scene gets BACK first and swallows it - that is what
+					//opened the little pause box in the first place. So close anything open before
+					//falling through to quitting, or ESC looks broken whenever a window exists.
+					if (!closeTopWindow()){
+						quit();
+					}
+					return true;
 				}
 				return false;
 			}
 		};
 		KeyEvent.addKeyListener( viewerKeys );
+	}
+
+	/**
+	 * Closes the topmost window, if the game has one open.
+	 *
+	 * {@code Window.onBackPressed} is the game's own close path, so windows that confirm or cancel
+	 * behave exactly as they do in normal play.
+	 *
+	 * @return true if a window was closed
+	 */
+	private static boolean closeTopWindow(){
+		if (!GameScene.showingWindow()) return false;
+		//the game's own cancel path, which closes whatever window is on top
+		return GameScene.cancel();
+	}
+
+	/** Leaves the viewer and returns to the title. */
+	private static void quit(){
+		uninstall();
+		com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon.switchNoFade(
+				com.shatteredpixel.shatteredpixeldungeon.scenes.TitleScene.class );
 	}
 
 	private void layout(){

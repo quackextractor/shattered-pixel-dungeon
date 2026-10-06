@@ -186,8 +186,13 @@ public class ReplayLauncher {
 	 * talking to the network about.
 	 */
 private static Lwjgl3ApplicationConfiguration windowConfig(){
-		//DeviceCompat.isDebug() reads this, and InterlevelScene.create() calls it on the way in.
-		//DesktopLauncher sets the same values from its own package metadata.
+		//DeviceCompat.isDebug() reads this and InterlevelScene.create() calls it on the way in, so
+		//it has to be set before the game starts or the first scene throws on a null.
+		//
+		//Deliberately NOT "INDEV". isDebug() zeroes the loading fade, which is tempting, but it
+		//also makes InterlevelScene.descend() pre-generate every prior floor to keep levelgen
+		//consistent with a save - and with the hero null on a first run that is a loop over depths
+		//that produces nothing useful and a 10s levelgen warning. The splash is short enough.
 		Game.version = System.getProperty( "Implementation-Version" );
 		if (Game.version == null) Game.version = "4.0.1";
 		try {
