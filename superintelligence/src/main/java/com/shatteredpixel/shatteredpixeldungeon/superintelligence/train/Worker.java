@@ -4,6 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
@@ -35,9 +36,10 @@ public class Worker {
 	/** Protocol version, checked on connect so a mismatched pair fails loudly. */
 	public static final int PROTOCOL_VERSION = 1;
 
-	private static final int MSG_HELLO        = 1;
-	private static final int MSG_PARAMS       = 2;
-	private static final int MSG_EPISODE      = 3;
+private static final int MSG_HELLO        = 1;
+	/** Public because the trainer asserts on it when pushing a policy. */
+	public static final int MSG_PARAMS       = 2;
+	public static final int MSG_EPISODE      = 3;
 	private static final int MSG_DONE         = 4;
 	private static final int MSG_BYE          = 5;
 
@@ -109,7 +111,7 @@ public class Worker {
 		out.flush();
 	}
 
-	/** Runs one episode and reports its outcome, with an optional replay attached. */
+/** Runs one episode and reports its outcome, with an optional replay attached. */
 	private void runEpisode( String seed, HeroClass heroClass, boolean wantReplay ) throws IOException {
 		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), seed.hashCode() );
 		recorder.begin( seed, heroClass.name(), 0, config.turnLimitPerFloor );
@@ -118,12 +120,17 @@ public class Worker {
 
 		int[] slot = new int[ 1 ];
 
+		//started after the reset so the CPU figure is the episode and not level generation
+		ResourceStats.Interval work = ResourceStats.start();
+
 		while (env.running()){
 			Action a = policy.choose( env, slot );
 			recorder.record( a, slot[ 0 ], env.mode() );
 			float reward = (float) env.step( a, slot[ 0 ] );
 			recorder.afterStep( env.heroPosition(), reward );
 		}
+
+		work.stop();
 
 		recorder.end( env.ledger().total(), env.depth(), env.turnsTotal(), 0 );
 		Replay replay = recorder.replay();
@@ -134,6 +141,14 @@ public class Worker {
 		out.writeInt( env.turnsTotal() );
 		out.writeBoolean( env.endedNaturally() );
 		out.writeUTF( env.endReason().name() );
+
+		//Cumulative rather than per-episode. OS process CPU counters have roughly millisecond
+		//granularity, and an episode here is often only tens of milliseconds, so differencing the
+		//counter across each one lost most of the signal and under-reported the pool by about half.
+		//A monotonic total let the trainer difference between reports instead.
+		out.writeDouble( ResourceStats.processCpuSecondsTotal() );
+		out.writeDouble( work.to().heapUsedMb() );
+
 		out.writeInt( replay.length() );
 
 		if (wantReplay){

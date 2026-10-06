@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GradientCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RunReport;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -74,6 +75,10 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 private static void rollout( String[] args ){
 		Options options = Options.parse( args );
 
+		//started before anything else so the resource block is the cost of the whole command,
+		//level generation and engine boot included, not just the step loop
+		ResourceStats.Interval timing = ResourceStats.start();
+
 		boot( options );
 
 		EnvConfig config = new EnvConfig();
@@ -89,9 +94,10 @@ private static void rollout( String[] args ){
 		if (!reset( env, options )) return;
 
 
-		RunReport report = new RunReport( env.ledger(), options.seed );
+RunReport report = new RunReport( env.ledger(), options.seed );
 		int[] slot = new int[ 1 ];
 
+		ResourceStats.Interval simulation = ResourceStats.start();
 		long start = System.nanoTime();
 		double cumulative = 0;
 
@@ -106,6 +112,8 @@ private static void rollout( String[] args ){
 			report.sample( (float) env.ledger().total(), env.depth() );
 		}
 		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+		simulation.stop();
+		timing.stop();
 
 		recorder.end( env.ledger().total(), env.depth(), env.turnsTotal(), 0 );
 
@@ -114,12 +122,17 @@ private static void rollout( String[] args ){
 		System.out.println( report.renderScoreOverFloors( 72 ) );
 
 		System.out.println();
-		System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
+System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
 				+ (env.truncated() ? " (truncated)" : "") );
-		System.out.println( Ansi.wrap( "timing", Ansi.DIM ) + "   "
-				+ env.turnsTotal() + " turns in " + elapsedMs + " ms ("
-				+ (elapsedMs > 0 ? (env.turnsTotal() * 1000 / Math.max( 1, elapsedMs )) : 0)
-				+ " turns/s)" );
+		System.out.println( Ansi.wrap( "simulation", Ansi.DIM ) + " "
+				+ String.format( "%d turns in %.2f s (%,.0f turns/s) on %.2f cores",
+						env.turnsTotal(), simulation.wallSeconds(),
+						ResourceStats.stepsPerSecond( env.turnsTotal(), simulation.wallSeconds() ),
+						Math.max( 0, simulation.coresUsed() ) ) );
+
+		System.out.println();
+		System.out.println( ResourceStats.renderSummary( "resources (whole command)",
+				timing, env.turnsTotal() ) );
 
 		if (options.saveTo != null){
 			try {
