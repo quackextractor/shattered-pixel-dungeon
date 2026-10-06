@@ -471,14 +471,24 @@ Still untested:
   rather than died.
 - **Visual fidelity.** The controls have been driven by a human; nobody has checked that the sprites
   and animation actually look right.
-- **`PlatformSupport.getFont` throws "No cap character found in font",** which breaks every message
-  window in the base game as well as the viewer. The cause is upstream and is now pinned down: on
-  libGDX 1.14.0 `generateFont` reads `fontData.capChars` to size the face, and nothing in GDX ever
-  populates that array, so the sizing loop never runs and `capHeight` stays at its `1f` sentinel. It
-  is then impossible to satisfy - passing an explicit `characters` reaches the throw, and leaving it
-  null dies earlier on `parameter.characters.toCharArray()`. The font itself is fine (936 glyphs, all
-  26 capitals). Only libGDX 1.14.0 is in the offline cache, so this cannot be fixed here without
-  changing the dependency, and it was left alone rather than worked around in shared rendering code.
+- **`PlatformSupport.getFont` throws "No cap character found in font."** The viewer logs hundreds of
+  these per run. It is *not* a rendering problem: the exception is caught, logged and turned into a
+  null return, and the base game renders fine - checked by running the vanilla launcher. An earlier
+  note here claimed it "breaks every message window in the base game as well as the viewer"; that was
+  inference from shared code paths, not observation, and it is wrong.
+
+  What is actually known: on libGDX 1.14.0 `generateFont` sizes the face from `fontData.capChars`,
+  and nothing in the GDX jar ever populates that array, so the sizing loop cannot run and `capHeight`
+  stays at its `1f` sentinel. It is unsatisfiable from the caller - an explicit `characters` reaches
+  the throw, and `null` dies earlier on `parameter.characters.toCharArray()`. The font itself is fine
+  (936 glyphs, all 26 capitals). The line is upstream code from 2021 against a much newer libGDX, so
+  this is dependency drift.
+
+  It was left alone. Two changes were tried and reverted: a preloaded ASCII charset (no effect, same
+  error count) and `characters = null` (removes this error, introduces a NullPointerException per
+  text block). Guessing in shared rendering code is a poor trade for a warning that costs nothing.
+  If it ever does need fixing, the route is changing `gdxVersion`, and only 1.14.0 is in the offline
+  cache.
 
 ## 13. What the checks now cover
 
