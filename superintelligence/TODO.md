@@ -3,7 +3,8 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-06, after the initial framework commit and a determinism audit.
+Last updated: 2026-10-06, after the gradient repair, a second determinism audit, and the first
+successful multi-hero reproducibility sweep.
 
 ---
 
@@ -11,8 +12,20 @@ Last updated: 2026-10-06, after the initial framework commit and a determinism a
 
 **Fixed.** Recording a run and re-executing it in a fresh process now reproduces exactly.
 
-Verified: 10 traces of one seed across 10 separate JVMs produce 1 distinct result; a recorded
-299-step run verifies 5/5 in fresh processes with a bit-identical score.
+Verified: 6 rollouts of one seed across 6 separate JVMs produce 1 distinct score, for each of the
+five hero classes; a recorded 499-step run verifies 4/4 in fresh processes.
+
+A second pass found more identity-hash iteration after the first fix: `Char.buffs(Class)` handed
+callers a `HashSet`, `Random.chances(HashMap)` chose secret room contents off a `Class`-keyed
+`HashMap`, `Mob.chooseEnemy` resolved ties by iteration order, and `CursingTrap` / `VaultLevel` /
+`Hero` used `Collections.shuffle`, which ignores the seeded generator entirely. All made
+insertion-ordered or switched to `Random.shuffle`.
+
+One trap worth recording: `GameSettings.getString(key, def, maxLength)` treats an over-long stored
+value as corrupt and overwrites it with the default, and `SPDSettings.customSeed()` reads with a
+20 character cap. A 23 character seed was therefore silently discarded and the run continued on a
+*random* seed - which looked exactly like residual nondeterminism and cost real time to
+rediscover. `LevelPipeline.startRun` now verifies the seed round-tripped and fails loudly.
 
 The symptom when broken was that recording a run and re-executing it usually reproduced, but not
 always - six runs of one seed produced four distinct position traces. An earlier smoke test had
@@ -67,22 +80,41 @@ assigned in creation order and therefore stable.
 
 ## 1. The critical gap: nothing has learned anything
 
-**The neural network has never been executed.** `PPO.rollout()` and `PPO.update()` are called from
-nowhere. `train.Worker` loads weights into a `Network`, then hands control to `ScriptedPolicy`.
+**The network now runs, and its gradients are correct.** The forward pass produces finite logits
+and a finite critic value, every layer receives a non-zero gradient, and an Adam step moves the
+parameters. This was not true before: the backward pass had five independent defects - missing
+activation derivatives in `Conv2D` and `Dense`, an LSTM cell reading post-update state, a hidden
+gradient copied before the heads filled it, an unsized LSTM input-gradient buffer, and heads whose
+own gradients were never accumulated. All of them are fixed and covered by `gradcheck`.
 
-Everything in this repository is a testbed around a learning loop that does not run. The documents'
-actual goal - an agent that plays - is unmet.
+`gradle :superintelligence:gradcheck` finite-difference checks the analytic gradients against
+central differences on 112 sampled parameters across all seven layers, and exits non-zero on a
+mismatch. It is confirmed to fail when a derivative is deliberately removed. Run it before
+trusting any training run.
+
+`PPO.rollout()` and `PPO.update()` are still called from nowhere. `train.Worker` loads weights
+into a `Network`, then hands control to `ScriptedPolicy`. Everything in this repository is still a
+testbed around a learning loop that does not run.
 
 | # | Task | Size | Notes |
 | --- | --- | --- | --- |
 | 1.1 | Call `PPO.rollout()` in `Worker.runEpisode` in place of `ScriptedPolicy` | S | The worker already has the env, the network and the masks. |
-| 1.2 | Confirm the forward pass produces finite logits and the critic a finite value | S | Never executed even once. A silent NaN would look like "no learning". |
-| 1.3 | Confirm `Network.backward` produces non-zero gradients | S | Same - never executed. |
-| 1.4 | Run one generation end to end and check `lastPolicyLoss` / `lastValueLoss` are sane | S | |
-| 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
+| 1.2 | Run one generation end to end and check `lastPolicyLoss` / `lastValueLoss` are sane | S | |
+| 1.3 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
+
+**Worker-to-trainer data flow is unresolved.** The trainer calls `PPO.update()` on its own buffer,
+but workers currently return only an episode summary and a replay, not transitions. Either
+transitions have to reach the trainer for a pooled update, or each worker updates locally and the
+updated weights have to be returned. This has to be decided before 1.1 means anything.
 
 research.md:40 sets the first real milestone: *"Train the AI on a single seed until it can
 consistently beat the first boss (Goo)."* Nothing has been trained, so nothing has been beaten.
+
+**Seed text is capped at 20 characters.** `GameSettings.getString(key, def, maxLength)` discards
+an over-long stored value and `SPDSettings.customSeed()` reads with a 20 character cap, so a
+longer seed is silently dropped and the run falls back to a random one. `LevelPipeline.startRun`
+now verifies the seed survived the round trip and fails with an explanation. Keep generated seed
+text inside the cap.
 
 ---
 

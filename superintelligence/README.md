@@ -9,7 +9,22 @@ seed recorded and re-verified.
 
 ## Read this first
 
-**Nothing has been trained yet.** The environment around it is sound and now verified reproducible: a recorded run re-executes exactly, 5/5 across fresh processes. That was not true at first - an early smoke test reproduced twice and I took that as proof, but a six-run audit found four distinct traces. Three causes (an unseeded base RNG, an unseeded generator inside levelgen, and identity-hash HashSet iteration order in the scheduler) are now fixed. See `TODO.md` section 0 for the write-up and the remaining risk.
+**Nothing has been trained yet.** But the network does run now, and its gradients are correct.
+`gradle :superintelligence:gradcheck` finite-difference checks the analytic gradients against
+central differences on 112 sampled parameters across all seven layers, and fails the build on a
+mismatch. It was worth adding: the backward pass had five independent defects that all produced
+plausible numbers rather than an exception, and an optimiser step that moved nothing.
+
+**The environment is verified reproducible**: 6 rollouts of one seed across 6 separate JVMs give 1
+distinct score, for each of the five hero classes, and a recorded 499-step run re-executes 4/4.
+That was not true at first. An early smoke test reproduced twice and I took that as proof, but a
+six-run audit found four distinct traces, and a second audit found more identity-hash iteration
+order plus six uses of `Collections.shuffle` that ignores the seeded generator entirely. See
+`TODO.md` section 0.
+
+**Seed text is capped at 20 characters.** The game silently discards anything longer and falls
+back to a random seed, which looks exactly like residual nondeterminism. The pipeline now fails
+with an explanation instead.
 
 The environment, observation encoder, reward ledger, replay verification and diagnostics are done and tested. The learning loop is written but has never been
 executed: `PPO.rollout()` and `PPO.update()` are called from nowhere, and the training worker
@@ -27,10 +42,11 @@ something.
 | Level pipeline, floor transitions, chasm falls | Verified |
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified |
-| Replay record / re-verify | Verified exact - 5/5 fresh processes, identical score |
+| Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score |
+| Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
 | Diagnostics dashboard (colour-coded floors, graphs) | Console only |
 | Reward model, per-term ledger, curriculum fade | Partial - 6 terms never fire |
-| CNN + LSTM network, PPO agent | Written, never executed |
+| CNN + LSTM network, PPO agent | Forward/backward verified; PPO never run end to end |
 | Parallel worker processes, seed schedule | Written, untested at scale |
 | Graphical trainer UI, desktop replay viewer | Not started |
 | Garbage collection / object pooling audit (research.md:60) | Not started |
@@ -47,7 +63,11 @@ something.
 # replay a recorded run and confirm it still reproduces
 ./gradlew :superintelligence:verify --args="run.dat"
 
+# check the network's analytic gradients against central differences
+./gradlew :superintelligence:gradcheck
+
 # train
+
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"
 ```
 

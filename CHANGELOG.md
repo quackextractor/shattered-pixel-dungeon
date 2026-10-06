@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `gradle :superintelligence:gradcheck` (or `gradcheck --verbose`) finite-difference checks the
+  network's analytic gradients against central differences and exits non-zero on a mismatch, so a
+  broken backward pass fails loudly instead of silently training the wrong function.
+
+### Fixed
+
+- **The policy network's gradients were wrong in five separate ways, so training optimised a
+  function other than the policy loss.** The network had never been executed before this, so none
+  of the failures showed up as an exception - they produced plausible numbers and an optimiser
+  step that moved nothing.
+  - `Conv2D.backward` and `Dense.backward` omitted their activation derivatives, so no gradient
+    reached the convolution or the trunk weights.
+  - `LSTM.backward` read `h` and `c` that `forward` had already advanced, and used `c_t` where
+    the derivative needs `c_{t-1}`. It now caches the gate pre-activations and both prior states.
+  - `Network.backward` copied the hidden gradient into the LSTM *before* the heads had accumulated
+    into it, so the recurrent cell always received zero.
+  - The LSTM's input gradient buffer was never sized or cleared, so the gradient never reached the
+    trunk. It is now sized from the cell's input width and refilled by `backward`.
+  - `Network.headGradient` hand-rolled `W^T * dOut`, which skipped the head's own parameter
+    gradient and its tanh derivative. It now goes through `Dense.backward`.
+  - Also fixed the LSTM output being written back into the wider trunk buffer, so the heads were
+    fed the wrong width, and a trunk input gradient buffer that was too narrow by the
+    inventory and hero block.
+
+  Verified against central differences: `gradle :superintelligence:gradcheck` compares analytic
+  gradients to numeric ones on 112 sampled parameters across all seven layers, and fails the build
+  if they disagree. The check has been confirmed to fail when a derivative is deliberately removed.
+
+- **More identity-hash iteration in gameplay and level generation.** Collections keyed on
+  identity hash codes iterate in a different order in every JVM, and `java.lang.Enum` inherits
+  `Object.hashCode`, so enum-keyed maps are affected too. Sites where that order reached the
+  outcome were made insertion-ordered:
+  - `Char.buffs(Class)` returned a `HashSet`. Callers sort or iterate the result while consuming
+    the RNG or folding floats non-associatively - `ShieldBuff.processDamage` distributes damage
+    across barriers in that order - so damage and death could differ per run. Now a
+    `LinkedHashSet`.
+  - `Random.chances(HashMap)` picks off the map's iteration order, so the secret laboratory and
+    secret library chose a different potion or scroll every run, changing what the floor
+    contained. Their chance tables, and the ones in `WandOfCorruption`, `UnstableSpell`,
+    `UnstableBrew` and `ChaoticCenser`, are now `LinkedHashMap`.
+  - `Mob.chooseEnemy` resolved equal-distance and equally-attackable candidates by iteration
+    order, so which of two equidistant mobs got targeted varied. Now insertion-ordered.
+  - `CursingTrap`, `VaultLevel` and `Hero` used `Collections.shuffle`, which ignores the seeded
+    generator entirely and is therefore different on every run. Switched to `Random.shuffle`.
+
+- **A seed longer than 20 characters was silently discarded**, and the run continued on a random
+  seed. `GameSettings.getString(key, def, maxLength)` treats an over-long stored value as corrupt
+  and overwrites it with the default, and `SPDSettings.customSeed()` reads with a 20 character
+  cap. A rollout asked to reproduce would simply not reproduce, with nothing reporting it.
+  `LevelPipeline.startRun` now verifies the seed survived the round trip and fails with an
+  explanation instead.
+
+- `gradle :superintelligence:rollout` and `:verify` never passed their own subcommand to the
+  entry point, so `--args` was parsed as the command and both tasks failed. The subcommand is now
+  prepended at execution time, which also keeps working when `--args` is supplied.
+
+  Verified: 6 rollouts of one seed across 6 separate JVMs produce 1 distinct score, for each of
+  the five hero classes; a recorded 499-step run re-executes exactly 4 times out of 4.
+
 ## [4.1.0] - 2026-10-06
 
 ### Fixed

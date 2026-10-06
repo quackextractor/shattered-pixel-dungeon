@@ -47,6 +47,9 @@ public class LevelPipeline {
 
 	private final HeadlessGame game;
 
+	/** Mirrors the cap {@code SPDSettings.customSeed()} reads with. See requireSeedSticks. */
+	private static final int MAX_SEED_TEXT_LENGTH = 20;
+
 	/**
 	 * Falls back to a random seed when no seed is locked. research.md's "Generalizing Across
 	 * Seeds" plan starts locked, but the trainer eventually hands out -1 to force generalisation.
@@ -70,6 +73,14 @@ public class LevelPipeline {
 
 		SPDSettings.challenges( challenges );
 		SPDSettings.customSeed( seedText == null ? "" : seedText );
+
+		//GameSettings.getString(key, def, maxLength) treats an over-long stored value as corrupt:
+		//it overwrites it with the default and returns the default. SPDSettings reads the custom
+		//seed with a 20 character cap, so a longer seed text is silently discarded here and
+		//Dungeon.initSeed() falls through to a random seed. Nothing downstream would notice: the
+		//run simply would not reproduce, and every locked-seed comparison built on it would be
+		//meaningless. So the write is verified instead of assumed.
+		requireSeedSticks( seedText );
 
 		GamesInProgress.selectedClass = heroClass;
 		GamesInProgress.curSlot = 0;
@@ -96,6 +107,26 @@ public class LevelPipeline {
 		Dungeon.switchLevel( level, level.getTransition( null ).cell() );
 
 		clearSwitchRequest();
+	}
+
+	/**
+	 * Fails if the requested seed text did not survive the round trip through preferences.
+	 *
+	 * An empty requested seed is fine and means "random". Anything else has to come back
+	 * byte-for-byte, otherwise the run is silently not the run that was asked for.
+	 */
+	private static void requireSeedSticks( String seedText ){
+		String requested = (seedText == null) ? "" : seedText;
+		String stored = SPDSettings.customSeed();
+
+		if (!requested.equals( stored )){
+			throw new IllegalArgumentException( "seed text was not applied: asked for \""
+					+ requested + "\", preferences hold \"" + stored + "\""
+					+ (requested.length() > MAX_SEED_TEXT_LENGTH
+						? ". The game caps custom seed text at " + MAX_SEED_TEXT_LENGTH
+						  + " characters and silently discards anything longer."
+						: "") );
+		}
 	}
 
 	/**

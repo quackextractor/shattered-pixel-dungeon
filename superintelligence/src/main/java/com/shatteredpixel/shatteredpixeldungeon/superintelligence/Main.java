@@ -2,6 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GradientCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RunReport;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -39,8 +40,9 @@ public class Main {
 		System.arraycopy( args, 1, rest, 0, rest.length );
 
 		switch (command) {
-			case "rollout":  rollout( rest );  break;
+case "rollout":  rollout( rest );  break;
 			case "verify":    verify( rest );    break;
+			case "gradcheck": gradcheck( rest ); break;
 			case "train":    Trainer( rest );   break;
 			case "help":     usage();          break;
 			default:
@@ -53,8 +55,9 @@ public class Main {
 	private static void usage(){
 		System.out.println( "Shattered Pixel Dungeon - headless training framework" );
 		System.out.println();
-		System.out.println( "  rollout [options]        play one run headlessly and report it" );
+System.out.println( "  rollout [options]        play one run headlessly and report it" );
 		System.out.println( "  verify <file> [options]  re-run a saved run and confirm it reproduces" );
+		System.out.println( "  gradcheck [--verbose]    finite-difference check of the network gradients" );
 		System.out.println( "  train [options]          run the PPO trainer across worker JVMs" );
 		System.out.println();
 		System.out.println( "options:" );
@@ -68,7 +71,7 @@ public class Main {
 
 	// --------------------------------------------------------------------------- rollout
 
-	private static void rollout( String[] args ){
+private static void rollout( String[] args ){
 		Options options = Options.parse( args );
 
 		boot( options );
@@ -83,7 +86,8 @@ public class Main {
 		ReplayRecorder recorder = new ReplayRecorder();
 		recorder.begin( options.seed, options.hero.name(), 0, config.turnLimitPerFloor );
 
-		env.reset( options.seed, options.hero );
+		if (!reset( env, options )) return;
+
 
 		RunReport report = new RunReport( env.ledger(), options.seed );
 		int[] slot = new int[ 1 ];
@@ -185,7 +189,46 @@ public class Main {
 		}
 	}
 
+// --------------------------------------------------------------------------- gradients
+
+	/**
+	 * Checks the network's analytic gradients against finite differences.
+	 *
+	 * Exits non-zero on a mismatch, so it is usable as a gate rather than only a report. Needs no
+	 * game state, which is why it does not boot the headless services.
+	 */
+	private static void gradcheck( String[] args ){
+		boolean verbose = false;
+		for (String a : args){
+			if (a.equals( "--verbose" )) verbose = true;
+		}
+
+		GradientCheck check = new GradientCheck( new EnvConfig(), 7 );
+		int failures = check.run( verbose );
+
+		if (failures > 0) System.exit( 1 );
+	}
+
 	// --------------------------------------------------------------------------- shared
+
+	/**
+	 * Resets the env, reporting a bad seed as a message rather than a stack trace.
+	 *
+	 * A seed the game silently refuses is a user error, not a crash: the run would otherwise
+	 * continue on a random seed and look like it worked.
+	 *
+	 * @return false if the run was rejected and the caller should stop
+	 */
+	private static boolean reset( SPDEnv env, Options options ){
+		try {
+			env.reset( options.seed, options.hero );
+			return true;
+		} catch (IllegalArgumentException e){
+			System.err.println( "[ERROR] " + e.getMessage() );
+			System.exit( 1 );
+			return false;
+		}
+	}
 
 	private static String[] tail( String[] args ){
 		String[] out = new String[ Math.max( 0, args.length - 1 ) ];
