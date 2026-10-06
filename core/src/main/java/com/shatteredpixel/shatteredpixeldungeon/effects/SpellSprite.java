@@ -146,6 +146,7 @@ public class SpellSprite extends Image {
 		}
 		
 		SpellSprite sprite = GameScene.spellSprite();
+		if (sprite == null) return; //no scene, so there is no sprite pool to draw from
 		sprite.target = ch;
 		sprite.reset( index );
 		sprite.hardlight(r, g, b);

@@ -136,9 +136,28 @@ public class LevelPipeline {
 	 */
 	public void attachSprites(){
 		spriteFor( Dungeon.hero );
+		attachBlobEmitters();
 		if (Dungeon.level != null){
 			for (com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob mob : Dungeon.level.mobs){
 				spriteFor( mob );
+			}
+		}
+	}
+
+	/**
+	 * Gives every blob a {@link com.shatteredpixel.shatteredpixeldungeon.effects.BlobEmitter}.
+	 *
+	 * In the game these are created by {@code GameScene.addBlobSprite}, which is the same class of
+	 * problem as a missing sprite. Fifteen blob types call {@code emitter.pour(...)} from
+	 * {@code evolve()} with no null check, so a headless run that reached any of them - a Web from a
+	 * wand, ToxicGas from a creature, SacrificialFire from a flame - died with an NPE. The emitter
+	 * never draws anything without a scene, so attaching one costs the allocation and nothing else.
+	 */
+	public static void attachBlobEmitters(){
+		if (Dungeon.level == null) return;
+		for (com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob blob : Dungeon.level.blobs.values()){
+			if (blob.emitter == null){
+				new com.shatteredpixel.shatteredpixeldungeon.effects.BlobEmitter( blob );
 			}
 		}
 	}
@@ -229,6 +248,8 @@ public class LevelPipeline {
 				spriteFor( mob );
 			}
 		}
+		//blobs are added to the level mid-run too, by wands, traps and creatures
+		attachBlobEmitters();
 	}
 
 	/**

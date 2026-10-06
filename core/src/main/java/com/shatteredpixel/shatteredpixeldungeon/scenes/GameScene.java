@@ -1276,6 +1276,11 @@ public class GameScene extends PixelScene {
 	}
 	
 	public static synchronized SpellSprite spellSprite() {
+		//same reasoning as emitter() below: there is nothing to recycle a sprite from without a
+		//scene, and callers that only draw treat a null as "nothing to show"
+		if (scene == null || scene.spells == null) {
+			return null;
+		}
 		return (SpellSprite)scene.spells.recycle( SpellSprite.class );
 	}
 	
@@ -1678,6 +1683,11 @@ public class GameScene extends PixelScene {
 	public static void clearPendingCellListener(){ pendingCellListener = null; }
 	
 	public static boolean cancelCellSelector() {
+		//cellSelector only exists once a scene is up. A headless run has none, and there are no
+		//held keys to forget in that case, so this is the correct answer rather than a fallback.
+		if (cellSelector == null) {
+			return false;
+		}
 		if (cellSelector.listener != null && cellSelector.listener != defaultCellListener) {
 			cellSelector.resetKeyHold();
 			cellSelector.cancel();
@@ -1743,7 +1753,7 @@ public class GameScene extends PixelScene {
 	}
 
 	public static boolean cancel() {
-		cellSelector.resetKeyHold();
+		if (cellSelector != null) cellSelector.resetKeyHold();
 		if (Dungeon.hero != null && (Dungeon.hero.curAction != null || Dungeon.hero.resting)) {
 			
 			Dungeon.hero.curAction = null;

@@ -43,10 +43,41 @@ public class PPO {
 	public int minibatchSize = 32;
 	public int epochs = 4;
 
+	/**
+	 * Transitions collected between updates.
+	 *
+	 * Two reasons this is bounded rather than "one whole episode". A stored step is dominated by its
+	 * packed grid, so {@code turnLimitTotal} steps of a single episode is gigabytes - more than a
+	 * worker's heap, which makes an uncapped rollout an out-of-memory crash rather than a slow run.
+	 * And PPO wants frequent updates regardless: the importance ratio compares the collecting
+	 * policy against the current one, so the longer the policy is left unchanged over a long
+	 * collection the worse that estimate gets.
+	 *
+	 * Truncating a collection is not the same as truncating an episode. The env is left running and
+	 * the next call resumes it, so an episode spans however many chunks it needs. The cost is that
+	 * advantage estimates stop at a chunk boundary rather than reaching back to the start of the
+	 * episode - the same truncation already accepted for the recurrent gradient.
+	 */
+	public int rolloutCap = 2048;
+
 	public final Random rng;
 
 	private final ArrayList<Transition> buffer = new ArrayList<>();
 	private final ArrayList<Integer> episodeEnds = new ArrayList<>();
+
+	/** True while an episode is part-collected, so the next call resumes instead of resetting. */
+	private boolean episodeInProgress;
+
+	/**
+	 * Set by {@link #update}, cleared on the next collect.
+	 *
+	 * An update changes the weights the recurrent state was produced by, and the update itself
+	 * resets the state to shuffle minibatches. Resuming an episode through that boundary with a
+	 * half-stale hidden state is worse than starting it fresh, so a weight change is treated as an
+	 * information boundary: the agent forgets. Without this, where updates happen to land would
+	 * silently change an episode's actions, and the same seed would stop reproducing.
+	 */
+	private boolean recurrentStateStale;
 
 	//one probability buffer per head. The three heads have different widths and the loss reads
 	//the probability vector against that head's own mask, so a shared buffer sized for the widest
@@ -98,17 +129,31 @@ public class PPO {
 	// --------------------------------------------------------------------------- rollout
 
 	/**
-	 * Runs one episode and records every decision.
+	 * Collects up to {@link #rolloutCap} transitions, resuming the current episode if one is
+	 * part-collected.
 	 *
-	 * @return the transitions recorded, which are also appended to this agent's update buffer
+	 * The env is deliberately left mid-episode when the cap is reached. The next call continues
+	 * from there with the recurrent state intact, so an episode longer than the cap is collected
+	 * across several calls rather than being cut short.
+	 *
+	 * @return the transitions collected by this call, also appended to this agent's update buffer
 	 */
-	public ArrayList<Transition> rollout( SPDEnv env, String seed, HeroClass heroClass ){
-		env.reset( seed, heroClass );
-		network.resetState();
+	public ArrayList<Transition> collect( SPDEnv env, String seed, HeroClass heroClass ){
+		if (!episodeInProgress){
+			env.reset( seed, heroClass );
+			network.resetState();
+			episodeInProgress = true;
+			recurrentStateStale = false;
+		} else if (recurrentStateStale){
+			//the weights moved under this episode, so its hidden state no longer describes them
+			network.resetState();
+			recurrentStateStale = false;
+		}
 
-		ArrayList<Transition> episode = new ArrayList<>();
+		ArrayList<Transition> chunk = new ArrayList<>();
+		int before = buffer.size();
 
-		while (env.running()){
+		while (env.running() && chunk.size() < rolloutCap){
 			network.forward( env.grid(), env.inventory(), env.heroFeatures() );
 
 			int liveHead = headFor( env.mode() );
@@ -165,15 +210,47 @@ public class PPO {
 			t.nextValue = network.value();
 			t.terminal = env.endedNaturally();
 
-			episode.add( t );
+			chunk.add( t );
 			buffer.add( t );
-
-			if (!env.running()) break;
 		}
 
-		network.resetState();
-		episodeEnds.add( buffer.size() );
-		return episode;
+		if (!env.running()){
+			//episode finished, so the next call starts a fresh one
+			network.resetState();
+			episodeInProgress = false;
+		}
+
+		//every collection is its own advantage segment, so GAE never reaches past the cap. A chunk
+		//that happens to end an episode already has its bootstrap zeroed by the terminal flag.
+		if (buffer.size() > before){
+			episodeEnds.add( buffer.size() );
+		}
+
+		return chunk;
+	}
+
+	/**
+	 * Runs whole episodes, recording every decision, until {@link #episodes} have finished.
+	 *
+	 * Drives {@link #collect} and ignores the cap, so it is for tests and single-process
+	 * experiments. A long episode will still collect more than {@link #rolloutCap} in total.
+	 *
+	 * @return the transitions from the final episode only
+	 */
+	public ArrayList<Transition> rollout( SPDEnv env, String seed, HeroClass heroClass, int episodes ){
+		ArrayList<Transition> last = new ArrayList<>();
+		for (int i = 0; i < episodes; i++){
+			last = new ArrayList<>();
+			do {
+				last = collect( env, seed, heroClass );
+			} while ( episodeInProgress );
+		}
+		return last;
+	}
+
+	/** True while an episode is part-collected and the next collect() call will resume it. */
+	public boolean episodeInProgress(){
+		return episodeInProgress;
 	}
 
 	private float[] probabilitiesFor( int head ){
@@ -255,6 +332,11 @@ public class PPO {
 		network.learningRate = learningRate;
 		network.resetState();
 		clearBuffer();
+
+		//the weights have moved; any episode still in progress has to forget at this boundary
+		if (episodeInProgress){
+			recurrentStateStale = true;
+		}
 	}
 
 	/** Zero-mean unit-variance advantages over the whole buffer, the usual PPO preconditioner. */
