@@ -101,6 +101,20 @@ public class ReplayPlayback {
 		if (cursor >= replay.steps.size()) finished = true;
 	}
 
+	/**
+	 * Returns to the first step.
+	 *
+	 * Used by the viewer's restart, which also rebuilds the level: the live game cannot be unwound
+	 * on its own, so a restart has to be a genuine fresh start rather than a cursor reset that
+	 * leaves the map sitting wherever the run ended.
+	 */
+	public void rewind(){
+		cursor = 0;
+		expectedPos = -1;
+		divergedAt = -1;
+		finished = false;
+	}
+
 	public void finish(){
 		finished = true;
 		expectedPos = -1;

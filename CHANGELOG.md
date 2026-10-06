@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The replay viewer could leave the game completely unresponsive.** Reaching a transition the hero
+  cannot use raises an informational `WndMessage` - "you cannot leave the dungeon yet" - and windows
+  are modal, so the scene stopped accepting input while playback carried on, driven by the frame hook
+  rather than by keys. The viewer now dismisses windows a recording has no step to answer, and leaves
+  `WndOptions` alone because a recorded `MENU` step does resolve that one.
+- **`lockCellInput` did not lock the keyboard.** It disabled the cell selector's pointer path, but the
+  selector's own `KeyEvent` listener ignored `enabled` and kept turning arrow keys into movement, so a
+  viewer could still have its hero walked away and desync the recording.
+- **Viewer keys could not override a game binding.** `KeyBindings.getActionForKey` consults
+  `hardBindings` last, so forcing `SPACE` to nothing lost to the default `SPACE`→`WAIT` and a press
+  both paused and waited the hero. `KeyBindings` gained an explicit override layer for this instead of
+  reordering the existing lookup, which would have broken players who rebound `ENTER` or `ALT_RIGHT`.
+- **`R` did not restart.** It rewound the cursor while leaving the live game where it was; it now
+  rebuilds the level through the same path the viewer starts on.
+- **Viewer controls died after `R`.** `InterlevelScene` calls `KeyEvent.clearListeners()` to drop its
+  own continue-button listener, which clears every listener including the viewer's. The viewer
+  re-registers on each scene rebuild.
+- **The replay HUD vanished after `R`,** because it was rebuilt against the outgoing scene and the
+  non-null field then prevented a rebuild. It is now rebuilt whenever the live scene changes.
+- **Resuming a diverged replay re-reported the same divergence forever.** Divergence is now sticky,
+  since a diverged game can never rejoin the recording's path.
+- **`GameScene` gained `topWindow()`.** `showingWindow()` only reports whether a window exists, which
+  is not enough to decide what to do about one.
 - **`EnvMode.INVENTORY` was unreachable.** The mode was documented on `Action.OPEN_INVENTORY` but
   never assigned, and `OPEN_INVENTORY` fell through to the generic cell handling as a no-op, so no
   rollout could ever contain the mode and no replay could exercise it. It is now entered from the
@@ -30,6 +53,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   comparing the landing cell, and advancing clears the expected position, so the check always passed.
 
 ### Added
+
+- **`replay-viewer.bat`** plays, records and verifies recordings from a terminal: `replay-viewer`
+  plays the newest one, `--record <seed>` makes one, `--verify <file>` checks one, `--list` shows them.
+  It drives Gradle tasks rather than hand-building a classpath, and resolves paths to absolute first
+  because Gradle's `run` task uses the module directory as its working directory.
+- **Replay fixtures in `replays/`,** including `modes-all.replay`, whose first six steps cover `WORLD`,
+  `SLOT`, `TARGETING` and `INVENTORY`. Every recording made before this was pure movement.
+- **Diagnostics on stderr.** The viewer reports each keypress and a per-two-second heartbeat, because
+  "the key did nothing" and "the render loop is stalled" look identical from the outside and need
+  different fixes.
+
+### Added
+
 
 - **Desktop replay viewer.** `gradle :desktop:replay --args="--file <replay>"` plays a recorded run
   back in the rendered game. Recorded actions are applied through `ActionMapper`, which hands them to

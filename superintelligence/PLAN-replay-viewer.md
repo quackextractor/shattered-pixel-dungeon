@@ -409,19 +409,67 @@ is byte-identical across fresh JVMs. A six-seed determinism sweep still matches 
 The reachable triggers are the unequip-third-ring prompt (`KindofMisc`) and the upgraded-missile
 break warning (`MissileWeapon.doThrow`); both need specific loot first.
 
-Also untested:
+**`TARGETING` is entered but never *used*.** Every targeting step in every recording is `CANCEL`, so
+`ActionMapper.resolveTarget` - the real aim, `aim.onSelect(cell)` and `SlotAction.castAt` - is still
+never executed. The mode appearing in a header is not the same as its inner path being covered.
 
-- **Visual fidelity.** A human has not watched one play back yet. That is the point of the feature
-  and it is the check this could not automate.
-- **A diverged replay on screen.** `ReplayPlayer` advanced the cursor before `settle()` compared the
-  landing cell, and `advance()` clears the expected position, so `checkPosition` always passed and
-  the on-screen check could not fire. Fixed by advancing after the comparison; the divergence HUD
-  itself is still unseen.
-- **Restart.** `ReplayPlayer.restart()` only rewinds the cursor and timers. It cannot rewind live
-  game state, so `R` does not truly restart. Needs a level rebuild.
-- **Speed and pause keys.** Bound and wired, not exercised.
-- **A genuine death recording** ( untapped).
-- **Saves.** A viewer run uses the real preferences path. `Replays` are written by the trainer, but
-  whether a viewer session can leave a save behind is unverified.
+## 12. Driving it by hand, and what that found
+
+Everything above was found headlessly. Watching the viewer with a human on the keyboard found a
+second, unrelated class of bug: every one of them made the viewer look *broken in a way no headless
+test could detect*, because playback is driven by the frame hook rather than by input. A dead
+control list changes nothing about the log, and a replay that keeps playing perfectly is exactly what
+a bricked game also looks like from the outside.
+
+| Symptom | Cause |
+| --- | --- |
+| The whole game was unresponsive; keybinds did nothing | Reaching a transition the hero cannot use raises an informational `WndMessage` ("you cannot leave the dungeon yet"). SPD windows are modal, so the scene stopped accepting input. |
+| A keypress moved the hero and desynced the replay | `lockCellInput` called `cellSelector.enable(false)`, but `CellSelector`'s own `KeyEvent` listener ignored `enabled` and kept translating arrow keys into movement. |
+| SPACE paused *and* waited the hero, desyncing the replay | `KeyBindings.getActionForKey` consults `hardBindings` **last**, so forcing SPACE to `GameAction.NONE` lost to the default SPACE→WAIT binding. "Hard" only ever applies to keys the player has not bound at all. |
+| `R` restarted on floor 2 | `InterlevelScene.descend()` has two branches. With a hero still in place it takes the transition branch and descends; only a null hero makes it call `Dungeon.init()`, which resets depth to 1. |
+| `R` did "return to floor 1" instead | `InterlevelScene.mode` is static and gameplay rewrites it, so by the time `R` was pressed it was whatever the recording last did. Both statics are now set explicitly. |
+| Controls died after `R`, while playback continued | `InterlevelScene` calls `KeyEvent.clearListeners()` on the way out to drop its own continue-button listener - and that clears *every* listener, the viewer's included. |
+| The HUD vanished after `R` | `pump()` rebuilt it while the outgoing scene was still live, so it was added to a scene about to be discarded, and the non-null field meant nothing ever rebuilt it. |
+| Resuming a diverged replay printed the same failure forever | Playback restarted, immediately re-detected the same divergence and halted again. Divergence is now sticky. |
+
+Two of these are the kind that only exist in a manual test. The modal window and the dead key
+listener were both invisible to `ReplayPlayback`'s 36 headless checks, because neither involves the
+playback cursor. The viewer only became usable once someone pressed keys at it.
+
+The fixes worth keeping in mind:
+
+- **The viewer dismisses windows it cannot answer.** A recording has no step for an informational
+  message, so leaving it up blocks the game forever. `WndOptions` is deliberately exempt: that one a
+  recorded `MENU` step does resolve, through `WindowBridge`, and dismissing it would break the exact
+  case the viewer exists to show.
+- **`KeyBindings` gained an explicit override layer** (`addOverride` / `clearOverrides`) rather than
+  relying on hard bindings. Precedence in `getActionForKey` was left alone, because reordering it
+  would break players who rebound `ENTER` or `ALT_RIGHT`, which the game hard-binds. Overrides are
+  cleared in `uninstall()`, since they are process-wide and the viewer quits to the title screen.
+- **The HUD is rebuilt whenever the live scene changes**, not once, which makes it self-healing.
+
+`replay-viewer.bat` wraps this up for a human: `replay-viewer` plays the newest recording,
+`--record <seed>` makes one, `--verify <file>` checks one headlessly, `--list` shows them. It drives
+Gradle tasks rather than hand-building a classpath, and resolves every path to absolute first because
+Gradle's `run` task uses the module directory as its working directory - a relative path fails there
+with a misleading "file not found".
+
+Two `for /f` traps cost real time and are worth writing down:
+
+- `for /f "usebackq" ... in ('cmd')` runs **nothing** - with `usebackq`, single quotes mean a literal
+  string and backticks mean a command. Without `usebackq`, single quotes run the command.
+- Batch files need CRLF. LF-only files break `call :label` in ways that look like a missing label.
+
+Still untested:
+
+- **`MENU`,** and a real throw inside `TARGETING` (see above).
+- **Whether a viewer session can leave a save behind.** A viewer run uses the real preferences path.
+- **A genuine death recording.** `world-death.replay` is named for its ending but the hero starved
+  rather than died.
+- **`PlatformSupport.getFont` throws "No cap character found in font".** `parameters.characters` is
+  set to `"?"`, so libGDX finds no capital to size the face from. This is upstream code from 2021
+  against GDX 1.14, it affects the base game as much as the viewer, and `Game.logException` only logs
+  it - so it was left alone rather than changed blind in shared rendering code. Worth a separate look.
+
 
 

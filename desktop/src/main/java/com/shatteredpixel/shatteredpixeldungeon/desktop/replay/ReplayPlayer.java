@@ -25,6 +25,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
+import com.watabou.noosa.Game;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -73,6 +74,16 @@ public class ReplayPlayer {
 	/** Why playback stopped, for the HUD. Empty while playing. */
 	private String haltReason = "";
 
+	/**
+	 * Set once playback has diverged from the recording.
+	 *
+	 * A diverged replay can never become correct again - the live game has already taken a different
+	 * path - so resuming is refused. Without this, pressing pause after a divergence restarted
+	 * playback, immediately re-detected the same divergence and halted again, printing the same
+	 * message every press and looking like the control was not working.
+	 */
+	private boolean diverged = false;
+
 	public ReplayPlayer( Replay replay ){
 		this.playback = new ReplayPlayback( replay );
 		this.mapper = new ActionMapper( new EnvConfig() );
@@ -96,6 +107,10 @@ public class ReplayPlayer {
 	}
 
 	public void playing( boolean value ){
+		if (diverged && value){
+			//refuse to resume: the live game has already left the recording's path
+			return;
+		}
 		this.playing = value;
 	}
 
@@ -200,6 +215,7 @@ public class ReplayPlayer {
 		if (Dungeon.hero != null && Dungeon.hero.isAlive()){
 			settledPosition = Dungeon.hero.pos;
 			if (!playback.checkPosition( settledPosition )){
+				diverged = true;
 				halt( playback.status() );
 			}
 			playback.advance();
@@ -215,15 +231,23 @@ public class ReplayPlayer {
 		if (playing){
 			playing = false;
 			haltReason = reason;
+			System.err.println( "[replay] halted: " + reason );
 		}
 	}
 
-	/** Resets to the first step, leaving the live game where it is. */
+/**
+	 * Resets to the first step, leaving the live game where it is.
+	 *
+	 * Only the playback half of a restart. The game half is the caller's, because it has to rebuild
+	 * the level, and only the caller knows how the viewer was started.
+	 */
 	public void restart(){
 		playing = true;
 		sinceStep = 0;
 		awaitingSettle = false;
 		haltReason = "";
+		diverged = false;
+		playback.rewind();
 	}
 
 	private static EnvMode modeOf( String name ){

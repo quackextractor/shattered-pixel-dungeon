@@ -59,6 +59,30 @@ public class KeyBindings {
 		hardBindings.put(keyCode, action);
 	}
 
+	/**
+	 * Forcing layer, consulted ahead of every other binding source.
+	 *
+	 * Separate from {@link #addHardBinding} because that name oversells it: {@code
+	 * getActionForKey} checks it <i>last</i>, so a hard binding only ever applies to a key the
+	 * player has not bound at all. That is the opposite of what "hard" suggests, and it silently
+	 * defeats the one job the desktop replay viewer needs - SPACE is bound to WAIT by default, so
+	 * forcing it to nothing to make it a pause key did nothing at all, and the press still waited the
+	 * hero mid-replay and desynced the recording.
+	 *
+	 * Overrides are opt-in and removable, because anything installed here applies process-wide: a
+	 * viewer that quit without clearing them would leave those keys dead everywhere, including on
+	 * the title screen.
+	 */
+	private static LinkedHashMap<Integer, GameAction> overrides = new LinkedHashMap<>();
+
+	public static void addOverride(int keyCode, GameAction action){
+		overrides.put(keyCode, action);
+	}
+
+	public static void clearOverrides(){
+		overrides.clear();
+	}
+
 	public static boolean bindingKey = false;
 
 	public static boolean isKeyBound(int keyCode){
@@ -68,11 +92,14 @@ public class KeyBindings {
 		return bindingKey
 				|| bindings.containsKey( keyCode )
 				|| controllerBindings.containsKey( keyCode )
-				|| hardBindings.containsKey( keyCode );
+				|| hardBindings.containsKey( keyCode )
+				|| overrides.containsKey( keyCode );
 	}
 	
 	public static GameAction getActionForKey(KeyEvent event){
-		if (bindings.containsKey( event.code )) {
+		if (overrides.containsKey( event.code )) {
+			return overrides.get( event.code );
+		} else if (bindings.containsKey( event.code )) {
 			return bindings.get( event.code );
 		} else if (controllerBindings.containsKey( event.code )){
 			return controllerBindings.get( event.code );

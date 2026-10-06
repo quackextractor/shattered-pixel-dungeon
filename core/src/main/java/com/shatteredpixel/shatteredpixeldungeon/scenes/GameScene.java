@@ -1523,7 +1523,7 @@ public synchronized void update() {
 	public static Window headlessWindow(){ return headlessWindow; }
 	public static void clearHeadlessWindow(){ headlessWindow = null; }
 
-	public static boolean showingWindow(){
+public static boolean showingWindow(){
 		if (scene == null) return false;
 
 		for (Gizmo g : scene.members){
@@ -1532,6 +1532,24 @@ public synchronized void update() {
 
 		return false;
 	}
+
+	/**
+	 * The window currently on top, or null when none is showing.
+	 *
+	 * {@link #showingWindow()} only answers whether a window exists, which is not enough for a
+	 * caller that has to decide what to do <i>about</i> it. Iterates in the same order as
+	 * {@code showingWindow()} so both agree on which window they mean.
+	 */
+	public static Window topWindow(){
+		if (scene == null) return null;
+
+		for (Gizmo g : scene.members){
+			if (g instanceof Window) return (Window) g;
+		}
+
+		return null;
+	}
+
 
 	public static boolean interfaceBlockingHero(){
 		if (scene == null) return false;

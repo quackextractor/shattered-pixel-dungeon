@@ -275,6 +275,12 @@ public class CellSelector extends ScrollArea {
 	private Signal.Listener<KeyEvent> keyListener = new Signal.Listener<KeyEvent>() {
 		@Override
 		public boolean onSignal(KeyEvent event) {
+			//A disabled selector must ignore keys as well as the pointer. Disabling it only closed
+			//the pointer path, so the keyboard path kept walking the hero: a viewer that locks cell
+			//input still had the hero moved by the arrow keys, and since the viewer checks where the
+			//hero lands after each recorded step, a move nobody recorded desynced the replay.
+			if (!enabled) return false;
+
 			GameAction action = KeyBindings.getActionForKey( event );
 			if (!event.pressed){
 
