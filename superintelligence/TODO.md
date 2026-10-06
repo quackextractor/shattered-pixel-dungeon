@@ -216,15 +216,17 @@ Small things that are wrong but not blocking.
   report prints a constant under the label `shaping=`.
 - `PPO.approximateKL` takes `t`, `logits` and `mask` parameters it does not use.
 - `PPO.oldLogProbabilityFor` returns `t.oldLogProbability` and ignores its second argument.
-- `Network.gradClip` is declared with the comment "applied by the caller before step()" and nothing
-  applies it. Harmless while the buffer is empty; it is the first thing a real gradient will find.
 - Some engine states end a rollout as `STALLED` early. Seed `HERO` terminates after 2 turns, where
   most seeds run the full budget - an encounter reaching a state the action space cannot answer.
   Coverage is uneven across seeds.
 - `TargetHealthIndicator`, `AttackIndicator`, `QuickSlotButton` and `GameScene` gained null guards
   for headless operation. Each is correct with a renderer present, but they are now load-bearing for
   a code path most contributors will never run.
-- The `network` field on `Worker` is currently only a parameter sink (see 1.1).
+- **`PPO.collect()` and `PPO.rollout()` have no callers,** and neither has anything else in the
+  rollout half of `PPO`: `rolloutCap`, `episodeInProgress` and `recurrentStateStale` exist only to
+  serve them. `PLAN-data-flow.md` step 2 replaces them with `rl/EpisodeCollector`; the cap survives
+  as a bound on retained observations rather than on collected steps.
+- **`Worker`'s `network` field is still only a parameter sink** (see 1.1).
 
 ---
 

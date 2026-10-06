@@ -74,6 +74,15 @@ public class Network {
 	/** Retained so backward can walk the same im2col layout forward used. */
 	private final float[] gridSnapshot;
 
+	/**
+	 * Every gradient accumulator, in a fixed order.
+	 *
+	 * The gradient tensors live inside the layers, which is right while only one minibatch is in
+	 * flight. Global-norm clipping needs to walk all of them at once, and it should not have to know
+	 * that Conv2D has two and LSTM has two with different names, so they are gathered here once.
+	 */
+	private final Tensor[] gradients;
+
 	public Network( EnvConfig config, Random rng ){
 		this.config = config;
 
@@ -115,6 +124,47 @@ public class Network {
 
 		this.dGrid = new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
 		this.gridSnapshot = new float[ dGrid.length ];
+
+		this.gradients = new Tensor[] {
+				conv.gW, conv.gb,
+				trunk.gW, trunk.gb,
+				memory.gW, memory.gb,
+				actionHead.gW, actionHead.gb,
+				slotHead.gW, slotHead.gb,
+				targetHead.gW, targetHead.gb,
+				valueHead.gW, valueHead.gb,
+		};
+	}
+
+	/**
+	 * L2 norm of every gradient currently accumulated.
+	 *
+	 * Returned rather than applied so a caller can log it: a norm that climbs without bound is the
+	 * earliest signal that an update is about to diverge, and it is invisible after clipping.
+	 */
+	public float gradientNorm(){
+		double sum = 0;
+		for (Tensor g : gradients) sum += g.sumOfSquares();
+		return (float) Math.sqrt( sum );
+	}
+
+	/** Scales every accumulated gradient. Used to average a minibatch before clipping it. */
+	public void scaleGradients( float scale ){
+		for (Tensor g : gradients) g.scale( scale );
+	}
+
+	/**
+	 * Rescales the accumulated gradient so its L2 norm is at most {@code maxNorm}.
+	 *
+	 * @param maxNorm the ceiling, or a non-positive value to disable clipping
+	 * @return the norm before clipping
+	 */
+	public float clipGradients( float maxNorm ){
+		float norm = gradientNorm();
+		if (maxNorm > 0f && norm > maxNorm && norm > 0f){
+			scaleGradients( maxNorm / norm );
+		}
+		return norm;
 	}
 
 	public int actionCount(){ return actionHead.out; }

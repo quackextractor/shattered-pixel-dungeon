@@ -60,6 +60,24 @@ public class Tensor {
 		for (int i = 0; i < data.length; i++) data[ i ] *= s;
 	}
 
+	/**
+	 * Sum of squares of every element.
+	 *
+	 * Accumulated in double, and that matters: a network this size has millions of gradient entries
+	 * and the squares span many orders of magnitude, so a float accumulator loses the small ones
+	 * entirely. Global gradient clipping depends on this being right - it is the denominator of the
+	 * scale applied to every parameter.
+	 */
+	public double sumOfSquares(){
+		double sum = 0;
+		float[] d = data;
+		for (int i = 0; i < d.length; i++){
+			double v = d[ i ];
+			sum += v * v;
+		}
+		return sum;
+	}
+
 	/** out += other * scale, elementwise. */
 	public void addScaled( Tensor other, float scale ){
 		float[] a = data;

@@ -95,12 +95,14 @@ public class PPO {
 	private final int inventorySize;
 	private final int heroSize;
 
-	// diagnostics from the last update
+	// diagnostics from the last update, each a mean over the samples seen rather than a running sum
 	public float lastPolicyLoss;
 	public float lastValueLoss;
 	public float lastEntropy;
 	public float lastKLDivergence;
 	public float lastClipFraction;
+	public float lastGradNorm;
+	public float lastGradClipped;
 	public int lastMinibatches;
 
 	public PPO( EnvConfig config, Random rng ){
@@ -311,6 +313,8 @@ public class PPO {
 		lastEntropy = 0;
 		lastKLDivergence = 0;
 		lastClipFraction = 0;
+		lastGradNorm = 0;
+		lastGradClipped = 0;
 		lastMinibatches = 0;
 
 		normaliseAdvantages();
@@ -324,9 +328,22 @@ public class PPO {
 			for (int start = 0; start < n; start += minibatchSize){
 				int end = Math.min( n, start + minibatchSize );
 				processMinibatch( start, end );
-				network.step( 1f / (end - start) );
+				network.step( 1f );
 				lastMinibatches++;
 			}
+		}
+
+		//the per-minibatch figures were each averaged over their own samples and then summed, so the
+		//total depended on how many minibatches and epochs ran. That made the printed loss grow just
+		//from a longer update. Divide it back out: the report is a mean over the samples seen.
+		if (lastMinibatches > 0){
+			lastPolicyLoss /= lastMinibatches;
+			lastValueLoss /= lastMinibatches;
+			lastEntropy /= lastMinibatches;
+			lastKLDivergence /= lastMinibatches;
+			lastClipFraction /= lastMinibatches;
+			lastGradNorm /= lastMinibatches;
+			lastGradClipped /= lastMinibatches;
 		}
 
 		network.learningRate = learningRate;
@@ -432,6 +449,15 @@ public class PPO {
 		lastEntropy += entropy / count;
 		lastKLDivergence += kl / count;
 		lastClipFraction += clipped / count;
+
+		//average the minibatch, then clip, then step. Clipping before averaging would make the ceiling
+		//mean something that changes with minibatchSize, and Network.gradClip is declared as an
+		//absolute norm for a reason. Averaging here rather than through step's gradScale also means
+		//the norm reported below is the norm of the gradient that was actually applied.
+		network.scaleGradients( 1f / count );
+		float norm = network.clipGradients( network.gradClip );
+		lastGradNorm += norm;
+		if (norm > network.gradClip) lastGradClipped++;
 	}
 
 	/** KL between the behaviour distribution and the current one, recomputed from the ratio. */

@@ -71,9 +71,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   comparing the landing cell, and advancing clears the expected position, so the check always passed.
 - **`GameScene` gained `topWindow()`.** `showingWindow()` only reports whether a window exists, which
   is not enough to decide what to do about one.
-
-### Fixed
-
+- **Global gradient clipping did not exist.** `Network.gradClip` was declared with the comment
+  "applied by the caller before `step()`" and no caller applied it; `PPO.update` never computed a
+  gradient norm. Harmless while the buffer is empty, which is why it survived. It is implemented now,
+  over every layer's gradient accumulator at once, accumulated in double because a network this size
+  has millions of entries spanning many orders of magnitude.
+- **The reported losses were running sums, not means.** Each minibatch averaged over its own samples
+  and the totals were summed across every minibatch and epoch, so `policy=` and `value=` grew with
+  update length rather than measuring anything. They are now means over the samples seen.
+- **Clipping now happens after the minibatch average.** Clipping the raw accumulated gradient would
+  have made the ceiling mean something that changes with `minibatchSize`, and `gradClip` is declared
+  as an absolute norm. It also means the reported norm is the norm of the gradient that was applied.
 - **`gradle :superintelligence:train` rejected its own arguments.** The subcommand was prepended in
   `doFirst` for every CLI task except `train`, so the documented
   `--args="--workers 8 --generations 200"` reached `Main` with no subcommand and died on
@@ -101,6 +109,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`gradle :superintelligence:updatecost`** measures what a PPO update actually costs and projects it
+  across sample rates. The worker-data-flow decision was argued entirely on bandwidth, and the update
+  behind it — 9,600 forward and backward passes per generation on one thread — had never been
+  estimated. Measured at **11.29 ms per sample**: 107 s per generation at a 5% sample rate and 4
+  epochs, against 0.12 s of transport and ~7 s of collection. Bandwidth was never the binding
+  constraint at these sample rates.
+- **Reported gradient norms and clip fraction,** per minibatch and averaged. A norm that climbs
+  without bound is the earliest signal that an update is about to diverge, and clipping hides it.
 - **`gradle :superintelligence:modecheck`** fails if the environment cannot reach one of its own
   action modes. It drives an explicit script through `WORLD`, `SLOT`, `TARGETING`, `INVENTORY` and
   `MENU`, resolves a real aim rather than cancelling one, and executes a drop. Six real bugs reached

@@ -66,12 +66,20 @@ something.
 # check the network's analytic gradients against central differences
 ./gradlew :superintelligence:gradcheck
 
+# measure what a PPO update costs, and project it across sample rates
+./gradlew :superintelligence:updatecost
+
 # train
 
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"
 ```
 
 `probeClasspath` prints the runtime classpath, which is what the trainer uses to launch workers.
+
+`updatecost` is the one worth knowing about before choosing a batch size. An update costs 11.3 ms per
+sample on this machine, almost all of it forward and backward rather than Adam, and it runs on one
+thread — so at a 5% sample rate and 4 epochs it is about 107 s of trainer CPU per generation, against
+0.12 s of transport. Bandwidth is not what limits this trainer.
 
 ## Layout
 

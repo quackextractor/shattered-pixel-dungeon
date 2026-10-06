@@ -141,25 +141,53 @@ An update costs one forward and one backward per sample per epoch. At the defaul
 single thread** (`PPO.update`, `rl/PPO.java:297`).
 
 Per sample, the shape is expensive. The convolution is 20 planes of 48x48 im2col'd into a
-12,696×320 matvec; the trunk is 12,696×256; the LSTM is 256→128. Order 45 MFLOP forward+backward,
-so a generation is of order 0.4 GFLOP of single-threaded Java float arithmetic. Against roughly
-7 s of collection, that plausibly lands in **minutes** — at which point the barrier is ~90% of wall
-time and 19 of 20 cores idle, which is the opposite of what §5 of the first draft projected.
+12,696×320 matvec; the trunk is 12,696×256; the LSTM is 256→128.
 
-This is not a reason to abandon Option C. It is a reason to **measure before choosing the sample
-rate**, and it is the same bottleneck that steps 3 and 5 were invented to dodge — neither of which
-addresses it. `PLAN-data-flow.md` step 1 below therefore measures fwd/bwd cost and projects
-seconds/generation across a sample-rate × epochs grid, and the working point is chosen from those
-numbers rather than from the transport arithmetic alone.
+**Measured.** `gradle :superintelligence:updatecost`, on this machine, 3,583,827 parameters, one
+thread:
 
-Two further consequences of a first real gradient, both cheap and both in scope:
+| | per sample |
+| --- | --- |
+| forward only | 4.30 ms |
+| forward + backward | 11.02 ms |
+| + average, clip, Adam, amortised over a 32-sample minibatch | **11.29 ms** |
 
-- **Global gradient clipping does not exist.** `Network.gradClip = 0.5f` is declared with the comment
-  "applied by the caller before step()". No caller applies it; `PPO.update` never computes a norm.
-  The first genuine gradient in this project will find that.
-- **The batch configuration was never sized against a batch that exists.** 2,400 samples at
-  `minibatchSize = 32` is 75 minibatches, × 4 epochs = **300 Adam steps per generation**. That is far
-  more optimiser movement than a batch of that size supports.
+Projected against a generation of 48,000 collected steps (20 workers × 16 episodes × 150 turns):
+
+| sample rate | sampled steps | 4 epochs | 1 epoch |
+| --- | --- | --- | --- |
+| 1% | 480 | 21 s | 5 s |
+| 2% | 960 | 43 s | 11 s |
+| 5% | 2,400 | **107 s** | 27 s |
+| 10% | 4,800 | 214 s | 54 s |
+| 100% | 48,000 | 35 min | 9 min |
+
+**So the bandwidth argument for Option C was never the binding constraint at these sample rates.**
+Transport is 120 MB per generation, ~0.12 s. The update at the intended 5% and 4 epochs is ~107 s —
+roughly **900× the transport**, and ~15× the ~7 s it takes to collect the data in the first place.
+The trainer's single thread would be the critical path with 19 of 20 cores idle.
+
+Two things follow that are not optional:
+
+1. **The update must be parallel.** Not "if the measurement says so" — the measurement says so. It
+   also means the batch configuration has to be chosen against this table rather than against taste:
+   5% at 1 epoch is 27 s, 5% at 4 epochs is 107 s, and the difference is whether a generation is
+   minutes or a minute and a half even after parallelising.
+2. **The optimiser is not the problem; the forward and backward are.** The Adam pass, the gradient
+   norm and the gradient scaling together add 0.27 ms per sample — 2.4% of the cost — because they
+   run once per minibatch rather than once per sample. An earlier version of this harness timed
+   `network.step` inside the per-sample loop and reported 25.5 ms/sample, nearly 2.3× the truth, which
+   is exactly the kind of number that would have sent this project looking for a cheaper optimiser.
+
+Two further consequences of a first real gradient, both cheap:
+
+- **Global gradient clipping did not exist.** `Network.gradClip = 0.5f` was declared with the comment
+  "applied by the caller before step()" and no caller applied it; `PPO.update` never computed a norm.
+  It is implemented now, and the measured norm is reported per minibatch so a run that starts to
+  diverge is visible before it happens rather than after.
+- **The reported losses were running sums.** Each minibatch averaged over its own samples and the
+  totals were summed across 300 minibatches, so `policy=` grew with update length rather than
+  measuring anything. They are now means over the samples seen.
 
 ---
 
@@ -198,14 +226,17 @@ diff to review: `train/WorkerPool` (launch, `WorkerHandle`, watchdog), `train/Ge
 Gate: `build`, `gradcheck`, `modecheck`, `restartcheck` and a 60-rollout determinism sweep, all
 unchanged.
 
-### Step 1 — Measure the update, and clip gradients
+### Step 1 — Measure the update, and clip gradients — **done**
 
-`diag/UpdateCostCheck` times forward, backward and a full minibatch over N transitions and projects
-seconds/generation across the sample-rate × epochs grid. Global-norm clipping lands here, because the
-first real gradient needs it whether or not the measurement is bad.
+`diag/UpdateCostCheck` (`gradle :superintelligence:updatecost`) times forward, backward and a whole
+minibatch, and projects seconds/generation across a sample-rate × epochs grid. §4 has the numbers.
+Global-norm clipping landed here, because the first real gradient needs it whether or not the
+measurement is bad.
 
-Gate: the numbers are recorded in this file, and step 3's sample rate, `minibatchSize` and `epochs`
-are chosen from them.
+Result: the update is ~900× the transport it was supposed to be cheaper than. Steps 3 and 5 do not
+address it; step 4 does.
+
+Gate, met: the numbers are in this file, and step 3's sample rate and `epochs` are chosen from them.
 
 ### Step 2 — GAE in the worker
 
@@ -244,12 +275,19 @@ Gate: pooled update runs on real data for the first time. `policy` and `value` l
 the weights change across the update, and post-normalisation advantages have mean ≈ 0. **This is the
 first moment anything in the project has learned anything.**
 
-### Step 4 — Parallel minibatch update, only if step 1 says so
+### Step 4 — Parallel minibatch update — **required, not conditional**
 
-If the measurement in step 1 puts the update on the critical path, the fix is to parallelise it across
-minibatches: private scratch and gradient buffers per thread, one reduction per minibatch, 14.3 MB ×
-threads of accumulation. This requires separating parameter storage from scratch in `Network`,
-`Dense`, `Conv2D` and `LSTM`, which is a real refactor and not something to do speculatively.
+Step 1 measured it: 11.29 ms per sample, single-threaded, dominated by the forward and backward
+rather than by the optimiser. At 5% and 4 epochs that is 107 s of trainer CPU per generation against
+~7 s of collection and 0.12 s of transport.
+
+The fix is to parallelise across minibatches: private scratch and gradient buffers per thread, one
+reduction per minibatch, 14.3 MB × threads of accumulation. This requires separating parameter storage
+from scratch in `Network`, `Dense`, `Conv2D` and `LSTM`, which is a real refactor.
+
+The open question is where the parallel speedup stops paying: the reduction moves 14.3 MB per thread
+per minibatch, so it competes with the per-sample work once a thread's slice gets small. That is a
+measurement, not a guess, and it decides `minibatchSize` as much as thread count.
 
 Gate: measured seconds/generation down, `gradcheck` green.
 
@@ -307,16 +345,17 @@ re-proposed.
 
 ## 7. Expected effect on the machine
 
-| | now | after steps 2–3 | after step 4, if needed |
+| | now | after steps 2–3 | after step 4 |
 | --- | --- | --- | --- |
 | transport/gen | ~0 (discarded) | ~118 MB | ~118 MB |
-| update/gen | 0 (empty buffer) | 9,600 fwd+bwd passes | same work, ÷ threads |
-| barrier | 12–26% | **unknown — step 1 measures it** | lower |
-| system CPU | ~50% avg, 90–100% peak | trainer-core bound if step 1 is bad | spread across cores |
+| update/gen | 0 (empty buffer) | ~107 s, 1 thread | ~107 s ÷ threads, plus reduction |
+| barrier | 12–26% | ~90% of wall | much lower |
+| system CPU | ~50% avg, 90–100% peak | trainer-core bound | spread across cores |
 | pooled gradient | no | yes | yes |
 
 Throughput should *fall* after step 3 — real PPO work replaces free discard. That is expected and is
-not a regression. The size of the fall is the number step 1 exists to measure.
+not a regression. The size of the fall is measured: about 107 s of trainer CPU per generation at 5%
+and 4 epochs, and the batch configuration has to be chosen against that rather than against taste.
 
 ---
 
@@ -327,7 +366,7 @@ not a regression. The size of the fall is the number step 1 exists to measure.
 | Advantages differ from full-buffer computation | blocking | Step 2 gate. Cheap to test. |
 | Worker/trainer gamma drift | medium | Currently masked by identical defaults. Fixed in step 2. |
 | Sample too small (~2,400 for 3.5M params) | medium | Needs a knob and a measurement plan. Low end of workable. |
-| Update cost dominates everything | **unknown, possibly blocking** | Step 1. Not previously measured anywhere. |
+| Update cost dominates everything | **measured: it does** | 107 s vs 7 s of collection. Step 4 is required. |
 | 300 Adam steps on 2,400 samples destabilises training | medium | Only visible once losses are non-zero. Re-tune from step 1's grid. |
 | 95% of collected experience unused | accepted | Fine to start with. Not free. |
 | Replay transfer crowds the transition channel | low | Split the message in step 3. |
@@ -338,8 +377,9 @@ not a regression. The size of the fall is the number step 1 exists to measure.
 
 ## 9. Open questions
 
-- Sample rate: 5% gives ~2,400 steps. Is that the right batch for a 3.5M-parameter network? Now a
-  measurement question rather than a guess — see step 1 and the `--sample-rate` knob.
+- Sample rate: 5% gives ~2,400 steps. Now measured rather than guessed — §4 — and the answer is that
+  5% at 4 epochs costs 107 s of trainer CPU per generation. Whether that is acceptable depends on step
+  4's thread count, and 1 epoch vs 4 moves it by 4×. `--sample-rate` is a knob for exactly this.
 - Should episodes longer than a threshold be capped at the source, given GAE cost grows linearly
   while value signal does not?
 - Replay retention: currently every third episode. At 320 episodes/generation that is a

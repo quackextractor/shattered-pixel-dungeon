@@ -102,6 +102,8 @@ cliTask('modecheck', 'Fails if the environment cannot reach one of its own actio
 
 cliTask('restartcheck', 'Fails if restarting a run does not rebuild the same first floor.')
 
+cliTask('updatecost', 'Measures what a PPO update costs and projects it across sample rates.')
+
 //Everything the trainer and its workers need on one classpath, so a worker can be launched
 //with a plain `java -cp` instead of forking gradle.
 tasks.register('workerJar', Jar) {
