@@ -111,6 +111,16 @@ public class InterlevelScene extends PixelScene {
 
 	public static int lastRegion = -1;
 
+	/**
+	 * When true the region story page is skipped and the scene goes straight to the dungeon.
+	 *
+	 * Otherwise {@code afterLoading} parks in {@code Phase.STATIC} with a "continue" button the
+	 * player is expected to press. That is right for a person starting a run and wrong for anything
+	 * unattended - the desktop replay viewer would sit on a splash screen waiting for a click that
+	 * is never coming.
+	 */
+	public static boolean autoContinue = false;
+
 	private RectF insets;
 
 	{
@@ -606,6 +616,14 @@ public class InterlevelScene extends PixelScene {
 	}
 
 	private void afterLoading(){
+		if (autoContinue){
+			//still reads the page, so documentation stays marked as seen. region and loadingDepth
+			//are locals of create(); lastRegion is the same value, kept as a field.
+			Document.INTROS.readPage( lastRegion );
+			phase = Phase.FADE_OUT;
+			timeLeft = fadeTime;
+			return;
+		}
 		if (btnContinue != null){
 			btnContinue.visible = true;
 			float alpha = btnContinue.alpha();

@@ -175,7 +175,9 @@ public class ReplayPlayer {
 
 		mapper.refreshSlots();
 
-		playback.advance();
+		//Advance only after settle() has compared the landing cell. advance() clears the playback's
+		//expected position, so advancing first meant checkPosition() always saw "no expectation" and
+		//silently passed - the on-screen divergence check could never fire.
 		awaitingSettle = true;
 	}
 
@@ -200,6 +202,7 @@ public class ReplayPlayer {
 			if (!playback.checkPosition( settledPosition )){
 				halt( playback.status() );
 			}
+			playback.advance();
 		} else {
 			playback.finish();
 			halt( "run ended" );

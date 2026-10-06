@@ -151,12 +151,18 @@ public class ActionMapper {
 				case INTERACT:
 					mask[a.index] = interactable ? 1f : 0f;
 					break;
+				case OPEN_INVENTORY:
+					//always available, like the inventory key in the real game. Without it in the
+					//mask the action is unreachable, and since SPDEnv only enters INVENTORY from
+					//here, EnvMode.INVENTORY could never occur and never be recorded in a replay.
+					mask[a.index] = 1f;
+					break;
 				case MOVE_N: case MOVE_NE: case MOVE_E: case MOVE_SE:
 				case MOVE_S:  case MOVE_SW: case MOVE_W:  case MOVE_NW:
 					mask[a.index] = moveLegal( a ) ? 1f : 0f;
 					break;
 				default:
-					//OPEN_INVENTORY, MENU_SELECT and CANCEL are only offered by the modes above
+					//MENU_SELECT and CANCEL are only offered by the modes above
 					break;
 			}
 		}

@@ -30,8 +30,22 @@ public class SlotAction {
 		return pendingUseItem;
 	}
 
-	public static void clearPendingUseItem(){
+public static void clearPendingUseItem(){
 		pendingUseItem = null;
+	}
+
+	/**
+	 * Abandons an aim in progress.
+	 *
+	 * Throwing only installs a cell listener, so nothing has left the backpack yet and cancelling
+	 * costs nothing but the turn. The hero still has to be released: the throw had already put him
+	 * mid-action, and without {@code next()} he never became ready again and the episode stalled.
+	 */
+	public static boolean cancelPendingUse( Hero hero ){
+		pendingUseItem = null;
+		GameScene.clearPendingCellListener();
+		hero.next();
+		return true;
 	}
 
 	/** Handles the agent's choice while in EnvMode.SLOT or EnvMode.INVENTORY. */
@@ -51,13 +65,29 @@ public class SlotAction {
 	 * @return true when the use needs an aim, in which case the caller enters
 	 *         {@link EnvMode#TARGETING}
 	 */
-	public static boolean use( Hero hero, Item item, boolean allowEquipping ){
-		if (allowEquipping && item instanceof EquipableItem){
-			return toggleEquip( hero, (EquipableItem) item );
+public static boolean use( Hero hero, Item item, boolean allowEquipping ){
+		//Weapon extends EquipableItem, so a missile weapon is equipable too, and checking
+		//equipability first equipped a throwing stone instead of throwing it. usesTargeting is what
+		//distinguishes the two: a missile is thrown or cast, everything else equipable is equipped.
+		//Getting this backwards also explained a spurious aim step - the old code returned
+		//toggleEquip's "equipped" boolean, which the env read as "needs an aim", so every weapon
+		//change invented a TARGETING step while genuinely thrown items never reached one.
+		boolean equippable = allowEquipping && item instanceof EquipableItem;
+
+		if (equippable && !item.usesTargeting){
+			toggleEquip( hero, (EquipableItem) item );
+			return false;
 		}
 
 		String action = resolveAction( hero, item );
-		if (action == null) return false;
+		if (action == null){
+			//Still spend the turn. Bailing out without releasing the hero left it permanently
+			//mid-action, and the pipeline never saw it become ready again, so the episode ended as
+			//STALLED rather than merely wasting the turn.
+			if (equippable) toggleEquip( hero, (EquipableItem) item );
+			else hero.next();
+			return false;
+		}
 
 		//clear any stale aim request so a fresh one is unambiguous
 		GameScene.clearPendingCellListener();
@@ -71,7 +101,10 @@ public class SlotAction {
 		}
 
 		hero.next();
-		return true;
+
+		//False, not true: the item was consumed and the turn is over, so there is nothing to aim.
+		//Returning true here sent the env into TARGETING after every potion and every pickup.
+		return false;
 	}
 
 /** Casts or throws {@code item}, mirroring Item.cast minus the missile sprite. */
@@ -88,17 +121,24 @@ public class SlotAction {
 		return true;
 	}
 
-	/** Equips or unequips, going through the game's own strength and curse checks. */
+/** Equips or unequips, going through the game's own strength and curse checks. */
 	private static boolean toggleEquip( Hero hero, EquipableItem item ){
+		boolean changed;
+
 		if (item.isEquipped( hero )){
 			item.doUnequip( hero, true );
-		} else if (!item.doEquip( hero )){
-			//refused: cursed, or above the hero's strength. Staying unequipped is correct, and
-			//reward.RewardModel penalises the attempt so the policy learns the rule.
-			return false;
+			changed = true;
+		} else {
+			changed = item.doEquip( hero );
 		}
+
+		//The turn is spent either way, so the hero always has to be released. Returning early on a
+		//refused equip skipped hero.next(), which left the hero permanently mid-action: the
+		//pipeline never saw the hero become ready again, so every episode that touched a
+		//curse-limited or over-strength item ended as STALLED within a dozen turns.
 		hero.next();
-		return true;
+
+		return changed;
 	}
 
 	/**

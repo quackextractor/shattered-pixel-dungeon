@@ -382,22 +382,46 @@ therefore watched in the real scene, real sprites, real update loop.
 
 ## 11. Not tested, and one real gap
 
-**The recordings only exercise `WORLD` mode.** Every step in all four recordings is a move or an
-interact; none is a menu, a slot choice, or a targeting prompt. So the two-step action path
-(`applySecondary` for MENU / SLOT / INVENTORY / TARGETING) is **written but never executed**.
+**Resolved: recordings now exercise the secondary action path.** Section 11 originally recorded that
+every step in every recording was `WORLD`, leaving `applySecondary` for MENU / SLOT / INVENTORY /
+TARGETING written but never executed. Chasing that down found six real bugs, not just a missing
+fixture, and `WORLD`-only recordings were hiding all of them:
 
-That is the obvious next test. It needs a recording that picks something up or opens a shop, which
-the scripted policy rarely does on floor 1. A seed sweep, or a recording made with a policy that
-deliberately loots, would produce one.
+| Bug | Effect |
+| --- | --- |
+| `EnvMode.INVENTORY` was never assigned anywhere | The mode was structurally unreachable, and `OPEN_INVENTORY` silently fell through to the generic cell handling as a no-op. No rollout could contain it and no replay could exercise it. |
+| `OPEN_INVENTORY` was absent from the `WORLD` action mask | Even after wiring the mode, the action was unreachable because the mask never offered it. |
+| `SlotAction.use` checked equipability first | `Weapon extends EquipableItem`, so a `ThrowingStone` is equipable: the stone was **equipped instead of thrown**. |
+| `SlotAction.use` returned `toggleEquip`'s boolean | That "equipped OK" flag was read as "needs an aim", so every equipment change invented a `TARGETING` step. |
+| `SlotAction.use` returned `true` on its success path | Every plain consumable falsely demanded an aim. |
+| `toggleEquip` returned without `hero.next()` on a refused equip | The hero stayed mid-action forever, the pipeline never saw it become ready, and the episode ended `STALLED` within about a dozen turns. |
+| `SPDEnv.step` cleared the pending use item on *every* step | Including the `TARGETING` step that needed it, so no aim could ever be resolved and cancelling a throw was impossible. |
+
+`ScriptedPolicy` was updated alongside them: it now deliberately spends its first turns on the routes
+into the secondary modes, remembers transition cells that did nothing (the quest-locked floor 1 exit
+was making every episode ping-pong on the stairs), refuses to walk straight back where it came, and
+tramples high grass before trying to collect from it.
+
+`loot-a` now opens with `WORLD → SLOT → TARGETING → WORLD → INVENTORY → TARGETING`, verifies 3/3, and
+is byte-identical across fresh JVMs. A six-seed determinism sweep still matches exactly.
+
+**`MENU` is still uncovered.** It needs a real `WndOptions` dialog, which movement cannot produce.
+The reachable triggers are the unequip-third-ring prompt (`KindofMisc`) and the upgraded-missile
+break warning (`MissileWeapon.doThrow`); both need specific loot first.
 
 Also untested:
 
 - **Visual fidelity.** A human has not watched one play back yet. That is the point of the feature
   and it is the check this could not automate.
-- **A diverged replay on screen.** The divergence path is tested headlessly, but never seen in the
-  HUD.
-- **Speed, pause and restart keys.** Bound and wired, not exercised.
-- **A genuine death recording** (§9).
+- **A diverged replay on screen.** `ReplayPlayer` advanced the cursor before `settle()` compared the
+  landing cell, and `advance()` clears the expected position, so `checkPosition` always passed and
+  the on-screen check could not fire. Fixed by advancing after the comparison; the divergence HUD
+  itself is still unseen.
+- **Restart.** `ReplayPlayer.restart()` only rewinds the cursor and timers. It cannot rewind live
+  game state, so `R` does not truly restart. Needs a level rebuild.
+- **Speed and pause keys.** Bound and wired, not exercised.
+- **A genuine death recording** ( untapped).
 - **Saves.** A viewer run uses the real preferences path. `Replays` are written by the trainer, but
   whether a viewer session can leave a save behind is unverified.
+
 

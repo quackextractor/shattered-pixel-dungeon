@@ -25,6 +25,8 @@ import com.badlogic.gdx.Input;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene;
+import com.watabou.input.GameAction;
+import com.watabou.input.KeyBindings;
 import com.watabou.input.KeyEvent;
 import com.watabou.noosa.BitmapText;
 import com.watabou.noosa.Game;
@@ -106,39 +108,65 @@ public class ReplayController {
 
 		help = new BitmapText( PixelScene.pixelFont );
 		help.visible = true;
-		help.text( "SPACE pause   +/- speed   R restart   ESC quit" );
+		help.text( "SPACE pause  +/- speed  [ ] coarser/finer  R restart  ESC quit" );
 		help.camera = PixelScene.uiCamera;
 		Game.scene().addToFront( help );
 	}
 
+/**
+	 * Viewer controls.
+	 *
+	 * The keys are registered as hard bindings rather than only listened for. {@code
+	 * InputHandler.keyDown} drops any key that is not bound before any listener sees it, so a bare
+	 * listener on an unbound key silently never fires - which is exactly why these controls did
+	 * nothing. They map to {@code GameAction.NONE} so they do not disturb the game's own actions,
+	 * and being hard bindings they cannot be rebound away by the player mid-replay.
+	 */
 	private void bindKeys(){
+		KeyBindings.addHardBinding( Input.Keys.SPACE, GameAction.NONE );
+		KeyBindings.addHardBinding( Input.Keys.R, GameAction.NONE );
+		KeyBindings.addHardBinding( Input.Keys.PLUS, GameAction.NONE );
+		KeyBindings.addHardBinding( Input.Keys.EQUALS, GameAction.NONE );
+		KeyBindings.addHardBinding( Input.Keys.MINUS, GameAction.NONE );
+		KeyBindings.addHardBinding( Input.Keys.LEFT_BRACKET, GameAction.NONE );
+		KeyBindings.addHardBinding( Input.Keys.RIGHT_BRACKET, GameAction.NONE );
+
 		viewerKeys = new Signal.Listener<KeyEvent>() {
 			@Override
 			public boolean onSignal( KeyEvent event ){
 				if (!event.pressed) return false;
 
-				if (event.code == Input.Keys.SPACE){
-					player.playing( !player.playing() );
-					return true;
-				} else if (event.code == Input.Keys.PLUS || event.code == Input.Keys.EQUALS){
-					player.speed( player.speed() * 2f );
-					return true;
-				} else if (event.code == Input.Keys.MINUS){
-					player.speed( player.speed() / 2f );
-					return true;
-				} else if (event.code == Input.Keys.R){
-					player.restart();
-					return true;
-				} else if (event.code == Input.Keys.ESCAPE){
-					//A window on top of the scene gets BACK first and swallows it - that is what
-					//opened the little pause box in the first place. So close anything open before
-					//falling through to quitting, or ESC looks broken whenever a window exists.
-					if (!closeTopWindow()){
-						quit();
-					}
-					return true;
+				switch (event.code){
+					case Input.Keys.SPACE:
+						player.playing( !player.playing() );
+						return true;
+					case Input.Keys.PLUS:
+					case Input.Keys.EQUALS:
+						player.speed( player.speed() * 2f );
+						return true;
+					case Input.Keys.MINUS:
+						player.speed( player.speed() / 2f );
+						return true;
+					case Input.Keys.LEFT_BRACKET:
+						player.speed( player.speed() / 4f );
+						return true;
+					case Input.Keys.RIGHT_BRACKET:
+						player.speed( player.speed() * 4f );
+						return true;
+					case Input.Keys.R:
+						player.restart();
+						return true;
+					case Input.Keys.ESCAPE:
+						//A window on top of the scene gets BACK first and swallows it - that is what
+						//opened the little pause box in the first place. So close anything open
+						//before falling through to quitting.
+						if (!closeTopWindow()){
+							quit();
+						}
+						return true;
+					default:
+						return false;
 				}
-				return false;
 			}
 		};
 		KeyEvent.addKeyListener( viewerKeys );

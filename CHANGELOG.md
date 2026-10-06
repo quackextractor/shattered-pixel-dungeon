@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`EnvMode.INVENTORY` was unreachable.** The mode was documented on `Action.OPEN_INVENTORY` but
+  never assigned, and `OPEN_INVENTORY` fell through to the generic cell handling as a no-op, so no
+  rollout could ever contain the mode and no replay could exercise it. It is now entered from the
+  `WORLD` step and offered in the `WORLD` action mask, and its branch resolves an aim the same way
+  `SLOT` does instead of dropping it.
+- **Throwing stones were equipped rather than thrown.** `SlotAction.use` tested equipability before
+  the item's own action, and `Weapon extends EquipableItem`, so a missile weapon took the equip path.
+- **Every equipment change invented a targeting step.** `SlotAction.use` returned `toggleEquip`'s
+  "equipped OK" boolean, which the environment read as "needs an aim", and its success path returned
+  `true` outright, so plain consumables falsely demanded an aim too.
+- **A refused equip stalled the episode.** `toggleEquip` returned without releasing the hero, which
+  left it permanently mid-action; the pipeline never saw it become ready and the run ended `STALLED`
+  within about a dozen turns.
+- **No aim could ever be resolved or cancelled.** `SPDEnv.step` cleared the pending use item on every
+  step, including the `TARGETING` step that needed it. `CANCEL` during targeting was also treated as a
+  throw at the default target, spending the item. `CANCEL` is now handled on its own and releases the
+  hero's turn.
+- **On-screen replay divergence could never fire.** `ReplayPlayer` advanced the playback cursor before
+  comparing the landing cell, and advancing clears the expected position, so the check always passed.
+
 ### Added
 
 - **Desktop replay viewer.** `gradle :desktop:replay --args="--file <replay>"` plays a recorded run
@@ -18,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Two engine hooks were needed, both general rather than replay-specific: `Game.lockCellInput`
   disables the cell selector each frame so nothing but the recording can inject an action, and
   `Game.setSceneClass` lets an entry point that builds the game choose its initial scene.
+  `InterlevelScene.autoContinue` skips the region continue prompt so a viewer run starts on its own,
+  and the viewer's keys are hard-bound because `InputHandler` only emits a `KeyEvent` for keys present
+  in `KeyBindings`, which left space, `R` and `+`/`-` unreachable.
 
   Entering through `InterlevelScene` with `Mode.DESCEND` is what makes this work: `InterlevelScene`
   switches to `GameScene` hardcoded, so a `GameScene` subclass would never be entered. A static

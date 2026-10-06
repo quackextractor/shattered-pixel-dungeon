@@ -142,15 +142,28 @@ public class SPDEnv {
 
 		GameScene.clearPendingCellListener();
 		GameScene.clearHeadlessWindow();
-		SlotAction.clearPendingUseItem();
+		//Only drop a stale aim request when a fresh turn begins. Clearing it unconditionally wiped the
+		//item being aimed with before the agent could resolve the aim, so the following TARGETING
+		//step had nothing to act on: the throw never completed, the hero stayed mid-action and the
+		//pipeline gave up, ending every episode that reached an aim as STALLED.
+		if (mode != EnvMode.TARGETING){
+			SlotAction.clearPendingUseItem();
+		}
 
 		mapper.refreshSlots();
 
 		boolean acted = false;
 
-		if (mode == EnvMode.WORLD){
+if (mode == EnvMode.WORLD){
 			acted = mapper.apply( action, slot );
-			if (action == Action.USE || action == Action.DROP){
+			if (action == Action.OPEN_INVENTORY){
+				//the one and only entry into INVENTORY. It was documented on the action but never
+				//assigned here, and OPEN_INVENTORY fell through to the generic cell handling as a
+				//no-op, so the mode was unreachable: no rollout could contain it and no replay could
+				//ever exercise it.
+				mode = EnvMode.INVENTORY;
+				acted = true;
+			} else if (action == Action.USE || action == Action.DROP){
 				//the slot and, if needed, the aim are chosen on the following steps
 				mode = EnvMode.SLOT;
 				if (WindowBridge.open()) mode = EnvMode.MENU;
@@ -169,12 +182,29 @@ public class SPDEnv {
 			}
 			mode = needsTarget ? EnvMode.TARGETING : EnvMode.WORLD;
 			acted = true;
-		} else if (mode == EnvMode.TARGETING){
-			acted = mapper.applySecondary( mode, action, slot );
+} else if (mode == EnvMode.TARGETING){
+			//CANCEL has to be handled apart from an aim, otherwise it is read as a throw at the
+			//default target - which spent the stone - and the hero was never released.
+			if (action == Action.CANCEL){
+				acted = SlotAction.cancelPendingUse( Dungeon.hero );
+			} else {
+				acted = mapper.applySecondary( mode, action, slot );
+			}
 			mode = EnvMode.WORLD;
 		} else if (mode == EnvMode.INVENTORY){
-			acted = mapper.applySecondary( mode, action, slot );
-			mode = EnvMode.WORLD;
+			//mirrors the SLOT branch rather than going through applySecondary, because only use()
+			//reports whether the item needs an aim and that answer decides the next mode
+			boolean needsTarget = false;
+			if (action == Action.USE){
+				com.shatteredpixel.shatteredpixeldungeon.items.Item item = mapper.slot( slot );
+				if (item != null){
+					needsTarget = SlotAction.use( Dungeon.hero, item, config.allowEquipping );
+				}
+			} else {
+				acted = mapper.applySecondary( mode, action, slot );
+			}
+			mode = needsTarget ? EnvMode.TARGETING : EnvMode.WORLD;
+			acted = true;
 		}
 
 		if (!acted){

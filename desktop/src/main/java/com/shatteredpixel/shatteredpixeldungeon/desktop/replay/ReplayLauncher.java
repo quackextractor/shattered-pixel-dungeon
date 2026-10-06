@@ -129,7 +129,7 @@ public class ReplayLauncher {
 		System.out.println( "  steps  " + replay.steps.size() );
 		System.out.println( "  score  " + String.format( "%.2f", replay.score )
 				+ "   depth " + replay.depth + "   turns " + replay.turns );
-		System.out.println( "  keys   SPACE pause   +/- speed   R restart   ESC quit" );
+		System.out.println( "  keys   SPACE pause  +/- speed  [ ] coarser/finer  R restart  ESC quit" );
 		System.out.println();
 	}
 
@@ -170,10 +170,14 @@ public class ReplayLauncher {
 		Dungeon.daily = Dungeon.dailyReplay = false;
 		Dungeon.initSeed();
 
-		//DESCEND with no hero built is exactly how a first floor is entered in normal play, so the
+//DESCEND with no hero built is exactly how a first floor is entered in normal play, so the
 		//viewer starts on the same path a player does. InterlevelScene then hands off to GameScene,
 		//which is where the recording is pumped from.
 		InterlevelScene.mode = InterlevelScene.Mode.DESCEND;
+
+		//without this the loading screen parks on the region story with a "continue" button and
+		//waits for a click that never comes
+		InterlevelScene.autoContinue = true;
 
 		return true;
 	}
