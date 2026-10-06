@@ -72,6 +72,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`GameScene` gained `topWindow()`.** `showingWindow()` only reports whether a window exists, which
   is not enough to decide what to do about one.
 
+### Fixed
+
+- **`gradle :superintelligence:train` rejected its own arguments.** The subcommand was prepended in
+  `doFirst` for every CLI task except `train`, so the documented
+  `--args="--workers 8 --generations 200"` reached `Main` with no subcommand and died on
+  "unknown command: --workers". The trainer had never been launched through Gradle.
+- **A worker that acknowledged a policy push with the wrong message went unnoticed.** The handshake
+  read the reply and discarded it.
+- **A worker that replied to an episode request with the wrong message went unnoticed** for the same
+  reason, and on that path the diagnostic read a second int off the wire to name it, so the error
+  message itself consumed part of the frame it was describing.
+
+### Changed
+
+- **The trainer is split into five classes.** `Trainer.java` was 824 lines against the project's own
+  500-line rule, and the worker-data-flow work adds to it. Process lifetime, the stall watchdog and the
+  per-worker pipes are now `WorkerPool`; the console block is `GenerationReport`, which renders a
+  snapshot of plain numbers rather than reading the trainer; the command line is `TrainOptions`; the
+  per-episode summary is `Episode`; and the wire constants are `Protocol` rather than bare literals
+  duplicated on both sides of the pipe. `Trainer` is now the loop itself.
+- **Worker pipe buffers are 1 MB, not the 8 KB default.** A policy push is ~14 MB and a generation's
+  transitions will be tens of MB; the default turns those into thousands of syscalls per worker per
+  generation.
+- **The generation report prints the transition count.** `sampled steps of N collected` is the number
+  the whole sampled-transition design rests on, so it is measured and shown rather than derived on
+  demand. It reads 0 until the workers start returning transitions.
+
 ### Added
 
 - **`gradle :superintelligence:modecheck`** fails if the environment cannot reach one of its own

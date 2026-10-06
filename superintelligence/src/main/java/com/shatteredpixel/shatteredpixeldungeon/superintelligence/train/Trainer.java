@@ -4,15 +4,12 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -25,20 +22,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerPool.WorkerHandle;
+
 /**
  * The training loop: launches worker JVMs, pools their episodes, and applies PPO updates.
  *
  * research.md: "Parallel Scaling: Since you plan to run up to 1,000 simulations at once, PPO can
- * effectively pool the gradients from all these simultaneous runs to make steady, reliable updates
- * to the policy without catastrophic forgetting."
+ * effectively pool the gradients from all these simultaneous runs to make steady, reliable updates to
+ * the policy without catastrophic forgetting."
  *
  * Workers are separate JVMs because the game's simulation state is entirely static - see
  * {@link Worker}. They speak a length-prefixed binary protocol over stdin and stdout; their human
- * readable log goes to stderr, so a stray print to stdout cannot desynchronise the stream.
+ * readable log goes to stderr, so a stray print to stdout cannot desynchronise the stream. See
+ * {@link Protocol}.
  *
  * The seed schedule from research.md's "Generalizing Across Seeds" is implemented here: one locked
  * seed until the agent clears the first boss, then ten, then a hundred, then fully random. See
  * {@link SeedPool}.
+ *
+ * Process lifetime, the stall watchdog and the console block are in {@link WorkerPool} and
+ * {@link GenerationReport}; this class is the loop itself.
  */
 public class Trainer {
 
@@ -48,13 +51,36 @@ public class Trainer {
 	private final File workDir;
 
 	private final PPO ppo;
-	private final List<WorkerHandle> workers = new ArrayList<>();
+	private final WorkerPool pool = new WorkerPool();
 
 	// per-seed best run, which is what gets saved as a replay
 	private final Map<String, Replay> bestPerSeed = new HashMap<>();
 
 	/** Epoch of the difficulty schedule, exposed so the logs can show progress. */
 	private int epoch = 0;
+
+	/** Episodes from the previous generation, which is what the seed gate reads. */
+	private final List<Episode> lastEpisodes = new ArrayList<>();
+
+	/** Wall time of the PPO update that ran after the previous generation, for the time split. */
+	private ResourceStats.Interval lastUpdate;
+
+	/**
+	 * Summed CPU seconds the workers burned during the previous generation.
+	 *
+	 * Reported rather than measured locally because the trainer's own cores are almost idle while the
+	 * workers run, so its process CPU time says nothing about how busy the machine is.
+	 */
+	private double lastWorkerSeconds;
+
+	/** Episodes each worker was asked for, for the usage line. */
+	private int episodesPerWorker;
+
+	/** Per-worker cumulative CPU totals, differenced between reports. */
+	private final Map<String, Double> lastCpuByWorker = new HashMap<>();
+
+	private static final int BOSS_DEPTH = 5;
+	private static final int SEED_POOL_SIZE = 100;
 
 	public Trainer( EnvConfig config, long seed, File workDir ){
 		this.config = config;
@@ -65,7 +91,7 @@ public class Trainer {
 	}
 
 	public static void main( String[] args ){
-		Options options = Options.parse( args );
+		TrainOptions options = TrainOptions.parse( args );
 
 		HeadlessServices.install( options.workDir );
 		HeadlessServices.disableSaving( true );
@@ -73,72 +99,24 @@ public class Trainer {
 		EnvConfig config = new EnvConfig();
 		Trainer trainer = new Trainer( config, options.seed, options.workDir );
 
-try {
-		trainer.stallTimeoutMs = options.stallSeconds * 1000;
-		trainer.launchWorkers( options.workers, options.javaHome, options.classpath );
-		trainer.train( options.generations, options.episodes );
+		try {
+			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
+			trainer.pool.launch( options.workers, options.javaHome, options.classpath,
+					out -> trainer.writeParams( out ) );
+			trainer.train( options.generations, options.episodes );
 		} catch (IOException e){
 			System.err.println( "[ERROR] training failed: " + e.getMessage() );
 			e.printStackTrace();
 			System.exit( 1 );
 		} finally {
-			trainer.shutdown();
+			trainer.pool.shutdown();
 		}
 	}
 
-	// --------------------------------------------------------------------------- workers
-
-	/** Root of the per-worker scratch directories. */
-	private static File workerDir(){
-		return new File( System.getProperty( "java.io.tmpdir" ), "spd-train" );
-	}
-
-	/** Starts {@code count} worker JVMs and hands each the current policy. */
-	public void launchWorkers( int count, String javaHome, String classpath ) throws IOException {
-		String java = (javaHome == null || javaHome.isEmpty())
-				? join( System.getProperty( "java.home" ), "bin", "java" )
-				: join( javaHome, "bin", "java" );
-
-		for (int i = 0; i < count; i++){
-			WorkerHandle handle = new WorkerHandle( java, classpath, workerIndexLabel( i ) );
-
-			//nothing to close here: handle.dataOut is a buffer over this process's stdin pipe and
-			//stays open for the life of the worker. Closing the raw stream first left the buffered
-			//writer writing into a closed pipe, so the handshake below failed immediately.
-			DataOutputStream out = handle.dataOut;
-			out.writeInt( 1 );              //MSG_HELLO
-			out.writeInt( Worker.PROTOCOL_VERSION );
-			writeParams( out );
-			out.flush();
-
-			DataInputStream reply = handle.dataIn;
-			if (reply.readInt() != 1 || reply.readInt() != Worker.PROTOCOL_VERSION){
-				throw new IOException( "worker " + i + " protocol mismatch" );
-			}
-			reply.readInt(); //MSG_PARAMS ack
-
-			workers.add( handle );
-		}
-
-		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "   started " + workers.size()
-				+ " worker processes" );
-	}
-
-	private String workerIndexLabel( int i ){
-		return "worker" + i;
-	}
-
-	private static String join( String... parts ){
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < parts.length; i++){
-			if (i > 0) sb.append( File.separatorChar );
-			sb.append( parts[ i ] );
-		}
-		return sb.toString();
-	}
+	// --------------------------------------------------------------------------- params
 
 	private void writeParams( DataOutputStream out ) throws IOException {
-		out.writeInt( 2 ); //MSG_PARAMS
+		out.writeInt( Protocol.MSG_PARAMS );
 		out.writeInt( config.maxSlots );
 		out.writeInt( config.gridWidth );
 		out.writeInt( config.gridHeight );
@@ -165,12 +143,12 @@ try {
 	 */
 	public void train( int generations, int workerCount ) throws IOException {
 		seeds.fill( SEED_POOL_SIZE );
-		startWatchdog( stallTimeoutMs );
+		pool.startWatchdog();
 
 		System.out.println( Ansi.wrap( "machine", Ansi.DIM ) + "   "
 				+ ResourceStats.availableProcessors() + " logical processors, pool of "
-				+ workers.size() + " workers, stall timeout "
-				+ ( stallTimeoutMs / 1000 ) + "s" );
+				+ pool.size() + " workers, stall timeout "
+				+ ( pool.stallTimeoutMs() / 1000 ) + "s" );
 
 		for (int g = 0; g < generations; g++){
 			epoch = g;
@@ -181,13 +159,13 @@ try {
 			//and dispatching second is what keeps the concurrent dispatch below race-free while still
 			//producing exactly the same assignment the sequential version did.
 			episodesPerWorker = workerCount;
-			List<Job> jobs = planGeneration( g, workerCount );
+			List<Job> jobs = planGeneration( workerCount );
 
 			ResourceStats.Interval gen = ResourceStats.start();
 			List<Episode> episodes = dispatch( jobs );
 			gen.stop();
 			lastWorkerSeconds = sumWorkerCpuSeconds( episodes );
-		
+
 			report( g, episodes, gen );
 
 			if (!episodes.isEmpty()){
@@ -225,11 +203,10 @@ try {
 	}
 
 	/** Builds the generation's job list, round-robin so every worker gets the same count. */
-	private List<Job> planGeneration( int generation, int workerCount ){
+	private List<Job> planGeneration( int workerCount ){
 		List<Job> jobs = new ArrayList<>();
 
-		for (int w = 0; w < workers.size(); w++){
-			WorkerHandle worker = workers.get( w );
+		for (WorkerHandle worker : pool.workers()){
 			for (int i = 0; i < workerCount; i++){
 				//every third seed is one worth keeping a replay of
 				boolean wantReplay = (i % 3 == 0);
@@ -275,7 +252,7 @@ try {
 				} catch (IOException e){
 					failures.add( e );
 				}
-			}, "dispatch-" + workerIndexLabel( workers.indexOf( worker ) ) );
+			}, "dispatch-" + worker.name );
 
 			threads.add( thread );
 			results.add( collected );
@@ -309,27 +286,22 @@ try {
 		DataInputStream in = worker.dataIn;
 
 		for (Job job : jobs){
-			out.writeInt( 3 ); //MSG_EPISODE
+			out.writeInt( Protocol.MSG_EPISODE );
 			out.writeUTF( job.seed );
 			out.writeUTF( job.heroClass.name() );
 			out.writeBoolean( job.wantReplay );
 			out.flush();
 
-			Episode episode = new Episode();
+			int reply = in.readInt();
+			if (reply != Protocol.MSG_EPISODE){
+				throw new IOException( worker.name + " replied to an episode request with message "
+						+ reply );
+			}
+
+			Episode episode = Episode.read( in );
 			episode.seed = job.seed;
 			episode.heroClass = job.heroClass.name();
 			episode.workerName = worker.name;
-
-in.readInt(); //MSG_EPISODE
-			episode.score = in.readDouble();
-			episode.depth = in.readInt();
-			episode.turns = in.readInt();
-			episode.endedNaturally = in.readBoolean();
-			episode.reason = in.readUTF();
-
-			//cumulative process CPU seconds from the worker, diffed against its previous report
-			episode.workerCpuTotal = in.readDouble();
-			episode.workerHeapMb = in.readDouble();
 
 			int steps = in.readInt();
 			//the worker sends the step count always but the body only when a replay was requested,
@@ -339,7 +311,7 @@ in.readInt(); //MSG_EPISODE
 
 			//only after the whole frame has been consumed, so the watchdog sees progress rather
 			//than a thread that has merely started reading
-			lastProgressNanos = System.nanoTime();
+			pool.progress();
 
 			episodes.add( episode );
 		}
@@ -366,7 +338,7 @@ in.readInt(); //MSG_EPISODE
 		return replay;
 	}
 
-/**
+	/**
 	 * Pushes the updated policy to every worker.
 	 *
 	 * Sent as a full MSG_PARAMS frame, not a bare weight blob, and acknowledged. The two problems
@@ -378,7 +350,7 @@ in.readInt(); //MSG_EPISODE
 	 * here instead of at some later, unrelated read.
 	 */
 	private void pushWeights() throws IOException {
-		java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 		DataOutputStream tmp = new DataOutputStream( buffer );
 		writeParams( tmp );
 		tmp.flush();
@@ -391,13 +363,13 @@ in.readInt(); //MSG_EPISODE
 		List<Thread> threads = new ArrayList<>();
 		List<IOException> failures = Collections.synchronizedList( new ArrayList<>() );
 
-		for (final WorkerHandle worker : workers){
+		for (final WorkerHandle worker : pool.workers()){
 			Thread thread = new Thread( () -> {
 				try {
 					worker.dataOut.write( payload );
 					worker.dataOut.flush();
 					int reply = worker.dataIn.readInt();
-					if (reply != Worker.MSG_PARAMS){
+					if (reply != Protocol.MSG_PARAMS){
 						throw new IOException( worker.name + " rejected a policy push, replied with "
 								+ "message " + reply );
 					}
@@ -420,7 +392,7 @@ in.readInt(); //MSG_EPISODE
 		if (interrupted != null) Thread.currentThread().interrupt();
 		if (!failures.isEmpty()) throw failures.get( 0 );
 
-		lastProgressNanos = System.nanoTime();
+		pool.progress();
 	}
 
 	/**
@@ -444,33 +416,8 @@ in.readInt(); //MSG_EPISODE
 		seeds.activeSeeds( target );
 	}
 
-	private final List<Episode> lastEpisodes = new ArrayList<>();
-
-	/** Wall time of the PPO update that ran after the previous generation, for the time split. */
-	private ResourceStats.Interval lastUpdate;
-
-	/**
-	 * Summed CPU seconds the workers burned during the previous generation.
-	 *
-	 * Reported rather than measured locally because the trainer's own cores are almost idle while
-	 * the workers run, so its process CPU time says nothing about how busy the machine is.
-	 */
-	private double lastWorkerSeconds;
-
-	/** Episodes each worker was asked for, for the usage line. */
-	private int episodesPerWorker;
-
-	/** Bumped by dispatch threads whenever a worker message completes. Watched by the watchdog. */
-	private volatile long lastProgressNanos = System.nanoTime();
-
-	/** Quiet period before the watchdog declares a stall. Configurable from the command line. */
-	private long stallTimeoutMs = 180_000;
-
 	/** Seconds the last generation spent on the update and the weight push, where no worker runs. */
 	private double lastBarrierSeconds;
-
-	private static final int BOSS_DEPTH = 5;
-	private static final int SEED_POOL_SIZE = 100;
 
 	// --------------------------------------------------------------------------- reporting
 
@@ -480,15 +427,21 @@ in.readInt(); //MSG_EPISODE
 
 		if (episodes.isEmpty()) return;
 
-		double meanScore = 0, meanDepth = 0, meanTurns = 0;
+		GenerationReport.Snapshot s = new GenerationReport.Snapshot();
+		s.generation = generation;
+		s.episodes = episodes.size();
+		s.activeSeeds = seeds.activeSeeds();
+		s.totalSeeds = seeds.totalSeeds();
+		s.shaping = curriculumScale();
+
 		long totalTurns = 0;
 		int best = Integer.MIN_VALUE, worst = Integer.MAX_VALUE;
 		Episode bestEpisode = null;
 
 		for (Episode e : episodes){
-			meanScore += e.score;
-			meanDepth += e.depth;
-			meanTurns += e.turns;
+			s.meanScore += e.score;
+			s.meanDepth += e.depth;
+			s.meanTurns += e.turns;
 			totalTurns += e.turns;
 			best = Math.max( best, (int) e.score );
 			worst = Math.min( worst, (int) e.score );
@@ -497,60 +450,43 @@ in.readInt(); //MSG_EPISODE
 		}
 
 		int n = episodes.size();
-		meanScore /= n;
-		meanDepth /= n;
-		meanTurns /= n;
+		s.meanScore /= n;
+		s.meanDepth /= n;
+		s.meanTurns /= n;
+		s.bestScore = best;
+		s.worstScore = worst;
+		s.bestDepth = bestEpisode.depth;
+		s.totalTurns = totalTurns;
 
-		ResourceStats.Interval ppoTime = lastUpdate;
-		double ppoSeconds = ppoTime == null ? 0 : ppoTime.wallSeconds();
+		s.policyLoss = ppo.lastPolicyLoss;
+		s.valueLoss = ppo.lastValueLoss;
+		s.entropy = ppo.lastEntropy;
+		s.clipFraction = ppo.lastClipFraction;
+		s.klDivergence = ppo.lastKLDivergence;
 
-		System.out.println();
-		System.out.println( Ansi.wrap( "generation " + generation, Ansi.BOLD + Ansi.CYAN )
-				+ "  episodes=" + n
-				+ "  seeds=" + seeds.activeSeeds() + "/" + seeds.totalSeeds()
-				+ "  shaping=" + String.format( "%.2f", curriculumScale() ) );
-		System.out.println( "  score   mean=" + Ansi.signed( meanScore )
-				+ "  best=" + Ansi.signed( best )
-				+ "  worst=" + Ansi.signed( worst ) );
-		System.out.println( "  depth   mean=" + String.format( "%.1f", meanDepth )
-				+ "  best=" + bestEpisode.depth );
-		System.out.println( "  turns   mean=" + String.format( "%.0f", meanTurns )
-				+ "  total=" + String.format( "%,d", totalTurns ) );
-		System.out.println( "  ppo     policy=" + String.format( "%.4f", ppo.lastPolicyLoss )
-				+ "  value=" + String.format( "%.4f", ppo.lastValueLoss )
-				+ "  entropy=" + String.format( "%.3f", ppo.lastEntropy )
-				+ "  clip=" + String.format( "%.2f", ppo.lastClipFraction )
-				+ "  kl=" + String.format( "%.4f", ppo.lastKLDivergence ) );
-
-double wall = gen.wallSeconds();
-
-		double systemLoad = ResourceStats.systemCpuLoad();
-		int logical = ResourceStats.availableProcessors();
+		double wall = gen.wallSeconds();
+		s.wallSeconds = wall;
+		s.ppoSeconds = lastUpdate == null ? 0 : lastUpdate.wallSeconds();
+		s.barrierSeconds = lastBarrierSeconds;
+		s.turnsPerSecond = ResourceStats.stepsPerSecond( totalTurns, wall );
+		s.episodesPerSecond = n / Math.max( 1e-9, wall );
 
 		//workerSeconds is a summed CPU total across every episode and every worker. It is kept as a
 		//cross-check on the system figure rather than used to derive one, because differencing a
 		//coarse per-process counter across short episodes loses about half the signal.
-		double workerSeconds = lastWorkerSeconds;
-		double workerCores = wall <= 0 ? 0 : workerSeconds / wall;
-		double trainerCores = Math.max( 0, gen.coresUsed() );
-		double machineCores = systemLoad >= 0 ? systemLoad * logical : workerCores + trainerCores;
+		s.workerCores = wall <= 0 ? 0 : lastWorkerSeconds / wall;
+		s.trainerCores = Math.max( 0, gen.coresUsed() );
 
-		System.out.println();
-		System.out.println( "  speed   " + String.format( "%,.0f turns/s", ResourceStats.stepsPerSecond( totalTurns, wall ) )
-				+ "  " + String.format( "%,.1f episodes/s", n / Math.max( 1e-9, wall ) )
-				+ "  " + String.format( "%.2fs wall", wall )
-				+ ( ppoSeconds > 0 ? "  (ppo update " + String.format( "%.2fs", ppoSeconds ) + ")" : "" )
-				+ "  " + String.format( "barrier %.0f%%", pct( lastBarrierSeconds, wall ) ) );
-		System.out.println( "  usage   " + ( systemLoad >= 0
-						? String.format( "%.0f%% of machine (%.1f of %d logical cores)",
-								systemLoad * 100, machineCores, logical )
-						: String.format( "%.1f cores busy (worker-reported)", machineCores ) )
-				+ "  pool " + workers.size() + " x " + episodesPerWorker + " episodes"
-				+ String.format( "  workers %.1f cores, trainer %.2f", workerCores, trainerCores ) );
-	}
+		s.systemLoad = ResourceStats.systemCpuLoad();
+		s.logicalProcessors = ResourceStats.availableProcessors();
+		s.poolSize = pool.size();
+		s.episodesPerWorker = episodesPerWorker;
 
-	private static double pct( double used, double total ){
-		return total <= 0 ? 0 : used / total * 100;
+		//the update has not run for this generation's data yet, so the buffer's own size is the
+		//number that says whether the sample rate is behaving
+		s.sampledSteps = ppo.bufferSize();
+
+		GenerationReport.print( s );
 	}
 
 	private float curriculumScale(){
@@ -589,128 +525,6 @@ double wall = gen.wallSeconds();
 				+ " best-per-seed replays to " + dir.getPath() );
 	}
 
-	public void shutdown(){
-		for (WorkerHandle worker : workers){
-			try {
-				worker.process.destroy();
-			} catch (RuntimeException e){
-				//a worker that already exited is fine
-			}
-		}
-		workers.clear();
-	}
-
-	// --------------------------------------------------------------------------- plumbing
-
-	private static class Episode {
-String seed = "";
-		String heroClass = "WARRIOR";
-		double score;
-		int depth;
-		int turns;
-		boolean endedNaturally;
-		String reason = "";
-		Replay replay;
-
-		/** Cumulative CPU seconds a worker reported, or -1 if it could not measure. */
-		double workerCpuTotal = -1;
-
-		/** Heap the worker was holding at the end of the episode, in MB. */
-		double workerHeapMb = -1;
-
-		/** Which worker ran it, so the CPU delta can be attributed per worker. */
-		String workerName = "";
-	}
-
-	/**
-	 * One worker process and the pipes to it.
-	 *
-	 * The worker reads its commands from stdin and writes its results to stdout. Worker stderr is
-	 * inherited so its warnings land in the trainer's log.
-	 */
-	private static class WorkerHandle {
-		final Process process;
-		final DataInputStream dataIn;
-		final DataOutputStream dataOut;
-		final String name;
-
-		WorkerHandle( String java, String classpath, String name ) throws IOException {
-			this.name = name;
-
-			ProcessBuilder pb = new ProcessBuilder(
-					java,
-					"-Xms256m", "-Xmx1536m",
-					"-XX:+UseParallelGC", "-XX:MaxGCPauseMillis=200",
-					"-cp", classpath,
-					"com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerMain",
-					"--worker",
-					//its own save directory, so workers cannot collide on one temp file
-					"--work-dir", new File( workerDir(), name ).getAbsolutePath() );
-
-pb.redirectError( ProcessBuilder.Redirect.INHERIT );
-
-		//ProcessBuilder resolves its working directory before the process starts, so the worker
-		//cannot create its own - it fails with "The directory name is invalid" instead
-		File dir = new File( workerDir(), name );
-		if (!dir.isDirectory() && !dir.mkdirs()){
-			throw new IOException( "could not create worker directory " + dir );
-		}
-		pb.directory( dir );
-
-			this.process = pb.start();
-			this.dataOut = new DataOutputStream( new BufferedOutputStream( process.getOutputStream() ) );
-			this.dataIn = new DataInputStream( new BufferedInputStream( process.getInputStream() ) );
-		}
-	}
-
-	/**
-	 * Fails the run if a worker goes quiet for too long.
-	 *
-	 * A desynchronised protocol does not crash: the trainer blocks reading a pipe the worker will
-	 * never write to, both processes sit at zero CPU, and the run looks like it is still working.
-	 * That is the worst possible failure mode for a job that is meant to take hours, so a stalled
-	 * worker is turned into a loud error with a stack dump rather than silence.
-	 *
-	 * This is the one timer in the trainer. It costs nothing - it checks a volatile long once a
-	 * second - and it exists precisely so that nothing else has to.
-	 */
-	private Thread startWatchdog( long timeoutMs ){
-		Thread watchdog = new Thread( () -> {
-			while (true){
-				try {
-					Thread.sleep( 1000 );
-				} catch (InterruptedException e){
-					return;
-				}
-
-				long quietMs = (System.nanoTime() - lastProgressNanos) / 1_000_000;
-				if (quietMs > timeoutMs){
-					System.err.println( "[ERROR] no worker progress for " + (quietMs / 1000)
-							+ "s. A worker and the trainer are most likely waiting on each"
-							+ " other over a desynchronised protocol." );
-					for (WorkerHandle worker : workers){
-						System.err.println( "  worker pid " + worker.process.pid()
-								+ " alive=" + worker.process.isAlive() );
-					}
-					//a thread dump of the trainer is the only useful diagnostic here, and the
-					//blocked frames are exactly where the protocol went wrong
-					for (Thread t : Thread.getAllStackTraces().keySet()){
-						if (t.getName().startsWith( "dispatch-" )){
-							System.err.println( "  " + t.getName() + " " + t.getState() );
-							for (StackTraceElement el : t.getStackTrace()){
-								System.err.println( "      at " + el );
-							}
-						}
-					}
-					Runtime.getRuntime().halt( 3 );
-				}
-			}
-		}, "watchdog" );
-		watchdog.setDaemon( true );
-		watchdog.start();
-		return watchdog;
-	}
-
 	/**
 	 * CPU seconds the pool burned during the previous generation.
 	 *
@@ -731,94 +545,5 @@ pb.redirectError( ProcessBuilder.Redirect.INHERIT );
 			lastCpuByWorker.put( e.workerName, e.workerCpuTotal );
 		}
 		return total;
-	}
-
-	private final Map<String, Double> lastCpuByWorker = new HashMap<>();
-
-/** Parsed command line for the trainer. */
-	static class Options {
-		/**
-		 * Defaults to one worker per logical processor.
-		 *
-		 * Each worker simulates on a single thread, so leaving a core unassigned is leaving
-		 * throughput on the floor - and the previous fixed default of 4 left 16 of 20 cores idle
-		 * on a 20-thread machine. Capped by {@link #ramForWorkerCount} so a large pool cannot
-		 * page: the machine's pagefile is only 2GB, and thrashing is far slower than leaving a
-		 * core unused.
-		 */
-		int workers = 0;
-
-		/**
-		 * Episodes each worker runs per generation.
-		 *
-		 * Distinct from the pool size on purpose. A generation ends with an update and a policy
-		 * push, and no worker can run during either - the push alone moves ~14MB per worker. With
-		 * the two numbers tied together that barrier was 45% of wall time at four workers. More
-		 * episodes per worker amortises it, at the cost of coarser policy updates.
-		 */
-		int episodes = 0;
-
-		int generations = 100;
-		long seed = 12345L;
-		String javaHome = "";
-		String classpath = System.getProperty( "java.class.path" );
-		File workDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-train" );
-		long stallSeconds = 180;
-
-		static Options parse( String[] args ){
-			Options o = new Options();
-			for (int i = 0; i < args.length; i++){
-				switch (args[ i ]) {
-					case "--workers":     o.workers = Integer.parseInt( args[ ++i ] ); break;
-					case "--generations": o.generations = Integer.parseInt( args[ ++i ] ); break;
-					case "--episodes":   o.episodes = Integer.parseInt( args[ ++i ] ); break;
-					case "--seed":        o.seed = Long.parseLong( args[ ++i ] ); break;
-					case "--java-home":   o.javaHome = args[ ++i ]; break;
-					case "--classpath":   o.classpath = args[ ++i ]; break;
-					case "--out":         o.workDir = new File( args[ ++i ] ); break;
-					case "--stall-seconds":
-						//how long a worker may be silent before the run is failed as a protocol
-						//desync. A blocked pipe costs no CPU, so without this a stall is
-						//indistinguishable from a long episode.
-						o.stallSeconds = Long.parseLong( args[ ++i ] ); break;
-					default:
-						if (args[ i ].startsWith( "--" )){
-							System.err.println( "[WARN] unknown option: " + args[ i ] );
-						}
-				}
-			}
-			o.workers = o.workers > 0 ? o.workers : defaultWorkerCount();
-			o.episodes = o.episodes > 0 ? o.episodes : o.workers;
-			return o;
-		}
-
-		/**
-		 * One worker per logical processor, trimmed to what memory allows.
-		 *
-		 * A worker holds at most a capped rollout buffer (98MB at the default 2048) plus its own
-		 * engine overhead, so ~1.2GB per worker is a safe budget with room for the trainer itself.
-		 */
-		static int defaultWorkerCount(){
-			int cores = ResourceStats.availableProcessors();
-			long budget = System.getProperty( "os.name" ) == null
-					? Long.MAX_VALUE
-					: availableMemoryBytes() / (1200L * 1024 * 1024);
-			int byMemory = (int) Math.max( 1, Math.min( cores, budget ) );
-			return byMemory;
-		}
-
-		/** Usable physical memory, or {@link Long#MAX_VALUE} if the JVM will not say. */
-		static long availableMemoryBytes(){
-			try {
-				java.lang.management.OperatingSystemMXBean os =
-						java.lang.management.ManagementFactory.getOperatingSystemMXBean();
-				java.lang.reflect.Method m = os.getClass().getMethod( "getFreeMemorySize" );
-				Object v = m.invoke( os );
-				if (v instanceof Number) return ((Number) v).longValue();
-			} catch (ReflectiveOperationException | RuntimeException ignored){
-				//not available on every JVM; fall through to "unlimited"
-			}
-			return Long.MAX_VALUE;
-		}
 	}
 }

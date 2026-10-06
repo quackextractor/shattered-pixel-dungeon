@@ -33,16 +33,6 @@ import java.io.IOException;
  */
 public class Worker {
 
-	/** Protocol version, checked on connect so a mismatched pair fails loudly. */
-	public static final int PROTOCOL_VERSION = 1;
-
-private static final int MSG_HELLO        = 1;
-	/** Public because the trainer asserts on it when pushing a policy. */
-	public static final int MSG_PARAMS       = 2;
-	public static final int MSG_EPISODE      = 3;
-	private static final int MSG_DONE         = 4;
-	private static final int MSG_BYE          = 5;
-
 	private final DataInputStream in;
 	private final DataOutputStream out;
 
@@ -56,27 +46,27 @@ private static final int MSG_HELLO        = 1;
 	public Worker( DataInputStream in, DataOutputStream out ){
 		this.in = in;
 		this.out = out;
-	}
+}
 
 	/** Serves the trainer until it says goodbye. */
 	public void serve() throws IOException {
-		if (in.readInt() != MSG_HELLO || in.readInt() != PROTOCOL_VERSION){
+		if (in.readInt() != Protocol.MSG_HELLO || in.readInt() != Protocol.VERSION){
 			throw new IOException( "worker: trainer protocol mismatch" );
 		}
 
-		out.writeInt( MSG_HELLO );
-		out.writeInt( PROTOCOL_VERSION );
+		out.writeInt( Protocol.MSG_HELLO );
+		out.writeInt( Protocol.VERSION );
 		out.flush();
 
 		while (true){
 			int message = in.readInt();
-			if (message == MSG_BYE) break;
+			if (message == Protocol.MSG_BYE) break;
 
 			switch (message) {
-				case MSG_PARAMS:
+				case Protocol.MSG_PARAMS:
 					readParams();
 					break;
-				case MSG_EPISODE:
+				case Protocol.MSG_EPISODE:
 					runEpisode( in.readUTF(), HeroClass.valueOf( in.readUTF() ), in.readBoolean() );
 					break;
 				default:
@@ -107,7 +97,7 @@ private static final int MSG_HELLO        = 1;
 		ppo = new PPO( config, new java.util.Random( in.readLong() ) );
 		readWeights( in, ppo.network );
 
-		out.writeInt( MSG_PARAMS );
+out.writeInt( Protocol.MSG_PARAMS );
 		out.flush();
 	}
 
@@ -135,7 +125,7 @@ private static final int MSG_HELLO        = 1;
 		recorder.end( env.ledger().total(), env.depth(), env.turnsTotal(), 0 );
 		Replay replay = recorder.replay();
 
-		out.writeInt( MSG_EPISODE );
+		out.writeInt( Protocol.MSG_EPISODE );
 		out.writeDouble( env.ledger().total() );
 		out.writeInt( env.depth() );
 		out.writeInt( env.turnsTotal() );

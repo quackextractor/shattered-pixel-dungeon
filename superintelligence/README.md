@@ -83,7 +83,7 @@ something.
 | `reward` | `RewardModel` (state diffing), `RewardTerm`/`RewardLedger` (per-term, per-floor breakdown), `Curriculum` |
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and worker bootstrap |
 | `rl` | `Network` (CNN + LSTM + heads), `PPO`, `Policy`, `Transition` |
-| `train` | `Trainer` (process pool), `Worker` (protocol), `SeedPool` (generalisation schedule) |
+| `train` | `Trainer` (generation loop), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TrainOptions`, `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
 | `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify) |
 | `diag` | `RunReport`, `Graph`, `Ansi` |
 

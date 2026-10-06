@@ -58,19 +58,29 @@ tasks.register('probeClasspath') {
     }
 }
 
+//Main dispatches on argv[0], so each task has to put its own subcommand in front. A plain
+//`args = [...]` assignment would not survive `--args`, which Gradle applies over the top of
+//the build-script value, so the subcommand is prepended at execution time instead. That way
+//both `gradle :superintelligence:rollout` and
+//`gradle :superintelligence:rollout --args="--seed x"` reach Main correctly.
+def withSubcommand = { task, String command ->
+    task.doFirst {
+        //a caller who already spelled out the subcommand keeps it
+        if (!args || args[0].startsWith('--')) args = [command] + args
+    }
+}
+
 tasks.register('train', JavaExec) {
     group = 'superintelligence'
     description = 'Runs the PPO/IMPALA trainer over a pool of worker processes.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = appMainClass
     jvmArgs trainerJvmArgs
+    //without this, `gradle :superintelligence:train --args="--workers 8"` reached Main with no
+    //subcommand at all and died on "unknown command: --workers"
+    withSubcommand(delegate, 'train')
 }
 
-//Main dispatches on argv[0], so each task has to put its own subcommand in front. A plain
-//`args = [...]` assignment would not survive `--args`, which Gradle applies over the top of
-//the build-script value, so the subcommand is prepended at execution time instead. That way
-//both `gradle :superintelligence:rollout` and
-//`gradle :superintelligence:rollout --args="--seed x"` reach Main correctly.
 def cliTask = { String taskName, String taskDescription ->
     tasks.register(taskName, JavaExec) {
         group = 'superintelligence'
@@ -78,10 +88,7 @@ def cliTask = { String taskName, String taskDescription ->
         classpath = sourceSets.main.runtimeClasspath
         mainClass = appMainClass
         jvmArgs trainerJvmArgs
-        doFirst {
-            //a caller who already spelled out the subcommand keeps it
-            if (!args || args[0].startsWith('--')) args = [taskName] + args
-        }
+        withSubcommand(delegate, taskName)
     }
 }
 

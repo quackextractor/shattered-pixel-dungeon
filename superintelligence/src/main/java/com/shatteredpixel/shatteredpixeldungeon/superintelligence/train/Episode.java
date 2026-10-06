@@ -1,0 +1,62 @@
+package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
+
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+
+/**
+ * The scalar result of one episode, as the worker reports it.
+ *
+ * The replay is deliberately not part of this: it is a per-step list of UTF strings and is orders of
+ * magnitude larger than the summary, so it rides its own frame. See {@link Protocol#MSG_REPLAY}.
+ *
+ * {@code workerCpuTotal} is cumulative rather than per-episode, and {@code workerName} is what makes
+ * it usable: OS process CPU counters have roughly millisecond granularity and an episode here is
+ * often only tens of milliseconds, so differencing the counter across each one lost most of the
+ * signal and under-reported the pool by about half. A monotonic total lets the trainer difference
+ * consecutive reports per worker instead.
+ */
+class Episode {
+
+	String seed = "";
+	String heroClass = "WARRIOR";
+	double score;
+	int depth;
+	int turns;
+	boolean endedNaturally;
+	String reason = "";
+	Replay replay;
+
+	/** Cumulative CPU seconds a worker reported, or -1 if it could not measure. */
+	double workerCpuTotal = -1;
+
+	/** Heap the worker was holding at the end of the episode, in MB. */
+	double workerHeapMb = -1;
+
+	/** Which worker ran it, so the CPU delta can be attributed per worker. */
+	String workerName = "";
+
+	static void write( DataOutputStream out, Episode e ) throws IOException {
+		out.writeDouble( e.score );
+		out.writeInt( e.depth );
+		out.writeInt( e.turns );
+		out.writeBoolean( e.endedNaturally );
+		out.writeUTF( e.reason );
+		out.writeDouble( e.workerCpuTotal );
+		out.writeDouble( e.workerHeapMb );
+	}
+
+	static Episode read( DataInputStream in ) throws IOException {
+		Episode e = new Episode();
+		e.score = in.readDouble();
+		e.depth = in.readInt();
+		e.turns = in.readInt();
+		e.endedNaturally = in.readBoolean();
+		e.reason = in.readUTF();
+		e.workerCpuTotal = in.readDouble();
+		e.workerHeapMb = in.readDouble();
+		return e;
+	}
+}

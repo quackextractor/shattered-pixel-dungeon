@@ -197,10 +197,14 @@ category rollup, eg. all combat terms together) is not implemented.
 observation buffers in my own code, which measurably reduced allocation, but the game loop itself is
 unaudited. This is the most likely thing to fail at high worker counts - see 4.2.
 
-4.2: `Trainer` spawns worker JVMs over a binary stdin/stdout protocol and the code path is
-exercised only single-worker. Concurrency bugs in `Trainer.pushWeights` and `WorkerHandle` are
-untested, and `pushWeights` still contains a dead `byte[] payload = new byte[0]` initialisation
-immediately overwritten. Buffer sizes grow with worker count and have not been measured.
+4.2: `Trainer` spawns worker JVMs over a binary stdin/stdout protocol. The path is now exercised at
+two workers for two generations - handshake, params push, episode frames, weight push, replay write -
+after the trainer was split into `Trainer` / `WorkerPool` / `Protocol` / `TrainOptions` / `Episode`.
+What remains untested is `WorkerPool`'s parallel weight push under a real 20-worker pool, and whether
+the per-worker buffers behave at that count.
+
+The dead `byte[] payload = new byte[0]` initialisation in `pushWeights` is gone; it was replaced
+earlier.
 
 ---
 
@@ -211,7 +215,9 @@ Small things that are wrong but not blocking.
 - `Trainer.curriculumScale()` returns a hardcoded `1f`; it ignores the real curriculum. The console
   report prints a constant under the label `shaping=`.
 - `PPO.approximateKL` takes `t`, `logits` and `mask` parameters it does not use.
-- `Trainer.lastEpisodes` is declared mid-class rather than with the other fields.
+- `PPO.oldLogProbabilityFor` returns `t.oldLogProbability` and ignores its second argument.
+- `Network.gradClip` is declared with the comment "applied by the caller before step()" and nothing
+  applies it. Harmless while the buffer is empty; it is the first thing a real gradient will find.
 - Some engine states end a rollout as `STALLED` early. Seed `HERO` terminates after 2 turns, where
   most seeds run the full budget - an encounter reaching a state the action space cannot answer.
   Coverage is uneven across seeds.
