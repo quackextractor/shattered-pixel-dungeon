@@ -1,11 +1,15 @@
 # Worker data flow — implementation plan
 
-Companion to [`WORKER-DATA-FLOW.md`](WORKER-DATA-FLOW.md), which sets out the dilemma and the
-option analysis. This file is the ordered engineering plan and the reasoning behind the order.
+Companion to [`WORKER-DATA-FLOW.md`](WORKER-DATA-FLOW.md), which sets out the dilemma and the option
+analysis. This file is the ordered engineering plan and the reasoning behind the order.
 
 Decision: **worker-side GAE + sampled transitions (Option C), bit-packing deferred, IMPALA deferred.**
 
 Nothing here is built yet.
+
+Revised 2026-10-07. §2 and §4 contradicted each other on sampling order, §4's cost projections ignored
+the learner's compute entirely, and two things the plan needs were missing: a measurement of the update
+and global gradient clipping. All four are corrected below, with the reasoning.
 
 ---
 
@@ -36,7 +40,7 @@ where the whole episode still exists.
 
 ---
 
-## 2. Key consequence: GAE needs scalars, not observations
+## 2. GAE needs scalars, not observations
 
 This is what makes the plan cheap, and it was not obvious up front.
 
@@ -58,15 +62,57 @@ That means:
 - **Observation memory is bounded by the sample rate, not episode length.** 5% of 40,000 steps =
   2,000 retained = ~98 MB. Worst case is fine, and it is the *same* worst case as `rolloutCap`
   already imposes.
-- **Sampling must happen after GAE**, not before. Compute the whole episode's advantages, then pick
-  which steps to retain observations for.
+- Without this split, a worker would need the full episode's observations resident (up to 1.9 GB) and
+  bit-packing would become a prerequisite instead of an optimisation.
 
-Without this split, a worker would need the full episode's observations resident (up to 1.9 GB) and
-bit-packing would become a prerequisite instead of an optimisation.
+### 2.1 Correction — sampling happens *during* collection
+
+An earlier draft of this plan said "sampling must happen after GAE, not before", and justified it by
+§2 above. That justification argues the opposite: because the backward pass reads only scalars, and
+every retained step's scalars are kept in full, the retained set of *observations* has no effect
+whatsoever on the advantages computed for it.
+
+The two requirements were contradictory, and the original ordering was the wrong resolution. The
+collector draws its Bernoulli sample during the loop, keeping the scalars for every step and the
+observation only where the draw succeeded. Advantages are identical either way. Two consequences
+follow, both of them the reason for the change:
+
+- **No second simulation pass.** Sampling after GAE would mean either holding every observation until
+  the episode ends (the 1.9 GB cliff) or re-simulating the episode to fetch the ones that were
+  selected — at ~2.3 ms a turn, re-simulating is a comparable cost to collecting.
+- **No all-observations residency**, which is what keeps bit-packing an optimisation rather than a
+  prerequisite.
+
+The only reason to prefer sampling afterwards would be *biased* selection, by advantage magnitude
+say. That introduces bias into the gradient estimator and needs importance weights to undo. Uniform
+sampling during collection is unbiased and needs none.
+
+### 2.2 Correction — one forward pass per step, not two
+
+`PPO.collect` forwards the network again after every step, purely to fill `t.nextValue`:
+
+```java
+t.reward = (float) env.step( action, secondary );
+network.forward( env.grid(), env.inventory(), env.heroFeatures() );   // rlp/PPO.java:209
+t.nextValue = network.value();
+```
+
+But the GAE loop above reads `t.nextValue` at exactly one index: `i == to - 1`. Every other step's
+bootstrap is `buffer.get( i + 1 ).value`, which is the value the *next* step already computed from
+the same state. So an episode of *n* steps needs **n + 1** forward passes, not 2*n*: one per step for
+its own `value`, and one more at the end to bootstrap a truncated episode.
+
+The extra pass is not merely redundant. It advances the LSTM over the post-step observation as well,
+so under `collect` every observation is absorbed into the recurrent state **twice** — once before the
+action, once after it. Deleting it makes the trunk see each observation once, which is what the
+network was designed for and what `gradcheck` measures against.
+
+Value, therefore: collection throughput roughly doubles, and a latent artifact disappears. Nothing
+that runs today depends on the old behaviour — `PPO.collect` and `PPO.rollout` have no callers.
 
 ---
 
-## 3. Revised cost, with no packing at all
+## 3. Revised transport cost, with no packing at all
 
 Measured: 20 workers × 16 episodes = 320 episodes/generation, mean ~150 turns/episode (observed range
 88–379).
@@ -78,52 +124,136 @@ Measured: 20 workers × 16 episodes = 320 episodes/generation, mean ~150 turns/e
 
 **~120 MB/generation, unpacked.** At pipe speeds that is roughly 120 ms of transfer.
 
-Compare: 7.9 GB for shipping everything. The 67× cut comes from the sample rate, not from packing.
+Compare: 2.4 GB for shipping everything. The 20× cut comes from the sample rate, not from packing.
 
 **This is the number that defers bit-packing.** Packing would take 118 MB → ~15 MB. Saving ~100 ms
 per generation is not worth the engineering until transport shows up in a profile.
 
 ---
 
-## 4. Plan, in order
+## 4. The finding the earlier draft missed: the update is the real cost
+
+The 120 ms above is the *cheap* half of a generation. The expensive half is the trainer learning on
+what it just received, and nothing in the first draft of this plan measured it.
+
+An update costs one forward and one backward per sample per epoch. At the default
+`epochs = 4` and ~2,400 sampled steps that is **9,600 forward+backward passes per generation, on a
+single thread** (`PPO.update`, `rl/PPO.java:297`).
+
+Per sample, the shape is expensive. The convolution is 20 planes of 48x48 im2col'd into a
+12,696×320 matvec; the trunk is 12,696×256; the LSTM is 256→128. Order 45 MFLOP forward+backward,
+so a generation is of order 0.4 GFLOP of single-threaded Java float arithmetic. Against roughly
+7 s of collection, that plausibly lands in **minutes** — at which point the barrier is ~90% of wall
+time and 19 of 20 cores idle, which is the opposite of what §5 of the first draft projected.
+
+This is not a reason to abandon Option C. It is a reason to **measure before choosing the sample
+rate**, and it is the same bottleneck that steps 3 and 5 were invented to dodge — neither of which
+addresses it. `PLAN-data-flow.md` step 1 below therefore measures fwd/bwd cost and projects
+seconds/generation across a sample-rate × epochs grid, and the working point is chosen from those
+numbers rather than from the transport arithmetic alone.
+
+Two further consequences of a first real gradient, both cheap and both in scope:
+
+- **Global gradient clipping does not exist.** `Network.gradClip = 0.5f` is declared with the comment
+  "applied by the caller before step()". No caller applies it; `PPO.update` never computes a norm.
+  The first genuine gradient in this project will find that.
+- **The batch configuration was never sized against a batch that exists.** 2,400 samples at
+  `minibatchSize = 32` is 75 minibatches, × 4 epochs = **300 Adam steps per generation**. That is far
+  more optimiser movement than a batch of that size supports.
+
+---
+
+## 5. Sampling policy
+
+Uniform over steps, plus a deliberate exception.
+
+- **Always retain the last K = 20 steps of every episode.** γλ = 0.9405, so an advantage is
+  effectively supported over ~1/(1−γλ) ≈ 17 steps. The `deathPenalty` of −100 and the `depthReward` of
+  +10 live at exactly one step, and under uniform sampling that step survives with probability ≈ 0.05
+  — meaning most episodes contribute no terminal signal at all. Retaining the tail costs 20
+  transitions per episode and makes the largest advantages in the batch reliably present. This is a
+  fixed, position-based subset, not an advantage-ranked one, so it introduces no selection on the
+  quantity being estimated.
+- **Uniform Bernoulli over the rest**, drawn from a dedicated `Random` seeded per generation from the
+  trainer, so a seed reproduces the same sample set.
+
+Both are knobs, not constants: `--sample-rate`, `--max-sampled-per-episode` (2048, ~98 MB, the same
+worst case `rolloutCap` already imposed) and `--max-samples-per-generation` (8192, ~397 MB) as a
+trainer-side valve. Drops are counted and printed, never silent.
+
+---
+
+## 6. Plan, in order
 
 Each step is independently shippable and leaves the system working.
 
-### Step 1 — GAE in the worker
+### Step 0 — Split the trainer, changing nothing
 
-Move advantage computation to the worker. Largest unblock, smallest code.
+`Trainer.java` is 824 lines against the project's own 500-line rule (`instructions.md:57`), and the
+work below adds to it. Extracted first, as pure moves, so the behavioural commits below have a small
+diff to review: `train/WorkerPool` (launch, `WorkerHandle`, watchdog), `train/GenerationReport`,
+`train/TrainOptions`, `train/Protocol` (message constants, today duplicated as bare literals across
+`Worker` and `Trainer`).
 
-- `Policy` gains a method that walks a worker's per-episode scalar list at episode end.
-- `Worker` holds two structures: scalars for all steps, observations for sampled steps.
-- gamma and lambda must reach the worker. **They are not currently in `MSG_PARAMS`** — they are
-  `PPO` fields (`0.99`, `0.95`) and the worker's own `PPO` instance happens to use identical
-  defaults. That agreement is coincidence, not configuration. Add both to `writeParams`, and have
-  the trainer set them from its own `PPO` so they cannot drift.
-- Sampling happens after GAE. Selection is uniform over steps, seeded from the worker's RNG so a
-  seed still reproduces the same sample.
+Gate: `build`, `gradcheck`, `modecheck`, `restartcheck` and a 60-rollout determinism sweep, all
+unchanged.
+
+### Step 1 — Measure the update, and clip gradients
+
+`diag/UpdateCostCheck` times forward, backward and a full minibatch over N transitions and projects
+seconds/generation across the sample-rate × epochs grid. Global-norm clipping lands here, because the
+first real gradient needs it whether or not the measurement is bad.
+
+Gate: the numbers are recorded in this file, and step 3's sample rate, `minibatchSize` and `epochs`
+are chosen from them.
+
+### Step 2 — GAE in the worker
+
+Move advantage computation to the worker, applying §2.1 and §2.2.
+
+- `Policy` gains a method that walks a worker's per-episode scalar arrays at episode end. The existing
+  `Transition`-based method stays: `gaecheck` asserts the two agree.
+- New `rl/EpisodeRecord` (scalars for all steps, observations for sampled steps) and
+  `rl/EpisodeCollector` (the step loop), so `PPO` stops being both the collector and the learner.
+- gamma, lambda, sampleRate and maxSampledPerEpisode must reach the worker. **They are not currently
+  in `MSG_PARAMS`** — gamma and lambda are `PPO` fields (0.99, 0.95) and the worker's own `PPO`
+  instance happens to use identical defaults. That agreement is coincidence, not configuration. Add
+  all four to `writeParams`, set by the trainer from its own `PPO` so they cannot drift.
 - `advantage` normalisation stays in the trainer. It is a separate batch-wide pass
   (`PPO.normaliseAdvantages`) and works over whatever subset arrives.
-- Ship: `reward` is no longer needed once advantages are precomputed. The transition frame becomes
-  observation + masks + action/slot indices + `oldLogProbability` + `advantage` + `returnValue` +
-  `terminal`.
+- Ship: `reward` is no longer needed once advantages are precomputed, nor `value` or `nextValue`. The
+  transition frame is observation + masks + action/slot indices + `oldLogProbability` + `advantage` +
+  `returnValue` + `terminal`.
 
-Gate: episodes unchanged, advantages identical to a full-buffer computation, `gradcheck` green,
-determinism sweep unchanged.
+Gate: `gaecheck` (scalar GAE equals `Transition` GAE on identical fixtures; sampling reproduces from
+its seed; tail retention holds), episodes unchanged, `gradcheck` green, determinism sweep unchanged.
 
-### Step 2 — Ship sampled transitions to the trainer
+### Step 3 — Ship sampled transitions to the trainer
 
-- New message `MSG_TRANSITIONS`, carrying the frame above for each sampled step.
-- Trainer appends to its own `PPO` buffer instead of discarding.
+- New message `MSG_TRANSITIONS`, ~48.5 KB per sampled step.
 - Replay transfer moves to a separate, rarer message. Today `wantReplay` rides along on the episode
   frame; at 320 episodes/generation that is a second, larger pipe cost hiding inside the same
   channel.
-- `Trainer.report` should print sampled-step count per generation. If that number drifts far from
+- The 20 dispatch threads decode into their own lists and the merge happens on the trainer thread, so
+  no shared learner state is touched concurrently.
+- The trainer decodes into fresh `Transition`s and never the pool. See step 5's note on why.
+- `Trainer.report` prints sampled-step count per generation. If that drifts far from the predicted
   ~2,400, the sample rate is not doing what we think.
 
-Gate: pooled update runs on real data for the first time. `policy` and `value` losses become
-non-zero. This is the first moment anything in the project has learned anything.
+Gate: pooled update runs on real data for the first time. `policy` and `value` losses become non-zero,
+the weights change across the update, and post-normalisation advantages have mean ≈ 0. **This is the
+first moment anything in the project has learned anything.**
 
-### Step 3 — fp16 weight push, only if the barrier shows up
+### Step 4 — Parallel minibatch update, only if step 1 says so
+
+If the measurement in step 1 puts the update on the critical path, the fix is to parallelise it across
+minibatches: private scratch and gradient buffers per thread, one reduction per minibatch, 14.3 MB ×
+threads of accumulation. This requires separating parameter storage from scratch in `Network`,
+`Dense`, `Conv2D` and `LSTM`, which is a real refactor and not something to do speculatively.
+
+Gate: measured seconds/generation down, `gradcheck` green.
+
+### Step 5 — fp16 weight push, only if the barrier shows up
 
 The barrier is `3,583,827 × 4 B × 20 = 286 MB` per generation, pushed serially per worker, during
 which no worker can run. Measured at 12–26% of wall at 20 workers, 45% at 4 workers.
@@ -133,11 +263,9 @@ Around 40 lines, no algorithmic change, no new hyperparameters.
 
 `--episodes` also dilutes the barrier and already exists.
 
-Do this before considering IMPALA. It targets the same bottleneck at a fraction of the risk.
-
 Gate: barrier percentage down, `gradcheck` green, throughput up.
 
-### Step 4 — Bit-packing / RLE, only if transport shows in a profile
+### Step 6 — Bit-packing / RLE, only if transport shows in a profile
 
 Deferred deliberately. §3 is the justification.
 
@@ -156,13 +284,15 @@ Two constraints that must survive implementation:
 
 Also: zero float rounding anywhere in the path, or the cross-process determinism guarantee goes.
 
-### Step 5 — IMPALA, only if 1–4 are measured and the barrier is still the wall
+### Step 7 — IMPALA, only if 1–6 are measured and the barrier is still the wall
 
 An architectural change, not an optimisation. Off-policy correction (V-trace), two learning rates,
-tracer decay, ratio clipping. Gives up the on-policy guarantee that steps 1–2 preserve.
+tracer decay, ratio clipping. Gives up the on-policy guarantee that steps 2–3 preserve.
 
-Note the sequencing risk: subsampling at 5% cuts generation time ~20×, so the *fraction* lost to the
-barrier goes **up**, not down. Do not let that be misread as "C failed, IMPALA is required".
+Note the sequencing risk: subsampling at 5% cuts generation time, so the *fraction* lost to the
+barrier goes **up**, not down. Do not let that be misread as "C failed, IMPALA is required". The same
+applies to step 4: parallelising the update makes the remaining barrier a *larger* fraction of a
+smaller wall.
 
 ### Never — frame-differencing
 
@@ -175,38 +305,44 @@ re-proposed.
 
 ---
 
-## 5. Expected effect on the machine
+## 7. Expected effect on the machine
 
-| | now | after steps 1–2 | after step 3 |
+| | now | after steps 2–3 | after step 4, if needed |
 | --- | --- | --- | --- |
 | transport/gen | ~0 (discarded) | ~118 MB | ~118 MB |
-| barrier | 12–26% | higher (see step 5) | roughly halved |
-| system CPU | ~50% avg, 90–100% peak | similar | similar |
+| update/gen | 0 (empty buffer) | 9,600 fwd+bwd passes | same work, ÷ threads |
+| barrier | 12–26% | **unknown — step 1 measures it** | lower |
+| system CPU | ~50% avg, 90–100% peak | trainer-core bound if step 1 is bad | spread across cores |
 | pooled gradient | no | yes | yes |
 
-Throughput should *fall* after step 2 — real PPO work replaces free discard. That is expected and is
-not a regression.
+Throughput should *fall* after step 3 — real PPO work replaces free discard. That is expected and is
+not a regression. The size of the fall is the number step 1 exists to measure.
 
 ---
 
-## 6. Risks
+## 8. Risks
 
 | Risk | Severity | Note |
 | --- | --- | --- |
-| Advantages differ from full-buffer computation | blocking | Step 1 gate. Cheap to test. |
-| Worker/trainer gamma drift | medium | Currently masked by identical defaults. Fix in step 1. |
-| Sample too small (~2,400 for 3.5M params) | medium | Needs a knob, and a measurement plan. Low end of workable. |
+| Advantages differ from full-buffer computation | blocking | Step 2 gate. Cheap to test. |
+| Worker/trainer gamma drift | medium | Currently masked by identical defaults. Fixed in step 2. |
+| Sample too small (~2,400 for 3.5M params) | medium | Needs a knob and a measurement plan. Low end of workable. |
+| Update cost dominates everything | **unknown, possibly blocking** | Step 1. Not previously measured anywhere. |
+| 300 Adam steps on 2,400 samples destabilises training | medium | Only visible once losses are non-zero. Re-tune from step 1's grid. |
 | 95% of collected experience unused | accepted | Fine to start with. Not free. |
-| Replay transfer crowds the transition channel | low | Split the message in step 2. |
-| GAE in worker breaks on chunk boundaries | medium | Scalars are complete per episode; `rolloutCap` chunks are independent of GAE. |
+| Replay transfer crowds the transition channel | low | Split the message in step 3. |
+| GAE in worker breaks on chunk boundaries | medium | Gone: an episode is one GAE segment, and chunking moves to step 2's sampling cap. |
+| Tail retention biases the gradient | low | A fixed position-based subset, not advantage-ranked. See §5. |
 
 ---
 
-## 7. Open questions
+## 9. Open questions
 
-- Sample rate: 5% gives ~2,400 steps. Is that the right batch for a 3.5M-parameter network? Needs a
-  knob and a scan, not a guess.
+- Sample rate: 5% gives ~2,400 steps. Is that the right batch for a 3.5M-parameter network? Now a
+  measurement question rather than a guess — see step 1 and the `--sample-rate` knob.
 - Should episodes longer than a threshold be capped at the source, given GAE cost grows linearly
   while value signal does not?
 - Replay retention: currently every third episode. At 320 episodes/generation that is a
   disproportionate share of the pipe for a diagnostic feature.
+- How many threads can the update use before the gradient reduction (14.3 MB per thread per minibatch)
+  costs more than the parallelism saves? Unknown until step 4 exists.

@@ -1,9 +1,11 @@
-# Worker data flow — open decision
+# Worker data flow — decision
 
-Status: undecided. Nothing built. Everything below is measured on this repo, not estimated from theory,
-except where marked.
+Status: **decided — Option C.** Nothing built yet; the engineering plan is
+[`PLAN-data-flow.md`](PLAN-data-flow.md). Everything below is measured on this repo, not estimated
+from theory, except where marked.
 
 Written to make one choice: **where does a worker's training data go, and who computes the gradient.**
+It is made in §10.
 
 ---
 
@@ -125,11 +127,13 @@ buffer is always empty. That is the visible symptom of this gap.
 If every step's transition ships to the trainer:
 
 ```
-320 episodes × ~500 turns × 49.4 KB  ≈  7.9 GB per generation
+320 episodes × ~150 turns × 49.4 KB  ≈  2.4 GB per generation
 ```
 
-Against RAM: 9.2 GB (workers) + 7.9 GB (buffer) ≈ **17 GB** — at or past free memory, on a 2 GB
-pagefile.
+**Corrected.** This section originally used ~500 turns per episode and got 7.9 GB. The measured mean
+is ~150 (range 88–379), so the figure is 2.4 GB. The conclusion is unchanged and in one respect
+strengthened, because 2.4 GB has to sit *fully resident* in the trainer while 9.2 GB of workers are
+already resident — at or past free memory, on a 2 GB pagefile.
 
 Note the transition buffer must be **fully resident**, not streamed. PPO needs the whole batch at
 once to:
@@ -138,12 +142,12 @@ once to:
 - normalize them batch-wide (zero-mean, unit-variance)
 - run 4 epochs of minibatches, re-running each observation each time
 
-So 7.9GB sits in trainer heap simultaneously, plus a copy in flight on the pipe.
+So 2.4 GB sits in trainer heap simultaneously, plus a copy in flight on the pipe.
 
-Rough throughput of that pipe: ~1 GB/s optimistic, so ~8 s of pure transfer per generation with
+Rough throughput of that pipe: ~1 GB/s optimistic, so ~2.4 s of pure transfer per generation with
 nothing computing.
 
-Bit-packing the grid alone: 7.9 GB → ~1.4 GB. Still large, but no longer a cliff.
+Bit-packing the grid alone: 2.4 GB → ~430 MB. Still large, but no longer a cliff.
 
 ---
 
@@ -152,8 +156,8 @@ Bit-packing the grid alone: 7.9 GB → ~1.4 GB. Still large, but no longer a cli
 ### A — Ship all transitions, trainer does the pooled update
 
 - One learner, one gradient over all workers' data. Most stable scaling: bigger batch, less noise.
-- Cost: 7.9 GB/generation transferred and held. ~1.4 GB with bit-packed grid.
-- Needs: trainer heap ~2–3 GB, so fewer workers or smaller batches per generation.
+- Cost: 2.4 GB/generation transferred and held. ~430 MB with bit-packed grid.
+- Needs: trainer heap ~1 GB, so fewer workers or smaller batches per generation.
 - This is textbook PPO and the only option that keeps the guarantee intact.
 
 ### B — Workers update locally, send weights back
@@ -169,10 +173,10 @@ Bit-packing the grid alone: 7.9 GB → ~1.4 GB. Still large, but no longer a cli
 ### C — Ship a subsample
 
 - Trainer gets a fraction of steps; pooled gradient over that fraction.
-- Cost scales with sample rate, not episode length. 5% ≈ 390 MB. Comfortable.
+- Cost scales with sample rate, not episode length. 5% of 2.4 GB ≈ **120 MB**. Comfortable.
 - On-policy guarantee holds for the sampled steps; unsampled steps in the same episodes are discarded
   rather than trained on. Mildly less data per update, no bias.
-- **Cheapest path to a correct pooled update.** Probably the first thing to try.
+- **Chosen.** Cheapest path to a correct pooled update.
 
 ### D — Asynchronous learner (IMPALA)
 
@@ -193,9 +197,9 @@ Bit-packing the grid alone: 7.9 GB → ~1.4 GB. Still large, but no longer a cli
 
 | | Transport/gen | Trainer RAM | Pooled gradient | On-policy |
 | --- | --- | --- | --- | --- |
-| A all transitions | 7.9 GB (1.4 GB bit-packed) | needs 2–3 GB | yes | yes |
+| A all transitions | 2.4 GB (430 MB bit-packed) | needs ~1 GB | yes | yes |
 | B local update | 286 MB (already works) | ~0 | no | yes, per worker |
-| C 5% subsample | ~390 MB | ~400 MB | yes | yes, on sample |
+| C 5% subsample | ~120 MB | ~400 MB ceiling | yes | yes, on sample |
 | D IMPALA | 286 MB | ~0 | yes, delayed | approximate |
 
 ---
@@ -204,18 +208,24 @@ Bit-packing the grid alone: 7.9 GB → ~1.4 GB. Still large, but no longer a cli
 
 Not a technical unknown. Every row above is implementable today.
 
-The blocker is that three things pull in different directions and nobody has picked a winner:
+The blocker was that three things pull in different directions and nobody had picked a winner:
 
-1. **Bandwidth wants C or D.** 7.9 GB/generation is not viable unoptimized.
+1. **Bandwidth wants C or D.** 2.4 GB/generation is not viable unoptimized.
 2. **Stability wants A.** Pooled gradient is the reason PPO scales with worker count.
 3. **Effort wants B.** It already works end to end; it needs no new transport.
 
-Two cheap facts that should inform the choice and are not yet acted on:
+The choice is made in §10. Two cheap facts that informed it and are not yet acted on:
 
 - Grid bit-packing is **8×** and lossless. Nobody has done it. It moves A from "impossible" to
-  "possible without changing the machine".
+  "possible without changing the machine". Deferred: the sample rate already cuts transport 67×, so
+  packing would save ~100 ms per generation that nothing has yet shown to matter.
 - `--episodes` already amortizes the barrier. Sizing it well may make the barrier a non-issue
   without changing learners.
+
+A third factor was found while planning and was not in this document: the trainer's single-threaded
+PPO update costs 9,600 forward+backward passes per generation at the intended batch size, and nothing
+in either document measured it. It may well be the binding constraint rather than transport. See
+`PLAN-data-flow.md` §4.
 
 ---
 
@@ -223,14 +233,22 @@ Two cheap facts that should inform the choice and are not yet acted on:
 
 Short version:
 
-1. Bit-pack the grid. Lossless, 8×, helps every option. Do this regardless.
-2. Then **C** (subsample to the trainer) — pooled gradient, on-policy, ~390 MB/gen, no new
-   architecture.
-3. If the barrier is still the bottleneck afterwards, **D** (IMPALA) rather than B, because B gives
+1. ~~Bit-pack the grid. Lossless, 8×, helps every option. Do this regardless.~~ **Deferred.** The
+   sample rate removes the bandwidth problem first, and packing's ~100 ms per generation is not worth
+   the engineering until transport appears in a profile.
+2. **C (subsample to the trainer)** — pooled gradient, on-policy, no new architecture. **Chosen.**
+3. If the barrier is still the bottleneck afterwards, **D (IMPALA)** rather than B, because B gives
    up the pooled gradient entirely to solve a problem C solves better.
 
-Risk in that order of confidence: 1 is near-certain win. 3 is a real architecture change and should
-not be started until 1 and 2 are measured. 2 is unknown-but-small work.
+On the original ordering, the first item is demoted and a step is inserted ahead of C: **measure the
+update cost first.** Option C's whole argument is bandwidth, and the update costs 9,600 forward and
+backward passes per generation on one thread — a number no document in this repo had estimated. If
+that dominates, the answer is a parallel minibatch update, not a different option, and it is cheaper
+than anything D costs.
+
+Risk in that order of confidence: 1 is a deliberate deferral with a stated trigger; 2 is
+unknown-but-small work, with one genuinely open measurement; 3 is a real architecture change and
+should not be started until both are measured.
 
 ---
 
