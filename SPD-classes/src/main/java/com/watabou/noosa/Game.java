@@ -209,6 +209,17 @@ public class Game implements ApplicationListener {
 		switchScene( instance.sceneClass );
 	}
 
+	/**
+	 * Sets the class used for the initial scene, before the game is constructed.
+	 *
+	 * The constructor takes the initial scene class directly, but an entry point that builds the
+	 * game itself - the desktop replay viewer does - has no other way to choose it, because
+	 * {@link #sceneClass} is not public.
+	 */
+	public static void setSceneClass(Class<? extends Scene> c) {
+		sceneClass = c;
+	}
+
 	public static void switchScene(Class<? extends Scene> c) {
 		switchScene(c, null);
 	}

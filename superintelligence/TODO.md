@@ -166,12 +166,18 @@ craft, equip and scroll/potion paths - i.e. the hooks research.md:8 actually ask
 | # | Task | Document | Size |
 | --- | --- | --- | --- |
 | 3.1 | libGDX trainer UI in the `desktop` module | research.md:16, docs.md:10 | L |
-| 3.2 | Desktop replay viewer - re-run a recording in the rendered game | research.md:45 | M |
 | 3.3 | Live play with real-time reward/term monitoring | docs.md:10 | M |
 | 3.4 | "type totals/subtotals" in the dashboard | docs.md:41 | S |
 
-3.1 and 3.2 are the two places the documents explicitly ask for a graphical interface and I built
-an ANSI console instead. `diag/` has the data; only the rendering is missing.
+**3.2 is DONE.** Desktop replay viewer built: `gradle :desktop:replay --args="--file <replay>"`.
+Recorded actions go through `ActionMapper` to `Hero.handle`, the same call the cell selector makes,
+so action resolution is identical to a human playing. HUD shows step, seed, score, depth, turns,
+speed and divergence. Needed two engine hooks: `Game.lockCellInput` and `Game.setSceneClass`.
+Enters via `InterlevelScene` because its transition to `GameScene` is hardcoded, so a subclass would
+never be entered. See `PLAN-replay-viewer.md`.
+
+Known gap: every existing recording is `WORLD` mode only, so the menu / slot / targeting action path
+is written but never executed. Needs a recording that loots or opens a shop.
 
 `diag/RunReport` already emits a per-term table and per-floor totals. "Subtotals" (a grouped
 category rollup, eg. all combat terms together) is not implemented.

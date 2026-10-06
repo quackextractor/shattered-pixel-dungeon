@@ -182,6 +182,46 @@ public class GameScene extends PixelScene {
 	private GameLog log;
 
 	private static CellSelector cellSelector;
+
+	/**
+	 * When true the cell selector is disabled every frame, so the keyboard and controller cannot
+	 * reach the hero.
+	 *
+	 * The desktop replay viewer sets this while a recording drives the game. Disabling the selector
+	 * rather than ignoring individual keys is deliberate: deciding which keys matter means one
+	 * missed keypress turns into a divergence several steps later, whereas a selector that accepts
+	 * nothing cannot desync anything. Recorded actions still go through {@code Hero.handle}, which
+	 * is the same call the selector makes.
+	 */
+	private static boolean cellInputLocked = false;
+
+	public static void lockCellInput( boolean locked ){
+		cellInputLocked = locked;
+		if (locked && cellSelector != null){
+			cellSelector.enable( false );
+		}
+	}
+
+	public static boolean cellInputLocked(){
+		return cellInputLocked;
+	}
+
+	/**
+	 * Per-frame hook for a driver that supplies its own input, such as the desktop replay viewer.
+	 *
+	 * A static callback rather than a scene subclass because the transition into this scene is
+	 * hardcoded - {@code InterlevelScene} switches to {@code GameScene} directly - so a subclass
+	 * would never be entered. Null in normal play, and the check is one null comparison per frame.
+	 */
+	private static Runnable frameDriver = null;
+
+	public static void setFrameDriver( Runnable driver ){
+		frameDriver = driver;
+	}
+
+	public static Runnable frameDriver(){
+		return frameDriver;
+	}
 	
 	private Group terrain;
 	private Group customTiles;
@@ -865,11 +905,17 @@ public class GameScene extends PixelScene {
 
 	private static float waterOfs = 0;
 
-	@Override
-	public synchronized void update() {
-		lastOffset = null;
+@Override
+public synchronized void update() {
+	lastOffset = null;
 
-		if (updateItemDisplays){
+	//a driver supplying its own input - the desktop replay viewer - runs first, so a recorded
+	//action is applied before the frame's own processing rather than after it
+	if (frameDriver != null){
+		frameDriver.run();
+	}
+
+	if (updateItemDisplays){
 			updateItemDisplays = false;
 			QuickSlotButton.refresh();
 			InventoryPane.refresh();
@@ -953,7 +999,7 @@ public class GameScene extends PixelScene {
 
 		}
 
-		cellSelector.enable(Dungeon.hero.ready);
+		cellSelector.enable(!cellInputLocked && Dungeon.hero.ready);
 
 		if (!toDestroy.isEmpty()) {
 			for (Gizmo g : toDestroy) {

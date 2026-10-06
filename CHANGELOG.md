@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Desktop replay viewer.** `gradle :desktop:replay --args="--file <replay>"` plays a recorded run
+  back in the rendered game. Recorded actions are applied through `ActionMapper`, which hands them to
+  `Hero.handle` — the same call the game's own cell selector makes — so attack-versus-loot-versus-
+  stairs-versus-menu resolves exactly as it does for a player. The HUD shows step count, seed, hero,
+  recorded score, depth, turns, speed and any divergence.
+
+  Two engine hooks were needed, both general rather than replay-specific: `Game.lockCellInput`
+  disables the cell selector each frame so nothing but the recording can inject an action, and
+  `Game.setSceneClass` lets an entry point that builds the game choose its initial scene.
+
+  Entering through `InterlevelScene` with `Mode.DESCEND` is what makes this work: `InterlevelScene`
+  switches to `GameScene` hardcoded, so a `GameScene` subclass would never be entered. A static
+  `frameDriver` hook pumps playback instead, and the recording is watched in the real scene with real
+  sprites.
+
+
 - `PPO.rolloutCap` bounds collection between updates. It is not only a memory guard: PPO measures
   how far the policy has drifted since it collected the data, so frequent updates are what PPO
   wants anyway.

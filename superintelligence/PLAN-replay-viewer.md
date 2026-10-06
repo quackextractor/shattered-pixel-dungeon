@@ -3,7 +3,8 @@
 Goal: watch a recorded run play back in the rendered game, the way you would watch a recording of
 your own game. Not a text log. The actual dungeon, rendered, stepping through the recorded actions.
 
-Status: planned, input-injection spike **done** (§4.4). Nothing built. See §9 for the baseline.
+Status: **built and running.** `gradle :desktop:replay --args="--file <replay>"` opens the game and
+plays the recording back. See §9 for the baseline and §11 for what is untested.
 
 ---
 
@@ -325,7 +326,78 @@ recorder or determinism is.
 
 ---
 
-## 10. Related
+## 10. What was built
 
-- `research.md:45` lists the desktop replay viewer. This is that item.
-- `TODO.md` §3.2 tracks it: "Desktop replay viewer — re-run a recording in the rendered game".
+Four classes in `desktop/src/main/java/.../desktop/replay/`:
+
+| Class | Role |
+| --- | --- |
+| `ReplayLauncher` | entry point, reads the file, seeds the run, opens the window |
+| `ReplayPlayer` | playback state machine: applies steps, settles turns, checks positions |
+| `ReplayPlayback` | cursor and divergence state. **No engine dependency** |
+| `ReplayController` | per-frame pump and HUD |
+
+Plus a `gradle :desktop:replay` task, and `probeClasspath` on `desktop`.
+
+### Two engine hooks were needed
+
+Both are small and general, not replay-specific in behaviour:
+
+- `Game.lockCellInput(boolean)` — disables the cell selector every frame so nothing but the
+  recording can inject an action. `GameScene.update()` already called
+  `cellSelector.enable(Dungeon.hero.ready)` each frame; the lock gates that call.
+- `Game.setSceneClass(Class)` — the field is `protected`, and an entry point that builds the game
+  itself has no other way to choose the initial scene.
+
+### Why a controller and not a scene subclass
+
+The plan assumed subclassing `GameScene`. That does not work: `InterlevelScene` switches to
+`GameScene.class` **hardcoded**, so a subclass is never entered. The viewer enters through
+`InterlevelScene` with `Mode.DESCEND` and no hero — exactly how a first floor is built in normal play
+— and a static `frameDriver` hook on `GameScene` pumps playback each frame. The recording is
+therefore watched in the real scene, real sprites, real update loop.
+
+### Launch ordering, which cost three bugs
+
+1. `SPDSettings.customSeed()` writes through libGDX preferences, and `Gdx.app` does not exist until
+   the game is running. The window config must be built first so preferences exist, *then* the seed
+   applied, *then* the application started.
+2. `Game.version` must be set before the first scene builds — `DeviceCompat.isDebug()` reads it and
+   `InterlevelScene.create()` calls that.
+3. `PixelScene.uiCamera` is null until `PixelScene.create()`, which `GameScene.create()` skips when
+   no level exists yet, so the HUD must tolerate a null camera on early frames.
+
+### Verified
+
+- `ReplayPlayback` is the only class with no engine dependency, so it is the only one testable
+  without a window. **36 checks pass** across all four recordings plus synthetic cases: cursor
+  movement, completion, unknown hero class fallback, and that divergence is recorded once and never
+  cleared by a later match.
+- Window opens, render loop is live (CPU climbing, memory growing, 58 threads), no errors over 28s.
+- Suites still pass: `:desktop:build`, `:superintelligence:build`, `:core:build`,
+  `:SPD-classes:build`, `gradcheck`, and a 60-rollout determinism sweep (20 seed/hero pairs, all
+  identical).
+
+---
+
+## 11. Not tested, and one real gap
+
+**The recordings only exercise `WORLD` mode.** Every step in all four recordings is a move or an
+interact; none is a menu, a slot choice, or a targeting prompt. So the two-step action path
+(`applySecondary` for MENU / SLOT / INVENTORY / TARGETING) is **written but never executed**.
+
+That is the obvious next test. It needs a recording that picks something up or opens a shop, which
+the scripted policy rarely does on floor 1. A seed sweep, or a recording made with a policy that
+deliberately loots, would produce one.
+
+Also untested:
+
+- **Visual fidelity.** A human has not watched one play back yet. That is the point of the feature
+  and it is the check this could not automate.
+- **A diverged replay on screen.** The divergence path is tested headlessly, but never seen in the
+  HUD.
+- **Speed, pause and restart keys.** Bound and wired, not exercised.
+- **A genuine death recording** (§9).
+- **Saves.** A viewer run uses the real preferences path. `Replays` are written by the trainer, but
+  whether a viewer session can leave a save behind is unverified.
+

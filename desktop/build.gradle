@@ -14,6 +14,24 @@ processResources {
 
 def osName = System.getProperty('os.name').toLowerCase(Locale.ROOT)
 
+tasks.register('probeClasspath') {
+    group = 'desktop'
+    description = 'Prints the runtime classpath so entry points can be launched without gradle.'
+    doLast {
+        println sourceSets.main.runtimeClasspath.asPath
+    }
+}
+
+tasks.register('replay', JavaExec) {
+    group = 'desktop'
+    description = 'Plays a recorded run back in the rendered game.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ReplayLauncher'
+    systemProperty 'Implementation-Title', appPackageName
+    systemProperty 'Implementation-Version', appVersionCode
+    standardInput = System.in
+}
+
 tasks.register('debug', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     ignoreExitValue = true
@@ -109,6 +127,12 @@ runtime {
 
 dependencies {
     implementation project(':core')
+
+    //The replay viewer plays a recording by re-applying its actions through ActionMapper, which is
+    //the same seam the game's own cell selector uses. Reusing it rather than duplicating it means
+    //the viewer inherits the game's action resolution unchanged - attack versus loot versus stairs
+    //versus menu - and cannot drift from the headless verifier that already checks replays.
+    implementation project(':superintelligence')
 
     implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
     implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
