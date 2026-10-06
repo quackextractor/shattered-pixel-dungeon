@@ -248,6 +248,7 @@ if (mode == EnvMode.WORLD){
 		while (running){
 			if (++guard > config.actorStepLimit){
 				terminate( RewardModel.TerminateReason.STALLED );
+				terminate( RewardModel.TerminateReason.STALLED );
 				break;
 			}
 
