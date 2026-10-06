@@ -183,6 +183,19 @@ public class Button extends Component {
 		return false;
 	}
 
+	/**
+	 * Presses this button as if the player had clicked it.
+	 *
+	 * Lets the headless training module answer dialogs that were routed through GameScene.show()
+	 * and so have no UI to click when the renderer is bypassed. Returns false without firing if
+	 * the button is disabled.
+	 */
+	public boolean press() {
+		if (!active) return false;
+		onClick();
+		return true;
+	}
+
 	protected String hoverText() {
 		return null;
 	}

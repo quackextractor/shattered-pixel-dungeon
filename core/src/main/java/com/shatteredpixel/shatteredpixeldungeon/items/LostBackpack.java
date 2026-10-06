@@ -32,6 +32,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MagesStaff;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Notes;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.HeroSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
 import com.watabou.noosa.audio.Sample;
@@ -79,7 +80,7 @@ public class LostBackpack extends Item {
 		Sample.INSTANCE.play( Assets.Sounds.DEWDROP );
 		hero.spendAndNext(pickupDelay());
 		GameScene.pickUp( this, pos );
-		((HeroSprite)hero.sprite).updateArmor();
+		((CharSprite)hero.sprite).updateArmor();
 
 		Notes.remove(Notes.Landmark.LOST_PACK);
 		return true;

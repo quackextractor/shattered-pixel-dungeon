@@ -396,8 +396,11 @@ public class QuickSlotButton extends Button {
 				&& target.alignment != Char.Alignment.ALLY
 				&& !Char.hasProp(target, Char.Property.OBJECT)) {
 			lastTarget = target;
-			
-			TargetHealthIndicator.instance.target( target );
+
+			//the health indicator only exists while the UI is up
+						if (TargetHealthIndicator.instance != null) {
+				TargetHealthIndicator.instance.target( target );
+			}
 			InventoryPane.lastTarget = target;
 		}
 	}

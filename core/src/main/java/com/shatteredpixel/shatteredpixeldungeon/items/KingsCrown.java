@@ -32,6 +32,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.ClassArmor;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Catalog;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.HeroSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
@@ -108,7 +109,7 @@ public class KingsCrown extends Item {
 			if (hero.belongings.armor == armor) {
 
 				hero.belongings.armor = classArmor;
-				((HeroSprite) hero.sprite).updateArmor();
+				((CharSprite)hero.sprite).updateArmor();
 				classArmor.activate(hero);
 
 			} else {

@@ -1,5 +1,7 @@
 # Shattered Pixel Dungeon
 
+[![Version](https://img.shields.io/badge/version-4.1.0-blue.svg)](https://github.com/00-Evan/shattered-pixel-dungeon)
+
 [Shattered Pixel Dungeon](https://shatteredpixel.com/shatteredpd/) is an open-source traditional roguelike dungeon crawler with randomized levels and enemies, and hundreds of items to collect and use. It's based on the [source code of Pixel Dungeon](https://github.com/00-Evan/pixel-dungeon-gradle), by [Watabou](https://watabou.itch.io/).
 
 Shattered Pixel Dungeon currently compiles for Android, iOS, and Desktop platforms. You can find official releases of the game on:
@@ -25,3 +27,4 @@ If you'd like to work with the code, you can find the following guides in `/docs
 - [Compiling for desktop platforms.](docs/getting-started-desktop.md)
 - [Compiling for iOS.](docs/getting-started-ios.md)
 - [Recommended changes for making your own version.](docs/recommended-changes.md)
+- [Headless reinforcement-learning framework.](superintelligence/README.md)

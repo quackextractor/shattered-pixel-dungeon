@@ -193,7 +193,8 @@ public class AttackIndicator extends Tag {
 	}
 
 	public static void target(Char target ) {
-		if (target == null) return;
+		//no indicator exists without a renderer, eg. headless training
+				if (target == null || instance == null) return;
 		synchronized (instance) {
 			instance.lastTarget = (Mob) target;
 			instance.updateImage();
@@ -203,6 +204,7 @@ public class AttackIndicator extends Tag {
 	}
 	
 	public static void updateState() {
+		if (instance == null) return;
 		instance.checkEnemies();
 	}
 }

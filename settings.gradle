@@ -2,6 +2,9 @@
 include ':SPD-classes'
 include ':core'
 
+//headless RL / training framework (see superintelligence/*.md)
+include ':superintelligence'
+
 //platform modules
 include ':android'
 include ':ios'

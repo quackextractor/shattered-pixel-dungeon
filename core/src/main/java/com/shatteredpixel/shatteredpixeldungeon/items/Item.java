@@ -701,6 +701,21 @@ public class Item implements Bundlable {
 		return TIME_TO_THROW;
 	}
 
+	/**
+	 * Throws or casts this item at {@code dst} without animating a projectile.
+	 *
+	 * Same bookkeeping as the tail of {@link #cast}, minus the MissileSprite, for callers that
+	 * have no renderer - the headless training module in the 'superintelligence' module.
+	 */
+	public void throwAt( Hero user, int dst ){
+		final int cell = throwPos( user, dst );
+		user.busy();
+		Item detached = detach( user.belongings.backpack );
+		if (detached != null) detached.onThrow( cell );
+		user.spend( castDelay( user, cell ) );
+		user.next();
+	}
+
 	public float pickupDelay(){
 		return TIME_TO_PICK_UP;
 	}

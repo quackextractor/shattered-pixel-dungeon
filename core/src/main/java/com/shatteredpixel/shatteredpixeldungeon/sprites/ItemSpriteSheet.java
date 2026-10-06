@@ -24,6 +24,8 @@ package com.shatteredpixel.shatteredpixeldungeon.sprites;
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
 import com.watabou.noosa.TextureFilm;
 
+import java.util.ArrayList;
+
 public class ItemSpriteSheet {
 
 	public static final int SIZE = 16;
@@ -824,7 +826,22 @@ public class ItemSpriteSheet {
 		private static final int WIDTH = 16;
 		public static final int SIZE = 8;
 
-		public static TextureFilm film = new TextureFilm( Assets.Sprites.ITEM_ICONS, SIZE, SIZE );
+		//icon indices are game data and computed by arithmetic below. the film that maps them to
+		//pixel rects is presentation, and is only built when something draws an icon - so game
+		//logic can construct items without a renderer (see the 'superintelligence' module).
+		private static TextureFilm filmCache = null;
+		private static final ArrayList<int[]> pendingRects = new ArrayList<>();
+
+		public static TextureFilm film(){
+			if (filmCache == null) {
+				filmCache = new TextureFilm( Assets.Sprites.ITEM_ICONS, SIZE, SIZE );
+				for (int[] rect : pendingRects) {
+					filmCache.add( rect[0], rect[1], rect[2], rect[3], rect[4] );
+				}
+				pendingRects.clear();
+			}
+			return filmCache;
+		}
 
 		private static int xy(int x, int y){
 			x -= 1; y -= 1;
@@ -834,7 +851,7 @@ public class ItemSpriteSheet {
 		private static void assignIconRect( int item, int width, int height ){
 			int x = (item % WIDTH) * SIZE;
 			int y = (item / WIDTH) * SIZE;
-			film.add( item, x, y, x+width, y+height);
+			pendingRects.add( new int[]{ item, x, y, x+width, y+height } );
 		}
 
 		private static final int RINGS          =                            xy(1, 1);  //16 slots

@@ -1,4 +1,6 @@
 /*
+}
+/*
  * Pixel Dungeon
  * Copyright (C) 2012-2015 Oleg Dolya
  *
@@ -319,7 +321,26 @@ public class CharSprite extends MovieClip implements Tweener.Listener, MovieClip
 			health.killAndErase();
 		}
 	}
-	
+
+	/*
+	 * Presentation hooks that game logic calls on a character's sprite.
+	 *
+	 * These live here rather than only on HeroSprite/MobSprite so that logic does not have to know
+	 * which sprite a character happens to be using. Sprite implementations override them; a
+	 * character with no renderer, eg. during headless training rollouts, uses these no-ops.
+	 */
+
+	/** Adjusts the run animation rate. See {@link HeroSprite#sprint}. */
+	public void sprint( float speed ) { }
+
+	/** Rebuilds the armor overlay after equipment changes. See {@link HeroSprite#updateArmor}. */
+	public void updateArmor() { }
+
+	/** Plays the scroll-reading animation. See {@link HeroSprite#read}. */
+	public synchronized void read() { }
+
+	/** Plays the falling animation. See {@link MobSprite#fall}. */
+	public void fall() { }	
 	public Emitter emitter() {
 		Emitter emitter = GameScene.emitter();
 		if (emitter != null) emitter.pos( this );
@@ -762,7 +783,6 @@ public class CharSprite extends MovieClip implements Tweener.Listener, MovieClip
 			health.killAndErase();
 		}
 	}
-
 	private float[] shadowMatrix = new float[16];
 
 	@Override

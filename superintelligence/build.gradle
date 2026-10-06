@@ -1,0 +1,100 @@
+apply plugin: 'java-library'
+apply plugin: 'application'
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+java.sourceCompatibility = java.targetCompatibility = appJavaCompatibility
+
+//The RL framework runs the game logic with the noosa/libGDX render layer bypassed,
+//so it is a plain JVM module. It depends on :core for the game itself and inherits
+//libGDX through :SPD-classes.
+dependencies {
+    implementation project(':core')
+
+    //com.watabou.utils.PlatformSupport has an abstract method that returns a freetype font
+    //generator, so the type must be on the compile classpath even though headless never
+    //instantiates one. SPD-classes declares gdx-freetype as 'implementation', which does not
+    //leak transitively.
+    implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+
+    //ItemSpriteSheet.Icons resolves a TextureFilm in its static initialiser, and ~890 files
+    //reference those icon constants from their own static/instance initialisers. Avoiding the
+    //film would mean touching the item tree everywhere, so instead we let it be built: Pixmap
+    //decodes the PNG on the CPU, and HeadlessGl absorbs every GL call it triggers. See
+    //HeadlessServices.install for why this is contained.
+    runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+}
+
+ext.appMainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.Main'
+application.mainClass = appMainClass
+
+//ItemSpriteSheet.Icons decodes sprites/item_icons.png the first time any item is constructed,
+//so the asset tree has to be on the classpath even though nothing is ever drawn. The :core jar
+//does not bundle assets - the desktop launcher copies them in, and so must every other headless
+//entry point. See HeadlessFiles.getFileHandle for how these paths are resolved.
+processResources {
+    from new File(project(':core').projectDir, '/src/main/assets')
+    from new File(projectDir, '/src/main/assets')
+}
+
+//jvmArgs are sized for the worker processes spawned by the trainer; see
+//com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessBootstrap
+def trainerJvmArgs = [
+        '-Xms256m',
+        '-Xmx1536m',
+        //The game allocates heavily per turn; keeping the young gen large and the old gen
+        //small avoids full GCs mid-rollout. See research.md "Garbage Collection and Memory Pooling".
+        '-XX:+UseParallelGC',
+        '-XX:MaxGCPauseMillis=200',
+        //A 1,000-sim sweep must never be killed by the OS for touching unused natives.
+        '-XX:+IgnoreUnrecognizedVMOptions',
+        '-Djava.awt.headless=true'
+]
+
+tasks.register('probeClasspath') {
+    group = 'superintelligence'
+    description = 'Prints the runtime classpath so the headless entry points can be launched without gradle.'
+    doLast {
+        println sourceSets.main.runtimeClasspath.asPath
+    }
+}
+
+tasks.register('train', JavaExec) {
+    group = 'superintelligence'
+    description = 'Runs the PPO/IMPALA trainer over a pool of worker processes.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = appMainClass
+    jvmArgs trainerJvmArgs
+}
+
+tasks.register('rollout', JavaExec) {
+    group = 'superintelligence'
+    description = 'Runs a single headless episode on a locked seed with a scripted policy.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = appMainClass
+    jvmArgs trainerJvmArgs
+}
+
+tasks.register('replay', JavaExec) {
+    group = 'superintelligence'
+    description = 'Replays a recorded run headlessly and prints the frame-by-frame ledger.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = appMainClass
+    jvmArgs trainerJvmArgs
+}
+
+//Everything the trainer and its workers need on one classpath, so a worker can be launched
+//with a plain `java -cp` instead of forking gradle.
+tasks.register('workerJar', Jar) {
+    group = 'superintelligence'
+    description = 'Self-contained jar used to launch training worker JVMs.'
+    dependsOn configurations.runtimeClasspath
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': appMainClass
+    }
+    from sourceSets.main.output
+    from {
+        configurations.runtimeClasspath.findAll { it.name.endsWith('.jar') }.collect { zipTree(it) }
+    }
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'module-info.class'
+}

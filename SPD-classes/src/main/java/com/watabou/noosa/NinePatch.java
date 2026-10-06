@@ -53,7 +53,29 @@ public class NinePatch extends Visual {
 	protected boolean flipVertical;
 
 	protected boolean dirty;
-	
+
+	/**
+	 * A nine patch with no texture and no margins.
+	 *
+	 * Lets UI objects such as {@code Window} be constructed without decoding an asset, which is what
+	 * allows dialogs to exist in a build with no renderer. See {@code Chrome.get} and the
+	 * 'superintelligence' module, which drives those dialogs programmatically.
+	 */
+	public NinePatch() {
+		super( 0, 0, 0, 0 );
+
+		vertices = new float[16];
+		quads = Quad.createSet( 9 );
+
+		nWidth = width = 0;
+		nHeight = height = 0;
+
+		outterF = new RectF( 0, 0, 0, 0 );
+		innerF = new RectF( 0, 0, 0, 0 );
+
+		updateVertices();
+	}
+
 	public NinePatch( Object tx, int margin ) {
 		this( tx, margin, margin, margin, margin );
 	}
@@ -68,22 +90,41 @@ public class NinePatch extends Visual {
 	
 	public NinePatch( Object tx, int x, int y, int w, int h, int left, int top, int right, int bottom ) {
 		super( 0, 0, 0, 0 );
-		
-		texture = TextureCache.get( tx );
-		w = w == 0 ? texture.width : w;
-		h = h == 0 ? texture.height : h;
-		
-		nWidth = width = w;
-		nHeight = height = h;
-		
+
 		vertices = new float[16];
 		quads = Quad.createSet( 9 );
+
+		texture = TextureCache.get( tx );
+
+		//a null texture means there was no renderer to load one. Keep the size and margins so
+		//layout maths still works, but leave the UV rects empty - nothing will sample them.
+		if (texture == null) {
+			nWidth = width = w;
+			nHeight = height = h;
+
+			marginLeft	= left;
+			marginRight	= right;
+			marginTop	= top;
+			marginBottom= bottom;
+
+			outterF = new RectF( 0, 0, 0, 0 );
+			innerF = new RectF( 0, 0, 0, 0 );
+
+			updateVertices();
+			return;
+		}
+
+		w = w == 0 ? texture.width : w;
+		h = h == 0 ? texture.height : h;
+
+		nWidth = width = w;
+		nHeight = height = h;
 
 		marginLeft	= left;
 		marginRight	= right;
 		marginTop	= top;
 		marginBottom= bottom;
-		
+
 		outterF = texture.uvRect( x, y, x + w, y + h );
 		innerF = texture.uvRect( x + left, y + top, x + w - right, y + h - bottom );
 

@@ -51,6 +51,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.stones.StoneOfIntuition;
 import com.shatteredpixel.shatteredpixeldungeon.items.stones.StoneOfShock;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Catalog;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.AlchemyScene;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.HeroSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
@@ -197,7 +198,7 @@ public abstract class Scroll extends Item {
 		Invisibility.dispel();
 		curUser.spend( TIME_TO_READ );
 		curUser.busy();
-		((HeroSprite)curUser.sprite).read();
+		((CharSprite)curUser.sprite).read();
 
 		if (!anonymous) {
 			Catalog.countUse(getClass());

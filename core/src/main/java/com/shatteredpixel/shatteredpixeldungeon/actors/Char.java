@@ -1129,7 +1129,7 @@ public abstract class Char extends Actor {
 		if (src != Chasm.class) {
 			sprite.die();
 			if (!flying && Dungeon.level != null && sprite instanceof MobSprite && Dungeon.level.map[pos] == Terrain.CHASM){
-				((MobSprite) sprite).fall();
+				((CharSprite) sprite).fall();
 			}
 		}
 	}

@@ -1432,6 +1432,11 @@ public class GameScene extends PixelScene {
 	}
 	
 	public static void show( Window wnd ) {
+		//no scene to attach to when the renderer is bypassed, eg. headless training
+		if (scene == null) {
+			headlessWindow = wnd;
+			return;
+		}
 		if (scene != null) {
 			cancel();
 
@@ -1454,6 +1459,12 @@ public class GameScene extends PixelScene {
 			scene.addToFront(wnd);
 		}
 	}
+
+	private static Window headlessWindow = null;
+
+	/** Window awaiting an answer from a headless caller, or null. */
+	public static Window headlessWindow(){ return headlessWindow; }
+	public static void clearHeadlessWindow(){ headlessWindow = null; }
 
 	public static boolean showingWindow(){
 		if (scene == null) return false;
@@ -1638,6 +1649,12 @@ public class GameScene extends PixelScene {
 	}
 	
 	public static void selectCell( CellSelector.Listener listener ) {
+		//no cell selector without a renderer. Wands, throwables and armor abilities ask to aim
+		//through this, so stash the request: a headless caller resolves it with its own cell.
+		if (cellSelector == null) {
+			pendingCellListener = listener;
+			return;
+		}
 		if (cellSelector.listener != null && cellSelector.listener != defaultCellListener){
 			cellSelector.listener.onSelect(null);
 		}
@@ -1647,6 +1664,12 @@ public class GameScene extends PixelScene {
 			scene.prompt(listener.prompt());
 		}
 	}
+
+	private static CellSelector.Listener pendingCellListener = null;
+
+	/** The aiming request the game is waiting on, or null. See {@link #selectCell}. */
+	public static CellSelector.Listener pendingCellListener(){ return pendingCellListener; }
+	public static void clearPendingCellListener(){ pendingCellListener = null; }
 	
 	public static boolean cancelCellSelector() {
 		if (cellSelector.listener != null && cellSelector.listener != defaultCellListener) {
@@ -1740,10 +1763,12 @@ public class GameScene extends PixelScene {
 	}
 	
 	public static void checkKeyHold(){
+		if (cellSelector == null) return;
 		cellSelector.processKeyHold();
 	}
 	
 	public static void resetKeyHold(){
+		if (cellSelector == null) return;
 		cellSelector.resetKeyHold();
 	}
 

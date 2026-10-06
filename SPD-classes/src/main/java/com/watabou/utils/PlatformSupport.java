@@ -45,6 +45,11 @@ public abstract class PlatformSupport {
 	public static final int INSET_BLK = 1; //only complete blocker assets like navbars
 
 	public RectF getSafeInsets( int level ){
+		//no display means no insets, eg. when the game runs without a renderer
+		if (Gdx.graphics == null) {
+			return new RectF();
+		}
+
 		return new RectF(
 				Gdx.graphics.getSafeInsetLeft(),
 				Gdx.graphics.getSafeInsetTop(),

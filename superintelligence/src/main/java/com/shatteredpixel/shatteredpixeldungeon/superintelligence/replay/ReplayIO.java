@@ -1,0 +1,205 @@
+package com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay;
+
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+
+/**
+ * Reads and writes {@link Replay} files, and replays a run headlessly.
+ *
+ * The format is line based text rather than a binary blob. Replays are small - a few thousand
+ * decisions per run - and a format a human can read means a suspicious run can be diffed against a
+ * known-good one by eye, which matters more here than the bytes saved.
+ */
+public class ReplayIO {
+
+	private ReplayIO() {}
+
+	// --------------------------------------------------------------------------- writing
+
+	public static void write( Replay replay, File file ) throws IOException {
+		File parent = file.getAbsoluteFile().getParentFile();
+		if (parent != null){
+			//noinspection ResultOfMethodCallIgnored
+			parent.mkdirs();
+		}
+
+		try (BufferedWriter out = Files.newBufferedWriter( file.toPath(), StandardCharsets.UTF_8 )){
+			out.write( Replay.MAGIC );
+			out.newLine();
+			out.write( "version=" + Replay.VERSION );
+			out.newLine();
+			out.write( "seed=" + replay.seedText );
+			out.newLine();
+			out.write( "hero=" + replay.heroClass );
+			out.newLine();
+			out.write( "challenges=" + replay.challenges );
+			out.newLine();
+			out.write( "generation=" + replay.generation );
+			out.newLine();
+			out.write( "score=" + replay.score );
+			out.newLine();
+			out.write( "depth=" + replay.depth );
+			out.newLine();
+out.write( "turns=" + replay.turns );
+			out.newLine();
+			out.write( "turn_limit=" + replay.turnLimitPerFloor );
+			out.newLine();
+			out.write( "steps=" + replay.steps.size() );
+			out.newLine();
+
+			for (Replay.Step step : replay.steps){
+				out.write( step.action );
+				out.write( ' ' );
+				out.write( Integer.toString( step.slot ));
+				out.write( ' ' );
+				out.write( step.mode );
+				out.write( ' ' );
+				out.write( Integer.toString( step.heroPos ));
+				out.write( ' ' );
+				out.write( Double.toString( step.reward ));
+				out.newLine();
+			}
+		}
+	}
+
+	// --------------------------------------------------------------------------- reading
+
+	public static Replay read( File file ) throws IOException {
+		Replay replay = new Replay();
+
+		//read whole file first: header lines are "key=value" and step lines are not, so the header
+		//has to be told where it ends. Doing that on a live reader would swallow the first step.
+		java.util.List<String> lines = Files.readAllLines( file.toPath(), StandardCharsets.UTF_8 );
+
+		if (lines.isEmpty() || !Replay.MAGIC.equals( lines.get( 0 ) )){
+			throw new IOException( "Not a replay file: " + file.getPath() );
+		}
+
+		int declaredSteps = 0;
+		int index = 1;
+
+		while (index < lines.size()){
+			String line = lines.get( index );
+			int eq = line.indexOf( '=' );
+			if (eq < 0) break;
+
+			String key = line.substring( 0, eq );
+			String value = line.substring( eq + 1 );
+
+			switch (key) {
+				case "version":
+					int version = Integer.parseInt( value );
+					if (version > Replay.VERSION){
+						throw new IOException( "Replay version " + version
+								+ " is newer than this build understands (" + Replay.VERSION + ")" );
+					}
+					break;
+				case "seed":       replay.seedText = value; break;
+				case "hero":       replay.heroClass = value; break;
+				case "challenges": replay.challenges = Integer.parseInt( value ); break;
+				case "generation": replay.generation = Integer.parseInt( value ); break;
+				case "score":      replay.score = Double.parseDouble( value ); break;
+				case "depth":      replay.depth = Integer.parseInt( value ); break;
+				case "turns":      replay.turns = Integer.parseInt( value ); break;
+				case "turn_limit": replay.turnLimitPerFloor = Integer.parseInt( value ); break;
+				case "steps":      declaredSteps = Integer.parseInt( value ); break;
+				default: break;
+			}
+
+			index++;
+		}
+
+		for (int i = 0; i < declaredSteps; i++, index++ ){
+			if (index >= lines.size()){
+				throw new IOException( "Replay truncated after " + i + " of "
+						+ declaredSteps + " steps" );
+			}
+
+			String line = lines.get( index );
+			String[] parts = line.split( " " );
+			if (parts.length < 3){
+				throw new IOException( "Malformed replay step: " + line );
+			}
+
+			Replay.Step step = new Replay.Step();
+			step.action = parts[ 0 ];
+			step.slot = Integer.parseInt( parts[ 1 ] );
+			step.mode = parts[ 2 ];
+			if (parts.length > 3) step.heroPos = Integer.parseInt( parts[ 3 ] );
+			if (parts.length > 4) step.reward = Double.parseDouble( parts[ 4 ] );
+			replay.steps.add( step );
+		}
+
+		return replay;
+	}
+
+	// --------------------------------------------------------------------------- playback
+
+	/** What a headless playback observed, for verifying that a replay still reproduces. */
+	public static class Result {
+		public double score;
+		public int depth;
+		public int turns;
+		public int stepsPlayed;
+		public boolean diverged;
+		public int divergedAt = -1;
+	}
+
+	/**
+	 * Replays a run headlessly and reports how it turned out.
+	 *
+	 * Used to verify that a recorded run still reproduces. It does, as long as the seed, the hero
+	 * class and the challenge set all match: the game's per-floor RNG is derived purely from
+	 * {@code Dungeon.seed}, depth and branch, so a floor is a function of the seed alone.
+	 *
+	 * Any divergence is reported rather than hidden, because the moment a replay stops
+	 * reproducing is the moment the seed lock has been broken somewhere and every locked-seed
+	 * comparison in the trainer becomes meaningless.
+	 */
+	public static Result play( Replay replay, SPDEnv env ){
+		Result result = new Result();
+
+		HeroClass heroClass;
+		try {
+			heroClass = HeroClass.valueOf( replay.heroClass );
+		} catch (IllegalArgumentException e){
+			heroClass = HeroClass.WARRIOR;
+		}
+
+		env.config().turnLimitPerFloor = replay.turnLimitPerFloor;
+		env.reset( replay.seedText, heroClass );
+
+		int cumulative = 0;
+		for (int i = 0; i < replay.steps.size(); i++){
+			if (!env.running()) break;
+
+			Replay.Step step = replay.steps.get( i );
+			Action action = Action.valueOf( step.action );
+
+			cumulative += env.step( action, step.slot );
+			result.stepsPlayed++;
+
+			//the recorded position is where the hero ended up, so this is an exact check that
+			//the replayed run is following the same path
+			if (step.heroPos >= 0 && env.heroPosition() != step.heroPos ){
+				result.diverged = true;
+				result.divergedAt = i;
+				break;
+			}
+		}
+
+		result.score = env.ledger().total();
+		result.depth = env.depth();
+		result.turns = env.turnsTotal();
+		return result;
+	}
+}

@@ -246,7 +246,53 @@ public abstract class Actor implements Bundlable {
 	}
 	
 	public static boolean keepActorThreadAlive = true;
-	
+
+	/**
+	 * Single threaded equivalent of one iteration of {@link #process()}, for headless training
+	 * rollouts in the 'superintelligence' module.
+	 *
+	 * process() blocks in wait() for a render thread to poke it, which a rollout has no use for.
+	 * Selection, tie breaking and time bookkeeping here are identical; only the handshake is gone.
+	 *
+	 * @return true if the actor that just acted wants to act again immediately (spent no time),
+	 *         false if the caller should yield and let other actors catch up.
+	 */
+	public static boolean headlessStep(){
+
+		//a pending scene switch means the game is handing off, eg. to a level transition
+		if (Game.switchingScene()){
+			current = null;
+			return false;
+		}
+
+		Actor acting = null;
+		float earliest = Float.MAX_VALUE;
+
+		for (Actor actor : all) {
+			//some actors will always go before others if time is equal.
+			if (actor.time < earliest ||
+					(actor.time == earliest && (acting == null || actor.actPriority > acting.actPriority))) {
+				earliest = actor.time;
+				acting = actor;
+			}
+		}
+
+		if (acting == null){
+			current = null;
+			return false;
+		}
+
+		now = earliest;
+		current = acting;
+
+		if (acting.act() && (Dungeon.hero == null || !Dungeon.hero.isAlive())){
+			current = null;
+			return false;
+		}
+
+		return current != null;
+	}
+
 	public static void process() {
 		
 		boolean doNext;

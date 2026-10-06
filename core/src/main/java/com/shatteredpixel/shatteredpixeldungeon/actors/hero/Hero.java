@@ -723,10 +723,10 @@ public class Hero extends Char {
 		
 		Momentum momentum = buff(Momentum.class);
 		if (momentum != null){
-			((HeroSprite)sprite).sprint( momentum.freerunning() ? 1.5f : 1f );
+			((CharSprite)sprite).sprint( momentum.freerunning() ? 1.5f : 1f );
 			speed *= momentum.speedMultiplier();
 		} else {
-			((HeroSprite)sprite).sprint( 1f );
+			((CharSprite)sprite).sprint( 1f );
 		}
 
 		NaturesPower.naturesPowerTracker natStrength = buff(NaturesPower.naturesPowerTracker.class);

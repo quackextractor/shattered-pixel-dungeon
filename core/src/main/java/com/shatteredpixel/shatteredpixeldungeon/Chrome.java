@@ -21,6 +21,7 @@
 
 package com.shatteredpixel.shatteredpixeldungeon;
 
+import com.badlogic.gdx.Gdx;
 import com.watabou.noosa.NinePatch;
 
 public class Chrome {
@@ -44,7 +45,18 @@ public class Chrome {
 		BLANK
 	}
 	
+	/** Shared blank nine patch, used when there is no renderer to draw a border from. */
+	private static NinePatch blank = null;
+
 	public static NinePatch get( Type type ) {
+		//with no renderer there is no chrome to draw, and decoding the asset would need a live
+		//texture backend. Returning a blank lets windows still be constructed and driven, which is
+		//how dialogs work in a headless build. See the 'superintelligence' module.
+		if (Gdx.gl == null) {
+			if (blank == null) blank = new NinePatch();
+			return blank;
+		}
+
 		String Asset = Assets.Interfaces.CHROME;
 		switch (type) {
 		case WINDOW:

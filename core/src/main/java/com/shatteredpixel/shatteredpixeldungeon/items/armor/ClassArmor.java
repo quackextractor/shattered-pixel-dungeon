@@ -35,6 +35,7 @@ import com.shatteredpixel.shatteredpixeldungeon.effects.Speck;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfEnergy;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.HeroSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite;
@@ -234,7 +235,7 @@ abstract public class ClassArmor extends Armor {
 								if (hero.belongings.armor == armor){
 									hero.belongings.armor = null;
 									if (hero.sprite instanceof HeroSprite) {
-										((HeroSprite) hero.sprite).updateArmor();
+										((CharSprite) hero.sprite).updateArmor();
 									}
 								}
 								level(armor.trueLevel());

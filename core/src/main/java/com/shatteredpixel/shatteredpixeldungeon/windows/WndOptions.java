@@ -29,6 +29,8 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.RenderedTextBlock;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.watabou.noosa.Image;
 
+import java.util.ArrayList;
+
 public class WndOptions extends Window {
 
 	protected static final int WIDTH_P = 120;
@@ -111,6 +113,7 @@ public class WndOptions extends Window {
 			}
 
 			btn.enable(enabled(i));
+			optionButtons.add( btn );
 
 			pos += BUTTON_HEIGHT + MARGIN;
 		}
@@ -120,6 +123,24 @@ public class WndOptions extends Window {
 
 	protected boolean enabled( int index ){
 		return true;
+	}
+
+	//buttons are built in option order, so keeping them lets the headless training module
+	//enumerate and answer a dialog with no UI present
+	private final ArrayList<RedButton> optionButtons = new ArrayList<>();
+
+	public int optionCount(){
+		return optionButtons.size();
+	}
+
+	public boolean optionSelectable( int index ){
+		return index >= 0 && index < optionButtons.size() && optionButtons.get( index ).active;
+	}
+
+	/** Triggers option {@code index} as if clicked. False if absent or disabled. */
+	public boolean selectOption( int index ){
+		if (!optionSelectable( index )) return false;
+		return optionButtons.get( index ).press();
 	}
 	
 	protected void onSelect( int index ) {}

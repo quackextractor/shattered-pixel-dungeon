@@ -21,6 +21,7 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.effects;
 
+import com.badlogic.gdx.Gdx;
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
 import com.watabou.gltextures.SmartTexture;
 import com.watabou.noosa.NinePatch;
@@ -30,13 +31,24 @@ public class ShadowBox extends NinePatch {
 	public static final float SIZE	= 16;
 	
 	public ShadowBox() {
-		super( Assets.Interfaces.SHADOW, 1 );
+		super( textureSource(), 1 );
 
 		//If this is the first time the texture is generated, set the filtering
-		if (texture.id == -1)
+		if (texture != null && texture.id == -1)
 			texture.filter( SmartTexture.LINEAR, SmartTexture.LINEAR );
-		
+
 		scale.set( SIZE, SIZE );
+	}
+
+	/**
+	 * Picks the texture to build from.
+	 *
+	 * With no renderer there is no shadow to load, and the game's assets need a live texture
+	 * backend to decode. Returning null gets the blank nine patch instead, which still sizes
+	 * correctly - see the 'superintelligence' module, which builds dialogs without a renderer.
+	 */
+	private static Object textureSource(){
+		return (Gdx.gl == null) ? null : Assets.Interfaces.SHADOW;
 	}
 	
 	@Override
