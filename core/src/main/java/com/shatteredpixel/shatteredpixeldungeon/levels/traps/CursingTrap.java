@@ -39,7 +39,7 @@ import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 import com.watabou.noosa.audio.Sample;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import com.watabou.utils.Random;
 
 public class CursingTrap extends Trap {
 
@@ -102,10 +102,10 @@ public class CursingTrap extends Trap {
 		}
 
 		if (!priorityCurse.isEmpty()){
-			Collections.shuffle(priorityCurse);
+			Random.shuffle(priorityCurse);
 			curse(priorityCurse.remove(0));
 		} else if (!canCurse.isEmpty()){
-			Collections.shuffle(canCurse);
+			Random.shuffle(canCurse);
 			curse(canCurse.remove(0));
 		}
 

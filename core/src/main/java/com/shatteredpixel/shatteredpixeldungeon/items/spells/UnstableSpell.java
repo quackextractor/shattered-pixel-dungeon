@@ -43,7 +43,7 @@ import com.watabou.utils.Random;
 import com.watabou.utils.Reflection;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 
 public class UnstableSpell extends Spell {
@@ -52,7 +52,7 @@ public class UnstableSpell extends Spell {
 		image = ItemSpriteSheet.UNSTABLE_SPELL;
 	}
 	
-	private static HashMap<Class<? extends Scroll>, Float> scrollChances = new HashMap<>();
+	private static LinkedHashMap<Class<? extends Scroll>, Float> scrollChances = new LinkedHashMap<>();
 	static{
 		scrollChances.put( ScrollOfIdentify.class,      3f );
 		scrollChances.put( ScrollOfRemoveCurse.class,   2f );

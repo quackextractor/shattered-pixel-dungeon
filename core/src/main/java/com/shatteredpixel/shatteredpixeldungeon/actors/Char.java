@@ -1187,8 +1187,11 @@ public abstract class Char extends Actor {
 	
 	@SuppressWarnings("unchecked")
 	//returns all buffs assignable from the given buff class
-	public synchronized <T extends Buff> HashSet<T> buffs( Class<T> c ) {
-		HashSet<T> filtered = new HashSet<>();
+	public synchronized <T extends Buff> LinkedHashSet<T> buffs( Class<T> c ) {
+		//LinkedHashSet, not HashSet: Buff does not override hashCode, so a HashSet would hand
+		//callers back in identity-hash order. Several callers sort or iterate the result in a way
+		//that consumes the RNG or folds floats non-associatively, which made runs diverge.
+		LinkedHashSet<T> filtered = new LinkedHashSet<>();
 		for (Buff b : buffs) {
 			if (c.isInstance( b )) {
 				filtered.add( (T)b );

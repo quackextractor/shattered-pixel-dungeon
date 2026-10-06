@@ -686,7 +686,7 @@ public class VaultBossElemental extends Mob {
 		wallDistances.add(3, (c.y+6) - heroPos.y);
 
 		ArrayList<Integer> sortedDistances = (ArrayList<Integer>) wallDistances.clone();
-		Collections.shuffle(sortedDistances);
+		Random.shuffle(sortedDistances);
 		Collections.sort(sortedDistances);
 
 		int wallFrom = 0;
