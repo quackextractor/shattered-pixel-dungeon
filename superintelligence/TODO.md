@@ -12,8 +12,8 @@ successful multi-hero reproducibility sweep.
 
 **Fixed.** Recording a run and re-executing it in a fresh process now reproduces exactly.
 
-Verified: 6 rollouts of one seed across 6 separate JVMs produce 1 distinct score, for each of the
-five hero classes; a recorded 499-step run verifies 4/4 in fresh processes.
+Verified: 120 rollouts - 4 seeds x 5 hero classes x 6 repeats - produce 1 distinct score per
+seed/hero pair, and a recorded 499-step run verifies 4/4 in fresh processes.
 
 A second pass found more identity-hash iteration after the first fix: `Char.buffs(Class)` handed
 callers a `HashSet`, `Random.chances(HashMap)` chose secret room contents off a `Class`-keyed
@@ -98,14 +98,34 @@ testbed around a learning loop that does not run.
 
 | # | Task | Size | Notes |
 | --- | --- | --- | --- |
-| 1.1 | Call `PPO.rollout()` in `Worker.runEpisode` in place of `ScriptedPolicy` | S | The worker already has the env, the network and the masks. |
+| 1.1 | Call `PPO.collect()` in `Worker.runEpisode` in place of `ScriptedPolicy` | S | The worker already has the env, the network and the masks. Collection is capped and safe to resume. |
 | 1.2 | Run one generation end to end and check `lastPolicyLoss` / `lastValueLoss` are sane | S | |
 | 1.3 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
+
+**`PPO.collect()` is capped and verified.** `rolloutCap` (default 2048) bounds collection at ~98MB,
+because a step is ~49KB and `turnLimitTotal` is 40000 - uncapped, one long episode is ~1.9GB
+against a 1536m worker heap. A cap leaves the env mid-episode and resumes it next call. Verified
+across 20 cases (4 seeds x 5 caps): with no update mid-episode every cap reproduces whole-episode
+collection exactly, including cap=1. An update mid-episode deliberately resets the recurrent state -
+a weight change is an information boundary - so the same seed keeps reproducing regardless of where
+updates land.
 
 **Worker-to-trainer data flow is unresolved.** The trainer calls `PPO.update()` on its own buffer,
 but workers currently return only an episode summary and a replay, not transitions. Either
 transitions have to reach the trainer for a pooled update, or each worker updates locally and the
 updated weights have to be returned. This has to be decided before 1.1 means anything.
+
+**Headless coverage is the next likely source of crashes.** Running the real policy surfaced three
+that the scripted one never touched: blobs had no emitter (15 blob types NPE in `evolve()`),
+`GameScene.cancel()` dereferenced a null `cellSelector`, and `GameScene.spellSprite()` read
+`scene.spells` unguarded. All three are fixed, but they are a class of bug, not three isolated
+ones - a random policy explores action space the scripted one never did, and there are almost
+certainly more.
+
+**Unverified: hero class appears not to affect the score.** Every hero class produced an identical
+score and turn count on the same seed. `GamesInProgress.selectedClass` is applied in
+`Dungeon.init`, so the class does reach the hero, and the score is probably driven by turns and
+depth rather than anything class-specific. Not confirmed either way.
 
 research.md:40 sets the first real milestone: *"Train the AI on a single seed until it can
 consistently beat the first boss (Goo)."* Nothing has been trained, so nothing has been beaten.

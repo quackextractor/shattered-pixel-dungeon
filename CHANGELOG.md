@@ -9,11 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `PPO.rolloutCap` bounds collection between updates. It is not only a memory guard: PPO measures
+  how far the policy has drifted since it collected the data, so frequent updates are what PPO
+  wants anyway.
+
 - `gradle :superintelligence:gradcheck` (or `gradcheck --verbose`) finite-difference checks the
   network's analytic gradients against central differences and exits non-zero on a mismatch, so a
   broken backward pass fails loudly instead of silently training the wrong function.
 
 ### Fixed
+
+- **An uncapped PPO rollout was an out-of-memory crash waiting to happen.** Collection stored every
+  step of an episode until the next update. A step is dominated by its packed grid at ~49KB and
+  `turnLimitTotal` is 40000, so one long episode is ~1.9GB against a 1536m worker heap.
+  `PPO.collect()` now stops at `rolloutCap` (default 2048, ~98MB) and leaves the env mid-episode,
+  resuming it with the recurrent state intact on the next call, so a long episode is collected
+  across several calls instead of being cut short. Each collection is its own advantage segment.
+
+  An update invalidates the hidden state of an episode still in progress - it changes the weights
+  that state came from, and resets the state itself to shuffle minibatches. A weight change is now
+  an information boundary and the agent forgets, because otherwise where updates happened to land
+  would silently change an episode's actions and the same seed would stop reproducing.
+
+- Three headless crashes that the scripted policy never reached but a random one walks into
+  immediately, all the same shape of problem as a missing sprite:
+  - Blobs had no emitter, so any of the fifteen blob types calling `emitter.pour()` from
+    `evolve()` died with an NPE. `LevelPipeline` now attaches them alongside sprites.
+  - `GameScene.cancel()` and `cancelCellSelector()` dereferenced a null `cellSelector`, so using
+    any item crashed.
+  - `GameScene.spellSprite()` read `scene.spells` with no null check, unlike the `emitter()`
+    directly beside it, so eating food crashed.
 
 - **The policy network's gradients were wrong in five separate ways, so training optimised a
   function other than the policy loss.** The network had never been executed before this, so none
@@ -65,8 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entry point, so `--args` was parsed as the command and both tasks failed. The subcommand is now
   prepended at execution time, which also keeps working when `--args` is supplied.
 
-  Verified: 6 rollouts of one seed across 6 separate JVMs produce 1 distinct score, for each of
-  the five hero classes; a recorded 499-step run re-executes exactly 4 times out of 4.
+  Verified: 120 rollouts - 4 seeds x 5 hero classes x 6 repeats - produce one distinct score per
+  seed/hero pair, and a recorded 499-step run re-executes exactly 4 times out of 4.
 
 ## [4.1.0] - 2026-10-06
 
