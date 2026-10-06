@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every episode ended `STALLED` after 8-13 turns,** which made the environment useless for
+  collecting experience. `Hero.act()` was being entered with a null `curAction`: it clears `ready` and
+  then dispatches on `curAction`, so no branch matches, and `Hero.ready()` is the only thing in the
+  game that sets `ready` back to true. A normal playthrough never reaches that state because the cell
+  selector re-prompts for input, and that prompt is what calls `ready()`; headless there is no scene
+  and no selector, so nothing was left to re-prompt. Five seeds that all stalled now run the full
+  turn budget.
+- **`MENU` mode was unreachable in a real run,** not merely hard to record. `step()` cleared the
+  pending dialog on every turn, so the step that could have answered it arrived to find it gone and
+  the rollout sat selecting at nothing until it stalled. Clearing now happens on `reset()`, where
+  per-run state belongs.
+- **The `MENU` branch never returned to `WORLD`,** so a dialog could be answered successfully and the
+  mode still never changed hands again.
+- **`WindowBridge.open()` meant "a window is showing" rather than "a dialog the agent can answer."**
+  `GameScene.show` parks informational windows there too, and "you cannot leave the dungeon yet"
+  arrives that way constantly, so each one put the environment into `MENU` with nothing to select.
+- **`SLOT` had no entry in the action mask** and fell through to the `WORLD` mask, which offered
+  movement and `WAIT` while the environment was waiting for an item choice. `SlotAction.execute`
+  treats every action that is neither `CANCEL` nor `DROP` as a use, so a legal-looking move there spent
+  the item.
+- **`EnvMode.INVENTORY` was unreachable.** The mode was documented on `Action.OPEN_INVENTORY` but
+  never assigned, and `OPEN_INVENTORY` fell through to the generic cell handling as a no-op, so no
+  rollout could ever contain the mode and no replay could exercise it. It is now entered from the
+  `WORLD` step and offered in the `WORLD` action mask, and its branch resolves an aim the same way
+  `SLOT` does instead of dropping it.
+- **Throwing stones were equipped rather than thrown.** `SlotAction.use` tested equipability before
+  the item's own action, and `Weapon extends EquipableItem`, so a missile weapon took the equip path.
+- **Every equipment change invented a targeting step.** `SlotAction.use` returned `toggleEquip`'s
+  "equipped OK" boolean, which the environment read as "needs an aim", and its success path returned
+  `true` outright, so plain consumables falsely demanded an aim too.
+- **A refused equip stalled the episode.** `toggleEquip` returned without releasing the hero, which
+  left it permanently mid-action; the pipeline never saw it become ready and the run ended `STALLED`
+  within about a dozen turns.
+- **No aim could ever be resolved or cancelled.** `SPDEnv.step` cleared the pending use item on every
+  step, including the `TARGETING` step that needed it. `CANCEL` during targeting was also treated as a
+  throw at the default target, spending the item. `CANCEL` is now handled on its own and releases the
+  hero's turn.
 - **The replay viewer could leave the game completely unresponsive.** Reaching a transition the hero
   cannot use raises an informational `WndMessage` - "you cannot leave the dungeon yet" - and windows
   are modal, so the scene stopped accepting input while playback carried on, driven by the frame hook
@@ -30,30 +67,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-null field then prevented a rebuild. It is now rebuilt whenever the live scene changes.
 - **Resuming a diverged replay re-reported the same divergence forever.** Divergence is now sticky,
   since a diverged game can never rejoin the recording's path.
-- **`GameScene` gained `topWindow()`.** `showingWindow()` only reports whether a window exists, which
-  is not enough to decide what to do about one.
-- **`EnvMode.INVENTORY` was unreachable.** The mode was documented on `Action.OPEN_INVENTORY` but
-  never assigned, and `OPEN_INVENTORY` fell through to the generic cell handling as a no-op, so no
-  rollout could ever contain the mode and no replay could exercise it. It is now entered from the
-  `WORLD` step and offered in the `WORLD` action mask, and its branch resolves an aim the same way
-  `SLOT` does instead of dropping it.
-- **Throwing stones were equipped rather than thrown.** `SlotAction.use` tested equipability before
-  the item's own action, and `Weapon extends EquipableItem`, so a missile weapon took the equip path.
-- **Every equipment change invented a targeting step.** `SlotAction.use` returned `toggleEquip`'s
-  "equipped OK" boolean, which the environment read as "needs an aim", and its success path returned
-  `true` outright, so plain consumables falsely demanded an aim too.
-- **A refused equip stalled the episode.** `toggleEquip` returned without releasing the hero, which
-  left it permanently mid-action; the pipeline never saw it become ready and the run ended `STALLED`
-  within about a dozen turns.
-- **No aim could ever be resolved or cancelled.** `SPDEnv.step` cleared the pending use item on every
-  step, including the `TARGETING` step that needed it. `CANCEL` during targeting was also treated as a
-  throw at the default target, spending the item. `CANCEL` is now handled on its own and releases the
-  hero's turn.
 - **On-screen replay divergence could never fire.** `ReplayPlayer` advanced the playback cursor before
   comparing the landing cell, and advancing clears the expected position, so the check always passed.
+- **`GameScene` gained `topWindow()`.** `showingWindow()` only reports whether a window exists, which
+  is not enough to decide what to do about one.
 
 ### Added
 
+- **`gradle :superintelligence:modecheck`** fails if the environment cannot reach one of its own
+  action modes. It drives an explicit script through `WORLD`, `SLOT`, `TARGETING`, `INVENTORY` and
+  `MENU`, resolves a real aim rather than cancelling one, and executes a drop. Six real bugs reached
+  main while every recording was `WORLD`-only, and a replay fixture cannot prevent a recurrence:
+  nothing failed when a mode quietly stopped being reachable.
+- **`gradle :superintelligence:restartcheck`** fails if restarting a run does not rebuild an identical
+  floor 1, even after several hundred turns have churned the random generators.
 - **`replay-viewer.bat`** plays, records and verifies recordings from a terminal: `replay-viewer`
   plays the newest one, `--record <seed>` makes one, `--verify <file>` checks one, `--list` shows them.
   It drives Gradle tasks rather than hand-building a classpath, and resolves paths to absolute first

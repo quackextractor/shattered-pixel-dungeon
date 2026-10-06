@@ -93,6 +93,8 @@ cliTask('verify', 'Re-executes a recorded run headlessly and confirms it still r
 
 cliTask('modecheck', 'Fails if the environment cannot reach one of its own action modes.')
 
+cliTask('restartcheck', 'Fails if restarting a run does not rebuild the same first floor.')
+
 //Everything the trainer and its workers need on one classpath, so a worker can be launched
 //with a plain `java -cp` instead of forking gradle.
 tasks.register('workerJar', Jar) {

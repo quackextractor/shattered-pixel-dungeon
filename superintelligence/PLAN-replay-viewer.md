@@ -462,14 +462,45 @@ Two `for /f` traps cost real time and are worth writing down:
 
 Still untested:
 
-- **`MENU`,** and a real throw inside `TARGETING` (see above).
+- **A dialog inside a recording.** `modecheck` proves the `MENU` path works end to end, and the two
+  bugs that made it unreachable in a real run are fixed, but no *recorded* run contains `MENU` yet:
+  it needs a real `WndOptions`, and eight seeds at 1501 turns each produced none. The scripted policy
+  never reaches an NPC, a shop or an upgraded missile, which are the reachable triggers.
 - **Whether a viewer session can leave a save behind.** A viewer run uses the real preferences path.
 - **A genuine death recording.** `world-death.replay` is named for its ending but the hero starved
   rather than died.
-- **`PlatformSupport.getFont` throws "No cap character found in font".** `parameters.characters` is
-  set to `"?"`, so libGDX finds no capital to size the face from. This is upstream code from 2021
-  against GDX 1.14, it affects the base game as much as the viewer, and `Game.logException` only logs
-  it - so it was left alone rather than changed blind in shared rendering code. Worth a separate look.
+- **Visual fidelity.** The controls have been driven by a human; nobody has checked that the sprites
+  and animation actually look right.
+- **`PlatformSupport.getFont` throws "No cap character found in font",** which breaks every message
+  window in the base game as well as the viewer. The cause is upstream and is now pinned down: on
+  libGDX 1.14.0 `generateFont` reads `fontData.capChars` to size the face, and nothing in GDX ever
+  populates that array, so the sizing loop never runs and `capHeight` stays at its `1f` sentinel. It
+  is then impossible to satisfy - passing an explicit `characters` reaches the throw, and leaving it
+  null dies earlier on `parameter.characters.toCharArray()`. The font itself is fine (936 glyphs, all
+  26 capitals). Only libGDX 1.14.0 is in the offline cache, so this cannot be fixed here without
+  changing the dependency, and it was left alone rather than worked around in shared rendering code.
+
+## 13. What the checks now cover
+
+Two of these were verified by hand before anything automated existed, which is why the first batch of
+bugs was invisible to a test suite that only ever walked around.
+
+- `gradle :superintelligence:modecheck` drives an explicit script through every action mode and fails
+  if any is unreachable. It resolves a real aim rather than cancelling one, and executes a drop.
+- `gradle :superintelligence:restartcheck` rebuilds a run after several hundred turns of play and
+  fails if floor 1 does not come back identical. This exists because restarting was suspected of
+  diverging - the generator stack is churned by every mob turn and item roll since launch, and nothing
+  guarantees it is back where it started. It is: the suspicion was wrong, and the check now keeps it
+  honest.
+- `replay-viewer.bat --verify <file>` re-runs a recording headlessly.
+
+Episode length is the headline change from this round. Every rollout used to end `STALLED` after 8-13
+turns, which made the environment worthless for collecting experience; five seeds that all stalled now
+run the full 1501. The cause was `Hero.act()` being entered with a null `curAction`: it clears `ready`
+and then dispatches on `curAction`, so no branch matches, and `Hero.ready()` is the only thing in the
+game that sets `ready` back to true. A normal playthrough never gets there because the cell selector
+re-prompts for input, and that prompt is what calls `ready()`. Headless there is no scene and no
+selector, so nothing was left to re-prompt.
 
 
 
