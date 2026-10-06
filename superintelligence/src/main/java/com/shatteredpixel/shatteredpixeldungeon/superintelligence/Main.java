@@ -22,7 +22,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayR
  *   rollout  play one run headlessly with the scripted policy, print the run report, optionally
  *            save it as a replay. This is the smoke test: if this cannot complete a floor the
  *            environment is not wired up.
- *   replay   load a saved run and play it back headlessly, verifying it still reproduces.
+ *   verify    re-execute a saved run headlessly and confirm it still reproduces.
  *   train    run the PPO trainer across worker JVMs. See train.Trainer.
  * </pre>
  */
@@ -40,7 +40,7 @@ public class Main {
 
 		switch (command) {
 			case "rollout":  rollout( rest );  break;
-			case "replay":   replay( rest );   break;
+			case "verify":    verify( rest );    break;
 			case "train":    Trainer( rest );   break;
 			case "help":     usage();          break;
 			default:
@@ -54,7 +54,7 @@ public class Main {
 		System.out.println( "Shattered Pixel Dungeon - headless training framework" );
 		System.out.println();
 		System.out.println( "  rollout [options]        play one run headlessly and report it" );
-		System.out.println( "  replay <file> [options]  play a saved run back and verify it" );
+		System.out.println( "  verify <file> [options]  re-run a saved run and confirm it reproduces" );
 		System.out.println( "  train [options]          run the PPO trainer across worker JVMs" );
 		System.out.println();
 		System.out.println( "options:" );
@@ -131,7 +131,7 @@ public class Main {
 
 	// --------------------------------------------------------------------------- replay
 
-	private static void replay( String[] args ){
+	private static void verify( String[] args ){
 		if (args.length == 0){
 			System.err.println( "[ERROR] replay needs a file" );
 			System.exit( 1 );
@@ -151,7 +151,7 @@ public class Main {
 			return;
 		}
 
-		System.out.println( "replay: seed=" + (replay.seedText.isEmpty() ? "<random>" : replay.seedText)
+		System.out.println( "verify: seed=" + (replay.seedText.isEmpty() ? "<random>" : replay.seedText)
 				+ " hero=" + replay.heroClass
 				+ " steps=" + replay.steps.size()
 				+ " recorded score=" + replay.score );
@@ -160,7 +160,7 @@ public class Main {
 		SPDEnv env = new SPDEnv( new EnvConfig(), game );
 
 		long start = System.nanoTime();
-		ReplayIO.Result result = ReplayIO.play( replay, env );
+		ReplayIO.Verification result = ReplayIO.verify( replay, env );
 		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
 		RunReport report = new RunReport( env.ledger(), replay.seedText );
@@ -178,7 +178,7 @@ public class Main {
 			System.exit( 2 );
 		} else {
 			System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "     replay reproduced in "
-					+ result.stepsPlayed + " steps, " + elapsedMs + " ms" );
+					+ result.stepsVerified + " steps, " + elapsedMs + " ms" );
 			System.out.println( Ansi.wrap( "score", Ansi.DIM ) + "    recorded "
 					+ replay.score + ", reproduced " + result.score
 					+ (Math.abs( replay.score - result.score ) < 1e-6 ? "" : "  [WARN] differs") );

@@ -1174,6 +1174,12 @@ public class GameScene extends PixelScene {
 			//heaps that aren't added as part of levelgen don't count for exploration bonus
 			heap.autoExplored = true;
 			scene.addHeapSprite( heap );
+		} else if (heap.sprite == null) {
+			//game logic calls heap.sprite unconditionally once a heap exists - trampling grass
+			//drops an item and animates it - so the sprite has to exist even with no scene.
+			//ItemSprite uses the index-only film, which needs no renderer.
+			ItemSprite sprite = heap.sprite = new ItemSprite( heap );
+			sprite.link( heap );
 		}
 	}
 	

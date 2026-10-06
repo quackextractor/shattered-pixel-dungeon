@@ -63,5 +63,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dialog with no UI.
 - `Item.throwAt()` - the bookkeeping half of `Item.cast`, without a projectile sprite.
 
+### Documentation
+
+- `superintelligence/TODO.md` - status against the design documents: what still needs doing, ordered
+  by what unblocks learning first; deliberate deviations with the cost of each; and the source
+  documents' references to classes that no longer exist in this version.
+
+### Renamed
+
+- `ReplayIO.play` is now `ReplayIO.verify`, and `ReplayIO.Result` is `ReplayIO.Verification`. The
+  operation re-executes a recording to check determinism and draws nothing; `play` implied a human
+  watching the game, which the desktop viewer - still to be built - would do. The `replay` CLI
+  subcommand and Gradle task are now `verify`. The `Replay` file format keeps its name: a recorded
+  run that can be re-executed is a replay.
+
 [4.1.0]: https://github.com/00-Evan/shattered-pixel-dungeon/compare/v4.0.1...v4.1.0
 [Unreleased]: https://github.com/00-Evan/shattered-pixel-dungeon/compare/v4.1.0...HEAD

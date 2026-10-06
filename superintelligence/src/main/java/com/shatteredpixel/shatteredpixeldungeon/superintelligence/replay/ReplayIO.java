@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 /**
- * Reads and writes {@link Replay} files, and replays a run headlessly.
+ * Reads and writes {@link Replay} files, and re-executes a recorded run to check it still reproduces.
  *
  * The format is line based text rather than a binary blob. Replays are small - a few thousand
  * decisions per run - and a format a human can read means a suspicious run can be diffed against a
@@ -142,20 +142,24 @@ out.write( "turns=" + replay.turns );
 		return replay;
 	}
 
-	// --------------------------------------------------------------------------- playback
+	// --------------------------------------------------------------------------- verification
 
-	/** What a headless playback observed, for verifying that a replay still reproduces. */
-	public static class Result {
+	/** What re-executing a recorded run observed. */
+	public static class Verification {
 		public double score;
 		public int depth;
 		public int turns;
-		public int stepsPlayed;
+		public int stepsVerified;
 		public boolean diverged;
 		public int divergedAt = -1;
 	}
 
 	/**
-	 * Replays a run headlessly and reports how it turned out.
+	 * Re-executes a recorded run and reports whether it reproduced.
+	 *
+	 * <p>This is a determinism regression check, not a playback. Nothing is drawn and no one is
+	 * watching - the value is in catching the moment the recorded path stops matching, because every
+	 * locked-seed comparison in the trainer becomes meaningless at that point.
 	 *
 	 * Used to verify that a recorded run still reproduces. It does, as long as the seed, the hero
 	 * class and the challenge set all match: the game's per-floor RNG is derived purely from
@@ -165,8 +169,8 @@ out.write( "turns=" + replay.turns );
 	 * reproducing is the moment the seed lock has been broken somewhere and every locked-seed
 	 * comparison in the trainer becomes meaningless.
 	 */
-	public static Result play( Replay replay, SPDEnv env ){
-		Result result = new Result();
+	public static Verification verify( Replay replay, SPDEnv env ){
+		Verification result = new Verification();
 
 		HeroClass heroClass;
 		try {
@@ -186,7 +190,7 @@ out.write( "turns=" + replay.turns );
 			Action action = Action.valueOf( step.action );
 
 			cumulative += env.step( action, step.slot );
-			result.stepsPlayed++;
+			result.stepsVerified++;
 
 			//the recorded position is where the hero ended up, so this is an exact check that
 			//the replayed run is following the same path

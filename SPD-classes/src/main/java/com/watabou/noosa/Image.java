@@ -73,7 +73,16 @@ public class Image extends Visual {
 	
 	public void frame( RectF frame ) {
 		this.frame = frame;
-		
+
+		//a null texture means there was no renderer to load one, so there is no size to derive
+		//from. Keep the rect so layout maths still runs; nothing will be sampled.
+		if (texture == null) {
+			width = 0;
+			height = 0;
+			dirty = true;
+			return;
+		}
+
 		width = frame.width() * texture.width;
 		height = frame.height() * texture.height;
 		

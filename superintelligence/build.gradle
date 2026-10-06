@@ -74,9 +74,9 @@ tasks.register('rollout', JavaExec) {
     jvmArgs trainerJvmArgs
 }
 
-tasks.register('replay', JavaExec) {
+tasks.register('verify', JavaExec) {
     group = 'superintelligence'
-    description = 'Replays a recorded run headlessly and prints the frame-by-frame ledger.'
+    description = 'Re-executes a recorded run headlessly and confirms it still reproduces.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = appMainClass
     jvmArgs trainerJvmArgs

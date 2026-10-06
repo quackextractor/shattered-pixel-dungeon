@@ -45,7 +45,7 @@ public class ScriptedPolicy {
 		switch (mode) {
 			case MENU:
 				slotOut[ 0 ] = 0;
-				return WindowChoice( env );
+				return windowChoice( env );
 
 			case TARGETING:
 				slotOut[ 0 ] = chooseTarget( env );
@@ -70,7 +70,7 @@ public class ScriptedPolicy {
 	 * would wedge the episode instead, so the option is taken and the reward model is what keeps
 	 * a loop from paying.
 	 */
-	private Action WindowChoice( SPDEnv env ){
+	private Action windowChoice( SPDEnv env ){
 		for (int i = 0; i < 32; i++){
 			if (env.windowOptionSelectable( i )) return Action.MENU_SELECT;
 		}

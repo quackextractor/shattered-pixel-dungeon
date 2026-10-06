@@ -3,26 +3,36 @@
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
 described in [`docs.md`](docs.md) and [`research.md`](research.md).
 
-The game runs as a pure simulation - no window, no renderer, no audio - so thousands of runs can be
-rolled out per second, each scored by a configurable reward function, with the best run per seed
-replayable in the real game.
+The game runs as a pure simulation - no window, no renderer, no audio - so runs can be rolled out
+thousands of turns per second, each scored by a configurable reward function, with the best run per
+seed recorded and re-verified.
+
+## Read this first
+
+**Nothing has been trained yet, and the environment is not yet reproducible across processes.** An earlier smoke test reproduced a 249-step run twice and I reported that as working; a six-run audit later found four distinct traces from the same seed. The cause is that only level generation draws from a seeded RNG - the base generator is unseeded - combined with HashSet iteration order in the turn scheduler. One of those two is fixed. See TODO.md section 0, which is now the first thing in the file for a reason. The environment, observation encoder, reward ledger, replay
+verification and diagnostics are done and tested. The learning loop is written but has never been
+executed: `PPO.rollout()` and `PPO.update()` are called from nowhere, and the training worker
+currently acts with a scripted heuristic.
+
+[`TODO.md`](TODO.md) is the full status: what is missing, ordered by what unblocks learning first,
+plus a section on deliberate deviations from the source documents and where each one costs
+something.
 
 ## Status
 
-The engine, environment, observation, reward, replay and diagnostics layers are complete and
-verified. A 400-turn run replays turn-for-turn.
-
 | Area | State |
 | --- | --- |
-| Headless engine (renderer bypassed, single-threaded scheduler) | Working |
-| Level pipeline, floor transitions, chasm falls | Working |
-| Action space, action masking, menus, targeting | Working |
-| Observation encoder (spatial planes + inventory + hero scalars) | Working |
-| Reward model, per-term ledger, curriculum fade | Working |
-| Replay record / verify | Working |
-| Diagnostics dashboard (colour-coded floors, graphs) | Working |
-| CNN + LSTM network, PPO agent | Implemented, not yet tuned |
-| Parallel worker processes, seed schedule | Implemented, not yet exercised at scale |
+| Headless engine (renderer bypassed, single-threaded scheduler) | Runs, **not reproducible across processes** - see TODO section 0 |
+| Level pipeline, floor transitions, chasm falls | Verified |
+| Action space, action masking, menus, targeting | Verified |
+| Observation encoder (spatial planes + inventory + hero scalars) | Verified |
+| Replay record / re-verify | Implemented; verification fires spuriously until TODO 0.2 is fixed |
+| Diagnostics dashboard (colour-coded floors, graphs) | Console only |
+| Reward model, per-term ledger, curriculum fade | Partial - 6 terms never fire |
+| CNN + LSTM network, PPO agent | Written, never executed |
+| Parallel worker processes, seed schedule | Written, untested at scale |
+| Graphical trainer UI, desktop replay viewer | Not started |
+| Garbage collection / object pooling audit (research.md:60) | Not started |
 
 ## Usage
 
@@ -33,8 +43,8 @@ verified. A 400-turn run replays turn-for-turn.
 # record a run as a replay
 ./gradlew :superintelligence:rollout --args="--seed PROBESEED --save run.dat"
 
-# replay a recorded run and verify it still reproduces
-./gradlew :superintelligence:replay --args="run.dat"
+# replay a recorded run and confirm it still reproduces
+./gradlew :superintelligence:verify --args="run.dat"
 
 # train
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"

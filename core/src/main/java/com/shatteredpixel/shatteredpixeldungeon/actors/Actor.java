@@ -267,13 +267,21 @@ public abstract class Actor implements Bundlable {
 
 		Actor acting = null;
 		float earliest = Float.MAX_VALUE;
+		int lowestId = Integer.MAX_VALUE;
 
 		for (Actor actor : all) {
-			//some actors will always go before others if time is equal.
+			//Actor.all is a HashSet keyed on identity hash, so its iteration order differs between
+			//JVM runs. Breaking ties on actPriority alone therefore lets the order decide who acts,
+			//which makes an otherwise seeded run irreproducible across processes. Actor.id() is
+			//assigned in creation order and is stable, so it is used as the final tiebreak.
 			if (actor.time < earliest ||
-					(actor.time == earliest && (acting == null || actor.actPriority > acting.actPriority))) {
+					(actor.time == earliest && (acting == null
+							? true
+							: actor.actPriority > acting.actPriority
+								|| (actor.actPriority == acting.actPriority && actor.id() < lowestId)))) {
 				earliest = actor.time;
 				acting = actor;
+				lowestId = actor.id();
 			}
 		}
 
