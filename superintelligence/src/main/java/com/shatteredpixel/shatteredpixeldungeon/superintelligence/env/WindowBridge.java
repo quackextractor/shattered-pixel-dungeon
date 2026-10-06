@@ -19,8 +19,17 @@ public class WindowBridge {
 
 	private WindowBridge() {}
 
+/**
+	 * True when a dialog the agent can actually answer is waiting.
+	 *
+	 * Deliberately narrower than "a window is showing". {@code GameScene.show} parks informational
+	 * windows here too - "you cannot leave the dungeon yet" arrives this way and is by far the most
+	 * common - and those have no options to choose. Treating them as open put the environment into
+	 * MENU with nothing to select, so every such step was an invalid action and the episode sat in
+	 * MENU until it stalled.
+	 */
 	public static boolean open(){
-		return GameScene.headlessWindow() != null;
+		return GameScene.headlessWindow() instanceof WndOptions;
 	}
 
 	/** Number of selectable options, or 0 when the window is not a WndOptions. */

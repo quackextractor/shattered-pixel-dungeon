@@ -116,7 +116,13 @@ public class ActionMapper {
 			return;
 		}
 
-		if (mode == EnvMode.INVENTORY){
+		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY){
+			//SLOT used to fall through to the WORLD mask below, which offered movement and WAIT while
+			//the environment was waiting for an item choice. That is not merely a cosmetic mismatch:
+			//SlotAction.execute treats every action that is neither CANCEL nor DROP as a use, so a
+			//legal-looking MOVE here spent the item. The mask cannot see which slot was picked - it
+			//takes no slot argument - so this mirrors INVENTORY and asks whether any usable or
+			//droppable item exists.
 			mask[Action.CANCEL.index] = 1f;
 			if (hasUsableItem()) mask[Action.USE.index] = 1f;
 			if (hasDroppableItem()) mask[Action.DROP.index] = 1f;

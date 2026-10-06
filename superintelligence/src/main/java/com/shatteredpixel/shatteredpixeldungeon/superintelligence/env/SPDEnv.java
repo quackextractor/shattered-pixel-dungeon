@@ -98,6 +98,11 @@ public class SPDEnv {
 		pipeline.startRun( seedText, heroClass, 0 );
 
 		mode = EnvMode.WORLD;
+		//A dialog belongs to one run. Clearing it per step instead meant the step that could have
+		//answered it arrived to find it already gone, so MENU could not be reached at all. It cannot
+		//survive into a WORLD step anyway: settle() switches to MENU whenever a dialog is open.
+		GameScene.clearHeadlessWindow();
+		SlotAction.clearPendingUseItem();
 		turnsThisFloor = 0;
 		turnsTotal = 0;
 		lastDepth = 1;
@@ -140,13 +145,23 @@ public class SPDEnv {
 	public double step( Action action, int slot ){
 		if (!running) throw new IllegalStateException( "step() after the episode ended" );
 
+		//A dialog is state the agent is meant to be answering, so it survives into the step that
+		//resolves it. It used to be cleared on every step, which meant the step that could have
+		//answered it arrived to find it already gone: entering MENU needs a dialog, so WindowBridge
+		//had nothing to select and every rollout that reached one sat choosing at nothing until it
+		//stalled. MENU was not merely hard to record - it was unreachable in a real run.
+		//
+		//The aim listener is deliberately still cleared every step, including TARGETING.
+		//SlotAction.pendingUseItem survives, and resolveTarget falls back to castAt, which throws
+		//without touching the sprite pool. Keeping the listener instead routes the throw through the
+		//game's own path, which recycles a missile sprite from hero.sprite.parent - and headless
+		//there is no parent to recycle from, so the throw died on a NullPointerException instead.
 		GameScene.clearPendingCellListener();
-		GameScene.clearHeadlessWindow();
-		//Only drop a stale aim request when a fresh turn begins. Clearing it unconditionally wiped the
-		//item being aimed with before the agent could resolve the aim, so the following TARGETING
-		//step had nothing to act on: the throw never completed, the hero stayed mid-action and the
-		//pipeline gave up, ending every episode that reached an aim as STALLED.
 		if (mode != EnvMode.TARGETING){
+			//Only drop a stale aim request when a fresh turn begins. Clearing it wiped the item being
+			//aimed with before the agent could resolve the aim, so the following TARGETING step had
+			//nothing to act on: the throw never completed, the hero stayed mid-action and the
+			//pipeline gave up, ending every episode that reached an aim as STALLED.
 			SlotAction.clearPendingUseItem();
 		}
 
@@ -168,8 +183,13 @@ if (mode == EnvMode.WORLD){
 				mode = EnvMode.SLOT;
 				if (WindowBridge.open()) mode = EnvMode.MENU;
 			}
-		} else if (mode == EnvMode.MENU){
+} else if (mode == EnvMode.MENU){
 			acted = mapper.applySecondary( mode, action, slot );
+			//Back to WORLD, the way TARGETING does. Without this the mode never changed hands again:
+			//the dialog could be answered successfully and the episode still sat in MENU forever,
+			//because nothing ever put it back, so the next action was interpreted as another option
+			//choice. If the dialog is genuinely still open, settle() puts it straight back to MENU.
+			mode = EnvMode.WORLD;
 		} else if (mode == EnvMode.SLOT){
 			boolean needsTarget = false;
 			if (action == Action.USE){
