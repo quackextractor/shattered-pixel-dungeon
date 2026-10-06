@@ -23,6 +23,9 @@ public class Dense {
 	/** Gradient accumulators for the current minibatch. */
 	final Tensor gW, gb;
 
+	/** Pre-activation from the last forward, needed for the tanh derivative in backward. */
+	private final Tensor preAct;
+
 	public final int in;
 	public final int out;
 
@@ -41,6 +44,8 @@ public class Dense {
 		this.gW = new Tensor( in, out );
 		this.gb = new Tensor( 1, out );
 
+		this.preAct = new Tensor( 1, out );
+
 		//Xavier: keeps the activation variance stable across depth
 		W.randomNormal( rng, weightScale / (float) Math.sqrt( in ) );
 		b.fill( 0f );
@@ -49,6 +54,7 @@ public class Dense {
 	/** out = tanh(x * W + b). */
 	public void forward( Tensor x, Tensor out ){
 		x.matmul( W, b, out );
+		System.arraycopy( out.data, 0, preAct.data, 0, out.cols );
 		for (int i = 0; i < out.data.length; i++){
 			out.data[ i ] = (float) Math.tanh( out.data[ i ] );
 		}
@@ -56,6 +62,12 @@ public class Dense {
 
 	/** Accumulates dL/dx given dL/dout, where out was produced by forward(x, out). */
 	public void backward( Tensor x, Tensor dout, Tensor dx ){
+		//dL/d(pre-activation): chain the tanh derivative in before touching anything downstream
+		for (int n = 0; n < out; n++){
+			float t = (float) Math.tanh( preAct.data[ n ] );
+			dout.data[ n ] *= (1f - t * t);
+		}
+
 		// dW += x^T * dout
 		for (int m = 0; m < in; m++){
 			float xv = x.data[ m ];

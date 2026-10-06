@@ -48,9 +48,17 @@ public class PPO {
 	private final ArrayList<Transition> buffer = new ArrayList<>();
 	private final ArrayList<Integer> episodeEnds = new ArrayList<>();
 
-	private final float[] scratchProbs;
+	//one probability buffer per head. The three heads have different widths and the loss reads
+	//the probability vector against that head's own mask, so a shared buffer sized for the widest
+	//head would run off the end of the narrower masks.
+	private final float[] actionProbs;
+	private final float[] slotProbs;
+	private final float[] targetProbs;
+
 	private final float[] scratchGrid;
-	private final float[] scratchGrad;
+	private final float[] scratchGradAction;
+	private final float[] scratchGradSlot;
+	private final float[] scratchGradTarget;
 
 	private final int gridSize;
 	private final int inventorySize;
@@ -75,9 +83,16 @@ public class PPO {
 				* com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder.FEATURES_PER_SLOT;
 		this.heroSize = com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder.FEATURES;
 
-		this.scratchProbs = new float[ Math.max( Action.size(), config.maxSlots ) ];
+		this.actionProbs = new float[ Action.size() ];
+		this.slotProbs = new float[ config.maxSlots ];
+		this.targetProbs = new float[
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.TARGET_COUNT ];
+
 		this.scratchGrid = new float[ gridSize ];
-		this.scratchGrad = new float[ Action.size() ];
+		this.scratchGradAction = new float[ Action.size() ];
+		this.scratchGradSlot = new float[ config.maxSlots ];
+		this.scratchGradTarget = new float[
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.TARGET_COUNT ];
 	}
 
 	// --------------------------------------------------------------------------- rollout
@@ -99,30 +114,29 @@ public class PPO {
 			int liveHead = headFor( env.mode() );
 
 			int actionIndex = Policy.sample( network.actionLogits(), env.actionMask(), rng );
-
 			int slotIndex = Policy.sample( network.slotLogits(), env.slotMask(), rng );
-
 			int targetIndex = Policy.sample( network.targetLogits(), env.targetMask(), rng );
 
-			//the head that is actually live supplies the stored behaviour log-probability
+			//the head that is actually live supplies the stored behaviour log-probability. Each
+			//head gets its own buffer because they have different widths and the loss reads the
+			//probability vector against that head's own mask.
 			float oldLogProbability;
-					switch (liveHead) {
-				case Policy.HEAD_SLOT: {
-					Policy.probabilities( network.slotLogits(), env.slotMask(), scratchProbs );
-											oldLogProbability = Policy.logProbability( scratchProbs, slotIndex );
+			int chosen;
+			switch (liveHead) {
+				case Policy.HEAD_SLOT:
+					Policy.probabilities( network.slotLogits(), env.slotMask(), slotProbs );
+					chosen = slotIndex;
 					break;
-				}
-				case Policy.HEAD_TARGET: {
-					Policy.probabilities( network.targetLogits(), env.targetMask(), scratchProbs );
-											oldLogProbability = Policy.logProbability( scratchProbs, targetIndex );
+				case Policy.HEAD_TARGET:
+					Policy.probabilities( network.targetLogits(), env.targetMask(), targetProbs );
+					chosen = targetIndex;
 					break;
-				}
-				default: {
-					Policy.probabilities( network.actionLogits(), env.actionMask(), scratchProbs );
-											oldLogProbability = Policy.logProbability( scratchProbs, actionIndex );
+				default:
+					Policy.probabilities( network.actionLogits(), env.actionMask(), actionProbs );
+					chosen = actionIndex;
 					break;
-				}
 			}
+			oldLogProbability = Policy.logProbability( probabilitiesFor( liveHead ), chosen );
 
 			Transition t = Transition.take( gridSize, inventorySize, heroSize,
 					Action.size(), config.maxSlots,
@@ -160,6 +174,14 @@ public class PPO {
 		network.resetState();
 		episodeEnds.add( buffer.size() );
 		return episode;
+	}
+
+	private float[] probabilitiesFor( int head ){
+		switch (head) {
+			case Policy.HEAD_SLOT:   return slotProbs;
+			case Policy.HEAD_TARGET: return targetProbs;
+			default:                return actionProbs;
+		}
 	}
 
 	private static int headFor( EnvMode mode ){
@@ -275,6 +297,7 @@ public class PPO {
 			float[] probabilities;
 			float[] mask;
 			float[] logits;
+			float[] gradient;
 			int chosen;
 
 			switch (t.liveHead) {
@@ -282,42 +305,42 @@ public class PPO {
 					logits = network.slotLogits();
 					mask = t.slotMask;
 					chosen = t.slotIndex;
-					probabilities = scratchProbs;
+					probabilities = slotProbs;
+					gradient = scratchGradSlot;
 					break;
 				case Policy.HEAD_TARGET:
 					logits = network.targetLogits();
 					mask = t.targetMask;
 					chosen = t.slotIndex;
-					probabilities = scratchProbs;
+					probabilities = targetProbs;
+					gradient = scratchGradTarget;
 					break;
 				default:
 					logits = network.actionLogits();
 					mask = t.actionMask;
 					chosen = t.actionIndex;
-					probabilities = scratchProbs;
+					probabilities = actionProbs;
+					gradient = scratchGradAction;
 					break;
 			}
 
-			java.util.Arrays.fill( scratchGrad, 0f );
-			if (probabilities.length < logits.length){
-				probabilities = new float[ logits.length ];
-			}
+			java.util.Arrays.fill( gradient, 0f );
 
 			Policy.probabilities( logits, mask, probabilities );
 			Policy.accumulatePolicyGradient( probabilities, mask, chosen,
-					t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, scratchGrad );
+					t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
 
 			float dValue = Policy.valueGradient( network.value(), t.returnValue );
 
-			network.backward( t.liveHead == Policy.HEAD_ACTION ? scratchGrad : null,
-					t.liveHead == Policy.HEAD_SLOT ? scratchGrad : null,
-					t.liveHead == Policy.HEAD_TARGET ? scratchGrad : null,
+			network.backward( t.liveHead == Policy.HEAD_ACTION ? gradient : null,
+					t.liveHead == Policy.HEAD_SLOT ? gradient : null,
+					t.liveHead == Policy.HEAD_TARGET ? gradient : null,
 					dValue, null );
 
 			policyLoss -= t.advantage;
 			valueLoss += Policy.valueLoss( network.value(), t.returnValue );
 			entropy += Policy.entropy( probabilities );
-			kl += approximateKL( t, logits, mask, probabilities );
+			kl += approximateKL( t, oldLogProbabilityFor( t, probabilities ), mask, probabilities );
 			if (Math.abs( t.advantage ) > clipEpsilon ) clipped++;
 		}
 
@@ -330,16 +353,19 @@ public class PPO {
 	}
 
 	/** KL between the behaviour distribution and the current one, recomputed from the ratio. */
-	private float approximateKL( Transition t, float[] logits, float[] mask, float[] probabilities ){
-		float newLog = Policy.logProbability( probabilities, indexFor( t, mask, logits ) );
-		float ratio = (float) Math.exp( newLog - t.oldLogProbability );
-		float r = ratio;
+	private float approximateKL( Transition t, float behaviourLogProbability, float[] mask, float[] probabilities ){
+		int chosen = (t.liveHead == Policy.HEAD_ACTION) ? t.actionIndex : t.slotIndex;
+
+		float newLog = Policy.logProbability( probabilities, chosen );
+		float ratio = (float) Math.exp( newLog - behaviourLogProbability );
+
 		//KL for small deviations is well approximated by (r-1) - ln r
-		return (r - 1f) - (float) Math.log( Math.max( r, 1e-8f ) );
+		return (ratio - 1f) - (float) Math.log( Math.max( ratio, 1e-8f ) );
 	}
 
-	private static int indexFor( Transition t, float[] mask, float[] logits ){
-		return (t.liveHead == Policy.HEAD_ACTION) ? t.actionIndex : t.slotIndex;
+	/** The behaviour log-probability recorded at rollout time. */
+	private float oldLogProbabilityFor( Transition t, float[] probabilities ){
+		return t.oldLogProbability;
 	}
 
 	private void shuffle( ArrayList<Transition> list ){

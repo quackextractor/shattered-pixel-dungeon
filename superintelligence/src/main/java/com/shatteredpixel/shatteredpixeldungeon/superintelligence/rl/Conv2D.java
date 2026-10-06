@@ -36,6 +36,9 @@ public class Conv2D {
 	/** im2col scratch: (kernel*kernel*inChannels) x (outSize*outSize). */
 	private final Tensor col;
 
+	/** Pre-activation from the last forward, needed for the ReLU derivative in backward. */
+	private final float[] preAct;
+
 	public Conv2D( int inChannels, int inSize, int outChannels, int kernel, int stride, Random rng ){
 		this.inChannels = inChannels;
 		this.inSize = inSize;
@@ -58,6 +61,7 @@ public class Conv2D {
 		this.gb = new Tensor( 1, outChannels );
 
 		this.col = new Tensor( patch, outSize * outSize );
+		this.preAct = new float[ outSize * outSize * outChannels ];
 
 		W.randomNormal( rng, (float) Math.sqrt( 2.0 / patch ) );
 		b.fill( 0f );
@@ -85,6 +89,7 @@ public class Conv2D {
 					sum += col.data[ k * col.cols + p ] * W.data[ k * outChannels + q ];
 				}
 				out.data[ cOff + q ] = sum;
+				preAct[ cOff + q ] = sum;
 			}
 		}
 
@@ -133,6 +138,14 @@ public class Conv2D {
 
 		int planeSize = inSize * inSize;
 
+		//chain the ReLU derivative in. gradOut is the caller's per-step scratch buffer and is
+		//wider than this layer's output, so only the leading entries are touched. Masking in
+		//place costs nothing and keeps the loops below simple.
+		int outLen = outputSize();
+		for (int i = 0; i < outLen; i++){
+			if (preAct[ i ] <= 0f ) gradOut.data[ i ] = 0f;
+		}
+
 		//dL/dW and dL/dinput, walked over the same im2col layout used by forward
 		for (int p = 0; p < outSize * outSize; p++){
 			int cOff = p * outChannels;
@@ -149,8 +162,12 @@ public class Conv2D {
 							if (g == 0f) continue;
 							int wOff = row * outChannels + q;
 							gW.data[ wOff ] += col.data[ rowOff + p ] * g;
-							gradIn[ inOff + (p / outSize) * inSize * stride
-									+ (p % outSize) * stride + ky ] += g * W.data[ wOff ];
+
+							int iy = (p / outSize) * stride + ky;
+							int ix = (p % outSize) * stride + kx;
+							if (iy < inSize && ix < inSize){
+								gradIn[ inOff + iy * inSize + ix ] += g * W.data[ wOff ];
+							}
 						}
 					}
 				}

@@ -29,16 +29,28 @@ public class LSTM {
 	final Tensor mW, vW, mb, vb;
 	final Tensor gW, gb;
 
-	//per-step scratch, reused
+//per-step scratch, reused
 	private final Tensor gates;
 	private final Tensor scratch;
 
-	/** Carried between timesteps. */
+	//per-step derivative scratch, reused
+	private final Tensor dCellGrad;
+	private final Tensor dGateGrad;
+
+/** Carried between timesteps. */
 	private final Tensor h;
 	private final Tensor c;
 
+	/** Cached by forward, read by backward: everything backward needs from before the step. */
+	private final Tensor hPrev;
+	private final Tensor cPrev;
+	private final Tensor preAct;
+
+	public final int inputSize;
+
 	public LSTM( int inputSize, int size, Random rng ){
 		this.size = size;
+		this.inputSize = inputSize;
 
 		int rows = inputSize + size;
 		int cols = size * 4;
@@ -54,15 +66,19 @@ public class LSTM {
 		this.gW = new Tensor( rows, cols );
 		this.gb = new Tensor( 1, cols );
 
-		this.gates = new Tensor( 1, cols );
+this.gates = new Tensor( 1, cols );
 		this.scratch = new Tensor( 1, rows );
+		this.inputGrad = new float[ inputSize ];
 
 		this.dCellGrad = new Tensor( 1, size );
-		this.dHiddenGrad = new Tensor( 1, size );
 		this.dGateGrad = new Tensor( 1, size * 4 );
 
-		this.h = new Tensor( 1, size );
+this.h = new Tensor( 1, size );
 		this.c = new Tensor( 1, size );
+
+		this.hPrev = new Tensor( 1, size );
+		this.cPrev = new Tensor( 1, size );
+		this.preAct = new Tensor( 1, cols );
 
 		//forget gate bias of 1 is the standard initialisation: start by remembering
 		for (int i = 0; i < size; i++) b.data[ i ] = 1f;
@@ -84,13 +100,19 @@ public class LSTM {
 		h.copyFrom( other );
 	}
 
-	/** out = LSTM(x, h_prev, c_prev). Advances the carried state. */
+/** out = LSTM(x, h_prev, c_prev). Advances the carried state. */
 	public void forward( Tensor x, Tensor out ){
 		// concatenate x and h into the scratch row
 		System.arraycopy( x.data, 0, scratch.data, 0, x.cols );
 		System.arraycopy( h.data, 0, scratch.data, x.cols, size );
 
 		scratch.matmul( W, b, gates );
+
+		//backward needs the gate pre-activations and both prior states, because h and c are
+		//overwritten below
+		System.arraycopy( gates.data, 0, preAct.data, 0, gates.cols );
+		System.arraycopy( h.data, 0, hPrev.data, 0, size );
+		System.arraycopy( c.data, 0, cPrev.data, 0, size );
 
 		int s = size;
 		for (int i = 0; i < s; i++){
@@ -113,38 +135,37 @@ public class LSTM {
 	 * @param dHPrev dL/dh_{t-1}, accumulated into
 	 * @param dCPrev dL/dc_{t-1}, accumulated into
 	 */
-	public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
+public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 		int s = size;
 
-		// recompute the pre-activation gates for the derivative terms
-		System.arraycopy( x.data, 0, scratch.data, 0, x.cols );
-		System.arraycopy( h.data, 0, scratch.data, x.cols, s );
-		scratch.matmul( W, b, gates );
+		java.util.Arrays.fill( inputGrad, 0f );
 
 		float[] gc = dCellGrad.data;
-		float[] gh = dHiddenGrad.data;
 		float[] gg = dGateGrad.data;
 
 		for (int i = 0; i < s; i++){
-			float f = sigmoid( gates.data[ i ] );
-			float in = sigmoid( gates.data[ s + i ] );
-			float g = (float) Math.tanh( gates.data[ 2 * s + i ] );
-			float o = sigmoid( gates.data[ 3 * s + i ] );
+			float f = sigmoid( preAct.data[ i ] );
+			float in = sigmoid( preAct.data[ s + i ] );
+			float g = (float) Math.tanh( preAct.data[ 2 * s + i ] );
+			float o = sigmoid( preAct.data[ 3 * s + i ] );
 
-			float dcNext = dCPrev.data[ i ] + dOut.data[ i ] * o * (1 - tanhSq( c.data[ i ] ));
+			//c_t is still live at this point because backward runs immediately after forward
+			float ct = c.data[ i ];
+			float tanhCt = (float) Math.tanh( ct );
 
-			gg[ i ]         = dcNext * c.data[ i ] * f * (1 - f);
-			gg[ s + i ]     = dcNext * g * in * (1 - in);
-			gg[ 2 * s + i ] = dcNext * in * (1 - g * g);
-			gg[ 3 * s + i ] = dOut.data[ i ] * (float) Math.tanh( c.data[ i ] ) * o * (1 - o);
+			//total gradient arriving at c_t
+			float dc = dCPrev.data[ i ] + dOut.data[ i ] * o * (1 - tanhCt * tanhCt);
 
-			gc[ i ]  = dcNext * f;
-			gh[ i ]  = gg[ 3 * s + i ] * (1 - o * o);
+			//dL/dgates, with the previous cell state on the forget gate
+			gg[ i ]         = dc * cPrev.data[ i ] * f * (1 - f);
+			gg[ s + i ]     = dc * g * in * (1 - in);
+			gg[ 2 * s + i ] = dc * in * (1 - g * g);
+			gg[ 3 * s + i ] = dOut.data[ i ] * tanhCt * o * (1 - o);
+
+			//dL/dc_{t-1}. h_{t-1} has no other path into the output, so its gradient arrives
+			//entirely through the gates below.
+			gc[ i ] = dc * f;
 		}
-
-		// dL/dh_{t-1} gets the direct path plus the path through every gate
-		float[] dPrevH = dHPrev.data;
-		for (int i = 0; i < s; i++) dPrevH[ i ] += gh[ i ];
 
 		//dW += [x; h_prev]^T * dgates, db += dgates
 		for (int r = 0; r < scratch.cols; r++){
@@ -155,51 +176,40 @@ public class LSTM {
 		}
 		for (int n = 0; n < W.cols; n++) gb.data[ n ] += gg[ n ];
 
-		//[x; h_prev] gradient: first the h_prev rows carry gh, then W^T * dgates
+		//[x; h_prev] gradient: the x rows feed the layer below, the h rows feed dHPrev
 		for (int r = 0; r < scratch.cols; r++){
 			int row = r * W.cols;
 			float sum = 0;
 			for (int n = 0; n < W.cols; n++) sum += W.data[ row + n ] * gg[ n ];
 
 			if (r < x.cols){
-				if (r < dHPrev.data.length) { /* x gradient flows to the previous layer */ }
-				xGradAccumulator( r, sum );
+				inputGrad[ r ] += sum;
 			} else {
-				dPrevH[ r - x.cols ] += sum;
+				dHPrev.data[ r - x.cols ] += sum;
 			}
 		}
+
+		//dc_{t-1} in place, so the caller can pass its incoming gradient straight through
+		System.arraycopy( gc, 0, dCPrev.data, 0, s );
 	}
 
-	/**
-	 * Scratch slot the input gradient is written into.
-	 *
-	 * The LSTM owns a gradient buffer for its own input rather than taking one as a parameter,
-	 * because that buffer has to match the concatenation layout and threading it through the
-	 * network's forward order would leak LSTM internals into the caller.
-	 */
-	private final Tensor dCellGrad;
-	private final Tensor dHiddenGrad;
-	private final Tensor dGateGrad;
-
-	private final float[] inputGrad = new float[ 1024 ];
-	private int inputGradLen;
+/**
+ * Scratch the input gradient is written into.
+ *
+ * The cell owns this buffer rather than taking one as a parameter, because it has to match the
+ * input width and threading it through the caller's forward order would leak LSTM internals out.
+ * backward() clears and refills it every call, so a caller that reads it straight after backward
+ * always sees the gradient for that one step.
+ */
+	private final float[] inputGrad;
 
 	public float[] inputGrad(){
 		return inputGrad;
 	}
 
-	public void beginInputGrad( int len ){
-		if (inputGrad.length < len) throw new IllegalArgumentException( "input too large" );
-		inputGradLen = len;
-		java.util.Arrays.fill( inputGrad, 0, len, 0f );
-	}
-
-	private void xGradAccumulator( int index, float value ){
-		inputGrad[ index ] += value;
-	}
-
+	/** Number of leading entries of {@link #inputGrad()} that backward() wrote. */
 	public int inputGradLen(){
-		return inputGradLen;
+		return inputGrad.length;
 	}
 
 	public void zeroGrad(){

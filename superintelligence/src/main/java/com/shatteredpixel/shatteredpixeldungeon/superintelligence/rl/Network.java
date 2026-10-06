@@ -53,6 +53,7 @@ public class Network {
 	private final Tensor convOut;
 	private final Tensor concat;
 	private final Tensor hidden;
+	private final Tensor memoryOut;
 	private final Tensor actionLogits;
 	private final Tensor slotLogits;
 	private final Tensor targetLogits;
@@ -64,6 +65,7 @@ public class Network {
 	private final Tensor dValueOut;
 	private final Tensor dCell;
 	private final Tensor dHidden;
+	private final Tensor dHeadScratch;
 	private final Tensor dPrev;
 	private final Tensor dLstmIn;
 	private final Tensor dConv;
@@ -94,6 +96,7 @@ public class Network {
 		this.convOut = new Tensor( 1, convFeatures );
 		this.concat = new Tensor( 1, convFeatures + extraInputs );
 		this.hidden = new Tensor( 1, 256 );
+		this.memoryOut = new Tensor( 1, memory.size );
 		this.actionLogits = new Tensor( 1, actionHead.out );
 		this.slotLogits = new Tensor( 1, slotHead.out );
 		this.targetLogits = new Tensor( 1, targetHead.out );
@@ -104,10 +107,11 @@ public class Network {
 		this.dTarget = new Tensor( 1, targetHead.out );
 		this.dValueOut = new Tensor( 1, 1 );
 		this.dCell = new Tensor( 1, memory.size );
-		this.dHidden = new Tensor( 1, 256 );
+		this.dHidden = new Tensor( 1, memory.size );
+		this.dHeadScratch = new Tensor( 1, memory.size );
 		this.dPrev = new Tensor( 1, memory.size );
 		this.dLstmIn = new Tensor( 1, 256 );
-		this.dConv = new Tensor( 1, convFeatures );
+		this.dConv = new Tensor( 1, trunk.in );
 
 		this.dGrid = new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
 		this.gridSnapshot = new float[ dGrid.length ];
@@ -144,13 +148,17 @@ public class Network {
 		off += config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		System.arraycopy( heroFeatures, 0, concat.data, off, heroFeatures.length );
 
-		trunk.forward( concat, hidden );
-		memory.forward( hidden, hidden );
+trunk.forward( concat, hidden );
 
-		actionHead.forward( hidden, actionLogits );
-		slotHead.forward( hidden, slotLogits );
-		targetHead.forward( hidden, targetLogits );
-		valueHead.forward( hidden, value );
+		//the LSTM narrows 256 to 128, so its output goes in its own buffer. Writing it back into
+		//'hidden' would leave the tail of the trunk output in place and the heads would then be
+		//fed the wrong width.
+		memory.forward( hidden, memoryOut );
+
+		actionHead.forward( memoryOut, actionLogits );
+		slotHead.forward( memoryOut, slotLogits );
+		targetHead.forward( memoryOut, targetLogits );
+		valueHead.forward( memoryOut, value );
 	}
 
 	public float[] actionLogits(){ return actionLogits.data; }
@@ -175,6 +183,9 @@ public class Network {
 	public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
 			float dCritic, float[] dPrevState ){
 
+		//dHidden holds d/d(lstm output) and is 128 wide
+		Tensor dHiddenT = new Tensor( 1, memoryOut.cols );
+
 		if (dActionLogits != null) copyInto( dActionLogits, dAction );
 		else dAction.fill( 0f );
 		if (dSlotLogits != null) copyInto( dSlotLogits, dSlot );
@@ -184,12 +195,15 @@ public class Network {
 
 		dValueOut.data[ 0 ] = dCritic;
 
-		//accumulate each head's gradient back into the shared hidden state
+		//accumulate each head's gradient back into the LSTM output
 		dHidden.fill( 0f );
 		headGradient( actionHead, dAction );
 		headGradient( slotHead, dSlot );
 		headGradient( targetHead, dTarget );
 		headGradient( valueHead, dValueOut );
+
+		//copy only now, once the heads have finished accumulating into dHidden
+		copyInto( dHidden.data, dHiddenT );
 
 		dPrev.fill( 0f );
 		if (dPrevState != null){
@@ -197,8 +211,8 @@ public class Network {
 					Math.min( dPrevState.length, dPrev.cols ) );
 		}
 
-		//the LSTM's input gradient becomes the gradient wrt its pre-activation hidden state
-		memory.backward( hidden, dHidden, dPrev, dCell );
+		memory.backward( hidden, dHiddenT, dPrev, dCell );
+
 
 		dLstmIn.fill( 0f );
 		System.arraycopy( memory.inputGrad(), 0, dLstmIn.data, 0,
@@ -226,15 +240,10 @@ public class Network {
 		System.arraycopy( src, 0, into.data, 0, Math.min( src.length, into.cols ) );
 	}
 
-	/** Accumulates dL/dhidden from one head, without allocating. */
+	/** Accumulates one head's gradient into dHidden, without allocating. */
 	private void headGradient( Dense head, Tensor dOut ){
-		for (int n = 0; n < head.out; n++){
-			float g = dOut.data[ n ];
-			if (g == 0f) continue;
-			for (int m = 0; m < head.in; m++){
-				dHidden.data[ m ] += g * head.W.data[ m * head.out + n ];
-			}
-		}
+		head.backward( memoryOut, dOut, dHeadScratch );
+		dHidden.addScaled( dHeadScratch, 1f );
 	}
 
 	// --------------------------------------------------------------------------- optimiser

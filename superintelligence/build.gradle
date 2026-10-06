@@ -66,21 +66,30 @@ tasks.register('train', JavaExec) {
     jvmArgs trainerJvmArgs
 }
 
-tasks.register('rollout', JavaExec) {
-    group = 'superintelligence'
-    description = 'Runs a single headless episode on a locked seed with a scripted policy.'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = appMainClass
-    jvmArgs trainerJvmArgs
+//Main dispatches on argv[0], so each task has to put its own subcommand in front. A plain
+//`args = [...]` assignment would not survive `--args`, which Gradle applies over the top of
+//the build-script value, so the subcommand is prepended at execution time instead. That way
+//both `gradle :superintelligence:rollout` and
+//`gradle :superintelligence:rollout --args="--seed x"` reach Main correctly.
+def cliTask = { String taskName, String taskDescription ->
+    tasks.register(taskName, JavaExec) {
+        group = 'superintelligence'
+        description = taskDescription
+        classpath = sourceSets.main.runtimeClasspath
+        mainClass = appMainClass
+        jvmArgs trainerJvmArgs
+        doFirst {
+            //a caller who already spelled out the subcommand keeps it
+            if (!args || args[0].startsWith('--')) args = [taskName] + args
+        }
+    }
 }
 
-tasks.register('verify', JavaExec) {
-    group = 'superintelligence'
-    description = 'Re-executes a recorded run headlessly and confirms it still reproduces.'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = appMainClass
-    jvmArgs trainerJvmArgs
-}
+cliTask('rollout', 'Runs a single headless episode on a locked seed with the scripted policy.')
+
+cliTask('gradcheck', 'Finite-difference check of the network gradients against the analytic ones.')
+
+cliTask('verify', 'Re-executes a recorded run headlessly and confirms it still reproduces.')
 
 //Everything the trainer and its workers need on one classpath, so a worker can be launched
 //with a plain `java -cp` instead of forking gradle.
