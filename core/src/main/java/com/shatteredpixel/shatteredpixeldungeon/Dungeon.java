@@ -252,7 +252,13 @@ public class Dungeon {
 			Generator.fullReset();
 
 		Random.resetGenerators();
-		
+
+		//resetGenerators() installs an unseeded base, and everything outside a pushed generator -
+		//mob turns, combat rolls, item drops - draws from it. That is fine for a single playthrough,
+		//but it means the run cannot be reproduced in another process. Seeding the base from the run
+		//seed makes the whole run deterministic. See the 'superintelligence' module.
+		Random.reseedBase( seed );
+
 		Statistics.reset();
 		Notes.reset();
 

@@ -99,9 +99,15 @@ public class EntranceRoom extends StandardRoom {
 
 	}
 
+	//offset so this generator's stream does not overlap the floor's own.
+	private static final long GUIDE_PAGE_SEED = 0x9E3779B97F4A7C15L;
+
 	public static void placeEarlyGuidePages(Level level, Room r){
-		//use a separate generator here so meta progression doesn't affect levelgen
-		Random.pushGenerator();
+		//use a separate generator here so meta progression doesn't affect levelgen.
+		//seeded from the floor's own seed: an unseeded generator here would place the page at a
+		//different spot in every process, which makes levelgen itself irreproducible. See the
+		//'superintelligence' module, which replays runs across processes.
+		Random.pushGenerator( Dungeon.seedForDepth( Dungeon.depth, Dungeon.branch ) + GUIDE_PAGE_SEED );
 
 		//places the first guidebook page on floor 1
 		if (Dungeon.depth == 1 &&

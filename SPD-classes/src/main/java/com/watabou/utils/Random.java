@@ -39,9 +39,28 @@ public class Random {
 		resetGenerators();
 	}
 
-	public static synchronized void resetGenerators(){
+public static synchronized void resetGenerators(){
 		generators = new ArrayDeque<>();
 		generators.push(new java.util.Random());
+	}
+
+	/**
+	 * Reseeds the base generator, leaving any pushed generators on the stack alone.
+	 *
+	 * The base generator is unseeded by default, which is fine for a single playthrough: it is
+	 * created once and consumed sequentially, so a session is self-consistent. It is a problem
+	 * when the same run has to be replayed in a second process - see the 'superintelligence' module.
+	 * Seeding it from the run seed makes every draw outside an explicitly pushed generator
+	 * reproducible too.
+	 */
+	public static synchronized void reseedBase( long seed ){
+		java.util.Random base = generators.pollLast();
+		if (base == null){
+			generators.push( new java.util.Random( scrambleSeed(seed) ) );
+		} else {
+			base.setSeed( scrambleSeed(seed) );
+			generators.addLast( base );
+		}
 	}
 
 	public static synchronized void pushGenerator(){

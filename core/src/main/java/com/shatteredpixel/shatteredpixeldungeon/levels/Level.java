@@ -119,6 +119,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.HashSet;
 
 public abstract class Level implements Bundlable {
@@ -180,9 +182,16 @@ public abstract class Level implements Bundlable {
 	//when a boss level has become locked.
 	public boolean locked = false;
 	
-	public HashSet<Mob> mobs;
+	/*
+	 * Insertion-ordered on purpose, not a HashSet.
+	 *
+	 * Mob and Char do not override hashCode, so a hash-based collection iterates in identity-hash
+	 * order, which differs between JVM runs. Wherever this set is iterated during play it must
+	 * not be, or the same seed produces a different game in a second process. Keep it ordered.
+	 */
+	public LinkedHashSet<Mob> mobs;
 	public SparseArray<Heap> heaps;
-	public HashMap<Class<? extends Blob>,Blob> blobs;
+	public LinkedHashMap<Class<? extends Blob>,Blob> blobs;
 	public SparseArray<Plant> plants;
 	public SparseArray<Trap> traps;
 	public ArrayList<CustomTilemap> customTiles;
@@ -304,9 +313,9 @@ public abstract class Level implements Bundlable {
 
 			transitions = new ArrayList<>();
 
-			mobs = new HashSet<>();
+			mobs = new LinkedHashSet<>();
 			heaps = new SparseArray<>();
-			blobs = new HashMap<>();
+			blobs = new LinkedHashMap<>();
 			plants = new SparseArray<>();
 			traps = new SparseArray<>();
 			customTiles = new ArrayList<>();
@@ -378,9 +387,9 @@ public abstract class Level implements Bundlable {
 
 		setSize( bundle.getInt(WIDTH), bundle.getInt(HEIGHT));
 		
-		mobs = new HashSet<>();
+		mobs = new LinkedHashSet<>();
 		heaps = new SparseArray<>();
-		blobs = new HashMap<>();
+		blobs = new LinkedHashMap<>();
 		plants = new SparseArray<>();
 		traps = new SparseArray<>();
 		customTiles = new ArrayList<>();

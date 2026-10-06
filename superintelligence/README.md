@@ -9,8 +9,9 @@ seed recorded and re-verified.
 
 ## Read this first
 
-**Nothing has been trained yet, and the environment is not yet reproducible across processes.** An earlier smoke test reproduced a 249-step run twice and I reported that as working; a six-run audit later found four distinct traces from the same seed. The cause is that only level generation draws from a seeded RNG - the base generator is unseeded - combined with HashSet iteration order in the turn scheduler. One of those two is fixed. See TODO.md section 0, which is now the first thing in the file for a reason. The environment, observation encoder, reward ledger, replay
-verification and diagnostics are done and tested. The learning loop is written but has never been
+**Nothing has been trained yet.** The environment around it is sound and now verified reproducible: a recorded run re-executes exactly, 5/5 across fresh processes. That was not true at first - an early smoke test reproduced twice and I took that as proof, but a six-run audit found four distinct traces. Three causes (an unseeded base RNG, an unseeded generator inside levelgen, and identity-hash HashSet iteration order in the scheduler) are now fixed. See `TODO.md` section 0 for the write-up and the remaining risk.
+
+The environment, observation encoder, reward ledger, replay verification and diagnostics are done and tested. The learning loop is written but has never been
 executed: `PPO.rollout()` and `PPO.update()` are called from nowhere, and the training worker
 currently acts with a scripted heuristic.
 
@@ -22,11 +23,11 @@ something.
 
 | Area | State |
 | --- | --- |
-| Headless engine (renderer bypassed, single-threaded scheduler) | Runs, **not reproducible across processes** - see TODO section 0 |
+| Headless engine (renderer bypassed, single-threaded scheduler) | Verified, reproducible across processes |
 | Level pipeline, floor transitions, chasm falls | Verified |
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified |
-| Replay record / re-verify | Implemented; verification fires spuriously until TODO 0.2 is fixed |
+| Replay record / re-verify | Verified exact - 5/5 fresh processes, identical score |
 | Diagnostics dashboard (colour-coded floors, graphs) | Console only |
 | Reward model, per-term ledger, curriculum fade | Partial - 6 terms never fire |
 | CNN + LSTM network, PPO agent | Written, never executed |

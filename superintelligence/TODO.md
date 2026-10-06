@@ -7,78 +7,61 @@ Last updated: 2026-10-06, after the initial framework commit and a determinism a
 
 ---
 
-## 0. P0 - the environment is not reproducible across processes
+## 0. P0 - RESOLVED - the environment is not reproducible across processes
 
-**Found by audit, after an earlier claim of exact reproduction was wrong.** Recorded first because
-everything in section 1 depends on it, and because I previously reported this as working when it
-was not.
+**Fixed.** Recording a run and re-executing it in a fresh process now reproduces exactly.
 
-**The symptom.** Recording a run and re-executing that recording in a fresh process usually
-reproduces it, but not always. Six runs of the same seed and the same policy produced four
-distinct step-by-step position traces.
+Verified: 10 traces of one seed across 10 separate JVMs produce 1 distinct result; a recorded
+299-step run verifies 5/5 in fresh processes with a bit-identical score.
 
-```
-426,390,426,462,426,390,426,427,426,391,426,461,426,460,426,390,...
-426,390,426,462,426,390,426,427,426,391,426,461,426,460,426,...
-426,390,
-426,390,426,462,426,390,426,427,426,391,426,461,426,460,426,...
-426,390,426,462,426,390,426,427,426,391,426,461,426,460,426,...
-```
+The symptom when broken was that recording a run and re-executing it usually reproduced, but not
+always - six runs of one seed produced four distinct position traces. An earlier smoke test had
+reproduced 249/249 twice and I took that as proof. It was luck, and it took a dedicated audit to
+find.
 
-An earlier smoke test happened to reproduce 249/249 twice and I took that as proof. It was luck.
+Three causes, all now fixed:
 
-### 0.1 Fixed - scheduler tie-breaking depended on HashSet order
+**0.1 The base RNG generator was unseeded.** `Random.resetGenerators()` pushed a no-argument
+`new java.util.Random()`, and `Dungeon.init()` called it *after* pushing the seeded stack,
+discarding it. Only level generation was deterministic, because `Level.create()` wraps its build in
+`Random.pushGenerator( Dungeon.seedCurDepth() )`. Everything after it - mob turns, combat rolls,
+item drops - drew from an unseeded generator.
 
-`Actor.all` is a `HashSet<Actor>` and `Actor` does not override `hashCode`, so iteration order is
-identity-hash based and differs between JVM runs. `Actor.headlessStep()` selected among actors with
-equal time by iteration order, so *who moved first* varied.
+This was never a game bug: within one process the base generator is created once and consumed
+sequentially, so a live playthrough is self-consistent. The game was simply never designed to be
+reproducible across processes, which is what replay verification needs.
 
-Fixed by adding `Actor.id()` - assigned in creation order, therefore stable - as the final
-tie-break in `Actor.headlessStep()`. That removed one source; traces went from all-different to
-mostly-identical, but did not close the issue.
+Fixed by adding `Random.reseedBase(long)`, which reseeds the base generator in place without
+disturbing anything pushed on top of it, and calling it from `Dungeon.init()` with the run seed.
 
-### 0.2 Open - the base RNG generator is unseeded
+**0.2 An unseeded generator inside level generation.** `EntranceRoom.placeEarlyGuidePages` pushed
+an unseeded generator, deliberately - its comment reads *"so meta progression doesn't affect
+levelgen"*. Correct intent, but it meant the first guidebook page landed on a different tile in every
+process, which alone made floor 1 irreproducible.
 
-This is the likely dominant remaining cause.
+Seeded from the floor's own seed with a fixed offset. Still isolated from meta progression, still
+its own generator, now deterministic.
 
-`Random.resetGenerators()` pushes a **no-argument** `new java.util.Random()` as the base
-generator. `Dungeon.init()` calls `Dungeon.initSeed()`, then pushes `seed+1`, then calls
-`Random.resetGenerators()` - which **discards that stack** and installs the unseeded base.
+**0.3 HashSet iteration order in the turn scheduler and over actors.** `Actor.all`, `Actor.chars`,
+`Level.mobs` and `Level.blobs` were all hash-based collections keyed on identity hash codes, so their
+iteration order differed between JVM runs. `Actor.headlessStep` broke time ties on iteration order,
+so *who moved first* varied; `Level.mobs` iteration order varied wherever it fed a game decision.
 
-Consequently only level generation is deterministic: `Level.create()` wraps its whole build in
-`Random.pushGenerator( Dungeon.seedCurDepth() )`. Everything after it - mob turns, hero actions, item
-drops, combat rolls - draws from the unseeded base generator.
+`Actor.all` and `Actor.chars` are now `LinkedHashSet`, `Level.mobs` is a `LinkedHashSet` and
+`Level.blobs` a `LinkedHashMap`, so all four iterate in insertion order. Membership semantics are
+unchanged. `Actor.headlessStep` additionally breaks remaining ties on `Actor.id()`, which is
+assigned in creation order and therefore stable.
 
-This was never a bug in the game. Within a single process the base generator is created once and
-consumed sequentially, so a live playthrough is self-consistent. The game was simply never designed
-to be reproducible *across* processes, which is exactly what replay verification requires.
+### Remaining risk
 
-**Proposed fix.** Seed the base generator from the run seed, so the whole process shares one
-deterministic stream:
-
-```java
-//in Dungeon.init(), instead of Random.resetGenerators()
-Random.resetGenerators();
-Random.reseedBase( Dungeon.seed );   // new method: replace the base generator with a seeded one
-```
-
-Requires a new `Random` method because `resetGenerators()` pushes and the base cannot be popped
-(`popGenerator` refuses at size 1). Must be audited for whether any *existing* behaviour depends on
-the base generator being unseeded - it should not, since nothing can replay a live process.
-
-### 0.3 Still to check after 0.2
-
-- `level.mobs` is also a `HashSet<Mob>`. Any place where mob iteration order affects state or RNG
-  consumption will still vary. Needs an audit of every `for (Mob ... : level.mobs)` loop.
-- The four `HashSet`/`HashMap` fields on `Level` that are iterated during play.
-- Re-run the six-process trace test until it yields exactly one distinct result.
-
-### 0.4 Consequence
-
-Until this is closed, **every claim that rests on reproducibility is unsupported**, including:
-locked-seed run comparison, best-per-seed ranking, replay verification as a regression gate, and the
-`SeedPool` generalisation schedule. The `verify` command currently reports divergence as a hard
-error, which is correct behaviour - but until 0.2 lands it will fire intermittently on healthy runs.
+- `Mob` and `Char` still do not override `hashCode`. Nothing found iterates them through a hash
+  collection during play, but that is an invariant future changes could break. Worth a comment at
+  the `Level.mobs` declaration.
+- `ColorMath.random` is used for particle colours only. Harmless, because headless never creates a
+  particle.
+- Determinism has been verified at 400 turns on a handful of seeds. Not verified across all 26
+  floors, boss levels, or the shop/alchemy paths, which are exactly where exotic code lives. A
+  long-horizon soak across many seeds is the right next check.
 
 ---
 

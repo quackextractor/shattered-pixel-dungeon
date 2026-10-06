@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.1.0] - 2026-10-06
 
+### Fixed
+
+- **The environment is now reproducible across processes.** An audit found that recording a run
+  and re-executing it in a fresh JVM usually reproduced it but not always - six runs of one seed
+  produced four distinct traces. Three causes:
+  - `Random.resetGenerators()` installs an unseeded base generator, and `Dungeon.init` called it
+    after pushing the seeded stack, discarding it. Only level generation drew from a seeded
+    generator; mob turns, combat rolls and item drops did not. Added `Random.reseedBase(long)` and
+    call it from `Dungeon.init` with the run seed.
+  - `EntranceRoom.placeEarlyGuidePages` pushed an unseeded generator during level generation,
+    deliberately, to keep meta progression out of levelgen. The first guidebook page therefore
+    landed on a different tile in every process, making floor 1 irreproducible on its own. Now
+    seeded from the floor's seed with a fixed offset.
+  - `Actor.all`, `Actor.chars`, `Level.mobs` and `Level.blobs` were hash-based collections keyed on
+    identity hash codes, so iteration order differed between JVM runs. `Actor.headlessStep` broke
+    time ties on that order, so who moved first varied. All four are now insertion-ordered
+    (`LinkedHashSet` / `LinkedHashMap`); membership semantics are unchanged.
+
+  Verified: 10 traces of one seed across 10 separate JVMs produce one distinct result, and a
+  recorded 299-step run re-executes exactly 5 times out of 5 with a bit-identical score.
+
+- `GameScene.add(Heap)` left `heap.sprite` null when there is no scene, so trampling high grass
+  dereferenced it and crashed a rollout.
+- `Image.frame` derived its size from a null texture when there is no renderer.
+
 ### Added
 
 - **Headless training framework** (`superintelligence` module). Implements the design in
