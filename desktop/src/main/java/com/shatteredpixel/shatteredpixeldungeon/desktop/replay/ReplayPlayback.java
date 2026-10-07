@@ -47,6 +47,9 @@ public class ReplayPlayback {
 	/** Step where the live hero position first failed to match the recording, or -1. */
 	private int divergedAt = -1;
 
+	/** Where the hero actually was when it diverged. -1 until it does. */
+	private int actualAt = -1;
+
 	private int expectedPos = -1;
 
 	/** True once every recorded step has been applied, or the run ended. */
@@ -112,12 +115,14 @@ public class ReplayPlayback {
 		cursor = 0;
 		expectedPos = -1;
 		divergedAt = -1;
+		actualAt = -1;
 		finished = false;
 	}
 
 	public void finish(){
 		finished = true;
 		expectedPos = -1;
+		actualAt = -1;
 	}
 
 	/**
@@ -137,7 +142,13 @@ public class ReplayPlayback {
 		if (expected < 0 || heroPos == expected) return true;
 
 		divergedAt = cursor;
+		actualAt = heroPos;
 		return false;
+	}
+
+	/** Where the hero actually was when playback diverged, or -1. */
+	public int actualPos(){
+		return actualAt;
 	}
 
 	/** Hero class from the recording, falling back rather than throwing on an unknown name. */
@@ -149,11 +160,19 @@ public class ReplayPlayback {
 		}
 	}
 
-	/** One-line summary for the HUD. */
+	/**
+	 * One-line summary for the HUD.
+	 *
+	 * <p>Names the action and the mode as well as the two positions. "expected hero at 834" on its own
+	 * says a mismatch happened and nothing about what was being attempted, which is the part that
+	 * distinguishes a stale recording from a broken viewer - the recorded action tells you which of
+	 * the two you are looking at.
+	 */
 	public String status(){
 		if (diverged()){
-			return "DIVERGED at step " + ( divergedAt + 1 )
-					+ " - expected hero at " + replay.steps.get( divergedAt ).heroPos;
+			Replay.Step step = replay.steps.get( divergedAt );
+			return "DIVERGED at step " + ( divergedAt + 1 ) + " - " + step.action + "/" + step.slot
+					+ " in " + step.mode + ": hero at " + actualAt + ", recording says " + step.heroPos;
 		}
 		if (finished) return "finished - " + total() + " steps";
 		return "step " + ( cursor + 1 ) + " / " + total();

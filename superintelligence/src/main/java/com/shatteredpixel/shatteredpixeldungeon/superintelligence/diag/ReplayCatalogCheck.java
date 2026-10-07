@@ -2,6 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayCatalog;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIndex;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
 
 import java.io.File;
@@ -34,7 +35,7 @@ public class ReplayCatalogCheck {
 
 	private static final List< String > failures = new ArrayList<>();
 
-	private static final int CHECKS = 9;
+	private static final int CHECKS = 11;
 
 	private static File workDir;
 
@@ -58,6 +59,8 @@ public class ReplayCatalogCheck {
 			checkLookupIsCaseInsensitiveAndAcceptsAPath();
 			checkHeaderOnlyReadMatchesAFullRead();
 			checkDeduplicatesTheSameSeed();
+			checkAmbiguousSeedIsRefusedNotGuessed();
+			checkIndexedDirectoriesAreDiscovered();
 		} finally {
 			deleteTree( workDir );
 		}
@@ -379,6 +382,100 @@ public class ReplayCatalogCheck {
 		}
 		if (catalog.entries().get( 0 ).score != 1.0){
 			fail( "the earlier directory should win, got score " + catalog.entries().get( 0 ).score );
+		}
+	}
+
+	/**
+	 * A name that several directories recorded must not resolve silently.
+	 *
+	 * <p>Deduplication keeps the listing readable, and it used to keep the ambiguity too: typing a seed
+	 * returned whichever copy the directory order reached first. Here that meant
+	 * {@code TLH-MLA-DYU} handed back a 139-step recording while the person was trying to understand
+	 * the 1511-step one from a different run, with nothing on screen to say there was a choice.
+	 *
+	 * <p>So the listing still collapses, but the collapse is reported and the name is refused. A
+	 * filename is still accepted, because that does identify one file.
+	 */
+	private static void checkAmbiguousSeedIsRefusedNotGuessed(){
+		File first = dir( "ambig-a" );
+		File second = dir( "ambig-b" );
+		write( first,  "TWIN-SEED", "WARRIOR", 1.0, 1, 10 );
+		write( second, "TWIN-SEED", "WARRIOR", 2.0, 1, 900 );
+
+		ReplayCatalog catalog = new ReplayCatalog().scan( List.of( first, second ));
+
+		if (catalog.ambiguous( "TWIN-SEED" ).size() != 2){
+			fail( "a seed recorded in two directories should be reported as ambiguous, reported "
+					+ catalog.ambiguous( "TWIN-SEED" ).size() );
+			return;
+		}
+
+		if (catalog.byName( "TWIN-SEED" ) != null){
+			fail( "a bare seed name that matches " + catalog.ambiguous( "TWIN-SEED" ).size()
+					+ " recordings resolved to one of them. Guessing here hands back a different"
+					+ " recording than the one being asked about." );
+			return;
+		}
+
+		//A filename is NOT unambiguous here either, and refusing is right: every run that used this seed
+		//wrote the same filename, so two directories hold TWIN-SEED.replay. The way out is a path, which
+		//is why the listing prints them.
+		if (catalog.byName( "TWIN-SEED.replay" ) != null){
+			fail( "a bare filename that exists in two directories resolved to one of them. Two runs"
+					+ " writing the same seed produce the same filename, so the filename does not"
+					+ " disambiguate and guessing here returns an arbitrary one." );
+			return;
+		}
+
+		//and the listing has to print the paths, or there is no way to pick one
+		String listing = catalog.render( true );
+		if (!listing.contains( "share this seed" )){
+			fail( "the listing does not flag a seed recorded more than once, so refusing to resolve it"
+					+ " looks arbitrary rather than informative." );
+			return;
+		}
+		if (!listing.contains( "ambig-a" ) || !listing.contains( "ambig-b" )){
+			fail( "the listing does not say which directories hold the copies, so a person told the name"
+					+ " is ambiguous has no way to act on it." );
+		}
+	}
+
+	/**
+	 * A run must be able to find its own recordings afterwards.
+	 *
+	 * <p>The trainer writes into {@code <--out>/replays} and {@code --out} is wherever the run was
+	 * pointed, while discovery searched a fixed pair of directories. On this machine that made 142 of
+	 * 147 recordings unreachable: written, ranked, closed, and never found again, with no error
+	 * anywhere. The index exists so "where did this run put them" is answered by the run.
+	 */
+	private static void checkIndexedDirectoriesAreDiscovered(){
+		File dir = dir( "indexed" );
+		write( dir, "INDEXED-SEED", "MAGE", 7.0, 1, 40 );
+
+		ReplayIndex.record( dir );
+
+		if (!ReplayIndex.read().contains( dir.getAbsoluteFile() )){
+			fail( "a directory recorded in the index is not read back out of it, so a run's own"
+					+ " recordings would still be unfindable." );
+			return;
+		}
+
+		//recording twice must not double the entry
+		ReplayIndex.record( dir );
+		int count = 0;
+		for (File known : ReplayIndex.read()){
+			if (known.equals( dir.getAbsoluteFile() )) count++;
+		}
+		if (count != 1){
+			fail( "a directory recorded twice appears " + count + " times in the index." );
+			return;
+		}
+
+		//and it must actually be scannable once known
+		ReplayCatalog catalog = new ReplayCatalog().scan( ReplayIndex.read() );
+		if (catalog.byName( "INDEXED-SEED" ) == null){
+			fail( "a recording in an indexed directory is still not resolvable, so indexing it changed"
+					+ " nothing observable." );
 		}
 	}
 

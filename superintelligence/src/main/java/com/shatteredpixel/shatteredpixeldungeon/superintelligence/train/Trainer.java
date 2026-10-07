@@ -869,6 +869,18 @@ public class Trainer {
 		File dir = new File( workDir, "replays" );
 		int saved = 0;
 
+		//Record where these landed before writing any of them. --out is wherever the run was pointed,
+		//so without this the recordings are written into a directory nothing knows to look in: the
+		//viewer and the catalog searched a fixed pair of paths and found 5 of the 147 recordings on
+		//this machine, missing the rest without a word. One line here is the whole difference between
+		//a recording that can be watched and one that cannot be found again.
+		//
+		//mkdirs first: ReplayIndex only records a directory that exists, and on a fresh --out nothing
+		//has created this one yet - ReplayIO.write would have been the first to. Recording before the
+		//directory existed silently recorded nothing, which is the bug being fixed, one level down.
+		dir.mkdirs();
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIndex.record( dir );
+
 		for (Map.Entry<String, Replay> entry : bestPerSeed.entrySet()){
 			Replay replay = entry.getValue();
 			replay.generation = epoch;

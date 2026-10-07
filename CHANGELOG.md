@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`OPEN_INVENTORY` also acted on the world.** `OPEN_INVENTORY` and `CANCEL` were missing from
+  `ActionMapper.apply`'s switch, so both fell through to `pickInteractCell()` + `handleCell()` - the
+  path `INTERACT` takes. Opening the inventory therefore also moved the hero, attacked an adjacent mob,
+  picked up a heap, opened a locked door or took a floor transition.
+  It went unnoticed because a comment called the fall-through a no-op. It was not: `pickInteractCell`
+  finds something and `handleCell` acts on it. Visible in recorded runs, where the hero moved a cell
+  on an `OPEN_INVENTORY` step and moved back on the next.
+  **This reached training** - every episode that opened its inventory did two things at once, and the
+  agent was credited for both. It also explains why the desktop viewer and the headless trainer
+  disagreed about the same recording.
+  `modecheck` now covers it, built so it can actually fail: it drops an item heap on a known adjacent
+  cell first, because on a quiet seed `pickInteractCell` has nothing to return and the bug hides. The
+  first version of that case passed with the bug reinstated.
+
+- **The replay viewer could not find most recordings.** The trainer writes into `<--out>/replays` and
+  `--out` is wherever the run was pointed, while the viewer and the catalog searched exactly two fixed
+  directories. Measured: **15 of 129 recordings were reachable**; the rest were written, ranked, closed
+  and never found again, with no error anywhere.
+  Runs now record where they put their replays, and discovery reads that index - 15 to 129 recordings
+  here. An index rather than a filesystem search, because scanning for directories named `replays` finds
+  these by luck of naming and also picks up unrelated ones.
+  Two things came out of fixing it that were wrong in their own right:
+  - **A seed recorded by several runs resolved silently to whichever came first.** `TLH-MLA-DYU` exists
+    5 times on this machine, as a 139-step recording in three directories and a 1506- and a 1511-step
+    one in others. Typing the name returned one of them with no indication there was a choice - so
+    someone investigating a specific run would be handed a different run. A name matching more than one
+    file is now refused with every copy listed, paths, step counts and scores included. A *filename* is
+    not unambiguous either, since two runs writing one seed produce the same filename; a full path is
+    the way out, and `--resolve` accepts one.
+  - `replay-viewer.bat` no longer probes two hardcoded directories with four extension permutations.
+    It asks the Java side, as `:catalog` and `:bynumber` already did.
+
+- **A divergence report said only what was expected, never what happened.** The viewer's message was
+  `expected hero at 834`, which does not distinguish a stale recording from a broken viewer. It now
+  names the action, the mode, both positions, and what the recording says:
+  `DIVERGED at step 42 - OPEN_INVENTORY/0 in WORLD: hero at 834, recording says 869`.
+
 - **The trend chart reported a range it never observed, and a depth-2 episode was reported that never
   happened.** `Graph.bar` widened the scale by 1 whenever min equalled max, purely so the division
   inside the loop was defined - and then printed that widened span as the axis range. A run whose

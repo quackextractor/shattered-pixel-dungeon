@@ -91,7 +91,7 @@ rem Through a file rather than a `for /f` backtick loop. Inside one of those the
 rem quotes around --args="..." do not survive and gradle is handed a broken
 rem argument list, which fails with a bare "FAILURE" and no explanation. The path
 rem is read back with set /p, which takes the first line and nothing else.
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--dir %REPLAYDIR% --dir %TRAINDIR% --select %TARGET%" > "%SELECTFILE%" 2>nul
+call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--select %TARGET%" > "%SELECTFILE%" 2>nul
 if errorlevel 1 (
     echo No recording numbered %TARGET%.
     del "%SELECTFILE%" >nul 2>&1
@@ -165,7 +165,7 @@ rem --- shared ----------------------------------------------------------------
 
 rem Prints the catalog.
 :catalog
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--dir %REPLAYDIR% --dir %TRAINDIR%"
+call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays
 exit /b %errorlevel%
 
 rem Accepts a bare recording name as well as a path, and always leaves %FILE%
@@ -173,35 +173,41 @@ rem absolute so the gradle tasks, whose working directory is the module rather
 rem than the repository root, cannot miss it.
 rem
 rem This is for arguments typed on the command line, not for the interactive
-rem picker, which takes a number and asks the java side to resolve it. Both
-rem directories are searched because the trainer writes into a temp directory
-rem while the checked-in fixtures live in the repo.
+rem picker, which takes a number and asks the java side to resolve it.
+rem
+rem The name is handed to the java side rather than probed for here. It used to
+rem be tested against two hardcoded directories with four extension
+rem permutations, which found 15 of the 129 recordings on this machine and
+rem reported the rest as "Not found" - the trainer writes to <--out>/replays and
+rem --out is wherever the run was pointed, so most recordings were in a
+rem directory this file had never heard of. The search now lives in one place,
+rem in a language where it can be tested, exactly as :catalog and :bynumber
+rem already were.
 :resolve
 set "FILE=%~1"
 if exist "%FILE%" goto :absolute
-if exist "%REPLAYDIR%\%~1" (
-    set "FILE=%REPLAYDIR%\%~1"
-    goto :absolute
+
+set "RESOLVEFILE=%TEMP%\spd-replay-resolve.txt"
+call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--resolve %~1" > "%RESOLVEFILE%" 2>nul
+
+rem The java side answers with either a path or a sentence, and always exits 0 so gradle
+rem does not wrap a refusal in its own FAILURE block. A sentence is not a path, so the
+rem two are told apart by testing what came back.
+set "FOUND="
+set /p FOUND=<"%RESOLVEFILE%"
+del "%RESOLVEFILE%" >nul 2>&1
+
+if not defined FOUND (
+    echo Could not resolve %~1.
+    echo.
+    echo replay-viewer --list    lists every recording it can find
+    exit /b 1
 )
-if exist "%TRAINDIR%\%~1" (
-    set "FILE=%TRAINDIR%\%~1"
-    goto :absolute
+if not exist "!FOUND!" (
+    echo !FOUND!
+    exit /b 1
 )
-
-rem the name without an extension, against both directories
-set "STEM=%~1"
-if /i "%STEM:~-7%"==".replay" set "STEM=%STEM:~0,-7%"
-if /i "%STEM:~-4%"==".dat" set "STEM=%STEM:~0,-4%"
-
-if defined STEM if exist "%REPLAYDIR%\%STEM%.replay" set "FILE=%REPLAYDIR%\%STEM%.replay"
-if defined STEM if exist "%REPLAYDIR%\%STEM%.dat" set "FILE=%REPLAYDIR%\%STEM%.dat"
-if defined STEM if exist "%TRAINDIR%\%STEM%.replay" set "FILE=%TRAINDIR%\%STEM%.replay"
-if defined STEM if exist "%TRAINDIR%\%STEM%.dat" set "FILE=%TRAINDIR%\%STEM%.dat"
-if defined FILE goto :absolute
-
-echo Not found: %~1
-echo Recordings are in %REPLAYDIR% and %TRAINDIR%
-exit /b 1
+set "FILE=!FOUND!"
 
 :absolute
 for %%I in ("%FILE%") do set "FILE=%%~fI"
