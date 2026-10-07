@@ -107,9 +107,10 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | 1.2 | ~~Run one generation end to end and check the losses are sane~~ | done | `policy` and `value` are non-zero, and advantages arrive with a real spread. Reported per generation. |
 | 1.3 | ~~Save and load the trained weights~~ | done | `Checkpoint` writes weights, Adam moments and the optimiser step count; `--save` / `--resume` / `--checkpoint-every`. A resumed run continues both the generation and the adam-step numbering. `checkpointcheck` refuses foreign, truncated, trailing-byte and wrong-config files. `PLAN-data-flow.md` step 4b. |
 | 1.7 | ~~Instrument the loop so a run can be judged~~ | done | `clip=` now reports the real ratio-clip fraction, and `MetricsHistory` writes `metrics.csv` per generation plus an end-of-run trend. `PLAN-data-flow.md` step 3b. |
-| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from `research.md:40`. **Still blocked on something other than compute.** The loop is correct and 3.29x faster; what is missing is that the agent has no reason to prefer moving over idling. See 1.8. |
-| 1.8 | **Make surviving worth more than stalling** | M | **The next real blocker.** After 2.1 the agent stalls 100% of the time, but now at -0.24 instead of -5.0 — so it is not being *rewarded* for stalling any more, it simply has nothing better to do. `meanTurns` oscillates 11-86 and never trends up. `depthReward` is +10 against `turnCost` of 0.002, so descending pays 5,000 turns of idling; the terms that would pay for playing well (`KILL`, `GOLD_GAIN`, `ITEM_PICKUP`) are all shaping terms the inert curriculum would fade, and the one concrete outcome the agent can cause is stalling. **Decide what surviving looks like before tuning numbers again** — this is the same question 2.1 was, one level up, and the reason nothing about the reward weights was changed there. |
-| 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
+| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from `research.md:40`. **Partially unblocked.** Depth 2 now appears in training for the first time (`PLAN-reward-signals.md` §7), so the pipeline reaches past floor 1 — but it is rare rather than routine, and no run has held depth 2 across a whole generation. The remaining blocker is 1.8. |
+| 1.8 | **Make surviving worth more than stalling** | M | **The next real blocker, re-scoped.** This was written when the agent stalled 100% of the time because it *chose* to. It did not: `REST` was a one-way door (`PLAN-reward-signals.md` §7), and every episode that used it was trapped by the harness. Fixed. Episodes now run the full 1500 turns with zero stalls. **The question is therefore still "what does surviving look like", but it is now a question that can be asked** — the agent genuinely survives 1500 turns and genuinely does not progress. `depthReward` is +10 against `turnCost` of 0.002, so descending pays 5,000 turns of idling, and `KILL` / `GOLD_GAIN` / `ITEM_PICKUP` still never fire. Nothing should be tuned in the same commit as the fault fixes, or §9's measurement stops meaning anything. |
+| 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. Still blocked on 1.4. |
+| 1.9 | ~~Three harness faults that made the agent unable to have an episode~~ | done | Found by driving paths a weak policy almost never reaches. `REST` was a one-way door (36/36 episodes stalled, idle guard fired zero times); headless had no texture and every `TextureFilm` dereferenced the null, killing workers on hunger damage; every death blew the stack, so `DEATH` — the ending the reward function is built around — was unreachable. All fixed and gated; `PLAN-reward-signals.md` §7-8. |
 | 1.6 | ~~Parallelise the update across minibatches~~ | done | --update-threads N. Measured 8.98 -> 2.73 ms/sample at 1 -> 4 threads (3.29x), 2.59 at 8 (3.47x). parallelcheck is a gate and mutation-tested. Required three fixes first, of which the dCell gradient leak was the real blocker. PLAN-data-flow.md step 4. |
 
 **Ordering was wrong and has been corrected.** 1.6 was originally next. It is still required — the
@@ -275,6 +276,21 @@ The last row is the honest one. **The agent still stalls every episode; it just
 no longer profits from doing so.** `valueLoss` falling 3.53 → 0.44 is the critic
 finally fitting its targets, which is what removing a penalty it could not
 reconcile with a bootstrap should do. Depth is still 1. That is now 1.8.
+
+> **Both columns of that table were correct and the conclusion drawn from them was
+> wrong.** The agent was not choosing to stall. `REST` was a one-way door: it set
+> `hero.resting` without setting a `curAction`, so `Hero.act` took the rest branch
+> forever and never called `ready()`, and `recoverStrandedHero` refuses a resting
+> hero because a *player* escapes rest by choosing another action. Every episode
+> that rested was over. Instrumenting the two stall guards showed 36 of 36 stalls
+> came from `LevelPipeline` and **zero** from the idle guard this section is about,
+> at turns 10-51 rather than 121 — which is the whole tell.
+>
+> So 2.1's reward fix was correct on its own terms and none of the above measures
+> the stall. `PLAN-reward-signals.md` §7 has the correction; §8 has two further
+> faults the stall was hiding. Worth keeping in mind that every case in this
+> section passed while the agent was trapped by something else — a check on
+> reward arithmetic cannot detect a bug in the mechanism that builds the episode.
 
 ### 2.2 Reward terms that never fire
 

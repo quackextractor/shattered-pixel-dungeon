@@ -1,5 +1,12 @@
 # Reward signals - the stall strategy
 
+> **Read §7 before §1.** Sections 1-6 diagnose the stall as a reward-arithmetic
+> problem reached by waiting. That diagnosis was wrong, and §7 is the correction:
+> `REST` was a one-way door, and the agent was trapped by the harness rather than
+> choosing to idle. §8 records two further faults that the stall was hiding.
+> The earlier sections are kept unmodified rather than rewritten, because how the
+> wrong answer looked reasonable is part of what §7 is about.
+
 Why the agent learned to stop moving instead of play, and what to do about it.
 
 Written 2026-10-07, after the first 20-generation training run on the corrected
@@ -223,6 +230,11 @@ arithmetic being wrong again.
 
 ### What is now the blocker
 
+**Superseded by §7. The paragraph below was written before the stall source was
+instrumented, and its diagnosis turned out to be wrong.** It is kept because §7
+is mostly an account of arriving somewhere else, and the reasoning error is part
+of that.
+
 `depthReward` is +10 against `turnCost` of 0.002, so descending one floor pays
 5,000 turns of idling. The terms that would reward playing well — `KILL`,
 `GOLD_GAIN`, `ITEM_PICKUP` — are all shaping terms, and the one concrete outcome
@@ -240,3 +252,195 @@ The end-reason breakdown, which arrived as commit 1 of this work. For twenty
 generations the diagnosis was reached by subtracting 5.0 from `meanScore` and
 recognising the answer — a correct inference from an indirect signal. `ended
 stalled 16 (100%)` is the same fact, read.
+
+The breakdown is what made §7 possible: it said `STALLED` without saying *which*
+guard produced it, and the guard turned out to be the entire answer.
+
+## 7. The stall was not a reward problem at all
+
+Sections 1 through 6 are about `WAIT`. The agent was not choosing to wait.
+
+Instrumenting the two guards that can end an episode as `STALLED` — the idle
+guard in `SPDEnv.settle` and `LevelPipeline`'s `Outcome.STALLED` — gave:
+
+```
+ended  stalled 36 (100%)     endDEATH 0   endTURN_LIMIT 0   endVICTORY 0
+  STALL source:  idle 0   actorStepLimit 0   pipeline 36
+```
+
+**The idle guard fired zero times.** It cannot, in fact: it needs
+`stallLimit` (120) consecutive turns of unchanged position and HP, and the
+stalls were arriving at turns 10, 31, 24, 51, 168. §2.2 described a route that
+produces a stall at turn 121, and the measured stalls were not at turn 121.
+
+### The actual mechanism
+
+`ActionMapper.apply` set `hero.resting = true` and nothing else:
+
+```java
+case REST:
+    hero.resting = true;
+    hero.next();
+```
+
+`Hero.act` branches on `curAction == null` *before* it branches on `resting`:
+
+```java
+if (curAction == null) {
+    if (resting) { spendConstant( TIME_TO_REST ); next(); }
+    else          { ready(); }
+}
+```
+
+A resting hero therefore takes the rest branch forever. `ready()` is never
+reached, control is never handed back, and no further action is ever read.
+
+Nothing recovers it. `recoverStrandedHero` refuses a resting hero outright —
+correct for a player, since a player escapes rest by choosing another action.
+Headless input has nobody to do that. After 8 scheduler steps `LevelPipeline`
+returns `STALLED`.
+
+So `REST` was a one-way door, and the agent fell into it within a few dozen turns
+of any policy that chose `REST` once. That is what "100% stalled" was measuring.
+
+### Why every case in §4 passed anyway
+
+Worth stating plainly, because it is the more useful half of this. The gate in
+§4 asserted that stalling is not cheaper than dying and that the `STALLED` reward
+is zero. Both were true, and both stayed true while the agent was being trapped
+by something else entirely.
+
+A check written against the reward arithmetic cannot detect a harness bug in the
+mechanism that produces the episode. `rewardcheck` grew an 8th case only once
+there was a specific invariant to assert — that resting is released by the next
+action — and that case failed when the fix was deleted, which the §4 case would
+not have.
+
+### Measured
+
+| | before | after |
+| --- | --- | --- |
+| stall share | 100% | **0%** |
+| idle-guard stalls | 0 | 0 |
+| pipeline stalls | 36 | **0** |
+| episodes reaching depth 2 | 0 | **yes** |
+
+Depth 2 appears in training for the first time. `bestDepth` was flat at 1 for
+every generation before this.
+
+## 8. Two more faults, and why they were invisible
+
+Both were unreachable while episodes ended at turn ~50. Fixing the stall made
+episodes live long enough to reach them. Neither is a reward problem; both are
+the agent's ability to *have an episode at all*.
+
+### 8.1 Headless had no texture, and every texture dereferenced it
+
+`TextureCache.get` returns `null` when `Gdx.gl == null`, which is the normal
+state headless. Every `TextureFilm` constructor dereferenced that on the next
+line.
+
+Most films are built in **static initialisers**, so this did not need rendering
+to fire — it needed the class to be *touched*. `Char.damage` reads `PHYS_DMG`
+off `FloatingText`, whose `iconFilm` is such a field. So the path in was:
+
+```
+SEARCH, or simply living long enough
+  -> Hunger.affectHunger -> Hero.damage
+  -> Char.damage -> static init of FloatingText
+  -> new TextureFilm(null, 7, 8) -> NPE
+```
+
+Thrown as an unhandled `ExceptionInInitializerError`, which killed the worker
+process and took the generation with it. A plain `SEARCH` crashed on this too,
+before the stall fix; it just could not be reached by a policy that ended at
+turn 10.
+
+The constructors now fall back to the requested frame size. That is not trying to
+be correct — nothing renders headless — but it keeps the atlas math defined:
+`cols` and `rows` come out 1 instead of dividing by zero.
+
+Fixed in the constructor rather than at each call site, deliberately. There are
+many static films; the next one touched would have had the same crash. Anything
+that genuinely needs a real texture still gets `null` from the cache and will say
+so.
+
+### 8.2 Every death blew the stack
+
+`HeadlessSprite.die` called `ch.die( ch )` — invoking the death callback to stand
+in for an animation that does not exist headless. The callback re-enters
+`Hero.die` → `Char.die` → `sprite.die` → the callback. `Hero.die` has a guard for
+a repeated death, but it keys on the *cause*, and each bounce passed a different
+`Char`, so it never matched:
+
+```
+FRAME 1016  HeadlessSprite.die(HeadlessSprite.java:118)
+FRAME 1017  Char.die(Char.java:1130)
+FRAME 1018  Hero.die(Hero.java:2237)
+FRAME 1019  HeadlessSprite.die(HeadlessSprite.java:118)     ... to 1024
+```
+
+**This is the worst of the three.** A stall costs an episode; a null texture
+costs a worker; this means the ending the whole reward function is built around
+was unreachable. `StackOverflowError` is not a `DEATH`, so no terminal reward was
+recorded, GAE had no terminal state to treat as terminal, and `endedNaturally`
+was never set.
+
+Now a no-op: the callback is the animation finishing, and there is none.
+
+The new `rewardcheck` case cannot fail the way a gate normally does. Reinstating
+the bug kills the check *process* with `StackOverflowError` before any assertion
+runs. The mutation test cannot see a failure — it sees the JVM disappear, which
+is the clearest possible confirmation of the diagnosis.
+
+### What this pattern has in common
+
+Every fault in this document was found by **driving paths that a weak policy
+almost never reaches**, not by reading code. Hunger damage needs ~350 turns.
+Death needs the hero to actually be in danger. Both were sealed behind an
+episode that ended at turn 10.
+
+That is the argument for fixing crashes in the order they are *found* rather
+than in the order they are *listed*: the first two faults were invisible until
+the third was fixed, and the third was invisible until the first two were. The
+list order was the reverse of the dependency order.
+
+## 9. Where this leaves the reward work
+
+`TODO.md` 1.8 asked "what does surviving look like". It is now a question that
+can be asked, which it could not be for §6.
+
+The measured state after all three fixes, 6 generations, 6 workers, seed 12345:
+
+```
+gen          0      1      2      3      4      5
+meanScore  186.1  118.7  114.5   75.7   59.1   66.6
+meanTurns  1500   1500   1500   1500   1500   1500
+endSTALLED    0      0      0      0      0      0
+endTURN_LIMIT 36     36     36     36     36     36
+endDEATH      0      0      0      0      0      0
+valueLoss   1.79   0.92   1.18   0.60   0.46   0.57
+bestDepth     1      1      1      1      1      1
+```
+
+Every episode now runs the full 1500 turns. No stalls, and — worth flagging
+plainly — **no deaths either**, which the death fix makes newly possible to
+observe: `endDEATH` is 0 because the policy wanders away from everything rather
+than because dying is unreachable.
+
+`meanScore` falling from 186 to 59 with `valueLoss` falling alongside it is the
+critic fitting a longer, more varied episode, not a collapse. `bestDepth` is
+still 1 at generation 5, so depth 2 remains rare rather than routine.
+
+Two things are now genuinely open, and neither is a stall:
+
+1. **The agent survives but does not progress.** 1500 turns of `turnCost` is the
+   only cost being paid, and `depthReward` is +10 against 0.002 per turn. There
+   is still no term that pays for the thing the objective actually wants.
+2. **Nothing dies, so the death penalty is untested in training.** It is now
+   correct and gated, but no run has yet produced one.
+
+Neither should be answered by tuning numbers in the same commit as the fixes
+above. The measurement in §9 is only interpretable because each of the three
+faults was fixed and measured on its own.
+

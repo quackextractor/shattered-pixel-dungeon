@@ -29,9 +29,25 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   A 20-generation run converged `meanScore` on exactly -5.0 with turns collapsing 62 → 8. `STALLED` is
   now zero and priced by turn cost alone. Measured after: `meanScore` +3.29, `meanTurns` 56,
   `valueLoss` 0.44. See [`PLAN-reward-signals.md`](PLAN-reward-signals.md).
-- **The agent has still never left floor 1**, and still ends every episode by stalling — it is now
-  free to, rather than paid to. `depthReward` of +10 against `turnCost` of 0.002 is the next thing to
-  examine (`TODO.md` 1.8).
+- **`REST` was a one-way door, and that was the real cause of a 100% stall rate.** The agent was not
+  choosing to idle - it was being trapped. `ActionMapper` set `hero.resting = true` without setting a
+  `curAction`, so `Hero.act` took the rest branch forever and never called `ready()`; and
+  `recoverStrandedHero` refuses a resting hero, correctly, because a *player* escapes rest by choosing
+  another action - headless input has nobody to do that. Instrumenting the two stall guards settled it:
+  36 of 36 stalls came from `LevelPipeline` and **zero** from the idle guard, at turns 10-51 rather than
+  121. Any non-`REST` action now ends the rest. Stall share is 0% and depth 2 appears in training for
+  the first time.
+- **Two further faults were hidden behind that one**, both unreachable while episodes ended at turn ~50.
+  Headless has no GL context and every `TextureFilm` constructor dereferenced the null texture, so hunger
+  damage - which touches a statically-initialised film - killed worker processes. And `HeadlessSprite.die`
+  invoked the death callback to fake an animation, recursing `Hero.die` -> `Char.die` -> `sprite.die`
+  until the stack gave out, which means `DEATH`, the ending the whole reward function is built around,
+  was unreachable. All three are fixed and gated; see [`PLAN-reward-signals.md`](PLAN-reward-signals.md) sections 7-8.
+- **What remains is neither a crash nor a stall.** Every episode now runs the full 1500 turns with zero
+  stalls, and `meanScore` is falling (186 -> 59 across 6 generations) as the critic fits longer episodes.
+  But `bestDepth` is still 1 and nothing dies. `depthReward` of +10 against `turnCost` of 0.002 means
+  descending pays 5,000 turns of idling, and `KILL` / `GOLD_GAIN` / `ITEM_PICKUP` still never fire
+  (`TODO.md` 1.8).
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
@@ -85,6 +101,7 @@ something.
 | Per-generation metrics history (CSV, end-of-run trend) | Done - `metrics.csv` per generation, `diag.Graph` at end of run |
 | PPO clip fraction (`clip=`) | Fixed - was reporting `P(\|N(0,1)\|>0.2)`=0.8415; now the real ratio-clip fraction, measured 0.047-0.737 |
 | Reward model, per-term ledger, curriculum fade | Partial - 6 terms have no emission site; `KILL` has the plumbing but no emission; curriculum is written but `observe()` is never called, so shaping is a constant 1f |
+| Episodes can be had at all | Done - `REST` was a one-way door (0 idle-guard stalls, 36 pipeline stalls), headless had no texture and every `TextureFilm` dereferenced it on hunger damage, and every death blew the stack so `DEATH` was unreachable. `rewardcheck` cases 7 and 8. |
 | Terminal rewards are honest | Done - `STALLED` was -5.0 against death's -100, so ending an episode beat losing and the agent learned to. Now zero, priced by turn cost. `rewardcheck` is a gate |
 | Actions report what happened | Done - `WAIT`/`REST`/`SEARCH` were recorded as `INVALID_ACTION`, and the term carried no weight, so nothing observed it |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
