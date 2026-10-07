@@ -92,8 +92,39 @@ this.h = new Tensor( 1, size );
 		c.fill( 0f );
 	}
 
+	/**
+	 * The carried hidden state, live.
+	 *
+	 * <p>Exposed as a live tensor so a caller can snapshot it without a copy. {@link #snapshot} is the
+	 * safe way to take one; this is for the update's in-place restore.
+	 */
 	public Tensor state(){
 		return h;
+	}
+
+	/** The cell state, live. See {@link #state}. */
+	public Tensor cellState(){
+		return c;
+	}
+
+	/**
+	 * Copies both carried states out into {@code into}, {@code [h | c]}.
+	 *
+	 * <p>Both halves, because the cell state is not derivable from the hidden one — the forget gate's
+	 * accumulated memory lives only in {@code c}, and restoring {@code h} with a zeroed {@code c} gives
+	 * a state that has never existed and produces a value that looks merely plausible.
+	 */
+	public void snapshot( float[] into ){
+		if (into == null || into.length < 2 * size) return;
+		System.arraycopy( h.data, 0, into, 0, size );
+		System.arraycopy( c.data, 0, into, size, size );
+	}
+
+	/** Restores both carried states from a {@link #snapshot}. */
+	public void restore( float[] from ){
+		if (from == null || from.length < 2 * size) return;
+		System.arraycopy( from, 0, h.data, 0, size );
+		System.arraycopy( from, size, c.data, 0, size );
 	}
 
 	public void stateFrom( Tensor other ){

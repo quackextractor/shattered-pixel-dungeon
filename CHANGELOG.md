@@ -20,6 +20,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The LSTM state now travels with each sampled transition**, so the update replays an observation
+  under the state the behaviour policy actually used. 1 KB per step at the default 128-wide LSTM,
+  about 2% of a step's wire cost.
+- **`statecheck`**, a gate asserting a sampled observation replays to the value the rollout recorded
+  *regardless of processing order* — and, separately, that replay is order-independent, which is the
+  precondition for splitting a minibatch across threads. Mutation-tested: removing the restore fails
+  two of its four cases.
+- **`replayprobe`** and **`valuescale`**, probes rather than gates. Both exist because a number was
+  needed to settle a question that reading the code could not: how far a shuffled replay drifts, and
+  whether the critic's targets fit inside the range it can reach.
+
+### Fixed
+
+- **The update was optimising a different objective than PPO.** `PPO.update` shuffles the buffer and
+  then calls `network.forward` once per sample, so each sample's replay inherited the hidden state the
+  *previously processed* sample left behind — a different timestep of a different episode. Measured:
+  replaying in collection order reproduces the rollout's value to 0.000000; replaying shuffled drifts
+  up to 0.20, about 20% of the value's magnitude. The ratio `pi_new / pi_old` was therefore formed
+  across two different states. It is also why the clip fraction sat at 0.84 on the first update, which
+  was indistinguishable from `P(|N(0,1)| > 0.2)` and so read as a plausible measurement.
+- **`Network.state()` returned the hidden state only.** The LSTM cell state is not derivable from it —
+  the forget gate's accumulated memory lives only in `c` — so restoring `h` alone gave the network a
+  state it had never been in. Finite, plausible, wrong. `LSTM.snapshot`/`restore` now carry `[h | c]`.
+- **The critic could not represent its own targets.** `valueHead` was a `Dense`, so tanh, so confined
+  to `[-1, +1]`, against `deathPenalty` 100 and `victoryReward` 1000. The return is unnormalised (only
+  the advantage is normalised), so the critic was asked to fit targets up to 250× outside the range it
+  could express, and the squared error from those samples floors out rather than being trained away.
+  `valueLoss` sat at 2.97–8.11 over 12 generations and never trended down; it now sits at 2.44–3.51
+  over the same span. The value head is linear, and its backward pass no longer multiplies the
+  gradient by `1-tanh'`, which shrinks as the error grows — the opposite of what a regressor needs.
+- **Samples were coupled**, sample *i* depending on sample *i-1*. This is why the parallel update was
+  blocked, and it was a correctness bug rather than a threading one: the parallelisation would have
+  fixed it, had anyone attempted it.
+- **`Protocol.VERSION` is still 1** despite the params and transition frames both having changed
+  incompatibly since. Bumped to 2, so the handshake check that exists to catch a desync now
+  distinguishes them.
+
+### Added (earlier in this release)
+
 - **Policy checkpoints, so a training run can be stopped and continued.** `--save <file>` writes a
   checkpoint every `--checkpoint-every` generations (default 25) and on exit; `--resume <file>`
   continues from one, keeping the generation and optimiser-step numbering so the two runs'

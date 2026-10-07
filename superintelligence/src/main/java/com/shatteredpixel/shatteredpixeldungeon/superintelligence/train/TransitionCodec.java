@@ -56,6 +56,18 @@ public final class TransitionCodec {
 				+ 1L;
 	}
 
+	/**
+	 * Bytes one sampled transition costs, including its recurrent state.
+	 *
+	 * <p>The state is 1KB at the default 128-wide LSTM, so it adds about 2% to a step's cost. That is
+	 * the price of the update replaying each observation under the state the behaviour policy actually
+	 * used, and it is cheap next to being wrong: the alternative cost the same 1KB's worth of gradient
+	 * signal.
+	 */
+	public static long wireBytesPerStep( EnvConfig config, int stateSize ){
+		return wireBytesPerStep( config ) + 4L + 4L * stateSize;
+	}
+
 	public static void write( DataOutputStream out, List<Transition> sampled ) throws IOException {
 		out.writeInt( Protocol.MSG_TRANSITIONS );
 		writeBody( out, sampled );
@@ -86,7 +98,39 @@ public final class TransitionCodec {
 			out.writeFloat( t.advantage );
 			out.writeFloat( t.returnValue );
 			out.writeBoolean( t.terminal );
+
+			//the LSTM state this step was decided under. 256 floats, and without it the trainer
+			//replays every observation under the wrong hidden state - see Transition.recurrentState
+			writeState( out, t.recurrentState );
 		}
+	}
+
+	/** Writes a recurrent state, or a zero length if there is none. */
+	private static void writeState( DataOutputStream out, float[] state ) throws IOException {
+		if (state == null){
+			out.writeInt( 0 );
+			return;
+		}
+		out.writeInt( state.length );
+		for (float v : state) out.writeFloat( v );
+	}
+
+	/** Reads a recurrent state, or returns {@code null} for a zero length. */
+	private static float[] readState( DataInputStream in, int expected ) throws IOException {
+		int length = in.readInt();
+		if (length == 0) return null;
+
+		//bounded against what the network could hold, so a corrupt length cannot allocate its way to
+		//an OutOfMemoryError - which on a 2GB-pagefile machine takes the run with it
+		if (length != expected){
+			throw new IOException( "the frame carries a recurrent state of " + length
+					+ " floats but this network's is " + expected + ". The worker and trainer are"
+					+ " built differently." );
+		}
+
+		float[] state = new float[ length ];
+		for (int i = 0; i < length; i++) state[ i ] = in.readFloat();
+		return state;
 	}
 
 	/**
@@ -97,12 +141,19 @@ public final class TransitionCodec {
 	 * failing. This buffer is large and cold - 2,400 steps is ~118 MB - which is precisely the case
 	 * the pool is wrong for.
 	 */
-	public static List<Transition> read( DataInputStream in, EnvConfig config ) throws IOException {
-		return readBody( in, config );
+	public static List<Transition> read( DataInputStream in, EnvConfig config,
+			int stateSize ) throws IOException {
+		return readBody( in, config, stateSize );
 	}
 
-	/** The frame's contents, without its message header. See {@link #writeBody}. */
-	public static List<Transition> readBody( DataInputStream in, EnvConfig config ) throws IOException {
+	/**
+	 * The frame's contents, without its message header. See {@link #writeBody}.
+	 *
+	 * @param stateSize floats the LSTM state must be, so a frame from a differently sized worker is
+	 *                  refused rather than read into a network it does not belong to
+	 */
+	public static List<Transition> readBody( DataInputStream in, EnvConfig config,
+			int stateSize ) throws IOException {
 		int count = in.readInt();
 
 		int gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
@@ -136,6 +187,8 @@ public final class TransitionCodec {
 			t.advantage = in.readFloat();
 			t.returnValue = in.readFloat();
 			t.terminal = in.readBoolean();
+
+			t.recurrentState = readState( in, stateSize );
 
 			into.add( t );
 		}

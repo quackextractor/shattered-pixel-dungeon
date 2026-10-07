@@ -105,7 +105,10 @@ cliTask('modecheck', 'Fails if the environment cannot reach one of its own actio
 
 cliTask('restartcheck', 'Fails if restarting a run does not rebuild the same first floor.')
 
-cliTask('updatecost', 'Measures what a PPO update costs and projects it across sample rates.')
+  cliTask('replayprobe', "Reports how far a replayed observation's value drifts from the rollout's.")
+  cliTask('valuescale', "Reports the critic's target range against the range it can reach.")
+  cliTask('statecheck', 'Fails if a sampled observation does not replay to the value the rollout saw.')
+  cliTask('updatecost', 'Measures what a PPO update costs and projects it across sample rates.')
 
 cliTask('gaecheck', 'Fails if the two advantage implementations disagree, or sampling misbehaves.')
 
@@ -119,7 +122,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 
 //Every gate in one invocation, because gradle's per-invocation overhead is most of the cost.
 //Measured: gaecheck is 0.22s of actual work and 2.4s through gradle, so gradle is ~90% of it. All
-  //seven gates together take ~7s in one invocation against roughly 19s run one after another - and 8s
+  //eight gates together take ~8s in one invocation against roughly 21s run one after another - and 8s
 //each if the daemon is cold. The checks are not slow; the harness around them is.
 //
 //dependsOn is enough for correctness: gradle fails the build if any dependency task exits non-zero,
@@ -128,8 +131,8 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 //Gradle refuses to shadow it. `gates` is also the more honest name - `check` conventionally means
 //compile plus test, and this runs neither a compiler pass nor JUnit.
 tasks.register('gates') {
-    dependsOn 'gradcheck', 'gaecheck', 'collectcheck', 'checkpointcheck', 'replaycheck',
-        'modecheck', 'restartcheck'
+    dependsOn 'gradcheck', 'gaecheck', 'collectcheck', 'checkpointcheck', 'statecheck',
+        'replaycheck', 'modecheck', 'restartcheck'
     group = 'verification'
     description = 'Runs every correctness gate in one invocation.'
     doLast { println "all gates passed" }

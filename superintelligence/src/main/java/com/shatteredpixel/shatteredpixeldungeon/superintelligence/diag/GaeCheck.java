@@ -428,6 +428,9 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 		EnvConfig config = new EnvConfig();
 		int gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
 
+		//the LSTM is 128 wide, and both halves of its state travel: [hidden | cell]
+		int stateFloats = 2 * 128;
+
 		Transition sent = new Transition();
 		sent.grid = new byte[ gridSize ];
 		sent.inventory = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
@@ -453,6 +456,10 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 		sent.returnValue = -2.5f;
 		sent.terminal = true;
 
+		//distinctly non-zero, so a dropped or zero-filled state field is visible rather than equal
+		sent.recurrentState = new float[ stateFloats ];
+		for (int i = 0; i < stateFloats; i++) sent.recurrentState[ i ] = (i % 7) * 0.125f - 0.25f;
+
 		try {
 			java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
 			java.io.DataOutputStream out = new java.io.DataOutputStream( bytes );
@@ -461,7 +468,7 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 
 			java.io.DataInputStream in = new java.io.DataInputStream(
 					new java.io.ByteArrayInputStream( bytes.toByteArray() ) );
-			List<Transition> got = TransitionCodec.readBody( in, config );
+			List<Transition> got = TransitionCodec.readBody( in, config, stateFloats );
 
 			if (got.size() != 1){
 				fail( "the round trip produced " + got.size() + " transitions, expected 1" );
@@ -487,6 +494,12 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 			}
 			if (!java.util.Arrays.equals( t.grid, sent.grid )){
 				fail( "the packed grid did not survive the round trip" );
+				return;
+			}
+			if (!java.util.Arrays.equals( t.recurrentState, sent.recurrentState )){
+				fail( "the recurrent state did not survive the round trip. A transition arriving"
+						+ " without it replays under whatever the previous sample left behind, so this"
+						+ " one is the whole difference between a correct replay and a plausible one." );
 				return;
 			}
 			if (t.inventory.length != sent.inventory.length

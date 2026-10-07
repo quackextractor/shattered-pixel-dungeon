@@ -17,6 +17,20 @@ public class Dense {
 	public final Tensor W;
 	public final Tensor b;
 
+	/**
+	 * Whether to apply tanh. Off for the value head, which is a regression and not a classifier.
+	 *
+	 * <p>A tanh output is confined to {@code [-1, +1]}, and {@code EnvConfig.deathPenalty} is 100 with
+	 * {@code victoryReward} 1000. So the critic was being asked to fit targets up to 250x outside the only
+	 * range it could express: those samples contribute a squared error no amount of training removes,
+	 * and {@code valueLoss} floors out instead of falling. Measured over 12 generations it sat at
+	 * 2.97 to 8.11 and did not trend down.
+	 *
+	 * <p>The loss changes with it. For a linear output the squared-error gradient is
+	 * {@code dL/dpreAct = (pred - target) * feature}; the {@code 1 - tanh'} factor is the tanh case alone.
+	 */
+	private final boolean tanh;
+
 	/** Adam moments. */
 	final Tensor mW, vW, mb, vb;
 
@@ -30,8 +44,16 @@ public class Dense {
 	public final int out;
 
 	public Dense( int in, int out, Random rng, float weightScale ){
+		this( in, out, rng, weightScale, true );
+	}
+
+	/**
+	 * @param tanh whether to squash the output into [-1, 1]. False for a linear head.
+	 */
+	public Dense( int in, int out, Random rng, float weightScale, boolean tanh ){
 		this.in = in;
 		this.out = out;
+		this.tanh = tanh;
 
 		this.W = new Tensor( in, out );
 		this.b = new Tensor( 1, out );
@@ -51,10 +73,11 @@ public class Dense {
 		b.fill( 0f );
 	}
 
-	/** out = tanh(x * W + b). */
+	/** out = tanh(x * W + b), or {@code x * W + b} when this layer is linear. */
 	public void forward( Tensor x, Tensor out ){
 		x.matmul( W, b, out );
 		System.arraycopy( out.data, 0, preAct.data, 0, out.cols );
+		if (!tanh) return;
 		for (int i = 0; i < out.data.length; i++){
 			out.data[ i ] = (float) Math.tanh( out.data[ i ] );
 		}
@@ -62,10 +85,15 @@ public class Dense {
 
 	/** Accumulates dL/dx given dL/dout, where out was produced by forward(x, out). */
 	public void backward( Tensor x, Tensor dout, Tensor dx ){
-		//dL/d(pre-activation): chain the tanh derivative in before touching anything downstream
-		for (int n = 0; n < out; n++){
-			float t = (float) Math.tanh( preAct.data[ n ] );
-			dout.data[ n ] *= (1f - t * t);
+		//dL/d(pre-activation): chain the tanh derivative in before touching anything downstream. A
+		//linear layer's derivative is 1, so the chain rule stops here rather than multiplying by a
+		//saturating factor that would shrink the critic's gradient as its error grows - which is the
+		//opposite of what a regressor needs.
+		if (tanh){
+			for (int n = 0; n < out; n++){
+				float t = (float) Math.tanh( preAct.data[ n ] );
+				dout.data[ n ] *= (1f - t * t);
+			}
 		}
 
 		// dW += x^T * dout

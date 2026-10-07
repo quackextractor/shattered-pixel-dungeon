@@ -197,6 +197,9 @@ public float lastClipFraction;
 
 		for (int epoch = 0; epoch < epochs; epoch++){
 			shuffle( buffer );
+			//Each sample now restores its own state, so the epoch boundary no longer has to clear it.
+			//Left in as a guard: a transition with a null state - only synthetic ones - would otherwise
+			//inherit whatever the last sample of the previous epoch left behind.
 			network.resetState();
 
 			for (int start = 0; start < n; start += minibatchSize){
@@ -274,6 +277,37 @@ public float lastClipFraction;
 		}
 	}
 
+	/**
+	 * Puts {@code net} into the state {@code t} was decided under, and forwards it.
+	 *
+	 * <p>Restoring the state before the forward pass is what makes a stored observation replay to the
+	 * value the behaviour policy saw. Without it the replay inherits whatever the previously processed
+	 * sample left in {@code h}/{@code c} — and the buffer is shuffled, so that is an unrelated
+	 * timestep of an unrelated episode. Measured by {@code replayprobe}: 0.000000 drift in collection
+	 * order, up to 0.20 in shuffled order.
+	 *
+	 * <p>Two facts were wrong at once and they are the same fact seen from two sides. The objective
+	 * was wrong, because the ratio {@code pi_new / pi_old} was formed across two different states —
+	 * which is why the clip fraction sat at 0.84 on the first update, indistinguishable from
+	 * {@code P(|N(0,1)| > 0.2)} and so reading as a plausible measurement. And the samples were
+	 * <em>coupled</em>, sample <i>i</i> depending on sample <i>i-1</i>, which is why the parallel
+	 * update was blocked: not by anything to do with threads, but by this.
+	 *
+	 * <p>{@code stateCount} of 0 is the single-threaded path and {@code null} state is the only legal
+	 * way to lack one — synthetic transitions in the checks have no network to snapshot. A real
+	 * transition always carries one, so a missing field is a codec bug rather than a supported case,
+	 * and {@code statecheck} is what holds that line.
+	 */
+	private void replay( Transition t ){
+		replay( network, t, scratchGrid );
+	}
+
+	private void replay( Network net, Transition t, float[] grid ){
+		if (t.recurrentState != null) net.loadState( t.recurrentState );
+		t.unpackGrid( grid );
+		net.forward( grid, t.inventory, t.hero );
+	}
+
 	private void processMinibatch( int from, int to ){
 		float policyLoss = 0;
 		float valueLoss = 0;
@@ -285,6 +319,8 @@ public float lastClipFraction;
 
 		for (int i = from; i < to; i++){
 			Transition t = buffer.get( i );
+
+			replay( t );
 
 			t.unpackGrid( scratchGrid );
 			network.forward( scratchGrid, t.inventory, t.hero );

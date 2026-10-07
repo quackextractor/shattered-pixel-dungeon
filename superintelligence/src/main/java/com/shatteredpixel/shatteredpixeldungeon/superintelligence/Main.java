@@ -9,8 +9,11 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GradientC
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ModeCoverageCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayCatalogCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ValueScale;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.WeightsDiff;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayProbe;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RunReport;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
@@ -56,9 +59,12 @@ public class Main {
 		case "modecheck": ModeCoverageCheck.main( rest ); break;
 		case "restartcheck": RestartCheck.main( rest ); break;
 		case "updatecost": UpdateCostCheck.main( rest ); break;
+		case "replayprobe": ReplayProbe.main( rest ); break;
 		case "gaecheck": GaeCheck.main( rest ); break;
 		case "collectcheck": CollectCheck.main( rest ); break;
 		case "checkpointcheck": CheckpointCheck.main( rest ); break;
+		case "statecheck": StateCheck.main( rest ); break;
+		case "valuescale": ValueScale.main( rest ); break;
 		case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": ReplayCatalogCheck.main( rest ); break;

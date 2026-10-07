@@ -68,7 +68,7 @@ class Episode {
 	 *
 	 * @return the sampled transitions, with advantages already computed by the worker
 	 */
-	static List<Transition> readTransitions( DataInputStream in, EnvConfig config )
+	static List<Transition> readTransitions( DataInputStream in, EnvConfig config, int stateSize )
 			throws IOException {
 
 		int message = in.readInt();
@@ -76,7 +76,7 @@ class Episode {
 			throw new IOException( "expected a transition frame, got message " + message );
 		}
 
-		return TransitionCodec.read( in, config );
+		return TransitionCodec.read( in, config, stateSize );
 	}
 
 	static Episode read( DataInputStream in ) throws IOException {

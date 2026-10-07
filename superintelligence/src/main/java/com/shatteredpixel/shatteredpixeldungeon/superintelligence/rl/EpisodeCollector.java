@@ -254,7 +254,19 @@ public class EpisodeCollector {
 		return samplingRng.nextFloat() < sampleRate;
 	}
 
-	/** Copies the current observation out of the env into a pooled transition. */
+	/**
+	 * Copies the current observation, and the state it is read in, into a pooled transition.
+	 *
+	 * <p>The state snapshot is the part that matters. The update replays each observation through
+	 * current weights, and without the state that replay happens under whatever hidden state the
+	 * previously processed sample left behind — which after a shuffle is an unrelated observation.
+	 * `replayprobe` measures the resulting error at up to 20% of the value's magnitude.
+	 *
+	 * <p>Taken here, before the step, because the forward pass for this state has already run at the
+	 * top of the loop; the next iteration's forward is what advances the state. Taking it after the
+	 * step would capture the *next* state's hidden vector and be off by one step, which is the same
+	 * class of ordering bug as the hero position one below.
+	 */
 	private Transition snapshot( SPDEnv env ){
 		Transition t = take();
 		t.packGrid( env.grid() );
@@ -263,6 +275,7 @@ public class EpisodeCollector {
 		System.arraycopy( env.actionMask(), 0, t.actionMask, 0, t.actionMask.length );
 		System.arraycopy( env.slotMask(), 0, t.slotMask, 0, t.slotMask.length );
 		System.arraycopy( env.targetMask(), 0, t.targetMask, 0, t.targetMask.length );
+		network.saveState( t.recurrentState );
 		return t;
 	}
 
@@ -279,7 +292,7 @@ public class EpisodeCollector {
 
 	private Transition take(){
 		return Transition.take( gridSize, inventorySize, heroSize,
-				Action.size(), config.maxSlots, ActionMapper.TARGET_COUNT );
+				Action.size(), config.maxSlots, ActionMapper.TARGET_COUNT, network.stateSize() );
 	}
 
 	private float[] probabilitiesFor( int head ){

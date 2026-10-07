@@ -589,7 +589,7 @@ public class Trainer {
 
 			//the sampled transitions, decoded into this thread's own list and merged on the trainer
 			//thread once every worker has joined. Nothing shared is touched from here.
-			episode.transitions = Episode.readTransitions( in, config );
+			episode.transitions = Episode.readTransitions( in, config, ppo.network.stateSize() );
 
 			//only after the whole frame has been consumed, so the watchdog sees progress rather
 			//than a thread that has merely started reading

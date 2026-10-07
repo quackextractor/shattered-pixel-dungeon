@@ -100,7 +100,11 @@ public class Network {
 		this.actionHead = new Dense( 128, Action.size(), rng, 1f );
 		this.slotHead = new Dense( 128, config.maxSlots, rng, 1f );
 		this.targetHead = new Dense( 128, ActionMapper.TARGET_COUNT, rng, 1f );
-		this.valueHead = new Dense( 128, 1, rng, 1f );
+		//Linear, unlike the other heads. It is a regression onto an unnormalised GAE return whose
+		//targets reach -100 for a death and +1000 for a victory, and a tanh output cannot express a
+		//number of that size: the critic saturates and its squared error floors out. Measured over 12
+		//generations, valueLoss sat at 2.97-8.11 and never trended down.
+		this.valueHead = new Dense( 128, 1, rng, 1f, false );
 
 		this.convOut = new Tensor( 1, convFeatures );
 		this.concat = new Tensor( 1, convFeatures + extraInputs );
@@ -175,14 +179,26 @@ public class Network {
 		memory.reset();
 	}
 
-	/** Serialises the recurrent state, so a trajectory can be split without losing context. */
-	public float[] state(){
-		return memory.state().data.clone();
+	/** Floats one recurrent-state snapshot costs: the hidden and cell states, concatenated. */
+	public int stateSize(){
+		return 2 * memory.size;
 	}
 
-	public void restoreState( float[] s ){
-		if (s == null || s.length != memory.size) return;
-		System.arraycopy( s, 0, memory.state().data, 0, s.length );
+	/**
+	 * Copies the carried recurrent state out, {@code [h | c]}.
+	 *
+	 * <p>Both halves, because {@code c} holds the forget gate's accumulated memory and cannot be
+	 * recovered from {@code h}. Restoring only {@code h} — which is what {@code state()} used to do —
+	 * yields a state the network has never been in, and a value that is merely plausible rather than
+	 * wrong-looking.
+	 */
+	public void saveState( float[] into ){
+		memory.snapshot( into );
+	}
+
+	/** Restores a state taken by {@link #saveState}. */
+	public void loadState( float[] from ){
+		memory.restore( from );
 	}
 
 	/** Forward pass. Logits and value stay valid until the next call. */

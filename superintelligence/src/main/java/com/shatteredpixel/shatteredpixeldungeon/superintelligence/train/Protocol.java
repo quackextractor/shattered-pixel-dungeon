@@ -15,13 +15,27 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
  *   worker -> trainer   HELLO(version), PARAMS ack, then per episode: EPISODE(summary)
  * </pre>
  *
- * REPLAY and TRANSITIONS are reserved and unused until the data-flow work lands. They are numbered
- * now so that adding them is not an edit to a live frame's meaning.
+ * TRANSITIONS is live. REPLAY is still reserved: the replay rides the episode frame, which is a small
+ * share of a generation's traffic, and splitting it is worth doing only once a measurement says so.
+ * MSG_DONE is reserved and never sent. All three are numbered so adding one is not an edit to a live
+ * frame's meaning.
  */
 public final class Protocol {
 
-	/** Checked on connect, so a mismatched pair fails loudly rather than misreading each other. */
-	public static final int VERSION = 1;
+	/**
+	 * Checked on connect, so a mismatched pair fails loudly rather than misreading each other.
+	 *
+	 * <p><b>2, not 1.</b> Two frame layouts changed incompatibly after version 1 shipped: the params
+	 * frame gained the sampling knobs and gamma/lambda, and the transition frame gained the recurrent
+	 * state. A version-1 worker reading a version-2 params frame would consume the wrong number of
+	 * fields and then desynchronise — and a desync here does not crash. Both processes block on pipes
+	 * neither will write to, and the run simply looks like it is still working, which is what
+	 * {@link WorkerPool}'s stall watchdog exists to catch.
+	 *
+	 * <p>So the constant is the thing that catches it, and it had stopped distinguishing the two
+	 * layouts: it was 1 while both frames beneath it had moved.
+	 */
+	public static final int VERSION = 2;
 
 	// trainer -> worker
 	public static final int MSG_HELLO = 1;
@@ -36,7 +50,7 @@ public final class Protocol {
 	// worker -> trainer
 	/** Reserved for a standalone replay frame, split off the episode channel. */
 	public static final int MSG_REPLAY = 6;
-	/** Reserved for sampled transitions with their advantages already computed. */
+	/** Sampled transitions, with their advantages and recurrent states already computed. */
 	public static final int MSG_TRANSITIONS = 7;
 
 	private Protocol() {}

@@ -29,6 +29,28 @@ public class Transition {
 	public float[] slotMask;
 	public float[] targetMask;
 
+	/**
+	 * The LSTM state this step was decided under: {@code [hidden | cell]}, or {@code null}.
+	 *
+	 * <p><b>The most important field in this class, and it was missing for the whole of the first
+	 * implementation.</b> The update replays each stored observation through the current weights, and
+	 * the replay's hidden state used to be whatever the previously processed sample left behind — a
+	 * different timestep of a different episode, because {@link PPO#update} shuffles. Measured with
+	 * {@code replayprobe}: replaying in collection order reproduces the rollout's value to 0.000000,
+	 * and replaying in shuffled order drifts by up to 20% of the value's magnitude.
+	 *
+	 * <p>So the policy gradient was being computed against a value and a distribution the behaviour
+	 * policy never saw. The ratio {@code pi_new / pi_old} was formed across two different states, which
+	 * is not a small perturbation — it is a different objective, and it is the whole reason the clip
+	 * fraction sat at 0.84 on the first update.
+	 *
+	 * <p>Carrying it also decouples the samples: once a transition restores its own state, sample
+	 * <i>i</i> no longer depends on sample <i>i-1</i>, which is what makes a parallel update possible
+	 * at all. Before this, "parallelise the minibatch" was blocked by a correctness bug rather than by
+	 * anything to do with threads.
+	 */
+	public float[] recurrentState;
+
 	/** Which head produced this step's decision; see Policy.HEAD_*. */
 	public int liveHead;
 
@@ -59,8 +81,15 @@ public class Transition {
 
 	private boolean pooled = false;
 
+	/**
+	 * Takes a pooled transition, or makes one.
+	 *
+	 * @param recurrentStateSize floats the LSTM state needs, or 0 for a transition that does not carry
+	 *                           one. Zero is legal rather than an error because some checks build
+	 *                           synthetic transitions and have no network to snapshot.
+	 */
 	public static Transition take( int gridSize, int inventorySize, int heroSize,
-			int actionCount, int slotCount, int targetCount ){
+			int actionCount, int slotCount, int targetCount, int recurrentStateSize ){
 
 		Transition t = POOL.poll();
 		if (t == null) t = new Transition();
@@ -71,6 +100,9 @@ public class Transition {
 		t.actionMask = fit( t.actionMask, actionCount );
 		t.slotMask   = fit( t.slotMask,   slotCount );
 		t.targetMask = fit( t.targetMask, targetCount );
+		t.recurrentState = recurrentStateSize > 0
+				? fit( t.recurrentState, recurrentStateSize )
+				: null;
 
 		t.oldLogProbability = 0;
 		t.value = 0;
@@ -85,6 +117,18 @@ public class Transition {
 		t.pooled = false;
 
 		return t;
+	}
+
+	/**
+	 * As {@link #take} without the recurrent state.
+	 *
+	 * <p>Retained for the callers that have no network to snapshot — the synthetic transitions in the
+	 * checks. Prefer the six-argument form in production code: a transition with a {@code null} state
+	 * replays under whatever the previous sample left behind, which is the bug this field fixes.
+	 */
+	public static Transition take( int gridSize, int inventorySize, int heroSize,
+			int actionCount, int slotCount, int targetCount ){
+		return take( gridSize, inventorySize, heroSize, actionCount, slotCount, targetCount, 0 );
 	}
 
 	private static float[] fit( float[] existing, int len ){
