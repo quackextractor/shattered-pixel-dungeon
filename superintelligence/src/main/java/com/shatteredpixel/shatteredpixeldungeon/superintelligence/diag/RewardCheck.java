@@ -48,7 +48,7 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -62,6 +62,7 @@ public class RewardCheck {
 		checkDeathRemainsMostExpensive( config );
 		checkStallPathRecordsOnce( config );
 		checkRestIsNotAOneWayDoor( config );
+		checkTheHeroCanDie( config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reward signals: " + CHECKS + " checks passed" );
@@ -267,6 +268,66 @@ public class RewardCheck {
 	}
 
 	// --------------------------------------------------------------------------- playing
+
+	/**
+	 * The hero must be able to die.
+	 *
+	 * <p>{@code HeadlessSprite.die} used to call {@code ch.die( ch )} - invoking the death callback
+	 * immediately to stand in for an animation that does not exist headless. That callback re-enters
+	 * {@code Hero.die} -> {@code Char.die} -> {@code sprite.die} -> the callback, and each bounce passes
+	 * a different {@code Char}, so {@code Hero.die}'s repeated-cause guard never matched. Every death
+	 * blew the stack with {@code StackOverflowError} instead of recording the {@code DEATH} that GAE
+	 * treats as a terminal state - so the one ending that actually matters was unreachable.
+	 *
+	 * <p><b>Why damage is applied directly.</b> A death has to be produced, and waiting on hunger or on
+	 * the mob cluster is a property of the game's balance rather than of this check: the hero might
+	 * simply survive, and a gate that starts failing when the game gets easier would be backwards.
+	 * Damaging the hero makes the ending deterministic, and everything else - {@code Hero.die},
+	 * {@code Char.die}, the sprite, {@code reallyDie}, and {@code SPDEnv}'s own observation of the
+	 * corpse - runs for real.
+	 *
+	 * <p>Also asserts the resulting classification, because surviving the call is not enough: a
+	 * {@code DEATH} that reports as truncated would silently change every advantage downstream.
+	 */
+	private static void checkTheHeroCanDie( EnvConfig config ){
+		Outcome o = play( config, 200, "DEATHCHECK", turn -> {
+			if (turn.env.mode() != EnvMode.WORLD ){
+				turn.env.step( Action.CANCEL, 0 );
+				return;
+			}
+
+			turn.env.step( Action.WAIT, 0 );
+
+			if (Dungeon.hero != null && Dungeon.hero.isAlive()){
+				//lethal in one hit, so the ending cannot depend on how much HP the hero rolled
+				Dungeon.hero.damage( Dungeon.hero.HP + 1, Dungeon.hero );
+			}
+		} );
+
+		if (o.endReason != RewardModel.TerminateReason.DEATH ){
+			fail( "the hero was killed outright but the episode ended " + o.endReason + " after "
+					+ o.turns + " turns, so death cannot be recorded. HeadlessSprite.die used to invoke"
+					+ " the death callback to fake an animation, which re-entered Hero.die -> Char.die ->"
+					+ " sprite.die forever and blew the stack. DEATH is the one ending GAE must treat as"
+					+ " terminal, and it was unreachable." );
+			return;
+		}
+
+		if (!o.endedNaturally ){
+			fail( "the hero died but the episode reports endedNaturally=false, so GAE would bootstrap"
+					+ " through a terminal state and treat a real death as a truncation." );
+			return;
+		}
+
+		if (o.ledger == null || o.ledger.notes( RewardTerm.DEATH ) == 0 ){
+			fail( "the hero died but no DEATH was recorded, so the terminal reward never lands and the"
+					+ " agent is never told that dying is expensive." );
+			return;
+		}
+
+		System.out.println( "  the hero can die: DEATH recorded, natural ending, scored "
+				+ fmt( o.score ) );
+	}
 
 	/**
 	 * {@code REST} must not end the episode.

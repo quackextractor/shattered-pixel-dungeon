@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every death blew the stack, so `DEATH` was unreachable.** `HeadlessSprite.die` called
+  `ch.die( ch )` to invoke the death callback immediately, standing in for an animation that does not
+  exist headless. That callback re-enters `Hero.die` -> `Char.die` -> `sprite.die` -> the callback, and
+  each bounce passes a different `Char`, so `Hero.die`'s repeated-cause guard never matched and the
+  recursion ran until the stack gave out.
+  So the ending that matters most was the one the agent could never reach: `StackOverflowError` is not a
+  `DEATH`, so no terminal reward was recorded and GAE had nothing terminal to treat as terminal. The
+  first episode to actually die killed its worker process.
+  Now a no-op - the callback represents the animation finishing, and there is no animation.
+  `rewardcheck` grew an 8th case that produces a real death and asserts the reason, the natural-ending
+  classification, and that a `DEATH` was recorded. Note this case cannot fail the usual way: with the
+  bug reinstated the check process dies with `StackOverflowError` before any assertion runs, which is
+  itself the evidence.
+
 - **Headless crashed on any texture that had no GL context.** `TextureCache.get` returns `null`
   when `Gdx.gl == null` - the normal state under the headless trainer - and every `TextureFilm`
   constructor dereferenced the result immediately. Films are built in static initialisers

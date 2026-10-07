@@ -114,9 +114,20 @@ public class HeadlessSprite extends CharSprite {
 
 	@Override
 	public void die(){
-		if (ch != null){
-			ch.die( ch );
-		}
+		//Not `ch.die( ch )`. The real sprite plays a death animation and invokes the callback when it
+		//finishes; calling it here recursed forever, because the callback re-enters Hero.die ->
+		//Char.die -> sprite.die -> callback -> Hero.die. Hero.die's own guard does not stop it either:
+		//it returns early only on a repeated *cause*, and each bounce passes a different Char.
+		//Every death therefore blew the stack, which is how this was found: the first episode to reach
+		//a real death crashed its worker with StackOverflowError rather than recording the DEATH that
+		//GAE treats as a terminal state.
+		//
+		//Nothing to do. The callback is the animation finishing, and there is no animation here.
+		//
+		//Verified by mutation: restoring the callback makes rewardcheck die with StackOverflowError
+		//rather than reporting a failed case - the recursion takes the whole JVM down before any
+		//assertion can run. That is also why the fix has no test-shaped failure; the gate asserts the
+		//death is recorded, and the mutant cannot reach it.
 	}
 
 	// ---------------------------------------------------------------- animations with no turn effect
