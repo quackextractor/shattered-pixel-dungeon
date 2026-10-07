@@ -22,10 +22,10 @@
 package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 
 import com.badlogic.gdx.Files;
-import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
-import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
-import com.badlogic.gdx.backends.lwjgl3.Lwjgl3FileHandle;
-import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Preferences;
+  import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
+  import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+  import com.badlogic.gdx.backends.lwjgl3.Lwjgl3FileHandle;
+  import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Preferences;
 import com.badlogic.gdx.utils.Os;
 import com.badlogic.gdx.utils.SharedLibraryLoader;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
@@ -119,7 +119,12 @@ public class ReplayLauncher {
 		//arrive before floor 1 existed.
 		Game.setSceneClass( InterlevelScene.class );
 
-		new Lwjgl3Application( new ShatteredPixelDungeon( new DesktopPlatformSupport() ), config );
+		//Kept so ReplayController can close the window when playback ends. Game.finish() is the game's
+		//own exit path and needs an instance; the instance is only created here.
+		ShatteredPixelDungeon game = new ShatteredPixelDungeon( new DesktopPlatformSupport() );
+		ReplayController.gameInstance( game );
+
+		new Lwjgl3Application( game, config );
 	}
 
 	private static void describe( Replay replay ){
@@ -232,12 +237,81 @@ private static Lwjgl3ApplicationConfiguration windowConfig(){
 		config.setWindowSizeLimits( 720, 400, -1, -1 );
 		Point p = SPDSettings.windowResolution();
 		config.setWindowedMode( p.x, p.y );
-		config.setMaximized( SPDSettings.windowMaximized() );
+
+		//A saved "maximised" preference maximises the window whatever position is requested, so an
+		//unattended run covered the display being worked on. Any explicit placement implies a normal
+		//windowed one.
+		boolean placed = MONITOR_X != null || MONITOR_Y != null;
+
+		if (placed || WINDOWED){
+			config.setMaximized( false );
+			config.setInitialVisible( !HIDDEN );
+		} else {
+			config.setMaximized( SPDSettings.windowMaximized() );
+		}
+
 		config.setWindowListener( new DesktopWindowListener() );
 		config.setWindowIcon( "icons/icon_16.png", "icons/icon_32.png", "icons/icon_48.png",
 				"icons/icon_64.png", "icons/icon_128.png", "icons/icon_256.png" );
 
+		if ( MUTE ){
+			config.disableAudio( true );
+		}
+
+		//Position is given rather than looked up: a monitor cannot be enumerated before the window
+		//exists, since Graphics.getMonitors() needs a running GL context.
+		if (placed){
+			int x = MONITOR_X == null ? 0 : MONITOR_X;
+			int y = MONITOR_Y == null ? 0 : MONITOR_Y;
+			config.setWindowPosition( x, y );
+		}
+
+		//Every option is stated, so what the run is actually doing is never a guess. Silence and
+		//window closing in particular are easy to forget to ask for, and were both missed in practice.
+		System.err.println( "[replay] audio=" + (MUTE ? "off" : "on")
+				+ " speed=" + speedHint()
+				+ " windowed=" + (WINDOWED || placed)
+				+ " position=" + (placed ? String.valueOf(MONITOR_X) + "," + String.valueOf(MONITOR_Y) : "default")
+				+ " closeOnDiverge=" + AUTO_CLOSE_ON_DIVERGE
+				+ " closeAlways=" + AUTO_CLOSE );
+
 		return config;
+	}
+
+	/**
+	 * Window position, set with {@code -Dspd.monitorX} and {@code -Dspd.monitorY}.
+	 *
+	 * <p>Coordinates rather than a monitor number: a monitor cannot be enumerated before the window
+	 * exists, so the caller supplies where the second display starts.
+	 */
+	private static final Integer MONITOR_X = intProperty( "spd.monitorX" );
+	private static final Integer MONITOR_Y = intProperty( "spd.monitorY" );
+
+	/** Mute everything, so an unattended run is silent. Enabled with {@code -Dspd.mute}. */
+	private static final boolean MUTE = System.getProperty( "spd.mute" ) != null;
+
+	/** Start as a normal window even if the saved preference says maximised. */
+	private static final boolean WINDOWED = System.getProperty( "spd.windowed" ) != null;
+
+	/** Start with the window not shown at all. */
+	private static final boolean HIDDEN = System.getProperty( "spd.hidden" ) != null;
+
+	private static final boolean AUTO_CLOSE = System.getProperty( "spd.autoClose" ) != null;
+
+	private static final boolean AUTO_CLOSE_ON_DIVERGE = System.getProperty( "spd.autoCloseOnDiverge" ) != null;
+
+	private static String speedHint(){
+		return System.getProperty( "spd.fast" ) == null ? "1" : System.getProperty( "spd.fast" );
+	}
+
+	private static Integer intProperty( String name ){
+		String raw = System.getProperty( name );
+		if (raw == null ) return null;
+		try {
+			return Integer.valueOf( raw.trim() );
+		} catch (NumberFormatException e){
+			return null;
+		}
 	}
 
 	private static String vendor(){

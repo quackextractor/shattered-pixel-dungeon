@@ -37,6 +37,77 @@ set "REPLAYDIR=%CD%\replays"
 set "TRAINDIR=%TEMP%\spd-train\replays"
 set "GRADLE=%CD%\gradlew.bat"
 
+rem Options for unattended playback.
+rem
+rem   --trace              one line per settled step, for diffing against the trainer
+rem   --close              close the window when playback finishes or diverges
+rem   --close-on-diverge   close only when it diverges
+rem   --fast [n]           play at n times normal speed (default 40)
+rem   --mute               no audio
+rem   --at X Y             place the window at X,Y - use this for a second display
+rem   --windowed           normal window even if the saved preference says maximised
+rem
+rem A batch that checks many recordings wants: --close --fast --mute --at 1920 0
+rem
+rem The window cannot be hidden: the renderer needs a GL context, so it always exists. --at moves
+rem it off the display being worked on instead.
+rem
+rem Every flag is recorded twice. SPDJOPTS is the -D form, used when replay runs java directly;
+rem SPDFLAGS is the gradle -P form, used only by the fallback. They are built here, while the
+rem argument is in hand, rather than re-parsed out of a string later - re-parsing a comma
+rem separated value out of %SPDFLAGS% with for/f was silently producing an empty second half.
+set "SPDFLAGS="
+set "SPDJOPTS="
+
+:parseflags
+if "%~1"=="" goto :parsedone
+if /i "%~1"=="--trace"            set "SPDFLAGS=%SPDFLAGS% -PspdTrace"            & set "SPDJOPTS=%SPDJOPTS% -Dspd.trace=1"            & shift & goto :parseflags
+if /i "%~1"=="--close"            set "SPDFLAGS=%SPDFLAGS% -PspdAutoClose"         & set "SPDJOPTS=%SPDJOPTS% -Dspd.autoClose=1"         & shift & goto :parseflags
+if /i "%~1"=="--close-on-diverge" set "SPDFLAGS=%SPDFLAGS% -PspdAutoCloseOnDiverge" & set "SPDJOPTS=%SPDJOPTS% -Dspd.autoCloseOnDiverge=1" & shift & goto :parseflags
+if /i "%~1"=="--mute"             set "SPDFLAGS=%SPDFLAGS% -PspdMute"               & set "SPDJOPTS=%SPDJOPTS% -Dspd.mute=1"               & shift & goto :parseflags
+if /i "%~1"=="--windowed"         set "SPDFLAGS=%SPDFLAGS% -PspdWindowed"           & set "SPDJOPTS=%SPDJOPTS% -Dspd.windowed=1"           & shift & goto :parseflags
+if /i "%~1"=="--fast"             goto :parsefast
+if /i "%~1"=="--at"               goto :parseat
+goto :parsedone
+
+rem --fast takes an optional numeric value; without one it means 40. One step is still applied per
+rem frame, so only the pacing changes and the path taken is the same as at 1x.
+rem
+rem The value is only taken when it is numeric. Consuming the next argument unconditionally ate
+rem whatever followed, so "--fast --mute file" treated "--mute" as the speed and shifted by two.
+:parsefast
+set "FASTARG=%~2"
+echo %FASTARG%| findstr /r /c:"^[0-9][0-9.]*$" >nul
+if errorlevel 1 goto :parsefastdefault
+set "SPDFLAGS=%SPDFLAGS% -PspdFast=%FASTARG%"
+set "SPDJOPTS=%SPDJOPTS% -Dspd.fast=%FASTARG%"
+shift
+shift
+goto :parseflags
+:parsefastdefault
+set "SPDFLAGS=%SPDFLAGS% -PspdFast=40"
+set "SPDJOPTS=%SPDJOPTS% -Dspd.fast=40"
+shift
+goto :parseflags
+
+rem --at takes two separate numbers. A single comma separated argument was tried first and for/f
+rem tokenised it unreliably, giving an empty Y and shifting the file argument.
+:parseat
+set "ATX=%~2"
+set "ATY=%~3"
+echo %ATX%| findstr /r /c:"^-*[0-9][0-9]*$" >nul || goto :parseatbad
+echo %ATY%| findstr /r /c:"^-*[0-9][0-9]*$" >nul || goto :parseatbad
+set "SPDFLAGS=%SPDFLAGS% -PspdMonitorX=%ATX% -PspdMonitorY=%ATY%"
+set "SPDJOPTS=%SPDJOPTS% -Dspd.monitorX=%ATX% -Dspd.monitorY=%ATY%"
+shift
+shift
+shift
+goto :parseflags
+:parseatbad
+echo --at needs two whole numbers, eg: --at 1920 0
+exit /b 1
+
+:parsedone
 if /i "%~1"=="--list"   goto :list
 if /i "%~1"=="--record" goto :record
 if /i "%~1"=="--verify" goto :verify
@@ -158,7 +229,27 @@ echo.
 echo The [replay] lines report each keypress, which is the quickest way to tell
 echo "the key did nothing" apart from "the key did something invisible".
 echo.
-call "%GRADLE%" --offline --no-daemon :desktop:replay --args="--file %FILE%"
+
+rem Runs the cached launcher directly rather than through gradle.
+rem
+rem gradle was most of the wall time for a playback: it re-resolved and re-checked the build for every
+rem recording, and the system properties each flag sets invalidate the task cache, so nothing was ever
+rem up to date. The classpath only changes when the code does, so it is baked into a launcher once by
+rem :desktop:replaycp and reused after that. Measured 4.7s versus 11.9s per recording.
+rem
+rem Falls back to gradle if the launcher is missing, so this cannot strand anyone.
+set "RUNBAT=%CD%\desktop\build\replay-run.bat"
+if not exist "%RUNBAT%" (
+    echo building the replay launcher, once...
+    call "%GRADLE%" --offline -q :desktop:classes :desktop:replaycp
+)
+if not exist "%RUNBAT%" (
+    echo could not build the launcher; falling back to gradle
+    call "%GRADLE%" --offline --no-daemon %SPDFLAGS% :desktop:replay --args="--file %FILE%"
+    exit /b %errorlevel%
+)
+
+call "%RUNBAT%" %SPDJOPTS% -DImplementation-Title=shatteredpixel -DImplementation-Version=4.0.1 com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ReplayLauncher --file "%FILE%"
 exit /b %errorlevel%
 
 rem --- shared ----------------------------------------------------------------
