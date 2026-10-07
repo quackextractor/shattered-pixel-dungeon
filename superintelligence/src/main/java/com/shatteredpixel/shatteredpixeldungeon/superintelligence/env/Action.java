@@ -16,15 +16,34 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.env;
  */
 public enum Action {
 
-	/** Eight movement directions. Maps onto SPDAction.N / NE / E / SE / S / SW / W / NW. */
-	MOVE_N  ( Kind.WORLD, 0,  1 ),
-	MOVE_NE ( Kind.WORLD, 1,  1 ),
+	/**
+	 * Eight movement directions. Maps onto SPDAction.N / NE / E / SE / S / SW / W / NW.
+	 *
+	 * <p><b>{@code dy} is negated relative to a screen row.</b> The convention comes from the game:
+	 * {@code Level.pointToCell(p)} is {@code p.x + p.y * width}, and
+	 * {@code CellSelector.directionFromAction} returns {@code (0,-1)} for north. So north is a
+	 * <i>decrease</i> in row index, which means {@code MOVE_N} carries {@code dy = -1}.
+	 *
+	 * <p>It carried {@code +1}, and every vertical direction was inverted as a result - {@code MOVE_N}
+	 * walked south, {@code MOVE_SE} walked north. The horizontal pair was always right, which is why it
+	 * looked plausible: the two axes were written from opposite assumptions and neither was checked
+	 * against the game's.
+	 *
+	 * <p>Consequences, since it went unnoticed for so long. The action <i>space</i> is complete and
+	 * every cell is reachable, so an agent trained from scratch still learns to navigate - it just
+	 * learns that the action it thinks is north goes south, which is harmless for exploration and
+	 * corrosive for anything that reasons about a goal. It made every north/south reading of a recorded
+	 * run wrong, including mine: a trace showed {@code MOVE_N} stepping from row 40 to row 42.
+	 * {@code actioncheck} now asserts each direction against the game's own convention.
+	 */
+	MOVE_N  ( Kind.WORLD, 0, -1 ),
+	MOVE_NE ( Kind.WORLD, 1, -1 ),
 	MOVE_E  ( Kind.WORLD, 1,  0 ),
-	MOVE_SE ( Kind.WORLD, 1, -1 ),
-	MOVE_S  ( Kind.WORLD, 0, -1 ),
-	MOVE_SW ( Kind.WORLD, -1, -1 ),
+	MOVE_SE ( Kind.WORLD, 1,  1 ),
+	MOVE_S  ( Kind.WORLD, 0,  1 ),
+	MOVE_SW ( Kind.WORLD, -1,  1 ),
 	MOVE_W  ( Kind.WORLD, -1,  0 ),
-	MOVE_NW ( Kind.WORLD, -1,  1 ),
+	MOVE_NW ( Kind.WORLD, -1, -1 ),
 
 	// TIME actions advance time without naming a cell.
 

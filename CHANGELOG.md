@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every vertical direction was inverted.** `MOVE_N` carried `dy = +1`, so north walked south, and
+  `MOVE_SE` / `MOVE_SW` walked north. Only the horizontal pair was right, which is why it survived: the
+  two axes were written from opposite assumptions and neither was checked against the game's.
+  The convention is the game's - `Level.pointToCell` is `x + y * width` and `CellSelector` gives north
+  `(0,-1)`, so north must *decrease* the row index - and the offsets now follow it.
+  Worth being precise about the damage, because it was less than it looks and more than it seems. The
+  action space is complete and every cell is reachable, so an agent trained from scratch still learns
+  to navigate; it just learns that the action it believes is north goes south. No loss curve moves and
+  no metric changes. What it corrupts is every north or south claim about a recorded run, which is
+  exactly the sort of thing that gets believed instead of checked - it is why a trace here showed
+  `MOVE_N` stepping from row 40 to row 42.
+  New `actioncheck` gate, 3 cases, mutation-verified: reinstating the old signs fails 2 of 3, with the
+  empirical failure reading `MOVE_N is named N but moved S`.
+  **This renames the meaning of 4 of 8 movement actions, so existing checkpoints and every recording
+  made before it are void.** The checkpoints are cheap; the recordings are not, and the ones recorded
+  under the old mapping will not reproduce.
+
 - **`OPEN_INVENTORY` also acted on the world.** `OPEN_INVENTORY` and `CANCEL` were missing from
   `ActionMapper.apply`'s switch, so both fell through to `pickInteractCell()` + `handleCell()` - the
   path `INTERACT` takes. Opening the inventory therefore also moved the hero, attacked an adjacent mob,

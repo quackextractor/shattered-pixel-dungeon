@@ -12,6 +12,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayCat
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResetCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GraphCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ActionCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
@@ -64,6 +65,7 @@ public class Main {
 		case "restartcheck": RestartCheck.main( rest ); break;
 		case "resetcheck": ResetCheck.main( rest ); break;
 		case "graphcheck": GraphCheck.main( rest ); break;
+		case "actioncheck": ActionCheck.main( rest ); break;
 		case "updatecost": UpdateCostCheck.main( rest ); break;
 		case "replayprobe": ReplayProbe.main( rest ); break;
 		case "gaecheck": GaeCheck.main( rest ); break;
