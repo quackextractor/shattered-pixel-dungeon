@@ -250,12 +250,34 @@ public class ActionMapper {
 				SlotAction.clearPendingUseItem();
 				return true;
 
+			case OPEN_INVENTORY:
+				//Nothing to do here. SPDEnv owns the mode change; this only has to not fall through.
+				return true;
+
+			case CANCEL:
+				//There is nothing to cancel in WORLD, but it is not a refusal either - it is the answer
+				//to "no", and recording it as INVALID_ACTION would tell the agent it chose badly when it
+				//chose correctly.
+				return true;
+
+			case INTERACT:
+				return handleCell( pickInteractCell() );
+
 			default:
 				break;
 		}
 
-		int cell = action.directional() ? offsetCell( action.dx, action.dy ) : pickInteractCell();
-		return handleCell( cell );
+		//Only the eight directions remain, and they name their own cell.
+		//
+		//Everything above used to fall through to this line instead, which is how OPEN_INVENTORY and
+		//CANCEL acquired a world meaning: pickInteractCell() plus handleCell(), the path INTERACT
+		//takes. Opening the inventory therefore also acted on an adjacent cell - moved the hero,
+		//attacked a mob, picked up a heap, opened a locked door or took a transition. Measured on a
+		//recorded run, the hero moved a cell on an OPEN_INVENTORY step and moved back on the next.
+		//
+		//It went unnoticed because a comment here described it as a no-op, which it plainly was not:
+		//pickInteractCell finds something, and handleCell acts on it.
+		return handleCell( offsetCell( action.dx, action.dy ));
 	}
 
 	/** Applies the agent's choice for the mode's secondary input. */

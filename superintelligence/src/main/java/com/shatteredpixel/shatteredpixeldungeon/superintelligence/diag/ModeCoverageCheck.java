@@ -1,6 +1,8 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.items.Gold;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
@@ -10,6 +12,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
 
 import java.io.File;
@@ -63,7 +66,157 @@ public class ModeCoverageCheck {
 		check.report();
 	}
 
+	/**
+	 * Opening the inventory must not also act on the world.
+	 *
+	 * <p>{@code OPEN_INVENTORY} and {@code CANCEL} were not listed in {@code ActionMapper.apply}'s
+	 * switch, so both fell through to {@code pickInteractCell()} and {@code handleCell()} - the path
+	 * {@code INTERACT} takes. Choosing to look in your backpack therefore also moved the hero, attacked
+	 * an adjacent mob, picked up a heap, opened a locked door or took a transition.
+	 *
+	 * <p><b>This went into training.</b> Every episode that opened its inventory did something else as
+	 * well, and the recorded runs show it plainly: on one {@code OPEN_INVENTORY} step the hero moved a
+	 * cell, and on the next it moved back. The bug was documented in place as a "no-op", which is how
+	 * it survived - {@code pickInteractCell} finds something and {@code handleCell} acts on it, so the
+	 * fall-through was never nothing.
+	 *
+	 * <p>Checked over several consecutive steps rather than one, because the damage is intermittent by
+	 * nature: it only shows when something interesting happens to be adjacent, which on a given seed
+	 * may be the fortieth step and not the first.
+	 */
+	private void checkInventoryEntryDoesNotTouchTheWorld(){
+		env.reset( SEED, HeroClass.WARRIOR );
+
+		//Put something worth interacting with on a known adjacent cell first.
+		//
+		//Without this the case passes vacuously. pickInteractCell only returns a cell when a mob, a
+		//heap, a locked door or a transition happens to be adjacent, so on a quiet seed the fall-through
+		//has nothing to act on and the bug is invisible - which is exactly what happened: restoring the
+		//fall-through left this gate green. A regression test that cannot fail on the thing it is
+		//testing is worse than no test, because it reports a property the code does not have.
+		int heroPos = env.heroPosition();
+		int heapCell = adjacentPassableCell( heroPos );
+		if (heapCell < 0){
+			failures.add( "no passable cell adjacent to the hero at " + heroPos + ", so the"
+					+ " OPEN_INVENTORY case cannot be tested: with nothing to interact with, the"
+					+ " fall-through has nothing to act on and the bug hides." );
+			return;
+		}
+
+		Dungeon.level.drop( new Gold( 1 ), heapCell );
+		if (Dungeon.level.heaps.get( heapCell ) == null ){
+			failures.add( "could not place an item heap on cell " + heapCell + ", so the OPEN_INVENTORY"
+					+ " case cannot be tested." );
+			return;
+		}
+
+		int depth = env.depth();
+
+		for (int i = 0; i < 24 && env.mode() == EnvMode.WORLD; i++ ){
+			env.step( Action.OPEN_INVENTORY, 0 );
+			if (env.mode() == EnvMode.INVENTORY ) env.step( Action.CANCEL, 0 );
+		}
+
+		if (env.heroPosition() != heroPos ){
+			failures.add( "OPEN_INVENTORY moved the hero from cell " + heroPos + " to " + env.heroPosition()
+					+ ", with an item heap adjacent the whole time. It falls through to the same cell"
+					+ " handling INTERACT uses, so opening the inventory also acted on a neighbouring"
+					+ " cell - a move, an attack, a pickup, a door or a transition. This reached"
+					+ " training: the agent was credited for two things at once." );
+			return;
+		}
+
+		//the heap must still be there. Under the fall-through the first OPEN_INVENTORY picked it up,
+		//because pickInteractCell prefers a heap over anything else - so its *absence* is the failure.
+		if (Dungeon.level.heaps.get( heapCell ) == null ){
+			failures.add( "the item heap on cell " + heapCell + " is gone after 24 OPEN_INVENTORY steps."
+					+ " Under the fall-through it was picked up on the first one, because"
+					+ " pickInteractCell prefers a heap over anything else - so opening the inventory"
+					+ " collected the gold as well." );
+			return;
+		}
+
+		if (env.depth() != depth ){
+			failures.add( "OPEN_INVENTORY changed depth from " + depth + " to " + env.depth()
+					+ ". pickInteractCell returns a transition cell when one is adjacent, so opening the"
+					+ " inventory could take a floor transition." );
+			return;
+		}
+
+		//Every decision costs exactly one turn. Not "the same as WAIT": an inventory round trip is two
+		//decisions - open, then close - and each legitimately costs a turn. What must not happen is a
+		//turn charged or refunded for something the agent did not choose, which is what the old
+		//fall-through did on top of the action.
+		env.reset( SEED, HeroClass.WARRIOR );
+		int before = env.turnsTotal();
+		int decisions = 0;
+		for (int i = 0; i < 24 && env.mode() == EnvMode.WORLD; i++ ){
+			env.step( Action.OPEN_INVENTORY, 0 );
+			decisions++;
+			if (env.mode() == EnvMode.INVENTORY ){
+				env.step( Action.CANCEL, 0 );
+				decisions++;
+			}
+		}
+		int spent = env.turnsTotal() - before;
+
+		if (spent != decisions ){
+			failures.add( decisions + " decisions cost " + spent + " turns. Each step the agent takes must"
+					+ " cost one turn, so a turn charged or refunded here is a term in the reward the"
+					+ " agent never chose." );
+		}
+	}
+
+	/** The first passable cell among the eight neighbours of {@code pos}, or -1. */
+	private int adjacentPassableCell( int pos ){
+		int w = Dungeon.level.width();
+		int[] offsets = { 1, w, -1, -w, w + 1, w - 1, -w + 1, -w - 1 };
+
+		for (int offset : offsets ){
+			int cell = pos + offset;
+			if (cell < 0 || cell >= Dungeon.level.length() ) continue;
+			if (!Dungeon.level.insideMap( cell )) continue;
+			if (!Dungeon.level.passable[ cell ]) continue;
+			if (Dungeon.level.heaps.get( cell ) != null ) continue;
+			return cell;
+		}
+		return -1;
+	}
+
+	/**
+	 * {@code CANCEL} with nothing to cancel is an answer, not a refusal and not an action.
+	 *
+	 * <p>It shares the fall-through with {@code OPEN_INVENTORY}, so it acted on an adjacent cell too.
+	 * And returning false would be wrong in the other direction: {@code SPDEnv} counts a false as
+	 * {@code INVALID_ACTION}, which tells the agent it chose badly when it chose correctly.
+	 */
+	private void checkCancelDoesNotTouchTheWorld(){
+		env.reset( SEED, HeroClass.WARRIOR );
+
+		int start = env.heroPosition();
+
+		for (int i = 0; i < 12 && env.mode() == EnvMode.WORLD; i++ ){
+			env.step( Action.CANCEL, 0 );
+
+			if (env.ledger().notes( RewardTerm.INVALID_ACTION ) > 0 ){
+				failures.add( "CANCEL in WORLD was recorded as INVALID_ACTION. There is nothing to cancel,"
+						+ " but the action is legal and choosing it is not a mistake." );
+				return;
+			}
+		}
+
+		if (env.heroPosition() != start ){
+			failures.add( "CANCEL with nothing to cancel moved the hero from " + start + " to "
+					+ env.heroPosition() + ". It reaches the same cell handling INTERACT does." );
+		}
+	}
+
 	private void run(){
+		//Before anything else, because a mode entry that also acts on the world makes every later
+		//phase start from the wrong cell.
+		checkInventoryEntryDoesNotTouchTheWorld();
+		checkCancelDoesNotTouchTheWorld();
+
 		env.reset( SEED, HeroClass.WARRIOR );
 
 		int stone = slotOfTargetingItem();
