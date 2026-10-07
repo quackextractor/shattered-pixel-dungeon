@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 
 /**
  * Renders one generation's console block.
@@ -18,10 +19,26 @@ public final class GenerationReport {
 
 	public static class Snapshot {
 		public int generation;
-		public int episodes;
-		public int activeSeeds;
-		public int totalSeeds;
-		public float shaping;
+	public int episodes;
+	public int activeSeeds;
+	public int totalSeeds;
+	public float shaping;
+
+	/**
+	 * Episodes per termination reason, keyed by {@code RewardModel.TerminateReason} ordinal.
+	 *
+	 * <p><b>The single most useful number in this report, and it took a 20-generation run to discover
+	 * it was missing.</b> The run converged {@code meanScore} on exactly -5.0 with turns collapsing
+	 * 62 → 8, and -5.0 is {@code STALLED}'s terminal reward. That diagnosis was reached by arithmetic
+	 * on the score rather than by reading the reason, because the reason was never reported. A
+	 * converged mean score is the visible symptom of an agent that has found a cheap way to end an
+	 * episode; which way is the question, and it was one subtraction too indirect.
+	 *
+	 * <p>Indexed by ordinal rather than a map so the report and the CSV can both iterate it in a fixed
+	 * order. Length is {@code TerminateReason.values().length}; a count outside that range would be an
+	 * array bounds error, so the length is asserted where the array is built rather than trusted.
+	 */
+	public int[] endReasons = new int[RewardModel.TerminateReason.values().length];
 
 		/** Transitions retained for the update across the whole generation. */
 		public int sampledSteps;
@@ -94,6 +111,7 @@ public final class GenerationReport {
 				+ "  best=" + s.bestDepth );
 		System.out.println( "  turns   mean=" + String.format( "%.0f", s.meanTurns )
 				+ "  total=" + String.format( "%,d", s.totalTurns ) );
+		System.out.println( "  ended   " + endReasons( s ) );
 		System.out.println( "  ppo     policy=" + String.format( "%.4f", s.policyLoss )
 				+ "  value=" + String.format( "%.4f", s.valueLoss )
 				+ "  entropy=" + String.format( "%.3f", s.entropy )
@@ -122,6 +140,34 @@ public final class GenerationReport {
 						: String.format( "%.1f cores busy (worker-reported)", s.workerCores ) )
 				+ "  pool " + s.poolSize + " x " + s.episodesPerWorker + " episodes"
 				+ String.format( "  workers %.1f cores, trainer %.2f", s.workerCores, s.trainerCores ) );
+	}
+
+	/**
+	 * Renders the end-reason breakdown, most frequent first.
+	 *
+	 * <p>Sorted by count so the dominant reason is first, and zero counts omitted so a run whose
+	 * episodes mostly end one way reads as one line rather than seven. Every count is shown as a
+	 * fraction of the generation's episodes, because the absolute count moves with worker count and the
+	 * fraction is what says whether the policy has changed.
+	 */
+	private static String endReasons( Snapshot s ){
+		RewardModel.TerminateReason[] reasons = RewardModel.TerminateReason.values();
+		Integer[] order = new Integer[ reasons.length ];
+		for (int i = 0; i < order.length; i++) order[ i ] = i;
+
+		final int[] counts = s.endReasons;
+		java.util.Arrays.sort( order, ( a, b ) -> counts[ b ] - counts[ a ] );
+
+		StringBuilder sb = new StringBuilder();
+		for (int i : order){
+			if (s.endReasons[ i ] == 0 ) continue;
+			if (sb.length() > 0 ) sb.append( "  " );
+			sb.append( reasons[ i ].name().toLowerCase( java.util.Locale.ROOT ) );
+			sb.append( " " ).append( s.endReasons[ i ] );
+			sb.append( String.format( " (%.0f%%)", pct( s.endReasons[ i ], s.episodes ) ) );
+		}
+		if (sb.length() == 0 ) return "none recorded";
+		return sb.toString();
 	}
 
 	/** Cores the machine is using, derived from the system load where the JVM reports one. */

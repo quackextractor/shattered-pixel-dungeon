@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceS
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
@@ -721,6 +722,44 @@ public class Trainer {
 
 	// --------------------------------------------------------------------------- reporting
 
+	/**
+	 * Tally one episode's termination reason into the report.
+	 *
+	 * <p>The worker sends {@code env.endReason().name()}, and the ordinal is recovered here rather
+	 * than sent across the wire: adding a reason to the enum would otherwise silently renumber the
+	 * array and every historical CSV row would shift meaning.
+	 *
+	 * <p>An unrecognised name is counted under {@code OTHER} and warned about once per generation.
+	 * Silently dropping it would make a broken worker's episodes vanish from the breakdown, which is
+	 * worse than showing them in the wrong bucket — and this number is what a future regression is
+	 * going to be read from.
+	 */
+	private void countEndReason( GenerationReport.Snapshot s, String reason ){
+		if (reason == null || reason.isEmpty()){
+			s.endReasons[ RewardModel.TerminateReason.OTHER.ordinal() ]++;
+			return;
+		}
+
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel.TerminateReason[]
+				reasons = RewardModel.TerminateReason.values();
+		for (int i = 0; i < reasons.length; i++){
+			if (reasons[ i ].name().equals( reason )){
+				s.endReasons[ i ]++;
+				return;
+			}
+		}
+
+		s.endReasons[ RewardModel.TerminateReason.OTHER.ordinal() ]++;
+		if (!warnedUnknownReason){
+			warnedUnknownReason = true;
+			System.err.println( "[WARN] a worker reported the end reason '" + reason
+					+ "', which this build does not know. Counted as OTHER; the trainer and workers are"
+					+ " probably from different builds." );
+		}
+	}
+
+	private boolean warnedUnknownReason;
+
 	private void report( int generation, List<Episode> episodes, ResourceStats.Interval gen ){
 		lastEpisodes.clear();
 		lastEpisodes.addAll( episodes );
@@ -747,6 +786,8 @@ public class Trainer {
 			worst = Math.min( worst, (int) e.score );
 			if (bestEpisode == null || e.score > bestEpisode.score) bestEpisode = e;
 			if (e.replay != null) keepBest( e );
+
+			countEndReason( s, e.reason );
 		}
 
 		int n = episodes.size();

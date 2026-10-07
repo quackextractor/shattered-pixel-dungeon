@@ -2,6 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Graph;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -51,6 +52,22 @@ public class MetricsHistory {
 			"workerCores", "trainerCores"
 	};
 
+	/**
+	 * End-reason columns, appended after {@link #HEADER}.
+	 *
+	 * <p>Named columns rather than one packed column, so a spreadsheet can chart "what fraction of
+	 * episodes died" without a formula. The set is derived from the enum so a new reason cannot be
+	 * added without its column appearing.
+	 */
+	private static final String[] REASON_COLUMNS = reasonColumns();
+
+	private static String[] reasonColumns(){
+		RewardModel.TerminateReason[] reasons = RewardModel.TerminateReason.values();
+		String[] names = new String[ reasons.length ];
+		for (int i = 0; i < reasons.length; i++) names[ i ] = "end" + reasons[ i ].name();
+		return names;
+	}
+
 	/** The rows of the current run, oldest first, for the end-of-run graph. */
 	private final List< float[] > series = new ArrayList<>();
 
@@ -65,7 +82,7 @@ public class MetricsHistory {
 	}
 
 	static int columns(){
-		return HEADER.length;
+		return HEADER.length + REASON_COLUMNS.length;
 	}
 
 	/**
@@ -91,8 +108,9 @@ public class MetricsHistory {
 					StandardCharsets.UTF_8 ) );
 
 			if (!headerWritten){
-				out.write( String.join( ",", HEADER ) );
-				out.write( '\n' );
+				StringBuilder header = new StringBuilder( String.join( ",", HEADER ) );
+				for (String name : REASON_COLUMNS) header.append( ',' ).append( name );
+				out.write( header.append( '\n' ).toString() );
 				headerWritten = true;
 			}
 		} catch (IOException e){
@@ -121,6 +139,10 @@ public class MetricsHistory {
 				(float) s.turnsPerSecond, (float) s.workerCores, (float) s.trainerCores
 		} );
 
+		//copied rather than retained: the snapshot is rebuilt every generation, so holding the
+		//reference would show the last generation's counts for every row of the trend
+		endReasons.add( s.endReasons.clone() );
+
 		write( s );
 	}
 
@@ -128,16 +150,32 @@ public class MetricsHistory {
 		if (out == null) return;
 
 		try {
-			out.write( s.generation + "," + s.episodes + "," + s.activeSeeds
-					+ "," + s.sampledSteps + "," + s.droppedSteps
-					+ "," + fmt( s.meanScore ) + "," + fmt( s.bestScore ) + "," + fmt( s.worstScore )
-					+ "," + fmt( s.meanDepth ) + "," + s.bestDepth + "," + fmt( s.meanTurns )
-					+ "," + fmt( s.policyLoss ) + "," + fmt( s.valueLoss )
-					+ "," + fmt( s.entropy ) + "," + fmt( s.clipFraction ) + "," + fmt( s.klDivergence )
-					+ "," + fmt( s.advantageMean ) + "," + fmt( s.advantageStd )
-					+ "," + fmt( s.wallSeconds ) + "," + fmt( s.ppoSeconds ) + "," + fmt( s.barrierSeconds )
-					+ "," + fmt( s.turnsPerSecond ) + "," + fmt( s.workerCores ) + "," + fmt( s.trainerCores )
-					+ "\n" );
+			StringBuilder row = new StringBuilder();
+			row.append( s.generation ).append( ',' ).append( s.episodes ).append( ',' ).append( s.activeSeeds )
+					.append( ',' ).append( s.sampledSteps ).append( ',' ).append( s.droppedSteps )
+					.append( ',' ).append( fmt( s.meanScore ) ).append( ',' ).append( fmt( s.bestScore ) )
+					.append( ',' ).append( fmt( s.worstScore ) )
+					.append( ',' ).append( fmt( s.meanDepth ) ).append( ',' ).append( s.bestDepth )
+					.append( ',' ).append( fmt( s.meanTurns ) )
+					.append( ',' ).append( fmt( s.policyLoss ) ).append( ',' ).append( fmt( s.valueLoss ) )
+					.append( ',' ).append( fmt( s.entropy ) ).append( ',' ).append( fmt( s.clipFraction ) )
+					.append( ',' ).append( fmt( s.klDivergence ) )
+					.append( ',' ).append( fmt( s.advantageMean ) ).append( ',' ).append( fmt( s.advantageStd ) )
+					.append( ',' ).append( fmt( s.wallSeconds ) ).append( ',' ).append( fmt( s.ppoSeconds ) )
+					.append( ',' ).append( fmt( s.barrierSeconds ) )
+					.append( ',' ).append( fmt( s.turnsPerSecond ) )
+					.append( ',' ).append( fmt( s.workerCores ) ).append( ',' ).append( fmt( s.trainerCores ) );
+
+			//end reasons last, matching REASON_COLUMNS. The count is clamped to the reason's own range
+			//rather than the generation's, so a mismatched array is visible as a wrong number here
+			//instead of an index error somewhere less obvious.
+			RewardModel.TerminateReason[] reasons = RewardModel.TerminateReason.values();
+			int usable = Math.min( reasons.length, s.endReasons.length );
+			for (int i = 0; i < reasons.length; i++){
+				row.append( ',' ).append( i < usable ? s.endReasons[ i ] : 0 );
+			}
+
+			out.write( row.append( '\n' ).toString() );
 			//flushed per generation rather than per run: the run this exists for is long, and a buffer
 			//lost to a crash is exactly the history that was wanted
 			out.flush();
@@ -200,8 +238,12 @@ public class MetricsHistory {
 
 		line( "score ", 5, width );
 		line( "depth ", 8, width );
+		line( "turns ", 10, width );
 		line( "polcl ", 11, width );
 		line( "valcl ", 12, width );
+
+		//end reasons are categorical, not a series to plot, so they are summarised as a fraction
+		printEndReasonTrend();
 
 		//a moving average, because per-generation score is noisy enough that its raw shape invites
 		//reading a trend into noise
@@ -211,6 +253,57 @@ public class MetricsHistory {
 					+ smoothed.text + "  " + Ansi.wrap( smoothed.axis(), Ansi.DIM ) );
 		}
 	}
+
+	/**
+	 * Prints how the share of each end reason moved over the run.
+	 *
+	 * <p>First versus last third, rather than a per-generation dump, because the question this answers
+	 * is whether the distribution is *changing* — and a converged agent produces one flat row. A
+	 * training run whose episodes all end the same way looks identical in every other column.
+	 */
+	private void printEndReasonTrend(){
+		if (series.size() < 4) return;
+
+		int n = series.size();
+		int third = Math.max( 1, n / 3 );
+
+		int[][] first = new int[ REASON_COLUMNS.length ][ 2 ];
+		int[][] last = new int[ REASON_COLUMNS.length ][ 2 ];
+		RewardModel.TerminateReason[] reasons = RewardModel.TerminateReason.values();
+
+		for (int i = 0; i < n; i++){
+			int[] counts = endReasons.get( i );
+			boolean early = i < third;
+			boolean late = i >= n - third;
+			if (!early && !late) continue;
+
+			for (int r = 0; r < reasons.length; r++ ){
+				if (r >= counts.length ) break;
+				int target = early ? 0 : 1;
+				first[ r ][ target ] += counts[ r ];
+				last[ r ][ target ] += counts[ r ];
+			}
+		}
+
+		StringBuilder sb = new StringBuilder();
+		for (int r = 0; r < reasons.length; r++ ){
+			double f = first[ r ][ 0 ] + first[ r ][ 1 ] <= 0
+					? 0 : first[ r ][ 0 ] * 100.0 / (first[ r ][ 0 ] + first[ r ][ 1 ] );
+			double l = last[ r ][ 0 ] + last[ r ][ 1 ] <= 0
+					? 0 : last[ r ][ 0 ] * 100.0 / (last[ r ][ 0 ] + last[ r ][ 1 ] );
+			if (f < 0.5 && l < 0.5 ) continue;
+
+			if (sb.length() > 0 ) sb.append( "  " );
+			sb.append( reasons[ r ].name().toLowerCase( java.util.Locale.ROOT ) )
+					.append( " " ).append( String.format( java.util.Locale.ROOT, "%.0f%%->%.0f%%", f, l ) );
+		}
+
+		System.out.println( "  ended   " + (sb.length() == 0 ? "no reason recorded" : sb.toString())
+				+ Ansi.wrap( "  (first third -> last third)", Ansi.DIM ) );
+	}
+
+	/** Per-generation end-reason counts, indexed by {@code TerminateReason} ordinal. */
+	private final List< int[] > endReasons = new ArrayList<>();
 
 	private void line( String label, int column, int width ){
 		Graph.Row row = Graph.bar( values( column ), width );
