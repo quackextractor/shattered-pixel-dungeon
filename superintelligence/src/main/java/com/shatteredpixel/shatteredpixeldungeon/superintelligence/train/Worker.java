@@ -2,7 +2,9 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
@@ -126,16 +128,24 @@ config.stallLimit = in.readInt();
 	 * at the end is the summary only; the transitions follow in their own message.
 	 */
 	private void runEpisode( String seed, HeroClass heroClass, boolean wantReplay ) throws IOException {
-		recorder.begin( seed, heroClass.name(), 0, config.turnLimitPerFloor );
-
 		//started after the reset so the CPU figure is the episode and not level generation
 		ResourceStats.Interval work = ResourceStats.start();
 
-		//the collector plays the episode, so the recorder is told about each step as it happens
-		//rather than driving it
-		collector.listener( ( mode, action, secondary, heroPosition, reward ) -> {
-			recorder.record( action, secondary, mode );
-			recorder.afterStep( heroPosition, reward );
+		//The collector plays the episode, so the recorder is told about each step as it happens
+		//rather than driving it. The seed arrives through onEpisodeStart rather than being passed in
+		//here, because this side of the call only has the seed that was *requested* and an empty one
+		//means the game drew another - recording that request would produce a file no verify could
+		//reproduce, since verify would reset onto a fresh draw.
+		collector.listener( new EpisodeCollector.Listener() {
+			@Override public void onEpisodeStart( String seedText, String hero ){
+				recorder.begin( seedText, hero, 0, config.turnLimitPerFloor );
+			}
+
+			@Override public void onStep( EnvMode mode, Action action, int secondary,
+					int heroPosition, float reward ){
+				recorder.record( action, secondary, mode );
+				recorder.afterStep( heroPosition, reward );
+			}
 		} );
 
 		EpisodeRecord record = collector.run( env, seed, heroClass );

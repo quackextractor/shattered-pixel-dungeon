@@ -80,6 +80,15 @@ public class EpisodeCollector {
 	 */
 	public interface Listener {
 		/**
+		 * The episode has been reset and the seed resolved.
+		 *
+		 * The seed text is the one the run <em>actually used</em>, not the one requested. An empty
+		 * request means the game drew one, and a recorder begun before the reset would write the empty
+		 * request and produce a file that can never be verified.
+		 */
+		void onEpisodeStart( String seedText, String heroClass );
+
+		/**
 		 * One completed step.
 		 *
 		 * @param mode        the mode the decision was made under, not the one it left behind
@@ -148,6 +157,11 @@ public class EpisodeCollector {
 
 		env.reset( seed, heroClass );
 		network.resetState();
+
+		//after the reset, because that is when the seed the run actually used is known
+		if (listener != null){
+			listener.onEpisodeStart( env.seedText(), heroClass.name() );
+		}
 
 		while (env.running()){
 			network.forward( env.grid(), env.inventory(), env.heroFeatures() );

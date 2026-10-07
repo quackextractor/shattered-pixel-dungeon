@@ -97,6 +97,19 @@ public class SPDEnv {
 
 		pipeline.startRun( seedText, heroClass, 0 );
 
+		//An empty seed means the game drew one, and it does not write the result back to
+		//customSeedText - that stays empty, while the resolved value sits in Dungeon.seed. Captured
+		//here so a recording of this episode can name the seed that produced it.
+		//
+		//Without it a random-seed episode is recorded with an empty seed=, and verify resets onto a
+		//*different* random run and reports a divergence at step 0 that looks like a broken seed lock
+		//and is not one. SeedPool leaks 10% of episodes onto random seeds deliberately, so this was
+		//not an edge case.
+		if (seedText.isEmpty()){
+			seedText = com.shatteredpixel.shatteredpixeldungeon.superintelligence.utils
+					.DungeonSeedCodes.encode( pipeline.currentSeed() );
+		}
+
 		mode = EnvMode.WORLD;
 		//A dialog belongs to one run. Clearing it per step instead meant the step that could have
 		//answered it arrived to find it already gone, so MENU could not be reached at all. It cannot
@@ -432,6 +445,13 @@ public float[] actionMask(){ return actionMask; }
 	public Curriculum curriculum(){ return curriculum; }
 	public ActionMapper mapper(){ return mapper; }
 	public EnvConfig config(){ return config; }
+
+	/**
+	 * The seed this run actually used.
+	 *
+	 * The resolved seed, not the requested one: an empty request means the game drew one, and this is
+	 * that draw's code. Naming it is what makes a random-seed episode replayable and verifiable.
+	 */
 	public String seedText(){ return seedText; }
 	public int turnsTotal(){ return turnsTotal; }
 	public int depth(){ return Dungeon.depth; }

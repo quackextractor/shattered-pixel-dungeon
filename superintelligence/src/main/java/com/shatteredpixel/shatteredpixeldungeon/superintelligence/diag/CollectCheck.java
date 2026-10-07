@@ -63,6 +63,9 @@ public class CollectCheck {
 		checks++;
 		checkScriptedPathStillAgrees( config );
 
+		checks++;
+		checkRandomSeedEpisodeIsReplayable( config );
+
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     collection: " + checks + " checks passed" );
 		} else {
@@ -162,15 +165,84 @@ public class CollectCheck {
 		replay( env, config, trace );
 	}
 
+	/**
+	 * An episode played on a random seed must still be replayable.
+	 *
+	 * `SeedPool` deliberately sends 10% of episodes to a fully random seed so the agent cannot
+	 * memorise the locked set. Those episodes used to be recorded with the *requested* seed, which is
+	 * empty for them, so `verify` reset onto a fresh draw and reported a divergence at step 0 — a
+	 * message that reads as a broken seed lock and is not one.
+	 *
+	 * The env now resolves the drawn seed and reports it, so the recording names the run it actually
+	 * produced. This asserts the resolved seed round-trips: replaying it must reproduce, which is the
+	 * whole claim.
+	 */
+	private static void checkRandomSeedEpisodeIsReplayable( EnvConfig config ){
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		Network network = new Network( config, new Random( 31337L ) );
+		EpisodeCollector collector = new EpisodeCollector( config, network,
+				new Random( 5L ), new Random( 6L ), 0.99f, 0.95f, 0.05f );
+
+		Trace trace = new Trace();
+		collector.listener( new EpisodeCollector.Listener() {
+			@Override public void onEpisodeStart( String seedText, String hero ){
+				trace.seedText = seedText;
+			}
+
+			@Override public void onStep( EnvMode mode, Action action, int secondary,
+					int heroPosition, float reward ){
+				trace.steps.add( new Step( action.name(), secondary, mode.name(),
+						heroPosition, reward ));
+			}
+		} );
+
+		//an empty seed, which is what SeedPool returns for a random episode
+		collector.run( env, "", HeroClass.WARRIOR );
+		collector.listener( null );
+
+		if (trace.steps.isEmpty()){
+			fail( "the random-seed episode recorded no steps" );
+			return;
+		}
+
+		if (trace.seedText == null || trace.seedText.isEmpty()){
+			fail( "a random-seed episode was recorded with no seed, so verify would reset onto a "
+					+ "different draw and diverge at step 0" );
+			return;
+		}
+
+		//the resolved text has to decode back to the seed the run used, or the recording is no
+		//better than an empty one
+		SPDEnv fresh = new SPDEnv( config, HeadlessGame.install() );
+		fresh.reset( trace.seedText, HeroClass.WARRIOR );
+		String replayed = fresh.seedText();
+
+		if (!replayed.equals( trace.seedText )){
+			fail( "the resolved seed did not round-trip: recorded '" + trace.seedText
+					+ "', reset produced '" + replayed + "'" );
+			return;
+		}
+
+		replay( fresh, config, trace );
+	}
+
 	// --------------------------------------------------------------------------- helpers
 
 	/** Collects an episode and records every step, exactly as `Worker.runEpisode` does. */
 	private static Trace record( SPDEnv env, EpisodeCollector collector ){
 		Trace trace = new Trace();
 
-		collector.listener( ( mode, action, secondary, heroPosition, reward ) ->
+		collector.listener( new EpisodeCollector.Listener() {
+			@Override public void onEpisodeStart( String seedText, String hero ){
+				trace.seedText = seedText;
+			}
+
+			@Override public void onStep( EnvMode mode, Action action, int secondary,
+					int heroPosition, float reward ){
 				trace.steps.add( new Step( action.name(), secondary, mode.name(),
-						heroPosition, reward )) );
+						heroPosition, reward ));
+			}
+		} );
 
 		collector.run( env, SEED, HeroClass.WARRIOR );
 		collector.listener( null );
@@ -192,9 +264,12 @@ public class CollectCheck {
 	 * This is the same comparison `ReplayIO.verify` makes, done inline so the check needs no temp
 	 * file. It compares after every step, and a mismatch names the step — a replay that diverges at
 	 * step 0 is an ordering bug, and one that diverges hundreds of steps in is a different kind.
+	 *
+	 * Reset from the trace's own recorded seed rather than a constant, because a trace from a random
+	 * episode is only replayable at all if its resolved seed is what gets used.
 	 */
 	private static void replay( SPDEnv env, EnvConfig config, Trace trace ){
-		env.reset( SEED, HeroClass.WARRIOR );
+		env.reset( trace.seedText.isEmpty() ? SEED : trace.seedText, HeroClass.WARRIOR );
 
 		for (int i = 0; i < trace.steps.size(); i++){
 			if (!env.running()) break;
@@ -215,6 +290,9 @@ public class CollectCheck {
 
 	private static class Trace {
 		final List< Step > steps = new ArrayList<>();
+
+		/** The seed the episode actually ran under, as reported once the env had resolved it. */
+		String seedText = "";
 	}
 
 	private static class Step {

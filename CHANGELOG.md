@@ -93,6 +93,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gradient norm. Harmless while the buffer is empty, which is why it survived. It is implemented now,
   over every layer's gradient accumulator at once, accumulated in double because a network this size
   has millions of entries spanning many orders of magnitude.
+- **A recording of a random-seed episode could never be replayed or verified.** `SeedPool` deliberately
+  leaks 10% of episodes onto fully random seeds so the agent cannot memorise the locked set, and those
+  episodes were recorded with the *requested* seed — which is empty for them. `verify` resets onto a
+  fresh draw and reports a divergence at step 0: correct behaviour, and a message that reads as a broken
+  seed lock. `SPDEnv.reset` now resolves the drawn seed and reports it, and the recorder begins from
+  that rather than from the request, so every recording names the run it actually produced. Measured:
+  a 3-generation run wrote 5 recordings and all 5 re-execute exactly, including one that was previously
+  written as `random.dat` and always failed.
 - **The reported losses were running sums, not means.** Each minibatch averaged over its own samples
   and the totals were summed across every minibatch and epoch, so `policy=` and `value=` grew with
   update length rather than measuring anything. They are now means over the samples seen.
@@ -344,11 +352,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known limitations
 
-- **A random-seed recording cannot be replayed or verified.** `SeedPool` deliberately leaks 10% of
-  episodes onto fully random seeds so the agent cannot memorise the locked set, and those replays are
-  written with an empty `seed=` header. `verify` starts a *different* random run and diverges at step 0,
-  which is correct behaviour and a confusing error message. The resolved seed is available from
-  `LevelPipeline.currentSeedText()` and could be recorded instead.
+- **A replay recorded before this change with an empty `seed=` cannot be verified.** `SeedPool`
+  deliberately leaks 10% of episodes onto fully random seeds so the agent cannot memorise the locked
+  set, and those episodes were recorded with the *requested* seed, which is empty for them. `verify`
+  resets onto a fresh draw and reports a divergence at step 0 — correct behaviour, and a message that
+  reads as a broken seed lock. Any such file already on disk stays unfixable; re-record it.
 
 ## [4.1.0] - 2026-10-06
 
