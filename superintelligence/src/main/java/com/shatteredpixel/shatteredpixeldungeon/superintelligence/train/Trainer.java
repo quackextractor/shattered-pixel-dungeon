@@ -63,6 +63,14 @@ public class Trainer {
 	/** Episodes from the previous generation, which is what the seed gate reads. */
 	private final List<Episode> lastEpisodes = new ArrayList<>();
 
+	/**
+	 * Per-generation metrics, or {@code null}.
+	 *
+	 * Until this existed the trainer kept one generation of episodes and nothing else, so a run's
+	 * history had to be read out of console scrollback. See {@link MetricsHistory}.
+	 */
+	private MetricsHistory metrics;
+
 	/** Wall time of the PPO update that ran after the previous generation, for the time split. */
 	private ResourceStats.Interval lastUpdate;
 
@@ -138,6 +146,23 @@ public class Trainer {
 		ppo.minibatchSize = minibatchSize;
 	}
 
+	/** Sampling knobs, from the command line. Set before {@link #train}. */
+	public void sampling( double rate, int perEpisode, int perGeneration ){
+		this.sampleRate = rate;
+		this.maxSampledPerEpisode = perEpisode;
+		this.maxSamplesPerGeneration = perGeneration;
+	}
+
+	/**
+	 * Per-generation metrics, or {@code null} to keep the old behaviour of discarding them.
+	 *
+	 * Set before {@link #train}. This is what a run's history is written to; without it a run's
+	 * figures exist only in console scrollback, which is why {@link MetricsHistory} exists.
+	 */
+	public void history( MetricsHistory metrics ){
+		this.metrics = metrics;
+	}
+
 	public static void main( String[] args ){
 		TrainOptions options = TrainOptions.parse( args );
 
@@ -150,6 +175,9 @@ public class Trainer {
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
 			trainer.batch( options.epochs, options.minibatchSize );
+			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,
+					options.maxSamplesPerGeneration );
+			trainer.history( new MetricsHistory( options.metricsCsv ) );
 			trainer.pool.launch( options.workers, options.javaHome, options.classpath,
 					out -> trainer.writeParams( out ) );
 			trainer.train( options.generations, options.episodes );
@@ -159,6 +187,7 @@ public class Trainer {
 			System.exit( 1 );
 		} finally {
 			trainer.pool.shutdown();
+			if (trainer.metrics != null) trainer.metrics.close();
 		}
 	}
 
@@ -235,6 +264,8 @@ public class Trainer {
 		seeds.fill( SEED_POOL_SIZE );
 		pool.startWatchdog();
 
+		if (metrics != null) metrics.open();
+
 		System.out.println( Ansi.wrap( "machine", Ansi.DIM ) + "   "
 				+ ResourceStats.availableProcessors() + " logical processors, pool of "
 				+ pool.size() + " workers, stall timeout "
@@ -287,6 +318,9 @@ public class Trainer {
 		}
 
 		saveBestReplays();
+
+		//after the replays, so a failure to write them does not cost the history
+		if (metrics != null) metrics.printTrend();
 	}
 
 	/** One episode request, resolved before dispatch so workers never touch shared state. */
@@ -611,6 +645,9 @@ public class Trainer {
 		droppedThisGeneration = 0;
 
 		GenerationReport.print( s );
+
+		//recorded after the console block, so the report still leads and the file catches up
+		if (metrics != null) metrics.record( s );
 	}
 
 	private float curriculumScale(){

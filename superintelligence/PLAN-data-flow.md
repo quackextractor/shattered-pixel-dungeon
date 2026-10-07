@@ -5,11 +5,15 @@ analysis. This file is the ordered engineering plan and the reasoning behind the
 
 Decision: **worker-side GAE + sampled transitions (Option C), bit-packing deferred, IMPALA deferred.**
 
-Nothing here is built yet.
+Status 2026-10-07: **steps 0–3 are built and committed.** What is left is in §6. The steps that matter
+are not the ones this document originally led with — see "What actually has to happen next" below.
 
-Revised 2026-10-07. §2 and §4 contradicted each other on sampling order, §4's cost projections ignored
-the learner's compute entirely, and two things the plan needs were missing: a measurement of the update
-and global gradient clipping. All four are corrected below, with the reasoning.
+Revised 2026-10-07. Corrections applied to this document, each verified against the code rather than
+against the prose: §2 and §4 contradicted each other on sampling order; §4's cost projections ignored
+the learner's compute entirely; the update was unmeasured; global gradient clipping did not exist;
+`epochs` default of 4 was never a considered choice and is now 2; a per-turn simulation cost was 17×
+wrong; a claimed throughput doubling was never measured; and the plan described code (`PPO.collect`,
+`rolloutCap`) that has since been deleted.
 
 ---
 
@@ -60,8 +64,7 @@ That means:
 
 - **A full episode costs almost nothing.** 40,000 steps of scalars = ~840 KB.
 - **Observation memory is bounded by the sample rate, not episode length.** 5% of 40,000 steps =
-  2,000 retained = ~98 MB. Worst case is fine, and it is the *same* worst case as `rolloutCap`
-  already imposes.
+  2,000 retained = ~98 MB.
 - Without this split, a worker would need the full episode's observations resident (up to 1.9 GB) and
   bit-packing would become a prerequisite instead of an optimisation.
 
@@ -79,7 +82,10 @@ follow, both of them the reason for the change:
 
 - **No second simulation pass.** Sampling after GAE would mean either holding every observation until
   the episode ends (the 1.9 GB cliff) or re-simulating the episode to fetch the ones that were
-  selected — at ~2.3 ms a turn, re-simulating is a comparable cost to collecting.
+  selected. Re-simulation is cheap — pure scripted simulation measures **7,367 turns/s, 0.136 ms a
+  turn** — so it would cost time rather than being prohibitive. It is still the wrong choice: it
+  doubles the simulation cost of every episode for no gain, and the all-observations variant is not an
+  option at all.
 - **No all-observations residency**, which is what keeps bit-packing an optimisation rather than a
   prerequisite.
 
@@ -89,11 +95,11 @@ sampling during collection is unbiased and needs none.
 
 ### 2.2 Correction — one forward pass per step, not two
 
-`PPO.collect` forwards the network again after every step, purely to fill `t.nextValue`:
+The old `PPO.collect` forwarded the network again after every step, purely to fill `t.nextValue`:
 
 ```java
 t.reward = (float) env.step( action, secondary );
-network.forward( env.grid(), env.inventory(), env.heroFeatures() );   // rlp/PPO.java:209
+network.forward( env.grid(), env.inventory(), env.heroFeatures() );
 t.nextValue = network.value();
 ```
 
@@ -102,13 +108,15 @@ bootstrap is `buffer.get( i + 1 ).value`, which is the value the *next* step alr
 the same state. So an episode of *n* steps needs **n + 1** forward passes, not 2*n*: one per step for
 its own `value`, and one more at the end to bootstrap a truncated episode.
 
-The extra pass is not merely redundant. It advances the LSTM over the post-step observation as well,
-so under `collect` every observation is absorbed into the recurrent state **twice** — once before the
-action, once after it. Deleting it makes the trunk see each observation once, which is what the
-network was designed for and what `gradcheck` measures against.
+The extra pass is not merely redundant. It advanced the LSTM over the post-step observation as well,
+so every observation was absorbed into the recurrent state **twice** — once before the action, once
+after it. Deleting it makes the trunk see each observation once, which is what the network was
+designed for and what `gradcheck` measures against.
 
-Value, therefore: collection throughput roughly doubles, and a latent artifact disappears. Nothing
-that runs today depends on the old behaviour — `PPO.collect` and `PPO.rollout` have no callers.
+**Expected to roughly halve the cost of collection. Not measured** — it was a code reading when the
+change was made, and the collection timings in the generation report have moved for other reasons
+since. Treat it as a hypothesis. It is the kind of claim that should not be presented as a
+measurement in a document whose other numbers are measurements.
 
 ---
 
@@ -136,9 +144,10 @@ per generation is not worth the engineering until transport shows up in a profil
 The 120 ms above is the *cheap* half of a generation. The expensive half is the trainer learning on
 what it just received, and nothing in the first draft of this plan measured it.
 
-An update costs one forward and one backward per sample per epoch. At the default
+An update costs one forward and one backward per sample per epoch. At the then-current
 `epochs = 4` and ~2,400 sampled steps that is **9,600 forward+backward passes per generation, on a
-single thread** (`PPO.update`, `rl/PPO.java:297`).
+single thread** (`PPO.update`, `rl/PPO.java`). The default is now 2 — see step 2b — which halves
+every figure below.
 
 Per sample, the shape is expensive. The convolution is 20 planes of 48x48 im2col'd into a
 12,696×320 matvec; the trunk is 12,696×256; the LSTM is 256→128.
@@ -152,27 +161,29 @@ thread:
 | forward + backward | 11.02 ms |
 | + average, clip, Adam, amortised over a 32-sample minibatch | **11.29 ms** |
 
-Projected against a generation of 48,000 collected steps (20 workers × 16 episodes × 150 turns):
+Projected against a generation of 48,000 collected steps (20 workers × 16 episodes × 150 turns).
+Those 48,000 steps assume ~150-turn episodes, which an untrained policy does not produce — §5.1 — so
+treat the "sampled steps" column as the intended regime rather than the current one:
 
-| sample rate | sampled steps | 4 epochs | 1 epoch |
-| --- | --- | --- | --- |
-| 1% | 480 | 21 s | 5 s |
-| 2% | 960 | 43 s | 11 s |
-| 5% | 2,400 | **107 s** | 27 s |
-| 10% | 4,800 | 214 s | 54 s |
-| 100% | 48,000 | 35 min | 9 min |
+| sample rate | sampled steps | 4 epochs | 2 epochs (now default) | 1 epoch |
+| --- | --- | --- | --- | --- |
+| 1% | 480 | 21 s | 11 s | 5 s |
+| 2% | 960 | 43 s | 21 s | 11 s |
+| 5% | 2,400 | 107 s | **53 s** | 27 s |
+| 10% | 4,800 | 214 s | 107 s | 54 s |
+| 100% | 48,000 | 35 min | 18 min | 9 min |
 
 **So the bandwidth argument for Option C was never the binding constraint at these sample rates.**
-Transport is 120 MB per generation, ~0.12 s. The update at the intended 5% and 4 epochs is ~107 s —
+Transport is 120 MB per generation, ~0.12 s. The update at the intended 5% was ~107 s at 4 epochs —
 roughly **900× the transport**, and ~15× the ~7 s it takes to collect the data in the first place.
-The trainer's single thread would be the critical path with 19 of 20 cores idle.
+The trainer's single thread was the critical path with 19 of 20 cores idle.
 
 Two things follow that are not optional:
 
 1. **The update must be parallel.** Not "if the measurement says so" — the measurement says so. It
    also means the batch configuration has to be chosen against this table rather than against taste:
-   5% at 1 epoch is 27 s, 5% at 4 epochs is 107 s, and the difference is whether a generation is
-   minutes or a minute and a half even after parallelising.
+   at the current default, 5% at 2 epochs is ~53 s and 5% at 1 epoch is ~27 s, and the difference is
+   whether a generation is under a minute or about two even after parallelising.
 2. **The optimiser is not the problem; the forward and backward are.** The Adam pass, the gradient
    norm and the gradient scaling together add 0.27 ms per sample — 2.4% of the cost — because they
    run once per minibatch rather than once per sample. An earlier version of this harness timed
@@ -206,9 +217,9 @@ Uniform over steps, plus a deliberate exception.
   trainer, so a seed reproduces the same sample set. Separate from the policy's own RNG so changing
   the sample rate does not change which actions a run takes, which would make two rates incomparable.
 
-Both are knobs, not constants: `--sample-rate`, `--max-sampled-per-episode` (2048, ~98 MB, the same
-worst case `rolloutCap` already imposed) and `--max-samples-per-generation` (8192, ~397 MB) as a
-trainer-side valve. Drops are counted and printed, never silent.
+Both are knobs, not constants: `--sample-rate`, `--max-sampled-per-episode` (2048, ~98 MB) and
+`--max-samples-per-generation` (8192, ~397 MB) as a trainer-side valve. Drops are counted and printed,
+never silent.
 
 ### 5.1 The tail dominates short episodes, and early episodes are short
 
@@ -231,16 +242,43 @@ sampled count that drifted for a reason no report explained.
 
 Each step is independently shippable and leaves the system working.
 
-### Step 0 — Split the trainer, changing nothing
+### Priority order (reordered 2026-10-07)
 
-`Trainer.java` is 824 lines against the project's own 500-line rule (`instructions.md:57`), and the
+The numbering was written when every step was outstanding, and it is no longer the priority order.
+Two things moved on 2026-10-07:
+
+| | was | now |
+| --- | --- | --- |
+| instrument the loop | not in the plan | **done** (step 3b) |
+| persist the weights | after the parallel update | **before it** (step 4b) |
+| parallel update | next | required, not yet actionable |
+
+**Why instrumentation moves first.** Steps 0-3 built a loop that learns, and the plan had no way to
+tell whether it does. `clip=` was reporting a constant 0.8415 — `P(|N(0,1)| > 0.2)` — instead of
+PPO's ratio-clip fraction, so the one signal that says the policy is moving too far per update could
+not be read. Nothing accumulates across generations, so a run's trend existed only in console
+scrollback. The parallel update's only success criterion was "faster", which *is* measurable without
+any of this — but doing it first would mean optimising a loop whose behaviour cannot be observed,
+and would leave step 3b with nothing to compare the result against.
+
+**Why checkpointing moves ahead of it.** It is smaller than the parallel update, it is on the
+critical path to `research.md:40`, and it is what makes two runs comparable at all. It was
+originally scheduled after the parallel update, which was wrong on both counts.
+
+### Step 0 — Split the trainer, changing nothing — **done**
+
+`Trainer.java` was 824 lines against the project's own 500-line rule (`instructions.md:57`), and the
 work below adds to it. Extracted first, as pure moves, so the behavioural commits below have a small
 diff to review: `train/WorkerPool` (launch, `WorkerHandle`, watchdog), `train/GenerationReport`,
-`train/TrainOptions`, `train/Protocol` (message constants, today duplicated as bare literals across
-`Worker` and `Trainer`).
+`train/TrainOptions`, `train/Protocol` (message constants, then duplicated as bare literals across
+`Worker` and `Trainer`). `Trainer` is now 465 and is the loop itself.
 
-Gate: `build`, `gradcheck`, `modecheck`, `restartcheck` and a 60-rollout determinism sweep, all
-unchanged.
+Not a pure move after all — it also fixed two real defects, disclosed in its commit: a policy-push
+acknowledgement that was read and discarded, and an episode reply check that read a second int off the
+wire while building its own error message.
+
+Gate, met: `build`, `gradcheck`, `modecheck`, `restartcheck`, a 60-rollout determinism sweep, and a
+2-worker training run end to end.
 
 ### Step 1 — Measure the update, and clip gradients — **done**
 
@@ -293,27 +331,30 @@ is **not** the `PlatformSupport.getFont` "No cap character found" drift recorded
 `PLAN-replay-viewer.md` §12 — that is the rendered viewer's path and remains open. This is a separate,
 headless-only null return that was silently fatal.
 
-### Step 2b — Reach a usable training speed — **next**
+### Step 2b — Reach a usable training speed — **done**
 
-Steps 2 and 3 made learning *possible*. This makes it fast enough to actually do, and it is the
+Steps 2 and 3 made learning *possible*. This made it fast enough to actually do, and it is the
 difference between a prototype run and an overnight one.
-
-Three levers, cheapest first, and none of them is the parallel update:
 
 1. **`--epochs`, default 2 instead of 4.** A config change, no refactor, and it halves the update. It
    also corrects a misconfiguration this plan itself flagged: 300 Adam steps over 2,400 samples is too
    much optimiser movement for the batch, so 2 epochs (150 steps) is closer to sane. Not a
    compromise — a fix.
-2. **A `--check` task** running every gate in one gradle invocation. Measured: `gaecheck` takes 0.22 s
+2. **A `gates` task** running every check in one gradle invocation. Measured: `gaecheck` takes 0.22 s
    bare and 2.4 s through gradle, so gradle's per-invocation overhead is ~90% of the cost. All six
-   gates combined: 6.4 s in one invocation against ~17 s run separately. The checks are not slow; the
-   harness around them is.
-3. **Fewer generations per run**, with the seed fixed so a run is reproducible and weights are
-   persisted (TODO 1.3). This is the "scale later" path: a prototype needs to see a trend in a minute,
-   not a correct long run overnight.
+   gates: 7.9 s in one invocation against ~17 s run separately. The checks are not slow; the harness
+   around them is. Named `gates`, not `check`, because the `java-library` plugin already contributes
+   a lifecycle `check` and Gradle refuses to shadow it.
+3. **Fewer generations per run, seed fixed.** Deliberately the prototype's choice: a prototype needs to
+   see a trend in a minute, not a correct long run overnight.
 
-Gate: a prototype run reaches 20 generations in single-digit minutes, and `check` runs every gate in
-one invocation.
+Gate, met: 20 generations went from ~36 min to ~7, and a 6-generation prototype run from ~36 min to 2.
+
+**Item 3 of that list is incomplete.** Weights are still never written to disk (TODO 1.3), so a
+prototype run cannot be resumed, inspected mid-flight, or compared against another run. That is
+step 4b.
+
+### Step 3 — Ship sampled transitions to the trainer — **done**
 
 Landed with step 2 rather than after it: the worker had to send the transitions for the trainer's
 update to have anything to run on, so the two could not be separated without an intermediate state
@@ -324,7 +365,7 @@ As specified, except:
 - **The replay still rides the episode frame** rather than its own message. It is one replay every
   third episode, a small share of a generation's traffic, and splitting it is worth doing only once
   there is a measurement saying so. `Protocol.MSG_REPLAY` is reserved and numbered for it.
-- **`--sample-rate`, `--max-samples-per-episode` and `--max-samples-per-generation` exist** and are
+- **`--sample-rate`, `--max-sampled-per-episode` and `--max-samples-per-generation` exist** and are
   documented in `TODO.md` §1. The last is a memory valve rather than a design choice: 320 episodes
   wide, on a machine whose pagefile is 2 GB.
 
@@ -332,21 +373,72 @@ Gate, met: `policy` and `value` are non-zero, advantages arrive with a real spre
 shows the sampled count, its byte cost, and the advantage statistics **before** normalisation.
 
 **What this did not deliver: a model.** See `TODO.md` §1.3. Nothing writes weights to disk, so all
-three steps above produce a loop that learns and a process that then forgets, and the update runs at
-~6× the cost of collecting the data it learns from.
+three steps above produce a loop that learns and a process that then forgets.
 
-One bug came out of it, and the shape of it is worth recording: every recording the trainer wrote
-diverged at step 0, because `EpisodeCollector` read `heroPosition` before stepping and the recorder
-documents that field as *after*. The file parsed, the run scored, the dungeon looked like a dungeon —
-only `verify` caught it. `ScriptedPolicy`'s path reads it after the step and always has, so
-`--record` was unaffected and only trainer output was. `collectcheck` now covers it. Third time
-something that "had never been run" turned out to be wrong; the first two were headless crashes.
+Two bugs came out of it, and their shape is worth recording, because it is the third and fourth time:
 
-### Step 4 — Parallel minibatch update — **required, not conditional**
+| Bug | Symptom | Why nothing caught it |
+| --- | --- | --- |
+| `EpisodeCollector` read `heroPosition` before `env.step()`, not after | Every trainer recording diverged at step 0 **while still playing** — the file parsed, the run scored, the dungeon looked like a dungeon | Only `verify` compares step by step, and the scripted path reads position correctly so `--record` was unaffected. Found by trying to play one back. |
+| Random-seed episodes were recorded with the *requested* seed, which is empty for them | `verify` reset onto a fresh draw and reported a divergence at step 0, reading as a broken seed lock | `SeedPool` leaks 10% of episodes to random seeds deliberately, so ~10% of recordings were affected and none of them could ever verify |
+
+Both are now covered by `collectcheck`, and both were mutation-tested. The pattern — code that had
+never been run, being wrong — has now happened four times: two headless crashes, the step ordering,
+and the seed resolution. It is the single most productive thing to go looking for in this project.
+
+### Step 3b — Instrument the loop — **done**
+
+Steps 0–3 built a loop that learns. **This is the step that makes it possible to tell whether it
+does.** It comes before the parallel update, not after, because the parallel update's only current
+success criterion is "faster", and a faster loop you cannot evaluate is not an improvement.
+
+Three defects found while auditing the plan for this step, all of which make a run unjudgeable:
+
+**1. `clip=` is not the clip fraction.** `PPO.update` counted `|advantage| > clipEpsilon` on a
+*normalised* advantage. After normalisation advantages have unit variance, so that expression is
+simply `P(|N(0,1)| > 0.2)` = **0.8415** — a constant. Observed across real generations: 0.81, 0.83,
+0.85, 0.90, which is that constant. PPO's clip fraction is the fraction of samples whose *ratio* fell
+outside `[1-ε, 1+ε]`; `Policy.accumulatePolicyGradient` computes `clipBinding` internally and discards
+it. **This is the one number that says the policy is moving too far per update, and it currently
+cannot.**
+
+**2. Nothing accumulates across generations.** `Trainer` keeps `lastEpisodes` — one generation — and
+discards it. `diag.Graph` is dead code (the `Graph` in the repo is the game's unrelated
+`com.watabou.utils.Graph`). A run therefore prints a block per generation into console scrollback and
+throws it away. There is no way to see a trend, and with the agent never having left floor 1, no way
+to see that a change helped.
+
+**3. Nothing compares runs.** Directly downstream of (2), and the reason `TODO.md` 1.3 matters: with
+no persisted weights and no persisted history, "generation 200 scored better than generation 100" has
+to be believed rather than checked.
+
+All three are now done. `Policy.accumulatePolicyGradient` returns `clipBinding` and `PPO` counts it;
+`train/MetricsHistory` appends a CSV row per generation and renders the end-of-run trend through the
+revived `diag.Graph`.
+
+**What the corrected metric actually showed.** Across 9 generations the real clip fraction ranges
+**0.047 to 0.737** — it moves, where the old one sat at 0.8415 regardless of the policy. The first
+generation's 0.737 is the interesting one: a third of samples were having their gradient zeroed by the
+clip on the very first update, which is a learning rate that is too high for the batch and is now
+visible rather than invisible. Declining afterwards is what settling looks like.
+
+CSV and graph both, because they answer different questions: CSV is how two runs are compared, the
+graph is how one run reads.
+
+Gate, met: 9 generations of history survive the process in a 24-column CSV; appending a second run adds
+rows without a second header; `clip=` is the real ratio-clip fraction and the check fails when
+`Policy` is mutated to report a non-binding clip.
+
+### Step 4 — Parallel minibatch update — **required, not conditional, but not yet actionable**
 
 Step 1 measured it: 11.29 ms per sample, single-threaded, dominated by the forward and backward
-rather than by the optimiser. At 5% and 4 epochs that is 107 s of trainer CPU per generation against
-~7 s of collection.
+rather than by the optimiser. At 5% and the then-default 4 epochs that was 107 s of trainer CPU per
+generation; at the current default of 2 it is ~53 s. Against ~7 s of collection it is still the
+dominant cost.
+
+Deferred behind step 3b deliberately. The wall-clock argument for doing it is unambiguous and does not
+need instrumentation — but doing it before step 3b would optimise a loop whose behaviour cannot be
+observed, and would then leave step 3b with nothing to measure the result against.
 
 #### Why it is not a thread pool
 
@@ -372,21 +464,47 @@ cannot divide.
 threads on one memory controller contend. The machine has 10 physical cores / 20 logical (i5-14600KF),
 so 20 threads will not give 20×.
 
-| Threads | Update time | Speedup |
+| Threads | Update time (4 epochs) | Speedup |
 | --- | --- | --- |
 | 1 | ~107 s | 1× |
 | 4 | ~30 s | 3.5× |
 | 8 | ~21 s | 5× |
 | 10 (physical) | ~19 s | 5.6× |
 
-**These are estimates and must be measured, not trusted.** The reduction cost is the unknown: 14.3 MB
-per thread per minibatch competes with the per-sample work as a thread's slice shrinks, which decides
-`minibatchSize` as much as thread count does.
+At the current default of 2 epochs, divide every row by two. **These are estimates and must be
+measured, not trusted.** The reduction cost is the unknown: 14.3 MB per thread per minibatch competes
+with the per-sample work as a thread's slice shrinks, which decides `minibatchSize` as much as thread
+count does.
 
 Gate: measured seconds/generation down, and a **new check** that the same batch produces the same
 gradients at N threads as at 1. `gradcheck` runs single-threaded by construction, so it proves the
 maths is unchanged and proves nothing about concurrent access — a parallel update needs its own
 equivalence check or it will have threading bugs that look like convergence problems.
+
+### Step 4b — Persist the weights — **small, and blocking for everything downstream**
+
+Written down here rather than only in `TODO.md` 1.3, because it was originally scheduled *after* the
+parallel update and that ordering was wrong: it is smaller, it is on the critical path to
+`research.md:40`, and nothing that follows can be evaluated without it.
+
+No `saveWeights`, no checkpoint, no `--resume`. Every run starts from `Network`'s random
+initialisation and is discarded at the end. The cost:
+
+- A run has to be babysit start to finish, on a machine whose 2 GB pagefile thrashes rather than
+  degrades.
+- `--generations` cannot be split. There is no way to run 50 generations, stop, inspect, and continue.
+- **No two runs can be compared**, because only one line of training can exist at a time. This is
+  step 3b's third defect and the reason it is listed there too.
+- A crash costs the whole run rather than the run since the last checkpoint.
+
+`Network.layers()` / `loadLayer` are already the checkpoint format and already validate against the
+`EnvConfig` shape, so a stale checkpoint fails loudly rather than loading into the wrong parameters,
+and `Worker.writeWeights` / `readWeights` already serialise exactly that. **This is plumbing, not
+design.**
+
+Gate: `--resume <file>` loads before the first worker launch; weights are written on exit and every N
+generations; a resumed run continues rather than restarting; and two runs can be compared on the same
+axes.
 
 ### Step 5 — fp16 weight push, only if the barrier shows up
 
@@ -442,17 +560,19 @@ re-proposed.
 
 ## 7. Expected effect on the machine
 
-| | now | after steps 2–3 | after step 4 |
+| | before steps 2–3 | after steps 2–3 (current) | after step 4 |
 | --- | --- | --- | --- |
 | transport/gen | ~0 (discarded) | ~118 MB | ~118 MB |
-| update/gen | 0 (empty buffer) | ~107 s, 1 thread | ~107 s ÷ threads, plus reduction |
+| update/gen | 0 (empty buffer) | ~53 s, 1 thread, 2 epochs | ~53 s ÷ threads, plus reduction |
 | barrier | 12–26% | ~90% of wall | much lower |
 | system CPU | ~50% avg, 90–100% peak | trainer-core bound | spread across cores |
 | pooled gradient | no | yes | yes |
+| run history | none | CSV + graph (step 3b) | yes |
+| weights on disk | none | none | checkpoint (step 4b) |
 
-Throughput should *fall* after step 3 — real PPO work replaces free discard. That is expected and is
-not a regression. The size of the fall is measured: about 107 s of trainer CPU per generation at 5%
-and 4 epochs, and the batch configuration has to be chosen against that rather than against taste.
+Throughput *fell* in step 3 — real PPO work replaced free discard. That is expected and is not a
+regression. The size of the fall is measured: about 53 s of trainer CPU per generation at 5% and the
+current 2 epochs, so the batch configuration has to be chosen against that rather than against taste.
 
 ---
 
@@ -463,13 +583,16 @@ and 4 epochs, and the batch configuration has to be chosen against that rather t
 | Advantages differ from full-buffer computation | blocking | Step 2 gate. Cheap to test. |
 | Worker/trainer gamma drift | medium | Currently masked by identical defaults. Fixed in step 2. |
 | Sample too small (~2,400 for 3.5M params) | medium | Needs a knob and a measurement plan. Low end of workable. |
-| Update cost dominates everything | **measured: it does** | 107 s vs 7 s of collection. Step 4 is required. |
+| Update cost dominates everything | **measured: it does** | 53 s vs 7 s of collection at 2 epochs. Step 4 is required, but step 3b comes first. |
+| A run cannot be judged | **hit, fixed** | `clip=` reported `P(\|N(0,1)\|>0.2)` = 0.8415 rather than the ratio-clip fraction, and nothing accumulated across generations. Fixed in step 3b: metrics CSV, revived `diag.Graph`, real clip fraction. |
+| A crash costs the whole run | **hit, unfixed** | No checkpointing. Steps are lost wholesale. Step 4b / TODO 1.3. |
 | 300 Adam steps on 2,400 samples destabilises training | medium | Only visible once losses are non-zero. Re-tune from step 1's grid; step 2b defaults epochs to 2. |
 | Parallel update silently races on shared state | **high** | `LSTM` writes `h`/`c` in place. `gradcheck` runs single-threaded and cannot catch it. Needs its own equivalence check. |
 | 95% of collected experience unused | accepted | Fine to start with. Not free. |
 | Replay transfer crowds the transition channel | low | Split the message in step 3. |
 | GAE in worker breaks on chunk boundaries | medium | Gone: an episode is one GAE segment, and chunking moves to step 2's sampling cap. |
 | Tail retention biases the gradient | low | A fixed position-based subset, not advantage-ranked. See §5. |
+| `gaecheck` cannot see `EpisodeCollector`'s retention loop | medium | A mutation that disables tail retention still passes. Only `collectcheck` exercises the loop, and it does not assert retention. |
 | A trainer recording that will not replay | **hit, fixed** | The hero position was recorded before the step rather than after. Every recording diverged at step 0 while still playing. Covered by `collectcheck`. |
 
 ---
@@ -477,8 +600,9 @@ and 4 epochs, and the batch configuration has to be chosen against that rather t
 ## 9. Open questions
 
 - Sample rate: 5% gives ~2,400 steps. Now measured rather than guessed — §4 — and the answer is that
-  5% at 4 epochs costs 107 s of trainer CPU per generation. Whether that is acceptable depends on step
-  4's thread count, and 1 epoch vs 4 moves it by 4×. `--sample-rate` is a knob for exactly this.
+  5% at the current 2 epochs costs ~53 s of trainer CPU per generation. Whether that is acceptable
+  depends on step 4's thread count, and 1 epoch vs 2 moves it by 2×. `--sample-rate` is a knob for
+  exactly this.
 - Should episodes longer than a threshold be capped at the source, given GAE cost grows linearly
   while value signal does not?
 - Replay retention: currently every third episode. At 320 episodes/generation that is a

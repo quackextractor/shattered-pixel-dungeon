@@ -110,8 +110,9 @@ public class PPO {
 	public float lastPolicyLoss;
 	public float lastValueLoss;
 	public float lastEntropy;
-	public float lastKLDivergence;
-	public float lastClipFraction;
+public float lastKLDivergence;
+// fraction of samples whose PPO ratio fell outside [1-eps, 1+eps], so the surrogate's min() clipped them
+public float lastClipFraction;
 	public float lastGradNorm;
 	public float lastGradClipped;
 	public int lastMinibatches;
@@ -321,7 +322,10 @@ public class PPO {
 			java.util.Arrays.fill( gradient, 0f );
 
 			Policy.probabilities( logits, mask, probabilities );
-			Policy.accumulatePolicyGradient( probabilities, mask, chosen,
+			//whether the surrogate's clip bound this sample, which is PPO's clip fraction. Counting
+			//|advantage| instead - which is what this did - measures nothing: after normalisation
+			//advantages have unit variance, so that count is a constant near P(|N(0,1)| > 0.2).
+			boolean clipBinding = Policy.accumulatePolicyGradient( probabilities, mask, chosen,
 					t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
 
 			float dValue = Policy.valueGradient( network.value(), t.returnValue );
@@ -335,7 +339,7 @@ public class PPO {
 			valueLoss += Policy.valueLoss( network.value(), t.returnValue );
 			entropy += Policy.entropy( probabilities );
 			kl += approximateKL( t, oldLogProbabilityFor( t, probabilities ), mask, probabilities );
-			if (Math.abs( t.advantage ) > clipEpsilon ) clipped++;
+			if (clipBinding) clipped++;
 		}
 
 		int count = Math.max( 1, to - from );

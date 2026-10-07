@@ -41,18 +41,48 @@ public class TrainOptions {
 	 *
 	 * The dominant term in an update is forward and backward, so this scales it linearly - measured
 	 * at 11.29 ms per sample, which is ~107 s of trainer CPU per generation at 4 epochs and a 5% sample
-	 * rate. Two is the default because four was never a considered choice: it gives 300 Adam steps over
-	 * a 2,400-sample batch, which is far more optimiser movement than a batch that size supports. See
-	 * `PLAN-data-flow.md`.
+	 * rate, and ~53 s at 2. Two is the default because four was never a considered choice: it gives 300
+	 * Adam steps over a 2,400-sample batch, which is far more optimiser movement than a batch that size
+	 * supports. See `PLAN-data-flow.md`.
 	 */
 	public int epochs = 2;
 
-	/** PPO epochs per update. See {@link #epochs}. */
+	/** Samples per minibatch, which sets the gradient reduction size in a parallel update. */
 	public int minibatchSize = 32;
+
+	/**
+	 * Fraction of an episode's transitions whose observation reaches the trainer.
+	 *
+	 * A knob rather than a constant because the cost of an update is linear in it: at 5% and 2 epochs
+	 * the update is ~53 s of trainer CPU per generation, and that is the figure a sample-rate sweep
+	 * has to move. Clamped to [0,1] in {@link Trainer}; 0 is allowed because the 20-step tail is
+	 * retained regardless, which is how "off" is expressed rather than being a special case.
+	 */
+	public double sampleRate = 0.05;
+
+	/** Ceiling on one episode's retained observations, ~98 MB at 2048. */
+	public int maxSampledPerEpisode = 2048;
+
+	/** Ceiling on one generation's transitions in the update buffer, ~397 MB at 48.5 KB a step. */
+	public int maxSamplesPerGeneration = 8192;
+
 	public String javaHome = "";
 	public String classpath = System.getProperty( "java.class.path" );
 	public File workDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-train" );
 	public long stallSeconds = 180;
+
+	/**
+	 * Per-generation metrics, one CSV row each. {@code null} disables it.
+	 *
+	 * Defaults under the work directory rather than the working directory, because the work directory
+	 * is where a run's replays already go and is therefore the place a run's output can be found
+	 * without knowing where the trainer was launched from.
+	 */
+	public File metricsCsv;
+
+	public TrainOptions(){
+		metricsCsv = new File( workDir, "metrics.csv" );
+	}
 
 	public static TrainOptions parse( String[] args ){
 		TrainOptions o = new TrainOptions();
@@ -72,6 +102,14 @@ public class TrainOptions {
 					o.stallSeconds = Long.parseLong( args[ ++i ] ); break;
 				case "--epochs":      o.epochs = Integer.parseInt( args[ ++i ] ); break;
 				case "--minibatch":   o.minibatchSize = Integer.parseInt( args[ ++i ] ); break;
+				//these three existed as public Trainer fields with these defaults, but were never
+				//reachable from the command line - so the knobs the plan documents could not be turned
+				case "--sample-rate": o.sampleRate = Double.parseDouble( args[ ++i ] ); break;
+				case "--max-sampled-per-episode":
+					o.maxSampledPerEpisode = Integer.parseInt( args[ ++i ] ); break;
+				case "--max-samples":
+					o.maxSamplesPerGeneration = Integer.parseInt( args[ ++i ] ); break;
+				case "--metrics":     o.metricsCsv = new File( args[ ++i ] ); break;
 				default:
 					if (args[ i ].startsWith( "--" )){
 						System.err.println( "[WARN] unknown option: " + args[ i ] );

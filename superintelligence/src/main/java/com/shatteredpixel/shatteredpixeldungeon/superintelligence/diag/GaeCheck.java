@@ -51,7 +51,7 @@ public class GaeCheck {
 	 * A hardcoded count in one message and not the other is how a check suite ends up claiming to have
 	 * run more than it did.
 	 */
-	private static final int CHECKS = 9;
+	private static final int CHECKS = 11;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -66,6 +66,7 @@ public class GaeCheck {
 		checkAdvantagesAreIndependentOfSampling();
 		checkTransitionCodecRoundTrip();
 		checkShortEpisodeRetainsItsTail();
+		checkClipFractionIsNotAdvantageMagnitude();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     GAE: " + CHECKS + " checks passed" );
@@ -498,6 +499,74 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 		} catch (IOException e){
 			fail( "the round trip threw: " + e.getMessage() );
 		}
+	}
+
+	/**
+	 * The return value must report the surrogate's clip, not the gradient it happened to produce.
+	 *
+	 * {@link Policy#accumulatePolicyGradient} computed {@code clipBinding} and threw it away, so
+	 * {@code PPO} counted {@code |advantage| > clipEpsilon} instead. After normalisation advantages have
+	 * unit variance, so that count is {@code P(|N(0,1)| > 0.2)} = 0.8415 regardless of the policy — a
+	 * constant wearing the label of a measurement. It is the single number that says the policy is
+	 * moving too far per update, and it could not be read.
+	 */
+	private static void checkClipFractionIsNotAdvantageMagnitude(){
+		float epsilon = 0.2f;
+
+		//ratio 1.0, the policy has not moved this sample at all: must not report binding
+		if (clipBindingForRatio( 1f, epsilon )) fail( "ratio 1.0 reported as clipped" );
+
+		//ratio 1.1 sits inside [0.8, 1.2], so the min() selects the unclipped branch
+		if (clipBindingForRatio( 1.1f, epsilon )) fail( "ratio 1.1 reported as clipped" );
+
+		//just outside each bound, which is where the clip must start to bind
+		if (!clipBindingForRatio( 1.25f, epsilon )) fail( "ratio 1.25 not reported as clipped" );
+		if (!clipBindingForRatio( 0.75f, epsilon )) fail( "ratio 0.75 not reported as clipped" );
+
+		//the old expression's value on the same distribution, to pin the magnitude of the regression
+		Random rng = new Random( 4242L );
+		int n = 20000;
+		int advantageCount = 0;
+		for (int i = 0; i < n; i++) if (Math.abs( rng.nextGaussian() ) > epsilon ) advantageCount++;
+		double constant = (double) advantageCount / n;
+
+		//the real quantity varies with how far the policy moved, and must be able to be near 0
+		float[] ratio = { 1.0f, 1.0f, 1.0f };
+		int bound = 0;
+		for (float r : ratio) if (clipBindingForRatio( r, epsilon )) bound++;
+		if (bound != 0){
+			fail( "a batch of unmoved ratios reported " + bound + " clipped" );
+			return;
+		}
+
+		if (Math.abs( constant - 0.8415 ) > 0.02){
+			fail( "the |advantage| expression is no longer near 0.8415 (" + constant
+					+ "), so this check no longer documents what it replaced" );
+		}
+	}
+
+	/**
+	 * Drives {@link Policy#accumulatePolicyGradient} for a requested probability ratio and reports
+	 * whether the clip bound it.
+	 *
+	 * The ratio is set by making the behaviour policy's recorded log-probability disagree with the
+	 * current one by {@code log(r)}, so the call under test is the real one rather than a restatement
+	 * of it.
+	 */
+	private static boolean clipBindingForRatio( float ratio, float epsilon ){
+		int chosen = 0;
+		float[] probabilities = new float[ 4 ];
+		probabilities[ chosen ] = 0.5f;
+		probabilities[ 1 ] = 0.3f;
+		probabilities[ 2 ] = 0.15f;
+		probabilities[ 3 ] = 0.05f;
+
+		float[] mask = { 1f, 1f, 1f, 1f };
+		float oldLogProbability = (float) Math.log( probabilities[ chosen ] ) - (float) Math.log( ratio );
+		float[] gradient = new float[ probabilities.length ];
+
+		return Policy.accumulatePolicyGradient( probabilities, mask, chosen,
+				oldLogProbability, 1f, epsilon, 0f, gradient );
 	}
 
 	// --------------------------------------------------------------------------- helpers

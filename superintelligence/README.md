@@ -9,9 +9,24 @@ seed recorded and re-verified.
 
 ## Read this first
 
-**Nothing has been trained, and nothing is saved even if it were.** The loop now learns — see below —
-but there is no checkpoint yet (`TODO.md` 1.3), so every run starts from a random initialisation and
-is discarded at the end. The agent has never left floor 1.
+**Nothing has been trained, and nothing is saved even if it were.** The loop learns — see below — but
+there is no checkpoint (`TODO.md` 1.3), so every run starts from a random initialisation and is
+discarded at the end. The agent has never left floor 1.
+
+**A run can now be judged, which it could not until recently.** Two defects made a training run
+unreadable, and both are fixed:
+
+- **`clip=` was a constant.** It reported the fraction of samples with
+  `|advantage| > clipEpsilon` on a *normalised* advantage, which is `P(|N(0,1)| > 0.2)` = 0.8415
+  whatever the policy does — which is exactly what real runs printed. The real ratio-clip fraction is
+  now returned from `Policy` and counted; over 9 generations it ranges 0.047 to 0.737.
+- **History was discarded.** `Trainer` kept one generation of episodes and dropped it. Every run now
+  writes `metrics.csv` — one appended row per generation, 24 columns — and prints an end-of-run trend
+  using `diag.Graph`, which had been written and never used.
+
+Next is checkpointing (`TODO.md` 1.3), then the parallel update. Instrumentation went first on
+purpose: making the update 5x faster is worthless while the signal that shows the policy moving cannot
+be read. See [`PLAN-data-flow.md`](PLAN-data-flow.md) steps 3b and 4b.
 
 The network does run, and its gradients are correct. `gradle :superintelligence:gradcheck`
 finite-difference checks the analytic gradients against central differences on 112 sampled parameters
@@ -57,13 +72,16 @@ something.
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score |
 | Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
 | Update cost measurement | Measured - `updatecost`, 11.3 ms/sample, projects across sample rates |
-| Diagnostics dashboard (colour-coded floors, graphs) | Console only |
-| Reward model, per-term ledger, curriculum fade | Partial - 6 terms never fire |
+| Diagnostics dashboard (colour-coded floors, graphs) | Console only; no history across generations, `diag.Graph` unused |
+| Per-generation metrics history (CSV, end-of-run trend) | Done - `metrics.csv` per generation, `diag.Graph` at end of run |
+| PPO clip fraction (`clip=`) | Fixed - was reporting `P(\|N(0,1)\|>0.2)`=0.8415; now the real ratio-clip fraction, measured 0.047-0.737 |
+| Reward model, per-term ledger, curriculum fade | Partial - 6 terms have no emission site; `KILL` has the plumbing but no emission; curriculum is written but `observe()` is never called, so shaping is a constant 1f |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
-| Weight save / load, resume a run | **Missing** - blocks any training that has to be kept. See `TODO.md` 1.3 |
+| Weight save / load, resume a run | **Missing** - blocks any training that has to be kept. `TODO.md` 1.3 |
+| Parallel minibatch update | **Missing, required.** ~53 s of trainer CPU per generation at 2 epochs. `TODO.md` 1.6 |
 | Trained anything yet | **No.** Never left floor 1; milestone is depth 5 (`research.md:40`) |
 | Parallel worker processes, seed schedule | Running; exercised to 8 workers x 25 generations |
-| Graphical trainer UI, desktop replay viewer | Not started |
+| Graphical trainer UI, desktop replay viewer | Replay viewer done; trainer UI not started |
 | Garbage collection / object pooling audit (research.md:60) | Not started |
 
 ## Usage
@@ -97,7 +115,15 @@ something.
 **Batch size is chosen against compute, not bandwidth.** An update costs 11.3 ms per sample on this
 machine, almost all of it forward and backward rather than Adam, and it runs on one thread — so at a
 5% sample rate and 4 epochs it is about 107 s of trainer CPU per generation, against 0.12 s of
-transport. Transport is not what limits this trainer; the update is.
+transport. Transport is not what limits this trainer; the update is. The default is now **2 epochs**
+(~53 s), which also corrects a misconfiguration: 4 epochs is 300 Adam steps over a 2,400-sample batch.
+
+Sampling and metrics are tunable, and the three sampling knobs were previously `Trainer` fields with
+no way to reach them from the command line:
+
+```sh
+./gradlew :superintelligence:train --args="--sample-rate 0.05 --max-samples 8192 --metrics run.csv"
+```
 
 ## Layout
 
@@ -109,7 +135,7 @@ transport. Transport is not what limits this trainer; the update is.
 | `reward` | `RewardModel` (state diffing), `RewardTerm`/`RewardLedger` (per-term, per-floor breakdown), `Curriculum` |
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and worker bootstrap |
 | `rl` | `Network` (CNN + LSTM + heads), `PPO` (buffer + update), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector` (plays an episode, computes its advantages), `EpisodeRecord` (one episode's scalars + sampled observations) |
-| `train` | `Trainer` (generation loop), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
+| `train` | `Trainer` (generation loop), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `MetricsHistory` (per-generation CSV + end-of-run trend), `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
 | `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify) |
 | `diag` | `RunReport`, `Graph`, `Ansi`, and the checks: `GradientCheck`, `ModeCoverageCheck`, `RestartCheck`, `GaeCheck`, `UpdateCostCheck` |
 

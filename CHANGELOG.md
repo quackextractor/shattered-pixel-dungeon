@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`clip=` reported a constant, not PPO's clip fraction.** `PPO.update` counted
+  `|advantage| > clipEpsilon` on a *normalised* advantage. After normalisation advantages have unit
+  variance, so that expression is `P(|N(0,1)| > 0.2)` = 0.8415 regardless of the policy — which is
+  exactly what real runs printed (0.81, 0.83, 0.85, 0.90). `Policy.accumulatePolicyGradient` already
+  computed `clipBinding` and discarded it; it now returns it, and `PPO` counts the real thing.
+  Measured over 9 generations the corrected figure ranges 0.047–0.737 and tracks the update, which is
+  the point: it is the one signal that says the policy is moving too far per update, and it could not
+  be read before. Covered by a new `gaecheck` case, mutation-tested.
+
+### Added
+
+- **Per-generation metrics history** (`MetricsHistory`), written to `metrics.csv` in the work
+  directory by default and overridable with `--metrics`. `Trainer` previously kept one generation of
+  episodes and discarded it, so a run's history existed only in console scrollback. Rows are flushed
+  per generation and appended rather than rewritten, so a crashed or extended run keeps what it
+  reached. At the end of a run it renders score, depth and both losses as bars — reviving `diag.Graph`,
+  which was written and never used — plus a 7-generation moving average of score, since per-generation
+  score is noisy enough to invite reading a trend into noise.
+- **`--sample-rate`, `--max-sampled-per-episode`, `--max-samples` and `--metrics`** on the trainer. The
+  first three existed as `Trainer` public fields with the documented defaults but were never reachable
+  from the command line, so the sampling knobs the plan documents could not actually be turned.
+
+### Changed
+
+- **`PLAN-data-flow.md` corrected against the code** rather than against its own prose: removed
+  `rolloutCap`/`PPO.collect` references to deleted code, restored a missing `### Step 3` heading whose
+  body had been orphaned under step 2b, marked steps 0 and 3 done, and corrected every cost figure
+  that the `epochs` default change from 4 to 2 had doubled. Two claims were withdrawn rather than
+  fixed: "re-simulation costs ~2.3 ms a turn" was 17× wrong (measured 0.136 ms/turn), and "collection
+  throughput roughly doubles" had never been measured.
+- **Ordering corrected: instrumentation now precedes the parallel update.** Steps 0–3 built a loop that
+  learns and no way to tell whether it does. The parallel update is still required — the measurement
+  does not care what else is on the list — but its only success criterion was "faster", so doing it
+  first would optimise a loop whose behaviour cannot be observed. Checkpointing also moves ahead of
+  it: it is smaller, it is on the critical path to the Goo milestone, and it is what makes two runs
+  comparable at all.
+- **The reward curriculum is recorded as deliberately inert.** `Curriculum` is written and
+  `SPDEnv` applies it, but nothing calls `observe()`, so shaping is a constant 1f. Wiring it is three
+  lines and was *not* done: it would start fading dense rewards by depth 3, changing the reward
+  function, with no evidence those terms help. Deferred until a run can be judged.
+
+
 - **Every episode ended `STALLED` after 8-13 turns,** which made the environment useless for
   collecting experience. `Hero.act()` was being entered with a null `curAction`: it clears `ready` and
   then dispatches on `curAction`, so no branch matches, and `Hero.ready()` is the only thing in the

@@ -105,10 +105,26 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | --- | --- | --- | --- |
 | 1.1 | ~~Call `PPO.collect()` in `Worker.runEpisode`~~ | done | Superseded. `EpisodeCollector` replaced the collection half of `PPO` entirely; see `PLAN-data-flow.md` step 2 and §5 below. |
 | 1.2 | ~~Run one generation end to end and check the losses are sane~~ | done | `policy` and `value` are non-zero, and advantages arrive with a real spread. Reported per generation. |
-| 1.3 | **Save and load the trained weights** | S | **Blocks everything in 1.4. Do this before the parallel update.** See below. |
-| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from `research.md:40`. Needs 1.3 first, and 1.5 to be tolerable. |
+| 1.3 | **Save and load the trained weights** | S | **Blocks everything in 1.4.** Promoted ahead of 1.6 — see below. `PLAN-data-flow.md` step 4b. |
+| 1.7 | ~~Instrument the loop so a run can be judged~~ | done | `clip=` now reports the real ratio-clip fraction, and `MetricsHistory` writes `metrics.csv` per generation plus an end-of-run trend. `PLAN-data-flow.md` step 3b. |
+| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from `research.md:40`. Needs 1.3 first, 1.7 to be evaluable, and 1.5 to be tolerable. |
 | 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
-| 1.6 | Parallelise the update across minibatches | M | **Measured as required, not optional.** 11.3 ms/sample single-threaded is ~107 s of trainer CPU per generation against ~7 s of collection. `PLAN-data-flow.md` step 4. |
+| 1.6 | Parallelise the update across minibatches | M | **Measured as required, not optional**, but deferred behind 1.7 and 1.3. 11.3 ms/sample single-threaded is ~53 s of trainer CPU per generation at the current 2 epochs, against ~7 s of collection. `PLAN-data-flow.md` step 4. |
+
+**Ordering was wrong and has been corrected.** 1.6 was originally next. It is still required — the
+measurement does not care what else is on the list — but two smaller items now come first:
+
+1. **1.7, because a run could not be judged.** `PPO.update` reported `clip=` as the fraction of
+   samples with `|advantage| > clipEpsilon` on a *normalised* advantage, which is
+   `P(|N(0,1)| > 0.2)` = **0.8415** — a constant. Observed 0.81/0.83/0.85/0.90 across real
+   generations: that constant. `Policy.accumulatePolicyGradient` computed the real thing
+   (`clipBinding`) and threw it away. Separately, `Trainer` kept only `lastEpisodes` — one generation —
+   and discarded it; `diag.Graph` was dead code. **Now done:** the corrected metric ranges 0.047–0.737
+   over 9 generations and `metrics.csv` accumulates per generation.
+2. **1.3, because it is smaller than 1.6, on the critical path to 1.4, and is what makes two runs
+   comparable at all.** Still open.
+
+1.7 is finished, so **1.3 is next**, then 1.6.
 
 **Weights are never written to disk, so no run so far has been extendable.** There is no
 `saveWeights`, no checkpoint, no `--resume`. Every run starts from `Network`'s random initialisation
@@ -209,7 +225,18 @@ Declared in `reward.RewardTerm`, but with no emission site. Each is a documented
 | `CRAFTED` | research.md:11 | dead |
 | `CURSE_REMOVED` | docs.md:23 | dead |
 | `EQUIP_TOO_STRONG` | docs.md:31, research.md:12 | dead |
-| `KILL` | - | dead; `RewardLedger.countKill()` is written and never called |
+| `KILL` | - | **not dead - tracked, but does not fire** |
+
+**`KILL` is a special case and the row above is now wrong.** `RewardModel` already tracks `prevKills`
+(it snapshots `Statistics.enemiesSlain`) but has no emission site for it, and
+`RewardLedger.countKill()` is written and never called. So the plumbing is half-present rather than
+absent — unlike `CRAFTED_MEAT_PIE` and friends, which have no observation point at all.
+
+Also relevant: **four scripted 600-turn rollouts (`RS-1`..`RS-4`) produced only `TURN_COST` and
+`TURN_LIMIT`**, scoring -1.25 to -1.40. But RL-policy training episodes have scored up to **+44**,
+so positive terms *do* fire for the learned policy — the scripted heuristic simply does not explore or
+loot. The reward model is not dead; the scripted policy is a poor proxy for it. Worth stating so this
+is not mistaken for the reward signal being broken.
 | `MENU_NOOP` | research.md:57 (shop-loop guard) | dead |
 
 **Dead configuration.** `EnvConfig.allowAlchemy` and `EnvConfig.allowTrading` are read by nobody.
@@ -273,8 +300,18 @@ earlier.
 
 Small things that are wrong but not blocking.
 
-- `Trainer.curriculumScale()` returns a hardcoded `1f`; it ignores the real curriculum. The console
-  report prints a constant under the label `shaping=`.
+- **The reward curriculum is inert, and it is a design question rather than a bug.** `Curriculum` is
+  fully written (fade from depth 3 to depth 10, `shapingScale()`) and `SPDEnv:325` applies it correctly
+  to the ledger — but nothing ever calls `Curriculum.observe()`, so `deepestSeen` stays 0 and the scale
+  stays 1f forever. On the trainer side `Trainer.curriculumScale()` returns a hardcoded `1f`, so the
+  console prints a constant under the label `shaping=`.
+
+  **Deliberately not "fixed" yet.** Wiring `observe()` is three lines and would make the label honest,
+  but it would also start fading dense rewards by depth 3 — i.e. change the reward function — with no
+  evidence that the dense terms help at all. The agent has never left floor 1, so the fade has never
+  had a regime to act on. **Decide after 1.7**, when a run can be judged, and 1.4, when there are
+  depths to fade across. Until then a wrong fade is worse than no fade, because it silently distorts
+  the first real runs.
 - `PPO.approximateKL` takes `t`, `logits` and `mask` parameters it does not use.
 - `PPO.oldLogProbabilityFor` returns `t.oldLogProbability` and ignores its second argument.
 - Some engine states end a rollout as `STALLED` early. Seed `HERO` terminates after 2 turns, where

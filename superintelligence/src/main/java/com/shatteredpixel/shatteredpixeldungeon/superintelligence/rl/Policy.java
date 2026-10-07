@@ -101,8 +101,10 @@ public class Policy {
 	 * @param oldLogProbability  log pi_behaviour(chosen)
 	 * @param advantage          GAE advantage
 	 * @param outGradient        dL/dlogits for the live head, accumulated into
+	 * @return                   true when the clip bound the ratio, i.e. the surrogate's min() selected
+	 *                           the clipped branch and this sample contributed no policy gradient
 	 */
-	public static void accumulatePolicyGradient( float[] probabilities, float[] mask,
+	public static boolean accumulatePolicyGradient( float[] probabilities, float[] mask,
 			int chosenIndex, float oldLogProbability, float advantage,
 			float epsilon, float entropyCoeff, float[] outGradient ){
 
@@ -130,6 +132,8 @@ public class Policy {
 				outGradient[ i ] -= entropyCoeff * ( -p * ( (float) Math.log( p ) + h ) );
 			}
 		}
+
+		return clipBinding;
 	}
 
 	/** log pi(chosen) under a masked distribution, recorded during the rollout. */
