@@ -1,5 +1,6 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -27,6 +28,13 @@ import java.util.List;
  * cost -5.24 against {@code deathPenalty} of -100 — twenty times cheaper than losing — and the agent
  * converged on it in twenty generations without ever leaving floor 1.
  *
+ * <p><b>Corrected later the same day, by this same file.</b> The {@code WAIT} diagnosis above was a
+ * plausible story that measurement refuted: instrumenting the two stall guards showed {@code STALLED}
+ * arriving 36 times from {@code LevelPipeline} and <b>zero</b> times from the idle guard. The real cause
+ * was that {@code REST} was a one-way door — {@link #checkRestIsNotAOneWayDoor} documents it. The -5.0
+ * was still wrong and the cases below are still the right assertions, but the agent was not choosing to
+ * wait; it was being trapped. See {@code PLAN-reward-signals.md} §7.
+ *
  * <p><b>Why this is a gate and not a note.</b> Every loss metric looked healthy through that run:
  * {@code valueLoss} flat, {@code clipFraction} settling 0.73 → 0.05, entropy steady. The update was
  * working and the objective was wrong, and the only evidence was a mean score converging on a
@@ -40,7 +48,7 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 6;
+	private static final int CHECKS = 7;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -53,6 +61,7 @@ public class RewardCheck {
 		checkStallCarriesNoTerminalReward( config );
 		checkDeathRemainsMostExpensive( config );
 		checkStallPathRecordsOnce( config );
+		checkRestIsNotAOneWayDoor( config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reward signals: " + CHECKS + " checks passed" );
@@ -259,6 +268,110 @@ public class RewardCheck {
 
 	// --------------------------------------------------------------------------- playing
 
+	/**
+	 * {@code REST} must not end the episode.
+	 *
+	 * <p><b>This is the actual cause of the 100% stall rate, and it is a harness bug, not a
+	 * preference.</b> {@code ActionMapper} set {@code hero.resting = true} without ever setting a
+	 * {@code curAction}. {@code Hero.act()} branches on {@code curAction == null} first, so a resting
+	 * hero takes the {@code rest} branch — {@code spendConstant} then {@code next()} — and never calls
+	 * {@code ready()}. Control is never handed back.
+	 *
+	 * <p>The hero is then stuck for good, and nothing rescues him: {@code recoverStrandedHero}
+	 * deliberately refuses a resting hero, which is right for a player, because a player escapes rest
+	 * by choosing another action. Headless input has nobody to do that. After 8 scheduler steps
+	 * {@code LevelPipeline} returns {@code STALLED} and the episode is over.
+	 *
+	 * <p>Measured before the fix: stalls at turns 10, 31, 24, 51, 168 across seeds — 36 of 36 episodes
+	 * stalled, from the pipeline path, with the idle guard firing <b>zero</b> times. So the 20-generation
+	 * run's "100% stalled" was this, not the {@code WAIT} story the other cases in this file describe.
+	 *
+	 * <p><b>Why the assertion is on the hero's flag and not on the episode surviving.</b> Survival looked
+	 * like the stronger property and is the weaker one. An episode that rests and then <i>moves</i> never
+	 * stalls even with this bug present, because a movement action sets a {@code curAction} and
+	 * {@code Hero.act()} clears {@code resting} on the way past - so a test written that way passed with
+	 * the fix deleted, which was caught by mutation rather than by reading. Only the actions that set no
+	 * {@code curAction} ({@code WAIT}, {@code SEARCH}, {@code USE}, {@code DROP}) were ever trapped.
+	 */
+	private static void checkRestIsNotAOneWayDoor( EnvConfig config ){
+
+		//The driver has to observe the hero *between* the step that rests and the step that releases,
+		//because after a release the flag is false either way - which is why this is a probe with its
+		//own replay rather than a read of the final state.
+		HeroProbe rest = HeroProbe.restThenWait( config );
+
+		if (!rest.measured ){
+			fail( "the episode never reached a WORLD turn, so REST and WAIT were never applied and this"
+					+ " case measured nothing." );
+			return;
+		}
+
+		if (!rest.rested ){
+			fail( "REST did not leave the hero resting, so the release below would pass vacuously."
+					+ " Either the action is not reaching the mapper or rest is engaged somewhere else." );
+			return;
+		}
+
+		if (!rest.released ){
+			fail( "after REST the hero was still resting when the next action arrived. REST sets"
+					+ " hero.resting without setting a curAction, so Hero.act() takes the"
+					+ " `curAction == null && resting` branch, spends time and calls next() but never"
+					+ " ready(). recoverStrandedHero cannot help because it refuses a resting hero - a"
+					+ " player escapes by choosing another action, and headless input has nobody to do"
+					+ " that. Every episode that rests is over, which is what produced the 100% stall"
+					+ " rate. Note that movement escapes on its own; this fails only for the actions that"
+					+ " set no curAction." );
+			return;
+		}
+
+		System.out.println( "  REST is escapable: resting is engaged by REST and released by WAIT" );
+	}
+
+	/** Observes {@code hero.resting} across one REST and one following action. */
+	private static class HeroProbe {
+		/** Both steps actually ran; guards the case against passing by measuring nothing. */
+		boolean measured;
+
+		/** REST left the hero resting, so {@link #released} means something. */
+		boolean rested;
+
+		/** The following action cleared it. */
+		boolean released;
+
+		static HeroProbe restThenWait( EnvConfig config ){
+			//rested-after-REST, released-after-WAIT, REST-issued, WAIT-issued
+			final boolean[] seen = { false, false, false, false };
+
+			play( config, config.stallLimit + 40, "RESTPROBE", turn -> {
+				if (turn.env.mode() != EnvMode.WORLD ){
+					turn.env.step( Action.CANCEL, 0 );
+					return;
+				}
+				if (!seen[ 2 ] && !seen[ 0 ] ){
+					turn.env.step( Action.REST, 0 );
+					seen[ 0 ] = Dungeon.hero.resting;
+					seen[ 2 ] = true;
+					return;
+				}
+				if (seen[ 2 ] && !seen[ 1 ] && !seen[ 3] ){
+					turn.env.step( Action.WAIT, 0 );
+					seen[ 1 ] = !Dungeon.hero.resting;
+					seen[ 3 ] = true;
+				} else {
+					turn.env.step( Action.CANCEL, 0 );
+				}
+			} );
+
+			HeroProbe p = new HeroProbe();
+			p.rested = seen[ 0 ];
+			p.released = seen[ 1 ];
+			p.measured = seen[ 3 ];
+			return p;
+		}
+	}
+
+	// --------------------------------------------------------------------------- playing
+
 	/** One episode's outcome, and the per-term totals that produced it. */
 	private static class Outcome {
 		double score;
@@ -325,6 +438,10 @@ public class RewardCheck {
 
 	private static class Turn {
 		final SPDEnv env;
+
+		/** Zero-based step index, so a driver can vary its action by turn. */
+		int step;
+
 		Turn( SPDEnv env ){ this.env = env; }
 	}
 
@@ -341,6 +458,7 @@ public class RewardCheck {
 
 		int n = 0;
 		while (env.running() && n < maxTurns){
+			turn.step = n;
 			driver.act( turn );
 			n++;
 		}

@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`REST` ended every episode that used it.** `ActionMapper` set `hero.resting = true` without
+  setting a `curAction`. `Hero.act()` branches on `curAction == null` first, so a resting hero took
+  the rest branch - `spendConstant` then `next()` - and never called `ready()`. Control was never
+  handed back, and nothing rescued it: `recoverStrandedHero` deliberately refuses a resting hero,
+  which is right for a player, because a player escapes rest by choosing another action. Headless
+  input has nobody to do that. After 8 scheduler steps `LevelPipeline` returned `STALLED` and the
+  episode was over. Any non-REST action now ends the rest, as `Hero.act()` does at the top of its
+  `curAction` branch.
+  This was the actual cause of the 100% stall rate, and it was **not** the `WAIT` story the previous
+  entry describes. Instrumenting the two stall guards showed `STALLED` arriving 36 times from
+  `LevelPipeline` and **zero** times from the idle guard; the stall was happening at turns 10-51,
+  where a 120-turn idle guard cannot reach. `rewardcheck` grew a 7th case for it.
+  Note the fix is load-bearing only for the actions that set no `curAction` (`WAIT`, `SEARCH`,
+  `USE`, `DROP`) - movement escapes rest on its own, because it sets one.
+
 - **`clip=` reported a constant, not PPO's clip fraction.** `PPO.update` counted
   `|advantage| > clipEpsilon` on a *normalised* advantage. After normalisation advantages have unit
   variance, so that expression is `P(|N(0,1)| > 0.2)` = 0.8415 regardless of the policy — which is
