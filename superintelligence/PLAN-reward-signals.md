@@ -323,10 +323,28 @@ not have.
 | stall share | 100% | **0%** |
 | idle-guard stalls | 0 | 0 |
 | pipeline stalls | 36 | **0** |
-| episodes reaching depth 2 | 0 | **yes** |
+| bestDepth | 1 | **1** |
 
-Depth 2 appears in training for the first time. `bestDepth` was flat at 1 for
-every generation before this.
+**`bestDepth` did not move.** It is 1 in every generation before this and 1 in
+every generation after, and every one of the 147 recordings available at the
+time is `depth=1`. Depth 2 has still never happened.
+
+> **Correction, and the reason this section was wrong.** An earlier version of
+> this table read `episodes reaching depth 2 | 0 | yes`, with the note "depth 2
+> appears in training for the first time". It was taken from a trend line that
+> printed `depth 1.0..2.0`. That `2.0` was not measured: `Graph.bar` widens the
+> scale by 1 whenever a series is flat so that its division is defined, and then
+> prints that widened span as the axis range. `bestDepth` was 1.0 in every
+> generation, so the axis read `1.0..2.0` and the flat line read as a floor
+> reached.
+>
+> Nothing else disagreed with it. Every replay file and every metrics row said
+> depth 1, and a summary line is what a reader trusts over the raw column. See
+> the graph fix in `CHANGELOG.md` and the `graphcheck` gate.
+
+So the REST fix is real and measured - 36 stalls became 0, and episodes run to
+the turn cap instead of dying at turn 10 - and the milestone in `TODO.md` 1.4
+is still unmet.
 
 ## 8. Two more faults, and why they were invisible
 
@@ -429,8 +447,8 @@ observe: `endDEATH` is 0 because the policy wanders away from everything rather
 than because dying is unreachable.
 
 `meanScore` falling from 186 to 59 with `valueLoss` falling alongside it is the
-critic fitting a longer, more varied episode, not a collapse. `bestDepth` is
-still 1 at generation 5, so depth 2 remains rare rather than routine.
+critic fitting a longer, more varied episode, not a collapse. `bestDepth` is 1
+in every generation, so nothing has reached a second floor.
 
 Two things are now genuinely open, and neither is a stall:
 
@@ -443,4 +461,58 @@ Two things are now genuinely open, and neither is a stall:
 Neither should be answered by tuning numbers in the same commit as the fixes
 above. The measurement in §9 is only interpretable because each of the three
 faults was fixed and measured on its own.
+
+## 10. A fourth fault, found while checking the viewer
+
+Sections 7 and 8 fixed three faults. A fourth turned up while investigating why
+the desktop viewer still reported a divergence the headless verifier no longer
+saw, and it is the one that had been reaching training the longest.
+
+`OPEN_INVENTORY` and `CANCEL` were missing from `ActionMapper.apply`'s switch, so
+both fell through to `pickInteractCell()` + `handleCell()` - the path
+`INTERACT` takes. Choosing to look in your backpack therefore also acted on an
+adjacent cell: moved the hero, attacked a mob, picked up a heap, opened a locked
+door, or took a floor transition.
+
+It was documented in place as a no-op, and that comment is why it survived. The
+note was about the mode assignment in `SPDEnv`, which mattered at the time; the
+cell handling underneath it was never examined. `pickInteractCell` finds
+something and `handleCell` acts on it, so the fall-through was never nothing.
+
+It is legible in the recordings. On one run the hero moves a cell on an
+`OPEN_INVENTORY` step and moves back on the next:
+
+```
+step 41  OPEN_INVENTORY/0   before 834   after 869
+step 46  OPEN_INVENTORY/0   before 869   after 834
+```
+
+**Why it matters more than its size suggests.** The agent was credited for two
+things at once whenever it opened its inventory, and `depthReward` is the term
+this whole document is trying to get the agent to want. A term that fires
+because the agent chose `INTERACT` while it believed it had chosen
+`OPEN_INVENTORY` is not a term that can be reasoned about. It also means the
+recordings before this fix contain positions that no correct run reproduces,
+which is why several of them now report as diverged - they were captured under
+the bug.
+
+This is the fifth instance in this document of the same shape: a fault found by
+driving something rather than by reading it, sitting behind a fault that had to
+be fixed first. The pattern is in §8 and it held again.
+
+### Still open
+
+The desktop viewer and the headless trainer implement "advance to the next
+decision point" separately - `LevelPipeline.runToHeroReady` versus
+`ReplayPlayer.settle` - and they do not agree step for step. Freshly recorded
+runs verify exactly under the trainer and still diverge in the viewer, usually by
+one cell at an early step. Both are individually reasonable; they are simply two
+implementations of one rule.
+
+The fix is to have one implementation, which in practice means the viewer should
+drive the trainer's `SPDEnv` rather than the live game. That is a redesign of
+the viewer rather than a patch, and it is not done. What is done is that the
+divergence message now names the action, the mode and both positions, so the
+disagreement is diagnosable rather than just reported.
+
 

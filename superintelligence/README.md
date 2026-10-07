@@ -35,19 +35,33 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   `recoverStrandedHero` refuses a resting hero, correctly, because a *player* escapes rest by choosing
   another action - headless input has nobody to do that. Instrumenting the two stall guards settled it:
   36 of 36 stalls came from `LevelPipeline` and **zero** from the idle guard, at turns 10-51 rather than
-  121. Any non-`REST` action now ends the rest. Stall share is 0% and depth 2 appears in training for
-  the first time.
-- **Two further faults were hidden behind that one**, both unreachable while episodes ended at turn ~50.
-  Headless has no GL context and every `TextureFilm` constructor dereferenced the null texture, so hunger
-  damage - which touches a statically-initialised film - killed worker processes. And `HeadlessSprite.die`
+  121. Any non-`REST` action now ends the rest. Stall share is now **0%**.
+- **A second recording in one process was unreproducible.** `GameScene.pendingCellListener` is static,
+  and `reset` never cleared it, so an item the previous episode left mid-aim was still armed when the
+  next episode's first `settle()` ran - which reports `TARGETING` before any turn has been taken and
+  turns every action into a target choice. 4 of 10 recorded runs diverged when verified in sequence and
+  every one of them verified clean alone. New `resetcheck` gate.
+- **Two further faults were hidden behind those**, unreachable while episodes ended at turn ~50. Headless
+  has no GL context and every `TextureFilm` constructor dereferenced the null texture, so hunger damage -
+  which touches a statically-initialised film - killed worker processes. And `HeadlessSprite.die`
   invoked the death callback to fake an animation, recursing `Hero.die` -> `Char.die` -> `sprite.die`
   until the stack gave out, which means `DEATH`, the ending the whole reward function is built around,
-  was unreachable. All three are fixed and gated; see [`PLAN-reward-signals.md`](PLAN-reward-signals.md) sections 7-8.
-- **What remains is neither a crash nor a stall.** Every episode now runs the full 1500 turns with zero
+  was unreachable. See [`PLAN-reward-signals.md`](PLAN-reward-signals.md) sections 7-8.
+- **`OPEN_INVENTORY` also acted on the world.** It was missing from `ActionMapper.apply`'s switch, so it
+  fell through to `pickInteractCell()` + `handleCell()` - the path `INTERACT` takes. Opening the
+  inventory therefore also moved the hero, attacked a mob, picked up a heap or took a transition. It was
+  documented in place as a no-op, which is how it survived. **This reached training**, and it is why
+  recordings made before the fix no longer reproduce. Section 10.
+- **Nothing has reached depth 2.** An earlier version of this file claimed it had, on the strength of a
+  trend line reading `depth 1.0..2.0`. That `2.0` was not measured: `Graph.bar` widens a flat series'
+  scale so its division is defined, then prints the widened span as the range. `bestDepth` is 1 in every
+  generation of every run, and all 147 recordings are `depth=1`. `graphcheck` now gates the axis.
+- **What remains is neither a crash nor a stall.** Every episode runs the full 1500 turns with zero
   stalls, and `meanScore` is falling (186 -> 59 across 6 generations) as the critic fits longer episodes.
   But `bestDepth` is still 1 and nothing dies. `depthReward` of +10 against `turnCost` of 0.002 means
   descending pays 5,000 turns of idling, and `KILL` / `GOLD_GAIN` / `ITEM_PICKUP` still never fire
-  (`TODO.md` 1.8).
+  (`TODO.md` 1.8). The desktop viewer also still disagrees with the trainer step-for-step - see
+  `PLAN-reward-signals.md` section 10, "Still open".
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
