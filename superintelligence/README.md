@@ -9,24 +9,24 @@ seed recorded and re-verified.
 
 ## Read this first
 
-**Nothing has been trained, and nothing is saved even if it were.** The loop learns — see below — but
-there is no checkpoint (`TODO.md` 1.3), so every run starts from a random initialisation and is
-discarded at the end. The agent has never left floor 1.
+**Nothing has been trained yet, but a run can now be kept, resumed and compared.** Three things were
+missing and two are now fixed; the third is the milestone itself:
 
-**A run can now be judged, which it could not until recently.** Two defects made a training run
-unreadable, and both are fixed:
+- **A run can be judged.** `clip=` used to report `P(|N(0,1)| > 0.2)` = 0.8415 whatever the policy
+  did, because it counted `|advantage| > clipEpsilon` on a *normalised* advantage. The real
+  ratio-clip fraction is now counted, and ranges 0.047 to 0.737 across generations. Nothing used to
+  accumulate across generations either; every run now appends a row to `metrics.csv` and prints an
+  end-of-run trend.
+- **A run can be resumed.** `--save` writes a checkpoint every 25 generations and on exit, `--resume`
+  continues from one. Written atomically, so a power cut cannot leave a half-written file that is
+  newer than the last good one.
+- **The agent has still never left floor 1.** Every run so far was a smoke test of a few dozen
+  generations. The barrier is ~6× the cost of collecting the data, so 100 generations is hours.
 
-- **`clip=` was a constant.** It reported the fraction of samples with
-  `|advantage| > clipEpsilon` on a *normalised* advantage, which is `P(|N(0,1)| > 0.2)` = 0.8415
-  whatever the policy does — which is exactly what real runs printed. The real ratio-clip fraction is
-  now returned from `Policy` and counted; over 9 generations it ranges 0.047 to 0.737.
-- **History was discarded.** `Trainer` kept one generation of episodes and dropped it. Every run now
-  writes `metrics.csv` — one appended row per generation, 24 columns — and prints an end-of-run trend
-  using `diag.Graph`, which had been written and never used.
-
-Next is checkpointing (`TODO.md` 1.3), then the parallel update. Instrumentation went first on
-purpose: making the update 5x faster is worthless while the signal that shows the policy moving cannot
-be read. See [`PLAN-data-flow.md`](PLAN-data-flow.md) steps 3b and 4b.
+Next is the parallel update (`TODO.md` 1.6), which is the last thing between this loop and an
+overnight run. Instrumentation and checkpointing went before it deliberately: making the update 5×
+faster is worthless while the signal that shows the policy moving cannot be read, and a faster loop is
+not much use if nothing survives it. See [`PLAN-data-flow.md`](PLAN-data-flow.md) steps 3b and 4b.
 
 The network does run, and its gradients are correct. `gradle :superintelligence:gradcheck`
 finite-difference checks the analytic gradients against central differences on 112 sampled parameters
@@ -77,7 +77,8 @@ something.
 | PPO clip fraction (`clip=`) | Fixed - was reporting `P(\|N(0,1)\|>0.2)`=0.8415; now the real ratio-clip fraction, measured 0.047-0.737 |
 | Reward model, per-term ledger, curriculum fade | Partial - 6 terms have no emission site; `KILL` has the plumbing but no emission; curriculum is written but `observe()` is never called, so shaping is a constant 1f |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
-| Weight save / load, resume a run | **Missing** - blocks any training that has to be kept. `TODO.md` 1.3 |
+| Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included. `checkpointcheck` is a gate |
+| Bad checkpoint handling | Done - foreign, truncated, trailing-byte and wrong-config files all refused, the last naming the field |
 | Parallel minibatch update | **Missing, required.** ~53 s of trainer CPU per generation at 2 epochs. `TODO.md` 1.6 |
 | Trained anything yet | **No.** Never left floor 1; milestone is depth 5 (`research.md:40`) |
 | Parallel worker processes, seed schedule | Running; exercised to 8 workers x 25 generations |
@@ -125,6 +126,21 @@ no way to reach them from the command line:
 ./gradlew :superintelligence:train --args="--sample-rate 0.05 --max-samples 8192 --metrics run.csv"
 ```
 
+**A run can be stopped and continued.** `--save` writes a checkpoint every `--checkpoint-every`
+generations (default 25) and on exit; `--resume` continues from one, keeping the generation and
+optimiser-step numbering so the two runs' `metrics.csv` rows do not collide. Note that the *seeds*
+restart from `--seed` — the policy continues, the schedule does not.
+
+```sh
+# 50 generations, then 50 more
+./gradlew :superintelligence:train --args="--generations 50"
+./gradlew :superintelligence:train --args="--generations 50 --resume %TEMP%\spd-train\weights.bin"
+```
+
+`gradle :superintelligence:weightsdiff --args="<file>"` reports how far a checkpoint is from a freshly
+initialised policy — mean and max absolute weight difference. `checkpointcheck` asserts that a policy
+survives disk exactly, Adam moments included, and that bad checkpoints are refused.
+
 ## Layout
 
 | Package | Responsibility |
@@ -135,7 +151,7 @@ no way to reach them from the command line:
 | `reward` | `RewardModel` (state diffing), `RewardTerm`/`RewardLedger` (per-term, per-floor breakdown), `Curriculum` |
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and worker bootstrap |
 | `rl` | `Network` (CNN + LSTM + heads), `PPO` (buffer + update), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector` (plays an episode, computes its advantages), `EpisodeRecord` (one episode's scalars + sampled observations) |
-| `train` | `Trainer` (generation loop), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `MetricsHistory` (per-generation CSV + end-of-run trend), `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
+| `train` | `Trainer` (generation loop), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `Checkpoint` (save/resume), `MetricsHistory` (per-generation CSV + end-of-run trend), `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
 | `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify) |
 | `diag` | `RunReport`, `Graph`, `Ansi`, and the checks: `GradientCheck`, `ModeCoverageCheck`, `RestartCheck`, `GaeCheck`, `UpdateCostCheck` |
 

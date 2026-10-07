@@ -14,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,6 +71,28 @@ public class Trainer {
 	 * history had to be read out of console scrollback. See {@link MetricsHistory}.
 	 */
 	private MetricsHistory metrics;
+
+	/**
+	 * Where the policy is checkpointed to, or {@code null} to save nothing.
+	 *
+	 * {@link #resumeFrom} is where a continued run reads from, which is deliberately the same file:
+	 * a run overwrites its own checkpoint in place, so resuming is "run it again with
+	 * {@code --resume}", with no path juggling.
+	 */
+	private File saveFile;
+	private int checkpointEvery = 25;
+
+	/** Progress restored from a checkpoint, or {@code null}. Reported, never acted on beyond the epoch. */
+	private Checkpoint.Meta resumedFrom;
+
+	/** Absolute generation number this run ends at, so the last generation always checkpoints. */
+	private int lastGeneration;
+
+	/** Highest generation already written to {@link #saveFile}, so a clean exit does not rewrite it. */
+	private int lastSavedGeneration = -1;
+
+	/** The trainer's seed, recorded in the checkpoint for provenance. */
+	private long rngSeed;
 
 	/** Wall time of the PPO update that ran after the previous generation, for the time split. */
 	private ResourceStats.Interval lastUpdate;
@@ -135,6 +158,7 @@ public class Trainer {
 	public Trainer( EnvConfig config, long seed, File workDir ){
 		this.config = config;
 		this.rng = new Random( seed );
+		this.rngSeed = seed;
 		this.seeds = new SeedPool( rng );
 		this.workDir = workDir;
 		this.ppo = new PPO( config, rng );
@@ -163,6 +187,51 @@ public class Trainer {
 		this.metrics = metrics;
 	}
 
+	/**
+	 * Loads a policy before any worker is launched.
+	 *
+	 * <p>Before {@link #train}, and deliberately not inside it: a worker must never see a policy the
+	 * trainer has not finished reading, and the read has to fail the run before a pool of processes
+	 * is holding 1.2 GB each.
+	 *
+	 * @return what the checkpoint recorded, for the console line, or {@code null} if {@code file} is
+	 *         {@code null}
+	 */
+	public Checkpoint.Meta resume( File file ) throws IOException {
+		if (file == null) return null;
+
+		if (!file.isFile()){
+			throw new FileNotFoundException( "--resume " + file
+					+ " does not exist. Pass a file written by a previous run, or omit the flag to"
+					+ " start from a fresh random policy." );
+		}
+
+		Checkpoint.Meta meta = Checkpoint.load( file, ppo.network, config );
+
+		//the epoch counter continues, so a resumed run's generations do not overwrite the CSV rows
+		//of the run it is continuing, and so the checkpoint records true progress
+		epoch = meta.generation;
+		resumedFrom = meta;
+		//the resumed policy is on disk, so exiting without a new save must not look like progress lost
+		lastSavedGeneration = meta.generation;
+
+		System.out.println( Ansi.wrap( "resume", Ansi.DIM ) + "   loaded " + file
+				+ "  " + Ansi.wrap( "(" + meta + ")", Ansi.DIM ) );
+		return meta;
+	}
+
+	/**
+	 * Where the policy is checkpointed to, and how often.
+	 *
+	 * {@code saveFile} of {@code null} disables checkpointing entirely, which is the right default for
+	 * a smoke test and the wrong one for anything else — a run that saves nothing cannot be resumed
+	 * or compared, which is why this is set explicitly rather than defaulted to a location.
+	 */
+	public void checkpointing( File saveFile, int everyGenerations ){
+		this.saveFile = saveFile;
+		this.checkpointEvery = Math.max( 1, everyGenerations );
+	}
+
 	public static void main( String[] args ){
 		TrainOptions options = TrainOptions.parse( args );
 
@@ -178,14 +247,26 @@ public class Trainer {
 			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,
 					options.maxSamplesPerGeneration );
 			trainer.history( new MetricsHistory( options.metricsCsv ) );
+			trainer.checkpointing( options.save, options.checkpointEvery );
+
+			//before the pool exists: a bad checkpoint should cost a second, not a gigabyte of workers
+			trainer.resume( options.resume );
+
 			trainer.pool.launch( options.workers, options.javaHome, options.classpath,
 					out -> trainer.writeParams( out ) );
 			trainer.train( options.generations, options.episodes );
 		} catch (IOException e){
 			System.err.println( "[ERROR] training failed: " + e.getMessage() );
-			e.printStackTrace();
 			System.exit( 1 );
 		} finally {
+			//a normal exit checkpoint, so a run that finished on a non-multiple of the interval still
+			//holds its final policy. afterExit rather than in the loop's own path, so this also covers
+			//the generations that completed before a failure aborted the run
+			try {
+				trainer.saveOnExit();
+			} catch (RuntimeException ignored){
+				//never mask the original failure with a cleanup one
+			}
 			trainer.pool.shutdown();
 			if (trainer.metrics != null) trainer.metrics.close();
 		}
@@ -266,12 +347,24 @@ public class Trainer {
 
 		if (metrics != null) metrics.open();
 
+		//A resumed run continues counting from where the checkpoint left off, so its generations are
+		//the same numbering as the run it continues and its CSV rows do not collide with them. The
+		//count is not the same run: the trainer's RNG restarts, so seeds are drawn afresh rather than
+		//picking up the schedule where it stopped. Recorded rather than hidden.
+		int first = resumedFrom == null ? 0 : resumedFrom.generation;
+		this.lastGeneration = first + generations;
+
 		System.out.println( Ansi.wrap( "machine", Ansi.DIM ) + "   "
 				+ ResourceStats.availableProcessors() + " logical processors, pool of "
 				+ pool.size() + " workers, stall timeout "
 				+ ( pool.stallTimeoutMs() / 1000 ) + "s" );
+		if (resumedFrom != null){
+			System.out.println( Ansi.wrap( "resuming", Ansi.DIM ) + "   generations "
+					+ first + " to " + lastGeneration
+					+ Ansi.wrap( "  (seeds restart from the trainer seed; the policy does not)", Ansi.DIM ) );
+		}
 
-		for (int g = 0; g < generations; g++){
+		for (int g = first; g < lastGeneration; g++){
 			epoch = g;
 			advanceSchedule();
 
@@ -315,12 +408,61 @@ public class Trainer {
 			}
 
 			report( g, episodes, gen );
+
+			//after the report, so a checkpoint failure is reported next to the figures that produced it
+			maybeCheckpoint( g + 1 );
 		}
 
 		saveBestReplays();
 
 		//after the replays, so a failure to write them does not cost the history
 		if (metrics != null) metrics.printTrend();
+	}
+
+	/**
+	 * Writes the policy if this generation is a checkpoint generation, and always on the last one.
+	 *
+	 * <p>The last generation is unconditional on purpose. Checkpointing every N generations means a
+	 * run whose length is not a multiple of N ends holding a policy several generations stale, which
+	 * is the case that actually gets resumed.
+	 *
+	 * <p>A failure here is reported and does not stop the run. The policy is a derived artefact — it
+	 * can always be retrained — whereas losing the process over a full disk would cost the whole run.
+	 */
+	private void maybeCheckpoint( int generation ){
+		if (saveFile == null) return;
+		if (generation % checkpointEvery != 0 && generation != lastGeneration) return;
+
+		writeCheckpoint( generation );
+	}
+
+	/**
+	 * Writes the final policy when the run ends, however it ended.
+	 *
+	 * <p>Guarded so it cannot overwrite a checkpoint with the same policy: after a clean periodic
+	 * checkpoint the last generation is already saved, and writing again would be a redundant 43 MB
+	 * and a confusing extra line in the log.
+	 */
+	public void saveOnExit(){
+		if (saveFile == null) return;
+		if (lastSavedGeneration >= lastGeneration) return;
+		writeCheckpoint( lastGeneration );
+	}
+
+	/** Writes the policy and says so, with the path, because a silent save is indistinguishable from no save. */
+	void writeCheckpoint( int generation ){
+		if (saveFile == null) return;
+
+		try {
+			Checkpoint.save( saveFile, ppo.network, config, generation, rngSeed );
+			lastSavedGeneration = generation;
+			System.out.println( Ansi.wrap( "saved", Ansi.DIM ) + "   " + saveFile
+					+ "  " + Ansi.wrap( "(generation " + generation + ", adam step "
+					+ ppo.network.adamSteps() + ")", Ansi.DIM ) );
+		} catch (IOException e){
+			System.err.println( "[ERROR] could not write " + saveFile + ": " + e.getMessage() );
+			System.err.println( "        This run's policy will be lost. Nothing else is affected." );
+		}
 	}
 
 	/** One episode request, resolved before dispatch so workers never touch shared state. */

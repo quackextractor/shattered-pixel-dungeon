@@ -250,7 +250,7 @@ Two things moved on 2026-10-07:
 | | was | now |
 | --- | --- | --- |
 | instrument the loop | not in the plan | **done** (step 3b) |
-| persist the weights | after the parallel update | **before it** (step 4b) |
+| persist the weights | after the parallel update | **done, before it** (step 4b) |
 | parallel update | next | required, not yet actionable |
 
 **Why instrumentation moves first.** Steps 0-3 built a loop that learns, and the plan had no way to
@@ -481,30 +481,58 @@ gradients at N threads as at 1. `gradcheck` runs single-threaded by construction
 maths is unchanged and proves nothing about concurrent access — a parallel update needs its own
 equivalence check or it will have threading bugs that look like convergence problems.
 
-### Step 4b — Persist the weights — **small, and blocking for everything downstream**
+### Step 4b — Persist the weights — **done**
 
 Written down here rather than only in `TODO.md` 1.3, because it was originally scheduled *after* the
 parallel update and that ordering was wrong: it is smaller, it is on the critical path to
 `research.md:40`, and nothing that follows can be evaluated without it.
 
-No `saveWeights`, no checkpoint, no `--resume`. Every run starts from `Network`'s random
-initialisation and is discarded at the end. The cost:
+What it cost, before it was written:
 
-- A run has to be babysit start to finish, on a machine whose 2 GB pagefile thrashes rather than
+- A run had to be babysit start to finish, on a machine whose 2 GB pagefile thrashes rather than
   degrades.
-- `--generations` cannot be split. There is no way to run 50 generations, stop, inspect, and continue.
-- **No two runs can be compared**, because only one line of training can exist at a time. This is
+- `--generations` could not be split. There was no way to run 50 generations, stop, inspect, and continue.
+- **No two runs could be compared**, because only one line of training could exist at a time. This is
   step 3b's third defect and the reason it is listed there too.
-- A crash costs the whole run rather than the run since the last checkpoint.
+- A crash cost the whole run rather than the run since the last checkpoint.
 
-`Network.layers()` / `loadLayer` are already the checkpoint format and already validate against the
-`EnvConfig` shape, so a stale checkpoint fails loudly rather than loading into the wrong parameters,
-and `Worker.writeWeights` / `readWeights` already serialise exactly that. **This is plumbing, not
-design.**
+`Network.layers()` / `loadLayer` were already the checkpoint format and already validated against the
+`EnvConfig` shape. The plan's claim that this was "plumbing, not design" turned out to be **right about
+the format and wrong about the contents** — weights are the obvious part, and two things that are not
+weights decide whether a resume is the same run or a worse-looking one:
 
-Gate: `--resume <file>` loads before the first worker launch; weights are written on exit and every N
-generations; a resumed run continues rather than restarting; and two runs can be compared on the same
-axes.
+- **Adam's moments.** `layers()` does not carry them. A checkpoint without them restarts the
+  optimiser's averages from zero: the run still trains, and trains worse, with nothing in the metrics
+  to say why. The same failure class as the `clip=` constant, one level up. Added `Network.moments()`
+  and `loadMoments`. **Not sent to workers** — a worker runs forward passes only, so pushing four
+  times the floats per generation would cost ~57 MB per worker per push for nothing.
+- **The optimiser step count.** Adam's bias correction divides by `1 - beta^step`, so restarting at 1
+  makes the correction ~0.1 instead of ~1: a full-size step on a barely-warmed average. Free to get
+  wrong, because nothing crashes.
+
+Two further requirements the format did not obviously have:
+
+- **Atomic writes.** A checkpoint half-written by a power cut is *newer* than the last good one, so it
+  is exactly the file a resume would pick up. Write to a sibling temp file and rename; the file at the
+  target path is then always a complete previous checkpoint or a complete new one.
+- **Refusing loudly, in four cases.** A foreign file, a truncated one, one with trailing bytes, and one
+  from a different `EnvConfig`. The last names the offending field — "trained with gridWidth=32, this
+  run has 48" tells you which flag to change, where "incompatible" tells you nothing. The trailing-byte
+  check is what stops a format that has grown being silently misread by an older build.
+
+Gate, met: `--resume <file>` loads before the first worker launch; weights are written every N
+generations (`--checkpoint-every`, default 25) and on exit; and a resumed run continues rather than
+restarting. Verified: a 6-generation run followed by a resumed 2-generation run produces generation
+numbers 0–7 with no CSV row collisions and a final header reading generation 8. `checkpointcheck`
+(8 cases, now in `gates`) is mutation-tested — dropping the moments, the trailing-byte check, or the
+config check each fail it.
+
+`weightsdiff <file>` is the deliberate complement to that gate. The round-trip test proves the bytes
+arrive; it cannot prove the resumed network is a *trained* one. A checkpoint written from the wrong
+tensor passes every equality assertion and then trains a random policy for the rest of the run, with
+metrics that look entirely normal. `weightsdiff` compares a checkpoint against a freshly initialised
+network of the same seed and reports mean and max absolute difference — measured 100% of weights
+differing after 3 generations, max 0.47 in `slotHead.W`.
 
 ### Step 5 — fp16 weight push, only if the barrier shows up
 
@@ -568,7 +596,7 @@ re-proposed.
 | system CPU | ~50% avg, 90–100% peak | trainer-core bound | spread across cores |
 | pooled gradient | no | yes | yes |
 | run history | none | CSV + graph (step 3b) | yes |
-| weights on disk | none | none | checkpoint (step 4b) |
+| weights on disk | none | checkpoint (step 4b) | yes, resumable |
 
 Throughput *fell* in step 3 — real PPO work replaced free discard. That is expected and is not a
 regression. The size of the fall is measured: about 53 s of trainer CPU per generation at 5% and the
@@ -585,7 +613,8 @@ current 2 epochs, so the batch configuration has to be chosen against that rathe
 | Sample too small (~2,400 for 3.5M params) | medium | Needs a knob and a measurement plan. Low end of workable. |
 | Update cost dominates everything | **measured: it does** | 53 s vs 7 s of collection at 2 epochs. Step 4 is required, but step 3b comes first. |
 | A run cannot be judged | **hit, fixed** | `clip=` reported `P(\|N(0,1)\|>0.2)` = 0.8415 rather than the ratio-clip fraction, and nothing accumulated across generations. Fixed in step 3b: metrics CSV, revived `diag.Graph`, real clip fraction. |
-| A crash costs the whole run | **hit, unfixed** | No checkpointing. Steps are lost wholesale. Step 4b / TODO 1.3. |
+| A crash costs the whole run | **hit, fixed** | Atomic checkpoint every 25 generations and on exit, so a crash costs the interval rather than the run. Step 4b / TODO 1.3. |
+| A resumed run is quietly a worse run | **avoided by design** | Adam moments and the optimiser step count are saved, not just weights. Dropping them restarts bias correction near 0.1x and averages from zero — trains, but worse, with normal-looking metrics. |
 | 300 Adam steps on 2,400 samples destabilises training | medium | Only visible once losses are non-zero. Re-tune from step 1's grid; step 2b defaults epochs to 2. |
 | Parallel update silently races on shared state | **high** | `LSTM` writes `h`/`c` in place. `gradcheck` runs single-threaded and cannot catch it. Needs its own equivalence check. |
 | 95% of collected experience unused | accepted | Fine to start with. Not free. |

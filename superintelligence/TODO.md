@@ -105,7 +105,7 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | --- | --- | --- | --- |
 | 1.1 | ~~Call `PPO.collect()` in `Worker.runEpisode`~~ | done | Superseded. `EpisodeCollector` replaced the collection half of `PPO` entirely; see `PLAN-data-flow.md` step 2 and §5 below. |
 | 1.2 | ~~Run one generation end to end and check the losses are sane~~ | done | `policy` and `value` are non-zero, and advantages arrive with a real spread. Reported per generation. |
-| 1.3 | **Save and load the trained weights** | S | **Blocks everything in 1.4.** Promoted ahead of 1.6 — see below. `PLAN-data-flow.md` step 4b. |
+| 1.3 | ~~Save and load the trained weights~~ | done | `Checkpoint` writes weights, Adam moments and the optimiser step count; `--save` / `--resume` / `--checkpoint-every`. A resumed run continues both the generation and the adam-step numbering. `checkpointcheck` refuses foreign, truncated, trailing-byte and wrong-config files. `PLAN-data-flow.md` step 4b. |
 | 1.7 | ~~Instrument the loop so a run can be judged~~ | done | `clip=` now reports the real ratio-clip fraction, and `MetricsHistory` writes `metrics.csv` per generation plus an end-of-run trend. `PLAN-data-flow.md` step 3b. |
 | 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from `research.md:40`. Needs 1.3 first, 1.7 to be evaluable, and 1.5 to be tolerable. |
 | 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
@@ -122,35 +122,39 @@ measurement does not care what else is on the list — but two smaller items now
    and discarded it; `diag.Graph` was dead code. **Now done:** the corrected metric ranges 0.047–0.737
    over 9 generations and `metrics.csv` accumulates per generation.
 2. **1.3, because it is smaller than 1.6, on the critical path to 1.4, and is what makes two runs
-   comparable at all.** Still open.
+   comparable at all.** Also now done.
 
-1.7 is finished, so **1.3 is next**, then 1.6.
+**Both are finished, so 1.6 — the parallel update — is next.** It remains required: 53 s of trainer CPU
+per generation against ~7 s of collection is measured, and 19 of 20 cores idle through it.
 
-**Weights are never written to disk, so no run so far has been extendable.** There is no
-`saveWeights`, no checkpoint, no `--resume`. Every run starts from `Network`'s random initialisation
-and is discarded when it exits; `Trainer` writes best-per-seed *replays* and nothing else. Nothing in
-the ten runs performed so far produced a model that could be picked up again.
+**What checkpointing turned out to need, beyond writing `Network.layers()`.** The plan called it
+"plumbing, not design" and that was right about the format but wrong about the contents. Weights are
+the obvious part and the easy part; two things that are *not* weights decide whether a resume is the
+same run or a worse-looking one:
 
-That is invisible until you try to keep one, and it constrains everything after it:
+- **Adam's moments.** `Network.layers()` does not carry them, and a checkpoint without them restarts
+  the optimiser's averages from zero. The run still trains. It just trains worse, with nothing in the
+  metrics to say why — the same failure class as the `clip=` constant, one level up. `Network.moments()`
+  and `loadMoments` now expose them. They are *not* sent to workers: a worker runs forward passes
+  only, so pushing four times the floats per generation would cost ~57 MB per worker for nothing.
+- **The optimiser step count.** Adam's bias correction divides by `1 - beta^step`, so restarting at 1
+  makes that correction ~0.1 instead of ~1 — a full-size step on a barely-warmed average. Cheap to get
+  wrong because nothing crashes: `Network.adamSteps(int)` restores it.
 
-- A run has to be babysit from start to finish. A machine with a 2 GB pagefile, where overshoot
-  thrashes rather than degrades, is a poor place to leave a multi-hour job unattended.
-- `--generations` cannot be split. There is no way to run 50 generations, stop, inspect the weights,
-  and continue.
-- **Nothing that trains can be compared to anything else.** "Generation 200 scored better than
-  generation 100" currently has to be believed rather than checked, because only one line of training
-  can exist at a time.
-- A crash costs the whole run, not the run since the last checkpoint.
+Two more things the format needed that were not obvious in advance:
 
-`Network.layers()` / `loadLayer` are already the checkpoint format — they are validated against the
-`EnvConfig` shape and fail loudly on a mismatch, so a checkpoint written by an older build is refused
-rather than loaded into the wrong parameters. `Worker.writeWeights` / `readWeights` already serialise
-exactly that. So this is plumbing, not design: write `Network.layers()` to a file on the trainer side,
-add a `--resume <file>` that loads it before the first worker launch, and write on exit as well as on
-a signal or every N generations.
+- **Atomic writes.** A checkpoint half-written by a power cut is *newer* than the last good one, so it
+  is exactly the file a resume would pick up. Writing to a sibling temp file and renaming means the
+  file at the target path is always a complete previous checkpoint or a complete new one.
+- **Refusing, loudly, in four cases.** A foreign file, a truncated one, one with trailing bytes, and one
+  from a different `EnvConfig`. The last names the field — "trained with gridWidth=32, this run has
+  48" tells you which flag to change, where "incompatible" tells you nothing.
 
-Small enough to be done before the parallel update, and worth doing first — it makes 1.4 a task rather
-than an act of faith.
+Verified: a 6-generation run then a resumed 2-generation run continues the numbering 0-7 with no CSV
+row collisions, and the resumed checkpoint's header reports generation 6 / adam step 32 as expected.
+`checkpointcheck` (8 cases, now a gate) is mutation-tested — dropping the moments, the trailing-byte
+check, or the config check each fail it. `weightsdiff <file>` is the complement: it reports how far a
+checkpoint is from a freshly initialised policy, which the round-trip test cannot answer.
 
 **`PPO.collect()` is gone, and so is the cap it implemented.** `rolloutCap` (default 2048) bounded
 collection at ~98 MB because a step is ~49 KB and `turnLimitTotal` is 40000 - uncapped, one long

@@ -2,6 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CheckpointCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GaeCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GradientCheck;
@@ -9,6 +10,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ModeCover
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayCatalogCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.WeightsDiff;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RunReport;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
@@ -56,6 +58,8 @@ public class Main {
 		case "updatecost": UpdateCostCheck.main( rest ); break;
 		case "gaecheck": GaeCheck.main( rest ); break;
 		case "collectcheck": CollectCheck.main( rest ); break;
+		case "checkpointcheck": CheckpointCheck.main( rest ); break;
+		case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": ReplayCatalogCheck.main( rest ); break;
 		case "train":    Trainer( rest );   break;
@@ -77,6 +81,8 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "  updatecost               measure what a PPO update costs, and project it" );
 		System.out.println( "  gaecheck                 fail if the advantage implementations disagree" );
 		System.out.println( "  collectcheck              fail if a collector recording will not replay" );
+		System.out.println( "  checkpointcheck           fail if a policy does not survive disk, or a bad one loads" );
+		System.out.println( "  weightsdiff <file>        report how far a checkpoint is from a fresh policy" );
 		System.out.println( "  replays [--dir d]...     list recordings, grouped by hero class and ranked" );
 		System.out.println( "  replaycheck               fail if the replay catalog misgroups or misranks" );
 		System.out.println( "  train [options]          run the PPO trainer across worker JVMs" );

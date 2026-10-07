@@ -80,8 +80,36 @@ public class TrainOptions {
 	 */
 	public File metricsCsv;
 
+	/**
+	 * Where the policy is written, or {@code null} to write nothing.
+	 *
+	 * Defaulted rather than required, because a smoke test should not leave 43 MB behind and
+	 * checkpointing was once described as plumbing. It was plumbing; the thing it enables — a run that
+	 * can be stopped and continued — is what {@code research.md:40} asks for, and that is not.
+	 */
+	public File save;
+
+	/**
+	 * Generations between checkpoints, and the last generation always writes.
+	 *
+	 * 25 rather than every generation because the file is ~43 MB (parameters plus four Adam moments per
+	 * tensor) and rewriting it 100 times is 4.3 GB of writes for a policy that changes little between
+	 * them. Coarse enough to lose work, fine enough that the loss is measured in minutes.
+	 */
+	public int checkpointEvery = 25;
+
+	/**
+	 * Policy to resume from, or {@code null}.
+	 *
+	 * Separate from {@link #save} so a run can continue one policy into a different file, but by
+	 * default a run overwrites its own checkpoint in place — resuming is then just running it again
+	 * with {@code --resume}, with no path to remember.
+	 */
+	public File resume;
+
 	public TrainOptions(){
 		metricsCsv = new File( workDir, "metrics.csv" );
+		save = new File( workDir, "weights.bin" );
 	}
 
 	public static TrainOptions parse( String[] args ){
@@ -110,6 +138,10 @@ public class TrainOptions {
 				case "--max-samples":
 					o.maxSamplesPerGeneration = Integer.parseInt( args[ ++i ] ); break;
 				case "--metrics":     o.metricsCsv = new File( args[ ++i ] ); break;
+				case "--save":        o.save = new File( args[ ++i ] ); break;
+				case "--resume":      o.resume = new File( args[ ++i ] ); break;
+				case "--checkpoint-every":
+					o.checkpointEvery = Integer.parseInt( args[ ++i ] ); break;
 				default:
 					if (args[ i ].startsWith( "--" )){
 						System.err.println( "[WARN] unknown option: " + args[ i ] );
@@ -120,6 +152,7 @@ public class TrainOptions {
 		o.episodes = o.episodes > 0 ? o.episodes : o.workers;
 		if (o.epochs < 1) o.epochs = 1;
 		if (o.minibatchSize < 1) o.minibatchSize = 1;
+		if (o.checkpointEvery < 1) o.checkpointEvery = 1;
 		return o;
 	}
 

@@ -329,6 +329,18 @@ trunk.forward( concat, hidden );
 		return adamStep;
 	}
 
+	/**
+	 * Restores the optimiser step count, which a resumed run needs to be the same run.
+	 *
+	 * <p>Not a detail. Adam's bias correction divides by {@code 1 - beta^step}, so restarting the count
+	 * at 1 makes the first steps after a resume use a correction of ~0.1 rather than ~1 — the optimiser
+	 * takes a full-size step on a barely-warmed gradient average. A checkpoint that saved weights but
+	 * not this count would resume looking like it trained, and would not be.
+	 */
+	public void adamSteps( int step ){
+		this.adamStep = Math.max( 0, step );
+	}
+
 /** Scalar parameter count, for diagnostics. */
 	public long parameterCount(){
 		return (long) conv.W.size() + conv.b.size()
@@ -405,6 +417,73 @@ trunk.forward( concat, hidden );
 		java.util.Map<String, Layer> map = new java.util.HashMap<>();
 		for (Layer l : layers()) map.put( l.name, l );
 		return map;
+	}
+
+	/**
+	 * One layer's Adam moments, in the same shape as {@link Layer}.
+	 *
+	 * <p>Separate from {@link Layer} because the two travel for different reasons. Weights go to the
+	 * workers on every generation, and a worker only runs forward passes, so sending it four times the
+	 * floats would buy nothing. Moments are trainer-side only and never leave the process — but they
+	 * have to reach disk, because without them a resumed run's optimiser starts cold.
+	 */
+	public static class Moments {
+		public final String name;
+		public final float[] mW, vW, mb, vb;
+
+		public Moments( String name, float[] mW, float[] vW, float[] mb, float[] vb ){
+			this.name = name;
+			this.mW = mW;
+			this.vW = vW;
+			this.mb = mb;
+			this.vb = vb;
+		}
+	}
+
+	/**
+	 * Every Adam moment, in the same order as {@link #layers()}.
+	 *
+	 * <p>{@code W} and {@code b} keep their own moments because {@link Dense#adamStep} updates them
+	 * separately, and the bias tensors are a different length from the weight tensors.
+	 */
+	public Moments[] moments(){
+		return new Moments[] {
+				momentsOf( "conv.W", conv.mW, conv.vW, conv.mb, conv.vb ),
+				momentsOf( "trunk.W", trunk.mW, trunk.vW, trunk.mb, trunk.vb ),
+				momentsOf( "memory.W", memory.mW, memory.vW, memory.mb, memory.vb ),
+				momentsOf( "actionHead.W", actionHead.mW, actionHead.vW, actionHead.mb, actionHead.vb ),
+				momentsOf( "slotHead.W", slotHead.mW, slotHead.vW, slotHead.mb, slotHead.vb ),
+				momentsOf( "targetHead.W", targetHead.mW, targetHead.vW, targetHead.mb, targetHead.vb ),
+				momentsOf( "valueHead.W", valueHead.mW, valueHead.vW, valueHead.mb, valueHead.vb ),
+		};
+	}
+
+	private static Moments momentsOf( String name, Tensor mW, Tensor vW, Tensor mb, Tensor vb ){
+		return new Moments( name, mW.data, vW.data, mb.data, vb.data );
+	}
+
+	/** Copies Adam moments from a checkpoint entry, or reports why they do not fit. */
+	public void loadMoments( Moments m ) throws java.io.IOException {
+		java.util.Map<String, Moments> mine = new java.util.HashMap<>();
+		for (Moments other : moments()) mine.put( other.name, other );
+
+		Moments target = mine.get( m.name );
+		if (target == null) throw new java.io.IOException( "unknown moment group: " + m.name );
+
+		if (m.mW.length != target.mW.length || m.vW.length != target.vW.length
+				|| m.mb.length != target.mb.length || m.vb.length != target.vb.length){
+			throw new java.io.IOException( "moment group " + m.name + " is "
+					+ m.mW.length + "/" + m.vW.length + "/" + m.mb.length + "/" + m.vb.length
+					+ " but this network expects " + target.mW.length + "/" + target.vW.length
+					+ "/" + target.mb.length + "/" + target.vb.length
+					+ ". The checkpoint was truncated, or was written by a build that laid Adam out"
+					+ " differently." );
+		}
+
+		System.arraycopy( m.mW, 0, target.mW, 0, target.mW.length );
+		System.arraycopy( m.vW, 0, target.vW, 0, target.vW.length );
+		System.arraycopy( m.mb, 0, target.mb, 0, target.mb.length );
+		System.arraycopy( m.vb, 0, target.vb, 0, target.vb.length );
 	}
 
 	/** Copies every parameter out of this network into {@code target}. */

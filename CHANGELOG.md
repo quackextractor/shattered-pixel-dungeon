@@ -20,6 +20,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Policy checkpoints, so a training run can be stopped and continued.** `--save <file>` writes a
+  checkpoint every `--checkpoint-every` generations (default 25) and on exit; `--resume <file>`
+  continues from one, keeping the generation and optimiser-step numbering so the two runs'
+  `metrics.csv` rows do not collide. Writes go to a sibling temp file and are renamed, so a power cut
+  cannot leave a half-written checkpoint that is newer than the last good one.
+
+  **The format carries more than weights, and that is the substance of it.** `Network.layers()` does
+  not include Adam's moments, and a checkpoint without them restarts the optimiser's averages from
+  zero — the run still trains, and trains worse, with nothing in the metrics to say why. Neither does
+  it include the optimiser step count, and Adam's bias correction divides by `1 - beta^step`, so
+  restarting at 1 makes that correction ~0.1 instead of ~1. Both are now saved. The moments are not
+  sent to workers: a worker runs forward passes only, so pushing four times the floats per generation
+  would cost ~57 MB per worker per push for nothing.
+
+  Also **refuses four kinds of bad file** rather than misreading them: foreign (bad magic),
+  truncated, one with trailing bytes, and one from a different `EnvConfig` — the last naming the
+  offending field, since "trained with gridWidth=32, this run has 48" says which flag to change.
+- **`checkpointcheck`**, a gate that asserts a policy survives disk bit-for-bit including its moments,
+  and that each of those four refusals happens. Mutation-tested: dropping the moments, the
+  trailing-byte check, or the config check each fails it.
+- **`weightsdiff <file>`**, reporting how far a checkpoint is from a freshly initialised policy. The
+  complement to `checkpointcheck`, which proves the bytes arrive but not that the resumed network is
+  a *trained* one — a checkpoint written from the wrong tensor passes every equality assertion and
+  then trains a random policy with entirely normal-looking metrics.
 - **Per-generation metrics history** (`MetricsHistory`), written to `metrics.csv` in the work
   directory by default and overridable with `--metrics`. `Trainer` previously kept one generation of
   episodes and discarded it, so a run's history existed only in console scrollback. Rows are flushed
