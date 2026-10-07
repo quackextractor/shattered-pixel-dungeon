@@ -169,34 +169,74 @@ Mutation-tested: reverting each fix fails the case it corresponds to.
 Being explicit, because the temptation after a training run goes flat is to keep
 flipping reward weights until the number moves.
 
-- **The agent still may not learn.** Nothing here makes the environment easier.
-  If the policy cannot survive floor 1 with an honest reward, the correct result
-  is a policy that dies often, which is progress of a different kind.
-- **`depthReward` of +10 against `deathPenalty` of -100 is not obviously the
-  right shape** and has not been examined. It is deliberately untouched here,
-  because changing it and the stall penalty together would make the next result
-  uninterpretable.
+- **The agent still does not learn.** Section 6 measures it: it still stalls every
+  episode, it is merely no longer paid to. Nothing here makes the environment
+  easier. §6 says what is left, which is not a reward-arithmetic problem.
+- **`depthReward` of +10 against `turnCost` of 0.002** means descending one floor
+  pays 5,000 turns of idling, and that ratio is the next thing to examine.
+  Deliberately untouched here, because changing it in the same commit as the stall
+  penalty would have made §6's measurement uninterpretable. It is `TODO.md` 1.8.
 - **The curriculum is still inert** (`observe()` is never called, so shaping is a
-  constant 1f). It stays inert until a run with an honest terminal reward can be
-  judged, for the same reason this plan exists.
-- **`KILL` still has no emission site.** Same reasoning.
+  constant 1f). It stays inert until the reward shape is settled — a fade schedule
+  over an unsettled objective would hide the question rather than answer it.
+- **`KILL` still has no emission site.** Same reasoning, and `KILL` is one of the
+  terms that would pay for playing well.
 
 ## 6. Verification
 
-Baseline to beat, from the run that motivated all of this:
+Baseline, from the run that motivated all of this:
 
 ```
 meanScore   -> -5.00 (converged on STALLED)
 meanTurns   -> 8-11
 bestDepth   -> 1
-STALLED     -> (not measured; inferred from score arithmetic)
+valueLoss   -> 2.4-3.5, flat
 ```
 
-Success looks like: the `STALLED` share of end reasons falling away, `meanTurns`
-rising toward 150+, and `meanScore` no longer converging on any single terminal
-reward. `depth` moving off 1 would be the real result, but that is
-`TODO.md` 1.4 and it is a longer run than belongs in this commit.
+After the fix, same 20 generations, 8 workers, same seed:
 
-That last distinction is the reason commit 1 is instrumentation rather than a
-fix: the `STALLED` share above is currently *inferred* from `meanScore` being
--5.0. It should be read, not inferred.
+| | before | after |
+| --- | --- | --- |
+| meanScore, gen 19 | -4.46 | **+3.29** |
+| meanScore, converged to | exactly -5.00 | no constant |
+| meanTurns, gen 19 | 11 | **56** |
+| valueLoss, gen 19 | 3.53 | **0.44** |
+| stall share of episodes | 100% | 100% |
+| bestDepth | 1 | 1 |
+
+**The stall share did not move, and that is the result worth reading carefully.**
+
+What the fix achieved: stalling is no longer profitable. `meanScore` no longer
+converges on a constant, `meanTurns` roughly quintupled, and `valueLoss` fell by
+8x — the critic can finally fit targets that were previously asked to reconcile a
+-5.0 penalty with a bootstrap through the same step.
+
+What it did not achieve: the agent still ends every episode the same way. It is no
+longer *rewarded* for idling; it simply has nothing better to do, and `meanTurns`
+oscillates between 11 and 86 without trending up.
+
+That is a different problem, and a better one. §5 predicted it: "the agent still
+may not learn; if the policy cannot survive floor 1 with an honest reward, the
+correct result is a policy that dies often." The agent does not die often either —
+it stalls — and that points at the next question rather than at the reward
+arithmetic being wrong again.
+
+### What is now the blocker
+
+`depthReward` is +10 against `turnCost` of 0.002, so descending one floor pays
+5,000 turns of idling. The terms that would reward playing well — `KILL`,
+`GOLD_GAIN`, `ITEM_PICKUP` — are all shaping terms, and the one concrete outcome
+the agent can currently cause is a stall.
+
+So the question is not "what number should `STALLED` be" any more. It is **what
+does surviving look like, and which of those terms should be doing the work.**
+That is `TODO.md` 1.8, and it is deliberately not answered here: this document
+changed one thing and measured it, and changing two would make the measurement
+above uninterpretable.
+
+### What would have caught this sooner
+
+The end-reason breakdown, which arrived as commit 1 of this work. For twenty
+generations the diagnosis was reached by subtracting 5.0 from `meanScore` and
+recognising the answer — a correct inference from an indirect signal. `ended
+stalled 16 (100%)` is the same fact, read.

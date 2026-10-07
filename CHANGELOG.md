@@ -27,6 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Measured, 8 workers × 3 generations: **8.98 → 5.09 → 2.73 → 2.59 ms/sample at 1, 2, 4 and 8
   threads** (1.00×, 1.76×, 3.29×, 3.47×). The plan predicted ~5× at 8; the shortfall is the gradient
   reduction, which is why 4 and 8 threads are nearly identical.
+- **`rewardcheck`**, a gate asserting that ending an episode is never cheaper than dying — replayed
+  through the real environment rather than compared against a literal, so it holds however the
+  constants are retuned. 6 cases. Mutation-tested: restoring `STALLED` to -5.0 fails the
+  terminal-reward case; restoring `WAIT`'s `return false` fails the refusal case with "435 refusals over
+  29 WORLD turns".
+- **Termination reasons reported per generation.** A console `ended` line, one CSV column per reason,
+  and an end-of-run first-third-vs-last-third trend. Written because a 20-generation run converged
+  `meanScore` on exactly -5.0 and the reason had to be *inferred* by arithmetic; it is now `ended
+  stalled 16 (100%)`, read.
 - **`parallelcheck`**, a gate asserting that a sharded accumulation equals a single-network one, at 2, 4
   and 8 shards, and that the answer does not depend on the shard count. Tolerance is 1e-4 relative to
   each tensor's own L2 norm; observed disagreement ~2e-7. Mutation-tested — reverting the `dCell` clear
@@ -44,6 +53,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The reward paid the agent to give up on an episode.** `STALLED` carried a terminal reward of
+  `-depthReward * 0.5` = -5.0, against `deathPenalty` of -100 and a `TURN_LIMIT` cost of -80 — so
+  ending an episode was **twenty times cheaper than dying**, and the cheapest action in the game was a
+  direct route to it: `WAIT` costs a turn, moves nothing and changes no HP, which is exactly what the
+  stall guard tests. A 20-generation run converged `meanScore` on exactly -5.0 with `meanTurns`
+  collapsing 62 → 8, never leaving floor 1, while every loss metric looked healthy. `STALLED` is now
+  **zero** — idling is priced by `TURN_COST`, which is what turn cost is for — and remains a
+  truncation, so GAE bootstraps through it. Measured over the same 20 generations: `meanScore` -4.46 →
+  **+3.29**, `meanTurns` 11 → **56**, `valueLoss` 3.53 → **0.44**.
+- **`WAIT`, `REST` and `SEARCH` were reported as `INVALID_ACTION`.** `ActionMapper.apply` is documented
+  as "needs a follow-up choice" and returned `false` for three legal actions the environment performs;
+  `SPDEnv.step` read that as a refusal. It now means "was the action accepted", which is what the one
+  caller reads it for.
+- **`INVALID_ACTION` was unobservable.** Recorded with `note(term, 0)`, so it moved no total and appeared
+  in no report. Now recorded through `noteEvent`, which counts without scoring.
+- **`SPDEnv.terminate` was not idempotent, and one caller relied on that.** `settle`'s `actorStepLimit`
+  guard called `terminate(STALLED)` twice, charging -10.0 where the term said -5.0. The duplicate is
+  removed *and* the method is now idempotent, so the whole class of double-termination is closed. It
+  also prevents a second call from overwriting `endReason` with something less specific.
 - **Gradients leaked between samples.** `Network.backward` cleared `dPrev` but not `dCell`, and
   `LSTM.backward` reads the incoming `dCPrev` before overwriting it. Every sample's gradient was
   therefore a function of whichever sample was processed before it. Measured on `conv.gb[15]`: four
@@ -114,6 +142,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`STALLED` is a truncation and only `DEATH`/`VICTORY` are natural endings**, now named as
+  `SPDEnv.isNaturalEnding` with `isTruncation` as its complement, so the classification can be asserted
+  against the real predicate rather than restated. A stalled episode used to be penalised *and*
+  bootstrapped — one signal said the episode was over, the other that it carried on, which is why
+  `valueLoss` sat at 3.0–8.1 without trending. `gaecheck` gained a case covering the advantage half;
+  setting `nonTerminal = 1f` unconditionally fails 5 of its 12.
 - **`PLAN-data-flow.md` corrected against the code** rather than against its own prose: removed
   `rolloutCap`/`PPO.collect` references to deleted code, restored a missing `### Step 3` heading whose
   body had been orphaned under step 2b, marked steps 0 and 3 done, and corrected every cost figure

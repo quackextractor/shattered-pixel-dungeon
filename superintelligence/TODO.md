@@ -107,7 +107,8 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | 1.2 | ~~Run one generation end to end and check the losses are sane~~ | done | `policy` and `value` are non-zero, and advantages arrive with a real spread. Reported per generation. |
 | 1.3 | ~~Save and load the trained weights~~ | done | `Checkpoint` writes weights, Adam moments and the optimiser step count; `--save` / `--resume` / `--checkpoint-every`. A resumed run continues both the generation and the adam-step numbering. `checkpointcheck` refuses foreign, truncated, trailing-byte and wrong-config files. `PLAN-data-flow.md` step 4b. |
 | 1.7 | ~~Instrument the loop so a run can be judged~~ | done | `clip=` now reports the real ratio-clip fraction, and `MetricsHistory` writes `metrics.csv` per generation plus an end-of-run trend. `PLAN-data-flow.md` step 3b. |
-| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from `research.md:40`. Needs 1.3 first, 1.7 to be evaluable, and 1.5 to be tolerable. |
+| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from `research.md:40`. **Still blocked on something other than compute.** The loop is correct and 3.29x faster; what is missing is that the agent has no reason to prefer moving over idling. See 1.8. |
+| 1.8 | **Make surviving worth more than stalling** | M | **The next real blocker.** After 2.1 the agent stalls 100% of the time, but now at -0.24 instead of -5.0 — so it is not being *rewarded* for stalling any more, it simply has nothing better to do. `meanTurns` oscillates 11-86 and never trends up. `depthReward` is +10 against `turnCost` of 0.002, so descending pays 5,000 turns of idling; the terms that would pay for playing well (`KILL`, `GOLD_GAIN`, `ITEM_PICKUP`) are all shaping terms the inert curriculum would fade, and the one concrete outcome the agent can cause is stalling. **Decide what surviving looks like before tuning numbers again** — this is the same question 2.1 was, one level up, and the reason nothing about the reward weights was changed there. |
 | 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
 | 1.6 | ~~Parallelise the update across minibatches~~ | done | --update-threads N. Measured 8.98 -> 2.73 ms/sample at 1 -> 4 threads (3.29x), 2.59 at 8 (3.47x). parallelcheck is a gate and mutation-tested. Required three fixes first, of which the dCell gradient leak was the real blocker. PLAN-data-flow.md step 4. |
 
@@ -259,6 +260,21 @@ Three compounding defects, all fixed, with the analysis and reasoning in
 `rewardcheck` is a gate asserting the property that was violated: **`WAIT` ×
 `stallLimit` must not come out cheaper than dying**, replayed through the real
 environment rather than checked as constants. Mutation-tested.
+
+**Measured over the same 20 generations at 8 workers:**
+
+| | before | after |
+| --- | --- | --- |
+| meanScore, gen 19 | -4.46 | **+3.29** |
+| meanScore, converged to | exactly -5.00 | no constant |
+| meanTurns, gen 19 | 11 | **56** |
+| valueLoss, gen 19 | 3.53 | **0.44** |
+| stall share | 100% | 100% — but free, not profitable |
+
+The last row is the honest one. **The agent still stalls every episode; it just
+no longer profits from doing so.** `valueLoss` falling 3.53 → 0.44 is the critic
+finally fitting its targets, which is what removing a penalty it could not
+reconcile with a bootstrap should do. Depth is still 1. That is now 1.8.
 
 ### 2.2 Reward terms that never fire
 

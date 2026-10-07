@@ -9,8 +9,8 @@ seed recorded and re-verified.
 
 ## Read this first
 
-**Nothing has been trained yet. Everything needed to train it is now in place.** Four things were
-missing; three are fixed and the fourth is the milestone itself:
+**Nothing has been trained yet. The machinery is correct; the reward still does not ask for
+anything.** Five things were missing; four are fixed and the fifth is the milestone itself:
 
 - **A run can be judged.** `clip=` used to report `P(|N(0,1)| > 0.2)` = 0.8415 whatever the policy
   did, because it counted `|advantage| > clipEpsilon` on a *normalised* advantage. The real
@@ -24,8 +24,14 @@ missing; three are fixed and the fourth is the milestone itself:
   bounded to [-1,+1] against a death penalty of 100; and `dCell` was not cleared between samples, so
   every gradient depended on whichever sample preceded it. All three are fixed, and each has a
   gate that fails when the fix is reverted.
-- **The agent has still never left floor 1.** Every run so far was a smoke test of a few dozen
-  generations.
+- **The reward paid the agent to give up.** `STALLED` cost -5.0 against death's -100, and the cheapest
+  action in the game — `WAIT`, which moves nothing — walked straight into the guard that triggers it.
+  A 20-generation run converged `meanScore` on exactly -5.0 with turns collapsing 62 → 8. `STALLED` is
+  now zero and priced by turn cost alone. Measured after: `meanScore` +3.29, `meanTurns` 56,
+  `valueLoss` 0.44. See [`PLAN-reward-signals.md`](PLAN-reward-signals.md).
+- **The agent has still never left floor 1**, and still ends every episode by stalling — it is now
+  free to, rather than paid to. `depthReward` of +10 against `turnCost` of 0.002 is the next thing to
+  examine (`TODO.md` 1.8).
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
@@ -79,6 +85,8 @@ something.
 | Per-generation metrics history (CSV, end-of-run trend) | Done - `metrics.csv` per generation, `diag.Graph` at end of run |
 | PPO clip fraction (`clip=`) | Fixed - was reporting `P(\|N(0,1)\|>0.2)`=0.8415; now the real ratio-clip fraction, measured 0.047-0.737 |
 | Reward model, per-term ledger, curriculum fade | Partial - 6 terms have no emission site; `KILL` has the plumbing but no emission; curriculum is written but `observe()` is never called, so shaping is a constant 1f |
+| Terminal rewards are honest | Done - `STALLED` was -5.0 against death's -100, so ending an episode beat losing and the agent learned to. Now zero, priced by turn cost. `rewardcheck` is a gate |
+| Actions report what happened | Done - `WAIT`/`REST`/`SEARCH` were recorded as `INVALID_ACTION`, and the term carried no weight, so nothing observed it |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
 | Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included. `checkpointcheck` is a gate |
 | Bad checkpoint handling | Done - foreign, truncated, trailing-byte and wrong-config files all refused, the last naming the field |
