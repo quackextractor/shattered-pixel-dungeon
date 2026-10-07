@@ -2,9 +2,11 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GaeCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GradientCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ModeCoverageCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayCatalogCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
@@ -17,6 +19,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayCatalog;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
 
 /**
@@ -52,6 +55,9 @@ public class Main {
 		case "restartcheck": RestartCheck.main( rest ); break;
 		case "updatecost": UpdateCostCheck.main( rest ); break;
 		case "gaecheck": GaeCheck.main( rest ); break;
+		case "collectcheck": CollectCheck.main( rest ); break;
+		case "replays":  ReplayCatalog.main( rest ); break;
+		case "replaycheck": ReplayCatalogCheck.main( rest ); break;
 		case "train":    Trainer( rest );   break;
 			case "help":     usage();          break;
 			default:
@@ -70,6 +76,9 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "  restartcheck             fail if a restart does not rebuild the same first floor" );
 		System.out.println( "  updatecost               measure what a PPO update costs, and project it" );
 		System.out.println( "  gaecheck                 fail if the advantage implementations disagree" );
+		System.out.println( "  collectcheck              fail if a collector recording will not replay" );
+		System.out.println( "  replays [--dir d]...     list recordings, grouped by hero class and ranked" );
+		System.out.println( "  replaycheck               fail if the replay catalog misgroups or misranks" );
 		System.out.println( "  train [options]          run the PPO trainer across worker JVMs" );
 		System.out.println();
 		System.out.println( "options:" );

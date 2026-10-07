@@ -79,6 +79,12 @@ public class EpisodeCollector {
 	 * second implementation of the same loop - which is how they drift apart.
 	 */
 	public interface Listener {
+		/**
+		 * One completed step.
+		 *
+		 * @param mode        the mode the decision was made under, not the one it left behind
+		 * @param heroPosition where the hero ended up, after the step
+		 */
 		void onStep( EnvMode mode, Action action, int secondary, int heroPosition, float reward );
 	}
 
@@ -189,10 +195,18 @@ public class EpisodeCollector {
 
 			Action action = Action.fromIndex( actionIndex );
 			int secondary = (liveHead == Policy.HEAD_TARGET) ? targetIndex : slotIndex;
+
+			//The mode is the one the decision was made under, so it has to be read before the step.
 			EnvMode mode = env.mode();
-			int heroPosition = env.heroPosition();
 
 			float reward = (float) env.step( action, secondary );
+
+			//The position is where the hero ended up, so it has to be read after. Reading it before
+			//records where the hero started, which is off by one step and makes every replay recorded
+			//here diverge at step 0 while still playing — the recorded path looks plausible and is
+			//silently wrong, which is the failure mode ReplayIO.verify exists to catch and which it did
+			//catch, on every trainer-written recording.
+			int heroPosition = env.heroPosition();
 
 			if (listener != null) listener.onStep( mode, action, secondary, heroPosition, reward );
 

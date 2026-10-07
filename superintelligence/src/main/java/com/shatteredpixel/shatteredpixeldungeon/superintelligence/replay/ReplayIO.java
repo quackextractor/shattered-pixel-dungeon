@@ -74,20 +74,73 @@ out.write( "turns=" + replay.turns );
 	// --------------------------------------------------------------------------- reading
 
 	public static Replay read( File file ) throws IOException {
-		Replay replay = new Replay();
-
 		//read whole file first: header lines are "key=value" and step lines are not, so the header
 		//has to be told where it ends. Doing that on a live reader would swallow the first step.
 		java.util.List<String> lines = Files.readAllLines( file.toPath(), StandardCharsets.UTF_8 );
 
-		if (lines.isEmpty() || !Replay.MAGIC.equals( lines.get( 0 ) )){
-			throw new IOException( "Not a replay file: " + file.getPath() );
+		Replay replay = parseHeader( lines, file.getPath() );
+		int declaredSteps = replay.declaredSteps;
+		replay.steps.clear();
+		int index = headerEnd( lines );
+
+		for (int i = 0; i < declaredSteps; i++, index++ ){
+			if (index >= lines.size()){
+				throw new IOException( "Replay truncated after " + i + " of "
+						+ declaredSteps + " steps" );
+			}
+
+			String line = lines.get( index );
+			String[] parts = line.split( " " );
+			if (parts.length < 3){
+				throw new IOException( "Malformed replay step: " + line );
+			}
+
+			Replay.Step step = new Replay.Step();
+			step.action = parts[ 0 ];
+			step.slot = Integer.parseInt( parts[ 1 ] );
+			step.mode = parts[ 2 ];
+			if (parts.length > 3) step.heroPos = Integer.parseInt( parts[ 3 ] );
+			if (parts.length > 4) step.reward = Double.parseDouble( parts[ 4 ] );
+			replay.steps.add( step );
 		}
 
-		int declaredSteps = 0;
-		int index = 1;
+		return replay;
+	}
 
-		while (index < lines.size()){
+	/**
+	 * Reads only the header, tolerating a truncated or absent body.
+	 *
+	 * {@link #read} rejects a file whose declared step count does not match its body, which is right
+	 * for a determinism check and wrong for listing them: a truncated recording is exactly the one a
+	 * person browsing a catalog most needs to see, and it will not fix itself by being hidden.
+	 * {@link Replay#truncatedAt} carries the shortfall, or -1 when the body is complete.
+	 */
+	public static Replay readHeader( File file ) throws IOException {
+		java.util.List<String> lines = Files.readAllLines( file.toPath(), StandardCharsets.UTF_8 );
+		Replay replay = parseHeader( lines, file.getPath() );
+
+		int available = Math.max( 0, lines.size() - headerEnd( lines ) );
+		replay.truncatedAt = available < replay.declaredSteps ? available : -1;
+		replay.steps.clear();
+
+		return replay;
+	}
+
+	/** Index of the first step line, i.e. one past the end of the {@code key=value} header. */
+	private static int headerEnd( java.util.List<String> lines ){
+		int index = 1;
+		while (index < lines.size() && lines.get( index ).indexOf( '=' ) >= 0) index++;
+		return index;
+	}
+
+	private static Replay parseHeader( java.util.List<String> lines, String path ) throws IOException {
+		Replay replay = new Replay();
+
+		if (lines.isEmpty() || !Replay.MAGIC.equals( lines.get( 0 ))){
+			throw new IOException( "Not a replay file: " + path );
+		}
+
+		for (int index = 1; index < lines.size(); index++ ){
 			String line = lines.get( index );
 			int eq = line.indexOf( '=' );
 			if (eq < 0) break;
@@ -111,32 +164,9 @@ out.write( "turns=" + replay.turns );
 				case "depth":      replay.depth = Integer.parseInt( value ); break;
 				case "turns":      replay.turns = Integer.parseInt( value ); break;
 				case "turn_limit": replay.turnLimitPerFloor = Integer.parseInt( value ); break;
-				case "steps":      declaredSteps = Integer.parseInt( value ); break;
+				case "steps":      replay.declaredSteps = Integer.parseInt( value ); break;
 				default: break;
 			}
-
-			index++;
-		}
-
-		for (int i = 0; i < declaredSteps; i++, index++ ){
-			if (index >= lines.size()){
-				throw new IOException( "Replay truncated after " + i + " of "
-						+ declaredSteps + " steps" );
-			}
-
-			String line = lines.get( index );
-			String[] parts = line.split( " " );
-			if (parts.length < 3){
-				throw new IOException( "Malformed replay step: " + line );
-			}
-
-			Replay.Step step = new Replay.Step();
-			step.action = parts[ 0 ];
-			step.slot = Integer.parseInt( parts[ 1 ] );
-			step.mode = parts[ 2 ];
-			if (parts.length > 3) step.heroPos = Integer.parseInt( parts[ 3 ] );
-			if (parts.length > 4) step.reward = Double.parseDouble( parts[ 4 ] );
-			replay.steps.add( step );
 		}
 
 		return replay;

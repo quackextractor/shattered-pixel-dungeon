@@ -109,6 +109,12 @@ cliTask('updatecost', 'Measures what a PPO update costs and projects it across s
 
 cliTask('gaecheck', 'Fails if the two advantage implementations disagree, or sampling misbehaves.')
 
+cliTask('replays', 'Lists recordings, grouped by hero class and ranked by score.')
+
+cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misresolves a name.')
+
+cliTask('collectcheck', 'Fails if a recording made by the collector will not replay exactly.')
+
 //Everything the trainer and its workers need on one classpath, so a worker can be launched
 //with a plain `java -cp` instead of forking gradle.
 tasks.register('workerJar', Jar) {

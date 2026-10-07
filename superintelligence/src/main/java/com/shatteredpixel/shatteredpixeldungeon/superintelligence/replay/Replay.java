@@ -46,6 +46,19 @@ public class Replay {
 	 */
 	public int turnLimitPerFloor = 1500;
 
+	/**
+	 * Step count the header declares.
+	 *
+	 * Kept separate from {@link #steps} because the two can disagree: a recording written by an
+	 * interrupted process, or one copied incompletely. {@code read} rejects that; {@code readHeader}
+	 * reports it through {@link #truncatedAt} instead, since a catalog should list a damaged file
+	 * rather than hide it.
+	 */
+	public int declaredSteps;
+
+	/** Steps actually present, or -1 when unknown. See {@link ReplayIO#readHeader}. */
+	public int truncatedAt = -1;
+
 	/** One entry per decision the agent made. */
 	public final java.util.ArrayList<Step> steps = new java.util.ArrayList<>();
 
@@ -100,5 +113,7 @@ public class Replay {
 		depth = 0;
 		turns = 0;
 		generation = 0;
+		declaredSteps = 0;
+		truncatedAt = -1;
 	}
 }
