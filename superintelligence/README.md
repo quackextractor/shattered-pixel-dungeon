@@ -9,19 +9,23 @@ seed recorded and re-verified.
 
 ## Read this first
 
-**Nothing has been trained yet.** But the network does run now, and its gradients are correct.
-`gradle :superintelligence:gradcheck` finite-difference checks the analytic gradients against
-central differences on 112 sampled parameters across all seven layers, and fails the build on a
-mismatch. It was worth adding: the backward pass had five independent defects that all produced
-plausible numbers rather than an exception, and an optimiser step that moved nothing.
+**Nothing has been trained, and nothing is saved even if it were.** The loop now learns — see below —
+but there is no checkpoint yet (`TODO.md` 1.3), so every run starts from a random initialisation and
+is discarded at the end. The agent has never left floor 1.
+
+The network does run, and its gradients are correct. `gradle :superintelligence:gradcheck`
+finite-difference checks the analytic gradients against central differences on 112 sampled parameters
+across all seven layers, and fails the build on a mismatch. It was worth adding: the backward pass
+had five independent defects that all produced plausible numbers rather than an exception, and an
+optimiser step that moved nothing.
 
 **The trainer now updates on real data.** Workers play their own episodes with the real policy,
 compute GAE over the whole episode, and ship a sample of the transitions; the trainer pools them
 across every worker and applies one update. `policy=` and `value=` are non-zero. That is the first
-moment anything here has learned anything, and it is early — the policy is still exploring, and
-`gradle :superintelligence:gaecheck` is what keeps the two advantage implementations honest.
-`gradle :superintelligence:updatecost` measures what an update costs, which turns out to matter far
-more than how fast the data moves.
+time the loop has learned anything at all — and it is not yet a trained agent: the runs so far were
+smoke tests of a few dozen generations each, and the barrier is currently ~6× the cost of collecting
+the data. `gradle :superintelligence:gaecheck` keeps the two advantage implementations honest, and
+`gradle :superintelligence:updatecost` measures what an update costs.
 
 **The environment is verified reproducible**: 6 rollouts of one seed across 6 separate JVMs give 1
 distinct score, for each of the five hero classes, and a recorded 499-step run re-executes 4/4.
@@ -56,6 +60,8 @@ something.
 | Diagnostics dashboard (colour-coded floors, graphs) | Console only |
 | Reward model, per-term ledger, curriculum fade | Partial - 6 terms never fire |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
+| Weight save / load, resume a run | **Missing** - blocks any training that has to be kept. See `TODO.md` 1.3 |
+| Trained anything yet | **No.** Never left floor 1; milestone is depth 5 (`research.md:40`) |
 | Parallel worker processes, seed schedule | Running; exercised to 8 workers x 25 generations |
 | Graphical trainer UI, desktop replay viewer | Not started |
 | Garbage collection / object pooling audit (research.md:60) | Not started |

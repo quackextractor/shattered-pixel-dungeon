@@ -152,6 +152,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A TODO entry for the thing that will block the first real training run: the weights are never
+  written to disk.** No `saveWeights`, no checkpoint, no `--resume`. Every run starts from `Network`'s
+  random initialisation and is discarded at the end, so no attempt so far has been extendable — a run
+  has to be babysit from start to finish on a machine whose pagefile is 2 GB and which thrashes rather
+  than degrades, `--generations` cannot be split across sittings, and no two training runs can be
+  compared because only one line of them can exist at a time. `Network.layers()` / `loadLayer` are
+  already the checkpoint format and already validate against the `EnvConfig` shape, so a stale
+  checkpoint fails loudly rather than loading into the wrong parameters, and `Worker.writeWeights` /
+  `readWeights` already serialise exactly that. It is plumbing, not design, and it is written down
+  before it is built because it is invisible until you try to keep a model.
 - **`gradle :superintelligence:gaecheck`** fails if the two advantage implementations disagree, or if
   sampling misbehaves. `Policy` computes GAE twice — once over an `ArrayList<Transition>` and once over
   an episode's scalar arrays — because a worker's backward pass must run where the whole episode is

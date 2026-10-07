@@ -81,9 +81,17 @@ assigned in creation order and therefore stable.
 ## 1. The critical gap: nothing has learned anything
 
 **Partly closed.** The network runs, its gradients are correct, and the PPO update now executes on
-real data collected by workers: `policy=` and `value=` are non-zero, and the weights move. The gap
-that remains is that nothing has been trained long enough to behave differently from random — which
-is a tuning problem, not a missing subsystem.
+real data collected by workers: `policy=` and `value=` are non-zero, and the weights move.
+
+**But nothing has been trained, in the sense that matters.** Every run so far was a smoke test of the
+plumbing — 2 to 25 generations of a few dozen episodes, discarded. Across all of them the agent never
+left floor 1, against a milestone of beating Goo on depth 5. The best score seen is ~44, which is
+almost entirely tile exploration rather than progress, and several runs ended in episodes of 2 to 14
+turns: the hero dying at once, which against a `deathPenalty` of 100 means a real share of the
+"experience" was learning only that the immediate neighbourhood is lethal.
+
+So the remaining gap is *not* a missing subsystem — it is a persistence and tuning one, and the
+ordering matters.
 
 `gradle :superintelligence:gradcheck` finite-difference checks the analytic gradients against
 central differences on 112 sampled parameters across all seven layers, and exits non-zero on a
@@ -97,9 +105,36 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | --- | --- | --- | --- |
 | 1.1 | ~~Call `PPO.collect()` in `Worker.runEpisode`~~ | done | Superseded. `EpisodeCollector` replaced the collection half of `PPO` entirely; see `PLAN-data-flow.md` step 2 and §5 below. |
 | 1.2 | ~~Run one generation end to end and check the losses are sane~~ | done | `policy` and `value` are non-zero, and advantages arrive with a real spread. Reported per generation. |
-| 1.3 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
-| 1.4 | Train long enough to see the score move | L | The actual milestone from `research.md:40`. Needs 1.3's gate to open first. |
-| 1.5 | Parallelise the update across minibatches | M | **Measured as required, not optional.** 11.3 ms/sample single-threaded is ~107 s of trainer CPU per generation against ~7 s of collection. `PLAN-data-flow.md` step 4. |
+| 1.3 | **Save and load the trained weights** | S | **Blocks everything in 1.4. Do this before the parallel update.** See below. |
+| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from `research.md:40`. Needs 1.3 first, and 1.5 to be tolerable. |
+| 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
+| 1.6 | Parallelise the update across minibatches | M | **Measured as required, not optional.** 11.3 ms/sample single-threaded is ~107 s of trainer CPU per generation against ~7 s of collection. `PLAN-data-flow.md` step 4. |
+
+**Weights are never written to disk, so no run so far has been extendable.** There is no
+`saveWeights`, no checkpoint, no `--resume`. Every run starts from `Network`'s random initialisation
+and is discarded when it exits; `Trainer` writes best-per-seed *replays* and nothing else. Nothing in
+the ten runs performed so far produced a model that could be picked up again.
+
+That is invisible until you try to keep one, and it constrains everything after it:
+
+- A run has to be babysit from start to finish. A machine with a 2 GB pagefile, where overshoot
+  thrashes rather than degrades, is a poor place to leave a multi-hour job unattended.
+- `--generations` cannot be split. There is no way to run 50 generations, stop, inspect the weights,
+  and continue.
+- **Nothing that trains can be compared to anything else.** "Generation 200 scored better than
+  generation 100" currently has to be believed rather than checked, because only one line of training
+  can exist at a time.
+- A crash costs the whole run, not the run since the last checkpoint.
+
+`Network.layers()` / `loadLayer` are already the checkpoint format — they are validated against the
+`EnvConfig` shape and fail loudly on a mismatch, so a checkpoint written by an older build is refused
+rather than loaded into the wrong parameters. `Worker.writeWeights` / `readWeights` already serialise
+exactly that. So this is plumbing, not design: write `Network.layers()` to a file on the trainer side,
+add a `--resume <file>` that loads it before the first worker launch, and write on exit as well as on
+a signal or every N generations.
+
+Small enough to be done before the parallel update, and worth doing first — it makes 1.4 a task rather
+than an act of faith.
 
 **`PPO.collect()` is gone, and so is the cap it implemented.** `rolloutCap` (default 2048) bounded
 collection at ~98 MB because a step is ~49 KB and `turnLimitTotal` is 40000 - uncapped, one long
@@ -111,7 +146,7 @@ and never needs an unsampled step's observation.
 
 **Worker-to-trainer data flow is resolved.** Chosen and built: the worker computes GAE and ships a
 sample of the transitions; the trainer pools them and updates once. Reasoning, measurements and the
-three bugs it surfaced are in `PLAN-data-flow.md`. Two consequences worth keeping in view:
+three bugs it surfaced are in `PLAN-data-flow.md`. Three consequences worth keeping in view:
 
 - **The update, not the transport, is the bottleneck.** `gradle :superintelligence:updatecost`
   measures 11.3 ms per sample, which at a 5% sample rate and 4 epochs is ~107 s of trainer CPU per
@@ -121,6 +156,10 @@ three bugs it surfaced are in `PLAN-data-flow.md`. Two consequences worth keepin
   episodes, not ~150, so a 20-step tail is most of the episode and a requested 5% arrives as near
   100%. Expected to correct as the policy learns to survive; the sampled count in the report is the
   honest figure until then.
+- **The update has been running at ~6× the cost of collecting the data**, visible as `barrier 606%`
+  in a real run. Before this work the barrier was 12-26% of wall; now the trainer's single thread is
+  the critical path and the other 19 logical cores idle through it. This is what makes 1.6 necessary
+  rather than merely desirable.
 
 **Headless coverage was the next likely source of crashes, and it was.** Running the real policy
 surfaced three that the scripted one never touched: blobs had no emitter (15 blob types NPE in
@@ -149,7 +188,8 @@ score and turn count on the same seed. `GamesInProgress.selectedClass` is applie
 depth rather than anything class-specific. Not confirmed either way.
 
 research.md:40 sets the first real milestone: *"Train the AI on a single seed until it can
-consistently beat the first boss (Goo)."* Nothing has been trained, so nothing has been beaten.
+consistently beat the first boss (Goo)."* The agent has never left floor 1, and because weights are
+never persisted (1.3) no attempt has been resumable either. Nothing has been beaten.
 
 **Seed text is capped at 20 characters.** `GameSettings.getString(key, def, maxLength)` discards
 an over-long stored value and `SPDSettings.customSeed()` reads with a 20 character cap, so a

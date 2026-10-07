@@ -293,21 +293,27 @@ is **not** the `PlatformSupport.getFont` "No cap character found" drift recorded
 `PLAN-replay-viewer.md` §12 — that is the rendered viewer's path and remains open. This is a separate,
 headless-only null return that was silently fatal.
 
-### Step 3 — Ship sampled transitions to the trainer
+### Step 3 — Ship sampled transitions to the trainer — **done, mostly**
 
-- New message `MSG_TRANSITIONS`, ~48.5 KB per sampled step.
-- Replay transfer moves to a separate, rarer message. Today `wantReplay` rides along on the episode
-  frame; at 320 episodes/generation that is a second, larger pipe cost hiding inside the same
-  channel.
-- The 20 dispatch threads decode into their own lists and the merge happens on the trainer thread, so
-  no shared learner state is touched concurrently.
-- The trainer decodes into fresh `Transition`s and never the pool. See step 5's note on why.
-- `Trainer.report` prints sampled-step count per generation. If that drifts far from the predicted
-  ~2,400, the sample rate is not doing what we think.
+Landed with step 2 rather than after it: the worker had to send the transitions for the trainer's
+update to have anything to run on, so the two could not be separated without an intermediate state
+where transitions existed and were thrown away.
 
-Gate: pooled update runs on real data for the first time. `policy` and `value` losses become non-zero,
-the weights change across the update, and post-normalisation advantages have mean ≈ 0. **This is the
-first moment anything in the project has learned anything.**
+As specified, except:
+
+- **The replay still rides the episode frame** rather than its own message. It is one replay every
+  third episode, a small share of a generation's traffic, and splitting it is worth doing only once
+  there is a measurement saying so. `Protocol.MSG_REPLAY` is reserved and numbered for it.
+- **`--sample-rate`, `--max-samples-per-episode` and `--max-samples-per-generation` exist** and are
+  documented in `TODO.md` §1. The last is a memory valve rather than a design choice: 320 episodes
+  wide, on a machine whose pagefile is 2 GB.
+
+Gate, met: `policy` and `value` are non-zero, advantages arrive with a real spread, and the report
+shows the sampled count, its byte cost, and the advantage statistics **before** normalisation.
+
+**What this did not deliver: a model.** See `TODO.md` §1.3. Nothing writes weights to disk, so all
+three steps above produce a loop that learns and a process that then forgets, and the update runs at
+~6× the cost of collecting the data it learns from.
 
 ### Step 4 — Parallel minibatch update — **required, not conditional**
 
