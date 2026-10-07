@@ -51,7 +51,7 @@ public class GaeCheck {
 	 * A hardcoded count in one message and not the other is how a check suite ends up claiming to have
 	 * run more than it did.
 	 */
-	private static final int CHECKS = 11;
+	private static final int CHECKS = 12;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -59,6 +59,7 @@ public class GaeCheck {
 		checkScalarMatchesTransitionList();
 		checkTerminalZerosTheTail();
 		checkTruncatedBootstraps();
+		checkTerminalAndTruncatedDifferOnlyAtTheEnd();
 		checkNoDiscountAcrossTerminal();
 		checkSamplingIsUniformAndSeeded();
 		checkTailIsAlwaysRetained();
@@ -197,6 +198,64 @@ public class GaeCheck {
 		if (Math.abs( withBootstrap[ n - 1 ] - expected ) > 1e-4f){
 			fail( "bootstrap is " + withBootstrap[ n - 1 ] + ", expected reward + gamma*V(s_T) = "
 					+ expected );
+		}
+	}
+
+	/**
+	 * The same last step, bootstrapping or not, depending on why the episode ended.
+	 *
+	 * <p>The arithmetic above tests that a truncation bootstraps. This tests that <em>the reason decides
+	 * it</em> — the distinction a stall depends on entirely.
+	 *
+	 * <p>A `STALLED` episode used to be both penalised and bootstrapped: {@code terminate} marked it
+	 * truncated while also charging a -5.0 terminal reward, and 100% of a 20-generation run's episodes
+	 * ended that way. The critic could not settle on a value for it: one signal said the episode was
+	 * over, the other said it carried on. {@code rewardcheck} covers the reward half; this covers the
+	 * advantage half, because a stalled episode's advantages must be indistinguishable from a truncated
+	 * one's — the difference between the two is only whether the environment had a real outcome, and a
+	 * stall does not.
+	 */
+	private static void checkTerminalAndTruncatedDifferOnlyAtTheEnd(){
+		int n = 6;
+		float[] rewards = new float[ n ];
+		float[] values = new float[ n ];
+		float[] terminalFlags = new float[ n ];
+		float[] asStall = new float[ n ];
+		float[] asDeath = new float[ n ];
+		float[] scratch = new float[ n ];
+
+		//a dying blow at the last step, so the two cases have the same reward and only the reason differs
+		rewards[ n - 1 ] = -100f;
+
+		//STALLED: truncated, so the final value estimate carries in
+		Policy.computeEpisodeAdvantages( rewards, values, terminalFlags, n, 10f, GAMMA, LAMBDA,
+				asStall, scratch );
+
+		//DEATH: terminal, so it does not
+		float[] died = terminalFlags.clone();
+		died[ n - 1 ] = 1f;
+		Policy.computeEpisodeAdvantages( rewards, values, died, n, 10f, GAMMA, LAMBDA,
+				asDeath, scratch );
+
+		float boot = rewards[ n - 1 ] + GAMMA * 10f;
+		if (Math.abs( asStall[ n - 1 ] - boot ) > 1e-4f ){
+			fail( "a truncated final step gave advantage " + asStall[ n - 1 ] + ", expected reward +"
+					+ " gamma*V(s_T) = " + boot + ". A stalled episode is a truncation, and this is"
+					+ " where that has to show up." );
+			return;
+		}
+
+		float diedDelta = rewards[ n - 1 ] - values[ n - 1 ];
+		if (Math.abs( asDeath[ n - 1 ] - diedDelta ) > 1e-4f ){
+			fail( "a terminal final step gave advantage " + asDeath[ n - 1 ] + ", expected reward -"
+					+ " value = " + diedDelta + ". A death must not bootstrap." );
+			return;
+		}
+
+		if (Math.abs( asStall[ n - 1 ] - asDeath[ n - 1 ] ) < 1e-4f ){
+			fail( "a truncated and a terminal final step produced the same advantage ("
+					+ asStall[ n - 1 ] + "). The reason an episode ended has to decide whether the value"
+					+ " bootstraps, or a stall is indistinguishable from a death." );
 		}
 	}
 
