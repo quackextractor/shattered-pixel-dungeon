@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The trend chart reported a range it never observed, and a depth-2 episode was reported that never
+  happened.** `Graph.bar` widened the scale by 1 whenever min equalled max, purely so the division
+  inside the loop was defined - and then printed that widened span as the axis range. A run whose
+  `bestDepth` was `1` in every generation printed `depth 1.0..2.0`, which reads as "reached depth 2".
+  It was believed: the claim reached `README.md`, `PLAN-reward-signals.md` and the changelog. Every
+  underlying measurement said otherwise - all 147 replay files and every generation of every metrics
+  CSV recorded depth 1 - and because nothing disagreed with the chart, nothing caught it.
+  The rendering span is now internal and the label reports only observed bounds; a flat series labels
+  itself `1.0 (flat)` rather than printing a range that suggests it moved. A flat series also renders
+  mid-ramp instead of blank, so "never moved" no longer looks like "never measured".
+  New `graphcheck` gate, 4 cases, mutation-verified: restoring the original widening fails all 4, with
+  the exact `1.0..2.0` string as the first failure.
+
 - **A reset was not isolated from the previous episode, so a second recording in one process was
   unreproducible.** `GameScene.pendingCellListener` is static and belongs to the process, not to a run.
   `SPDEnv.step` cleared it on entry, so it was tidy between steps; `reset` did not, so an item left

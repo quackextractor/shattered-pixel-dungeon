@@ -1,5 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
+import java.util.Locale;
+
 /**
  * ASCII bar and sparkline rendering for the trainer dashboard.
  *
@@ -10,6 +12,10 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
  * a font with box-drawing glyphs. Each series is normalised over its own range, with the axis
  * range printed alongside, because an auto-scaled chart that does not say what it scaled to is
  * how people end up misreading a flat learning curve as an improvement.
+ *
+ * <p><b>The axis label is the contract.</b> It reports what was observed, never the span used to
+ * make the arithmetic work. That distinction is not pedantry: an invented span here is how a run
+ * that never left depth 1 was reported as having reached depth 2.
  */
 public class Graph {
 
@@ -20,6 +26,13 @@ public class Graph {
 
 	/**
 	 * Renders a series as a single row of bars.
+	 *
+	 * <p><b>A flat series is labelled flat, and never given an invented range.</b> This used to widen
+	 * the scale by 1 whenever min equalled max, purely so the division below was defined - and then
+	 * printed that widened range as if it had been observed. So a run whose best depth stayed at 1.0
+	 * in every generation printed {@code depth 1.0..2.0}, which reads as "reached 2" and is exactly
+	 * how a depth-2 episode was reported here that never happened. A scale invented to make arithmetic
+	 * work must never reach the label, because the label is the part a reader trusts.
 	 *
 	 * @param values the series, oldest first
 	 * @param width  how many columns to use; values are bucketed to fit
@@ -36,10 +49,14 @@ public class Graph {
 			if (v < min) min = v;
 			if (v > max) max = v;
 		}
-		if (max - min < 1e-6f) max = min + 1f;
 
+		//true observed bounds, whatever is used for rendering. The order matters and is the whole fix:
+		//compute flat from the data, record the data, and never let a span used for rendering reach
+		//the reported bounds. The original widened first and recorded afterwards, which is how
+		//1.0..2.0 came out of a series that was 1.0 throughout.
 		row.min = min;
 		row.max = max;
+		row.flat = (max - min) < 1e-6f;
 		row.text = new StringBuilder( width ).toString();
 
 		StringBuilder sb = new StringBuilder( width );
@@ -55,13 +72,26 @@ public class Graph {
 			for (int j = from; j < to; j++){ sum += values[ j ]; count++; }
 			float avg = count > 0 ? sum / count : min;
 
-			float t = (avg - min) / (max - min);
-			int step = Math.min( RAMP.length - 1, Math.max( 0, Math.round( t * (RAMP.length - 1) ) ));
-			sb.append( RAMP[ step ] );
+			sb.append( RAMP[ step( row, avg, min, max ) ] );
 		}
 
 		row.text = sb.toString();
 		return row;
+	}
+
+	/**
+	 * Which rung of the ramp one value sits on.
+	 *
+	 * <p>A flat series renders mid-ramp rather than blank. With a zero span the old arithmetic put
+	 * every bar on the darkest rung, which is the same glyph a row with no data draws - so "nothing
+	 * happened" and "this never moved" looked alike. They are different facts and the reader is here
+	 * to tell them apart.
+	 */
+	private static int step( Row row, float value, float min, float max ){
+		if (row.flat) return RAMP.length / 2;
+
+		float t = (value - min) / (max - min);
+		return Math.min( RAMP.length - 1, Math.max( 0, Math.round( t * (RAMP.length - 1) ) ));
 	}
 
 	/**
@@ -79,17 +109,15 @@ public class Graph {
 			if (v < min) min = v;
 			if (v > max) max = v;
 		}
-		if (max - min < 1e-6f) max = min + 1f;
 
+		//as in bar(): observed bounds only, and no invented span. See bar() for why.
 		row.min = min;
 		row.max = max;
-
+		row.flat = (max - min) < 1e-6f;
 		StringBuilder sb = new StringBuilder( width );
 		for (int i = 0; i < width; i++){
 			int index = (int) ((long) i * (values.length - 1) / Math.max( 1, width - 1 ));
-			float t = (values[ index ] - min) / (max - min);
-			int step = Math.min( RAMP.length - 1, Math.max( 0, Math.round( t * (RAMP.length - 1) ) ));
-			sb.append( RAMP[ step ] );
+			sb.append( RAMP[ step( row, values[ index ], min, max ) ] );
 		}
 
 		row.text = sb.toString();
@@ -101,9 +129,19 @@ public class Graph {
 		public float min;
 		public float max;
 
-		/** Axis label, ie. the range this row was scaled against. */
+		/** True when every value was the same, so {@link #min} and {@link #max} are the real bounds. */
+		public boolean flat;
+
+		/**
+		 * Axis label, ie. the range this row was scaled against.
+		 *
+		 * <p>A flat row prints one number and the word {@code flat}. Printing {@code min..max} for it
+		 * would be correct, but {@code 1.0} alone reads as a truncation of a longer range, so the
+		 * explicit word is what stops the next reader - or the next agent - reading a ceiling into it.
+		 */
 		public String axis(){
-			return String.format( "%.1f..%.1f", min, max );
+			if (flat) return String.format( Locale.ROOT, "%.1f (flat)", min );
+			return String.format( Locale.ROOT, "%.1f..%.1f", min, max );
 		}
 	}
 }
