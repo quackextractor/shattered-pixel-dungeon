@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A reset was not isolated from the previous episode, so a second recording in one process was
+  unreproducible.** `GameScene.pendingCellListener` is static and belongs to the process, not to a run.
+  `SPDEnv.step` cleared it on entry, so it was tidy between steps; `reset` did not, so an item left
+  mid-aim by the previous episode was still armed when the new episode's first `settle()` checked it.
+  `settle` checks the listener *before* running any turn, so the episode opened in `TARGETING` and the
+  agent's first action was read as picking a target instead of being applied. The hero never moved, and
+  the recording diverged at step 0.
+  Measured: **4 of 10 recorded runs diverged when verified in sequence**, while every one of them
+  verified clean on its own; one file passed first and diverged when reached second. That is the replay
+  viewer's complaint exactly - it plays files in order, so everything after the first was unreliable.
+  Invisible to every existing check, because all of them verify one recording in one process, and a
+  single episode has nothing to leak from. `restartcheck` came closest and compared the level but not
+  the mode, which is all this touched.
+  `reset` now clears it. New `resetcheck` gate, 3 cases, mutation-verified: disabling the fix fails 2
+  of the 3.
+
+  Note for anyone reading the check: the assertion is on the *mode*, not on the listener being null.
+  `Hero.ready()` calls `GameScene.ready()` -> `selectCell(defaultCellListener)`, so the listener is
+  armed again on every turn where the hero awaits input. That is the normal state, not leakage.
+
 - **Every death blew the stack, so `DEATH` was unreachable.** `HeadlessSprite.die` called
   `ch.die( ch )` to invoke the death callback immediately, standing in for an animation that does not
   exist headless. That callback re-enters `Hero.die` -> `Char.die` -> `sprite.die` -> the callback, and

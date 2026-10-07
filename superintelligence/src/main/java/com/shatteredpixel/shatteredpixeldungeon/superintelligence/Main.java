@@ -10,6 +10,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ModeCover
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ParallelCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayCatalogCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResetCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
@@ -60,6 +61,7 @@ public class Main {
 		case "gradcheck": gradcheck( rest ); break;
 		case "modecheck": ModeCoverageCheck.main( rest ); break;
 		case "restartcheck": RestartCheck.main( rest ); break;
+		case "resetcheck": ResetCheck.main( rest ); break;
 		case "updatecost": UpdateCostCheck.main( rest ); break;
 		case "replayprobe": ReplayProbe.main( rest ); break;
 		case "gaecheck": GaeCheck.main( rest ); break;

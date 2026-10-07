@@ -116,6 +116,21 @@ public class SPDEnv {
 		//survive into a WORLD step anyway: settle() switches to MENU whenever a dialog is open.
 		GameScene.clearHeadlessWindow();
 		SlotAction.clearPendingUseItem();
+
+		//The pending cell listener is static and belongs to the *process*, not to a run, so the last
+		//step of the previous episode left it armed. step() clears it on entry, but reset() did not, so
+		//the settle() below found it, reported TARGETING, and every action of the new episode was read
+		//as picking a target instead of being applied. The hero never moved, so the very first
+		//recorded position mismatched and the whole replay was reported as diverged at step 0.
+		//
+		//This is invisible on a single run - one process, one episode, nothing to leak from - which is
+		//why every per-process check passed. It only shows up when two episodes share a process, which
+		//is exactly what the replay viewer does and what the trainer's workers do across episodes.
+		//Measured: 4 of 10 recorded runs diverged when verified in sequence, and the same file verified
+		//cleanly on its own and again after being first in the list.
+		//
+		//Deleting this line makes resetcheck fail 2 of its 3 cases.
+		GameScene.clearPendingCellListener();
 		turnsThisFloor = 0;
 		turnsTotal = 0;
 		lastDepth = 1;
