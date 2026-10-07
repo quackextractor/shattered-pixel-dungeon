@@ -1,11 +1,13 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * The PPO learner: holds a buffer of transitions with advantages already computed, and updates from
@@ -47,6 +49,68 @@ public class PPO {
 
 	public int minibatchSize = 32;
 	public int epochs = 4;
+
+	/**
+	 * Threads for the update. Zero or one selects the serial path exactly.
+	 *
+	 * <p>One means the untouched original, not a one-threaded pool: the parameter copies and the
+	 * gradient reduction would both be pure overhead, and the serial path is the reference the parallel
+	 * one is checked against, so it has to stay exactly what it was.
+	 */
+	public int threads = 0;
+
+	/** Threads the update will use, after capping against the machine. */
+	private int threadCount = 1;
+
+	private final List< Worker > workers = new ArrayList<>();
+
+	/**
+	 * Fixed pool, created on first use.
+	 *
+	 * <p>Fixed because every minibatch is a barrier: all threads' gradients must be reduced before one
+	 * Adam step can run, so {@code threadCount} threads is exactly enough. One thread per minibatch
+	 * would be 150 per update at 2 epochs over 2,400 samples, spending more time creating threads than
+	 * using them.
+	 */
+	private java.util.concurrent.ExecutorService pool;
+
+	private void ensurePool(){
+		if (threads <= 1){
+			threadCount = 1;
+			if (pool != null){
+				pool.shutdown();
+				pool = null;
+			}
+			return;
+		}
+
+		int available = Runtime.getRuntime().availableProcessors();
+		threadCount = Math.max( 1, Math.min( threads, available ) );
+
+		if (pool == null){
+			pool = java.util.concurrent.Executors.newFixedThreadPool( threadCount, r -> {
+				//daemon, so a pool left open cannot hold the JVM up after a run
+				Thread t = new Thread( r, "ppo-update" );
+				t.setDaemon( true );
+				return t;
+			} );
+		}
+	}
+
+	/** Threads the update will use, after capping. */
+	public int threadCount(){
+		ensurePool();
+		return threadCount;
+	}
+
+	/** Shuts the update pool down and releases the per-thread networks. Safe when there was none. */
+	public void close(){
+		if (pool != null){
+			pool.shutdown();
+			pool = null;
+		}
+		workers.clear();
+	}
 
 	/**
 	 * Transitions between updates, with their advantages already computed.
@@ -180,6 +244,10 @@ public float lastClipFraction;
 	public void update(){
 		if (buffer.isEmpty()) return;
 
+		//resolves the thread count and creates the pool, which parallelMinibatch assumes exists. Here
+		//rather than in the constructor so that setting `threads` after construction is enough.
+		ensurePool();
+
 		network.zeroGrad();
 
 		lastPolicyLoss = 0;
@@ -204,7 +272,13 @@ public float lastClipFraction;
 
 			for (int start = 0; start < n; start += minibatchSize){
 				int end = Math.min( n, start + minibatchSize );
-				processMinibatch( start, end );
+
+				if (threads > 1){
+					parallelMinibatch( start, end );
+				} else {
+					processMinibatch( start, end );
+				}
+
 				network.step( 1f );
 				lastMinibatches++;
 			}
@@ -308,6 +382,91 @@ public float lastClipFraction;
 		net.forward( grid, t.inventory, t.hero );
 	}
 
+	/**
+	 * One sample's forward, backward and diagnostics, on whichever network is passed in.
+	 *
+	 * <p>Factored out of {@link #processMinibatch} so the parallel path runs <em>this</em> method on a
+	 * per-thread network rather than a copy of the loop. The alternative — duplicating the body and
+	 * letting the two drift — is how a serial and a parallel implementation end up computing different
+	 * objectives while both look correct.
+	 *
+	 * <p>The per-thread network holds a copy of the parameters, so nothing here can observe or corrupt
+	 * another's writes. Its gradients accumulate locally and are reduced afterwards.
+	 */
+	private Stats oneSample( Network net, Transition t, float[] grid,
+			float[] slotProbs, float[] targetProbs, float[] actionProbs,
+			float[] slotGrad, float[] targetGrad, float[] actionGrad ){
+
+		Stats s = new Stats();
+
+		//restore the state this step was decided under, before the forward reads it. See replay().
+		if (t.recurrentState != null) net.loadState( t.recurrentState );
+
+		t.unpackGrid( grid );
+		net.forward( grid, t.inventory, t.hero );
+
+		float[] probabilities;
+		float[] mask;
+		float[] logits;
+		float[] gradient;
+		int chosen;
+
+		switch (t.liveHead) {
+			case Policy.HEAD_SLOT:
+				logits = net.slotLogits();
+				mask = t.slotMask;
+				chosen = t.slotIndex;
+				probabilities = slotProbs;
+				gradient = slotGrad;
+				break;
+			case Policy.HEAD_TARGET:
+				logits = net.targetLogits();
+				mask = t.targetMask;
+				chosen = t.slotIndex;
+				probabilities = targetProbs;
+				gradient = targetGrad;
+				break;
+			default:
+				logits = net.actionLogits();
+				mask = t.actionMask;
+				chosen = t.actionIndex;
+				probabilities = actionProbs;
+				gradient = actionGrad;
+				break;
+		}
+
+		java.util.Arrays.fill( gradient, 0f );
+
+		Policy.probabilities( logits, mask, probabilities );
+		//whether the surrogate's clip bound this sample, which is PPO's clip fraction. Counting
+		//|advantage| instead - which is what this did - measures nothing: after normalisation
+		//advantages have unit variance, so that count is a constant near P(|N(0,1)| > 0.2).
+		s.clipBinding = Policy.accumulatePolicyGradient( probabilities, mask, chosen,
+				t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
+
+		float dValue = Policy.valueGradient( net.value(), t.returnValue );
+
+		net.backward( t.liveHead == Policy.HEAD_ACTION ? gradient : null,
+				t.liveHead == Policy.HEAD_SLOT ? gradient : null,
+				t.liveHead == Policy.HEAD_TARGET ? gradient : null,
+				dValue, null );
+
+		s.policyLoss = -t.advantage;
+		s.valueLoss = Policy.valueLoss( net.value(), t.returnValue );
+		s.entropy = Policy.entropy( probabilities );
+		s.kl = approximateKL( t, t.oldLogProbability, mask, probabilities );
+		return s;
+	}
+
+	/** One sample's contribution to the reported figures. */
+	private static class Stats {
+		float policyLoss;
+		float valueLoss;
+		float entropy;
+		float kl;
+		boolean clipBinding;
+	}
+
 	private void processMinibatch( int from, int to ){
 		float policyLoss = 0;
 		float valueLoss = 0;
@@ -319,63 +478,14 @@ public float lastClipFraction;
 
 		for (int i = from; i < to; i++){
 			Transition t = buffer.get( i );
+			Stats s = oneSample( network, t, scratchGrid, slotProbs, targetProbs, actionProbs,
+					scratchGradSlot, scratchGradTarget, scratchGradAction );
 
-			replay( t );
-
-			t.unpackGrid( scratchGrid );
-			network.forward( scratchGrid, t.inventory, t.hero );
-
-			float[] probabilities;
-			float[] mask;
-			float[] logits;
-			float[] gradient;
-			int chosen;
-
-			switch (t.liveHead) {
-				case Policy.HEAD_SLOT:
-					logits = network.slotLogits();
-					mask = t.slotMask;
-					chosen = t.slotIndex;
-					probabilities = slotProbs;
-					gradient = scratchGradSlot;
-					break;
-				case Policy.HEAD_TARGET:
-					logits = network.targetLogits();
-					mask = t.targetMask;
-					chosen = t.slotIndex;
-					probabilities = targetProbs;
-					gradient = scratchGradTarget;
-					break;
-				default:
-					logits = network.actionLogits();
-					mask = t.actionMask;
-					chosen = t.actionIndex;
-					probabilities = actionProbs;
-					gradient = scratchGradAction;
-					break;
-			}
-
-			java.util.Arrays.fill( gradient, 0f );
-
-			Policy.probabilities( logits, mask, probabilities );
-			//whether the surrogate's clip bound this sample, which is PPO's clip fraction. Counting
-			//|advantage| instead - which is what this did - measures nothing: after normalisation
-			//advantages have unit variance, so that count is a constant near P(|N(0,1)| > 0.2).
-			boolean clipBinding = Policy.accumulatePolicyGradient( probabilities, mask, chosen,
-					t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
-
-			float dValue = Policy.valueGradient( network.value(), t.returnValue );
-
-			network.backward( t.liveHead == Policy.HEAD_ACTION ? gradient : null,
-					t.liveHead == Policy.HEAD_SLOT ? gradient : null,
-					t.liveHead == Policy.HEAD_TARGET ? gradient : null,
-					dValue, null );
-
-			policyLoss -= t.advantage;
-			valueLoss += Policy.valueLoss( network.value(), t.returnValue );
-			entropy += Policy.entropy( probabilities );
-			kl += approximateKL( t, oldLogProbabilityFor( t, probabilities ), mask, probabilities );
-			if (clipBinding) clipped++;
+			policyLoss += s.policyLoss;
+			valueLoss += s.valueLoss;
+			entropy += s.entropy;
+			kl += s.kl;
+			clipped += s.clipBinding ? 1 : 0;
 		}
 
 		int count = Math.max( 1, to - from );
@@ -394,6 +504,161 @@ public float lastClipFraction;
 		lastGradNorm += norm;
 		if (norm > network.gradClip) lastGradClipped++;
 	}
+
+	/**
+	 * Processes one minibatch across {@link #threads} threads and reduces their gradients.
+	 *
+	 * <p><b>This is only correct because each sample restores its own recurrent state.</b> Before that
+	 * fix, sample <i>i</i>'s forward depended on sample <i>i-1</i>'s leftover {@code h}/{@code c}, so
+	 * the samples were coupled and no split across threads could reproduce the serial result. That was
+	 * the real reason the parallel update was "not actionable" — not a threading problem.
+	 *
+	 * <p><b>Why a pool rather than threads per minibatch.</b> There are {@code n / minibatchSize}
+	 * minibatches per epoch and each is a barrier — nothing can proceed until every thread's gradients
+	 * are reduced and one Adam step has run. Handing minibatches to a fixed pool avoids creating
+	 * {@code epochs * n / minibatchSize} threads, which at 2 epochs over 2,400 samples is 150 threads
+	 * per update.
+	 *
+	 * <p><b>Why per-thread networks rather than shared tensors.</b> A thread's network is a copy of the
+	 * parameters, so no thread can observe another's writes even if the reduction is wrong. The cost is
+	 * one 14.3 MB copy per minibatch, about 2 ms against 32 samples of forward and backward at
+	 * 11.3 ms each — 0.5%. Sharing the tensors would save that and reintroduce exactly the aliasing this
+	 * avoids.
+	 */
+	private void parallelMinibatch( int from, int to ){
+		int count = to - from;
+
+		//one shard per thread, contiguous, so each thread's range is a slice and not a stride
+		int shards = Math.min( threads, count );
+		if (shards <= 1){
+			processMinibatch( from, to );
+			return;
+		}
+
+		final float[] policy = new float[ shards ];
+		final float[] value = new float[ shards ];
+		final float[] entropy = new float[ shards ];
+		final float[] kl = new float[ shards ];
+		final int[] clipped = new int[ shards ];
+
+		network.zeroGrad();
+
+		//The workers are created here, on this thread, before anything is dispatched. Creating them
+		//inside the tasks would race on the shared list — two threads both seeing size 1 and both
+		//appending at index 1, which is precisely the class of bug parallelcheck exists to catch, and
+		//would have been caught by it.
+		while (workers.size() < shards) workers.add( new Worker( new Network( config, new Random( 0L ) ) ) );
+
+		CountDownLatch ready = new CountDownLatch( shards );
+		for (int s = 0; s < shards; s++){
+			final int shard = s;
+			final int lo = from + (int) ((long) s * count / shards );
+			final int hi = from + (int) ((long) ( s + 1 ) * count / shards );
+
+			pool.execute( () -> {
+				Worker w = workers.get( shard );
+				w.network.copyParametersFrom( network );
+				w.network.clearGradients();
+
+				float p = 0, v = 0, e = 0, k = 0;
+				int c = 0;
+				for (int i = lo; i < hi; i++){
+					Stats s2 = oneSample( w.network, buffer.get( i ), w.grid,
+							w.slotProbs, w.targetProbs, w.actionProbs,
+							w.slotGrad, w.targetGrad, w.actionGrad );
+					p += s2.policyLoss;
+					v += s2.valueLoss;
+					e += s2.entropy;
+					k += s2.kl;
+					if (s2.clipBinding) c++;
+				}
+
+				policy[ shard ] = p;
+				value[ shard ] = v;
+				entropy[ shard ] = e;
+				kl[ shard ] = k;
+				clipped[ shard ] = c;
+				ready.countDown();
+			} );
+		}
+
+		//wait for every shard's arithmetic. The reduction below is the barrier's other half: it reads
+		//gradients the workers are still writing, so the join cannot be skipped.
+		await( ready );
+
+		for (int s = 0; s < shards; s++){
+			Worker w = workers.get( s );
+			w.network.addGradientsTo( network );
+			lastShardPolicy += policy[ s ];
+			lastShardValue += value[ s ];
+			lastShardEntropy += entropy[ s ];
+			lastShardKl += kl[ s ];
+			lastShardClipped += clipped[ s ];
+		}
+
+		//same place the serial path scales, so the two produce the same number rather than a
+		//similar-looking one
+		network.scaleGradients( 1f / count );
+		float norm = network.clipGradients( network.gradClip );
+		lastGradNorm += norm;
+		if (norm > network.gradClip) lastGradClipped++;
+
+		lastPolicyLoss += lastShardPolicy / count;
+		lastValueLoss += lastShardValue / count;
+		lastEntropy += lastShardEntropy / count;
+		lastKLDivergence += lastShardKl / count;
+		lastClipFraction += lastShardClipped / (float) count;
+
+		lastShardPolicy = 0;
+		lastShardValue = 0;
+		lastShardEntropy = 0;
+		lastShardKl = 0;
+		lastShardClipped = 0;
+	}
+
+	/** Per-epoch scratch a parallel shard owns. See {@link #parallelMinibatch}. */
+	private static class Worker {
+		final Network network;
+		final float[] grid;
+		final float[] slotProbs;
+		final float[] targetProbs;
+		final float[] actionProbs;
+		final float[] slotGrad;
+		final float[] targetGrad;
+		final float[] actionGrad;
+
+		Worker( Network network ){
+			this.network = network;
+			this.grid = new float[ network.gridLength() ];
+			this.slotProbs = new float[ network.slotCount() ];
+			this.targetProbs = new float[ network.targetCount() ];
+			this.actionProbs = new float[ network.actionCount() ];
+			this.slotGrad = new float[ network.slotCount() ];
+			this.targetGrad = new float[ network.targetCount() ];
+			this.actionGrad = new float[ network.actionCount() ];
+		}
+	}
+
+	private Worker workerFor( int shard ){
+		while (workers.size() <= shard){
+			workers.add( new Worker( new Network( config, new Random( 0L ) ) ) );
+		}
+		return workers.get( shard );
+	}
+
+	private static void await( CountDownLatch latch ){
+		try {
+			latch.await();
+		} catch (InterruptedException e){
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException( "interrupted while waiting for update shards", e );
+		}
+	}
+
+	//reused by parallelMinibatch between the workers' writes and the reduction, so the reported
+	//figures come from the same arithmetic rather than from a second pass
+	private float lastShardPolicy, lastShardValue, lastShardEntropy, lastShardKl;
+	private int lastShardClipped;
 
 	/** KL between the behaviour distribution and the current one, recomputed from the ratio. */
 	private float approximateKL( Transition t, float behaviourLogProbability, float[] mask, float[] probabilities ){

@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Parallel minibatch update** (`--update-threads N`, default 1). Each minibatch is split across N
+  threads, each with its own forward/backward scratch and gradient accumulators, reduced into the
+  master before the Adam step. A thread's network is a *copy* of the parameters rather than a view onto
+  them, so no thread can observe another's writes even if the reduction is wrong.
+  Measured, 8 workers × 3 generations: **8.98 → 5.09 → 2.73 → 2.59 ms/sample at 1, 2, 4 and 8
+  threads** (1.00×, 1.76×, 3.29×, 3.47×). The plan predicted ~5× at 8; the shortfall is the gradient
+  reduction, which is why 4 and 8 threads are nearly identical.
+- **`parallelcheck`**, a gate asserting that a sharded accumulation equals a single-network one, at 2, 4
+  and 8 shards, and that the answer does not depend on the shard count. Tolerance is 1e-4 relative to
+  each tensor's own L2 norm; observed disagreement ~2e-7. Mutation-tested — reverting the `dCell` clear
+  fails all four cases.
 - **The LSTM state now travels with each sampled transition**, so the update replays an observation
   under the state the behaviour policy actually used. 1 KB per step at the default 128-wide LSTM,
   about 2% of a step's wire cost.
@@ -33,6 +44,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Gradients leaked between samples.** `Network.backward` cleared `dPrev` but not `dCell`, and
+  `LSTM.backward` reads the incoming `dCPrev` before overwriting it. Every sample's gradient was
+  therefore a function of whichever sample was processed before it. Measured on `conv.gb[15]`: four
+  samples in sequence gave 0.0892, 0.2075, 0.3372, 0.4235; the same four individually gave 0.0892,
+  0.0419, −0.1487, 0.0517. Not additive — which makes a correct parallel reduction indistinguishable from
+  a broken one. This was masked until now because the buffer is shuffled, so the leaked gradient arrived
+  attached to an unrelated sample.
 - **The update was optimising a different objective than PPO.** `PPO.update` shuffles the buffer and
   then calls `network.forward` once per sample, so each sample's replay inherited the hidden state the
   *previously processed* sample left behind — a different timestep of a different episode. Measured:

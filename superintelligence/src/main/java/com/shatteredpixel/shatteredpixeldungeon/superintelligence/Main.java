@@ -7,6 +7,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectCh
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GaeCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GradientCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ModeCoverageCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ParallelCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayCatalogCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateCheck;
@@ -65,6 +66,7 @@ public class Main {
 		case "checkpointcheck": CheckpointCheck.main( rest ); break;
 		case "statecheck": StateCheck.main( rest ); break;
 		case "valuescale": ValueScale.main( rest ); break;
+		case "parallelcheck": ParallelCheck.main( rest ); break;
 		case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": ReplayCatalogCheck.main( rest ); break;

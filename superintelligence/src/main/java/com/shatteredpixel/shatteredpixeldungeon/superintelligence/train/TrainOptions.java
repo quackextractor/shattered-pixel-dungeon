@@ -51,6 +51,17 @@ public class TrainOptions {
 	public int minibatchSize = 32;
 
 	/**
+	 * Threads for the update. Zero or one is the serial path, exactly.
+	 *
+	 * <p>Defaulted to one rather than to a physical core count. The update is the trainer's critical
+	 * path, so it wants every core that is not running a worker - but the same run already uses
+	 * {@code --workers} processes, and defaulting both to "all the cores" would oversubscribe the
+	 * machine by 20x. Setting this is therefore a decision about how to divide a fixed budget between
+	 * collection and the update, which is a judgement call, not a default.
+	 */
+	public int updateThreads = 1;
+
+	/**
 	 * Fraction of an episode's transitions whose observation reaches the trainer.
 	 *
 	 * A knob rather than a constant because the cost of an update is linear in it: at 5% and 2 epochs
@@ -130,6 +141,7 @@ public class TrainOptions {
 					o.stallSeconds = Long.parseLong( args[ ++i ] ); break;
 				case "--epochs":      o.epochs = Integer.parseInt( args[ ++i ] ); break;
 				case "--minibatch":   o.minibatchSize = Integer.parseInt( args[ ++i ] ); break;
+				case "--update-threads": o.updateThreads = Integer.parseInt( args[ ++i ] ); break;
 				//these three existed as public Trainer fields with these defaults, but were never
 				//reachable from the command line - so the knobs the plan documents could not be turned
 				case "--sample-rate": o.sampleRate = Double.parseDouble( args[ ++i ] ); break;
@@ -153,6 +165,7 @@ public class TrainOptions {
 		if (o.epochs < 1) o.epochs = 1;
 		if (o.minibatchSize < 1) o.minibatchSize = 1;
 		if (o.checkpointEvery < 1) o.checkpointEvery = 1;
+		if (o.updateThreads < 0) o.updateThreads = 0;
 		return o;
 	}
 

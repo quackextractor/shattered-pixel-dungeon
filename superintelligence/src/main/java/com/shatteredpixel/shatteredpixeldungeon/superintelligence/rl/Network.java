@@ -175,6 +175,11 @@ public class Network {
 	public int slotCount(){ return slotHead.out; }
 	public int targetCount(){ return targetHead.out; }
 
+	/** Floats one grid observation costs, so a worker can size its own unpack buffer. */
+	public int gridLength(){
+		return dGrid.length;
+	}
+
 	public void resetState(){
 		memory.reset();
 	}
@@ -272,6 +277,24 @@ trunk.forward( concat, hidden );
 		copyInto( dHidden.data, dHiddenT );
 
 		dPrev.fill( 0f );
+		//dCell is the *incoming* cell-state gradient, exactly parallel to dPrev, and it has to be
+		//cleared for the same reason and in the same place.
+		//
+		//LSTM.backward reads dCPrev before it overwrites it - `dc = dCPrev[i] + dOut[i] * o * (...)` -
+		//and writes the result back only at the end of the call. So a dCell left over from the previous
+		//sample is read as if it were this sample's incoming gradient.
+		//
+		//Measured: processing four samples in sequence gave conv.gb[15] = 0.0892, 0.2075, 0.3372,
+		//0.4235, where the same four run individually give 0.0892, 0.0419, -0.1487, 0.0517. The
+		//accumulation was not additive, so the gradient depended on which sample had been processed
+		//before it - which made every sample's gradient a function of its neighbours, and made a
+		//correct parallel reduction impossible to distinguish from a broken one.
+		//
+		//It was invisible before the recurrent-state fix, because PPO replayed samples in a shuffled
+		//order anyway and nothing compared a gradient against the gradient the same sample produced
+		//alone.
+		dCell.fill( 0f );
+
 		if (dPrevState != null){
 			System.arraycopy( dPrevState, 0, dPrev.data, 0,
 					Math.min( dPrevState.length, dPrev.cols ) );
@@ -510,5 +533,61 @@ trunk.forward( concat, hidden );
 			System.arraycopy( src[ i ].weights, 0, dst[ i ].weights, 0, src[ i ].weights.length );
 			System.arraycopy( src[ i ].bias, 0, dst[ i ].bias, 0, src[ i ].bias.length );
 		}
+	}
+
+	/**
+	 * Copies every parameter from {@code source} into this one, for use as a read-only mirror.
+	 *
+	 * <p>This is how the parallel update gives each thread its own forward/backward scratch without
+	 * sharing any of it. The thread's network is a <em>copy</em> of the parameters, not a view onto
+	 * them, which means it cannot corrupt them even if the reduction is wrong — the worst a bad
+	 * reduction can do is produce a bad gradient, not a corrupt model.
+	 *
+	 * <p>The cost is one parameter copy per minibatch: 14.3 MB, about 2 ms. Against 32 samples of
+	 * forward and backward at 11.3 ms each, that is 0.5% — and it buys the property that no thread
+	 * can observe another's writes. Sharing the tensors directly would save that and reintroduce
+	 * exactly the aliasing bug this design exists to make impossible.
+	 */
+	public void copyParametersFrom( Network source ){
+		source.copyParametersTo( this );
+	}
+
+	/**
+	 * Adds this network's accumulated gradients into {@code target}'s.
+	 *
+	 * <p>The reduction step. Adds rather than assigns, because each thread contributes a shard of one
+	 * minibatch's gradient and the caller scales by {@code 1 / minibatchSize} afterwards — the same
+	 * place the serial path scales, so the two produce the same number rather than merely a similar one.
+	 *
+	 * <p><b>Floating-point addition is not associative</b>, so an N-thread reduction sums in a
+	 * different order than the serial accumulation and will not be bit-identical. That is why
+	 * {@code ParallelCheck} asserts agreement to a tolerance rather than exactly: the claim being made
+	 * is that the parallel update computes the same gradient up to rounding, not that it is the same
+	 * bits. A difference larger than rounding indicates a real bug.
+	 */
+	public void addGradientsTo( Network target ){
+		for (int i = 0; i < gradients.length; i++){
+			float[] from = gradients[ i ].data;
+			float[] into = target.gradients[ i ].data;
+			for (int k = 0; k < from.length; k++) into[ k ] += from[ k ];
+		}
+	}
+
+	/** Erases this network's accumulated gradients, ready for the next minibatch. */
+	public void clearGradients(){
+		for (Tensor g : gradients) g.fill( 0f );
+	}
+
+	/**
+	 * The accumulated gradients, live, for a caller that wants to compare them.
+	 *
+	 * <p>Exists for {@code diag.ParallelCheck}, which asserts that a parallel update computes the same
+	 * gradient as the serial one. Read-only in practice: the arrays are the network's own, so a caller
+	 * that wrote to them would corrupt the next Adam step.
+	 */
+	public float[][] gradientTensors(){
+		float[][] out = new float[ gradients.length ][];
+		for (int i = 0; i < gradients.length; i++) out[ i ] = gradients[ i ].data;
+		return out;
 	}
 }

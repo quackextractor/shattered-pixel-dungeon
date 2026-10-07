@@ -170,6 +170,22 @@ public class Trainer {
 		ppo.minibatchSize = minibatchSize;
 	}
 
+	/** Update threads, from the command line. Set before {@link #train}. */
+	public void updateThreads( int threads ){
+		ppo.threads = threads;
+	}
+
+	/**
+	 * Releases the update's thread pool.
+	 *
+	 * <p>Called on the way out of a run. The threads are daemons, so they would not hold the JVM open,
+	 * but each holds a whole {@code Network} - 14.3 MB of parameters plus scratch - and on a machine
+	 * with a 2 GB pagefile that is not left to the garbage collector's discretion.
+	 */
+	public void closeUpdate(){
+		ppo.close();
+	}
+
 	/** Sampling knobs, from the command line. Set before {@link #train}. */
 	public void sampling( double rate, int perEpisode, int perGeneration ){
 		this.sampleRate = rate;
@@ -244,6 +260,7 @@ public class Trainer {
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
 			trainer.batch( options.epochs, options.minibatchSize );
+			trainer.updateThreads( options.updateThreads );
 			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,
 					options.maxSamplesPerGeneration );
 			trainer.history( new MetricsHistory( options.metricsCsv ) );
@@ -268,6 +285,7 @@ public class Trainer {
 				//never mask the original failure with a cleanup one
 			}
 			trainer.pool.shutdown();
+			trainer.closeUpdate();
 			if (trainer.metrics != null) trainer.metrics.close();
 		}
 	}
