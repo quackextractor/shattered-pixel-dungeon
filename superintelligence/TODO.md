@@ -230,7 +230,37 @@ text inside the cap.
 
 ---
 
-## 2. Reward terms that never fire
+## 2. Reward signals
+
+Two different problems, and they were conflated until the first 20-generation
+training run on the corrected update made them separable.
+
+### 2.1 The agent learned to stall — **RESOLVED**
+
+`meanScore` converged on exactly **-5.0**, which is `STALLED`'s terminal reward.
+`meanTurns` collapsed 62 → 8. **The agent found a way to end an episode
+deliberately, and ending it that way is twenty times cheaper than dying.**
+
+The path is `WAIT` × 120 → `STALLED` → -5.0, against `deathPenalty` of -100 and
+a `TURN_LIMIT` cost of -80. Every loss metric looked healthy throughout, which is
+what made it worth writing down: the update was working and the objective was
+wrong.
+
+Three compounding defects, all fixed, with the analysis and reasoning in
+[`PLAN-reward-signals.md`](PLAN-reward-signals.md):
+
+| # | Defect | Fix |
+| --- | --- | --- |
+| 2.1.1 | `WAIT`, `REST` and `SEARCH` returned `false` from `ActionMapper.apply`, so `SPDEnv.step` classified valid actions as `INVALID_ACTION` | They return `true` |
+| 2.1.2 | `STALLED` cost -5.0 — 20× cheaper than death, making a timeout guard the cheapest way out | Zero. Idling is priced by `TURN_COST`, which is what turn cost is for |
+| 2.1.3 | `SPDEnv.settle` called `terminate(STALLED)` **twice**, charging -10.0 on that path | One call |
+| 2.1.4 | `STALLED` was penalised *and* bootstrapped by GAE (`truncated = true`), so the critic never settled on it | Zero, and it stays truncated — the episode was cut off, not lost |
+
+`rewardcheck` is a gate asserting the property that was violated: **`WAIT` ×
+`stallLimit` must not come out cheaper than dying**, replayed through the real
+environment rather than checked as constants. Mutation-tested.
+
+### 2.2 Reward terms that never fire
 
 Declared in `reward.RewardTerm`, but with no emission site. Each is a documented requirement.
 
@@ -240,19 +270,22 @@ Declared in `reward.RewardTerm`, but with no emission site. Each is a documented
 | `CRAFTED` | research.md:11 | dead |
 | `CURSE_REMOVED` | docs.md:23 | dead |
 | `EQUIP_TOO_STRONG` | docs.md:31, research.md:12 | dead |
-| `KILL` | - | **not dead - tracked, but does not fire** |
+| `KILL` | - | **not dead — tracked, but does not fire** |
+| `MENU_NOOP` | research.md:57 (shop-loop guard) | dead |
 
 **`KILL` is a special case and the row above is now wrong.** `RewardModel` already tracks `prevKills`
 (it snapshots `Statistics.enemiesSlain`) but has no emission site for it, and
 `RewardLedger.countKill()` is written and never called. So the plumbing is half-present rather than
 absent — unlike `CRAFTED_MEAT_PIE` and friends, which have no observation point at all.
 
-Also relevant: **four scripted 600-turn rollouts (`RS-1`..`RS-4`) produced only `TURN_COST` and
-`TURN_LIMIT`**, scoring -1.25 to -1.40. But RL-policy training episodes have scored up to **+44**,
-so positive terms *do* fire for the learned policy — the scripted heuristic simply does not explore or
-loot. The reward model is not dead; the scripted policy is a poor proxy for it. Worth stating so this
-is not mistaken for the reward signal being broken.
-| `MENU_NOOP` | research.md:57 (shop-loop guard) | dead |
+**Deliberately not fixed yet.** The emission site is small, but wiring it now would change the reward
+function in the same run that just had its terminal reward corrected, and the result would be
+uninterpretable. It waits for 1.4 — a run that can be judged.
+
+Also relevant, and easy to misread: **four scripted 600-turn rollouts (`RS-1`..`RS-4`) produced only
+`TURN_COST` and `TURN_LIMIT`**, scoring -1.25 to -1.40. But RL-policy training episodes have scored up
+to **+44**, so positive terms *do* fire for the learned policy — the scripted heuristic simply does not
+explore or loot. The reward model is not dead; the scripted policy is a poor proxy for it.
 
 **Dead configuration.** `EnvConfig.allowAlchemy` and `EnvConfig.allowTrading` are read by nobody.
 Alchemy and shops are reachable only because `Hero.handle` happens to resolve them.
