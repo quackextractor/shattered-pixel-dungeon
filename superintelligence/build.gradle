@@ -115,6 +115,23 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 
 cliTask('collectcheck', 'Fails if a recording made by the collector will not replay exactly.')
 
+//Every gate in one invocation, because gradle's per-invocation overhead is most of the cost.
+//Measured: gaecheck is 0.22s of actual work and 2.4s through gradle, so gradle is ~90% of it. All
+//six gates together take 6.4s in one invocation against roughly 17s run one after another - and 8s
+//each if the daemon is cold. The checks are not slow; the harness around them is.
+//
+//dependsOn is enough for correctness: gradle fails the build if any dependency task exits non-zero,
+//which is what each of these already does on a mismatch. doLast only adds a line to read.
+//Named `gates`, not `check`: the java-library plugin already contributes a lifecycle `check`, and
+//Gradle refuses to shadow it. `gates` is also the more honest name - `check` conventionally means
+//compile plus test, and this runs neither a compiler pass nor JUnit.
+tasks.register('gates') {
+    dependsOn 'gradcheck', 'gaecheck', 'collectcheck', 'replaycheck', 'modecheck', 'restartcheck'
+    group = 'verification'
+    description = 'Runs every correctness gate in one invocation.'
+    doLast { println "all gates passed" }
+}
+
 //Everything the trainer and its workers need on one classpath, so a worker can be launched
 //with a plain `java -cp` instead of forking gradle.
 tasks.register('workerJar', Jar) {

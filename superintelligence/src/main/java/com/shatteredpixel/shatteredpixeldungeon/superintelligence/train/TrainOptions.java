@@ -35,6 +35,20 @@ public class TrainOptions {
 
 	public int generations = 100;
 	public long seed = 12345L;
+
+	/**
+	 * Epochs per update.
+	 *
+	 * The dominant term in an update is forward and backward, so this scales it linearly - measured
+	 * at 11.29 ms per sample, which is ~107 s of trainer CPU per generation at 4 epochs and a 5% sample
+	 * rate. Two is the default because four was never a considered choice: it gives 300 Adam steps over
+	 * a 2,400-sample batch, which is far more optimiser movement than a batch that size supports. See
+	 * `PLAN-data-flow.md`.
+	 */
+	public int epochs = 2;
+
+	/** PPO epochs per update. See {@link #epochs}. */
+	public int minibatchSize = 32;
 	public String javaHome = "";
 	public String classpath = System.getProperty( "java.class.path" );
 	public File workDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-train" );
@@ -56,6 +70,8 @@ public class TrainOptions {
 					//A blocked pipe costs no CPU, so without this a stall is indistinguishable from a
 					//long episode.
 					o.stallSeconds = Long.parseLong( args[ ++i ] ); break;
+				case "--epochs":      o.epochs = Integer.parseInt( args[ ++i ] ); break;
+				case "--minibatch":   o.minibatchSize = Integer.parseInt( args[ ++i ] ); break;
 				default:
 					if (args[ i ].startsWith( "--" )){
 						System.err.println( "[WARN] unknown option: " + args[ i ] );
@@ -64,6 +80,8 @@ public class TrainOptions {
 		}
 		o.workers = o.workers > 0 ? o.workers : defaultWorkerCount();
 		o.episodes = o.episodes > 0 ? o.episodes : o.workers;
+		if (o.epochs < 1) o.epochs = 1;
+		if (o.minibatchSize < 1) o.minibatchSize = 1;
 		return o;
 	}
 

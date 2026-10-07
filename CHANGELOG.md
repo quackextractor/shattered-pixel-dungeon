@@ -109,8 +109,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reason, and on that path the diagnostic read a second int off the wire to name it, so the error
   message itself consumed part of the frame it was describing.
 
+- **`gradle :superintelligence:collectcheck`** fails if a recording made by the policy-driven
+  collector will not reproduce. Every recording the trainer wrote diverged at step 0 while still
+  playing: `EpisodeCollector` read `heroPosition` before `env.step()` rather than after, while the
+  recorder documents that field as where the hero *ended up*. The file parsed, the run scored, the
+  dungeon looked like a dungeon — only `verify` caught it. The scripted path steps and then reads, and
+  always has, so `replay-viewer.bat --record` was unaffected and only trainer output was. Behavioural
+  rather than a unit test of the recorder, because the recorder was never wrong on its own; the caller
+  passed it the wrong moment.
+- **`gradle :superintelligence:replays`** lists recordings grouped by hero class and ranked by score
+  within each group, and `--select N` resolves a listing number to a file. Both live in Java because
+  Windows `sort.exe` on this machine rejects `/n` as an invalid switch and the scores are floating
+  point and can be negative — batch would have sorted them lexically and wrongly, and could not group
+  by a field parsed out of each file at all.
+- **`gradle :superintelligence:replaycheck`** covers that catalog: ranking within a group, grouping by
+  class, depth breaking a score tie, a truncated or unreadable file listed rather than hidden and
+  sorted out of the way, name lookup bare and with an extension and case-insensitively and by path,
+  `readHeader` agreeing with `read`, and one listing per seed across directories.
+- **`Replay.declaredSteps` and `Replay.truncatedAt`**, so a header-only read can report a body that is
+  short instead of failing on it.
+
 ### Changed
 
+- **A recording is selected by number.** `replay-viewer.bat` with no argument lists the catalog and
+  asks for a number, resolved through the same scan that printed it, so the number under a recording
+  and the recording that number selects cannot drift apart.
+- **`--epochs`, default 2 instead of 4.** An update is 11.3 ms per sample and dominated by forward and
+  backward, so this scales it linearly: ~107 s of trainer CPU per generation at 4 epochs, ~53 s at 2.
+  Four was never a considered choice — it gives 300 Adam steps over a 2,400-sample batch, far more than
+  a batch that size supports. Measured end to end: a 6-generation prototype run went from ~36 minutes
+  to 2.
+- **`gradle :superintelligence:gates` runs every correctness check in one invocation.** Gradle's
+  per-invocation overhead is about 90% of a gate's cost — `gaecheck` is 0.22 s of work and 2.4 s through
+  gradle — so the checks were never slow and the harness around them was. Six gates together take 7.9 s
+  against roughly 17 s run one after another. Named `gates` because the `java-library` plugin already
+  contributes a lifecycle `check` and Gradle refuses to shadow it.
 - **Workers compute advantages and ship a sample of them; the trainer runs a pooled update on it.**
   The worker plays its own episode with the real policy, keeps every step's GAE scalars, and retains
   observations for a uniform 5% of steps plus the last 20 of the episode. Because the backward pass
@@ -308,6 +341,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Verified: 120 rollouts - 4 seeds x 5 hero classes x 6 repeats - produce one distinct score per
   seed/hero pair, and a recorded 499-step run re-executes exactly 4 times out of 4.
+
+### Known limitations
+
+- **A random-seed recording cannot be replayed or verified.** `SeedPool` deliberately leaks 10% of
+  episodes onto fully random seeds so the agent cannot memorise the locked set, and those replays are
+  written with an empty `seed=` header. `verify` starts a *different* random run and diverges at step 0,
+  which is correct behaviour and a confusing error message. The resolved seed is available from
+  `LevelPipeline.currentSeedText()` and could be recorded instead.
 
 ## [4.1.0] - 2026-10-06
 

@@ -132,6 +132,12 @@ public class Trainer {
 		this.ppo = new PPO( config, rng );
 	}
 
+	/** Batch shape, from the command line. Set before {@link #train}. */
+	public void batch( int epochs, int minibatchSize ){
+		ppo.epochs = epochs;
+		ppo.minibatchSize = minibatchSize;
+	}
+
 	public static void main( String[] args ){
 		TrainOptions options = TrainOptions.parse( args );
 
@@ -143,6 +149,7 @@ public class Trainer {
 
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
+			trainer.batch( options.epochs, options.minibatchSize );
 			trainer.pool.launch( options.workers, options.javaHome, options.classpath,
 					out -> trainer.writeParams( out ) );
 			trainer.train( options.generations, options.episodes );

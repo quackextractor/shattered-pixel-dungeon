@@ -293,7 +293,27 @@ is **not** the `PlatformSupport.getFont` "No cap character found" drift recorded
 `PLAN-replay-viewer.md` §12 — that is the rendered viewer's path and remains open. This is a separate,
 headless-only null return that was silently fatal.
 
-### Step 3 — Ship sampled transitions to the trainer — **done, mostly**
+### Step 2b — Reach a usable training speed — **next**
+
+Steps 2 and 3 made learning *possible*. This makes it fast enough to actually do, and it is the
+difference between a prototype run and an overnight one.
+
+Three levers, cheapest first, and none of them is the parallel update:
+
+1. **`--epochs`, default 2 instead of 4.** A config change, no refactor, and it halves the update. It
+   also corrects a misconfiguration this plan itself flagged: 300 Adam steps over 2,400 samples is too
+   much optimiser movement for the batch, so 2 epochs (150 steps) is closer to sane. Not a
+   compromise — a fix.
+2. **A `--check` task** running every gate in one gradle invocation. Measured: `gaecheck` takes 0.22 s
+   bare and 2.4 s through gradle, so gradle's per-invocation overhead is ~90% of the cost. All six
+   gates combined: 6.4 s in one invocation against ~17 s run separately. The checks are not slow; the
+   harness around them is.
+3. **Fewer generations per run**, with the seed fixed so a run is reproducible and weights are
+   persisted (TODO 1.3). This is the "scale later" path: a prototype needs to see a trend in a minute,
+   not a correct long run overnight.
+
+Gate: a prototype run reaches 20 generations in single-digit minutes, and `check` runs every gate in
+one invocation.
 
 Landed with step 2 rather than after it: the worker had to send the transitions for the trainer's
 update to have anything to run on, so the two could not be separated without an intermediate state
@@ -315,21 +335,58 @@ shows the sampled count, its byte cost, and the advantage statistics **before** 
 three steps above produce a loop that learns and a process that then forgets, and the update runs at
 ~6× the cost of collecting the data it learns from.
 
+One bug came out of it, and the shape of it is worth recording: every recording the trainer wrote
+diverged at step 0, because `EpisodeCollector` read `heroPosition` before stepping and the recorder
+documents that field as *after*. The file parsed, the run scored, the dungeon looked like a dungeon —
+only `verify` caught it. `ScriptedPolicy`'s path reads it after the step and always has, so
+`--record` was unaffected and only trainer output was. `collectcheck` now covers it. Third time
+something that "had never been run" turned out to be wrong; the first two were headless crashes.
+
 ### Step 4 — Parallel minibatch update — **required, not conditional**
 
 Step 1 measured it: 11.29 ms per sample, single-threaded, dominated by the forward and backward
 rather than by the optimiser. At 5% and 4 epochs that is 107 s of trainer CPU per generation against
-~7 s of collection and 0.12 s of transport.
+~7 s of collection.
 
-The fix is to parallelise across minibatches: private scratch and gradient buffers per thread, one
-reduction per minibatch, 14.3 MB × threads of accumulation. This requires separating parameter storage
-from scratch in `Network`, `Dense`, `Conv2D` and `LSTM`, which is a real refactor.
+#### Why it is not a thread pool
 
-The open question is where the parallel speedup stops paying: the reduction moves 14.3 MB per thread
-per minibatch, so it competes with the per-sample work once a thread's slice gets small. That is a
-measurement, not a guess, and it decides `minibatchSize` as much as thread count.
+`Network` is thread-hostile by construction, not by accident. Every layer holds parameters, Adam
+moments, gradient accumulators **and** forward/backward scratch in the same object — `Dense` has
+`W, b, mW, vW, mb, vb, gW, gb, preAct`; `Conv2D` adds `col` and `preAct`; `LSTM` adds `gates, scratch,
+h, c, hPrev, cPrev`. And `LSTM.forward()` writes `h.data` and `c.data` in place, which is the
+recurrent state — two threads forwarding would corrupt each other's hidden state, not merely each
+other's scratch.
 
-Gate: measured seconds/generation down, `gradcheck` green.
+So the work is splitting each layer into a **shared** part (parameters, Adam moments) and a
+**per-thread** part (gradients, scratch), then reducing 14.3 MB of gradient per thread per minibatch.
+
+#### Prognosis: ~5×, not 8×
+
+Two things cap it below the thread count.
+
+**The optimiser does not parallelise.** Averaging, clipping and Adam are 0.27 ms per sample — 2.4% of
+the cost — and are inherently serial over the summed gradient. That is a floor the parallel work
+cannot divide.
+
+**It is memory-bound.** ~13M MACs per sample reading ~50 KB of weights and activations. Eight
+threads on one memory controller contend. The machine has 10 physical cores / 20 logical (i5-14600KF),
+so 20 threads will not give 20×.
+
+| Threads | Update time | Speedup |
+| --- | --- | --- |
+| 1 | ~107 s | 1× |
+| 4 | ~30 s | 3.5× |
+| 8 | ~21 s | 5× |
+| 10 (physical) | ~19 s | 5.6× |
+
+**These are estimates and must be measured, not trusted.** The reduction cost is the unknown: 14.3 MB
+per thread per minibatch competes with the per-sample work as a thread's slice shrinks, which decides
+`minibatchSize` as much as thread count does.
+
+Gate: measured seconds/generation down, and a **new check** that the same batch produces the same
+gradients at N threads as at 1. `gradcheck` runs single-threaded by construction, so it proves the
+maths is unchanged and proves nothing about concurrent access — a parallel update needs its own
+equivalence check or it will have threading bugs that look like convergence problems.
 
 ### Step 5 — fp16 weight push, only if the barrier shows up
 
@@ -407,11 +464,13 @@ and 4 epochs, and the batch configuration has to be chosen against that rather t
 | Worker/trainer gamma drift | medium | Currently masked by identical defaults. Fixed in step 2. |
 | Sample too small (~2,400 for 3.5M params) | medium | Needs a knob and a measurement plan. Low end of workable. |
 | Update cost dominates everything | **measured: it does** | 107 s vs 7 s of collection. Step 4 is required. |
-| 300 Adam steps on 2,400 samples destabilises training | medium | Only visible once losses are non-zero. Re-tune from step 1's grid. |
+| 300 Adam steps on 2,400 samples destabilises training | medium | Only visible once losses are non-zero. Re-tune from step 1's grid; step 2b defaults epochs to 2. |
+| Parallel update silently races on shared state | **high** | `LSTM` writes `h`/`c` in place. `gradcheck` runs single-threaded and cannot catch it. Needs its own equivalence check. |
 | 95% of collected experience unused | accepted | Fine to start with. Not free. |
 | Replay transfer crowds the transition channel | low | Split the message in step 3. |
 | GAE in worker breaks on chunk boundaries | medium | Gone: an episode is one GAE segment, and chunking moves to step 2's sampling cap. |
 | Tail retention biases the gradient | low | A fixed position-based subset, not advantage-ranked. See §5. |
+| A trainer recording that will not replay | **hit, fixed** | The hero position was recorded before the step rather than after. Every recording diverged at step 0 while still playing. Covered by `collectcheck`. |
 
 ---
 
@@ -425,4 +484,8 @@ and 4 epochs, and the batch configuration has to be chosen against that rather t
 - Replay retention: currently every third episode. At 320 episodes/generation that is a
   disproportionate share of the pipe for a diagnostic feature.
 - How many threads can the update use before the gradient reduction (14.3 MB per thread per minibatch)
-  costs more than the parallelism saves? Unknown until step 4 exists.
+  costs more than the parallelism saves? Unknown until step 4 exists. The prognosis is ~5× at 8 threads,
+  not 8× — see step 4 for why the optimiser and memory bandwidth cap it.
+- **Is the prototype's batch the one the real run should use?** Step 2b deliberately trains small and
+  fast. The sample rate and epochs chosen there are for seeing a trend in a minute, and are unlikely to
+  be what a long run wants. Scaling up is deferred, so the point at which to revisit is unrecorded.
