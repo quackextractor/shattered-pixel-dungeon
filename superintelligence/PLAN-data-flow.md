@@ -203,11 +203,27 @@ Uniform over steps, plus a deliberate exception.
   fixed, position-based subset, not an advantage-ranked one, so it introduces no selection on the
   quantity being estimated.
 - **Uniform Bernoulli over the rest**, drawn from a dedicated `Random` seeded per generation from the
-  trainer, so a seed reproduces the same sample set.
+  trainer, so a seed reproduces the same sample set. Separate from the policy's own RNG so changing
+  the sample rate does not change which actions a run takes, which would make two rates incomparable.
 
 Both are knobs, not constants: `--sample-rate`, `--max-sampled-per-episode` (2048, ~98 MB, the same
 worst case `rolloutCap` already imposed) and `--max-samples-per-generation` (8192, ~397 MB) as a
 trainer-side valve. Drops are counted and printed, never silent.
+
+### 5.1 The tail dominates short episodes, and early episodes are short
+
+An untrained policy's episodes are **7 to 90 turns**, not the ~150 the transport arithmetic assumes, so
+a 20-step tail is most of the episode and a requested 5% arrives as near 100%. Measured: 243 of 243
+steps sampled on a 243-step generation.
+
+This is a property of the two mechanisms meeting, not a sampler bug: on a 40,000-step episode the
+same tail is 0.05%. It means the plan's 2,400-samples-per-generation figure only holds once episodes
+approach the length it assumes, which is expected to happen as the policy learns to survive — and
+until then the sampled count in the report is the honest figure, not the plan's.
+
+The trainer clamps the rate it sends to [0, 1] and says why, so the two mechanisms cannot silently
+disagree. The alternative — sending the raw request and letting the collector exceed it — produced a
+sampled count that drifted for a reason no report explained.
 
 ---
 
@@ -238,7 +254,7 @@ address it; step 4 does.
 
 Gate, met: the numbers are in this file, and step 3's sample rate and `epochs` are chosen from them.
 
-### Step 2 — GAE in the worker
+### Step 2 — GAE in the worker — **done**
 
 Move advantage computation to the worker, applying §2.1 and §2.2.
 
@@ -257,7 +273,25 @@ Move advantage computation to the worker, applying §2.1 and §2.2.
   `returnValue` + `terminal`.
 
 Gate: `gaecheck` (scalar GAE equals `Transition` GAE on identical fixtures; sampling reproduces from
-its seed; tail retention holds), episodes unchanged, `gradcheck` green, determinism sweep unchanged.
+its seed; tail retention holds; the wire round trip is exact), `gradcheck`, `modecheck`,
+`restartcheck`, and a determinism sweep — all met.
+
+### What step 2 actually cost, beyond the code
+
+Switching the worker from `ScriptedPolicy` to the real policy exposed **two latent headless crashes**,
+both in code the scripted policy never reached, and both of a class rather than isolated instances —
+TODO.md §1 already predicted this ("a random policy explores action space the scripted one never did,
+and there are almost certainly more").
+
+| Crash | Cause | Fix |
+| --- | --- | --- |
+| `UnsatisfiedLinkError: Gdx2DPixmap.newPixmap` | The libGDX natives were never loaded in any headless JVM. Desktop gets them implicitly from `Lwjgl3NativesLoader`; `HeadlessGame` replaces that backend, and a natives jar on the classpath does not load itself. Reached from `TextureCache.createSolid` / `createGradient` / `create`, which unlike `getBitmap` are not guarded on `Gdx.gl == null` — from any `Flare` or `ColorBlock`, ~40 item sites plus every inventory slot. | `GdxNativesLoader.load()` in `HeadlessServices.install()` |
+| `NullPointerException: this.font is null` in `BitmapText.baseLine` | `HeadlessPlatform.getGeneratorForString` returns null, so `PlatformSupport.getFont` returns null at its early-out, and every measuring method in `BitmapText` dereferenced it. Reached from `Bag.execute` → `WndQuickBag` → `InventorySlot`. | Null-font guards in `BitmapText.measure`, `baseLine` and `updateVertices` |
+
+`BitmapText()` already constructed with a null font, so the class was in a state it never guarded. This
+is **not** the `PlatformSupport.getFont` "No cap character found" drift recorded in
+`PLAN-replay-viewer.md` §12 — that is the rendered viewer's path and remains open. This is a separate,
+headless-only null return that was silently fatal.
 
 ### Step 3 — Ship sampled transitions to the trainer
 

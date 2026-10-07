@@ -2,6 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GaeCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GradientCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ModeCoverageCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
@@ -50,6 +51,7 @@ public class Main {
 		case "modecheck": ModeCoverageCheck.main( rest ); break;
 		case "restartcheck": RestartCheck.main( rest ); break;
 		case "updatecost": UpdateCostCheck.main( rest ); break;
+		case "gaecheck": GaeCheck.main( rest ); break;
 		case "train":    Trainer( rest );   break;
 			case "help":     usage();          break;
 			default:
@@ -67,6 +69,7 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "  modecheck                fail if an action mode cannot be reached" );
 		System.out.println( "  restartcheck             fail if a restart does not rebuild the same first floor" );
 		System.out.println( "  updatecost               measure what a PPO update costs, and project it" );
+		System.out.println( "  gaecheck                 fail if the advantage implementations disagree" );
 		System.out.println( "  train [options]          run the PPO trainer across worker JVMs" );
 		System.out.println();
 		System.out.println( "options:" );

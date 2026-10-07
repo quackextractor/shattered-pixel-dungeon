@@ -148,7 +148,7 @@ public class Policy {
 		return 0.5f * delta * delta;
 	}
 
-	/**
+/**
 	 * Generalised advantage estimation, walked in reverse over one episode.
 	 *
 	 * Returns are computed per episode rather than across the pooled buffer, so an episode cut by
@@ -167,6 +167,41 @@ public class Policy {
 			lastGae = delta + gamma * lambda * nonTerminal * lastGae;
 			t.advantage = lastGae;
 			t.returnValue = t.advantage + t.value;
+		}
+	}
+
+	/**
+	 * The same recursion over an episode's scalars, with no Transition objects involved.
+	 *
+	 * This is the form a worker needs. A whole episode of scalars is about 21 bytes a step, so the
+	 * backward pass can run at the end of an episode that holds every step's numbers and only a
+	 * sample of their observations. It is a separate method rather than a branch inside the one
+	 * above because the two read differently and the check exists to keep them in agreement -
+	 * {@code diag.GaeCheck} runs both over the same fixture and fails if they ever diverge.
+	 *
+	 * <pre>
+	 *   rewards[i]    reward received on step i
+	 *   values[i]     critic estimate for the state step i was taken in
+	 *   finalValue    value of the state the last step led to, for a truncated episode
+	 *   terminal[i]   whether step i ended the episode by death or victory
+	 *   advantages[i] written
+	 *   returns[i]    written
+	 * </pre>
+	 *
+	 * @param count how many steps the episode has
+	 */
+	public static void computeEpisodeAdvantages( float[] rewards, float[] values, float[] terminal,
+			int count, float finalValue, float gamma, float lambda,
+			float[] advantages, float[] returns ){
+
+		float lastGae = 0f;
+		for (int i = count - 1; i >= 0; i--){
+			float nextValue = (i == count - 1) ? finalValue : values[ i + 1 ];
+			float nonTerminal = terminal[ i ] != 0f ? 0f : 1f;
+			float delta = rewards[ i ] + gamma * nextValue * nonTerminal - values[ i ];
+			lastGae = delta + gamma * lambda * nonTerminal * lastGae;
+			advantages[ i ] = lastGae;
+			returns[ i ] = lastGae + values[ i ];
 		}
 	}
 }

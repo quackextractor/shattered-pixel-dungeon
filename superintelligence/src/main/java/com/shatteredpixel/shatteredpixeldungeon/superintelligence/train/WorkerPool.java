@@ -196,11 +196,15 @@ public class WorkerPool {
 		WorkerHandle( String java, String classpath, String name ) throws IOException {
 			this.name = name;
 
-			ProcessBuilder pb = new ProcessBuilder(
-					java,
-					"-Xms256m", "-Xmx1536m",
-					"-XX:+UseParallelGC", "-XX:MaxGCPauseMillis=200",
-					"-cp", classpath,
+ProcessBuilder pb = new ProcessBuilder(
+				java,
+				"-Xms256m", "-Xmx1536m",
+				"-XX:+UseParallelGC", "-XX:MaxGCPauseMillis=200",
+				//HeadlessServices loads the libGDX natives, and on a JDK that restricts native access
+				//that prints a warning per worker per launch. Silence it explicitly rather than leaving
+				//several hundred lines of it interleaved with the generation report.
+				"--enable-native-access=ALL-UNNAMED",
+				"-cp", classpath,
 					"com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerMain",
 					"--worker",
 					//its own save directory, so workers cannot collide on one temp file

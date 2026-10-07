@@ -1,22 +1,20 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Random;
 
 /**
  * A single training worker.
@@ -36,9 +34,9 @@ public class Worker {
 	private final DataInputStream in;
 	private final DataOutputStream out;
 
-	private EnvConfig config;
+private EnvConfig config;
 	private Network network;
-	private PPO ppo;
+	private EpisodeCollector collector;
 	private SPDEnv env;
 
 	private final ReplayRecorder recorder = new ReplayRecorder();
@@ -89,36 +87,58 @@ public class Worker {
 		config.turnCost = in.readFloat();
 		config.deathPenalty = in.readFloat();
 		config.victoryReward = in.readFloat();
-		config.stallLimit = in.readInt();
+config.stallLimit = in.readInt();
+
+		//The advantages are computed here, so these have to come from the trainer rather than from
+		//this side's defaults. Previously gamma and lambda were PPO fields that both sides happened
+		//to agree on - identical defaults, which is coincidence rather than configuration, and it
+		//would drift the first time either side was tuned.
+		float gamma = in.readFloat();
+		float lambda = in.readFloat();
+		float sampleRate = in.readFloat();
+		int maxSampledPerEpisode = in.readInt();
+
+		Random policyRng = new Random( in.readLong() );
 
 		HeadlessGame game = HeadlessGame.install();
 		env = new SPDEnv( config, game );
 
-		ppo = new PPO( config, new java.util.Random( in.readLong() ) );
-		readWeights( in, ppo.network );
+		network = new Network( config, policyRng );
 
-out.writeInt( Protocol.MSG_PARAMS );
+		//a separate stream for sampling, so that changing the sample rate does not change which
+		//actions a run takes. Otherwise every worker would behave differently at a different rate and
+		//no two sample rates could be compared
+		collector = new EpisodeCollector( config, network, policyRng, new Random( policyRng.nextLong() ),
+				gamma, lambda, sampleRate, maxSampledPerEpisode );
+
+		readWeights( in, network );
+
+		out.writeInt( Protocol.MSG_PARAMS );
 		out.flush();
 	}
 
-/** Runs one episode and reports its outcome, with an optional replay attached. */
+/**
+	 * Runs one episode and reports its outcome, with an optional replay attached.
+	 *
+	 * The episode is played by the real policy now, not by the scripted heuristic, and the record it
+	 * produces is kept: the scalars for every step, the sampled subset's observations, and the
+	 * advantages computed over the complete episode before anything was discarded. The frame written
+	 * at the end is the summary only; the transitions follow in their own message.
+	 */
 	private void runEpisode( String seed, HeroClass heroClass, boolean wantReplay ) throws IOException {
-		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), seed.hashCode() );
 		recorder.begin( seed, heroClass.name(), 0, config.turnLimitPerFloor );
-
-		env.reset( seed, heroClass );
-
-		int[] slot = new int[ 1 ];
 
 		//started after the reset so the CPU figure is the episode and not level generation
 		ResourceStats.Interval work = ResourceStats.start();
 
-		while (env.running()){
-			Action a = policy.choose( env, slot );
-			recorder.record( a, slot[ 0 ], env.mode() );
-			float reward = (float) env.step( a, slot[ 0 ] );
-			recorder.afterStep( env.heroPosition(), reward );
-		}
+		//the collector plays the episode, so the recorder is told about each step as it happens
+		//rather than driving it
+		collector.listener( ( mode, action, secondary, heroPosition, reward ) -> {
+			recorder.record( action, secondary, mode );
+			recorder.afterStep( heroPosition, reward );
+		} );
+
+		EpisodeRecord record = collector.run( env, seed, heroClass );
 
 		work.stop();
 
@@ -126,26 +146,45 @@ out.writeInt( Protocol.MSG_PARAMS );
 		Replay replay = recorder.replay();
 
 		out.writeInt( Protocol.MSG_EPISODE );
-		out.writeDouble( env.ledger().total() );
-		out.writeInt( env.depth() );
-		out.writeInt( env.turnsTotal() );
-		out.writeBoolean( env.endedNaturally() );
-		out.writeUTF( env.endReason().name() );
+
+		//written through the shared codec rather than field by field here, because the trainer reads
+		//it with the mirror method. Two lists of the same seven fields is two chances to disagree, and
+		//a disagreement here reads a plausible number rather than failing.
+		Episode summary = new Episode();
+		summary.score = env.ledger().total();
+		summary.depth = env.depth();
+		summary.turns = env.turnsTotal();
+		summary.endedNaturally = env.endedNaturally();
+		summary.reason = env.endReason().name();
 
 		//Cumulative rather than per-episode. OS process CPU counters have roughly millisecond
 		//granularity, and an episode here is often only tens of milliseconds, so differencing the
 		//counter across each one lost most of the signal and under-reported the pool by about half.
 		//A monotonic total let the trainer difference between reports instead.
-		out.writeDouble( ResourceStats.processCpuSecondsTotal() );
-		out.writeDouble( work.to().heapUsedMb() );
+		summary.workerCpuTotal = ResourceStats.processCpuSecondsTotal();
+		summary.workerHeapMb = work.to().heapUsedMb();
 
+		Episode.write( out, summary );
+
+//The replay keeps its place on this frame for now. It rides on the summary rather than the
+		//transition channel, which is where the plan wants it, and at one replay every third episode
+		//it is a small share of a generation's traffic.
 		out.writeInt( replay.length() );
 
 		if (wantReplay){
 			writeReplay( replay );
 		}
 
+		//after the summary and any replay, so a trainer reading this frame in the documented order
+		//stays in step. The advantages in here were computed over the whole episode, so the trainer
+		//must not try to recompute them.
+		TransitionCodec.write( out, record.sampledTransitions() );
+
 		out.flush();
+
+		//back to the pool now that the frame is written. Holding them until the next episode would
+		//pin ~98MB per worker for no reason.
+		record.release();
 	}
 
 	private void writeReplay( Replay replay ) throws IOException {

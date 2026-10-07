@@ -47,6 +47,9 @@ def trainerJvmArgs = [
         '-XX:MaxGCPauseMillis=200',
         //A 1,000-sim sweep must never be killed by the OS for touching unused natives.
         '-XX:+IgnoreUnrecognizedVMOptions',
+        //HeadlessServices loads the libGDX natives; without this a JDK that restricts native access
+        //warns on every launch
+        '--enable-native-access=ALL-UNNAMED',
         '-Djava.awt.headless=true'
 ]
 
@@ -103,6 +106,8 @@ cliTask('modecheck', 'Fails if the environment cannot reach one of its own actio
 cliTask('restartcheck', 'Fails if restarting a run does not rebuild the same first floor.')
 
 cliTask('updatecost', 'Measures what a PPO update costs and projects it across sample rates.')
+
+cliTask('gaecheck', 'Fails if the two advantage implementations disagree, or sampling misbehaves.')
 
 //Everything the trainer and its workers need on one classpath, so a worker can be launched
 //with a plain `java -cp` instead of forking gradle.

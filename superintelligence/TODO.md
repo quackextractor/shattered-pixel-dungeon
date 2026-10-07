@@ -80,47 +80,68 @@ assigned in creation order and therefore stable.
 
 ## 1. The critical gap: nothing has learned anything
 
-**The network now runs, and its gradients are correct.** The forward pass produces finite logits
-and a finite critic value, every layer receives a non-zero gradient, and an Adam step moves the
-parameters. This was not true before: the backward pass had five independent defects - missing
-activation derivatives in `Conv2D` and `Dense`, an LSTM cell reading post-update state, a hidden
-gradient copied before the heads filled it, an unsized LSTM input-gradient buffer, and heads whose
-own gradients were never accumulated. All of them are fixed and covered by `gradcheck`.
+**Partly closed.** The network runs, its gradients are correct, and the PPO update now executes on
+real data collected by workers: `policy=` and `value=` are non-zero, and the weights move. The gap
+that remains is that nothing has been trained long enough to behave differently from random — which
+is a tuning problem, not a missing subsystem.
 
 `gradle :superintelligence:gradcheck` finite-difference checks the analytic gradients against
 central differences on 112 sampled parameters across all seven layers, and exits non-zero on a
-mismatch. It is confirmed to fail when a derivative is deliberately removed. Run it before
-trusting any training run.
+mismatch. It is confirmed to fail when a derivative is deliberately removed.
 
-`PPO.rollout()` and `PPO.update()` are still called from nowhere. `train.Worker` loads weights
-into a `Network`, then hands control to `ScriptedPolicy`. Everything in this repository is still a
-testbed around a learning loop that does not run.
+`train.Worker` no longer loads weights into a `Network` and then hands control to `ScriptedPolicy`. It
+runs `EpisodeCollector`, which plays the episode with the real policy, computes GAE over the whole of
+it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3.
 
 | # | Task | Size | Notes |
 | --- | --- | --- | --- |
-| 1.1 | Call `PPO.collect()` in `Worker.runEpisode` in place of `ScriptedPolicy` | S | The worker already has the env, the network and the masks. Collection is capped and safe to resume. |
-| 1.2 | Run one generation end to end and check `lastPolicyLoss` / `lastValueLoss` are sane | S | |
+| 1.1 | ~~Call `PPO.collect()` in `Worker.runEpisode`~~ | done | Superseded. `EpisodeCollector` replaced the collection half of `PPO` entirely; see `PLAN-data-flow.md` step 2 and §5 below. |
+| 1.2 | ~~Run one generation end to end and check the losses are sane~~ | done | `policy` and `value` are non-zero, and advantages arrive with a real spread. Reported per generation. |
 | 1.3 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
+| 1.4 | Train long enough to see the score move | L | The actual milestone from `research.md:40`. Needs 1.3's gate to open first. |
+| 1.5 | Parallelise the update across minibatches | M | **Measured as required, not optional.** 11.3 ms/sample single-threaded is ~107 s of trainer CPU per generation against ~7 s of collection. `PLAN-data-flow.md` step 4. |
 
-**`PPO.collect()` is capped and verified.** `rolloutCap` (default 2048) bounds collection at ~98MB,
-because a step is ~49KB and `turnLimitTotal` is 40000 - uncapped, one long episode is ~1.9GB
-against a 1536m worker heap. A cap leaves the env mid-episode and resumes it next call. Verified
-across 20 cases (4 seeds x 5 caps): with no update mid-episode every cap reproduces whole-episode
-collection exactly, including cap=1. An update mid-episode deliberately resets the recurrent state -
-a weight change is an information boundary - so the same seed keeps reproducing regardless of where
-updates land.
+**`PPO.collect()` is gone, and so is the cap it implemented.** `rolloutCap` (default 2048) bounded
+collection at ~98 MB because a step is ~49 KB and `turnLimitTotal` is 40000 - uncapped, one long
+episode is ~1.9 GB against a 1536m worker heap. Its replacement is two caps with different units:
+`--max-sampled-per-episode` bounds one worker's retained *observations*, and
+`--max-samples-per-generation` bounds the trainer's update buffer across all workers. The observation
+memory is now bounded by the sample rate rather than by episode length, because GAE runs on scalars
+and never needs an unsampled step's observation.
 
-**Worker-to-trainer data flow is unresolved.** The trainer calls `PPO.update()` on its own buffer,
-but workers currently return only an episode summary and a replay, not transitions. Either
-transitions have to reach the trainer for a pooled update, or each worker updates locally and the
-updated weights have to be returned. This has to be decided before 1.1 means anything.
+**Worker-to-trainer data flow is resolved.** Chosen and built: the worker computes GAE and ships a
+sample of the transitions; the trainer pools them and updates once. Reasoning, measurements and the
+three bugs it surfaced are in `PLAN-data-flow.md`. Two consequences worth keeping in view:
 
-**Headless coverage is the next likely source of crashes.** Running the real policy surfaced three
-that the scripted one never touched: blobs had no emitter (15 blob types NPE in `evolve()`),
-`GameScene.cancel()` dereferenced a null `cellSelector`, and `GameScene.spellSprite()` read
-`scene.spells` unguarded. All three are fixed, but they are a class of bug, not three isolated
-ones - a random policy explores action space the scripted one never did, and there are almost
-certainly more.
+- **The update, not the transport, is the bottleneck.** `gradle :superintelligence:updatecost`
+  measures 11.3 ms per sample, which at a 5% sample rate and 4 epochs is ~107 s of trainer CPU per
+  generation against ~0.12 s of transport. Every option in `WORKER-DATA-FLOW.md` was argued on
+  bandwidth, which is not what binds here.
+- **Episodes are much shorter than the arithmetic assumes.** An untrained policy produces 7-90 turn
+  episodes, not ~150, so a 20-step tail is most of the episode and a requested 5% arrives as near
+  100%. Expected to correct as the policy learns to survive; the sampled count in the report is the
+  honest figure until then.
+
+**Headless coverage was the next likely source of crashes, and it was.** Running the real policy
+surfaced three that the scripted one never touched: blobs had no emitter (15 blob types NPE in
+`evolve()`), `GameScene.cancel()` dereferenced null `cellSelector`, and `GameScene.spellSprite()`
+read `scene.spells` unguarded. Then the data-flow work surfaced **two more**, both fatal rather than
+cosmetic:
+
+- **The libGDX natives were never loaded in any headless JVM.** Desktop gets them implicitly from
+  `Lwjgl3NativesLoader`; the headless backend replaces that, and a natives jar on the classpath does
+  not load itself. Reached from `TextureCache.createSolid` / `createGradient` / `create`, which are
+  *not* guarded on `Gdx.gl == null` the way `getBitmap` is - from any `Flare` or `ColorBlock`. Fixed by
+  `GdxNativesLoader.load()` in `HeadlessServices.install()`.
+- **`BitmapText` threw on every measuring call with a null font.** `HeadlessPlatform`
+  `getGeneratorForString` returns null by design, so `PlatformSupport.getFont` returns null at its
+  early-out. Its no-argument constructor already built a null-font instance, so nothing in the class
+  guarded it. Reached from `Bag.execute` -> `WndQuickBag` -> `InventorySlot`.
+
+Both are the same class of bug as the original three: a hand-written policy simply never reached the
+code. Expect more. The useful observation is that each was a *deliberate headless substitution*
+rather than a game bug - a null GL, a null font generator, a null scene - that something downstream
+did not expect.
 
 **Unverified: hero class appears not to affect the score.** Every hero class produced an identical
 score and turn count on the same seed. `GamesInProgress.selectedClass` is applied in
@@ -222,11 +243,19 @@ Small things that are wrong but not blocking.
 - `TargetHealthIndicator`, `AttackIndicator`, `QuickSlotButton` and `GameScene` gained null guards
   for headless operation. Each is correct with a renderer present, but they are now load-bearing for
   a code path most contributors will never run.
-- **`PPO.collect()` and `PPO.rollout()` have no callers,** and neither has anything else in the
-  rollout half of `PPO`: `rolloutCap`, `episodeInProgress` and `recurrentStateStale` exist only to
-  serve them. `PLAN-data-flow.md` step 2 replaces them with `rl/EpisodeCollector`; the cap survives
-  as a bound on retained observations rather than on collected steps.
-- **`Worker`'s `network` field is still only a parameter sink** (see 1.1).
+- **`PPO.collect()` and `PPO.rollout()` are gone,** along with `rolloutCap`, `episodeInProgress` and
+  `recurrentStateStale`. They had no callers once workers collected their own episodes, and leaving
+  them would have meant two step loops to keep in agreement. `PPO` is the learner now, at 325 lines.
+- **The `network` field on `Worker` is now only a parameter sink** — it holds the weights the collector
+  uses, and nothing else reads it.
+- `Worker`'s `network` field could be dropped and `EpisodeCollector` given the weights directly; it
+  survives only because `readWeights` needs a `Network` to load into.
+- **`GaeCheck` does not drive `EpisodeCollector`.** Its sampling checks restate the collector's two
+  decisions - a uniform draw during collection, a rolling tail at the end - rather than exercising
+  the loop that applies them, because that needs a live environment and a whole episode per case. A
+  mutation inside the collector's retention logic would pass. Verified instead by observation: a
+  multi-worker run reports a sampled count consistent with the tail dominating short episodes. Stated
+  in the class comment rather than left implied.
 
 ---
 

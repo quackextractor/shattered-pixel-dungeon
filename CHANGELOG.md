@@ -71,6 +71,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   comparing the landing cell, and advancing clears the expected position, so the check always passed.
 - **`GameScene` gained `topWindow()`.** `showingWindow()` only reports whether a window exists, which
   is not enough to decide what to do about one.
+- **The libGDX natives were never loaded in any headless JVM,** so the first game code that allocated
+  a `Pixmap` died with `UnsatisfiedLinkError`. Desktop gets the library implicitly from
+  `Lwjgl3NativesLoader`; the headless backend replaces that, and a natives jar sitting on the classpath
+  does not load itself. `TextureCache.getBitmap` is guarded on `Gdx.gl == null` and returns null,
+  which is why the item-icon film decoded fine, but its three programmatic constructors —
+  `createSolid`, `createGradient` and `create` — are not. Those are reached from a `Flare` at roughly
+  forty item and buff sites, and a `ColorBlock` from every inventory slot.
+  `GdxNativesLoader.load()` now runs in `HeadlessServices.install()`, the earliest point every entry
+  path already passes through.
+- **`BitmapText` threw on every measuring call with no font.** Its no-argument constructor already
+  built one with a null font, and nothing had ever constructed one without immediately giving it a
+  font — until the headless platform, which has no font generator to give. `measure`, `baseLine` and
+  `updateVertices` now treat a null font as zero-sized text. Reached from `Bag.execute`, which opens a
+  quick-bag window whose item slots lay out text.
+- **Both of the above were live crashes on item use, not latent ones.** They only appeared once
+  workers stopped playing the scripted heuristic — the class of bug TODO.md §1 predicted, where a
+  policy sampling the action mask reaches code a hand-written if/else never did.
 - **Global gradient clipping did not exist.** `Network.gradClip` was declared with the comment
   "applied by the caller before `step()`" and no caller applied it; `PPO.update` never computed a
   gradient norm. Harmless while the buffer is empty, which is why it survived. It is implemented now,
@@ -94,6 +111,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Workers compute advantages and ship a sample of them; the trainer runs a pooled update on it.**
+  The worker plays its own episode with the real policy, keeps every step's GAE scalars, and retains
+  observations for a uniform 5% of steps plus the last 20 of the episode. Because the backward pass
+  reads only scalars, which observations are kept cannot change the numbers it writes — so sampling
+  happens during collection and needs neither an all-observations residency of 1.9 GB nor a second
+  simulation pass. The frame is observation + masks + decision + advantage + return + terminal;
+  `reward`, `value` and `nextValue` no longer travel, since nothing on the far side recomputes from
+  them.
+- **One forward pass per step, not two.** `t.nextValue` is read at exactly one index of the GAE
+  recursion; every other bootstrap is the next step's own value. The extra pass also advanced the LSTM
+  over the post-step observation, so every observation was absorbed into the recurrent state twice.
+- **gamma, lambda, sampleRate and maxSampledPerEpisode travel with the weights.** The first two were
+  `PPO` fields on each side with identical defaults — agreement by coincidence, which would have
+  drifted the first time either side was tuned. The last two are new knobs.
+- **`PPO` no longer collects.** `collect()` drove the env, the network and the masks, and `update()`
+  computed the advantages over whatever it had. Collection is now `EpisodeCollector` in a worker
+  process, because the advantage recursion needs consecutive steps and a worker holds its whole
+  episode while a trainer never would. `PPO` is the learner only, at 325 lines, and `collect`,
+  `rollout`, `rolloutCap`, `episodeInProgress` and `recurrentStateStale` are gone rather than left
+  unreferenced — two step loops would have drifted.
+- **The worker keeps its transitions on a pool; the trainer allocates.** A pooled object is recycled
+  across generations, so a decode that missed a field would read the previous generation's value
+  rather than fail. The trainer's buffer is large and cold, which is the case the pool is wrong for.
+- **A per-generation memory cap on the update buffer,** dropping the oldest transitions and saying so.
+  The per-episode cap bounds one worker; the generation is 320 episodes wide, and this machine's
+  2 GB pagefile does not degrade gracefully — it thrashes.
 - **The trainer is split into five classes.** `Trainer.java` was 824 lines against the project's own
   500-line rule, and the worker-data-flow work adds to it. Process lifetime, the stall watchdog and the
   per-worker pipes are now `WorkerPool`; the console block is `GenerationReport`, which renders a
@@ -109,6 +152,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`gradle :superintelligence:gaecheck`** fails if the two advantage implementations disagree, or if
+  sampling misbehaves. `Policy` computes GAE twice — once over an `ArrayList<Transition>` and once over
+  an episode's scalar arrays — because a worker's backward pass must run where the whole episode is
+  still resident. Nothing forces them to agree, and two implementations that both produce finite
+  advantages while differing slightly is a bug that surfaces only as a policy that learns marginally
+  worse, forever. Nine checks: the two agree, a terminal cuts the recursion both ways, a truncated
+  episode bootstraps, sampling is uniform and seed-reproducible, the tail is always retained, retention
+  is idempotent, advantages are independent of sampling, and the wire round trip is exact. Verified by
+  mutation — transposing a field in the codec fails it, and removing the lambda term fails three
+  checks. It does **not** drive the collector, only its arithmetic and its stated policy; the class
+  comment says so.
+- **The generation report prints what it is for.** `sampled steps of N collected`, the raw advantage
+  mean and standard deviation *before* normalisation, and the buffer's resident size with the packed
+  grid's share of it. A batch whose advantages are all identical has no gradient direction to offer,
+  and after normalisation it would present as a textbook mean of zero and standard deviation of one —
+  so the figure that catches it has to be the one taken before.
 - **`gradle :superintelligence:updatecost`** measures what a PPO update actually costs and projects it
   across sample rates. The worker-data-flow decision was argued entirely on bandwidth, and the update
   behind it — 9,600 forward and backward passes per generation on one thread — had never been

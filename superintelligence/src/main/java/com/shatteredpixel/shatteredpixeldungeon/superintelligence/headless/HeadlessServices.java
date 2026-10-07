@@ -51,6 +51,8 @@ public class HeadlessServices {
 	private HeadlessServices() {}
 
 	public static void install( File saveDirectory ){
+		loadNatives();
+
 		files = new HeadlessFiles( saveDirectory );
 		Gdx.app        = new App();
 		Gdx.files      = files;
@@ -75,6 +77,39 @@ public class HeadlessServices {
 				com.badlogic.gdx.Files.FileType.Local, "" );
 
 		installed = true;
+	}
+
+	/**
+	 * Loads the libGDX native library.
+	 *
+	 * The desktop build never does this itself: {@code Lwjgl3Application} pulls it in through
+	 * {@code Lwjgl3NativesLoader}. Headless replaces that backend wholesale, and a natives jar on the
+	 * classpath does not load itself - nothing in libGDX bootstraps it without being asked. So the
+	 * library was absent in every headless JVM, and only stayed unnoticed because almost nothing
+	 * headless reaches native code.
+	 *
+	 * {@code TextureCache} is the exception. Its {@code getBitmap} is guarded on {@code Gdx.gl == null}
+	 * and returns null, which is why decoding the item-icon film works at all. But its three
+	 * programmatic constructors - {@code createSolid}, {@code createGradient} and {@code create} -
+	 * build a {@code Pixmap} with no such guard, and a {@code Pixmap} allocates through
+	 * {@code Gdx2DPixmap}. Those are reached from ordinary game logic, not from drawing: a
+	 * {@code Flare} on roughly forty item and buff sites ({@code ScrollOfRemoveCurse},
+	 * {@code PotionOfCleansing}, {@code Wand}, {@code Invulnerability}'s aura and so on), and a
+	 * {@code ColorBlock} from {@code InventorySlot}, {@code InventoryPane} and {@code GameScene}.
+	 * Any of them throws {@code UnsatisfiedLinkError} the first time an item is used.
+	 *
+	 * The scripted policy never hit one because it makes a narrow set of item choices. A policy
+	 * sampling the action mask does, within a generation - which is how this surfaced: only once the
+	 * worker stopped playing the scripted heuristic.
+	 *
+	 * Loading rather than guarding is the smaller change. Guarding those three constructors would
+	 * alter behaviour for the real renderer, where they must keep working.
+	 *
+	 * Idempotent - libGDX guards it behind its own flag - so the trainer JVM and every worker can all
+	 * call this on the way through.
+	 */
+	private static void loadNatives(){
+		com.badlogic.gdx.utils.GdxNativesLoader.load();
 	}
 
 	/**

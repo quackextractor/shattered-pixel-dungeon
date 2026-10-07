@@ -1,25 +1,30 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
-import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 /**
- * The PPO agent: rolls out episodes, stores transitions, and applies clipped updates.
+ * The PPO learner: holds a buffer of transitions with advantages already computed, and updates from
+ * it.
  *
  * research.md: "The Core Algorithm: Proximal Policy Optimization (PPO)... PPO can effectively pool
  * the gradients from all these simultaneous runs to make steady, reliable updates to the policy
  * without catastrophic forgetting."
  *
- * Pooling is what the parallel architecture is for. Each worker fills its own slice of the shared
- * buffer and every update consumes all of it, so one gradient step sees every worker's experience
- * at once. That is what keeps updates steady as worker count rises rather than getting noisier
- * with each extra worker.
+ * Pooling is what the parallel architecture is for. Every worker's contribution goes into one buffer
+ * and one update consumes all of it, so a single gradient step sees every worker's experience at
+ * once. That is what keeps updates steady as worker count rises rather than getting noisier with each
+ * extra worker.
+ *
+ * **This class does not collect.** It used to: `collect()` drove the env, the network and the masks,
+ * and `update()` computed the advantages over whatever it had. Both halves moved. Collection is
+ * {@link EpisodeCollector}, in a worker process, because the advantage recursion needs consecutive
+ * steps and a worker holds its whole episode while a trainer never would - see
+ * {@code PLAN-data-flow.md}. Keeping one copy of the step loop is deliberate: two would drift.
  *
  * One honest approximation, stated rather than buried: the update replays each stored observation
  * through the current weights and backpropagates each step in isolation, so the recurrent gradient
@@ -44,40 +49,19 @@ public class PPO {
 	public int epochs = 4;
 
 	/**
-	 * Transitions collected between updates.
+	 * Transitions between updates, with their advantages already computed.
 	 *
-	 * Two reasons this is bounded rather than "one whole episode". A stored step is dominated by its
-	 * packed grid, so {@code turnLimitTotal} steps of a single episode is gigabytes - more than a
-	 * worker's heap, which makes an uncapped rollout an out-of-memory crash rather than a slow run.
-	 * And PPO wants frequent updates regardless: the importance ratio compares the collecting
-	 * policy against the current one, so the longer the policy is left unchanged over a long
-	 * collection the worse that estimate gets.
+	 * This class no longer collects anything. A worker collects with {@link EpisodeCollector}, where
+	 * the backward advantage pass runs over the whole episode rather than over a chunk of it - see
+	 * {@code PLAN-data-flow.md} step 2 - and the trainer adds what its workers sent through
+	 * {@link #addAll}. What is left here is the learner.
 	 *
-	 * Truncating a collection is not the same as truncating an episode. The env is left running and
-	 * the next call resumes it, so an episode spans however many chunks it needs. The cost is that
-	 * advantage estimates stop at a chunk boundary rather than reaching back to the start of the
-	 * episode - the same truncation already accepted for the recurrent gradient.
+	 * What bounds this buffer is the trainer's memory rather than a worker's, so it is the trainer
+	 * that caps it, at `--max-samples-per-generation`.
 	 */
-	public int rolloutCap = 2048;
-
 	public final Random rng;
 
 	private final ArrayList<Transition> buffer = new ArrayList<>();
-	private final ArrayList<Integer> episodeEnds = new ArrayList<>();
-
-	/** True while an episode is part-collected, so the next call resumes instead of resetting. */
-	private boolean episodeInProgress;
-
-	/**
-	 * Set by {@link #update}, cleared on the next collect.
-	 *
-	 * An update changes the weights the recurrent state was produced by, and the update itself
-	 * resets the state to shuffle minibatches. Resuming an episode through that boundary with a
-	 * half-stale hidden state is worse than starting it fresh, so a weight change is treated as an
-	 * information boundary: the agent forgets. Without this, where updates happen to land would
-	 * silently change an episode's actions, and the same seed would stop reproducing.
-	 */
-	private boolean recurrentStateStale;
 
 	//one probability buffer per head. The three heads have different widths and the loss reads
 	//the probability vector against that head's own mask, so a shared buffer sized for the widest
@@ -94,6 +78,33 @@ public class PPO {
 	private final int gridSize;
 	private final int inventorySize;
 	private final int heroSize;
+
+	/**
+	 * Adds transitions whose advantages were computed elsewhere.
+	 *
+	 * Used by the trainer, whose advantages come from the workers. A worker's backward pass runs over
+	 * its whole episode, so the trainer must not compute them again: it only holds a sample of the
+	 * steps, and GAE over a non-adjacent subset is the exact failure this design exists to avoid.
+	 * Normalisation is still done here, because that is a property of the batch rather than of any
+	 * one episode.
+	 *
+	 * The transitions are stored by reference and dropped by {@link #clearBuffer}. They come from the
+	 * transition codec, which allocates rather than pools, so there is nothing to give back.
+	 */
+	public void addAll( List<Transition> transitions ){
+		buffer.addAll( transitions );
+	}
+
+	/**
+	 * Discards the oldest {@code count} transitions.
+	 *
+	 * Used to hold a generation inside its memory cap. The oldest go rather than a random subset
+	 * because the recent end of a generation is where the terminal and truncated episodes are, and
+	 * termination is a signal the critic cannot do without.
+	 */
+	public void dropOldest( int count ){
+		buffer.subList( 0, Math.min( count, buffer.size() ) ).clear();
+	}
 
 	// diagnostics from the last update, each a mean over the samples seen rather than a running sum
 	public float lastPolicyLoss;
@@ -128,149 +139,6 @@ public class PPO {
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.TARGET_COUNT ];
 	}
 
-	// --------------------------------------------------------------------------- rollout
-
-	/**
-	 * Collects up to {@link #rolloutCap} transitions, resuming the current episode if one is
-	 * part-collected.
-	 *
-	 * The env is deliberately left mid-episode when the cap is reached. The next call continues
-	 * from there with the recurrent state intact, so an episode longer than the cap is collected
-	 * across several calls rather than being cut short.
-	 *
-	 * @return the transitions collected by this call, also appended to this agent's update buffer
-	 */
-	public ArrayList<Transition> collect( SPDEnv env, String seed, HeroClass heroClass ){
-		if (!episodeInProgress){
-			env.reset( seed, heroClass );
-			network.resetState();
-			episodeInProgress = true;
-			recurrentStateStale = false;
-		} else if (recurrentStateStale){
-			//the weights moved under this episode, so its hidden state no longer describes them
-			network.resetState();
-			recurrentStateStale = false;
-		}
-
-		ArrayList<Transition> chunk = new ArrayList<>();
-		int before = buffer.size();
-
-		while (env.running() && chunk.size() < rolloutCap){
-			network.forward( env.grid(), env.inventory(), env.heroFeatures() );
-
-			int liveHead = headFor( env.mode() );
-
-			int actionIndex = Policy.sample( network.actionLogits(), env.actionMask(), rng );
-			int slotIndex = Policy.sample( network.slotLogits(), env.slotMask(), rng );
-			int targetIndex = Policy.sample( network.targetLogits(), env.targetMask(), rng );
-
-			//the head that is actually live supplies the stored behaviour log-probability. Each
-			//head gets its own buffer because they have different widths and the loss reads the
-			//probability vector against that head's own mask.
-			float oldLogProbability;
-			int chosen;
-			switch (liveHead) {
-				case Policy.HEAD_SLOT:
-					Policy.probabilities( network.slotLogits(), env.slotMask(), slotProbs );
-					chosen = slotIndex;
-					break;
-				case Policy.HEAD_TARGET:
-					Policy.probabilities( network.targetLogits(), env.targetMask(), targetProbs );
-					chosen = targetIndex;
-					break;
-				default:
-					Policy.probabilities( network.actionLogits(), env.actionMask(), actionProbs );
-					chosen = actionIndex;
-					break;
-			}
-			oldLogProbability = Policy.logProbability( probabilitiesFor( liveHead ), chosen );
-
-			Transition t = Transition.take( gridSize, inventorySize, heroSize,
-					Action.size(), config.maxSlots,
-					com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.TARGET_COUNT );
-
-			t.packGrid( env.grid() );
-			System.arraycopy( env.inventory(), 0, t.inventory, 0, inventorySize );
-			System.arraycopy( env.heroFeatures(), 0, t.hero, 0, heroSize );
-			System.arraycopy( env.actionMask(), 0, t.actionMask, 0, t.actionMask.length );
-			System.arraycopy( env.slotMask(), 0, t.slotMask, 0, t.slotMask.length );
-			System.arraycopy( env.targetMask(), 0, t.targetMask, 0, t.targetMask.length );
-
-			t.liveHead = liveHead;
-			t.actionIndex = actionIndex;
-			t.slotIndex = slotIndex;
-			t.oldLogProbability = oldLogProbability;
-			t.value = network.value();
-
-			Action action = Action.fromIndex( actionIndex );
-			int secondary = (liveHead == Policy.HEAD_TARGET) ? targetIndex : slotIndex;
-
-			t.reward = (float) env.step( action, secondary );
-
-			//value of the state this step produced, used to bootstrap a truncated episode
-			network.forward( env.grid(), env.inventory(), env.heroFeatures() );
-			t.nextValue = network.value();
-			t.terminal = env.endedNaturally();
-
-			chunk.add( t );
-			buffer.add( t );
-		}
-
-		if (!env.running()){
-			//episode finished, so the next call starts a fresh one
-			network.resetState();
-			episodeInProgress = false;
-		}
-
-		//every collection is its own advantage segment, so GAE never reaches past the cap. A chunk
-		//that happens to end an episode already has its bootstrap zeroed by the terminal flag.
-		if (buffer.size() > before){
-			episodeEnds.add( buffer.size() );
-		}
-
-		return chunk;
-	}
-
-	/**
-	 * Runs whole episodes, recording every decision, until {@link #episodes} have finished.
-	 *
-	 * Drives {@link #collect} and ignores the cap, so it is for tests and single-process
-	 * experiments. A long episode will still collect more than {@link #rolloutCap} in total.
-	 *
-	 * @return the transitions from the final episode only
-	 */
-	public ArrayList<Transition> rollout( SPDEnv env, String seed, HeroClass heroClass, int episodes ){
-		ArrayList<Transition> last = new ArrayList<>();
-		for (int i = 0; i < episodes; i++){
-			last = new ArrayList<>();
-			do {
-				last = collect( env, seed, heroClass );
-			} while ( episodeInProgress );
-		}
-		return last;
-	}
-
-	/** True while an episode is part-collected and the next collect() call will resume it. */
-	public boolean episodeInProgress(){
-		return episodeInProgress;
-	}
-
-	private float[] probabilitiesFor( int head ){
-		switch (head) {
-			case Policy.HEAD_SLOT:   return slotProbs;
-			case Policy.HEAD_TARGET: return targetProbs;
-			default:                return actionProbs;
-		}
-	}
-
-	private static int headFor( EnvMode mode ){
-		switch (mode) {
-			case SLOT:
-			case INVENTORY: return Policy.HEAD_SLOT;
-			case TARGETING: return Policy.HEAD_TARGET;
-			default:        return Policy.HEAD_ACTION;
-		}
-	}
 
 	// --------------------------------------------------------------------------- update
 
@@ -282,29 +150,34 @@ public class PPO {
 		return buffer;
 	}
 
-	/** Releases the buffer and its transitions back to the pool. */
+	/**
+	 * Empties the buffer.
+	 *
+	 * Deliberately does not return the transitions to the pool. The ones here came from the transition
+	 * codec, which allocates rather than pools, so there is nothing to give back - and recycling
+	 * objects across generations is exactly what would let a decode bug read the previous generation's
+	 * numbers instead of failing. The worker side is where pooling belongs, and it is a small bounded
+	 * buffer there.
+	 */
 	public void clearBuffer(){
-		for (Transition t : buffer) t.release();
 		buffer.clear();
-		episodeEnds.clear();
 	}
 
 	/**
-	 * Applies one PPO update over everything collected so far.
+	 * Applies one PPO update over everything in the buffer.
 	 *
 	 * Each sample is replayed through the current weights, so the epochs genuinely re-evaluate the
 	 * same observation against a policy that has already moved, which is what the clipping ratio
 	 * is supposed to measure.
+	 *
+	 * The advantages are used as they arrived. They were computed over each worker's whole episode,
+	 * and the buffer here holds a sample of those episodes' steps - so recomputing them over what
+	 * arrived would be exactly the non-adjacent recursion this design exists to avoid. That leaves
+	 * normalisation as the only pass that touches them, which is a property of the batch rather than
+	 * of any one episode and is therefore still correct here.
 	 */
 	public void update(){
 		if (buffer.isEmpty()) return;
-
-		//GAE per episode, so a truncated episode bootstraps from its own last value
-		int from = 0;
-		for (int end : episodeEnds) {
-			Policy.computeReturnsAndAdvantages( buffer, from, end, gamma, lambda );
-			from = end;
-		}
 
 		network.zeroGrad();
 
@@ -349,11 +222,33 @@ public class PPO {
 		network.learningRate = learningRate;
 		network.resetState();
 		clearBuffer();
+	}
 
-		//the weights have moved; any episode still in progress has to forget at this boundary
-		if (episodeInProgress){
-			recurrentStateStale = true;
+	/**
+	 * Mean of the raw advantages currently in the buffer.
+	 *
+	 * Read before normalisation, because that is the diagnostic. A batch whose advantages are all
+	 * equal has no gradient direction to offer, and once normalised it would present as a textbook mean
+	 * of zero and standard deviation of one.
+	 */
+	public double meanAdvantage(){
+		if (buffer.isEmpty()) return 0;
+		double sum = 0;
+		for (Transition t : buffer) sum += t.advantage;
+		return sum / buffer.size();
+	}
+
+	/** Standard deviation of the raw advantages currently in the buffer. */
+	public double advantageStdDev(){
+		if (buffer.size() < 2) return 0;
+
+		double mean = meanAdvantage();
+		double sq = 0;
+		for (Transition t : buffer){
+			double d = t.advantage - mean;
+			sq += d * d;
 		}
+		return Math.sqrt( sq / buffer.size() );
 	}
 
 	/** Zero-mean unit-variance advantages over the whole buffer, the usual PPO preconditioner. */

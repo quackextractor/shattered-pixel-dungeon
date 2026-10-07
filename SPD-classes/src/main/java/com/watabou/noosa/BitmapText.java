@@ -44,6 +44,14 @@ public class BitmapText extends Visual {
 	
 	protected boolean dirty = true;
 	
+	/**
+	 * A text component with no font.
+	 *
+	 * Already existed and already produced a null {@link #font}, which every measuring method then
+	 * dereferenced. It only ever survived because nothing constructed one without immediately giving
+	 * it a font - until the headless platform, which has no font generator to give. The measuring
+	 * methods now treat a null font as zero-sized text, which is what such a component is.
+	 */
 	public BitmapText() {
 		this( "", null );
 	}
@@ -112,6 +120,15 @@ public class BitmapText extends Visual {
 			text = "";
 		}
 
+		if (font == null) {
+			//no font film to pack glyph quads into. Reachable headlessly, where the platform has no
+			//font generator at all, and by the no-argument constructor below.
+			quads = Quad.createSet( text.length() );
+			realLength = 0;
+			dirty = false;
+			return;
+		}
+
 		quads = Quad.createSet( text.length() );
 		realLength = 0;
 
@@ -175,6 +192,10 @@ public class BitmapText extends Visual {
 			text = "";
 		}
 
+		if (font == null) {
+			return;
+		}
+
 		int length = text.length();
 		for (int i=0; i < length; i++) {
 			RectF rect = font.get( text.charAt( i ) );
@@ -194,6 +215,9 @@ public class BitmapText extends Visual {
 	}
 
 	public float baseLine() {
+		if (font == null) {
+			return 0;
+		}
 		return font.baseLine * scale.y;
 	}
 

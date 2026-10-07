@@ -7,6 +7,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 
 import java.io.ByteArrayOutputStream;
@@ -79,6 +80,47 @@ public class Trainer {
 	/** Per-worker cumulative CPU totals, differenced between reports. */
 	private final Map<String, Double> lastCpuByWorker = new HashMap<>();
 
+	/**
+	 * Fraction of each worker's steps whose observation reaches the trainer.
+	 *
+	 * 5% of a generation is ~2,400 steps and about 118 MB. See PLAN-data-flow.md for why the bound
+	 * that matters is the trainer's memory, not the pipe.
+	 */
+	public double sampleRate = 0.05;
+
+	/**
+	 * The rate actually sent to workers.
+	 *
+	 * Clamped below 1, and that is not a formality: {@link EpisodeCollector#TAIL_STEPS} always keeps
+	 * an episode's last 20 steps, so on the short episodes an untrained policy produces - tens of turns,
+	 * not the ~150 the arithmetic assumes - the tail alone is most of the episode. A requested 5% came
+	 * out as 100% sampled before this, which is not a bug in the sampler but a real property of the
+	 * tail policy interacting with short episodes, and silently sending the unclamped value would have
+	 * made the sampled count drift for a reason no report would explain.
+	 *
+	 * Episodes are expected to get longer as the policy learns to survive, at which point the clamp
+	 * stops binding and the requested rate is what applies.
+	 */
+	double sampleRate(){
+		return Math.min( 1.0, Math.max( 0.0, sampleRate ) );
+	}
+
+	/** Hard ceiling on one episode's retained observations, ~98 MB. */
+	public double maxSampledPerEpisode = 2048;
+
+	int maxSampledPerEpisode(){
+		return Math.max( EpisodeCollector.TAIL_STEPS,
+				Math.min( Integer.MAX_VALUE, (int) maxSampledPerEpisode ) );
+	}
+
+	/**
+	 * Hard ceiling on one generation's transitions in the update buffer, ~397 MB at 48.5 KB a step.
+	 *
+	 * This is the number that has to fit alongside the trainer's own heap and the workers'. See
+	 * {@link #enforceGenerationCap}.
+	 */
+	public int maxSamplesPerGeneration = 8192;
+
 	private static final int BOSS_DEPTH = 5;
 	private static final int SEED_POOL_SIZE = 100;
 
@@ -127,11 +169,52 @@ public class Trainer {
 		out.writeFloat( config.deathPenalty );
 		out.writeFloat( config.victoryReward );
 		out.writeInt( config.stallLimit );
+
+		//The worker computes advantages, so gamma and lambda have to travel with the weights. They
+		//used to be PPO fields on each side with identical defaults - agreement by coincidence, and
+		//it would have drifted the first time either side was tuned.
+		out.writeFloat( ppo.gamma );
+		out.writeFloat( ppo.lambda );
+		out.writeFloat( (float) sampleRate() );
+		out.writeInt( (int) maxSampledPerEpisode() );
+
 		out.writeLong( rng.nextLong() );
 		Worker.writeWeights( out, ppo.network );
 	}
 
 	// --------------------------------------------------------------------------- training
+
+	/**
+	 * Refuses to grow the update buffer past {@link #maxSamplesPerGeneration}.
+	 *
+	 * The per-episode cap bounds one worker; this bounds the generation. At 20 workers the two are a
+	 * factor of 320 apart, and an episode that runs long enough to hit its cap is enough on its own to
+	 * put the trainer into swap - the machine's pagefile is 2 GB, so that does not degrade gracefully,
+	 * it thrashes.
+	 *
+	 * The oldest are dropped, so the tail of the generation survives: those are the truncated episodes
+	 * and the terminal ones, which carry the termination signal that an episode cut short does not.
+	 */
+	private void enforceGenerationCap(){
+		int over = ppo.bufferSize() - maxSamplesPerGeneration;
+		if (over <= 0) return;
+
+		ppo.dropOldest( over );
+		droppedThisGeneration += over;
+
+		System.err.println( "[WARN] generation " + epoch + ": " + over + " transitions over the "
+				+ maxSamplesPerGeneration + " cap were dropped. Raise --max-samples or lower"
+				+ " --sample-rate; the update saw only the most recent " + maxSamplesPerGeneration
+				+ "." );
+	}
+
+	/** Transitions discarded by {@link #enforceGenerationCap} this generation, for the report. */
+	private int droppedThisGeneration;
+
+	//read before the update consumes the buffer, since afterwards it is always zero
+	private int lastSampledSteps;
+	private double lastAdvantageMean;
+	private double lastAdvantageStd;
 
 	/**
 	 * Runs {@code generations} rounds of rollout-then-update.
@@ -166,7 +249,17 @@ public class Trainer {
 			gen.stop();
 			lastWorkerSeconds = sumWorkerCpuSeconds( episodes );
 
-			report( g, episodes, gen );
+			//merged here rather than in the dispatch threads: this is the first point at which one
+			//thread owns the learner again, and PPO's buffer is not thread-safe
+			for (Episode e : episodes) ppo.addAll( e.transitions );
+			enforceGenerationCap();
+
+			//read before the update, which consumes the buffer. Read afterwards it is always zero, which
+			//is exactly what it read before the workers started returning transitions - so the one
+			//number that says the whole design is working was structurally incapable of ever moving.
+			lastSampledSteps = ppo.bufferSize();
+			lastAdvantageMean = ppo.meanAdvantage();
+			lastAdvantageStd = ppo.advantageStdDev();
 
 			if (!episodes.isEmpty()){
 				ResourceStats.Interval update = ResourceStats.start();
@@ -182,6 +275,8 @@ public class Trainer {
 
 				lastBarrierSeconds = update.wallSeconds() + push.wallSeconds();
 			}
+
+			report( g, episodes, gen );
 		}
 
 		saveBestReplays();
@@ -308,6 +403,10 @@ public class Trainer {
 			//so the body must only be read in that case. Reading it unconditionally deadlocked the
 			//trainer against a worker that was already waiting for its next command.
 			if (job.wantReplay) episode.replay = readReplay( in, steps );
+
+			//the sampled transitions, decoded into this thread's own list and merged on the trainer
+			//thread once every worker has joined. Nothing shared is touched from here.
+			episode.transitions = Episode.readTransitions( in, config );
 
 			//only after the whole frame has been consumed, so the watchdog sees progress rather
 			//than a thread that has merely started reading
@@ -482,9 +581,27 @@ public class Trainer {
 		s.poolSize = pool.size();
 		s.episodesPerWorker = episodesPerWorker;
 
-		//the update has not run for this generation's data yet, so the buffer's own size is the
-		//number that says whether the sample rate is behaving
-		s.sampledSteps = ppo.bufferSize();
+		s.sampledSteps = lastSampledSteps;
+		s.droppedSteps = droppedThisGeneration;
+		s.advantageMean = lastAdvantageMean;
+		s.advantageStd = lastAdvantageStd;
+
+		//measured off the transitions that actually arrived, rather than computed from the expected
+		//count: a sample rate that is not doing what it says shows up here as a smaller number
+		s.sampledBytes = 0;
+		s.gridBytes = 0;
+		for (Episode e : episodes){
+			for (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition t : e.transitions){
+				s.gridBytes += t.grid.length;
+				s.sampledBytes += t.grid.length
+						+ 4L * (t.inventory.length + t.hero.length + t.actionMask.length
+						+ t.slotMask.length + t.targetMask.length);
+			}
+		}
+
+		//reset here rather than at the top of the next generation, so the figure printed beside this
+		//generation's data is this generation's drop
+		droppedThisGeneration = 0;
 
 		GenerationReport.print( s );
 	}

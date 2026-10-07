@@ -26,6 +26,30 @@ public final class GenerationReport {
 		/** Transitions retained for the update across the whole generation. */
 		public int sampledSteps;
 
+		/** Transitions the memory cap discarded. Non-zero means the cap, not the rate, is binding. */
+		public int droppedSteps;
+
+		/**
+		 * Bytes the sampled transitions occupy in the trainer, and how much of that is the packed grid.
+		 *
+		 * The grid share is the number the deferred bit-packing would attack, so it is measured rather
+		 * than quoted. Resident and wire are the same size here and deliberately not reported twice:
+		 * the frame is fp32 for everything except the grid, which is already one byte per cell in
+		 * memory too.
+		 */
+		public long sampledBytes;
+		public long gridBytes;
+
+		/**
+		 * Mean and standard deviation of the raw advantages as they arrived.
+		 *
+		 * Printed before normalisation, and that is the point: a batch whose advantages are all
+		 * identical has nothing to learn a direction from, and after normalisation it would look like a
+		 * healthy mean of zero and standard deviation of one. These are the numbers that catch it.
+		 */
+		public double advantageMean;
+		public double advantageStd;
+
 		public double meanScore;
 		public double bestScore;
 		public double worstScore;
@@ -83,7 +107,15 @@ public final class GenerationReport {
 				+ ( s.ppoSeconds > 0 ? "  (ppo update " + String.format( "%.2fs", s.ppoSeconds ) + ")" : "" )
 				+ "  " + String.format( "barrier %.0f%%", pct( s.barrierSeconds, s.wallSeconds ) ) );
 		System.out.println( "  data    " + String.format( "%,d sampled steps", s.sampledSteps )
-				+ " of " + String.format( "%,d collected", s.totalTurns ) );
+				+ " of " + String.format( "%,d collected", s.totalTurns )
+				+ ( s.droppedSteps > 0
+						? "  [WARN] " + String.format( "%,d", s.droppedSteps ) + " dropped at the cap"
+						: "" )
+				+ "  advantage mean=" + String.format( "%+.3f", s.advantageMean )
+				+ " sd=" + String.format( "%.3f", s.advantageStd ) );
+		System.out.println( "  buffer  " + mb( s.sampledBytes ) + " resident, "
+				+ String.format( "%.1f%%", pct( s.gridBytes, s.sampledBytes ) )
+				+ " of it the packed grid" );
 		System.out.println( "  usage   " + ( s.systemLoad >= 0
 						? String.format( "%.0f%% of machine (%.1f of %d logical cores)",
 								s.systemLoad * 100, cores( s ), s.logicalProcessors )
@@ -95,6 +127,10 @@ public final class GenerationReport {
 	/** Cores the machine is using, derived from the system load where the JVM reports one. */
 	private static double cores( Snapshot s ){
 		return s.systemLoad * s.logicalProcessors;
+	}
+
+	private static String mb( long bytes ){
+		return String.format( "%.1f MB", bytes / (1024.0 * 1024.0) );
 	}
 
 	private static double pct( double used, double total ){

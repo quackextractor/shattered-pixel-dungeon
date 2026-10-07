@@ -15,6 +15,14 @@ central differences on 112 sampled parameters across all seven layers, and fails
 mismatch. It was worth adding: the backward pass had five independent defects that all produced
 plausible numbers rather than an exception, and an optimiser step that moved nothing.
 
+**The trainer now updates on real data.** Workers play their own episodes with the real policy,
+compute GAE over the whole episode, and ship a sample of the transitions; the trainer pools them
+across every worker and applies one update. `policy=` and `value=` are non-zero. That is the first
+moment anything here has learned anything, and it is early — the policy is still exploring, and
+`gradle :superintelligence:gaecheck` is what keeps the two advantage implementations honest.
+`gradle :superintelligence:updatecost` measures what an update costs, which turns out to matter far
+more than how fast the data moves.
+
 **The environment is verified reproducible**: 6 rollouts of one seed across 6 separate JVMs give 1
 distinct score, for each of the five hero classes, and a recorded 499-step run re-executes 4/4.
 That was not true at first. An early smoke test reproduced twice and I took that as proof, but a
@@ -26,9 +34,9 @@ order plus six uses of `Collections.shuffle` that ignores the seeded generator e
 back to a random seed, which looks exactly like residual nondeterminism. The pipeline now fails
 with an explanation instead.
 
-The environment, observation encoder, reward ledger, replay verification and diagnostics are done and tested. The learning loop is written but has never been
-executed: `PPO.rollout()` and `PPO.update()` are called from nowhere, and the training worker
-currently acts with a scripted heuristic.
+The environment, observation encoder, reward ledger, replay verification and diagnostics are done and tested. The
+learning loop runs end to end across worker processes; nothing has been trained for long enough to
+behave differently from random yet.
 
 [`TODO.md`](TODO.md) is the full status: what is missing, ordered by what unblocks learning first,
 plus a section on deliberate deviations from the source documents and where each one costs
@@ -44,10 +52,11 @@ something.
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score |
 | Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
+| Update cost measurement | Measured - `updatecost`, 11.3 ms/sample, projects across sample rates |
 | Diagnostics dashboard (colour-coded floors, graphs) | Console only |
 | Reward model, per-term ledger, curriculum fade | Partial - 6 terms never fire |
-| CNN + LSTM network, PPO agent | Forward/backward verified; PPO never run end to end |
-| Parallel worker processes, seed schedule | Written, untested at scale |
+| CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
+| Parallel worker processes, seed schedule | Running; exercised to 8 workers x 25 generations |
 | Graphical trainer UI, desktop replay viewer | Not started |
 | Garbage collection / object pooling audit (research.md:60) | Not started |
 
@@ -66,6 +75,9 @@ something.
 # check the network's analytic gradients against central differences
 ./gradlew :superintelligence:gradcheck
 
+# check the two advantage implementations agree and sampling behaves
+./gradlew :superintelligence:gaecheck
+
 # measure what a PPO update costs, and project it across sample rates
 ./gradlew :superintelligence:updatecost
 
@@ -76,10 +88,10 @@ something.
 
 `probeClasspath` prints the runtime classpath, which is what the trainer uses to launch workers.
 
-`updatecost` is the one worth knowing about before choosing a batch size. An update costs 11.3 ms per
-sample on this machine, almost all of it forward and backward rather than Adam, and it runs on one
-thread — so at a 5% sample rate and 4 epochs it is about 107 s of trainer CPU per generation, against
-0.12 s of transport. Bandwidth is not what limits this trainer.
+**Batch size is chosen against compute, not bandwidth.** An update costs 11.3 ms per sample on this
+machine, almost all of it forward and backward rather than Adam, and it runs on one thread — so at a
+5% sample rate and 4 epochs it is about 107 s of trainer CPU per generation, against 0.12 s of
+transport. Transport is not what limits this trainer; the update is.
 
 ## Layout
 
@@ -90,10 +102,10 @@ thread — so at a 5% sample rate and 4 epochs it is about 107 s of trainer CPU 
 | `obs` | `ObservationEncoder`, spatial channel definitions, fixed inventory vector, hero scalars |
 | `reward` | `RewardModel` (state diffing), `RewardTerm`/`RewardLedger` (per-term, per-floor breakdown), `Curriculum` |
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and worker bootstrap |
-| `rl` | `Network` (CNN + LSTM + heads), `PPO`, `Policy`, `Transition` |
-| `train` | `Trainer` (generation loop), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TrainOptions`, `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
+| `rl` | `Network` (CNN + LSTM + heads), `PPO` (buffer + update), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector` (plays an episode, computes its advantages), `EpisodeRecord` (one episode's scalars + sampled observations) |
+| `train` | `Trainer` (generation loop), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
 | `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify) |
-| `diag` | `RunReport`, `Graph`, `Ansi` |
+| `diag` | `RunReport`, `Graph`, `Ansi`, and the checks: `GradientCheck`, `ModeCoverageCheck`, `RestartCheck`, `GaeCheck`, `UpdateCostCheck` |
 
 ## Design notes
 
@@ -107,6 +119,12 @@ real one, `Gdx.gl` is left null and every presentation path is made to survive t
 returns null, nine patches become blank, sprites resolve animations instantly, and `Chrome` returns
 untextured chrome. The consequence is that no rollout can accidentally depend on something being
 drawn.
+
+That does not mean nothing native is loaded. The desktop build gets the libGDX natives implicitly,
+through `Lwjgl3NativesLoader`; the headless backend replaces that, and a natives jar on the classpath
+does not load itself. `HeadlessServices.install()` loads them explicitly. Without it the first
+`Flare` or `ColorBlock` reached from item logic dies with `UnsatisfiedLinkError` - and only now, with
+a policy that actually picks items, is that reachable at all.
 
 **Interaction is one action.** `Hero.handle(cell)` already resolves "the right thing to do here"
 into attack / loot / unlock / stairs / talk. Exposing that as a single action lets the policy learn
