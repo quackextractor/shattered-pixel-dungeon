@@ -198,8 +198,20 @@ public class ActionMapper {
 	/**
 	 * Applies a WORLD or TIME action.
 	 *
-	 * Returns true when the action needs a follow-up choice, in which case the caller moves to
-	 * {@link EnvMode#SLOT}.
+	 * <p><b>Returns whether the environment accepted the action</b>, which {@link SPDEnv#step} reads to
+	 * decide whether to note {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm#INVALID_ACTION}.
+	 * It used to be documented as "needs a follow-up choice", and that description was load-bearing in
+	 * the wrong direction: {@code WAIT}, {@code REST} and {@code SEARCH} were doing exactly what they
+	 * were asked and still returned {@code false}.
+	 *
+	 * <p>That misclassification is not cosmetic. {@code WAIT} costs a turn, leaves the hero where he
+	 * was, and changes no HP — which is precisely what {@code SPDEnv}'s stall guard tests. So
+	 * {@code WAIT} × {@code stallLimit} was the cheapest route to a terminal episode, and the agent
+	 * found it: a 20-generation run ended 100% of its episodes by stalling. See
+	 * {@code PLAN-reward-signals.md}.
+	 *
+	 * <p>Follow-up is decided separately and unconditionally by the caller — {@code USE} and
+	 * {@code DROP} always move to {@link EnvMode#SLOT} — so nothing here needs to signal it.
 	 */
 	public boolean apply( Action action, int slotOrTarget ){
 		if (action == null) return false;
@@ -209,18 +221,19 @@ public class ActionMapper {
 			case WAIT:
 				//No curAction: Hero.act() with curAction null calls ready() and hands control back.
 				//Waiting costs the hero nothing in the real game either; other actors advance time.
+				//True, because it is a legal action the environment performed - not a refusal.
 				hero.next();
-				return false;
+				return true;
 
 			case REST:
 				hero.resting = true;
 				hero.next();
-				return false;
+				return true;
 
 			case SEARCH:
 				hero.search( true );
 				hero.next();
-				return false;
+				return true;
 
 			case USE:
 			case DROP:

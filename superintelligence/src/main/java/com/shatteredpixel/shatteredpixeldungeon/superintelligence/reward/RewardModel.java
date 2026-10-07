@@ -189,7 +189,25 @@ public class RewardModel {
 				ledger.add( RewardTerm.DEATH, -config.deathPenalty, false );
 				break;
 			case STALLED:
-				ledger.add( RewardTerm.STALLED, -config.depthReward * 0.5f, false );
+				//Zero, not -depthReward * 0.5.
+				//
+				//A stall means the harness cut the episode off - a timeout guard fired - and at -5.0
+				//that was twenty times cheaper than dying and fifteen times cheaper than surviving to
+				//the turn cap. The cheapest available action, WAIT, was on a direct route to it:
+				//WAIT costs a turn, moves nothing and changes no HP, which is exactly what the stall
+				//guard tests. So a 20-generation run ended 100% of its episodes by stalling and never
+				//moved off floor 1, while every loss metric looked healthy.
+				//
+				//Zero rather than a small penalty, deliberately. Idling already costs turnCost per turn,
+				//which is the honest price of an action that does nothing and is already being charged.
+				//A small negative value would have been a guess about being *trapped*, a failure mode
+				//nobody has observed - every stall so far is one the agent walked into with WAIT. On a
+				//reward function that has already misled the agent once, a guessed penalty is how the
+				//next wrong preference gets baked in. See PLAN-reward-signals.md.
+				//
+				//Recorded as zero rather than skipped, so the term still appears in the per-term report
+				//and a future change to it is visible as a change rather than as silence.
+				ledger.add( RewardTerm.STALLED, 0, false );
 				break;
 			case TURN_LIMIT:
 				ledger.add( RewardTerm.TURN_LIMIT, -config.turnCost * 100f, false );
@@ -205,9 +223,29 @@ public class RewardModel {
 		return ledger.flushTurn();
 	}
 
-	/** Adds a term the diff cannot see, eg. a craft or a kill the environment witnessed. */
+	/**
+	 * Adds a term the diff cannot see, eg. a craft or a kill the environment witnessed.
+	 *
+	 * <p>Goes through {@link RewardLedger#add}, which counts it. A zero amount still counts, because
+	 * "this happened and it was worth nothing" is a different fact from "this did not happen", and only
+	 * the first is true of a note.
+	 */
 	public void note( RewardTerm term, double amount ){
 		ledger.add( term, amount, false );
+	}
+
+	/**
+	 * Counts an event without giving it a reward.
+	 *
+	 * <p>For facts about a turn rather than quantities of reward. The only caller is
+	 * {@code INVALID_ACTION}: an action the environment refused is worth recording and worth nothing,
+	 * and routing it through {@link #note} with a zero made it invisible — it moved no total, and
+	 * {@code rewardcheck} asserting on the total passed with {@code WAIT} mutated back into reporting
+	 * a refusal. That is the same mistake the previous two commits made in a different place, so it is
+	 * worth a separate door rather than a zero argument.
+	 */
+	public void noteEvent( RewardTerm term ){
+		ledger.noteEvent( term );
 	}
 
 	// --------------------------------------------------------------------------- snapshot

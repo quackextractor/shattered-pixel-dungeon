@@ -10,6 +10,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ModeCover
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ParallelCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayCatalogCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ValueScale;
@@ -67,6 +68,7 @@ public class Main {
 		case "statecheck": StateCheck.main( rest ); break;
 		case "valuescale": ValueScale.main( rest ); break;
 		case "parallelcheck": ParallelCheck.main( rest ); break;
+		case "rewardcheck": RewardCheck.main( rest ); break;
 		case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": ReplayCatalogCheck.main( rest ); break;
@@ -91,6 +93,11 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "  collectcheck              fail if a collector recording will not replay" );
 		System.out.println( "  checkpointcheck           fail if a policy does not survive disk, or a bad one loads" );
 		System.out.println( "  weightsdiff <file>        report how far a checkpoint is from a fresh policy" );
+		System.out.println( "  parallelcheck             fail if a parallel update differs from the serial one" );
+		System.out.println( "  statecheck                fail if a sample does not replay to its rollout's value" );
+		System.out.println( "  rewardcheck               fail if ending an episode can be cheaper than dying" );
+		System.out.println( "  replayprobe               report how far a shuffled replay drifts" );
+		System.out.println( "  valuescale                report the critic's targets against what it can reach" );
 		System.out.println( "  replays [--dir d]...     list recordings, grouped by hero class and ranked" );
 		System.out.println( "  replaycheck               fail if the replay catalog misgroups or misranks" );
 		System.out.println( "  train [options]          run the PPO trainer across worker JVMs" );

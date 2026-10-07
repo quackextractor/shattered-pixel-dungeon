@@ -85,6 +85,38 @@ public class RewardLedger {
 		floors.add( current );
 	}
 
+	/** How many times each term was recorded, whether or not it carried any amount. */
+	private final int[] notes = new int[ RewardTerm.count() ];
+
+	/**
+	 * How many times a term was recorded.
+	 *
+	 * <p>Exists because {@code note(term, 0)} adds zero to every monetary total, so a term recorded
+	 * that way is invisible to {@link #termTotal} — and "recorded" is exactly the question when the
+	 * question is whether the environment classified an action as a refusal. {@code rewardcheck}
+	 * asserted on the total for its first version, compared an always-zero quantity, and passed with
+	 * {@code WAIT} deliberately mutated back into reporting a refusal.
+	 */
+	public int notes( RewardTerm term ){
+		return term == null ? 0 : notes[ term.ordinal() ];
+	}
+
+	/**
+	 * Marks an event that is worth counting but carries no reward.
+	 *
+	 * <p>For classification rather than value: an action the environment refused is a fact about the
+	 * turn, not a quantity of reward, and folding a zero into {@link #add} meant it left no trace
+	 * anywhere. A term recorded this way appears in {@link #notes} and in the per-term report, and is
+	 * absent from every score.
+	 *
+	 * <p>Deliberately not counted in {@link #notes} for terms added through {@link #add}, which is why
+	 * this exists separately rather than being a flag on that method: adding a count to {@code add}
+	 * would make "was recorded with a value" and "was noted without one" indistinguishable.
+	 */
+	public void noteEvent( RewardTerm term ){
+		if (term != null) notes[ term.ordinal() ]++;
+	}
+
 	/**
 	 * Records reward for one term.
 	 *
@@ -92,6 +124,7 @@ public class RewardLedger {
 	 *                           what distinguishes a cleared floor from one the hero fled
 	 */
 	public void add( RewardTerm term, double amount, boolean clearedByAdvancing ){
+		notes[ term.ordinal() ]++;
 		if (term.isShaping()) amount *= shapingScale;
 
 		int i = term.ordinal();

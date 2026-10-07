@@ -241,7 +241,14 @@ if (mode == EnvMode.WORLD){
 		}
 
 		if (!acted){
-			reward.note( RewardTerm.INVALID_ACTION, 0 );
+			//Counted, not rewarded. A refused action is a fact about the turn; giving it a penalty would
+			//be a reward decision this environment has no basis for — see PLAN-reward-signals.md for why
+			//adding guessed penalties here has already gone wrong once.
+			//
+			//This went through note(term, 0) and so moved no total, which made it undetectable: a check
+			//asserting on INVALID_ACTION's *total* compared a constant and passed with WAIT deliberately
+			//mutated back to reporting refusals. Recorded, not scored, so the classification is visible.
+			reward.noteEvent( RewardTerm.INVALID_ACTION );
 		}
 
 		return settle();
@@ -260,7 +267,10 @@ if (mode == EnvMode.WORLD){
 
 		while (running){
 			if (++guard > config.actorStepLimit){
-				terminate( RewardModel.TerminateReason.STALLED );
+				//Was called twice, charging STALLED's terminal reward twice over. The duplicate call is
+				//gone and terminate() is now idempotent, so a second call costs nothing anyway — which
+				//is why the fix is here rather than only in the guard: rewardcheck cannot reach this path
+				//(see its actorStepLimit comment), so this is protected by construction and not by a test.
 				terminate( RewardModel.TerminateReason.STALLED );
 				break;
 			}
@@ -383,13 +393,38 @@ if (mode == EnvMode.WORLD){
 		}
 	}
 
+	/**
+	 * Ends the episode, once.
+	 *
+	 * <p>Idempotent, and that is the fix rather than a tidy-up. Two of this method's callers could
+	 * reach it twice for the same episode: {@code settle}'s {@code actorStepLimit} guard did exactly
+	 * that, charging {@code STALLED}'s terminal reward -5.0 twice over for -10.0. Removing the duplicate
+	 * call fixed that instance; making the method refuse a second termination fixes the class, because
+	 * every future caller gets the same protection for free.
+	 *
+	 * <p>The guard is also what makes the reason authoritative. Without it, a second call could
+	 * overwrite {@code endReason} with a less specific one, so an episode that died would report
+	 * whatever the last caller said — and the end-reason breakdown added for this would lie.
+	 */
 	private double terminate( RewardModel.TerminateReason reason ){
+		if (terminated) return 0;
+
 		endReason = reason;
 		terminated = true;
-		truncated = (reason == RewardModel.TerminateReason.TURN_LIMIT
-				|| reason == RewardModel.TerminateReason.STALLED);
+		truncated = SPDEnv.isTruncation( reason );
 		running = false;
 		return reward.terminate( reason );
+	}
+
+	/**
+	 * Whether a reason cut the episode short rather than deciding it.
+	 *
+	 * <p>A truncation is bootstrapped by GAE — the episode stopped early and the value carries on past
+	 * it. The complement of {@link #isNaturalEnding}, and the pair is exhaustive over the reasons that
+	 * can end an episode, which is why both are named rather than inlined at their one call site.
+	 */
+	public static boolean isTruncation( RewardModel.TerminateReason reason ){
+		return !isNaturalEnding( reason );
 	}
 
 	// --------------------------------------------------------------------------- accessors
@@ -402,8 +437,26 @@ if (mode == EnvMode.WORLD){
 
 	/** True when the episode ended by dying or winning, rather than running out of budget. */
 	public boolean endedNaturally(){
-		return endReason == RewardModel.TerminateReason.DEATH
-				|| endReason == RewardModel.TerminateReason.VICTORY;
+		return isNaturalEnding( endReason );
+	}
+
+	/**
+	 * Whether a reason counts as the game ending the episode, rather than the harness cutting it short.
+	 *
+	 * <p>Static and taking the reason rather than reading a field, so a check can assert the
+	 * classification for every reason without having to produce an episode that ends each way. Floor 1
+	 * is survivable by wandering and beating the boss is not something a test can play out, so the only
+	 * way to cover the whole set is to ask the predicate directly — and asking it is what keeps this
+	 * from becoming a restatement of itself, which is the failure mode a table of expected values here
+	 * would have.
+	 *
+	 * <p>DEATH and VICTORY are the game's own outcomes. STALLED and TURN_LIMIT are guards that fired
+	 * because the harness stopped feeding the episode, and both are marked truncated so GAE bootstraps
+	 * through them: the episode was cut short, and the value carries on past it.
+	 */
+	public static boolean isNaturalEnding( RewardModel.TerminateReason reason ){
+		return reason == RewardModel.TerminateReason.DEATH
+				|| reason == RewardModel.TerminateReason.VICTORY;
 	}
 
 public float[] actionMask(){ return actionMask; }
