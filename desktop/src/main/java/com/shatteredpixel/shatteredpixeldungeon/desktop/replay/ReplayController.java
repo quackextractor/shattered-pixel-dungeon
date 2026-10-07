@@ -76,6 +76,14 @@ private Signal.Listener<KeyEvent> viewerKeys;
 		this.player = player;
 	}
 
+	/** The running game, so the window can be closed when playback ends. */
+	private static Game game;
+
+	/** Records the running game. Called once, by the launcher. */
+	public static void gameInstance( Game instance ){
+		game = instance;
+	}
+
 	/**
 	 * Arms a recording and marks the game's cell input as locked.
 	 *
@@ -147,6 +155,12 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 					+ " step " + controller.player.playback().cursor()
 					+ " playing=" + controller.player.playing()
 					+ " windowOpen=" + GameScene.showingWindow() );
+		}
+
+		//Closed here rather than in halt(), so the frame's reporting above is written first.
+		if (controller.player.closing()){
+			log( "closing: " + controller.player.haltReason() );
+			if (game != null ) game.finish();
 		}
 	}
 

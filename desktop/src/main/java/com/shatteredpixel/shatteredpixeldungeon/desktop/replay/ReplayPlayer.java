@@ -59,13 +59,42 @@ public class ReplayPlayer {
 	/** Seconds between steps at 1x. Without this a 1500-step replay flashes past unreadably. */
 	public static final float BASE_STEP_SECONDS = 0.06f;
 
+	/**
+	 * Speed for unattended playback, set with {@code -Dspd.fast}.
+	 *
+	 * <p>High enough that a 1500-step replay finishes in seconds. Only one step is applied per frame, so
+	 * playback stays correct and only gets quicker - there is no frame-skipping and no path taken that a
+	 * 1x run would not take.
+	 */
+	private static final float FAST_SPEED =
+			floatProperty( "spd.fast", 1f );
+
+	private static float floatProperty( String name, float fallback ){
+		String raw = System.getProperty( name );
+		if (raw == null ) return fallback;
+		try {
+			return Float.parseFloat( raw.trim() );
+		} catch (NumberFormatException e){
+			return fallback;
+		}
+	}
+
 	private final ReplayPlayback playback;
 	private final ActionMapper mapper;
 
 	private float sinceStep = 0;
-	private float speed = 1f;
+	private float speed = FAST_SPEED;
 	private boolean playing = true;
 
+	/**
+	 * Takes turn scheduling away from the game, for as long as this player exists.
+	 *
+	 * <p>Set in the constructor rather than at playback start, because the game spawns its scheduler
+	 * thread from {@code GameScene.update()} as soon as the level loads, which is before the first frame
+	 * this runs on.
+	 *
+	 * <p>See {@link #update(float)} for why playback cannot share the scheduler with the render thread.
+	 */
 	/** Set once a step has been applied and the engine has not yet settled for the next. */
 	private boolean awaitingSettle = false;
 
@@ -87,6 +116,7 @@ public class ReplayPlayer {
 	public ReplayPlayer( Replay replay ){
 		this.playback = new ReplayPlayback( replay );
 		this.mapper = new ActionMapper( new EnvConfig() );
+		Actor.manualScheduling = true;
 	}
 
 	public ReplayPlayback playback(){
@@ -121,26 +151,104 @@ public class ReplayPlayer {
 	/**
 	 * Advances playback. Call once per rendered frame.
 	 *
+	 * <p>This thread owns turn scheduling while playback runs: {@link Actor#manualScheduling} stops the
+	 * game from running its own scheduler thread, and turns are advanced here with
+	 * {@link Actor#headlessStep()} instead.
+	 *
+	 * <p>That is not an optimisation, it is a correctness requirement. The game runs
+	 * {@code Actor.process()} on its own thread while this runs on the render thread, and both write
+	 * {@code Hero.curAction}. An action injected here can be overwritten by {@code Hero.ready()} before
+	 * the hero consumes it, and the move is then lost: no turn spent, position unchanged. Playback
+	 * reported that as a divergence, and which step it appeared on varied between runs of the same
+	 * recording, because the outcome was decided by thread timing rather than by the recording.
+	 *
+	 * <p>Using {@code headlessStep()} also makes playback follow the same actor order the trainer used to
+	 * record, which is what playback is checking in the first place.
+	 *
 	 * @param elapsed seconds since the previous frame
 	 */
 	public void update( float elapsed ){
-		if (playing){
-			sinceStep += elapsed;
-		}
+		if (!playing) return;
 
-		//let the engine settle even while paused, or pausing mid-turn would freeze a half-finished
-		//animation and resuming would jump
-		if (awaitingSettle){
-			settle();
-			return;
-		}
-
-		if (!playing || !readyToAct()) return;
+		sinceStep += elapsed;
 
 		if (sinceStep < BASE_STEP_SECONDS / speed) return;
 
 		sinceStep = 0;
+
+		//Only ever step when the hero is not already ready.
+		//
+		//driveToHeroReady() always advances at least one scheduler step before it tests readiness, so
+		//using it as a per-frame gate advanced the game once for every frame rendered - including the
+		//frames spent waiting out the pacing timer, and at high speed that is every frame, because the
+		//timer is shorter than a frame. Each step handed a turn to some other actor while the hero stood
+		//ready and idle, so the world's actors advanced faster than the hero's actions did.
+		if (!heroIsReady() && !driveToHeroReady()) return;
+
 		applyNextStep();
+
+		//Settle in this same call, with no frame boundary in between.
+		//
+		//Applying and settling were separate frame callbacks, and the intervening GameScene.update()
+		//cleared the pending Hero.curAction before the hero ever acted: the scheduler log showed
+		//curAction already null on entry, with Actor.now() unmoved and the hero's position unchanged, so
+		//the recorded move was silently discarded. That is what "DIVERGED ... hero at 687, recording says
+		//655" was - a lost action, not a refused one.
+		//
+		//The trainer never has such a gap: it applies an action and drains the scheduler in one call, and
+		//it reproduces its own recordings exactly. Doing the same here removes the window rather than
+		//working around it.
+		if (!driveToHeroReady()) return;
+
+		settle();
+	}
+
+	/** True when the hero can be given input now. Tests only; advances nothing. */
+	private boolean heroIsReady(){
+		return Dungeon.hero != null
+				&& Dungeon.hero.isAlive()
+				&& Dungeon.hero.curAction == null
+				&& Dungeon.hero.ready
+				&& Dungeon.hero.paralysed == 0;
+	}
+
+	/** Ceiling on scheduler steps spent waiting for one hero turn, mirroring the headless pipeline. */
+	private static final int MAX_ACTOR_STEPS = 400;
+
+	/**
+	 * Advances turns until the hero can be given input, or reports that it cannot.
+	 *
+	 * <p>The readiness test is the same three conditions the headless trainer uses in
+	 * {@code LevelPipeline.runToHeroReady}: no pending action, ready for input, not paralysed.
+	 *
+	 * <p>{@code curAction == null} is the one that matters. {@code ActionMapper} sets
+	 * {@code Hero.curAction} and calls {@code Hero.next()}, which clears only {@code Actor.current};
+	 * {@code Hero.ready} is cleared later, inside {@code Hero.act()}, when the action is consumed. So
+	 * between applying a step and the hero acting, {@code ready} is still true from the previous turn.
+	 * Testing {@code ready} alone settles during that window and compares the position of a hero who
+	 * has not moved yet.
+	 *
+	 * <p>At least one step is always taken before readiness is tested, for the same reason: testing first
+	 * would see the previous turn's {@code ready} and the hero would never act.
+	 */
+	private boolean driveToHeroReady(){
+		for (int steps = 0; steps < MAX_ACTOR_STEPS; steps++){
+
+			if (Dungeon.hero == null || !Dungeon.hero.isAlive()){
+				playback.finish();
+				halt( "run ended - hero is dead" );
+				return false;
+			}
+
+			Actor.headlessStep();
+
+			if (Dungeon.hero.curAction == null && Dungeon.hero.ready && Dungeon.hero.paralysed == 0){
+				return true;
+			}
+		}
+
+		halt( "stalled - hero did not become ready within " + MAX_ACTOR_STEPS + " turns" );
+		return false;
 	}
 
 	/** True when the hero is waiting for input. */
@@ -197,23 +305,21 @@ public class ReplayPlayer {
 	}
 
 	/**
-	 * Runs the actor scheduler until the turn resolves, then checks the hero landed where the
-	 * recording says it should.
+	 * Called once the hero has taken the applied step, so it has resolved.
+	 *
+	 * <p>Compares where the hero landed against the recording. Runs no scheduler work; the caller has
+	 * already advanced turns until the hero was ready again.
+	 *
+	 * <p>Nothing clears {@code Hero.resting} here. A resting hero is still flagged ready, so a recorded
+	 * REST resolves after the single turn the trainer also spends on it. An earlier version forced the
+	 * flag clear, which made REST cost zero turns and stopped matching the trainer.
 	 */
 	private void settle(){
 		if (Dungeon.hero == null) return;
 
-		//a bounded number of scheduler steps: a pathological mob chain must not hang the viewer
-		for (int i = 0; i < 4000; i++){
-			Actor.headlessStep();
-
-			if (Dungeon.hero == null) break;
-			if (!Dungeon.hero.isAlive()) break;
-			if (Dungeon.hero.ready && Dungeon.hero.paralysed == 0) break;
-		}
-
-		if (Dungeon.hero != null && Dungeon.hero.isAlive()){
+		if (Dungeon.hero.isAlive()){
 			settledPosition = Dungeon.hero.pos;
+			trace( settledPosition );
 			if (!playback.checkPosition( settledPosition )){
 				diverged = true;
 				halt( playback.status() );
@@ -227,12 +333,75 @@ public class ReplayPlayer {
 		awaitingSettle = false;
 	}
 
+	/**
+	 * Prints one line per settled step.
+	 *
+	 * <p>Enabled with {@code -Dspd.trace}. The expected position is included alongside the actual one,
+	 * because a step where the two agree but the turn count does not is a different fault from one where
+	 * the positions differ, and the position alone cannot tell them apart.
+	 */
+	private void trace( int pos ){
+		if (!TRACE) return;
+		Replay.Step s = playback.peek();
+		System.err.println( "[trace] " + playback.cursor() + " "
+				+ ( s == null ? "?" : s.action + "/" + s.slot ) + " "
+				+ ( s == null ? "?" : s.mode ) + " pos=" + pos + " hp=" + Dungeon.hero.HP
+				+ " turn=" + Actor.now() + " exp=" + playback.expectedPos() );
+	}
+
+	/** Enabled with -Dspd.trace. Off by default: this is a diagnostic, not a feature. */
+	private static final boolean TRACE = System.getProperty( "spd.trace" ) != null;
+
+	/** Set when playback has ended and the window may be closed. See halt(). */
+	private boolean closingWhenSettled = false;
+
+	/**
+	 * Stops playback.
+	 *
+	 * <p>On a divergence the window can close itself. Playback cannot continue after the live game has
+	 * left the recording's path - {@link #playing(boolean)} already refuses to resume - so an open window
+	 * showing a frozen dungeon conveys nothing and has to be dismissed by hand. A harness running
+	 * recordings in sequence needs that too, or it blocks on every one.
+	 *
+	 * <p>Enabled with {@code -Dspd.autoCloseOnDiverge}, off by default.
+	 */
+	private static final boolean AUTO_CLOSE_ON_DIVERGE = System.getProperty( "spd.autoCloseOnDiverge" ) != null;
+
+	/**
+	 * Closes the window when playback ends for any reason.
+	 *
+	 * <p>For batch verification of recordings, where the result is the exit status and the window is
+	 * only in the way. Enabled with {@code -Dspd.autoClose}.
+	 */
+	private static final boolean AUTO_CLOSE = System.getProperty( "spd.autoClose" ) != null;
+
 	private void halt( String reason ){
 		if (playing){
 			playing = false;
 			haltReason = reason;
 			System.err.println( "[replay] halted: " + reason );
+
+			boolean diverged = playback.diverged();
+			if (AUTO_CLOSE || ( AUTO_CLOSE_ON_DIVERGE && diverged ) ){
+				closeWhenReportingSettles();
+			}
 		}
+	}
+
+	/**
+	 * Asks the frame loop to close once this frame's reporting has finished.
+	 *
+	 * <p>Deferred by one frame so the HUD and the stderr line describing the divergence are written
+	 * before the window goes away. Closing inside {@link #halt} would discard the message that explains
+	 * why it closed.
+	 */
+	private void closeWhenReportingSettles(){
+		closingWhenSettled = true;
+	}
+
+	/** True once playback has ended and the frame loop may close the window. */
+	public boolean closing(){
+		return closingWhenSettled;
 	}
 
 /**

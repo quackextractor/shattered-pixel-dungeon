@@ -164,6 +164,20 @@ public abstract class Actor implements Bundlable {
 
 	private static float now = 0;
 	
+	/**
+	 * When true, {@link com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene} does not run the
+	 * actor scheduler on its own thread, and the caller advances turns itself with
+	 * {@link #headlessStep()}.
+	 *
+	 * <p>Default false, so the game is unaffected. It exists because a replay viewer has to inject
+	 * actions, and injecting from the render thread races the scheduler thread: both write
+	 * {@code Hero.curAction}, so an action can be overwritten before the hero consumes it. The move
+	 * is then silently lost - no turn spent, position unchanged - which is what a divergence reports.
+	 * Driving the same steps from one thread removes the race and makes playback follow exactly the
+	 * order {@link #headlessStep()} produces.
+	 */
+	public static boolean manualScheduling = false;
+	
 	public static float now(){
 		return now;
 	}

@@ -939,7 +939,7 @@ public synchronized void update() {
 			waterOfs = water.offsetY(); //re-assign to account for auto adjust
 		}
 
-		if (!Actor.processing() && Dungeon.hero.isAlive()) {
+		if (!Actor.processing() && Dungeon.hero.isAlive() && !Actor.manualScheduling) {
 			if (actorThread == null || !actorThread.isAlive()) {
 				
 				actorThread = new Thread() {
