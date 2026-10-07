@@ -325,9 +325,37 @@ public class ActionMapper {
 
 	// --------------------------------------------------------------------------- geometry
 
+	/**
+	 * Applies a cell the agent chose.
+	 *
+	 * <p><b>Adjacency is required, and it is the whole reason this method exists in this shape.</b>
+	 * {@code Hero.handle} does not check it. It sets {@code HeroAction.Move} for an ordinary cell, and
+	 * {@code Hero.actMove} then calls {@code getCloser}, which branches on exactly this: adjacent
+	 * target means step onto it, and <b>anything else means pathfind there and walk</b>. So a
+	 * non-adjacent cell does not fail - it becomes a multi-tile journey the agent never chose.
+	 *
+	 * <p>That is not hypothetical, and the real game is what proved it. Replaying a recording in the
+	 * desktop viewer diverged from the trainer on a plain {@code MOVE_SW}: the trainer put the hero one
+	 * step south-west, the viewer put him 30 cells away. Same action, same seed, same cell arithmetic -
+	 * {@code offsetCell} is {@code pos + dx + dy * width}, identical in both.
+	 *
+	 * <p>Which means one of them passed a cell that was not adjacent, and only one of them could get
+	 * away with it. A player cannot: {@code CellSelector.select} only ever passes a cell the player
+	 * clicked, which is on or beside the hero. The mask was checking adjacency to decide whether to
+	 * *offer* the action, but the execution path did not enforce it, and a mask is a hint to the policy
+	 * rather than a guarantee about the environment.
+	 *
+	 * <p>Refused here rather than papered over, because a refusal is visible: {@code SPDEnv} counts it
+	 * as {@code INVALID_ACTION}, and an agent that chose an unreachable cell learns that it was
+	 * unreachable. Silently walking it there would credit the agent for a decision it never made.
+	 */
 	private boolean handleCell( int cell ){
 		if (!insideMap( cell )) return false;
+
 		Hero hero = hero();
+
+		if (!Dungeon.level.adjacent( hero.pos, cell )) return false;
+
 		if (hero.handle( cell )) {
 			hero.next();
 			return true;
@@ -360,27 +388,94 @@ public class ActionMapper {
 	 * interact at all, which is the decision worth learning.
 	 */
 	private int pickInteractCell(){
+		StringBuilder dbg = PICKUP_TRACE ? new StringBuilder() : null;
+
 		for (int o = 1; o < TARGET_COUNT; o++){
 			int cell = targetCell( o );
 			if (!insideMap( cell )) continue;
 			Char ch = Actor.findChar( cell );
-			if (ch instanceof Mob && hero().canAttack( (Mob)ch )) return cell;
+			if (dbg != null){
+				dbg.append( " [o=" ).append( o ).append( " cell=" ).append( cell )
+						.append( " ch=" ).append( ch == null ? "none" : ch.getClass().getSimpleName() )
+						.append( " mob=" ).append( (ch instanceof Mob) )
+						.append( " canAtk=" ).append( (ch instanceof Mob) && hero().canAttack( (Mob)ch ) )
+						.append( " heap=" ).append( (Dungeon.level.heaps.get( cell ) != null)
+								? (Dungeon.level.heaps.get( cell ).size() + "x" + Dungeon.level.heaps.get( cell ).type) : "no" )
+						.append( " trans=" ).append( Dungeon.level.getTransition( cell ) != null )
+						.append( " ]" );
+			}
+			if (ch instanceof Mob && hero().canAttack( (Mob)ch )) {
+				if (dbg != null) System.err.println( "[interact] picked mob at " + cell + dbg );
+				return cell;
+			}
 		}
 		for (int o = 1; o < TARGET_COUNT; o++){
 			int cell = targetCell( o );
-			if (insideMap( cell ) && Dungeon.level.heaps.get( cell ) != null ) return cell;
+			Heap h = insideMap( cell ) ? Dungeon.level.heaps.get( cell ) : null;
+			if (h != null) {
+				if (PICKUP_TRACE) tracePickup( cell, h );
+				if (dbg != null){
+					System.err.println( "[interact] picked heap at " + cell + " size=" + h.size()
+							+ " type=" + h.type + " peek=" + (h.peek() == null ? "null" : h.peek().getClass().getSimpleName())
+							+ " seen=" + h.seen + dbg );
+				}
+				return cell;
+			}
 		}
 		for (int o = 1; o < TARGET_COUNT; o++){
 			int cell = targetCell( o );
 			if (!insideMap( cell )) continue;
 			int terrain = Dungeon.level.map[ cell ];
-			for (int t : LOCKED_DOOR_TERRAINS) if (terrain == t) return cell;
+			for (int t : LOCKED_DOOR_TERRAINS) if (terrain == t) {
+				if (dbg != null) System.err.println( "[interact] picked door at " + cell + dbg );
+				return cell;
+			}
 		}
 		for (int o = 1; o < TARGET_COUNT; o++){
 			int cell = targetCell( o );
-			if (insideMap( cell ) && Dungeon.level.getTransition( cell ) != null ) return cell;
+			if (insideMap( cell ) && Dungeon.level.getTransition( cell ) != null ) {
+				if (dbg != null) System.err.println( "[interact] picked transition at " + cell + dbg );
+				return cell;
+			}
 		}
+		if (dbg != null) System.err.println( "[interact] found nothing" + dbg );
 		return hero().pos;
+	}
+
+	/**
+	 * TEMP DIAGNOSTIC: enabled with {@code -Dspd.pickupTrace}.
+	 *
+	 * <p>Prints what each adjacent cell offered and which was chosen, and what a heap held at the time.
+	 * Used to find a divergence where the same recorded action resolved differently in the trainer and
+	 * the viewer. Remove once that class of fault is closed.
+	 */
+	private static final boolean PICKUP_TRACE = System.getProperty( "spd.pickupTrace" ) != null;
+
+	private static void tracePickup( int cell, Heap h ){
+		StringBuilder items = new StringBuilder();
+		h.items.forEach( i -> items.append( i.getClass().getSimpleName() ).append( " " ) );
+		System.err.println( "[pickup] cell=" + cell + " size=" + h.size()
+				+ " backpack=" + bagRoom( Dungeon.hero.belongings.backpack )
+				+ " bags=" + bagList()
+				+ " [" + items.toString().trim() + "]" );
+	}
+
+	/** Free slots in one bag. */
+	private static String bagRoom( com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag bag ){
+		int used = 0;
+		for (Item i : bag) used++;
+		return bag.getClass().getSimpleName() + " " + used + "/" + bag.capacity();
+	}
+
+	/** Every bag the hero owns, with its contents, so an unexpected bag is visible. */
+	private static String bagList(){
+		StringBuilder sb = new StringBuilder( "[" );
+		for (com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag bag : Dungeon.hero.belongings.getBags()){
+			sb.append( bag.getClass().getSimpleName() ).append( "{" );
+			for (Item i : bag) sb.append( i.getClass().getSimpleName() ).append( "," );
+			sb.append( "} " );
+		}
+		return sb.append( "]" ).toString();
 	}
 
 	// --------------------------------------------------------------------------- adjacency

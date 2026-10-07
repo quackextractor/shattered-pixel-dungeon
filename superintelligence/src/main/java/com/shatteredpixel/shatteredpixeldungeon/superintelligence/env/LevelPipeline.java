@@ -209,7 +209,17 @@ public class LevelPipeline {
 				return Outcome.HERO_DEAD;
 			}
 
-			if (Dungeon.hero.ready && Dungeon.hero.paralysed == 0){
+			//READY means the hero has finished this turn and can be given the next decision.
+			//
+			//A pending curAction means it has not finished. ActionMapper sets curAction and calls
+			//Hero.next(), which clears the current actor but leaves Hero.ready set. Testing ready alone
+			//therefore returned READY on the first iteration, before the hero had executed the action at
+			//all, and the episode recorded a step the hero never performed - a MOVE_W that moved nobody.
+			//The desktop viewer, which waits for the turn to actually resolve, moved correctly and
+			//reported the trainer as diverging.
+			//
+			//So both conditions are required: the action consumed, and the hero waiting for input.
+			if (Dungeon.hero.curAction == null && Dungeon.hero.ready && Dungeon.hero.paralysed == 0){
 				return Outcome.READY;
 			}
 
