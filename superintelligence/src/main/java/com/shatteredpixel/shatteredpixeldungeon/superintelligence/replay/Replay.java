@@ -80,6 +80,23 @@ public class Replay {
 		/** Running reward after the step. Diagnostics only. */
 		public double reward;
 
+		/**
+		 * Quickslot bindings in force when this step was recorded, as {@code ItemClass:slot} pairs.
+		 *
+		 * <p>Recorded per step, and only for steps that name a slot, because a slot index means nothing
+		 * without them. {@code ActionMapper.refreshSlots} places quickslot-bound items into their bound
+		 * slot before filling the gaps, so the same index resolves to a different item depending on the
+		 * bindings: with the Waterskin bound to quickslot 1 it took slot 0, and unbound it left slot 0 to
+		 * the VelvetPouch. A {@code DROP} on slot 0 then discarded a different item in each environment,
+		 * which changed the backpack's capacity and every later decision built on it.
+		 *
+		 * <p>Per step rather than per run, because the bindings change during a run: equipping and
+		 * unequipping an item rebinds a slot. One snapshot would be right only until the first equip.
+		 *
+		 * <p>Empty when the step names no slot, and on recordings made before this field existed.
+		 */
+		public String quickslots = "";
+
 		public Step( String action, int slot, String mode, int heroPos, double reward ){
 			this.action = action;
 			this.slot = slot;

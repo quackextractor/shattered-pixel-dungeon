@@ -49,7 +49,7 @@ public class ReplayIO {
 			out.newLine();
 			out.write( "depth=" + replay.depth );
 			out.newLine();
-out.write( "turns=" + replay.turns );
+				out.write( "turns=" + replay.turns );
 			out.newLine();
 			out.write( "turn_limit=" + replay.turnLimitPerFloor );
 			out.newLine();
@@ -66,6 +66,10 @@ out.write( "turns=" + replay.turns );
 				out.write( Integer.toString( step.heroPos ));
 				out.write( ' ' );
 				out.write( Double.toString( step.reward ));
+				//Sixth field, appended so recordings written before this field still parse: the
+				//reader's length check already tolerates a short step line.
+				out.write( ' ' );
+				out.write( step.quickslots );
 				out.newLine();
 			}
 		}
@@ -101,6 +105,10 @@ out.write( "turns=" + replay.turns );
 			step.mode = parts[ 2 ];
 			if (parts.length > 3) step.heroPos = Integer.parseInt( parts[ 3 ] );
 			if (parts.length > 4) step.reward = Double.parseDouble( parts[ 4 ] );
+			//Absent on recordings made before quickslots were recorded. Such a recording cannot be played
+			//back faithfully, because a slot index is meaningless without its bindings; the viewer says so
+			//rather than silently resolving slot 0 to whatever happens to be first in the backpack.
+			if (parts.length > 5) step.quickslots = parts[ 5 ];
 			replay.steps.add( step );
 		}
 

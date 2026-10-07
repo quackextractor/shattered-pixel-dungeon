@@ -292,6 +292,7 @@ public class ActionMapper {
 
 			case SLOT:
 			case INVENTORY:
+				if (PICKUP_TRACE && action == Action.DROP) traceDrop( hero(), this, index );
 				return SlotAction.execute( hero(), slot( index ), action, config.allowEquipping );
 
 			default:
@@ -445,19 +446,84 @@ public class ActionMapper {
 	/**
 	 * TEMP DIAGNOSTIC: enabled with {@code -Dspd.pickupTrace}.
 	 *
+	 * <p>Reports, for one DROP, which item each inventory slot resolves to and what each carried item is
+	 * bound to in {@link Dungeon#quickslot}. A recorded slot index only means something relative to those
+	 * bindings: {@link #refreshSlots()} places bound items first, so one dropped item can become another
+	 * purely by a binding appearing or disappearing between runs.
+	 *
+	 * <p>This is how the divergence where the trainer and the viewer dropped different items from the
+	 * same slot was traced to a quickslot binding. Remove once slot resolution is covered by a gate.
+	 *
 	 * <p>Prints what each adjacent cell offered and which was chosen, and what a heap held at the time.
 	 * Used to find a divergence where the same recorded action resolved differently in the trainer and
 	 * the viewer. Remove once that class of fault is closed.
 	 */
 	private static final boolean PICKUP_TRACE = System.getProperty( "spd.pickupTrace" ) != null;
 
+	/** Which item each quickslot holds, and the reverse binding for every carried item. */
+	private static String quickslotState( Hero hero ){
+		StringBuilder sb = new StringBuilder();
+		for (Item it : hero.belongings.backpack){
+			int slot = Dungeon.quickslot.getSlot( it );
+			sb.append( it.getClass().getSimpleName() ).append( "->" ).append( slot ).append( " " );
+		}
+		return sb.toString().trim();
+	}
+
+	/**
+	 * TEMP DIAGNOSTIC: prints slot 0 and the bag list on every DROP.
+	 *
+	 * <p>A recorded DROP is where the trainer and the viewer first disagree about the hero's bags, so the
+	 * slot contents have to be visible at that moment.
+	 */
+	private static void traceDrop( Hero hero, ActionMapper mapper, int slot ){
+		ArrayList<Item> slots = mapper.slots();
+		Item inSlot = slot >= 0 && slot < slots.size() ? slots.get( slot ) : null;
+		StringBuilder order = new StringBuilder();
+		for (Item it : hero.belongings.backpack){
+			order.append( it.getClass().getSimpleName() )
+					.append( "(cat=" ).append( com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.order( it ) )
+					.append( ",img=" ).append( it.image() ).append( ") " );
+		}
+		System.err.println( "[drop] slot=" + slot
+				+ " item=" + (inSlot == null ? "null" : inSlot.getClass().getSimpleName())
+				+ " equipped=" + (inSlot != null && inSlot.isEquipped( hero ))
+				+ " bagRoom=" + bagRoom( hero.belongings.backpack )
+				+ " order=" + order
+				+ " qs=" + quickslotState( hero )
+				+ " bags=" + bagList() );
+	}
+
 	private static void tracePickup( int cell, Heap h ){
 		StringBuilder items = new StringBuilder();
 		h.items.forEach( i -> items.append( i.getClass().getSimpleName() ).append( " " ) );
+		Hero hero = Dungeon.hero;
 		System.err.println( "[pickup] cell=" + cell + " size=" + h.size()
-				+ " backpack=" + bagRoom( Dungeon.hero.belongings.backpack )
+				+ " backpack=" + bagRoom( hero.belongings.backpack )
 				+ " bags=" + bagList()
+				+ " heroClass=" + hero.heroClass
+				+ " challenges=" + Dungeon.challenges
+				+ " velvetDropped=" + Dungeon.LimitedDrops.VELVET_POUCH.dropped()
+				+ " heroIdentity=" + System.identityHashCode( hero )
+				+ " hero.belongings=" + System.identityHashCode( hero.belongings )
+				+ " backpack=" + System.identityHashCode( hero.belongings.backpack )
+				+ " pouch=" + System.identityHashCode( pouchOf( hero ) )
+				+ " heapPouchIsSame=" + (heapPouch( h ) == pouchOf( hero ))
 				+ " [" + items.toString().trim() + "]" );
+	}
+
+	private static Object heapPouch( Heap h ){
+		for (Item i : h.items){
+			if (i.getClass().getSimpleName().equals( "VelvetPouch" )) return i;
+		}
+		return null;
+	}
+
+	private static Object pouchOf( Hero hero ){
+		for (com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag b : hero.belongings.getBags()){
+			if (b.getClass().getSimpleName().equals( "VelvetPouch" )) return b;
+		}
+		return null;
 	}
 
 	/** Free slots in one bag. */

@@ -39,6 +39,11 @@ public class ReplayRecorder {
 	public void record( Action action, int slot, EnvMode mode ){
 		if (!recording) return;
 		replay.add( action.name(), slot, mode.name(), -1, 0 );
+		//Captured here, before the action runs, because that is when the slot index was chosen. An equip
+		//or unequip in this very step can rebind a slot, so afterwards would describe a different world.
+		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY){
+			replay.steps.get( replay.length() - 1 ).quickslots = Quickslots.capture();
+		}
 	}
 
 	/** Fills in the post-step state of the step just recorded. */

@@ -30,6 +30,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 
 /**
@@ -286,6 +287,33 @@ public class ReplayPlayer {
 		}
 
 		EnvMode mode = modeOf( step.mode );
+
+		//Restore the bindings this step was recorded under, before the slot index is resolved.
+		//
+		//A recorded slot index only means something alongside the quickslot bindings in force when it was
+		//chosen: refreshSlots puts bound items into their bound slots and fills the rest from the
+		//backpack, so the same index names a different item under different bindings. Measured on
+		//KXY-JHB-LXK, a recorded DROP on slot 0 resolved to the VelvetPouch in the trainer and to the
+		//Waterskin in the viewer - the trainer had the Waterskin bound to quickslot 1, the viewer had no
+		//bindings. The wrong item was dropped, which changed Backpack.capacity from 21 to 20, and every
+		//later INTERACT resolved against a different inventory.
+		//
+		//Restored per step, not once: equipping or unequipping rebinds a slot mid-run.
+		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY){
+			if (step.quickslots == null || step.quickslots.isEmpty()){
+				halt( "step " + playback.cursor() + " names slot " + step.slot
+						+ " but records no quickslot bindings; it was recorded before bindings were stored,"
+						+ " so the index cannot be resolved" );
+				return;
+			}
+			if (!Quickslots.applicable( step.quickslots )){
+				halt( "step " + playback.cursor() + " records quickslots [" + step.quickslots
+						+ "] that do not match what the hero is carrying; cannot resolve slot "
+						+ step.slot );
+				return;
+			}
+			Quickslots.restore( step.quickslots );
+		}
 
 		//the follow-up half of a two-step action
 		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY || mode == EnvMode.MENU){
