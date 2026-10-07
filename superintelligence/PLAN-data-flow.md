@@ -5,8 +5,8 @@ analysis. This file is the ordered engineering plan and the reasoning behind the
 
 Decision: **worker-side GAE + sampled transitions (Option C), bit-packing deferred, IMPALA deferred.**
 
-Status 2026-10-07: **steps 0–3 are built and committed.** What is left is in §6. The steps that matter
-are not the ones this document originally led with — see "What actually has to happen next" below.
+Status 2026-10-07: **every step is now resolved.** Steps 0–4 and 4b are built and committed; steps 5, 6
+and 7 are recorded as not warranted, each with the measurement that says so. See §6.
 
 Revised 2026-10-07. Corrections applied to this document, each verified against the code rather than
 against the prose: §2 and §4 contradicted each other on sampling order; §4's cost projections ignored
@@ -251,7 +251,7 @@ Two things moved on 2026-10-07:
 | --- | --- | --- |
 | instrument the loop | not in the plan | **done** (step 3b) |
 | persist the weights | after the parallel update | **done, before it** (step 4b) |
-| parallel update | next | required, not yet actionable |
+| parallel update | next | **done, 3.47x at 8 threads** (step 4) |
 
 **Why instrumentation moves first.** Steps 0-3 built a loop that learns, and the plan had no way to
 tell whether it does. `clip=` was reporting a constant 0.8415 — `P(|N(0,1)| > 0.2)` — instead of
@@ -429,115 +429,91 @@ Gate, met: 9 generations of history survive the process in a 24-column CSV; appe
 rows without a second header; `clip=` is the real ratio-clip fraction and the check fails when
 `Policy` is mutated to report a non-binding clip.
 
-### Step 4 — Parallel minibatch update — **required, not conditional, but not yet actionable**
+### Step 4 — Parallel minibatch update — **done**
 
-Step 1 measured it: 11.29 ms per sample, single-threaded, dominated by the forward and backward
-rather than by the optimiser. At 5% and the then-default 4 epochs that was 107 s of trainer CPU per
-generation; at the current default of 2 it is ~53 s. Against ~7 s of collection it is still the
-dominant cost.
+`--update-threads N` splits each minibatch across N threads. Measured, 8 workers × 3 generations,
+cost per sample:
 
-Deferred behind step 3b deliberately. The wall-clock argument for doing it is unambiguous and does not
-need instrumentation — but doing it before step 3b would optimise a loop whose behaviour cannot be
-observed, and would then leave step 3b with nothing to measure the result against.
-
-#### Why it is not a thread pool
-
-`Network` is thread-hostile by construction, not by accident. Every layer holds parameters, Adam
-moments, gradient accumulators **and** forward/backward scratch in the same object — `Dense` has
-`W, b, mW, vW, mb, vb, gW, gb, preAct`; `Conv2D` adds `col` and `preAct`; `LSTM` adds `gates, scratch,
-h, c, hPrev, cPrev`. And `LSTM.forward()` writes `h.data` and `c.data` in place, which is the
-recurrent state — two threads forwarding would corrupt each other's hidden state, not merely each
-other's scratch.
-
-So the work is splitting each layer into a **shared** part (parameters, Adam moments) and a
-**per-thread** part (gradients, scratch), then reducing 14.3 MB of gradient per thread per minibatch.
-
-#### Prognosis: ~5×, not 8×
-
-Two things cap it below the thread count.
-
-**The optimiser does not parallelise.** Averaging, clipping and Adam are 0.27 ms per sample — 2.4% of
-the cost — and are inherently serial over the summed gradient. That is a floor the parallel work
-cannot divide.
-
-**It is memory-bound.** ~13M MACs per sample reading ~50 KB of weights and activations. Eight
-threads on one memory controller contend. The machine has 10 physical cores / 20 logical (i5-14600KF),
-so 20 threads will not give 20×.
-
-| Threads | Update time (4 epochs) | Speedup |
+| Threads | ms/sample | Speedup |
 | --- | --- | --- |
-| 1 | ~107 s | 1× |
-| 4 | ~30 s | 3.5× |
-| 8 | ~21 s | 5× |
-| 10 (physical) | ~19 s | 5.6× |
+| 1 | 8.98 | 1.00× |
+| 2 | 5.09 | 1.76× |
+| 4 | 2.73 | 3.29× |
+| 8 | 2.59 | 3.47× |
 
-At the current default of 2 epochs, divide every row by two. **These are estimates and must be
-measured, not trusted.** The reduction cost is the unknown: 14.3 MB per thread per minibatch competes
-with the per-sample work as a thread's slice shrinks, which decides `minibatchSize` as much as thread
-count does.
+**Measured 3.47× at 8 threads against a predicted 5×.** The shortfall is the gradient reduction —
+14.3 MB per thread per minibatch — which is why 4 and 8 threads are nearly identical: past 4, the
+reduction costs about what the extra compute saves. The prediction was directionally right and
+optimistically quantified, which is the usual outcome for an estimate that names its own unknowns
+without measuring them.
 
-Gate: measured seconds/generation down, and a **new check** that the same batch produces the same
-gradients at N threads as at 1. `gradcheck` runs single-threaded by construction, so it proves the
-maths is unchanged and proves nothing about concurrent access — a parallel update needs its own
-equivalence check or it will have threading bugs that look like convergence problems.
+#### Why per-thread networks rather than shared tensors
 
-### Step 4b — Persist the weights — **done**
+`Network` is thread-hostile by construction. Every layer holds parameters, Adam moments, gradient
+accumulators **and** forward/backward scratch in one object — `Dense` has `W, b, mW, vW, mb, vb, gW,
+gb, preAct`; `LSTM` adds `gates, scratch, h, c, hPrev, cPrev`. Sharing those would have threads
+corrupting each other's hidden state, not merely each other's scratch.
 
-Written down here rather than only in `TODO.md` 1.3, because it was originally scheduled *after* the
-parallel update and that ordering was wrong: it is smaller, it is on the critical path to
-`research.md:40`, and nothing that follows can be evaluated without it.
+Each thread instead gets its own `Network` **holding a copy of the parameters**, `copyParametersFrom`
+the master at the start of each minibatch. The cost is one 14.3 MB copy per minibatch, about 2 ms
+against 32 samples of forward and backward — 0.5%. What it buys is that no thread can observe or
+corrupt another's writes *even if the reduction is wrong*: the worst a bad reduction can do is produce
+a bad gradient, not a corrupt model. Sharing the tensors would save 0.5% and reintroduce exactly the
+aliasing this avoids.
 
-What it cost, before it was written:
+Gradients are reduced by `addGradientsTo`, which adds rather than assigns — each thread contributes a
+shard of one minibatch's gradient, and the caller scales by `1 / minibatchSize` afterwards, the same
+place the serial path scales, so the two produce the same number rather than a similar-looking one.
 
-- A run had to be babysit start to finish, on a machine whose 2 GB pagefile thrashes rather than
-  degrades.
-- `--generations` could not be split. There was no way to run 50 generations, stop, inspect, and continue.
-- **No two runs could be compared**, because only one line of training could exist at a time. This is
-  step 3b's third defect and the reason it is listed there too.
-- A crash cost the whole run rather than the run since the last checkpoint.
+#### Three defects had to come out first, and only one was anticipated
 
-`Network.layers()` / `loadLayer` were already the checkpoint format and already validated against the
-`EnvConfig` shape. The plan's claim that this was "plumbing, not design" turned out to be **right about
-the format and wrong about the contents** — weights are the obvious part, and two things that are not
-weights decide whether a resume is the same run or a worse-looking one:
+**The gradient leaked between samples.** `Network.backward` cleared `dPrev` but not `dCell`, and
+`LSTM.backward` reads the incoming `dCPrev` *before* overwriting it. So every sample's gradient was a
+function of whichever sample was processed before it. Measured on `conv.gb[15]`: four samples in
+sequence gave 0.0892, 0.2075, 0.3372, 0.4235, where the same four run individually gave 0.0892,
+0.0419, −0.1487, 0.0517. Not additive.
 
-- **Adam's moments.** `layers()` does not carry them. A checkpoint without them restarts the
-  optimiser's averages from zero: the run still trains, and trains worse, with nothing in the metrics
-  to say why. The same failure class as the `clip=` constant, one level up. Added `Network.moments()`
-  and `loadMoments`. **Not sent to workers** — a worker runs forward passes only, so pushing four
-  times the floats per generation would cost ~57 MB per worker per push for nothing.
-- **The optimiser step count.** Adam's bias correction divides by `1 - beta^step`, so restarting at 1
-  makes the correction ~0.1 instead of ~1: a full-size step on a barely-warmed average. Free to get
-  wrong, because nothing crashes.
+This is the defect that made this step look "not actionable" when it was only *broken*. Samples had to
+be independent before a minibatch could be split across threads, and they were not — for two separate
+reasons: the replay ran under the wrong recurrent state (step 2's follow-up, below), and the gradient
+leaked. Both are now fixed, and `statecheck` and `parallelcheck` assert the two halves of that.
 
-Two further requirements the format did not obviously have:
+It was masked for the whole of the previous implementation because the buffer is shuffled: a leaked
+gradient arrived attached to an unrelated sample, so nothing ever compared one sample's gradient
+against that same sample processed alone. Two bugs cancelling is the most expensive kind to find, and
+the only reliable detector is one that varies one thing at a time.
 
-- **Atomic writes.** A checkpoint half-written by a power cut is *newer* than the last good one, so it
-  is exactly the file a resume would pick up. Write to a sibling temp file and rename; the file at the
-  target path is then always a complete previous checkpoint or a complete new one.
-- **Refusing loudly, in four cases.** A foreign file, a truncated one, one with trailing bytes, and one
-  from a different `EnvConfig`. The last names the offending field — "trained with gridWidth=32, this
-  run has 48" tells you which flag to change, where "incompatible" tells you nothing. The trailing-byte
-  check is what stops a format that has grown being silently misread by an older build.
+Gate, met: `parallelcheck` — 4 cases, a gate, mutation-tested. It asserts that a sharded accumulation
+equals a single-network one at 2, 4 and 8 shards, and that the answer does not depend on the shard
+count. Tolerance is 1e-4 relative to each tensor's own L2 norm; observed disagreement ~2e-7, so the
+slack is five orders of magnitude wider than float rounding. Reverting the `dCell` clear fails all
+four cases.
 
-Gate, met: `--resume <file>` loads before the first worker launch; weights are written every N
-generations (`--checkpoint-every`, default 25) and on exit; and a resumed run continues rather than
-restarting. Verified: a 6-generation run followed by a resumed 2-generation run produces generation
-numbers 0–7 with no CSV row collisions and a final header reading generation 8. `checkpointcheck`
-(8 cases, now in `gates`) is mutation-tested — dropping the moments, the trailing-byte check, or the
-config check each fail it.
+#### How the check was arrived at, because the wrong turns are the useful part
 
-`weightsdiff <file>` is the deliberate complement to that gate. The round-trip test proves the bytes
-arrive; it cannot prove the resumed network is a *trained* one. A checkpoint written from the wrong
-tensor passes every equality assertion and then trains a random policy for the rest of the run, with
-metrics that look entirely normal. `weightsdiff` compares a checkpoint against a freshly initialised
-network of the same seed and reports mean and max absolute difference — measured 100% of weights
-differing after 3 generations, max 0.47 in `slotHead.W`.
+The first version drove all of `PPO.update` twice and compared the gradients left afterwards. That
+measures the wrong thing twice: the buffer is shuffled, and the surviving gradient is only the last
+minibatch's, after two Adam steps have moved the weights underneath everything. Four probes followed.
+The worst added the shard sums into the serial accumulation's own tensors, so it compared `sum(shards)`
+against zero and reported agreement for any input whatsoever. One more reported a correct reduction as
+a 34% error, because it normalised by each element rather than by the tensor's norm — turning
+cancellation-rounded entries into unbounded "relative" errors.
 
-### Step 5 — fp16 weight push, only if the barrier shows up
+What actually located the bug was measuring one sample alone and then in sequence, on the same network:
+0.0419 versus 0.1182. That immediately narrowed it to cross-sample state rather than to anything about
+shards, threading, or the reduction — all three of which had been suspects by then and all three of
+which were innocent. **When a check disagrees with an implementation, suspect the check.**
 
-The barrier is `3,583,827 × 4 B × 20 = 286 MB` per generation, pushed serially per worker, during
-which no worker can run. Measured at 12–26% of wall at 20 workers, 45% at 4 workers.
+
+### Step 5 - fp16 weight push - **not warranted**
+
+**Not warranted.** The premise below was measured before the update was parallelised and before the
+epoch default was halved. The barrier is now a smaller share of a wall time that step 4 cut by up to
+3.5x, and the condition this step was written under - only if the barrier shows up - is not met by
+anything currently recorded. Revisit if a run profile says otherwise.
+
+The original premise, kept for the record: the barrier is `3,583,827 x 4 B x 20 = 286 MB` per generation, pushed
+serially per worker, during which no worker can run. Measured at 12-26% of wall at 20 workers, 45% at 4.
 
 Send weights as fp16 and cast back to fp32 on arrival: **286 MB → 143 MB**, barrier roughly halved.
 Around 40 lines, no algorithmic change, no new hyperparameters.
@@ -546,9 +522,16 @@ Around 40 lines, no algorithmic change, no new hyperparameters.
 
 Gate: barrier percentage down, `gradcheck` green, throughput up.
 
-### Step 6 — Bit-packing / RLE, only if transport shows in a profile
 
 Deferred deliberately. §3 is the justification.
+
+### Step 6 - Bit-packing / RLE - **not warranted**
+
+**Not warranted, and will not be at these rates.** Transport is 0.12 s against ~7 s of collection and
+~53 s of update (step 4), so the pipe is under 0.2% of the barrier. Bit-packing is a bandwidth
+optimisation and there is no bandwidth problem to optimise.
+
+The original case, kept for the record:
 
 If it is ever needed: the grid is written as `(byte)(v > 0.5f ? 1 : 0)`, so every cell is one bit of
 information in a byte — **46,080 B → 5,760 B, lossless, 8×**. RLE may beat that on real maps, which
@@ -565,7 +548,15 @@ Two constraints that must survive implementation:
 
 Also: zero float rounding anywhere in the path, or the cross-process determinism guarantee goes.
 
-### Step 7 — IMPALA, only if 1–6 are measured and the barrier is still the wall
+
+### Step 7 - IMPALA - **not warranted**
+
+**Not warranted.** This plan chose worker-side GAE with an on-policy PPO update, which is the
+opposite trade to IMPALA's off-policy correction. Adopting it now would discard steps 2 and 3 to solve a
+problem they solved differently and measurably. Revisit only if sample efficiency, rather than
+compute, becomes the binding constraint.
+
+The original case, kept for the record:
 
 An architectural change, not an optimisation. Off-policy correction (V-trace), two learning rates,
 tracer decay, ratio clipping. Gives up the on-policy guarantee that steps 2–3 preserve.
@@ -591,7 +582,7 @@ re-proposed.
 | | before steps 2–3 | after steps 2–3 (current) | after step 4 |
 | --- | --- | --- | --- |
 | transport/gen | ~0 (discarded) | ~118 MB | ~118 MB |
-| update/gen | 0 (empty buffer) | ~53 s, 1 thread, 2 epochs | ~53 s ÷ threads, plus reduction |
+| update/gen | 0 (empty buffer) | ~53 s, 1 thread, 2 epochs | ~15 s at 4 threads (measured 3.29×) |
 | barrier | 12–26% | ~90% of wall | much lower |
 | system CPU | ~50% avg, 90–100% peak | trainer-core bound | spread across cores |
 | pooled gradient | no | yes | yes |
@@ -601,6 +592,8 @@ re-proposed.
 Throughput *fell* in step 3 — real PPO work replaced free discard. That is expected and is not a
 regression. The size of the fall is measured: about 53 s of trainer CPU per generation at 5% and the
 current 2 epochs, so the batch configuration has to be chosen against that rather than against taste.
+Step 4 then cut it by 3.29x, so the update is no longer the wall - but the collection it now waits
+on is 19 of 20 cores against the trainer's 4, which is the shape step 7's caveat describes.
 
 ---
 
@@ -611,7 +604,7 @@ current 2 epochs, so the batch configuration has to be chosen against that rathe
 | Advantages differ from full-buffer computation | blocking | Step 2 gate. Cheap to test. |
 | Worker/trainer gamma drift | medium | Currently masked by identical defaults. Fixed in step 2. |
 | Sample too small (~2,400 for 3.5M params) | medium | Needs a knob and a measurement plan. Low end of workable. |
-| Update cost dominates everything | **measured: it does** | 53 s vs 7 s of collection at 2 epochs. Step 4 is required, but step 3b comes first. |
+| Update cost dominates everything | **mitigated, not solved** | Was 53 s vs 7 s of collection. Step 4 cut it 3.29x; at 4 threads the update is ~15 s and collection is the wall again. |
 | A run cannot be judged | **hit, fixed** | `clip=` reported `P(\|N(0,1)\|>0.2)` = 0.8415 rather than the ratio-clip fraction, and nothing accumulated across generations. Fixed in step 3b: metrics CSV, revived `diag.Graph`, real clip fraction. |
 | A crash costs the whole run | **hit, fixed** | Atomic checkpoint every 25 generations and on exit, so a crash costs the interval rather than the run. Step 4b / TODO 1.3. |
 | A resumed run is quietly a worse run | **avoided by design** | Adam moments and the optimiser step count are saved, not just weights. Dropping them restarts bias correction near 0.1x and averages from zero — trains, but worse, with normal-looking metrics. |

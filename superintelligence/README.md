@@ -9,24 +9,27 @@ seed recorded and re-verified.
 
 ## Read this first
 
-**Nothing has been trained yet, but a run can now be kept, resumed and compared.** Three things were
-missing and two are now fixed; the third is the milestone itself:
+**Nothing has been trained yet. Everything needed to train it is now in place.** Four things were
+missing; three are fixed and the fourth is the milestone itself:
 
 - **A run can be judged.** `clip=` used to report `P(|N(0,1)| > 0.2)` = 0.8415 whatever the policy
   did, because it counted `|advantage| > clipEpsilon` on a *normalised* advantage. The real
-  ratio-clip fraction is now counted, and ranges 0.047 to 0.737 across generations. Nothing used to
-  accumulate across generations either; every run now appends a row to `metrics.csv` and prints an
+  ratio-clip fraction is now counted. Every run appends a row to `metrics.csv` and prints an
   end-of-run trend.
 - **A run can be resumed.** `--save` writes a checkpoint every 25 generations and on exit, `--resume`
-  continues from one. Written atomically, so a power cut cannot leave a half-written file that is
-  newer than the last good one.
+  continues from one. Atomic, so a power cut cannot leave a half-written file that is newer than
+  the last good one. The checkpoint carries Adam's moments and step count, not just weights.
+- **The update was computing the wrong thing, three ways.** The replay ran under the wrong recurrent
+  state, so the ratio `pi_new / pi_old` was formed across two different states; the critic was tanh-
+  bounded to [-1,+1] against a death penalty of 100; and `dCell` was not cleared between samples, so
+  every gradient depended on whichever sample preceded it. All three are fixed, and each has a
+  gate that fails when the fix is reverted.
 - **The agent has still never left floor 1.** Every run so far was a smoke test of a few dozen
-  generations. The barrier is ~6× the cost of collecting the data, so 100 generations is hours.
+  generations.
 
-Next is the parallel update (`TODO.md` 1.6), which is the last thing between this loop and an
-overnight run. Instrumentation and checkpointing went before it deliberately: making the update 5×
-faster is worthless while the signal that shows the policy moving cannot be read, and a faster loop is
-not much use if nothing survives it. See [`PLAN-data-flow.md`](PLAN-data-flow.md) steps 3b and 4b.
+The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
+hours rather than most of a day. **What is left is to run one and find out whether it learns**
+(`TODO.md` 1.4). See [`PLAN-data-flow.md`](PLAN-data-flow.md), whose steps are all resolved.
 
 The network does run, and its gradients are correct. `gradle :superintelligence:gradcheck`
 finite-difference checks the analytic gradients against central differences on 112 sampled parameters
@@ -72,14 +75,17 @@ something.
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score |
 | Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
 | Update cost measurement | Measured - `updatecost`, 11.3 ms/sample, projects across sample rates |
-| Diagnostics dashboard (colour-coded floors, graphs) | Console only; no history across generations, `diag.Graph` unused |
+| Diagnostics dashboard (colour-coded floors, graphs) | Console only; live, with a per-generation history behind it |
 | Per-generation metrics history (CSV, end-of-run trend) | Done - `metrics.csv` per generation, `diag.Graph` at end of run |
 | PPO clip fraction (`clip=`) | Fixed - was reporting `P(\|N(0,1)\|>0.2)`=0.8415; now the real ratio-clip fraction, measured 0.047-0.737 |
 | Reward model, per-term ledger, curriculum fade | Partial - 6 terms have no emission site; `KILL` has the plumbing but no emission; curriculum is written but `observe()` is never called, so shaping is a constant 1f |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
 | Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included. `checkpointcheck` is a gate |
 | Bad checkpoint handling | Done - foreign, truncated, trailing-byte and wrong-config files all refused, the last naming the field |
-| Parallel minibatch update | **Missing, required.** ~53 s of trainer CPU per generation at 2 epochs. `TODO.md` 1.6 |
+| Parallel minibatch update | Done - `--update-threads N`, measured 3.29x at 4 threads, 3.47x at 8. `parallelcheck` is a gate |
+| Cross-sample gradient leak | Fixed - `dCell` was not cleared, so every gradient depended on the previous sample |
+| Value head range | Fixed - was tanh-bounded to [-1,+1] against a death penalty of 100 |
+| LSTM state with each transition | Fixed - the replay ran under an unrelated sample's state |
 | Trained anything yet | **No.** Never left floor 1; milestone is depth 5 (`research.md:40`) |
 | Parallel worker processes, seed schedule | Running; exercised to 8 workers x 25 generations |
 | Graphical trainer UI, desktop replay viewer | Replay viewer done; trainer UI not started |
@@ -113,11 +119,20 @@ something.
 
 `probeClasspath` prints the runtime classpath, which is what the trainer uses to launch workers.
 
-**Batch size is chosen against compute, not bandwidth.** An update costs 11.3 ms per sample on this
-machine, almost all of it forward and backward rather than Adam, and it runs on one thread — so at a
-5% sample rate and 4 epochs it is about 107 s of trainer CPU per generation, against 0.12 s of
-transport. Transport is not what limits this trainer; the update is. The default is now **2 epochs**
-(~53 s), which also corrects a misconfiguration: 4 epochs is 300 Adam steps over a 2,400-sample batch.
+**The update is parallelisable and now is.** 11.3 ms per sample single-threaded, almost all of it
+forward and backward rather than Adam. `--update-threads N` splits a minibatch across N threads, each
+with its own scratch and its own gradient accumulators, reduced before the Adam step:
+
+```sh
+./gradlew :superintelligence:train --args="--workers 8 --update-threads 4 --generations 200"
+```
+
+Measured 8.98 -> 5.09 -> 2.73 -> 2.59 ms/sample at 1, 2, 4 and 8 threads. The curve flattens past 4
+because the reduction is 14.3 MB per thread per minibatch, which costs about what the extra compute
+saves. `parallelcheck` asserts the sharded gradient equals the serial one.
+
+The default is **2 epochs**, which also corrects a misconfiguration: 4 epochs is 300 Adam steps over a
+2,400-sample batch. Transport is 0.12 s against ~7 s of collection — never the bottleneck.
 
 Sampling and metrics are tunable, and the three sampling knobs were previously `Trainer` fields with
 no way to reach them from the command line:

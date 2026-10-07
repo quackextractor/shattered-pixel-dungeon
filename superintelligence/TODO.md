@@ -109,7 +109,7 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | 1.7 | ~~Instrument the loop so a run can be judged~~ | done | `clip=` now reports the real ratio-clip fraction, and `MetricsHistory` writes `metrics.csv` per generation plus an end-of-run trend. `PLAN-data-flow.md` step 3b. |
 | 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from `research.md:40`. Needs 1.3 first, 1.7 to be evaluable, and 1.5 to be tolerable. |
 | 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. |
-| 1.6 | Parallelise the update across minibatches | M | **Measured as required, not optional**, but deferred behind 1.7 and 1.3. 11.3 ms/sample single-threaded is ~53 s of trainer CPU per generation at the current 2 epochs, against ~7 s of collection. `PLAN-data-flow.md` step 4. |
+| 1.6 | ~~Parallelise the update across minibatches~~ | done | --update-threads N. Measured 8.98 -> 2.73 ms/sample at 1 -> 4 threads (3.29x), 2.59 at 8 (3.47x). parallelcheck is a gate and mutation-tested. Required three fixes first, of which the dCell gradient leak was the real blocker. PLAN-data-flow.md step 4. |
 
 **Ordering was wrong and has been corrected.** 1.6 was originally next. It is still required — the
 measurement does not care what else is on the list — but two smaller items now come first:
@@ -124,8 +124,19 @@ measurement does not care what else is on the list — but two smaller items now
 2. **1.3, because it is smaller than 1.6, on the critical path to 1.4, and is what makes two runs
    comparable at all.** Also now done.
 
-**Both are finished, so 1.6 — the parallel update — is next.** It remains required: 53 s of trainer CPU
-per generation against ~7 s of collection is measured, and 19 of 20 cores idle through it.
+**1.6 is finished too, so all four of the data-flow plan's steps are done.** What remains is 1.4 -
+actually training something - and 1.5.
+
+**1.6 was not the threading work it was scoped as.** It needed three correctness fixes first, and
+the one that mattered was a bug nobody had looked for: Network.backward cleared dPrev but not
+dCell, and LSTM.backward reads the incoming dCPrev before overwriting it. Every sample's
+gradient was therefore a function of whichever sample preceded it - measured on conv.gb[15], four
+samples in sequence gave 0.0892, 0.2075, 0.3372, 0.4235 where the same four individually gave
+0.0892, 0.0419, -0.1487, 0.0517. Not additive.
+
+That was invisible for the whole of the previous implementation because the buffer is shuffled, so a
+leaked gradient arrived attached to an unrelated sample. Two bugs cancelling is the most expensive
+kind to find, and the only reliable detector is one that varies a single thing at a time.
 
 **What checkpointing turned out to need, beyond writing `Network.layers()`.** The plan called it
 "plumbing, not design" and that was right about the format but wrong about the contents. Weights are
