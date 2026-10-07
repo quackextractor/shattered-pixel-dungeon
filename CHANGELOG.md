@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Headless crashed on any texture that had no GL context.** `TextureCache.get` returns `null`
+  when `Gdx.gl == null` - the normal state under the headless trainer - and every `TextureFilm`
+  constructor dereferenced the result immediately. Films are built in static initialisers
+  (`FloatingText.iconFilm` among them), so the crash fired on first touch of the class, not on
+  first render. `Char.damage` reads `PHYS_DMG` off `FloatingText`, so *hunger damage* reached it:
+  every worker process died the moment an episode lasted long enough to starve.
+  Constructors now fall back to the frame size, which keeps the atlas math well-defined (one
+  row, one column) instead of dividing by zero. Nothing renders headless, so the dimensions only
+  had to be safe rather than correct.
+  Previously unreachable, because episodes ended long before the hero could starve - the `REST`
+  fix below is what exposed it. A plain `SEARCH` crashed on this too.
+
 - **`REST` ended every episode that used it.** `ActionMapper` set `hero.resting = true` without
   setting a `curAction`. `Hero.act()` branches on `curAction == null` first, so a resting hero took
   the rest branch - `spendConstant` then `next()` - and never called `ready()`. Control was never

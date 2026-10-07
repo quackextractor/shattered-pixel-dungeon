@@ -39,24 +39,32 @@ public class TextureFilm {
 	public TextureFilm( Object tx ) {
 
 		SmartTexture texture = TextureCache.get( tx );
-		
-		texWidth = texture.width;
-		texHeight = texture.height;
-		
+
+		//TextureCache returns null when there is no GL context, which is the normal state under the
+		//headless trainer. Nothing renders there, so these dimensions only have to avoid dividing by
+		//zero - but the constructors used to dereference texture unconditionally, and plenty of films
+		//are built in static initialisers (FloatingText.iconFilm among them), so a headless run would
+		//crash on first touching one. Hungry damage reaches Char.damage, which reads PHYS_DMG off this
+		//class, and that killed every worker process the moment an episode lasted long enough to starve.
+		texWidth  = texture == null ? 1 : texture.width;
+		texHeight = texture == null ? 1 : texture.height;
+
 		add( null, FULL );
 	}
-	
+
 	public TextureFilm( SmartTexture texture, int width ) {
-		this( texture, width, texture.height );
+		this( texture, width, texture == null ? width : texture.height );
 	}
-	
+
 	public TextureFilm( Object tx, int width, int height ) {
 
 		SmartTexture texture = TextureCache.get( tx );
-		
-		texWidth = texture.width;
-		texHeight = texture.height;
-		
+
+		//See the note above. Falling back to the frame size keeps cols/rows at 1 instead of dividing
+		//by zero, so the atlas math below stays well-defined with no texture behind it.
+		texWidth  = texture == null ? width  : texture.width;
+		texHeight = texture == null ? height : texture.height;
+
 		float uw = (float)width / texWidth;
 		float vh = (float)height / texHeight;
 		int cols = texWidth / width;
