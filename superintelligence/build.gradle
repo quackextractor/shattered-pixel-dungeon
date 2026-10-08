@@ -116,6 +116,17 @@ tasks.register('configcheck', JavaExec) {
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ConfigCheck'
     jvmArgs trainerJvmArgs
 }
+
+tasks.register('paritycheck', JavaExec) {
+    group = 'verification'
+    description = 'Fails if a recorded run will not replay exactly, across several seeds in one process.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ParityCheck'
+    jvmArgs trainerJvmArgs
+    //Sweep size comes from the command line, so `gates` can run the short sweep and a nightly job the
+    //long one against the same code. Passed through untouched rather than parsed here.
+    if (project.hasProperty('parityArgs')) args project.property('parityArgs').toString().split(' ')
+}
   cliTask('graphcheck', 'Fails if a chart reports a range it did not observe.')
   cliTask('actioncheck', 'Fails if a movement action does not move the way it is named.')
 cliTask('slotcheck', 'Fails if a recorded slot index does not resolve to the item it was recorded against.')
@@ -143,8 +154,8 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
   cliTask('weightsdiff', 'Reports how far a checkpoint is from a freshly initialised policy.')
 
 //Every gate in one invocation, because gradle's per-invocation overhead is most of the cost.
-//Measured: gaecheck is 0.22s of actual work and 2.4s through gradle, so gradle is ~90% of it. Seventeen
-//gates together take ~20s in one invocation against roughly a minute run one after another - and that
+//Measured: gaecheck is 0.22s of actual work and 2.4s through gradle, so gradle is ~90% of it. Nineteen
+//gates together take ~21s in one invocation against roughly a minute run one after another - and that
 //each if the daemon is cold. The checks are not slow; the harness around them is.
 //
 //dependsOn is enough for correctness: gradle fails the build if any dependency task exits non-zero,
@@ -155,7 +166,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 tasks.register('gates') {
 dependsOn 'gradcheck', 'gaecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
-		'observecheck', 'configcheck'
+		'observecheck', 'configcheck', 'paritycheck'
     group = 'verification'
     description = 'Runs every correctness gate in one invocation.'
     doLast { println "all gates passed" }
