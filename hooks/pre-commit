@@ -1,0 +1,69 @@
+#!/bin/sh
+#
+# Pre-commit gate for the Superintelligence module.
+#
+# Two checks, in order of cost. The badge sync runs first because it is instant and its failure mode is
+# trivially fixable, so there is no reason to spend 20 seconds on the test suite to then find out the
+# commit would have been rejected for a version number.
+#
+# Both abort the commit. Neither is ever bypassed: a hook that can be skipped with --no-verify is a
+# suggestion, and the value here is that a broken gate stops the commit rather than being noticed later.
+
+set -e
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+# ---------------------------------------------------------------- version badge consistency
+
+# The badge must name the newest released version in CHANGELOG.md. Compared rather than assumed, and
+# corrected rather than refused, because a mismatch is a one-line mechanical fix and aborting a developer
+# over it teaches them to reach for --no-verify.
+changelog_version=$(grep -o '^## \[[0-9][^]]*\]' CHANGELOG.md \
+    | head -1 \
+    | sed 's/^## \[//; s/\]$//')
+
+badge_version=$(grep -o 'img.shields.io/badge/version-[0-9][^-]*-blue.svg' README.md \
+    | head -1 \
+    | sed 's|.*version-||; s|-blue.svg||')
+
+if [ -z "$changelog_version" ]; then
+    echo "[ERROR] could not read a released version heading from CHANGELOG.md."
+    echo "        Expected a line like '## [1.2.3] - 2026-10-09'."
+    exit 1
+fi
+
+if [ -z "$badge_version" ]; then
+    echo "[ERROR] no version badge found in README.md."
+    exit 1
+fi
+
+if [ "$changelog_version" != "$badge_version" ]; then
+    echo "[INFO] README badge says $badge_version, CHANGELOG's newest release is $changelog_version."
+    echo "[INFO] correcting the badge."
+
+    # BSD and GNU sed disagree about -i, so the file is rewritten rather than edited in place. One
+    # extra temp file in a hook that runs once per commit costs nothing; a sed that works on the
+    # developer's machine and silently does nothing on CI is worth more.
+    sed "s|img.shields.io/badge/version-$badge_version-blue.svg|img.shields.io/badge/version-$changelog_version-blue.svg|g" \
+        README.md > README.md.tmp
+    mv README.md.tmp README.md
+
+    git add README.md
+    echo "[OK] README version badge updated to $changelog_version and staged."
+fi
+
+# ---------------------------------------------------------------- test suite
+
+echo "[INFO] running :superintelligence:gates"
+
+if ! ./gradlew --quiet :superintelligence:gates; then
+    echo ""
+    echo "[ERROR] the gate suite failed. The commit was not made."
+    echo "        Run './gradlew :superintelligence:gates' on its own to see which gate, and why."
+    echo "        A failing gate is never to be worked around by disabling it; see the project's own"
+    echo "        notes on why each one exists."
+    exit 1
+fi
+
+exit 0
