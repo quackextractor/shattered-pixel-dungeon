@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Merged upstream v4.0.2** (10 commits from `00-Evan/shattered-pixel-dungeon`). Clean merge, no
+  conflicts, and it touched no file in `:superintelligence`. Our own additions to the engine all
+  survive: `Bones.clear()`, `PRandom`, `RandomTrace`, `Random.reseedBase`, and the headless hooks in
+  `GameScene`.
+  Upstream's changes are gameplay and presentation fixes - cursed wands of warding respecting ward
+  spawning rules, an inside-map check on `updateOpenSpace`, health-bar assignment, projectile momentum
+  for kunai and knives, crystal enchantment capping, a boss elemental crash, and a movement-shadow fix.
+  Two of them are worth naming for this module specifically: the `updateOpenSpace` check and the
+  statues rooms touch level generation, so they could have moved floor layouts.
+  They did not, as far as anything here can tell: all 19 gates pass, the seven committed recordings
+  still reproduce step for step, three fresh JVMs produce byte-identical rollouts, and a fixed-seed
+  2-worker training run produces the same `weights.bin` hash and the same reported losses as before the
+  merge - `policy=0.0126 value=376.5506` on generation 0, unchanged. That is evidence the merge did not
+  perturb the simulation, though it is not a proof about floors no recording happens to visit.
+
 ### Fixed
 
 - **`--out` did not move the checkpoint, or the metrics history.** Both are derived from the working
