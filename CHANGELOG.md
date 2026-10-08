@@ -286,6 +286,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`replayprobe`** and **`valuescale`**, probes rather than gates. Both exist because a number was
   needed to settle a question that reading the code could not: how far a shuffled replay drifts, and
   whether the critic's targets fit inside the range it can reach.
+- **`PLAN-replay-verification.md`**, the plan for the tooling that is still missing, and the report of
+  what validating its premises turned up. Three faults got past every existing gate because a gate that
+  shares its implementation cannot see a fault in it: `collectcheck`, `verify` and the rest all
+  re-execute through `HeadlessGame`, so a build-wide RNG fault is invisible to all of them by
+  construction. `ReplayPlayer`'s 560 lines were covered by nothing at all. The proposal is four tools —
+  a headless playback verifier, an observation-purity gate, a rendered-vs-headless RNG fingerprint, and
+  one command that runs the lot — plus `maxSlots`/`allowEquipping` added to the replay header, without
+  which a replay cannot guarantee it resolves slot indices the same way twice.
+  Validating the premises confirmed every one of them, and turned up two things reading alone had not:
+  - `ReplayPlayer` *can* be driven with no window, no scene and no `ReplayController` — a probe loaded
+    a 229-step recording, built the world, applied steps and reported a divergence in 7 ms, so T1 needs
+    no refactor to make the viewer headless-testable.
+  - That same probe diverged at step 3 of a recording the windowed viewer plays to step 33, because
+    `ReplayPlayer` never performs the `GameScene.clearPendingCellListener()` /
+    `SlotAction.clearPendingUseItem()` that `SPDEnv.step` does. The windowed viewer masks this by
+    having a live `CellSelector`; headless has none, so the aim request routes through
+    `pendingCellListener` and the throw never resolves. The viewer and the trainer do not perform the
+    same per-step state transition, and only this tool makes that visible.
+  - `rollout --seed ""` writes `seed=` and `verify` then dies on an unhandled null-valued expression,
+    five times over, naming neither the file nor the step — so the guard needs to go in both commands,
+    not one.
 
 ### Fixed
 
