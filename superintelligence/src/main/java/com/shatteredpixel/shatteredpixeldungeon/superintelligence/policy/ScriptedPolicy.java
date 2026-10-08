@@ -503,16 +503,29 @@ private int firstOccupiedSlot( SPDEnv env ){
 			if (item != null && item.usesTargeting) return i;
 		}
 
-		//Bags are skipped. A bag's default action opens its own inventory pane rather than doing
-		//anything to the world, so the hero does not move, no turn is spent, and the policy re-picks the
-		//same bag forever. The VelvetPouch every hero starts with sat in slot 0, which made this the
-		//default choice on every seed: each run stalled within 20 turns having done nothing at all.
+		//Bags and empty waterskins are skipped, for the same reason and by the same mechanism.
+		//
+		//A bag's only action opens its own inventory pane; an empty Waterskin's DRINK prints "empty" and
+		//returns without calling hero.spend(). Both therefore cost no turn and change nothing, so the
+		//policy re-picks the same slot forever. Every hero starts with one of each - a VelvetPouch and an
+		//empty Waterskin, per HeroClass.initHero - which is why every seed stalled and why it was not
+		//seed-specific at all.
+		//
+		//Note this is not reward-neutral, despite the action doing nothing: SPDEnv passes tookAction as a
+		//literal true, so TURN_COST is charged every turn regardless. The loop paid -3.00 a step to gain
+		//nothing, and is the most negative reward available. It persisted because the escape heuristic
+		//only breaks when the same position repeats six times and something else eventually nudged it,
+		//rather than because the policy preferred it.
 		for (int i = 0; i < mask.length; i++){
 			if (mask[ i ] <= 0.5f ) continue;
 			Item item = env.mapper().slot( i );
-			if (item != null && !(item instanceof com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag)){
-				return i;
+			if (item == null) continue;
+			if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag) continue;
+			if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.Waterskin
+					&& ((com.shatteredpixel.shatteredpixeldungeon.items.Waterskin) item).isEmpty()){
+				continue;
 			}
+			return i;
 		}
 
 		return -1;

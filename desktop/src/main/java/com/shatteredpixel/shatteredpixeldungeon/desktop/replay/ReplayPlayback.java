@@ -50,6 +50,9 @@ public class ReplayPlayback {
 	/** Where the hero actually was when it diverged. -1 until it does. */
 	private int actualAt = -1;
 
+	/** What disagreed, naming the quantity. Empty until it does. */
+	private String reason = "";
+
 	private int expectedPos = -1;
 
 	/** True once every recorded step has been applied, or the run ended. */
@@ -139,11 +142,57 @@ public class ReplayPlayback {
 		if (divergedAt >= 0) return false;
 
 		int expected = expectedPos;
-		if (expected < 0 || heroPos == expected) return true;
+		if (expected >= 0 && heroPos != expected){
+			divergedAt = cursor;
+			actualAt = heroPos;
+			reason = "hero at " + heroPos + ", recording says " + expected;
+			return false;
+		}
+		return true;
+	}
 
-		divergedAt = cursor;
-		actualAt = heroPos;
-		return false;
+	/**
+	 * Checks the live hero against the rest of the state the recording carries.
+	 *
+	 * <p>Position alone is not enough to decide whether a run is still matching. A hero who is starving
+	 * stands exactly where a fed hero stands, and one who is a turn out of step is still on the right
+	 * cell - so a recording that stored only a position could not see either, and the viewer would carry
+	 * on for hundreds of steps before something unrelated broke.
+	 *
+	 * <p>Called after {@link #checkPosition} passes, so the reported reason names the earliest thing
+	 * that actually differed.
+	 *
+	 * @return true if health, engine time and inventory all still match
+	 */
+	public boolean checkState( int heroHp, float turn, String inventory ){
+		if (divergedAt >= 0) return false;
+
+		Replay.Step step = currentStep();
+		if (step == null) return true;
+
+		if (step.heroHp >= 0 && heroHp != step.heroHp){
+			divergedAt = cursor;
+			reason = "hp is " + heroHp + ", recording says " + step.heroHp;
+			return false;
+		}
+
+		if (step.turn >= 0 && turn != step.turn){
+			divergedAt = cursor;
+			reason = "engine time is " + turn + ", recording says " + step.turn;
+			return false;
+		}
+
+		if (!step.inventory.isEmpty() && !step.inventory.equals( inventory )){
+			divergedAt = cursor;
+			reason = "inventory is [" + inventory + "], recording says [" + step.inventory + "]";
+			return false;
+		}
+
+		return true;
+	}
+
+	private Replay.Step currentStep(){
+		return cursor < replay.steps.size() ? replay.steps.get( cursor ) : null;
 	}
 
 	/** Where the hero actually was when playback diverged, or -1. */
@@ -172,7 +221,7 @@ public class ReplayPlayback {
 		if (diverged()){
 			Replay.Step step = replay.steps.get( divergedAt );
 			return "DIVERGED at step " + ( divergedAt + 1 ) + " - " + step.action + "/" + step.slot
-					+ " in " + step.mode + ": hero at " + actualAt + ", recording says " + step.heroPos;
+					+ " in " + step.mode + ": " + reason;
 		}
 		if (finished) return "finished - " + total() + " steps";
 		return "step " + ( cursor + 1 ) + " / " + total();

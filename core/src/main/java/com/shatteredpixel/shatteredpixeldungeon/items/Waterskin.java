@@ -56,6 +56,23 @@ public class Waterskin extends Item {
 
 	private int volume = 0;
 
+	/**
+	 * Drops of water left, out of {@link #MAX_VOLUME}.
+	 *
+	 * <p>Reading this is how a caller tells a drink that heals from one that does nothing: DRINK on an
+	 * empty waterskin prints "empty" and returns without spending a turn, so it is a free action that
+	 * changes nothing. An agent picking actions needs to tell those apart, and the field is otherwise
+	 * only reachable by inference.
+	 */
+	public int volume(){
+		return volume;
+	}
+
+	/** True when a DRINK would have no effect. See {@link #volume()}. */
+	public boolean isEmpty(){
+		return volume <= 0;
+	}
+
 	private static final String VOLUME	= "volume";
 
 	@Override

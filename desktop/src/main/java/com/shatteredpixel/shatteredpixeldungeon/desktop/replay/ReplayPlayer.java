@@ -32,6 +32,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
 
 /**
  * Replays a recording by applying its actions to the live game.
@@ -354,7 +355,8 @@ public class ReplayPlayer {
 		if (Dungeon.hero.isAlive()){
 			settledPosition = Dungeon.hero.pos;
 			trace( settledPosition );
-			if (!playback.checkPosition( settledPosition )){
+			if (!playback.checkPosition( settledPosition )
+					|| !playback.checkState( Dungeon.hero.HP, Actor.now(), ReplayRecorder.inventory() )){
 				diverged = true;
 				halt( playback.status() );
 			}
