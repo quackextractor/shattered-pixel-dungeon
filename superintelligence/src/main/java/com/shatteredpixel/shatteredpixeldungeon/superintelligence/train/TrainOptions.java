@@ -137,6 +137,15 @@ public class TrainOptions {
 	 */
 	public PpoHyperparameters hyper;
 
+	/**
+	 * Whether {@code --metrics} and {@code --save} were named, so the derived defaults can tell an
+	 * explicit path from one it chose itself.
+	 *
+	 * <p>Without this there is no way to re-derive a default after {@code --out} is known, because
+	 * "the user set this" and "this happens to equal the default" are the same observation.
+	 */
+	private boolean metricsGiven, saveGiven;
+
 	public TrainOptions(){
 		metricsCsv = new File( workDir, "metrics.csv" );
 		save = new File( workDir, "weights.bin" );
@@ -204,8 +213,8 @@ public class TrainOptions {
 					o.maxSampledPerEpisode = Integer.parseInt( args[ ++i ] ); break;
 				case "--max-samples":
 					o.maxSamplesPerGeneration = Integer.parseInt( args[ ++i ] ); break;
-				case "--metrics":     o.metricsCsv = new File( args[ ++i ] ); break;
-				case "--save":        o.save = new File( args[ ++i ] ); break;
+				case "--metrics":     o.metricsCsv = new File( args[ ++i ] ); o.metricsGiven = true; break;
+				case "--save":        o.save = new File( args[ ++i ] ); o.saveGiven = true; break;
 				case "--resume":      o.resume = new File( args[ ++i ] ); break;
 				case "--checkpoint-every":
 					o.checkpointEvery = Integer.parseInt( args[ ++i ] ); break;
@@ -229,7 +238,27 @@ public class TrainOptions {
 		if (o.updateThreads < 0) o.updateThreads = 0;
 		if (o.maxSampledPerEpisode < 1) o.maxSampledPerEpisode = 1;
 		if (o.maxSamplesPerGeneration < 1) o.maxSamplesPerGeneration = 1;
+
+		o.deriveOutputsUnder( o.workDir );
 		return o;
+	}
+
+	/**
+	 * Moves the default checkpoint and metrics file under {@code workDir}, for the ones nobody named.
+	 *
+	 * <p>Both are derived from {@link #workDir}, and both used to be derived in the constructor - which
+	 * runs before the command line is read, so {@code --out} moved the working directory and left a
+	 * 43 MB checkpoint and a metrics history behind in the old one. A run pointed at
+	 * {@code --out D} reported saving to the default directory while its replays went to D, which is
+	 * exactly the kind of split that makes a run's output impossible to find.
+	 *
+	 * <p>Only the ones nobody named move. An explicit {@code --save} or {@code --metrics} is a
+	 * deliberate path and stays where it was asked for, which is why this runs after the flags rather
+	 * than instead of them.
+	 */
+	private void deriveOutputsUnder( File dir ){
+		if (!metricsGiven) metricsCsv = new File( dir, "metrics.csv" );
+		if (!saveGiven) save = new File( dir, "weights.bin" );
 	}
 
 	/**

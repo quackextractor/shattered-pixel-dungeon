@@ -24,6 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.PpoHyperparameters;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TrainOptions;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,7 +58,7 @@ import java.util.Properties;
  */
 public class ConfigCheck {
 
-	private static final int CHECKS = 6;
+	private static final int CHECKS = 7;
 
 	private static final List<String> failures = new ArrayList<>();
 
@@ -90,6 +91,7 @@ public class ConfigCheck {
 		checkEveryKnownKeyIsReachable();
 		checkUnknownKeysWarn();
 		checkBadValuesAreRefused();
+		checkOutputPathsFollowTheWorkingDirectory();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     configuration binding: " + CHECKS + " checks passed" );
@@ -370,6 +372,60 @@ public class ConfigCheck {
 	}
 
 	// --------------------------------------------------------------------------- helpers
+
+	/**
+	 * {@code --out} must move every default output, not just some of them.
+	 *
+	 * <p>The checkpoint and the metrics history are derived from the working directory, and both used to
+	 * be derived in the constructor - before the command line is read. So {@code --out D} put the
+	 * replays in D while leaving a 43 MB checkpoint and a metrics history in the old directory, and the
+	 * run reported saving to a path nobody had named. Half a run's output in the place that was asked
+	 * for and half somewhere else is worse than none of it in either.
+	 *
+	 * <p>Asserted on the parsed options rather than on a real run: this is about where a path points,
+	 * and a run that had to actually write a checkpoint to prove it would take a minute and write tens of
+	 * megabytes to do it. The arithmetic is the whole of the behaviour.
+	 *
+	 * <p>Both halves matter, and the second is the reason this is not simply "the default follows
+	 * {@code --out}": an explicit {@code --save} is a deliberate path and must not move. A fix that
+	 * re-derived it unconditionally would pass the first assertion and quietly break the second.
+	 */
+	private static void checkOutputPathsFollowTheWorkingDirectory() throws IOException {
+		File dir = new File( scratch, "outdir" );
+
+		TrainOptions plain = TrainOptions.parse( new String[]{ "--out", dir.getPath() });
+		expectUnder( "--out without --save moves the checkpoint", plain.save, dir, "weights.bin" );
+		expectUnder( "--out without --metrics moves the history", plain.metricsCsv, dir, "metrics.csv" );
+
+		//an explicit path is the operator's decision and has to survive --out
+		File explicit = new File( scratch, "chosen-by-hand.bin" );
+		TrainOptions pinned = TrainOptions.parse( new String[]{
+				"--out", dir.getPath(), "--save", explicit.getPath() } );
+		if (!pinned.save.equals( explicit )) {
+			fail( "--out moved an explicitly named --save to " + pinned.save
+					+ ". A path somebody typed is theirs to choose, and one that moved itself would be a"
+					+ " worse bug than the one being fixed here." );
+			return;
+		}
+
+		//and no --out at all still lands somewhere real rather than null
+		TrainOptions bare = TrainOptions.parse( new String[ 0 ] );
+		if (bare.save == null || bare.metricsCsv == null){
+			fail( "a run with no --out has no checkpoint path (" + bare.save + ") or no metrics path ("
+					+ bare.metricsCsv + ")" );
+			return;
+		}
+
+		System.out.println( "  --out moves the checkpoint and the metrics history, and an explicit"
+				+ " --save still wins" );
+	}
+
+	private static void expectUnder( String what, java.io.File actual, java.io.File dir, String name ){
+		java.io.File expected = new java.io.File( dir, name );
+		if (expected.equals( actual )) return;
+		fail( what + ": expected " + expected + ", got " + actual + ". A run pointed at --out writes part"
+				+ " of its output somewhere else, and nothing reports where the rest went." );
+	}
 
 	/**
 	 * The value of one key in a loaded configuration, or null if the binder has no such key.
