@@ -26,7 +26,7 @@ public class Replay {
 	//v1 still parses, with EnvConfig's defaults, so the tooling fixtures recorded before this stay
 	//readable - but they were recorded against the RNG stream that has since been repaired and so
 	//reproduce nothing anyway.
-	public static final int VERSION = 2;
+	public static final int VERSION = 3;
 
 	public String seedText = "";
 	public String heroClass = "WARRIOR";
@@ -166,11 +166,26 @@ public class Replay {
 	}
 
 	/** Total score, kept in sync with the last recorded reward. */
-	public void captureOutcome( double score, int depth, int turns, int generation ){
+/**
+	 * Why the run ended, as a {@code RewardModel.TerminateReason} name, or empty when unknown.
+	 *
+	 * <p>Recorded because the viewer cannot otherwise tell a complete recording from a truncated one. A
+	 * run that ended because it ran out of turns, or because the stall guard saw nothing change, leaves
+	 * a healthy hero that will never become ready - and a viewer with no environment to ask waits for one
+	 * forever, then reports a stall that is false. The recording was not truncated; it was finished.
+	 *
+	 * <p>Empty in versions 1 and 2, which predate the field. Such a recording is still played to its last
+	 * step; it just cannot be recognised as complete.
+	 */
+	public String termination = "";
+
+	/** Closes the recording and stores the run's outcome, including why it ended. */
+	public void captureOutcome( double score, int depth, int turns, int generation, String termination ){
 		this.score = score;
 		this.depth = depth;
 		this.turns = turns;
 		this.generation = generation;
+		this.termination = termination == null ? "" : termination;
 	}
 
 	public void reset(){

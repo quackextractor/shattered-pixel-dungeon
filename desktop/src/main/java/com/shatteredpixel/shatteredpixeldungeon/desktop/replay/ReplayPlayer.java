@@ -180,6 +180,23 @@ public class ReplayPlayer {
 	 * say why. The tally names the code responsible, which is what makes the offset fixable rather than
 	 * merely measurable - and the fix belongs at the site, never downstream of it.
 	 */
+	/**
+	 * True when this is the last recorded step and the recording declares why the run ended.
+	 *
+	 * <p>{@code DEATH} is excluded because the hero-alive check already covers it, and it is the one
+	 * ending the viewer can observe without being told. Absent in versions 1 and 2 of the format, which
+	 * then leave the reason unknown and are played to their last step as before.
+	 */
+	private boolean recordingEndsHere(){
+		if (playback.cursor() != playback.total() - 1) return false;
+		String reason = recordingTermination();
+		return !reason.isEmpty() && !reason.equals( "DEATH" );
+	}
+
+	private String recordingTermination(){
+		return playback.replay().termination == null ? "" : playback.replay().termination;
+	}
+
 	private void flushDrawSites(){
 		if (rngTrace == null) return;
 		com.watabou.utils.RandomTrace.attribute( false );
@@ -364,6 +381,22 @@ public class ReplayPlayer {
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()){
 				playback.finish();
 				halt( "run ended - hero is dead" );
+				return Drain.STALLED;
+			}
+
+			//The last recorded step, and the recording says why the run ended. The trainer applied this
+			//step's action and *then* terminated, so the action is still applied here - what is skipped
+			//is the drain and the comparison, because the trainer did not complete this step either and
+			//there is no settled state to compare against. Draining it instead made the viewer wait 400
+			//turns for a hero that would never be ready and then report "stalled", which is false: the
+			//recording was complete, not truncated.
+			//
+			//DEATH is excluded because the hero-alive check above handles it, and it is the one ending
+			//the viewer can observe without being told.
+			if (recordingEndsHere()){
+				playback.advance();
+				playback.finish();
+				halt("run ended - the recording ends here as " + recordingTermination());
 				return Drain.STALLED;
 			}
 

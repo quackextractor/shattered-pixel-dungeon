@@ -62,7 +62,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 9;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -110,6 +110,7 @@ public class PlaybackCheck {
 		check( () -> checkAlteredQuickslotsAreCaught( good ) );
 		check( () -> checkAStalledPlayerFailsInsteadOfHanging() );
 		check( () -> checkNonDefaultConfigRoundTrips() );
+		check( () -> checkDeclaredTerminationEndsPlayback( good ) );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
@@ -419,7 +420,64 @@ public class PlaybackCheck {
 		}
 	}
 
-	// --------------------------------------------------------------------------- helpers
+	/**
+ * A recording that declares why it ended must finish as itself, not as a stall.
+ *
+ * <p>A run that ends on a turn or stall limit leaves a healthy hero that will never become ready, and
+ * the viewer has no environment to ask. Before the header carried a termination reason it waited out
+ * its 400-turn bound and reported {@code stalled - hero did not become ready within 400 turns}, which is
+ * false in a way that matters: it says the recording was truncated when it was complete.
+ *
+ * <p>The final step's action is still applied, because the trainer applies it and only then terminates.
+ * What is skipped is the drain and the comparison, since the trainer did not complete that step either
+ * and there is no settled state to compare against - so the check asserts the whole thing played, the
+ * cursor reached the end, and the reason named is the recorded one.
+ */
+private static void checkDeclaredTerminationEndsPlayback( Replay good ){
+	Replay trimmed = recordAShortRun();
+	trimmed.steps.subList( 60, trimmed.steps.size() ).clear();
+	trimmed.termination = "TURN_LIMIT";
+
+	Outcome outcome = play( trimmed );
+
+	if ( outcome.ranOutOfFrames ){
+		fail( "a recording declaring it ended as TURN_LIMIT hung instead of finishing" );
+		return;
+	}
+	if ( outcome.diverged ){
+		fail( "a recording declaring it ended as TURN_LIMIT diverged: " + outcome.haltReason );
+		return;
+	}
+	if ( outcome.cursor != trimmed.length() ){
+		fail( "a recording declaring it ended as TURN_LIMIT played " + outcome.cursor + " of "
+				+ trimmed.length() + " steps; the final action must still be applied" );
+		return;
+	}
+	if ( outcome.haltReason == null || !outcome.haltReason.contains( "TURN_LIMIT" )){
+		fail( "a recording declaring it ended as TURN_LIMIT halted with: " + outcome.haltReason
+				+ " - the recorded reason should be what it says" );
+		return;
+	}
+	if ( outcome.haltReason.contains( "stalled" )){
+		fail( "a recording declaring it ended as TURN_LIMIT reported a stall, which is the false "
+				+ "report this check exists to prevent" );
+	}
+
+	//and the converse: a recording that declares nothing must not be treated as ended
+	Replay silent = recordAShortRun();
+	silent.steps.subList( 60, silent.steps.size() ).clear();
+	silent.termination = "";
+	Outcome undeclared = play( silent );
+	if ( undeclared.diverged || undeclared.cursor < silent.length() ){
+		//not required to reach the end - the hero may simply become ready - but it must not claim to
+		//have ended early on a reason nobody recorded
+		if ( undeclared.haltReason != null && undeclared.haltReason.contains( "the recording ends here" )){
+			fail( "a recording with no recorded termination still ended as if it had one" );
+		}
+	}
+}
+
+// --------------------------------------------------------------------------- helpers
 
 	private static Replay.Step stepAt( Replay replay, int at ){
 		if ( at >= replay.steps.size() ){

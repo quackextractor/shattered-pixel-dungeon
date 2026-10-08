@@ -154,7 +154,7 @@ config.stallLimit = in.readInt();
 
 		work.stop();
 
-		recorder.end( env.ledger().total(), env.depth(), env.turnsTotal(), 0 );
+		recorder.end( env.ledger().total(), env.depth(), env.turnsTotal(), 0, env.endReason().name() );
 		Replay replay = recorder.replay();
 
 		out.writeInt( Protocol.MSG_EPISODE );

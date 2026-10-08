@@ -99,9 +99,9 @@ public class ReplayRecorder {
 		return inventory();
 	}
 
-	/** Closes the recording and stores the run's outcome. */
-	public void end( double score, int depth, int turns, int generation ){
-		replay.captureOutcome( score, depth, turns, generation );
+/** Closes the recording and stores the run's outcome. */
+	public void end( double score, int depth, int turns, int generation, String termination ){
+		replay.captureOutcome( score, depth, turns, generation, termination );
 		recording = false;
 	}
 

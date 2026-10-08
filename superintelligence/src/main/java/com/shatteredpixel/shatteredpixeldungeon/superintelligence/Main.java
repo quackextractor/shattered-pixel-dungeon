@@ -187,7 +187,7 @@ private static void rollout( String[] args ){
 		simulation.stop();
 		timing.stop();
 
-		recorder.end( env.ledger().total(), env.depth(), env.turnsTotal(), 0 );
+		recorder.end( env.ledger().total(), env.depth(), env.turnsTotal(), 0, env.endReason().name() );
 
 		System.out.println();
 		System.out.println( report.render( 72 ) );

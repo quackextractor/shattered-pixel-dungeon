@@ -60,6 +60,8 @@ public class ReplayIO {
 			out.newLine();
 			out.write( "allow_equipping=" + replay.allowEquipping );
 			out.newLine();
+			out.write( "termination=" + replay.termination );
+			out.newLine();
 			out.write( "steps=" + replay.steps.size() );
 			out.newLine();
 
@@ -192,6 +194,8 @@ public class ReplayIO {
 				//Absent in version 1, which then keeps EnvConfig's defaults - see Replay.VERSION.
 				case "max_slots": replay.maxSlots = Integer.parseInt( value ); break;
 				case "allow_equipping": replay.allowEquipping = Boolean.parseBoolean( value ); break;
+				//absent before version 3, which then leaves it empty and the reason unknown
+				case "termination": replay.termination = value; break;
 				case "steps":      replay.declaredSteps = Integer.parseInt( value ); break;
 				default: break;
 			}
