@@ -157,12 +157,59 @@ public class Trainer {
 	private static final int SEED_POOL_SIZE = 100;
 
 	public Trainer( EnvConfig config, long seed, File workDir ){
+		this( config, new PpoHyperparameters(), seed, workDir );
+	}
+
+	/**
+	 * With the learning hyperparameters supplied up front, so a run cannot start with one set of values
+	 * and apply another mid-flight.
+	 */
+	public Trainer( EnvConfig config, PpoHyperparameters hyper, long seed, File workDir ){
 		this.config = config;
 		this.rng = new Random( seed );
 		this.rngSeed = seed;
 		this.seeds = new SeedPool( rng );
 		this.workDir = workDir;
 		this.ppo = new PPO( config, rng );
+		learning( hyper );
+	}
+
+	/**
+	 * The environment settings this run is using, taken from the configuration file and the environment.
+	 *
+	 * <p>On the trainer rather than in {@link TrainOptions}, because {@code Trainer} is what actually
+	 * builds the environment: the flags in {@code TrainOptions} govern the trainer's own machinery -
+	 * workers, generations, checkpoints - and none of them describe the world the workers simulate.
+	 * Keeping the two apart means a file can tune the reward function without touching the run schedule
+	 * and vice versa, which is the separation a sweep needs.
+	 *
+	 * @param configFile the file named on the command line, or null for the compiled defaults
+	 */
+	static EnvConfig loadedConfig( java.nio.file.Path configFile ) throws IOException {
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder.Loaded loaded =
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder
+						.load( configFile );
+		System.out.println( com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder
+				.describe( configFile, loaded.keysApplied ));
+		return loaded.config;
+	}
+
+	/**
+	 * The {@code --config} value, read before the full parse.
+	 *
+	 * <p>{@link TrainOptions#parse} finds this too, and reading it twice would mean a file loaded twice
+	 * - with a warning printed twice, and a window in which the file could have changed. Duplicated
+	 * because the environment config is needed before the options are parsed at all, and threading a
+	 * partially-parsed object through to satisfy that would be worse. Four lines of argv scanning, not a
+	 * second source of truth.
+	 */
+	private static java.nio.file.Path configFileIn( String[] args ){
+		for (int i = 0; i < args.length - 1; i++){
+			if (args[ i ].equals( "--config" )){
+				return java.nio.file.Paths.get( args[ i + 1 ] );
+			}
+		}
+		return null;
 	}
 
 	/** Batch shape, from the command line. Set before {@link #train}. */
@@ -174,6 +221,27 @@ public class Trainer {
 	/** Update threads, from the command line. Set before {@link #train}. */
 	public void updateThreads( int threads ){
 		ppo.threads = threads;
+	}
+
+	/**
+	 * Applies the learning hyperparameters, from the configuration file or the environment.
+	 *
+	 * <p>Only the values {@link PPO} reads but nothing on the command line can reach: gamma, lambda, the
+	 * clip range and the entropy coefficient. The rest - epochs, minibatch, threads, sampling - are
+	 * still applied separately, because each has a flag that must win over a file.
+	 *
+	 * <p>The learning rate is set on the network as well as the learner. It is one value with two
+	 * consumers, and {@code PPO.update} copies it onto the network before stepping - so setting it here
+	 * would be redundant if the network were not also constructed with it, which it is. This exists so
+	 * that a configured learning rate cannot be accepted and then ignored.
+	 */
+	public void learning( PpoHyperparameters hyper ){
+		ppo.gamma = hyper.gamma;
+		ppo.lambda = hyper.lambda;
+		ppo.clipEpsilon = hyper.clipEpsilon;
+		ppo.entropyCoeff = hyper.entropyCoeff;
+		ppo.learningRate = hyper.learningRate;
+		ppo.network.learningRate = hyper.learningRate;
 	}
 
 	/**
@@ -250,16 +318,31 @@ public class Trainer {
 	}
 
 	public static void main( String[] args ){
-		TrainOptions options = TrainOptions.parse( args );
+		TrainOptions options;
+		EnvConfig config;
+		try {
+			//config first: TrainOptions.parse reads the same file for the learning hyperparameters, and
+			//doing it the other way round would mean loading it twice and could report two different
+			//configurations if the file changed between them
+			config = loadedConfig( configFileIn( args ) );
+			options = TrainOptions.parse( args );
+		} catch (IOException | IllegalArgumentException e){
+			//A bad configuration is refused rather than defaulted, so this is the end of the command and
+			//not a warning beside a run that used numbers nobody asked for.
+			System.err.println( "[ERROR] " + e.getMessage() );
+			System.exit( 1 );
+			return;
+		}
 
 		HeadlessServices.install( options.workDir );
 		HeadlessServices.disableSaving( true );
 
-		EnvConfig config = new EnvConfig();
-		Trainer trainer = new Trainer( config, options.seed, options.workDir );
+		Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir );
 
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
+			//after the constructor, because these are the flag-resolved values: the constructor applied the file's,
+			//and a flag typed on the command line has to win over it
 			trainer.batch( options.epochs, options.minibatchSize );
 			trainer.updateThreads( options.updateThreads );
 			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,

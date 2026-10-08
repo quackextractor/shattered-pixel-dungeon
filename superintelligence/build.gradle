@@ -104,7 +104,18 @@ cliTask('verify', 'Re-executes a recorded run headlessly and confirms it still r
 cliTask('modecheck', 'Fails if the environment cannot reach one of its own action modes.')
 
   cliTask('restartcheck', 'Fails if restarting a run does not rebuild the same first floor.')
-  cliTask('resetcheck', 'Fails if a reset does not isolate an episode from whatever ran before it.')
+cliTask('resetcheck', 'Fails if a reset does not isolate an episode from whatever ran before it.')
+
+//Both of these are direct JavaExec rather than Main subcommands. They need fixtures on disk and, in
+//ConfigCheck's case, to assert on configuration the CLI has no business exposing - routing that through
+//the argument dispatch would give a test a surface that looks like a supported command.
+tasks.register('configcheck', JavaExec) {
+    group = 'verification'
+    description = 'Fails if the configuration binder ignores its input, or accepts a value it cannot use.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ConfigCheck'
+    jvmArgs trainerJvmArgs
+}
   cliTask('graphcheck', 'Fails if a chart reports a range it did not observe.')
   cliTask('actioncheck', 'Fails if a movement action does not move the way it is named.')
 cliTask('slotcheck', 'Fails if a recorded slot index does not resolve to the item it was recorded against.')
@@ -132,19 +143,19 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
   cliTask('weightsdiff', 'Reports how far a checkpoint is from a freshly initialised policy.')
 
 //Every gate in one invocation, because gradle's per-invocation overhead is most of the cost.
-//Measured: gaecheck is 0.22s of actual work and 2.4s through gradle, so gradle is ~90% of it. All
-  //ten gates together take ~8s in one invocation against roughly 21s run one after another - and 8s
+//Measured: gaecheck is 0.22s of actual work and 2.4s through gradle, so gradle is ~90% of it. Seventeen
+//gates together take ~20s in one invocation against roughly a minute run one after another - and that
 //each if the daemon is cold. The checks are not slow; the harness around them is.
 //
 //dependsOn is enough for correctness: gradle fails the build if any dependency task exits non-zero,
 //which is what each of these already does on a mismatch. doLast only adds a line to read.
 //Named `gates`, not `check`: the java-library plugin already contributes a lifecycle `check`, and
-//Gradle refuses to shadow it. `gates` is also the more honest name - `check` conventionally means
-//compile plus test, and this runs neither a compiler pass nor JUnit.
+//Gradle refuses to shadow it. `check` also conventionally means compile plus test, and this runs
+//neither a compiler pass nor JUnit.
 tasks.register('gates') {
 dependsOn 'gradcheck', 'gaecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
-		'observecheck'
+		'observecheck', 'configcheck'
     group = 'verification'
     description = 'Runs every correctness gate in one invocation.'
     doLast { println "all gates passed" }

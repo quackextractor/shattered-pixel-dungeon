@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
 
 import java.io.File;
+import java.io.IOException;
 
 /**
  * Parsed command line for the trainer.
@@ -79,6 +80,14 @@ public class TrainOptions {
 
 	public String javaHome = "";
 	public String classpath = System.getProperty( "java.class.path" );
+
+	/**
+	 * External settings file, or null for the compiled defaults.
+	 *
+	 * <p>Applied before the flags below, which then override it: a value somebody typed on the command
+	 * line beats a value from a file, or the file becomes a trap.
+	 */
+	public java.nio.file.Path configFile;
 	public File workDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-train" );
 	public long stallSeconds = 180;
 
@@ -118,15 +127,61 @@ public class TrainOptions {
 	 */
 	public File resume;
 
+	/**
+	 * Values loaded from the configuration file, resolved before the flags.
+	 *
+	 * <p>Null before {@link #parse} runs. Kept as a field rather than being copied into the individual
+	 * fields so that {@link Trainer#main} has one object to hand to {@link
+	 * com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO}, and so a test can assert on
+	 * what the file said without reconstructing it from the fields that overwrote it.
+	 */
+	public PpoHyperparameters hyper;
+
 	public TrainOptions(){
 		metricsCsv = new File( workDir, "metrics.csv" );
 		save = new File( workDir, "weights.bin" );
 	}
 
-	public static TrainOptions parse( String[] args ){
+	/**
+	 * Parses the command line.
+	 *
+	 * <p>Two passes, and the order is the point. The first collects {@code --config} alone, because the
+	 * file has to be loaded before the rest of the defaults are decided - otherwise a value in the file
+	 * would either be overwritten by a flag nobody typed or overwrite a flag somebody did. The second
+	 * pass applies the file and then the flags over the top of it.
+	 *
+	 * <p>A malformed configuration throws rather than exiting here. {@link Trainer#main} owns the
+	 * reporting, and a parser that both reports and exits cannot be tested.
+	 */
+	public static TrainOptions parse( String[] args ) throws IOException {
 		TrainOptions o = new TrainOptions();
+
+		for (int i = 0; i < args.length; i++){
+			if (args[ i ].equals( "--config" )){
+				o.configFile = java.nio.file.Paths.get( args[ i + 1 ] );
+				i++;
+			}
+		}
+
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder.Loaded loaded =
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder
+						.load( o.configFile );
+
+		PpoHyperparameters hyper = loaded.hyper;
+		o.hyper = hyper;
+
+		//the file's values become the new defaults, so a flag below still overrides them
+		o.epochs = hyper.epochs;
+		o.minibatchSize = hyper.minibatchSize;
+		o.updateThreads = hyper.updateThreads;
+		o.sampleRate = hyper.sampleRate;
+		o.maxSampledPerEpisode = hyper.maxSampledPerEpisode;
+		o.maxSamplesPerGeneration = hyper.maxSamplesPerGeneration;
+		o.stallSeconds = hyper.stallSeconds;
+
 		for (int i = 0; i < args.length; i++){
 			switch (args[ i ]) {
+				case "--config":     i++; break;
 				case "--workers":     o.workers = Integer.parseInt( args[ ++i ] ); break;
 				case "--generations": o.generations = Integer.parseInt( args[ ++i ] ); break;
 				case "--episodes":   o.episodes = Integer.parseInt( args[ ++i ] ); break;
@@ -162,10 +217,18 @@ public class TrainOptions {
 		}
 		o.workers = o.workers > 0 ? o.workers : defaultWorkerCount();
 		o.episodes = o.episodes > 0 ? o.episodes : o.workers;
-		if (o.epochs < 1) o.epochs = 1;
-		if (o.minibatchSize < 1) o.minibatchSize = 1;
 		if (o.checkpointEvery < 1) o.checkpointEvery = 1;
+
+		//The sampling and batch fields above started as bare literals in three classes and are now read
+		//from the configuration. The clamps stay, because a flag that sets them to zero is still a
+		//mistake worth correcting rather than a value to honour literally - except the sample rate, where
+		//zero is meaningful: the collector always retains an episode's last 20 steps, so 0 is how "off"
+		//is expressed rather than a special case. See PpoHyperparameters.sampleRate.
+		if (o.minibatchSize < 1) o.minibatchSize = 1;
+		if (o.epochs < 1) o.epochs = 1;
 		if (o.updateThreads < 0) o.updateThreads = 0;
+		if (o.maxSampledPerEpisode < 1) o.maxSampledPerEpisode = 1;
+		if (o.maxSamplesPerGeneration < 1) o.maxSamplesPerGeneration = 1;
 		return o;
 	}
 

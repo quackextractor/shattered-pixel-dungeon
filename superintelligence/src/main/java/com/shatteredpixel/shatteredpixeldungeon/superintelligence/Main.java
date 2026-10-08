@@ -127,7 +127,12 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "  --save <file>       write the run out as a replay" );
 		System.out.println( "  --out <dir>         working directory for saves and replays" );
 		System.out.println( "  --max-turns <n>     override the per-floor turn cap" );
+		System.out.println( "  --config <file>     load environment and learning settings from a properties file" );
 		System.out.println( "  --no-color          disable ANSI colour" );
+		System.out.println();
+		System.out.println( "settings may also come from SPD_* environment variables (rl.learning_rate ->" );
+		System.out.println( "SPD_RL_LEARNING_RATE), which override the file. Flags override both." );
+		System.out.println( "See superintelligence/superintelligence.properties for every key." );
 	}
 
 	// --------------------------------------------------------------------------- rollout
@@ -152,7 +157,7 @@ private static void rollout( String[] args ){
 
 		boot( options );
 
-		EnvConfig config = new EnvConfig();
+		EnvConfig config = configFor( options );
 		if (options.maxTurns > 0) config.turnLimitPerFloor = options.maxTurns;
 
 		HeadlessGame game = HeadlessGame.install();
@@ -199,6 +204,41 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 						+ " (" + e.getClass().getSimpleName() + ")" );
 				System.exit( 1 );
 			}
+		}
+	}
+
+	// --------------------------------------------------------------------------- configuration
+
+	/**
+	 * The environment settings for a command: the external file if one was named, then the flags.
+	 *
+	 * <p>Order is the contract. A config file supplies defaults and {@code SPD_} environment variables
+	 * override it, but a flag somebody typed wins over both - someone who wrote {@code --max-turns 400}
+	 * meant 400 turns, and a file silently overriding an explicit flag would be a trap. Which is why the
+	 * caller applies its flags <em>after</em> this returns rather than the binder overwriting them.
+	 *
+	 * <p>Reports what it loaded, once. A run tuned by an external file is not reproducible from the
+	 * command line alone, and the single most useful line in the log is the one naming the file.
+	 */
+	static EnvConfig configFor( Options options ){
+		try {
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder.Loaded loaded =
+					com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder
+							.load( options.configFile );
+			System.out.println( com.shatteredpixel.shatteredpixeldungeon.superintelligence.env
+					.EnvConfigBinder.describe( options.configFile, loaded.keysApplied ));
+			return loaded.config;
+		} catch (java.io.IOException e){
+			System.err.println( "[ERROR] cannot read the configuration at " + options.configFile
+					+ " (" + e.getClass().getSimpleName() + "): " + e.getMessage() );
+			System.exit( 1 );
+			return new EnvConfig();
+		} catch (IllegalArgumentException e){
+			//a bad value is refused rather than defaulted, so this has to stop the command rather than
+			//quietly substituting a number nobody asked for
+			System.err.println( "[ERROR] " + e.getMessage() );
+			System.exit( 1 );
+			return new EnvConfig();
 		}
 	}
 
@@ -441,6 +481,8 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 	static class Options {
 		String seed = "";
       boolean seedProvided = false;
+		/** External settings file, or null for the compiled defaults. See {@link #configFor}. */
+		java.nio.file.Path configFile;
 		HeroClass hero = HeroClass.WARRIOR;
 		java.io.File saveTo;
 		java.io.File outDir;
@@ -471,9 +513,12 @@ case "--seed":
 					case "--out":
 						o.outDir = new java.io.File( args[ ++i ] );
 						break;
-					case "--max-turns":
-						o.maxTurns = Integer.parseInt( args[ ++i ] );
-						break;
+case "--max-turns":
+					o.maxTurns = Integer.parseInt( args[ ++i ] );
+					break;
+				case "--config":
+					o.configFile = java.nio.file.Paths.get( args[ ++i ] );
+					break;
 case "--no-color":
 					o.noColor = true;
 					break;
