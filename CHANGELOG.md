@@ -322,6 +322,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `rollout --seed ""` writes `seed=` and `verify` then dies on an unhandled null-valued expression,
     five times over, naming neither the file nor the step — so the guard needs to go in both commands,
     not one.
+  - Both guards are in. `rollout` refuses an empty `--seed` and points at the omitted flag; `verify`
+    refuses a recording with no seed and names the file and the field.
+- **A recording now says how wide its slot head was.** Replay v2 carries `max_slots` and
+  `allow_equipping`. Neither was recorded, and they are the only two settings `ActionMapper` reads: the
+  slot head is a fixed-width window over the inventory, so a recorded index names a different item at a
+  different width, and `allowEquipping` decides whether a USE equips a weapon or arms an aim. A replay
+  that could not say which it was recorded under could not guarantee it resolved an index the same way
+  twice, and every replay-based check inherited that ambiguity. `ReplayRecorder.begin` takes the
+  config, `Main.rollout` and `Worker` pass theirs, and `ReplayIO.configFor` is the one place a header
+  becomes settings, so the viewer, `verify` and the headless verifier cannot each pick their own.
+  `ReplayPlayer` takes an `EnvConfig` rather than hardcoding one, for the same reason. v1 still parses,
+  with defaults, so the existing tooling fixtures stay readable — though they were recorded against the
+  RNG stream since repaired, and so reproduce nothing.
 
 ### Fixed
 

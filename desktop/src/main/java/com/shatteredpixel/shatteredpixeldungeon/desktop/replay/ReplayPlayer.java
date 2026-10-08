@@ -34,6 +34,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SlotAction;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
 
 /**
@@ -117,10 +118,24 @@ public class ReplayPlayer {
 	 */
 	private boolean diverged = false;
 
-	public ReplayPlayer( Replay replay ){
+	/**
+	 * Replays under the settings the recording was made with.
+	 *
+	 * <p>The config is a parameter rather than a hardcoded {@code new EnvConfig()} because a recorded
+	 * slot index is resolved through it: the slot head is a fixed-width window over the inventory, so
+	 * the same index names a different item at a different width, and {@code allowEquipping} decides
+	 * whether a USE equips or arms an aim. A viewer that built its own config could resolve an index
+	 * differently from the recorder and then report the recording as wrong.
+	 */
+	public ReplayPlayer( Replay replay, EnvConfig config ){
 		this.playback = new ReplayPlayback( replay );
-		this.mapper = new ActionMapper( new EnvConfig() );
+		this.mapper = new ActionMapper( config );
 		Actor.manualScheduling = true;
+	}
+
+	/** Replays under the config the header carries. */
+	public ReplayPlayer( Replay replay ){
+		this( replay, ReplayIO.configFor( replay ) );
 	}
 
 	public ReplayPlayback playback(){

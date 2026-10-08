@@ -138,7 +138,9 @@ config.stallLimit = in.readInt();
 		//reproduce, since verify would reset onto a fresh draw.
 		collector.listener( new EpisodeCollector.Listener() {
 			@Override public void onEpisodeStart( String seedText, String hero ){
-				recorder.begin( seedText, hero, 0, config.turnLimitPerFloor );
+				//the config too, so the header says how wide the slot head was - a recorded slot
+				//index means nothing without it
+				recorder.begin( seedText, hero, 0, config.turnLimitPerFloor, config );
 			}
 
 			@Override public void onStep( EnvMode mode, Action action, int secondary,

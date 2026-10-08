@@ -150,7 +150,7 @@ private static void rollout( String[] args ){
 
 		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), options.seed.hashCode() );
 		ReplayRecorder recorder = new ReplayRecorder();
-		recorder.begin( options.seed, options.hero.name(), 0, config.turnLimitPerFloor );
+		recorder.begin( options.seed, options.hero.name(), 0, config.turnLimitPerFloor, config );
 
 		if (!reset( env, options )) return;
 
@@ -247,7 +247,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
 				+ " recorded score=" + replay.score );
 
 		HeadlessGame game = HeadlessGame.install();
-		SPDEnv env = new SPDEnv( new EnvConfig(), game );
+		SPDEnv env = new SPDEnv( ReplayIO.configFor( replay ), game );
 
 		long start = System.nanoTime();
 		ReplayIO.Verification result = ReplayIO.verify( replay, env );

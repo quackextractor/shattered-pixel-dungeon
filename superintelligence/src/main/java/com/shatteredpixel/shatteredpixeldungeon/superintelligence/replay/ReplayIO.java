@@ -4,6 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
 
@@ -54,6 +55,10 @@ public class ReplayIO {
 				out.write( "turns=" + replay.turns );
 			out.newLine();
 			out.write( "turn_limit=" + replay.turnLimitPerFloor );
+			out.newLine();
+			out.write( "max_slots=" + replay.maxSlots );
+			out.newLine();
+			out.write( "allow_equipping=" + replay.allowEquipping );
 			out.newLine();
 			out.write( "steps=" + replay.steps.size() );
 			out.newLine();
@@ -184,12 +189,31 @@ public class ReplayIO {
 				case "depth":      replay.depth = Integer.parseInt( value ); break;
 				case "turns":      replay.turns = Integer.parseInt( value ); break;
 				case "turn_limit": replay.turnLimitPerFloor = Integer.parseInt( value ); break;
+				//Absent in version 1, which then keeps EnvConfig's defaults - see Replay.VERSION.
+				case "max_slots": replay.maxSlots = Integer.parseInt( value ); break;
+				case "allow_equipping": replay.allowEquipping = Boolean.parseBoolean( value ); break;
 				case "steps":      replay.declaredSteps = Integer.parseInt( value ); break;
 				default: break;
 			}
 		}
 
 		return replay;
+	}
+
+	/**
+	 * The {@link EnvConfig} a replay has to be re-executed under.
+	 *
+	 * <p>The single place the header is turned back into settings, so the viewer, {@code verify} and the
+	 * new headless verifier cannot each pick their own: the point of recording these is that a replay
+	 * resolves a slot index the same way the recorder did, and three callers guessing independently is
+	 * how that stops being true.
+	 */
+	public static EnvConfig configFor( Replay replay ){
+		EnvConfig config = new EnvConfig();
+		config.turnLimitPerFloor = replay.turnLimitPerFloor;
+		config.maxSlots = replay.maxSlots;
+		config.allowEquipping = replay.allowEquipping;
+		return config;
 	}
 
 	// --------------------------------------------------------------------------- verification
@@ -232,7 +256,12 @@ public class ReplayIO {
 			heroClass = HeroClass.WARRIOR;
 		}
 
-		env.config().turnLimitPerFloor = replay.turnLimitPerFloor;
+		//every setting the header carries, not just the turn cap: the slot width and the
+		//equipping rule are both part of what a recorded index meant at the time.
+		EnvConfig replayed = configFor( replay );
+		env.config().turnLimitPerFloor = replayed.turnLimitPerFloor;
+		env.config().maxSlots = replayed.maxSlots;
+		env.config().allowEquipping = replayed.allowEquipping;
 		env.reset( replay.seedText, heroClass );
 
 		int cumulative = 0;

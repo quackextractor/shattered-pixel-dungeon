@@ -20,7 +20,13 @@ public class Replay {
 
 	/** Header written at the top of every replay file. */
 	public static final String MAGIC = "SPD-REPLAY";
-	public static final int VERSION = 1;
+	//2 adds max_slots and allow_equipping. Version 1 recorded neither, so a v1 replay cannot say
+	//how wide the slot head was or whether equipping was permitted, and a replay that does not record
+	//what changed the meaning of a slot index cannot be trusted to resolve one the same way twice.
+	//v1 still parses, with EnvConfig's defaults, so the tooling fixtures recorded before this stay
+	//readable - but they were recorded against the RNG stream that has since been repaired and so
+	//reproduce nothing anyway.
+	public static final int VERSION = 2;
 
 	public String seedText = "";
 	public String heroClass = "WARRIOR";
@@ -45,6 +51,26 @@ public class Replay {
 	 * would run past the point the recording ended, and the run would not reproduce.
 	 */
 	public int turnLimitPerFloor = 1500;
+
+	/**
+	 * How many inventory slots the recorded slot indices were chosen against.
+	 *
+	 * Recorded because a slot index means nothing without it: the head is a fixed-width window over
+	 * the inventory, so the same index names a different item at a different width. These are the two
+	 * settings {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper}
+	 * reads, and between them they are everything a replay needs to resolve an index the way the
+	 * recorder did.
+	 */
+	public int maxSlots = 32;
+
+	/**
+	 * Whether equipping was permitted when the run was recorded.
+	 *
+	 * Not cosmetic: {@code SlotAction.use} consults it before deciding whether to equip an
+	 * {@code EquipableItem}, so the same USE either toggles a stat or arms an aim depending on it. A
+	 * replay that guessed wrong here would diverge at the first weapon change.
+	 */
+	public boolean allowEquipping = true;
 
 	/**
 	 * Step count the header declares.

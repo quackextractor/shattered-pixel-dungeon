@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
@@ -22,11 +23,28 @@ public class ReplayRecorder {
 
 /** Prepared for a new episode. */
 	public void begin( String seedText, String heroClass, int challenges, int turnLimitPerFloor ){
+		begin( seedText, heroClass, challenges, turnLimitPerFloor, null );
+	}
+
+	/**
+	 * Prepared for a new episode, recording the settings that change what a slot index means.
+	 *
+	 * <p>A null config records EnvConfig's defaults, which is what the fixture gates want - they build
+	 * the env and the replay from the same defaults, so the difference cannot arise. A real rollout
+	 * passes its own config, because a recording that cannot say how wide the slot head was cannot be
+	 * re-executed faithfully.
+	 */
+	public void begin( String seedText, String heroClass, int challenges, int turnLimitPerFloor,
+			EnvConfig config ){
 		replay.reset();
 		replay.seedText = seedText == null ? "" : seedText;
 		replay.heroClass = heroClass;
 		replay.challenges = challenges;
 		replay.turnLimitPerFloor = turnLimitPerFloor;
+		if (config != null){
+			replay.maxSlots = config.maxSlots;
+			replay.allowEquipping = config.allowEquipping;
+		}
 		recording = true;
 	}
 
