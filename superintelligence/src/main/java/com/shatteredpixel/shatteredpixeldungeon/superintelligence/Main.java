@@ -13,6 +13,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCh
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResetCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GraphCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ActionCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RolloutCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SlotCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ObserveCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.VerifyCheck;
@@ -27,6 +28,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RunReport
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ScriptedEpisode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
@@ -83,7 +85,8 @@ public class Main {
 		case "valuescale": ValueScale.main( rest ); break;
 		case "parallelcheck": ParallelCheck.main( rest ); break;
 		case "rewardcheck": RewardCheck.main( rest ); break;
-		case "weightsdiff": WeightsDiff.main( rest ); break;
+		case "rolloutcheck": RolloutCheck.main( rest ); break;
+			case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": ReplayCatalogCheck.main( rest ); break;
 		case "train":    Trainer( rest );   break;
@@ -153,66 +156,45 @@ private static void rollout( String[] args ){
 		HeadlessGame game = HeadlessGame.install();
 		SPDEnv env = new SPDEnv( config, game );
 
-		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), options.seed.hashCode() );
-		ReplayRecorder recorder = new ReplayRecorder();
-
-		if (!reset( env, options )) return;
-
-		//begun after the reset, and with the seed the environment actually resolved rather than the
-		//one asked for. On a random seed those differ: SPDEnv encodes the drawn seed into its own
-		//seedText, and recording the empty request instead is what made a random-seed episode produce
-		//a replay that could not be verified - verify would rebuild a *different* random world and
-		//report a step-0 divergence that looks like a broken seed lock and is not one. SeedPool leaks
-		//10% of episodes onto random seeds deliberately, so this was never an edge case.
-		recorder.begin( env.seedText(), options.hero.name(), 0, config.turnLimitPerFloor, config );
-
-		RunReport report = new RunReport( env.ledger(), env.seedText() );
-		int[] slot = new int[ 1 ];
-
+		//the episode itself, and its recording, live in ScriptedEpisode so rolloutcheck can assert on
+		//what this command records without invoking a command line
 		ResourceStats.Interval simulation = ResourceStats.start();
 		long start = System.nanoTime();
-		double cumulative = 0;
 
-		while (env.running()){
-			Action action = policy.choose( env, slot );
-			recorder.record( action, slot[ 0 ], env.mode() );
+		ScriptedEpisode.Result episode =
+				ScriptedEpisode.record( config, options.seed, options.hero, 0, options.seed.hashCode() );
 
-			float reward = (float) env.step( action, slot[ 0 ] );
-			recorder.afterStep( env.heroPosition(), reward );
-			cumulative += reward;
-
-			report.sample( (float) env.ledger().total(), env.depth() );
-		}
 		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 		simulation.stop();
 		timing.stop();
 
-		recorder.end( env.ledger().total(), env.depth(), env.turnsTotal(), 0, env.endReason().name() );
+		ReplayRecorder recorder = new ReplayRecorder();
 
 		System.out.println();
-		System.out.println( report.render( 72 ) );
-		System.out.println( report.renderScoreOverFloors( 72 ) );
+		System.out.println( episode.report.render( 72 ) );
+		System.out.println( episode.report.renderScoreOverFloors( 72 ) );
 
 		System.out.println();
-System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
-				+ (env.truncated() ? " (truncated)" : "") );
+System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endReason()
+				+ (episode.env.truncated() ? " (truncated)" : "") );
 		System.out.println( Ansi.wrap( "simulation", Ansi.DIM ) + " "
 				+ String.format( "%d turns in %.2f s (%,.0f turns/s) on %.2f cores",
-						env.turnsTotal(), simulation.wallSeconds(),
-						ResourceStats.stepsPerSecond( env.turnsTotal(), simulation.wallSeconds() ),
+						episode.env.turnsTotal(), simulation.wallSeconds(),
+						ResourceStats.stepsPerSecond( episode.env.turnsTotal(), simulation.wallSeconds() ),
 						Math.max( 0, simulation.coresUsed() ) ) );
 
 		System.out.println();
 		System.out.println( ResourceStats.renderSummary( "resources (whole command)",
-				timing, env.turnsTotal() ) );
+				timing, episode.env.turnsTotal() ) );
 
 		if (options.saveTo != null){
 			try {
-				ReplayIO.write( recorder.replay(), options.saveTo );
+				ReplayIO.write( episode.replay, options.saveTo );
 				System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "   wrote "
-						+ recorder.replay().length() + " steps to " + options.saveTo.getPath() );
+						+ episode.replay.length() + " steps to " + options.saveTo.getPath() );
 			} catch (java.io.IOException e){
-				System.err.println( "[ERROR] could not write replay: " + e.getMessage() );
+				System.err.println( "[ERROR] cannot write the replay to " + options.saveTo
+						+ " (" + e.getClass().getSimpleName() + ")" );
 				System.exit( 1 );
 			}
 		}

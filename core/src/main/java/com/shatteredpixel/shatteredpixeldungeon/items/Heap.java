@@ -111,8 +111,15 @@ public class Heap implements Bundlable {
 			items.addAll(0, bonus);
 			RingOfWealth.showFlareForBonusDrop(sprite);
 		}
-		sprite.link();
-		sprite.drop();
+
+		//Guarded like every other sprite use in this class. A heap's sprite is assigned by
+		//GameScene.add, which never runs without a scene, so headlessly it is null - and these two calls
+		//were the only unguarded ones. A dropped item then died on a null sprite, which is how the first
+		//item this episode dropped ended a run.
+		if (sprite != null){
+			sprite.link();
+			sprite.drop();
+		}
 	}
 	
 	public Heap setHauntedIfCursed(){
