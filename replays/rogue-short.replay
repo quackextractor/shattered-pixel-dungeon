@@ -1,0 +1,30 @@
+SPD-REPLAY
+version=3
+seed=rogue-short
+hero=ROGUE
+challenges=0
+generation=0
+score=3.519999969517812
+depth=1
+turns=15
+turn_limit=15
+max_slots=32
+allow_equipping=true
+termination=TURN_LIMIT
+steps=16
+USE 0 WORLD 619 -0.0020000000949949026  20 0.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+USE 1 SLOT 619 0.0 ThrowingKnife:1,Waterskin:2 20 0.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+USE 0 TARGETING 619 -0.0020000000949949026  20 1.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+OPEN_INVENTORY 0 WORLD 619 -0.0020000000949949026  20 1.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+USE 1 INVENTORY 619 0.0 ThrowingKnife:1,Waterskin:2 20 1.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+USE 0 TARGETING 619 -0.0020000000949949026  20 2.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+MOVE_E 0 WORLD 620 -0.0020000000949949026  20 3.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 577 -0.0020000000949949026  20 5.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+MOVE_E 0 WORLD 578 -0.0020000000949949026  20 6.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+MOVE_E 0 WORLD 579 -0.0020000000949949026  20 7.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+MOVE_SE 0 WORLD 624 -0.0020000000949949026  20 8.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+MOVE_SE 0 WORLD 669 2.247999906539917  20 9.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 669 -0.20200000703334808  18 10.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 669 -0.0020000000949949026  18 11.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+MOVE_SE 0 WORLD 714 1.6480000019073486  18 12.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 758 0.04800000041723251  18 13.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1

@@ -220,9 +220,8 @@ public class ActionMapper {
 		//Choosing any action while resting ends the rest, which is what Hero.act() does at the top
 		//of its curAction branch. Without this, REST is a one-way door: Hero.rest() never sets a
 		//curAction, so Hero.act() keeps taking the `curAction == null && resting` branch, which
-		//spends time and calls next() but never ready(). The hero then rests forever, and
-		//recoverStrandedHero() cannot help because it deliberately refuses a resting hero - the way
-		//a player escapes is by choosing another action, which headless input never does.
+		//spends time and calls next() but never ready(), and the hero rests forever. A player
+		//escapes by choosing another action; headless input has to be told to do the same.
 		if (hero.resting && action != Action.REST){
 			hero.resting = false;
 		}

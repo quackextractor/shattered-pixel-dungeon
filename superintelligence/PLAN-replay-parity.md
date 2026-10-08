@@ -3,8 +3,9 @@
 Follow-on from `PLAN-replay-verification.md`, which is built. That work produced the tooling; this
 document is the work the tooling found.
 
-Status: **in progress.** Items 1-2 and the seed regression are done; the rest are listed with their
-research and design below and are implemented in the order given, because item 1 gates most of the rest.
+Status: **items 1, 2, 3, 4, 5 and 7 are done.** Item 1 did not find the fault it went looking for - it
+disproved the hypothesis and produced a reproduction instead, which is section 1.5. Item 6, retraining,
+is not started and is deliberately last: everything a checkpoint would learn from is still moving.
 
 ---
 
@@ -88,6 +89,40 @@ observes directly.
 
 Which means the remaining fault is behavioural, and `rngtrace` has said everything it can. The next
 step is to locate the step-27 health divergence by state rather than by randomness.
+
+### 1.5 The fault, now reproducible
+
+Rebuilding the corpus produced a minimal reproduction, which the previous work never had: a recording
+made by the *current* build that does not replay.
+
+```
+verify: seed=mage-long hero=MAGE steps=119
+[ERROR] replay diverged at step 17 of 119
+        position: replayed 627, recorded 1181
+        action MOVE_NW slot 0 mode WORLD
+```
+
+The recorded positions either side of it:
+
+```
+step16: MOVE_W  WORLD pos=1146
+step17: MOVE_NW WORLD pos=1106
+step18: MOVE_NW WORLD pos=1181     <- recorded 1181, replayed 627
+```
+
+A single north-west move takes the hero from 1106 to 1181, which is not a walk in any floor geometry,
+and replaying it lands at 627 instead. So the divergence is not a small numeric disagreement that
+accumulates: something happens on that step which the replay does not reproduce at all.
+
+That is worth stating plainly because it reframes the remaining work. The hypothesis this plan opened
+with — a thousand-value RNG offset shifting every downstream draw — was wrong, and the tool that
+disproved it also produced the actual reproduction. **Seven of the eight recordings rebuild cleanly and
+reproduce; one does not.** That is a much smaller surface than "the engine is subtly non-deterministic",
+and it is now a specific step in a specific file.
+
+Next step: read what `MOVE_NW` at that cell can reach. The likely candidates are the ones that relocate
+a hero without a move action — a pit, a teleport, or a floor transition — because those are the paths
+that produce a position the recording cannot explain by walking.
 
 ### Design
 

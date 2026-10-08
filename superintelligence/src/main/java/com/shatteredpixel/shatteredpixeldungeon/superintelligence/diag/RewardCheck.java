@@ -332,27 +332,16 @@ public class RewardCheck {
 	/**
 	 * {@code REST} must not end the episode.
 	 *
-	 * <p><b>This is the actual cause of the 100% stall rate, and it is a harness bug, not a
-	 * preference.</b> {@code ActionMapper} set {@code hero.resting = true} without ever setting a
-	 * {@code curAction}. {@code Hero.act()} branches on {@code curAction == null} first, so a resting
-	 * hero takes the {@code rest} branch — {@code spendConstant} then {@code next()} — and never calls
-	 * {@code ready()}. Control is never handed back.
+	 * <p>{@code REST} sets {@code hero.resting} without setting a {@code curAction}. {@code Hero.act()}
+	 * branches on {@code curAction == null} first, so a resting hero takes the {@code rest} branch -
+	 * {@code spendConstant} then {@code next()} - and never calls {@code ready()}. Control is never
+	 * handed back, and if nothing else clears the flag the episode cannot leave the hero.
 	 *
-	 * <p>The hero is then stuck for good, and nothing rescues him: {@code recoverStrandedHero}
-	 * deliberately refuses a resting hero, which is right for a player, because a player escapes rest
-	 * by choosing another action. Headless input has nobody to do that. After 8 scheduler steps
-	 * {@code LevelPipeline} returns {@code STALLED} and the episode is over.
-	 *
-	 * <p>Measured before the fix: stalls at turns 10, 31, 24, 51, 168 across seeds — 36 of 36 episodes
-	 * stalled, from the pipeline path, with the idle guard firing <b>zero</b> times. So the 20-generation
-	 * run's "100% stalled" was this, not the {@code WAIT} story the other cases in this file describe.
-	 *
-	 * <p><b>Why the assertion is on the hero's flag and not on the episode surviving.</b> Survival looked
-	 * like the stronger property and is the weaker one. An episode that rests and then <i>moves</i> never
-	 * stalls even with this bug present, because a movement action sets a {@code curAction} and
-	 * {@code Hero.act()} clears {@code resting} on the way past - so a test written that way passed with
-	 * the fix deleted, which was caught by mutation rather than by reading. Only the actions that set no
-	 * {@code curAction} ({@code WAIT}, {@code SEARCH}, {@code USE}, {@code DROP}) were ever trapped.
+	 * <p>The assertion is on the hero's flag rather than on the episode surviving, because surviving is
+	 * the weaker property. An episode that rests and then <i>moves</i> never stalls, because a movement
+	 * action sets a {@code curAction} and {@code Hero.act()} clears {@code resting} on the way past - so
+	 * a test written that way passes with the release broken. Only actions that set no
+	 * {@code curAction} - {@code WAIT}, {@code SEARCH}, {@code USE}, {@code DROP} - leave the flag set.
 	 */
 	private static void checkRestIsNotAOneWayDoor( EnvConfig config ){
 
@@ -377,11 +366,8 @@ public class RewardCheck {
 			fail( "after REST the hero was still resting when the next action arrived. REST sets"
 					+ " hero.resting without setting a curAction, so Hero.act() takes the"
 					+ " `curAction == null && resting` branch, spends time and calls next() but never"
-					+ " ready(). recoverStrandedHero cannot help because it refuses a resting hero - a"
-					+ " player escapes by choosing another action, and headless input has nobody to do"
-					+ " that. Every episode that rests is over, which is what produced the 100% stall"
-					+ " rate. Note that movement escapes on its own; this fails only for the actions that"
-					+ " set no curAction." );
+					+ " ready(), so control is never handed back. Movement escapes on its own by"
+					+ " setting a curAction; this fails only for the actions that set none." );
 			return;
 		}
 
