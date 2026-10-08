@@ -11,16 +11,12 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayI
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -54,7 +50,15 @@ public class Trainer {
 	private final File workDir;
 
 	private final PPO ppo;
-	private final WorkerPool pool = new WorkerPool();
+
+	/**
+	 * The channel to the worker processes.
+	 *
+	 * <p>Constructed after {@link #ppo} and {@link #config} because it carries the policy frame and
+	 * decodes transitions against them; declared here rather than assigned in the constructor so the
+	 * field order and the dependency agree.
+	 */
+	private final TrainerWorkers pool;
 
 	// per-seed best run, which is what gets saved as a replay
 	private final Map<String, Replay> bestPerSeed = new HashMap<>();
@@ -171,6 +175,7 @@ public class Trainer {
 		this.seeds = new SeedPool( rng );
 		this.workDir = workDir;
 		this.ppo = new PPO( config, rng );
+		this.pool = new TrainerWorkers( config, ppo );
 		learning( hyper );
 	}
 
@@ -475,10 +480,10 @@ public class Trainer {
 			//and dispatching second is what keeps the concurrent dispatch below race-free while still
 			//producing exactly the same assignment the sequential version did.
 			episodesPerWorker = workerCount;
-			List<Job> jobs = planGeneration( workerCount );
+			List<TrainerWorkers.Job> jobs = planGeneration( workerCount );
 
 			ResourceStats.Interval gen = ResourceStats.start();
-			List<Episode> episodes = dispatch( jobs );
+			List<Episode> episodes = pool.dispatch( jobs );
 			gen.stop();
 			lastWorkerSeconds = sumWorkerCpuSeconds( episodes );
 
@@ -503,7 +508,7 @@ public class Trainer {
 				//the push is a barrier: no worker can run while weights are moving, so its cost is
 				//reported next to the update's rather than folded into the collection figure
 				ResourceStats.Interval push = ResourceStats.start();
-				pushWeights();
+				pool.pushWeights();
 				push.stop();
 
 				lastBarrierSeconds = update.wallSeconds() + push.wallSeconds();
@@ -567,24 +572,15 @@ public class Trainer {
 		}
 	}
 
-	/** One episode request, resolved before dispatch so workers never touch shared state. */
-	private static class Job {
-		final WorkerHandle worker;
-		final String seed;
-		final HeroClass heroClass;
-		final boolean wantReplay;
-
-		Job( WorkerHandle worker, String seed, HeroClass heroClass, boolean wantReplay ){
-			this.worker = worker;
-			this.seed = seed;
-			this.heroClass = heroClass;
-			this.wantReplay = wantReplay;
-		}
-	}
-
-	/** Builds the generation's job list, round-robin so every worker gets the same count. */
-	private List<Job> planGeneration( int workerCount ){
-		List<Job> jobs = new ArrayList<>();
+	/**
+	 * Builds the generation's job list, round-robin so every worker gets the same count.
+	 *
+	 * <p>The schedule is the trainer's, not the channel's: which seed, which hero and which of these
+	 * is worth keeping a replay of are all decisions about what the agent should be asked to do. The
+	 * resulting {@link TrainerWorkers.Job}s are opaque to the channel, which only carries them.
+	 */
+	private List<TrainerWorkers.Job> planGeneration( int workerCount ){
+		List<TrainerWorkers.Job> jobs = new ArrayList<>();
 
 		for (WorkerHandle worker : pool.workers()){
 			for (int i = 0; i < workerCount; i++){
@@ -592,191 +588,11 @@ public class Trainer {
 				boolean wantReplay = (i % 3 == 0);
 				String seed = seeds.next();
 				HeroClass heroClass = HeroClass.values()[ rng.nextInt( HeroClass.values().length ) ];
-				jobs.add( new Job( worker, seed, heroClass, wantReplay ) );
+				jobs.add( pool.job( worker, seed, heroClass, wantReplay ));
 			}
 		}
 
 		return jobs;
-	}
-
-	/**
-	 * Runs every job at once, one thread per worker.
-	 *
-	 * This was the difference between a full machine and one core. The previous loop asked each
-	 * worker for its whole share in turn, so with eight workers seven of them were blocked on a
-	 * pipe read while one simulated - the pool bought process isolation and nothing else, and the
-	 * measured throughput was indistinguishable from a single worker.
-	 *
-	 * One thread per worker rather than a shared pool: each blocks on its own pipe for the whole
-	 * episode, so the tasks are I/O-bound in the sense that matters here and there is nothing to
-	 * gain from more threads than workers. Joining on all of them is what bounds the generation.
-	 */
-	private List<Episode> dispatch( List<Job> jobs ) throws IOException {
-		Map<WorkerHandle, List<Job>> byWorker = new LinkedHashMap<>();
-		for (Job job : jobs){
-			byWorker.computeIfAbsent( job.worker, k -> new ArrayList<>() ).add( job );
-		}
-
-		List<Thread> threads = new ArrayList<>();
-		List<List<Episode>> results = new ArrayList<>();
-		List<IOException> failures = Collections.synchronizedList( new ArrayList<>() );
-
-		for (Map.Entry<WorkerHandle, List<Job>> entry : byWorker.entrySet()){
-			final WorkerHandle worker = entry.getKey();
-			final List<Job> mine = entry.getValue();
-			final List<Episode> collected = new ArrayList<>();
-
-			Thread thread = new Thread( () -> {
-				try {
-					collected.addAll( runOn( worker, mine ) );
-				} catch (IOException e){
-					failures.add( e );
-				}
-			}, "dispatch-" + worker.name );
-
-			threads.add( thread );
-			results.add( collected );
-			thread.start();
-		}
-
-		//join, rather than poll on a timer: nothing here needs a cadence, and a fixed sleep would
-		//only add latency proportional to however often it fired
-		InterruptedException interrupted = null;
-		for (Thread thread : threads){
-			try {
-				thread.join();
-			} catch (InterruptedException e){
-				interrupted = e;
-			}
-		}
-		if (interrupted != null) Thread.currentThread().interrupt();
-
-		if (!failures.isEmpty()) throw failures.get( 0 );
-
-		List<Episode> episodes = new ArrayList<>();
-		for (List<Episode> collected : results) episodes.addAll( collected );
-		return episodes;
-	}
-
-	/** Runs one worker's share of a generation. Called only from a dispatch thread. */
-	private List<Episode> runOn( WorkerHandle worker, List<Job> jobs ) throws IOException {
-		List<Episode> episodes = new ArrayList<>();
-
-		DataOutputStream out = worker.dataOut;
-		DataInputStream in = worker.dataIn;
-
-		for (Job job : jobs){
-			out.writeInt( Protocol.MSG_EPISODE );
-			out.writeUTF( job.seed );
-			out.writeUTF( job.heroClass.name() );
-			out.writeBoolean( job.wantReplay );
-			out.flush();
-
-			int reply = in.readInt();
-			if (reply != Protocol.MSG_EPISODE){
-				throw new IOException( worker.name + " replied to an episode request with message "
-						+ reply );
-			}
-
-			Episode episode = Episode.read( in );
-			episode.seed = job.seed;
-			episode.heroClass = job.heroClass.name();
-			episode.workerName = worker.name;
-
-			int steps = in.readInt();
-			//the worker sends the step count always but the body only when a replay was requested,
-			//so the body must only be read in that case. Reading it unconditionally deadlocked the
-			//trainer against a worker that was already waiting for its next command.
-			if (job.wantReplay) episode.replay = readReplay( in, steps );
-
-			//the sampled transitions, decoded into this thread's own list and merged on the trainer
-			//thread once every worker has joined. Nothing shared is touched from here.
-			episode.transitions = Episode.readTransitions( in, config, ppo.network.stateSize() );
-
-			//only after the whole frame has been consumed, so the watchdog sees progress rather
-			//than a thread that has merely started reading
-			pool.progress();
-
-			episodes.add( episode );
-		}
-
-		return episodes;
-	}
-
-	private Replay readReplay( DataInputStream in, int steps ) throws IOException {
-		Replay replay = new Replay();
-		replay.seedText = in.readUTF();
-		replay.heroClass = in.readUTF();
-		replay.score = in.readDouble();
-		replay.depth = in.readInt();
-		replay.turns = in.readInt();
-
-		for (int i = 0; i < steps; i++){
-			Replay.Step step = new Replay.Step();
-			step.action = in.readUTF();
-			step.slot = in.readInt();
-			step.mode = in.readUTF();
-			step.heroPos = in.readInt();
-			replay.steps.add( step );
-		}
-		return replay;
-	}
-
-	/**
-	 * Pushes the updated policy to every worker.
-	 *
-	 * Sent as a full MSG_PARAMS frame, not a bare weight blob, and acknowledged. The two problems
-	 * that fixes are worth naming because both were silent: the frame went out on the process's raw
-	 * output stream while the episode path used a buffer over the same pipe, so buffered bytes and
-	 * raw bytes could interleave out of order; and the blob carried no message header, so the
-	 * worker parsed the first four bytes of a float as a message type and died with
-	 * "unexpected message". The ack also means a push that a worker failed to absorb stops the run
-	 * here instead of at some later, unrelated read.
-	 */
-	private void pushWeights() throws IOException {
-		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-		DataOutputStream tmp = new DataOutputStream( buffer );
-		writeParams( tmp );
-		tmp.flush();
-		final byte[] payload = buffer.toByteArray();
-
-		//in parallel. A policy is ~14MB of floats, so pushing it to twenty workers one after
-		//another means every worker sits at zero CPU for the whole barrier while the trainer
-		//shuttles 280MB down pipes. Each worker owns its own pipe, so all of them can take it at
-		//once and the barrier collapses to the slowest single transfer.
-		List<Thread> threads = new ArrayList<>();
-		List<IOException> failures = Collections.synchronizedList( new ArrayList<>() );
-
-		for (final WorkerHandle worker : pool.workers()){
-			Thread thread = new Thread( () -> {
-				try {
-					worker.dataOut.write( payload );
-					worker.dataOut.flush();
-					int reply = worker.dataIn.readInt();
-					if (reply != Protocol.MSG_PARAMS){
-						throw new IOException( worker.name + " rejected a policy push, replied with "
-								+ "message " + reply );
-					}
-				} catch (IOException e){
-					failures.add( e );
-				}
-			}, "push-" + worker.name );
-			threads.add( thread );
-			thread.start();
-		}
-
-		InterruptedException interrupted = null;
-		for (Thread thread : threads){
-			try {
-				thread.join();
-			} catch (InterruptedException e){
-				interrupted = e;
-			}
-		}
-		if (interrupted != null) Thread.currentThread().interrupt();
-		if (!failures.isEmpty()) throw failures.get( 0 );
-
-		pool.progress();
 	}
 
 	/**
