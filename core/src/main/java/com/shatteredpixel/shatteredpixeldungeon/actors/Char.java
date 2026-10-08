@@ -156,6 +156,7 @@ import com.watabou.utils.Bundlable;
 import com.watabou.utils.Bundle;
 import com.watabou.utils.PathFinder;
 import com.watabou.utils.PointF;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -380,7 +381,7 @@ public abstract class Char extends Actor {
 			if (visibleFight) {
 				enemy.sprite.showStatus( CharSprite.POSITIVE, Messages.get(this, "invulnerable") );
 
-				Sample.INSTANCE.play(Assets.Sounds.HIT_PARRY, 1f, Random.Float(0.96f, 1.05f));
+				Sample.INSTANCE.play(Assets.Sounds.HIT_PARRY, 1f, PRandom.Float(0.96f, 1.05f));
 			}
 
 			return false;

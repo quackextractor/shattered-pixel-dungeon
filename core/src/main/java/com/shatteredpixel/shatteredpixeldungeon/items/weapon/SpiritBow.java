@@ -50,6 +50,7 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.utils.Callback;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 import com.watabou.utils.Reflection;
 
@@ -383,7 +384,7 @@ public class SpiritBow extends Weapon {
 
 		@Override
 		public void throwSound() {
-			Sample.INSTANCE.play( Assets.Sounds.ATK_SPIRITBOW, 1, Random.Float(0.87f, 1.15f) );
+			Sample.INSTANCE.play( Assets.Sounds.ATK_SPIRITBOW, 1, PRandom.Float(0.87f, 1.15f) );
 		}
 
 		int flurryCount = -1;

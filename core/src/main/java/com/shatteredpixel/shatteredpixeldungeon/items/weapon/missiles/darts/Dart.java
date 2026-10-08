@@ -41,7 +41,7 @@ import com.shatteredpixel.shatteredpixeldungeon.windows.WndBag;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.PathFinder;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 import java.util.ArrayList;
 
@@ -222,7 +222,7 @@ public class Dart extends MissileWeapon {
 	public void throwSound() {
 		updateCrossbow();
 		if (bow != null) {
-			Sample.INSTANCE.play(Assets.Sounds.ATK_CROSSBOW, 1, Random.Float(0.87f, 1.15f));
+			Sample.INSTANCE.play(Assets.Sounds.ATK_CROSSBOW, 1, PRandom.Float(0.87f, 1.15f));
 		} else {
 			super.throwSound();
 		}

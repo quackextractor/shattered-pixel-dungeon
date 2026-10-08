@@ -188,6 +188,7 @@ import com.watabou.utils.Callback;
 import com.watabou.utils.GameMath;
 import com.watabou.utils.PathFinder;
 import com.watabou.utils.Point;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -624,14 +625,14 @@ public class Hero extends Char {
 		if (buff(RoundShield.GuardTracker.class) != null){
 			buff(RoundShield.GuardTracker.class).hasBlocked = true;
 			BuffIndicator.refreshHero();
-			Sample.INSTANCE.play(Assets.Sounds.HIT_PARRY, 1, Random.Float(0.96f, 1.05f));
+			Sample.INSTANCE.play(Assets.Sounds.HIT_PARRY, 1, PRandom.Float(0.96f, 1.05f));
 			return Messages.get(RoundShield.GuardTracker.class, "guarded");
 		}
 
 		if (buff(MonkEnergy.MonkAbility.Focus.FocusBuff.class) != null){
 			buff(MonkEnergy.MonkAbility.Focus.FocusBuff.class).detach();
 			if (sprite != null && sprite.visible) {
-				Sample.INSTANCE.play(Assets.Sounds.HIT_PARRY, 1, Random.Float(0.96f, 1.05f));
+				Sample.INSTANCE.play(Assets.Sounds.HIT_PARRY, 1, PRandom.Float(0.96f, 1.05f));
 			}
 			return Messages.get(Monk.class, "parried");
 		}

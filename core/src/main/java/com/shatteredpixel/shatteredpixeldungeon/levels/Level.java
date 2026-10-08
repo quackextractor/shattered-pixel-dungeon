@@ -111,6 +111,7 @@ import com.watabou.utils.Bundle;
 import com.watabou.utils.GameMath;
 import com.watabou.utils.PathFinder;
 import com.watabou.utils.Point;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 import com.watabou.utils.Reflection;
 import com.watabou.utils.SparseArray;
@@ -1297,11 +1298,11 @@ public abstract class Level implements Bundlable {
 		Plant plant = plants.get( cell );
 		if (plant != null) {
 			if (bubble != null){
-				Sample.INSTANCE.play(Assets.Sounds.TRAMPLE, 1, Random.Float( 0.96f, 1.05f ) );
+				Sample.INSTANCE.play(Assets.Sounds.TRAMPLE, 1, PRandom.Float( 0.96f, 1.05f ) );
 				bubble.setDelayedPress(cell);
 
 			} else if (timeFreeze != null){
-				Sample.INSTANCE.play(Assets.Sounds.TRAMPLE, 1, Random.Float( 0.96f, 1.05f ) );
+				Sample.INSTANCE.play(Assets.Sounds.TRAMPLE, 1, PRandom.Float( 0.96f, 1.05f ) );
 				timeFreeze.setDelayedPress(cell);
 
 			} else {

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Sound-effect pitch was drawn from the gameplay stream.** Thirty-four `Sample.INSTANCE.play` calls
+  computed their pitch argument with `Random.Float(...)`, so every footstep, parry and hit consumed
+  randomness the simulation runs on. `Hero.move` draws one per step - the terrain it lands on decides
+  which - so the count differed whenever the hero's footing differed, and the stream parted from
+  there. The third instance of the same fault as the observation encoder and the particle system, and
+  the pitch is exactly as cosmetic as either.
 - **The viewer spent a turn on steps that owe none.** `SPDEnv.settle` checks whether the game is
   waiting on a cell before it reaches `runToHeroReady`, so a step that arms an aim - `USE` in `SLOT`
   or `INVENTORY` - costs no turn and the scheduler is not advanced. The viewer drained regardless, so a

@@ -39,6 +39,7 @@ import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.Callback;
 import com.watabou.utils.PointF;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class WandOfFrost extends DamageWand {
@@ -96,7 +97,7 @@ public class WandOfFrost extends DamageWand {
 
 			wandProc(ch, chargesPerCast());
 			ch.damage(damage, this);
-			Sample.INSTANCE.play( Assets.Sounds.HIT_MAGIC, 1, 1.1f * Random.Float(0.87f, 1.15f) );
+			Sample.INSTANCE.play( Assets.Sounds.HIT_MAGIC, 1, 1.1f * PRandom.Float(0.87f, 1.15f) );
 
 			if (ch.isAlive()){
 				if (Dungeon.level.water[ch.pos])

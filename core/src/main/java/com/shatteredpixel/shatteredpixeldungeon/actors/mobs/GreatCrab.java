@@ -35,6 +35,7 @@ import com.shatteredpixel.shatteredpixeldungeon.sprites.GreatCrabSprite;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.PathFinder;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class GreatCrab extends Crab {
@@ -84,7 +85,7 @@ public class GreatCrab extends Crab {
 				&& enemy.invisible == 0){
 			GLog.n( Messages.get(this, "noticed") );
 			sprite.showStatus( CharSprite.NEUTRAL, Messages.get(this, "def_verb") );
-			Sample.INSTANCE.play( Assets.Sounds.HIT_PARRY, 1, Random.Float(0.96f, 1.05f));
+			Sample.INSTANCE.play( Assets.Sounds.HIT_PARRY, 1, PRandom.Float(0.96f, 1.05f));
 			Statistics.questScores[0] -= 50;
 		} else {
 			super.damage( dmg, src );

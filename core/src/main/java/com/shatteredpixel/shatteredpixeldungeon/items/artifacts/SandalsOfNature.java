@@ -61,7 +61,7 @@ import com.shatteredpixel.shatteredpixeldungeon.windows.WndBag;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.Bundle;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Reflection;
 
 import java.util.ArrayList;
@@ -351,7 +351,7 @@ public class SandalsOfNature extends Artifact {
 					Plant plant = ((Plant.Seed) Reflection.newInstance(curSeedEffect)).couch(cell, null);
 					plant.activate(Actor.findChar(cell));
 					Sample.INSTANCE.play(Assets.Sounds.PLANT);
-					Sample.INSTANCE.playDelayed(Assets.Sounds.TRAMPLE, 0.25f, 1, Random.Float( 0.96f, 1.05f ) );
+					Sample.INSTANCE.playDelayed(Assets.Sounds.TRAMPLE, 0.25f, 1, PRandom.Float( 0.96f, 1.05f ) );
 
 					if (Actor.findChar(cell) != null){
 						artifactProc(Actor.findChar(cell), visiblyUpgraded(), seedChargeReqs.get(curSeedEffect));

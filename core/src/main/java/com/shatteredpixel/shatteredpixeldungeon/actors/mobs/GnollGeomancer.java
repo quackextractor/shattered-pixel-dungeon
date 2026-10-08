@@ -59,6 +59,7 @@ import com.watabou.utils.Bundle;
 import com.watabou.utils.Callback;
 import com.watabou.utils.GameMath;
 import com.watabou.utils.PathFinder;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -255,7 +256,7 @@ public class GnollGeomancer extends Mob {
 						sprite.idle();
 					}
 
-					Sample.INSTANCE.play(Assets.Sounds.MINE, 1f, Random.Float(0.85f, 1.15f));
+					Sample.INSTANCE.play(Assets.Sounds.MINE, 1f, PRandom.Float(0.85f, 1.15f));
 					Invisibility.dispel(Dungeon.hero);
 					Dungeon.hero.spendAndNext(p.delayFactor(GnollGeomancer.this));
 				}

@@ -53,6 +53,7 @@ import com.watabou.utils.Bundle;
 import com.watabou.utils.Callback;
 import com.watabou.utils.GameMath;
 import com.watabou.utils.PathFinder;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -335,7 +336,7 @@ public class CrystalSpire extends Mob {
 					BossHealthBar.bleed(HP <= HT/3);
 
 					if (isAlive()) {
-						Sample.INSTANCE.play(Assets.Sounds.SHATTER, 1f, Random.Float(1.15f, 1.25f));
+						Sample.INSTANCE.play(Assets.Sounds.SHATTER, 1f, PRandom.Float(1.15f, 1.25f));
 						((CrystalSpireSprite) sprite).updateIdle();
 					} else {
 						Sample.INSTANCE.play(Assets.Sounds.SHATTER);

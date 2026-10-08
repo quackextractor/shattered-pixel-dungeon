@@ -51,6 +51,7 @@ import com.watabou.utils.Bundle;
 import com.watabou.utils.Callback;
 import com.watabou.utils.ColorMath;
 import com.watabou.utils.PathFinder;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class WandOfLivingEarth extends DamageWand {
@@ -107,7 +108,7 @@ public class WandOfLivingEarth extends DamageWand {
 			guardian.sprite.centerEmitter().burst(MagicMissile.EarthParticle.ATTRACT, 8 + buffedLvl() / 2);
 			guardian.setInfo(curUser, buffedLvl(), armorToAdd);
 			wandProc(guardian, chargesPerCast());
-			Sample.INSTANCE.play( Assets.Sounds.HIT_MAGIC, 1, 0.9f * Random.Float(0.87f, 1.15f) );
+			Sample.INSTANCE.play( Assets.Sounds.HIT_MAGIC, 1, 0.9f * PRandom.Float(0.87f, 1.15f) );
 
 		//shooting the guardian at a location
 		} else if ( guardian == null && buff != null && buff.armor >= buff.armorToGuardian()){
@@ -163,7 +164,7 @@ public class WandOfLivingEarth extends DamageWand {
 
 			guardian.sprite.centerEmitter().burst(MagicMissile.EarthParticle.ATTRACT, 8 + buffedLvl()/2);
 			buff.detach();
-			Sample.INSTANCE.play( Assets.Sounds.HIT_MAGIC, 1, 0.9f * Random.Float(0.87f, 1.15f) );
+			Sample.INSTANCE.play( Assets.Sounds.HIT_MAGIC, 1, 0.9f * PRandom.Float(0.87f, 1.15f) );
 
 		//shooting at a location/enemy with no guardian being shot
 		} else {

@@ -44,7 +44,7 @@ import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 import com.watabou.noosa.Image;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.Callback;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class GuidingLight extends TargetedClericSpell {
 
@@ -84,7 +84,7 @@ public class GuidingLight extends TargetedClericSpell {
 				Char ch = Actor.findChar( aim.collisionPos );
 				if (ch != null) {
 					ch.damage(Hero.heroDamageIntRange(2, 8), GuidingLight.this);
-					Sample.INSTANCE.play(Assets.Sounds.HIT_MAGIC, 1, Random.Float(0.87f, 1.15f));
+					Sample.INSTANCE.play(Assets.Sounds.HIT_MAGIC, 1, PRandom.Float(0.87f, 1.15f));
 					ch.sprite.burst(0xFFFFFF44, 3);
 					if (ch.isAlive()){
 						Buff.affect(ch, Illuminated.class);

@@ -32,6 +32,7 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.BuffIndicator;
 import com.watabou.noosa.Image;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.Bundle;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class Monk extends Mob {
@@ -119,7 +120,7 @@ public class Monk extends Mob {
 		} else {
 			f.detach();
 			if (sprite != null && sprite.visible) {
-				Sample.INSTANCE.play(Assets.Sounds.HIT_PARRY, 1, Random.Float(0.96f, 1.05f));
+				Sample.INSTANCE.play(Assets.Sounds.HIT_PARRY, 1, PRandom.Float(0.96f, 1.05f));
 			}
 			focusCooldown = Random.NormalFloat( 6, 7 );
 			return Messages.get(this, "parried");

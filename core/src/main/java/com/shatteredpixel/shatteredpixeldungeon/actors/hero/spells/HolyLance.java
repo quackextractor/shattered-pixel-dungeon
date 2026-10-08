@@ -47,6 +47,7 @@ import com.watabou.noosa.Image;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.utils.Callback;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class HolyLance extends TargetedClericSpell {
@@ -121,7 +122,7 @@ public class HolyLance extends TargetedClericSpell {
 										min = max;
 									}
 									enemy.damage(Hero.heroDamageIntRange(min, max), HolyLance.this);
-									Sample.INSTANCE.play( Assets.Sounds.HIT_MAGIC, 1, Random.Float(0.8f, 1f) );
+									Sample.INSTANCE.play( Assets.Sounds.HIT_MAGIC, 1, PRandom.Float(0.8f, 1f) );
 									Sample.INSTANCE.play( Assets.Sounds.HIT_STAB, 1, Random.Float(0.8f, 1f) );
 
 									if (enemy.isActive()){
