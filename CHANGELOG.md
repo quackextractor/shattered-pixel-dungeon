@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The viewer deadlocked on every attack.** `ReplayPlayer.driveToHeroReady` spent up to 400 scheduler
+  steps inside one `GameScene.update()`, and `Hero.actAttack` returns without calling `next()` - the
+  completion that calls `Hero.onAttackComplete` is an animation callback on the render loop, which
+  cannot run until this loop returns. So `curAction` stayed `Attack` and every recording reported
+  `stalled - hero did not become ready within 400 turns`.
+  The drain now returns `PENDING` when a step spends no time and leaves the hero's action alone, which
+  is the signature of waiting on the render clock, and `update()` retries on the next frame. Yielding is
+  safe because `GameScene.update` runs its frame driver *before* `PixelScene.update`, so an early return
+  does not suppress the animation tick. A genuine stall still ends the episode after the existing budget.
+  `awaitingSettle` carries a step across the yield so `settle()` still runs exactly once per step, and
+  the comparison it makes is not skipped by the frame boundary.
+  `CharSprite.isMoving` is deliberately not the trigger: it is only set by `CharSprite.move`, never by
+  `attack` or `operate`, so it cannot see a pending attack animation.
+  Playback now passes first combat instead of stalling at step 8. A separate divergence remains past
+  that point - see the FOV note below.
+
+- **A worn dart trap crashed headless.** `WornDartTrap`'s visible branch recycled a `MissileSprite` from
+  `ShatteredPixelDungeon.scene()`, which is null without a renderer, and it delivered the damage from the
+  sprite's animation callback - so the dart was unwinnable as well as fatal to the worker.
+  The callback is now built first and invoked directly when there is no scene.
+  This also keeps the random numbers honest: the visible branch draws `NormalIntRange` *and* a
+  `Random.Float` for the hit sound, while the invisible branch draws only the first, so which branch runs
+  changes how much of the RNG stream is consumed. Performing the callback preserves the stream the
+  rendered game uses rather than silently diverging from it at the first trap.
+
 - **The trainer settled a turn before the game did.** `LevelPipeline.runToHeroReady` treated any idle,
   non-resting hero with no pending action as unrecoverable and assigned `Hero.ready = true` directly
   (`recoverStrandedHero`). The game has no such shortcut: `Hero.ready()` runs when the hero is next

@@ -93,23 +93,37 @@ public class WornDartTrap extends Trap {
 					}
 					final Char finalTarget = target;
 					if (Dungeon.level.heroFOV[pos] || Dungeon.level.heroFOV[target.pos]) {
+						Callback onHit = new Callback() {
+							@Override
+							public void call() {
+								int dmg = Random.NormalIntRange(4, 8) - finalTarget.drRoll();
+								finalTarget.damage(dmg, WornDartTrap.this);
+								if (finalTarget == Dungeon.hero && !finalTarget.isAlive()){
+									Dungeon.fail( WornDartTrap.this  );
+									GLog.n(Messages.get(WornDartTrap.class, "ondeath"));
+									if (reclaimed) Badges.validateDeathFromFriendlyMagic();
+								}
+								Sample.INSTANCE.play(Assets.Sounds.HIT, 1, 1, Random.Float(0.8f, 1.25f));
+								if (finalTarget.sprite != null){
+									finalTarget.sprite.bloodBurstA(finalTarget.sprite.center(), dmg);
+									finalTarget.sprite.flash();
+								}
+								next();
+							}
+						};
+
+						//No scene to recycle the dart from, so it cannot be shown - but onHit still has
+						//to run, because it is what applies the damage and what draws the random numbers
+						//the visible path draws. Skipping it would make the dart harmless headless and
+						//would desynchronise the RNG from the rendered game, which is what makes a
+						//recording diverge the moment a trap fires.
+						if (ShatteredPixelDungeon.scene() == null){
+							onHit.call();
+							return false;
+						}
+
 						((MissileSprite) ShatteredPixelDungeon.scene().recycle(MissileSprite.class)).
-								reset(pos, finalTarget.sprite, new Dart(), new Callback() {
-									@Override
-									public void call() {
-										int dmg = Random.NormalIntRange(4, 8) - finalTarget.drRoll();
-										finalTarget.damage(dmg, WornDartTrap.this);
-										if (finalTarget == Dungeon.hero && !finalTarget.isAlive()){
-											Dungeon.fail( WornDartTrap.this  );
-											GLog.n(Messages.get(WornDartTrap.class, "ondeath"));
-											if (reclaimed) Badges.validateDeathFromFriendlyMagic();
-										}
-										Sample.INSTANCE.play(Assets.Sounds.HIT, 1, 1, Random.Float(0.8f, 1.25f));
-										finalTarget.sprite.bloodBurstA(finalTarget.sprite.center(), dmg);
-										finalTarget.sprite.flash();
-										next();
-									}
-								});
+								reset(pos, finalTarget.sprite, new Dart(), onHit);
 						return false;
 					} else {
 						finalTarget.damage(Random.NormalIntRange(4, 8) - finalTarget.drRoll(), WornDartTrap.this);
