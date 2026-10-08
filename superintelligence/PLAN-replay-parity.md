@@ -244,6 +244,30 @@ checkpoint round-trip, metrics - with a short run, before committing to a long o
 delivers is the invalidation, an end-to-end proof that the trainer works against the repaired stream, and
 the command to start the real run. It does not deliver a converged model.
 
+**Outcome.** There was nothing to invalidate: no checkpoints, weights or metrics survive on disk or in
+git, so the artefacts that would have been silently reused are already gone. What remains was the proof,
+and it passed:
+
+```
+started 2 worker processes
+generation 0  episodes=4  seeds=1/100  shaping=1.00
+ended   death 4 (100%)
+ppo     policy=0.0046  value=633.2968  entropy=1.873  clip=0.35  kl=0.0270
+saved   ...\weights.bin  (generation 1, adam step 16)
+[OK]   wrote 2 best-per-seed replays
+```
+
+Workers, episode collection, the PPO update, the checkpoint round-trip and metrics are all working
+against the repaired stream. A real run is not started here, because a checkpoint trained while
+`mage-long` does not reproduce would encode a fault nobody has located yet.
+
+**A crash fixed on the way.** That run first died on `heap.sprite` being null in `Item.onThrow` — the
+third site to dereference a heap's sprite without checking, after two in `Heap` itself. The fix is at
+the source rather than the third call site: a heap's sprite is assigned by `GameScene.add`, which never
+runs without a scene, so `Level.drop` now assigns one itself, as its blocked-item branch already did. An
+`ItemSprite` allocates no GL resources until it is drawn and nothing draws headlessly, so it costs an
+object. Guarding each consumer instead would have left the fourth site waiting.
+
 ---
 
 ## 7. Decisions to settle

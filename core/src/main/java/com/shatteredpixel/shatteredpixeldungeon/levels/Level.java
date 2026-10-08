@@ -1036,6 +1036,20 @@ public abstract class Level implements Bundlable {
 				heaps.put( cell, heap );
 				GameScene.add( heap );
 			}
+
+			//A heap's sprite is normally assigned by GameScene.add, which never runs without a scene,
+			//so headlessly it stays null. Assigning it here rather than guarding each consumer is the
+			//point: Heap already guards sprite in several places and dereferenced it in two, and
+			//Item.onThrow - reached by every thrown item - dereferenced it in a third. A dropped item
+			//died on a null sprite in each of those, which is how a training run and a rollout died on
+			//the same underlying fault three separate times.
+			//
+			//An ItemSprite allocates no GL resources until it is linked and drawn, and nothing draws
+			//headlessly, so this costs an object and nothing else.
+			if (heap.sprite == null){
+				ItemSprite sprite = heap.sprite = new ItemSprite( heap );
+				sprite.link( heap );
+			}
 			
 		} else if (heap.type == Heap.Type.LOCKED_CHEST || heap.type == Heap.Type.CRYSTAL_CHEST) {
 			
