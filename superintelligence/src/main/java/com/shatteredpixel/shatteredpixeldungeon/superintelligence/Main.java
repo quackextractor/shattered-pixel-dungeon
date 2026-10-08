@@ -13,6 +13,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCh
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResetCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GraphCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ActionCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.EpisodeDiff;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RolloutCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SlotCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ObserveCheck;
@@ -80,6 +81,7 @@ public class Main {
 		case "gaecheck": GaeCheck.main( rest ); break;
 		case "collectcheck": CollectCheck.main( rest ); break;
 			case "observecheck": ObserveCheck.main( rest ); break;
+			case "episodediff": EpisodeDiff.main( rest ); break;
 		case "checkpointcheck": CheckpointCheck.main( rest ); break;
 		case "statecheck": StateCheck.main( rest ); break;
 		case "valuescale": ValueScale.main( rest ); break;

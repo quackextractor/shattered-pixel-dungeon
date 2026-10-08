@@ -126,6 +126,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 
   cliTask('collectcheck', 'Fails if a recording made by the collector will not replay exactly.')
   cliTask('rolloutcheck', 'Fails if a recorded episode does not carry a usable seed, or does not verify.')
+  cliTask('episodediff', 'Reports where and why two runs of one seed disagree after other seeds ran between them.')
   cliTask('observecheck', 'Fails if reading the world draws from the gameplay RNG.')
   cliTask('checkpointcheck', 'Fails if a policy does not survive a trip through disk, or if a bad checkpoint is accepted.')
   cliTask('weightsdiff', 'Reports how far a checkpoint is from a freshly initialised policy.')
