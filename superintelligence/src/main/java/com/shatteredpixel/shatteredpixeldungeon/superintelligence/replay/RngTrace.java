@@ -109,7 +109,8 @@ public class RngTrace {
 		try {
 			expected = parse( Files.readAllLines( golden, StandardCharsets.UTF_8 ) );
 		} catch (IOException e){
-			return "cannot read the golden trace " + golden + ": " + e.getMessage();
+			return "cannot read the golden trace " + golden
+					+ " (" + e.getClass().getSimpleName() + ")";
 		}
 
 		java.util.LinkedHashMap< String, String > got = parse( actual.lines );

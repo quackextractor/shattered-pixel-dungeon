@@ -337,9 +337,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   says when one run produces a different number of samples.
   Landed as a diagnostic rather than a gate, per the plan: any engine change that touches a draw
   invalidates a golden, and a gate people regenerate reflexively is worth less than one they read.
-  Against a 229-step recording the viewer's trace and the headless run's **agree on every step** — the
-  first independent confirmation in the project that the two agree on randomness, previously
-  established only by hand, one diff at a time.
+  **Correction.** An earlier note here claimed a 229-step recording agreed "on every step" between the
+  viewer and the headless run, and called it the first independent confirmation that the two agree on
+  randomness. That comparison drove `ReplayPlayer` *headlessly*, so it compared two headless paths — the
+  viewer's logic against `ReplayIO.verify` — and not the rendered game against anything. It shows the
+  viewer's control flow consumes randomness identically to the trainer's replay path; it says nothing
+  about the renderer.
+  The first genuine rendered comparison, through `gradlew :desktop:replay -PspdRngTrace`, is below.
+- **The rendered game and the headless environment draw from different positions in the RNG stream.**
+  Found by `rngtrace` on a 41-step recording that `verify` reproduces exactly: `per-step draw counts
+  identical at every step - 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6 - but the order-sensitive fingerprints
+  differing from step 6 onward`, and the windowed run eventually diverging on health at step 27 while
+  the headless replay reproduced all 41 steps. Same count, different value is the signature of a stream
+  offset, and it is exactly what a count-only oracle would report as identical: the two paths agree on
+  *how many* values each step consumes and disagree on *which*.
+  The offset is roughly 2800 values consumed by the rendered path between level generation and the first
+  replayed step. Arming the trace at construction showed those values directly, and the counters now
+  start at zero when the first step is applied - but that only fixes the measurement. The underlying
+  draws are still made by the renderer and not by the headless path, so the two streams remain offset
+  for the whole run. That is the next parity bug to chase, and the tool now points at it.
+- **`playbackcheck` gained a check for non-default header settings, and both gates now count failed
+  checks rather than failed assertions.** `max_slots` and `allow_equipping` had only ever been round
+  tripped at their defaults, which cannot catch a writer that omits the fields: `32` and `true` are
+  exactly the values the reader falls back to, so a header that wrote nothing would pass. Non-defaults
+  are the only values that distinguish "written" from "not written and defaulted", so the fixture writes
+  `max_slots=7` and `allow_equipping=false` and checks the parsed object, the reconstructed
+  `EnvConfig`, and the file's own bytes. Mutation-tested by dropping the `allow_equipping` line.
+  Separately, both gates reported `failures.size()` against a check count, so one check making three
+  assertions announced itself as three failed checks - visible as "3 of 8 checks failed" when exactly one
+  check had failed. They now report `N of M checks failed, K assertions`.
 - **`gradlew verifyall`**, every gate in both modules in one invocation, ~14 s. It has to sit above the
   modules rather than inside one: `:desktop` depends on `:superintelligence`, so
   `:superintelligence:gates` cannot depend on `:desktop:playbackcheck` without a cycle. Freshness is a

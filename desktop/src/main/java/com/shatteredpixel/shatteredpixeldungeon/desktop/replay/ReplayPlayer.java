@@ -137,7 +137,6 @@ public class ReplayPlayer {
 			rngTracePath = tracePath;
 			rngTrace = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace();
 			com.watabou.utils.RandomTrace.enable();
-			rngTrace.onReset();
 		} else {
 			rngTracePath = null;
 			rngTrace = null;
@@ -151,19 +150,22 @@ public class ReplayPlayer {
 	 * is the golden side of {@code rngtrace}: it is the only artefact in the project produced by the game
 	 * as a player sees it, and so the only one capable of disagreeing with a headless run.
 	 *
-	 * <p>Counters start at zero when the player is constructed, because the world is already built by then
-	 * and level generation draws several thousand values that say nothing about the steps.
+* <p>Counters start at zero when the <em>first step is applied</em>, not when the player is
+	 * constructed. The viewer is installed before the scene has finished building, and the level
+	 * decoration in between draws roughly 2800 values - so arming at construction made every rendered
+	 * trace begin mid-stream and could never match a headless one, which starts at zero by contract.
 	 */
 	private final com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace rngTrace;
 	private final String rngTracePath;
+	private boolean rngTraceArmed = false;
 
 	private void flushRngTrace(){
 		if (rngTrace == null) return;
 		try {
 			rngTrace.writeTo( java.nio.file.Paths.get( rngTracePath ));
 		} catch (java.io.IOException e){
-			System.err.println( "[replay] could not write the rng trace to " + rngTracePath + ": "
-					+ e.getMessage() );
+			System.err.println( "[replay] could not write the rng trace to " + rngTracePath
+					+ " (" + e.getClass().getSimpleName() + ")" );
 		}
 		System.err.println( "[replay] wrote " + rngTrace.size() + " rng trace samples to " + rngTracePath );
 	}
@@ -432,6 +434,13 @@ public class ReplayPlayer {
 		}
 
 		EnvMode mode = modeOf( step.mode );
+
+		//armed here, not at construction: see rngTraceArmed. Everything above this line is setup the
+		//headless run does not do, and none of it belongs in the trace.
+		if (rngTrace != null && !rngTraceArmed){
+			rngTrace.onReset();
+			rngTraceArmed = true;
+		}
 
 		//Restore the bindings this step was recorded under, before the slot index is resolved.
 		//

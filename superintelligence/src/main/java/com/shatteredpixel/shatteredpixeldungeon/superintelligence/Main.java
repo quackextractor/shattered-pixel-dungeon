@@ -240,7 +240,10 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
 		try {
 			replay = ReplayIO.read( file );
 		} catch (java.io.IOException e){
-			System.err.println( "[ERROR] " + e.getMessage() );
+			//the bare path is all FileNotFoundException gives on some platforms, which names the
+			//problem without saying what it was
+			System.err.println( "[ERROR] cannot read the replay " + file
+					+ " (" + e.getClass().getSimpleName() + ")" );
 			System.exit( 1 );
 			return;
 		}
@@ -264,11 +267,12 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
 		if (out != null){
 			try {
 				trace.writeTo( out );
-			} catch (java.io.IOException e){
-				System.err.println( "[ERROR] cannot write " + out + ": " + e.getMessage() );
-				System.exit( 1 );
-				return;
-			}
+} catch (java.io.IOException e){
+			System.err.println( "[ERROR] cannot write the rng trace to " + out
+					+ " (" + e.getClass().getSimpleName() + ")" );
+			System.exit( 1 );
+			return;
+		}
 			System.out.println( "wrote " + trace.size() + " trace samples to " + out );
 		}
 

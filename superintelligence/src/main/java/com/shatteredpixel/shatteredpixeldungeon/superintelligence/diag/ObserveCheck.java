@@ -63,6 +63,20 @@ public class ObserveCheck {
 
 	private static final List< String > failures = new ArrayList<>();
 
+	/**
+	 * Runs one check and counts it failed if it produced any assertion.
+	 *
+	 * <p>Counting {@code failures.size()} against {@code CHECKS} looks equivalent and is not: one check
+	 * that makes three assertions then reports itself as three failed checks.
+	 */
+	private static int checksFailed = 0;
+
+	private static void check( Runnable body ){
+		int before = failures.size();
+		body.run();
+		if (failures.size() > before) checksFailed++;
+	}
+
 	public static void main( String[] args ){
 		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-observecheck" ));
 		HeadlessServices.disableSaving( true );
@@ -83,16 +97,16 @@ public class ObserveCheck {
 
 		ObservationEncoder encoder = new ObservationEncoder( config, env.mapper() );
 
-		checkTheInstrumentIsLive();
-		checkEncodingDrawsNothing( encoder );
-		checkEncodingTwiceIsIdentical( encoder );
-		checkCapturingQuickslotsDrawsNothing();
+		check( ObserveCheck::checkTheInstrumentIsLive );
+		check( () -> checkEncodingDrawsNothing( encoder ) );
+		check( () -> checkEncodingTwiceIsIdentical( encoder ) );
+		check( ObserveCheck::checkCapturingQuickslotsDrawsNothing );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
 		} else {
-			System.out.println( "[ERROR]  observation purity: " + failures.size()
-					+ " of " + CHECKS + " checks failed" );
+			System.out.println( "[ERROR]  observation purity: " + checksFailed
+					+ " of " + CHECKS + " checks failed, " + failures.size() + " assertions" );
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}

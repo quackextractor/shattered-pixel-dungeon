@@ -62,11 +62,27 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
 	private static final List< String > failures = new ArrayList<>();
+
+	/**
+	 * Runs one check and counts it failed if it produced any assertion.
+	 *
+	 * <p>Counting {@code failures.size()} against {@code CHECKS} looks equivalent and is not: one check
+	 * that makes three assertions then reports itself as three failed checks. The mutation testing turned
+	 * that up - a header fixture that omitted one field reported "3 of 8 checks failed" when exactly one
+	 * check had failed.
+	 */
+	private static int checksFailed = 0;
+
+	private static void check( Runnable body ){
+		int before = failures.size();
+		body.run();
+		if (failures.size() > before) checksFailed++;
+	}
 
 	/** Ceiling on simulated frames, so a player stuck in a settle loop fails rather than hangs. */
 	private static final int FRAME_BUDGET = 400000;
@@ -86,19 +102,20 @@ public class PlaybackCheck {
 		//Actor.manualScheduling globally and the recording path expects the engine to own the schedule
 		Replay good = recordAShortRun();
 
-		checkAFaithfulReplayPlaysClean( good );
-		checkAlteredPositionIsCaught( good, 30 );
-		checkAlteredHealthIsCaught( good, 30 );
-		checkAlteredTurnIsCaught( good, 30 );
-		checkAlteredInventoryIsCaught( good, 30 );
-		checkAlteredQuickslotsAreCaught( good );
-		checkAStalledPlayerFailsInsteadOfHanging();
+		check( () -> checkAFaithfulReplayPlaysClean( good ) );
+		check( () -> checkAlteredPositionIsCaught( good, 30 ) );
+		check( () -> checkAlteredHealthIsCaught( good, 30 ) );
+		check( () -> checkAlteredTurnIsCaught( good, 30 ) );
+		check( () -> checkAlteredInventoryIsCaught( good, 30 ) );
+		check( () -> checkAlteredQuickslotsAreCaught( good ) );
+		check( () -> checkAStalledPlayerFailsInsteadOfHanging() );
+		check( () -> checkNonDefaultConfigRoundTrips() );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
 		} else {
-			System.out.println( "[ERROR]  headless playback: " + failures.size()
-					+ " of " + CHECKS + " checks failed" );
+			System.out.println( "[ERROR]  headless playback: " + checksFailed
+					+ " of " + CHECKS + " checks failed, " + failures.size() + " assertions" );
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}
@@ -326,6 +343,79 @@ public class PlaybackCheck {
 		} else if ( !outcome.haltReason.contains( "quickslot" ) && !outcome.haltReason.contains( "slot" ) ){
 			fail( "a recording with no resolvable slot bindings halted with an unexplained reason: "
 					+ outcome.haltReason );
+		}
+	}
+
+	/**
+	 * A header written with non-default slot settings must read back as written.
+	 *
+	 * <p>This exists because testing it with defaults would prove nothing. A writer that quietly omitted
+	 * {@code max_slots} and {@code allow_equipping} would still round-trip {@code 32} and {@code true},
+	 * because those are the defaults the reader falls back to - so a default-only test passes against
+	 * exactly the bug it is supposed to catch. Non-defaults are the only values that distinguish "written"
+	 * from "not written and defaulted".
+	 *
+	 * <p>The file's own bytes are checked as well as the parsed object, because a field that reached the
+	 * object by some other route would still round-trip while the header stayed uninformative.
+	 */
+	private static void checkNonDefaultConfigRoundTrips(){
+		Replay replay = recordAShortRun();
+		replay.maxSlots = 7;
+		replay.allowEquipping = false;
+		replay.turnLimitPerFloor = 321;
+
+		File file = new File( System.getProperty( "java.io.tmpdir" ),
+				"playbackcheck-config.replay" );
+		try {
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.write( replay, file );
+		} catch (java.io.IOException e){
+			fail( "could not write the header fixture: " + e );
+			return;
+		}
+
+		Replay read;
+		try {
+			read = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.read( file );
+		} catch (java.io.IOException e){
+			fail( "could not read back the header fixture: " + e );
+			return;
+		}
+
+		if ( read.maxSlots != 7 ){
+			fail( "the header did not carry max_slots: wrote 7, read back " + read.maxSlots
+					+ (read.maxSlots == 32 ? " - which is EnvConfig's default, so it was probably not "
+					+ "written at all rather than written wrongly" : "") );
+		}
+		if ( read.allowEquipping ){
+			fail( "the header did not carry allow_equipping: wrote false, read back true"
+					+ " - which is EnvConfig's default, so it was probably not written at all" );
+		}
+
+		EnvConfig restored = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO
+				.configFor( read );
+		if ( restored.maxSlots != 7 ){
+			fail( "ReplayIO.configFor produced maxSlots " + restored.maxSlots + " from a header saying 7" );
+		}
+		if ( restored.allowEquipping ){
+			fail( "ReplayIO.configFor produced allowEquipping true from a header saying false" );
+		}
+		if ( restored.turnLimitPerFloor != 321 ){
+			fail( "ReplayIO.configFor produced turnLimitPerFloor " + restored.turnLimitPerFloor
+					+ " from a header saying 321" );
+		}
+
+		//and the bytes, since an uninformative header would still round-trip
+		try {
+			String header = new String( java.nio.file.Files.readAllBytes( file.toPath() ),
+					java.nio.charset.StandardCharsets.UTF_8 );
+			if ( !header.contains( "max_slots=7" )){
+				fail( "the written header contains no 'max_slots=7' line" );
+			}
+			if ( !header.contains( "allow_equipping=false" )){
+				fail( "the written header contains no 'allow_equipping=false' line" );
+			}
+		} catch (java.io.IOException e){
+			fail( "could not re-read the header fixture to inspect its bytes: " + e );
 		}
 	}
 

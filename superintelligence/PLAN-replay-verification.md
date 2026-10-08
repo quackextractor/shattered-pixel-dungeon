@@ -400,16 +400,42 @@ All reverted; the mutated files are byte-identical to their parents.
 
 ### T3's first real result
 
-Against the 229-step `RF` recording, the rendered viewer's trace and the headless run's trace **agree
-on every step**:
+### T3's first result — and a correction
+
+An earlier draft of this section claimed a 229-step recording agreed "on every step" between the viewer
+and the headless run. **That was wrong about what it measured.** It drove `ReplayPlayer` headlessly, so
+it compared the viewer's *control flow* against `ReplayIO.verify` — two headless paths — and not the
+renderer at all:
 
 ```
-[OK]     rng trace matches ...\rendered3.trace
+[OK]     rng trace matches ...\rendered3.trace      // both sides headless
 ```
 
-This is the first automated, independent confirmation in the project that the viewer's randomness
-consumption equals the trainer's. Everything before this point established it by hand, one diff at a
-time.
+That is still worth knowing: the viewer's logic consumes randomness identically to the trainer's replay
+path. It is not evidence about the rendered game.
+
+The first genuinely rendered comparison, through `gradlew :desktop:replay -PspdRngTrace` on a 41-step
+recording that `verify` reproduces exactly, says something else:
+
+| step | headless draws | windowed draws | same count | same fingerprint |
+| --- | --- | --- | --- | --- |
+| 0–5 | 0 | 0 | yes | yes |
+| 6 | 1 | 1 | **yes** | **no** |
+| 7 | 2 | 2 | yes | no |
+| 8 | 3 | 3 | yes | no |
+| … | … | … | yes | no |
+
+and the windowed run then diverged on health at step 27 while the headless replay reproduced all 41 steps.
+
+Same count, different value is a stream *offset*, and it is precisely the case a count-only oracle would
+pass. That is the strongest available argument for carrying a fingerprint alongside the count — and here
+it arrived as a real fault rather than an argument.
+
+**Offset located.** Arming the trace at construction showed roughly 2800 values drawn between level
+generation and the first replayed step, by the renderer and not by the headless path. The counters now
+start at zero when the first step is applied, which fixes the *measurement*. It does not remove the
+draws, so the two streams stay offset for the whole run. That is the next parity bug, and this tool now
+points at it with a step number.
 
 ### 12.1 Still open - found by T3, not fixed
 
