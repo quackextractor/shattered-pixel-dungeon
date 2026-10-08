@@ -26,7 +26,7 @@ import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.ColorMath;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class LeafParticle extends PixelParticle.Shrinking {
 	
@@ -65,9 +65,9 @@ public class LeafParticle extends PixelParticle.Shrinking {
 		this.x = x;
 		this.y = y;
 		
-		speed.set( Random.Float( -8, +8 ), -20 );
+		speed.set( PRandom.Float( -8, +8 ), -20 );
 		
 		left = lifespan;
-		size = Random.Float( 2, 3 );
+		size = PRandom.Float( 2, 3 );
 	}
 }

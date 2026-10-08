@@ -24,7 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.effects.particles;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.ColorMath;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class CorrosionParticle extends PixelParticle {
 	
@@ -66,7 +66,7 @@ public class CorrosionParticle extends PixelParticle {
 		
 		left = lifespan;
 		
-		speed.polar( -Random.Float( 3.1415926f ), Random.Float( 6 ) );
+		speed.polar( -PRandom.Float( 3.1415926f ), PRandom.Float( 6 ) );
 	}
 	
 	public void resetSplash( float x, float y ) {
@@ -77,7 +77,7 @@ public class CorrosionParticle extends PixelParticle {
 		
 		left = lifespan;
 		
-		speed.polar( Random.Float( 3.1415926f ), Random.Float( 10, 20 ) );
+		speed.polar( PRandom.Float( 3.1415926f ), PRandom.Float( 10, 20 ) );
 	}
 	
 	@Override

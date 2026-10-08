@@ -25,7 +25,7 @@ import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.ColorMath;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class WoolParticle extends PixelParticle.Shrinking {
 	
@@ -50,9 +50,9 @@ public class WoolParticle extends PixelParticle.Shrinking {
 		this.x = x;
 		this.y = y;
 		
-		left = lifespan = Random.Float( 0.6f, 1f );
+		left = lifespan = PRandom.Float( 0.6f, 1f );
 		size = 5;
 		
-		speed.set( Random.Float( -10, +10 ), Random.Float( -10, +10 ) );
+		speed.set( PRandom.Float( -10, +10 ), PRandom.Float( -10, +10 ) );
 	}
 }

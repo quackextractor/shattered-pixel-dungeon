@@ -23,7 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.effects.particles;
 
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.PixelParticle;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class ChallengeParticle extends PixelParticle.Shrinking {
 
@@ -55,7 +55,7 @@ public class ChallengeParticle extends PixelParticle.Shrinking {
 		left = lifespan;
 		size = 8;
 
-		speed.set( Random.Float( -8, +8 ), Random.Float( -16, -32 ) );
+		speed.set( PRandom.Float( -8, +8 ), PRandom.Float( -16, -32 ) );
 	}
 
 	@Override

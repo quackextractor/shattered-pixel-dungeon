@@ -25,7 +25,7 @@ import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.ColorMath;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class EarthParticle extends PixelParticle {
 	
@@ -54,7 +54,7 @@ public class EarthParticle extends PixelParticle {
 		super();
 		
 		color( ColorMath.random( 0x444444, 0x777766 ) );
-		angle = Random.Float( -30, 30 );
+		angle = PRandom.Float( -30, 30 );
 	}
 	
 	public void reset( float x, float y ) {
@@ -86,7 +86,7 @@ public class EarthParticle extends PixelParticle {
 
 		acc.y = 30;
 		speed.y = -5;
-		angularSpeed = Random.Float(-90, 90);
+		angularSpeed = PRandom.Float(-90, 90);
 	}
 	
 	@Override

@@ -23,7 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.effects.particles;
 
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.PixelParticle;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class PitfallParticle extends PixelParticle.Shrinking {
 
@@ -45,7 +45,7 @@ public class PitfallParticle extends PixelParticle.Shrinking {
 		super();
 
 		color( 0x000000 );
-		angle = Random.Float( -30, 30 );
+		angle = PRandom.Float( -30, 30 );
 
 	}
 

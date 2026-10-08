@@ -23,7 +23,7 @@ package com.watabou.noosa.particles;
 
 import com.watabou.gltextures.SmartTexture;
 import com.watabou.noosa.Image;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.RectF;
 
 public class BitmaskEmitter extends Emitter {
@@ -53,8 +53,8 @@ public class BitmaskEmitter extends Emitter {
 
 		float x, y;
 		do {
-			x = Random.Float( frame.width() ) * mapW;
-			y = Random.Float( frame.height() ) * mapH;
+			x = PRandom.Float( frame.width() ) * mapW;
+			y = PRandom.Float( frame.height() ) * mapH;
 		} while ((map.bitmap.getPixel( (int)(x + ofsX), (int)(y + ofsY) ) & 0x000000FF) == 0);
 
 		factory.emit( this, index,

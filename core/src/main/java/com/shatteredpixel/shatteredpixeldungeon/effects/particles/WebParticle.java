@@ -24,7 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.effects.particles;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class WebParticle extends PixelParticle {
 	
@@ -51,7 +51,7 @@ public class WebParticle extends PixelParticle {
 		this.y = y;
 		
 		left = lifespan;
-		angle = Random.Float( 360 );
+		angle = PRandom.Float( 360 );
 	}
 	
 	@Override

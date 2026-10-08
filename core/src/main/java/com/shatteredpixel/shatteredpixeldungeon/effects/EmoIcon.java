@@ -28,7 +28,7 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.Icons;
 import com.watabou.noosa.Game;
 import com.watabou.noosa.Image;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class EmoIcon extends Image {
 
@@ -86,7 +86,7 @@ public class EmoIcon extends Image {
 			maxSize = 1.2f;
 			timeScale = 0.5f;
 			
-			scale.set( Random.Float( 1, maxSize ) );
+			scale.set( PRandom.Float( 1, maxSize ) );
 
 			x = owner.x + owner.width - width / 2;
 			y = owner.y - height;
@@ -110,7 +110,7 @@ public class EmoIcon extends Image {
 			maxSize = 1.3f;
 			timeScale = 2;
 			
-			scale.set( Random.Float( 1, maxSize ) );
+			scale.set( PRandom.Float( 1, maxSize ) );
 
 			x = owner.x + owner.width - width / 2;
 			y = owner.y - height;
@@ -134,7 +134,7 @@ public class EmoIcon extends Image {
 			maxSize = 1.3f;
 			timeScale = 1.5f;
 
-			scale.set( Random.Float( 1, maxSize ) );
+			scale.set( PRandom.Float( 1, maxSize ) );
 
 			x = owner.x + owner.width - width / 2;
 			y = owner.y - height;
@@ -157,7 +157,7 @@ public class EmoIcon extends Image {
 			maxSize = 1.25f;
 			timeScale = 1;
 			
-			scale.set( Random.Float( 1, maxSize ) );
+			scale.set( PRandom.Float( 1, maxSize ) );
 			
 			x = owner.x + owner.width - width / 2;
 			y = owner.y - height;

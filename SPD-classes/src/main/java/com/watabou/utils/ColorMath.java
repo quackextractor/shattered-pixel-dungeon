@@ -21,6 +21,8 @@
 
 package com.watabou.utils;
 
+
+import com.watabou.utils.PRandom;
 public class ColorMath {
 	
 	public static int interpolate( int A, int B, float p ) {
@@ -59,7 +61,7 @@ public class ColorMath {
 	}
 	
 	public static int random( int a, int b ) {
-		return interpolate( a, b, Random.Float() );
+		return interpolate( a, b, PRandom.Float() );
 	}
 
 }

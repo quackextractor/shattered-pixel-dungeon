@@ -27,7 +27,7 @@ import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class FlowParticle extends PixelParticle {
 
@@ -43,7 +43,7 @@ public class FlowParticle extends PixelParticle {
 		
 		lifespan = 0.6f;
 		acc.set( 0, 32 );
-		angularSpeed = Random.Float( -360, +360 );
+		angularSpeed = PRandom.Float( -360, +360 );
 	}
 	
 	public void reset( float x, float y ) {

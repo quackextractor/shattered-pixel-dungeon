@@ -27,7 +27,7 @@ import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class WindParticle extends PixelParticle {
 
@@ -38,15 +38,15 @@ public class WindParticle extends PixelParticle {
 		}
 	};
 	
-	private static float angle = Random.Float( PointF.PI2 );
+	private static float angle = PRandom.Float( PointF.PI2 );
 	private static PointF speed = new PointF().polar( angle, 5 );
 
 	
 	public WindParticle() {
 		super();
 		
-		lifespan = Random.Float( 1, 2 );
-		scale.set( size = Random.Float( 3 ) );
+		lifespan = PRandom.Float( 1, 2 );
+		scale.set( size = PRandom.Float( 3 ) );
 	}
 	
 	public void reset( float x, float y ) {
@@ -60,7 +60,7 @@ public class WindParticle extends PixelParticle {
 		this.x = x - super.speed.x * lifespan / 2;
 		this.y = y - super.speed.y * lifespan / 2;
 		
-		angle += Random.Float( -0.1f, +0.1f );
+		angle += PRandom.Float( -0.1f, +0.1f );
 		speed = new PointF().polar( angle, 5 );
 		
 		am = 0;

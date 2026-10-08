@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Presentation randomness was consuming the game's stream.** The particle system, emote icons, music
+  selection, colour jitter, sewer ambience and sound-effect pitch all drew from `Random`, so a run that
+  rendered consumed a different amount of randomness than one that did not - and headless never renders.
+  Measured on a fresh recording, eight presentation sites still differed after the observation-encoder
+  fault below was fixed, and they were the whole of the remaining offset: `WaterParticle.reset`,
+  `ColorMath.random`, `Sink.update`, `WindParticle`, plus the emitters.
+  Those draws now come from `PRandom`, a separate generator reseeded with the run seed, so a run stays
+  as reproducible as it was while its outcome no longer depends on whether anything was drawn. That is
+  the same mistake the observation encoder made, one layer down: using the gameplay stream for something
+  that is not gameplay.
+  `SewerLevel`'s two `Random.chances` calls are secret-door and exit placement and stay on the gameplay
+  stream deliberately.
+  With this, a 14-step floor draws within one call of identical in both environments, against 249 before.
+
 - **Encoding an observation was consuming the game's randomness.** `HeroEncoder` built its defence
   feature with `hero.drRoll()`, and `drRoll` is not a property of the hero - it is a fresh
   `Random.NormalIntRange` on every call, drawn once for Barkskin, once for armour and once for the

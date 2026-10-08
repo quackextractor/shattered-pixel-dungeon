@@ -21,6 +21,8 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.levels;
 
+
+import com.watabou.utils.PRandom;
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
 import com.shatteredpixel.shatteredpixeldungeon.Badges;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
@@ -278,7 +280,7 @@ public class SewerLevel extends RegularLevel {
 					Ripple ripple = GameScene.ripple( pos + Dungeon.level.width() );
 					if (ripple != null) {
 						ripple.y -= DungeonTilemap.SIZE / 2;
-						rippleDelay = Random.Float(0.4f, 0.6f);
+						rippleDelay = PRandom.Float(0.4f, 0.6f);
 					}
 				}
 			}
@@ -303,7 +305,7 @@ public class SewerLevel extends RegularLevel {
 			this.x = x;
 			this.y = y;
 			
-			speed.set( Random.Float( -2, +2 ), 0 );
+			speed.set( PRandom.Float( -2, +2 ), 0 );
 			
 			left = lifespan = 0.4f;
 		}

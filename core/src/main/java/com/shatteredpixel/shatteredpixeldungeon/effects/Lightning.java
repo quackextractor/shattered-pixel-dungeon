@@ -28,7 +28,7 @@ import com.watabou.noosa.Group;
 import com.watabou.noosa.Image;
 import com.watabou.utils.Callback;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 import java.util.Arrays;
 import java.util.List;
@@ -147,8 +147,8 @@ public class Lightning extends Group {
 
 		@Override
 		public void update() {
-			float x2 = (start.x + end.x) / 2 + Random.Float( -4, +4 );
-			float y2 = (start.y + end.y) / 2 + Random.Float( -4, +4 );
+			float x2 = (start.x + end.x) / 2 + PRandom.Float( -4, +4 );
+			float y2 = (start.y + end.y) / 2 + PRandom.Float( -4, +4 );
 
 			float dx = x2 - start.x;
 			float dy = y2 - start.y;

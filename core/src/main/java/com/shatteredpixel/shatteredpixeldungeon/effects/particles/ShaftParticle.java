@@ -24,7 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.effects.particles;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class ShaftParticle extends PixelParticle {
 	
@@ -54,7 +54,7 @@ public class ShaftParticle extends PixelParticle {
 		this.x = x;
 		this.y = y;
 		
-		offs = -Random.Float( lifespan );
+		offs = -PRandom.Float( lifespan );
 		left = lifespan - offs;
 	}
 	

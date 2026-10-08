@@ -24,7 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.effects.particles;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class RainbowParticle extends PixelParticle {
 
@@ -42,7 +42,7 @@ public class RainbowParticle extends PixelParticle {
 
 	public RainbowParticle() {
 		super();
-		color( Random.Int( 0x1000000 ) );
+		color( PRandom.Int( 0x1000000 ) );
 		lifespan = 0.5f;
 	}
 
@@ -53,7 +53,7 @@ public class RainbowParticle extends PixelParticle {
 		this.x = x;
 		this.y = y;
 
-		speed.set( Random.Float(-5, +5), Random.Float( -5, +5 ) );
+		speed.set( PRandom.Float(-5, +5), PRandom.Float( -5, +5 ) );
 
 		left = lifespan;
 	}
@@ -64,7 +64,7 @@ public class RainbowParticle extends PixelParticle {
 		this.x = x;
 		this.y = y;
 
-		speed.polar( Random.Float( PointF.PI2 ), Random.Float( 16, 32 ) );
+		speed.polar( PRandom.Float( PointF.PI2 ), PRandom.Float( 16, 32 ) );
 
 		left = lifespan;
 	}

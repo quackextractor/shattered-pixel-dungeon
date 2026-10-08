@@ -25,7 +25,7 @@ import com.badlogic.gdx.Gdx;
 import com.watabou.noosa.Game;
 import com.watabou.utils.Callback;
 import com.watabou.utils.DeviceCompat;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -134,7 +134,7 @@ public enum Music {
 			for (int i = 0; i < trackList.length; i++) {
 				//create all the players we need pre-emptively, so they will be cached
 				createPlayer(trackList[i]);
-				if (Random.Float() < trackChances[i]) {
+				if (PRandom.Float() < trackChances[i]) {
 					trackQueue.add(trackList[i]);
 				}
 			}
@@ -202,7 +202,7 @@ public enum Music {
 
 		if (trackQueue.isEmpty()) {
 			for (int i = 0; i < trackList.length; i++) {
-				if (Random.Float() < trackChances[i]) {
+				if (PRandom.Float() < trackChances[i]) {
 					trackQueue.add(trackList[i]);
 				}
 			}

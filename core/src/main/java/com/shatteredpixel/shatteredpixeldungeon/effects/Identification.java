@@ -25,7 +25,7 @@ import com.watabou.glwrap.Blending;
 import com.watabou.noosa.Group;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class Identification extends Group {
 
@@ -78,7 +78,7 @@ public class Identification extends Group {
 			float x1 = x0 + mx * SIZE;
 			float y1 = y0 + my * SIZE;
 			
-			PointF p = new PointF().polar( Random.Float( 2 * PointF.PI ), 8 );
+			PointF p = new PointF().polar( PRandom.Float( 2 * PointF.PI ), 8 );
 			x0 += p.x;
 			y0 += p.y;
 			

@@ -26,7 +26,7 @@ import com.watabou.noosa.Game;
 import com.watabou.noosa.Group;
 import com.watabou.noosa.Visual;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class Emitter extends Group {
 
@@ -89,7 +89,7 @@ public class Emitter extends Group {
 
 	public void start( Factory factory, float interval, int quantity ) {
 		//by default the delay is random, up to the interval
-		startDelayed( factory, interval, quantity, Random.Float(interval));
+		startDelayed( factory, interval, quantity, PRandom.Float(interval));
 	}
 
 	public void startDelayed( Factory factory, float interval, int quantity, float delay ) {
@@ -151,21 +151,21 @@ public class Emitter extends Group {
 			factory.emit(
 				this,
 				index,
-				x + Random.Float( width ),
-				y + Random.Float( height ) );
+				x + PRandom.Float( width ),
+				y + PRandom.Float( height ) );
 		} else {
 			if (fillTarget) {
 				factory.emit(
 						this,
 						index,
-						target.x + Random.Float( target.width() ),
-						target.y + Random.Float( target.height() ) );
+						target.x + PRandom.Float( target.width() ),
+						target.y + PRandom.Float( target.height() ) );
 			} else {
 				factory.emit(
 						this,
 						index,
-						target.x + x + Random.Float( width ),
-						target.y + y + Random.Float( height ) );
+						target.x + x + PRandom.Float( width ),
+						target.y + y + PRandom.Float( height ) );
 			}
 		}
 	}

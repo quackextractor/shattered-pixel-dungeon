@@ -26,7 +26,7 @@ import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.ColorMath;
 import com.watabou.utils.GameMath;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class SpectralWallParticle extends PixelParticle {
 
@@ -41,11 +41,11 @@ public class SpectralWallParticle extends PixelParticle {
 			switch (type){
 				case 2:
 					//3/5 chance for a particle in prison
-					if (Random.Int(5) >= 3) return;
+					if (PRandom.Int(5) >= 3) return;
 					break;
 				case 5:
 					//2/5 chance for a particle in halls
-					if (Random.Int(5) >= 2) return;
+					if (PRandom.Int(5) >= 2) return;
 					break;
 			}
 

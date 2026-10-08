@@ -61,6 +61,7 @@ public static synchronized void resetGenerators(){
 			base.setSeed( scrambleSeed(seed) );
 			generators.addLast( base );
 		}
+		PRandom.reseed( seed );
 	}
 
 	public static synchronized void pushGenerator(){
@@ -128,6 +129,8 @@ public static synchronized void resetGenerators(){
 		if (useGeneratorStack)  return generators.peekFirst().nextInt();
 		else                    return generators.peekLast().nextInt();
 	}
+
+
 
 	//returns a uniformly distributed int in the range [0, max)
 	public static synchronized int Int( int max ) {

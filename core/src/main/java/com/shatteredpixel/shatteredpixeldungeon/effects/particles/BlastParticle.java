@@ -24,7 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.effects.particles;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class BlastParticle extends PixelParticle.Shrinking {
 	
@@ -52,10 +52,10 @@ public class BlastParticle extends PixelParticle.Shrinking {
 		this.x = x;
 		this.y = y;
 		
-		left = lifespan = Random.Float();
+		left = lifespan = PRandom.Float();
 		
 		size = 8;
-		speed.polar( -Random.Float( 3.1415926f ), Random.Float( 32, 64 ) );
+		speed.polar( -PRandom.Float( 3.1415926f ), PRandom.Float( 32, 64 ) );
 	}
 	
 	@Override

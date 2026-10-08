@@ -26,7 +26,7 @@ import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.ColorMath;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class PurpleParticle extends PixelParticle {
 	
@@ -60,7 +60,7 @@ public class PurpleParticle extends PixelParticle {
 		this.x = x;
 		this.y = y;
 		
-		speed.set( Random.Float( -5, +5 ), Random.Float( -5, +5 ) );
+		speed.set( PRandom.Float( -5, +5 ), PRandom.Float( -5, +5 ) );
 		
 		left = lifespan;
 	}
@@ -71,7 +71,7 @@ public class PurpleParticle extends PixelParticle {
 		this.x = x;
 		this.y = y;
 		
-		speed.polar( Random.Float( PointF.PI2 ), Random.Float( 16, 32 ) );
+		speed.polar( PRandom.Float( PointF.PI2 ), PRandom.Float( 16, 32 ) );
 		
 		left = lifespan;
 	}

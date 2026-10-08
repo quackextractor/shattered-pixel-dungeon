@@ -29,7 +29,7 @@ import com.watabou.noosa.TextureFilm;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.utils.ColorMath;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.SparseArray;
 
 public class Speck extends Image {
@@ -168,26 +168,26 @@ public class Speck extends Image {
 			break;
 			
 		case STAR:
-			speed.polar( Random.Float( 2 * 3.1415926f ), Random.Float( 128 ) );
+			speed.polar( PRandom.Float( 2 * 3.1415926f ), PRandom.Float( 128 ) );
 			acc.set( 0, 128 );
-			angle = Random.Float( 360 );
-			angularSpeed = Random.Float( -360, +360 );
+			angle = PRandom.Float( 360 );
+			angularSpeed = PRandom.Float( -360, +360 );
 			lifespan = 1f;
 			break;
 		
 		case FORGE:
-			speed.polar( Random.Float( -3.1415926f ), Random.Float( 64 ) );
+			speed.polar( PRandom.Float( -3.1415926f ), PRandom.Float( 64 ) );
 			acc.set( 0, 128 );
-			angle = Random.Float( 360 );
-			angularSpeed = Random.Float( -360, +360 );
+			angle = PRandom.Float( 360 );
+			angularSpeed = PRandom.Float( -360, +360 );
 			lifespan = 0.51f;
 			break;
 			
 		case EVOKE:
-			speed.polar( Random.Float( -3.1415926f ), 50 );
+			speed.polar( PRandom.Float( -3.1415926f ), 50 );
 			acc.set( 0, 50 );
-			angle = Random.Float( 360 );
-			angularSpeed = Random.Float( -180, +180 );
+			angle = PRandom.Float( 360 );
+			angularSpeed = PRandom.Float( -180, +180 );
 			lifespan = 1f;
 			break;
 
@@ -200,7 +200,7 @@ public class Speck extends Image {
 			break;
 
 		case CROWN:
-			acc.set( index % 2 == 0 ? Random.Float( -512, -256 ) : Random.Float( +256, +512 ), 0 );
+			acc.set( index % 2 == 0 ? PRandom.Float( -512, -256 ) : PRandom.Float( +256, +512 ), 0 );
 			angularSpeed = acc.x < 0 ? -180 : +180;
 			//acc.set( -speed.x, 0 );
 			lifespan = 0.5f;
@@ -208,33 +208,33 @@ public class Speck extends Image {
 
 		case RED_LIGHT:
 			tint(0xFFCC0000);
-			angle = Random.Float( 360 );
+			angle = PRandom.Float( 360 );
 			angularSpeed = 90;
 			lifespan = 1f;
 			break;
 
 		case LIGHT:
-			angle = Random.Float( 360 );
+			angle = PRandom.Float( 360 );
 			angularSpeed = 90;
 			lifespan = 1f;
 			break;
 
 		case YELLOW_LIGHT:
 			tint(0xFFDDDD00);
-			angle = Random.Float( 360 );
+			angle = PRandom.Float( 360 );
 			angularSpeed = 90;
 			lifespan = 1f;
 			break;
 
 		case BLUE_LIGHT:
 			tint(0xFF00CCFF);
-			angle = Random.Float( 360 );
+			angle = PRandom.Float( 360 );
 			angularSpeed = 90;
 			lifespan = 1f;
 			break;
 			
 		case DISCOVER:
-			angle = Random.Float( 360 );
+			angle = PRandom.Float( 360 );
 			angularSpeed = 90;
 			lifespan = 0.5f;
 			am = 0;
@@ -261,9 +261,9 @@ public class Speck extends Image {
 			
 		case BONE:
 			lifespan = 0.2f;
-			speed.polar( Random.Float( 2 * 3.1415926f ), 24 / lifespan );
+			speed.polar( PRandom.Float( 2 * 3.1415926f ), 24 / lifespan );
 			acc.set( 0, 128 );
-			angle = Random.Float( 360 );
+			angle = PRandom.Float( 360 );
 			angularSpeed = 360;
 			break;
 			
@@ -271,137 +271,137 @@ public class Speck extends Image {
 			lifespan = 0.5f;
 			speed.set( 0, -100 );
 			acc.set( 0, -2 * speed.y / lifespan );
-			angle = Random.Float( 360 );
+			angle = PRandom.Float( 360 );
 			angularSpeed = 360;
 			break;
 			
 		case WOOL:
 			lifespan = 0.5f;
 			speed.set( 0, -50 );
-			angle = Random.Float( 360 );
-			angularSpeed = Random.Float( -360, +360 );
+			angle = PRandom.Float( 360 );
+			angularSpeed = PRandom.Float( -360, +360 );
 			break;
 			
 		case ROCK:
-			angle = Random.Float( 360 );
-			angularSpeed = Random.Float( -360, +360 );
-			scale.set( Random.Float( 1, 2 ) );
+			angle = PRandom.Float( 360 );
+			angularSpeed = PRandom.Float( -360, +360 );
+			scale.set( PRandom.Float( 1, 2 ) );
 			speed.set( 0, 64 );
 			lifespan = 0.2f;
 			this.y -= speed.y * lifespan;
 			break;
 			
 		case NOTE:
-			angularSpeed = Random.Float( -30, +30 );
+			angularSpeed = PRandom.Float( -30, +30 );
 			speed.polar( (angularSpeed - 90) * PointF.G2R, 30 );
 			lifespan = 1f;
 			break;
 			
 		case CHANGE:
-			angle = Random.Float( 360 );
-			speed.polar( (angle - 90) * PointF.G2R, Random.Float( 4, 12 ) );
+			angle = PRandom.Float( 360 );
+			speed.polar( (angle - 90) * PointF.G2R, PRandom.Float( 4, 12 ) );
 			lifespan = 1.5f;
 			break;
 			
 		case HEART:
-			speed.set( Random.IntRange( -10, +10 ), -40 );
-			angularSpeed = Random.Float( -45, +45 );
+			speed.set( PRandom.IntRange( -10, +10 ), -40 );
+			angularSpeed = PRandom.Float( -45, +45 );
 			lifespan = 1f;
 			break;
 			
 		case BUBBLE:
 			speed.set( 0, -15 );
-			scale.set( PixelScene.align(Random.Float( 0.8f, 1 )) );
-			lifespan = Random.Float( 0.8f, 1.5f );
+			scale.set( PixelScene.align(PRandom.Float( 0.8f, 1 )) );
+			lifespan = PRandom.Float( 0.8f, 1.5f );
 			break;
 			
 		case STEAM:
-			speed.y = -Random.Float( 10, 15 );
-			angularSpeed = Random.Float( +180 );
-			angle = Random.Float( 360 );
+			speed.y = -PRandom.Float( 10, 15 );
+			angularSpeed = PRandom.Float( +180 );
+			angle = PRandom.Float( 360 );
 			lifespan = 1f;
 			break;
 			
 		case JET:
 			speed.y = +32;
 			acc.y = -64;
-			angularSpeed = Random.Float( 180, 360 );
-			angle = Random.Float( 360 );
+			angularSpeed = PRandom.Float( 180, 360 );
+			angle = PRandom.Float( 360 );
 			lifespan = 0.5f;
 			break;
 			
 		case TOXIC:
 			hardlight( 0x50FF60 );
 			angularSpeed = 30;
-			angle = Random.Float( 360 );
-			lifespan = Random.Float( 1f, 3f );
+			angle = PRandom.Float( 360 );
+			lifespan = PRandom.Float( 1f, 3f );
 			break;
 
 		case CORROSION:
 			hardlight( 0xAAAAAA );
 			angularSpeed = 30;
-			angle = Random.Float( 360 );
-			lifespan = Random.Float( 1f, 3f );
+			angle = PRandom.Float( 360 );
+			lifespan = PRandom.Float( 1f, 3f );
 			break;
 			
 		case PARALYSIS:
 			hardlight( 0xFFFF66 );
 			angularSpeed = -30;
-			angle = Random.Float( 360 );
-			lifespan = Random.Float( 1f, 3f );
+			angle = PRandom.Float( 360 );
+			lifespan = PRandom.Float( 1f, 3f );
 			break;
 
 		case STENCH:
 			hardlight( 0x003300 );
 			angularSpeed = -30;
-			angle = Random.Float( 360 );
-			lifespan = Random.Float( 1f, 3f );
+			angle = PRandom.Float( 360 );
+			lifespan = PRandom.Float( 1f, 3f );
 			break;
 
 		case CONFUSION:
-			hardlight( Random.Int( 0x1000000 ) | 0x000080 );
-			angularSpeed = Random.Float( -20, +20 );
-			angle = Random.Float( 360 );
-			lifespan = Random.Float( 1f, 3f );
+			hardlight( PRandom.Int( 0x1000000 ) | 0x000080 );
+			angularSpeed = PRandom.Float( -20, +20 );
+			angle = PRandom.Float( 360 );
+			lifespan = PRandom.Float( 1f, 3f );
 			break;
 			
 		case STORM:
 			hardlight( 0x8AD8D8 );
-			angularSpeed = Random.Float( -20, +20 );
-			angle = Random.Float( 360 );
-			lifespan = Random.Float( 1f, 3f );
+			angularSpeed = PRandom.Float( -20, +20 );
+			angle = PRandom.Float( 360 );
+			lifespan = PRandom.Float( 1f, 3f );
 			break;
 			
 		case INFERNO:
 			hardlight( 0xEE7722 );
-			angularSpeed = Random.Float( 200, 300 ) * (Random.Int(2) == 0 ? -1 : 1);
-			angle = Random.Float( 360 );
-			lifespan = Random.Float( 1f, 3f );
+			angularSpeed = PRandom.Float( 200, 300 ) * (PRandom.Int(2) == 0 ? -1 : 1);
+			angle = PRandom.Float( 360 );
+			lifespan = PRandom.Float( 1f, 3f );
 			break;
 			
 		case BLIZZARD:
 			hardlight( 0xFFFFFF );
-			angularSpeed = Random.Float( 200, 300 ) * (Random.Int(2) == 0 ? -1 : 1);
-			angle = Random.Float( 360 );
-			lifespan = Random.Float( 1f, 3f );
+			angularSpeed = PRandom.Float( 200, 300 ) * (PRandom.Int(2) == 0 ? -1 : 1);
+			angle = PRandom.Float( 360 );
+			lifespan = PRandom.Float( 1f, 3f );
 			break;
 			
 		case SMOKE:
 			hardlight( 0x000000 );
 			angularSpeed = 30;
-			angle = Random.Float( 360 );
-			lifespan = Random.Float( 1f, 1.5f );
+			angle = PRandom.Float( 360 );
+			lifespan = PRandom.Float( 1f, 1.5f );
 			break;
 
 		case DUST:
 			hardlight( 0xFFFF66 );
-			angle = Random.Float( 360 );
-			speed.polar( Random.Float( 2 * 3.1415926f ), Random.Float( 16, 48 ) );
+			angle = PRandom.Float( 360 );
+			speed.polar( PRandom.Float( 2 * 3.1415926f ), PRandom.Float( 16, 48 ) );
 			lifespan = 0.5f;
 			break;
 
 		case COIN:
-			speed.polar( -PointF.PI * Random.Float( 0.3f, 0.7f ), Random.Float( 48, 96 ) );
+			speed.polar( -PointF.PI * PRandom.Float( 0.3f, 0.7f ), PRandom.Float( 48, 96 ) );
 			acc.y = 256;
 			lifespan = -speed.y / acc.y * 2;
 			break;

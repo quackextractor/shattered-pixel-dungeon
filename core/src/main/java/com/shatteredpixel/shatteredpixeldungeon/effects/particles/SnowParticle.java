@@ -24,7 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.effects.particles;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class SnowParticle extends PixelParticle {
 	
@@ -37,7 +37,7 @@ public class SnowParticle extends PixelParticle {
 	
 	public SnowParticle() {
 		super();
-		speed.set( 0, Random.Float( 5, 8 ) );
+		speed.set( 0, PRandom.Float( 5, 8 ) );
 		lifespan = 1.2f;
 	}
 	
