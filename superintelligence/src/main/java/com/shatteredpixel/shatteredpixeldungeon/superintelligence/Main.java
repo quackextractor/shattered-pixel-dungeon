@@ -130,12 +130,13 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 private static void rollout( String[] args ){
 		Options options = Options.parse( args );
 
-//An empty --seed used to be recorded as an empty seed field and produced a replay that
-		//could never be verified: the seed is the only handle on which world gets built, so
-		//verify had nothing to rebuild and either diverged from step 0 or died without saying
-		//which file or step was at fault. A random seed is still available - omit the flag.
-		if ( options.seed == null || options.seed.trim().isEmpty() ){
-			System.err.println( "[ERROR] --seed must not be empty; omit the flag for a random seed" );
+//Only an explicitly empty --seed is an error. Omitting the flag still means "draw me a random
+		//seed", and the first version of this guard rejected that too - so it told a user to omit the
+		//flag in order to reach the only path that then rejected them. The distinction is whether the
+		//flag was given, not whether the value is empty.
+		if ( options.seedProvided && (options.seed == null || options.seed.trim().isEmpty()) ){
+			System.err.println( "[ERROR] --seed was given but empty. Omit the flag entirely for a "
+					+ "random seed, which is then recorded in the replay." );
 			System.exit( 1 );
 			return;
 		}
@@ -154,12 +155,18 @@ private static void rollout( String[] args ){
 
 		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), options.seed.hashCode() );
 		ReplayRecorder recorder = new ReplayRecorder();
-		recorder.begin( options.seed, options.hero.name(), 0, config.turnLimitPerFloor, config );
 
 		if (!reset( env, options )) return;
 
+		//begun after the reset, and with the seed the environment actually resolved rather than the
+		//one asked for. On a random seed those differ: SPDEnv encodes the drawn seed into its own
+		//seedText, and recording the empty request instead is what made a random-seed episode produce
+		//a replay that could not be verified - verify would rebuild a *different* random world and
+		//report a step-0 divergence that looks like a broken seed lock and is not one. SeedPool leaks
+		//10% of episodes onto random seeds deliberately, so this was never an edge case.
+		recorder.begin( env.seedText(), options.hero.name(), 0, config.turnLimitPerFloor, config );
 
-RunReport report = new RunReport( env.ledger(), options.seed );
+		RunReport report = new RunReport( env.ledger(), env.seedText() );
 		int[] slot = new int[ 1 ];
 
 		ResourceStats.Interval simulation = ResourceStats.start();
@@ -429,6 +436,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
 	/** Parsed command line options. */
 	static class Options {
 		String seed = "";
+      boolean seedProvided = false;
 		HeroClass hero = HeroClass.WARRIOR;
 		java.io.File saveTo;
 		java.io.File outDir;
@@ -444,9 +452,10 @@ boolean noColor = false;
 			Options o = new Options();
 			for (int i = 0; i < args.length; i++){
 				switch (args[ i ]) {
-					case "--seed":
-						o.seed = args[ ++i ];
-						break;
+case "--seed":
+					o.seed = args[ ++i ];
+					o.seedProvided = true;
+					break;
 					case "--hero":
 						o.hero = HeroClass.valueOf( args[ ++i ].toUpperCase() );
 						break;

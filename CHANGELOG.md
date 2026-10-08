@@ -344,6 +344,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   viewer's control flow consumes randomness identically to the trainer's replay path; it says nothing
   about the renderer.
   The first genuine rendered comparison, through `gradlew :desktop:replay -PspdRngTrace`, is below.
+- **`rollout` with no `--seed` works again, and a random-seed recording is now verifiable.** The empty-seed
+  guard added earlier rejected the flag *and* its absence, so it told a user to omit `--seed` in order to
+  reach the only path that then refused them — random seeds had become unreachable. The guard now
+  distinguishes a flag given empty from a flag omitted, which is the distinction it was supposed to make.
+  Separately, `rollout` recorded the seed it was *asked* for rather than the seed the environment
+  *resolved*. On a random episode those differ: `SPDEnv` encodes the seed it drew into its own
+  `seedText`, and recording the empty request instead produced a replay `verify` could never rebuild — it
+  would draw a *different* random world and report a step-0 divergence that looks like a broken seed lock
+  and is not one. `recorder.begin` now runs after the reset and is given `env.seedText()`. Measured: a
+  no-seed run records `seed=RVN-SWK-ZVJ` and verifies; `--seed ""` and `--seed "   "` are still refused,
+  with a message that now matches what it does; an explicit seed is unaffected.
 - **The rendered game and the headless environment draw from different positions in the RNG stream.**
   Found by `rngtrace` on a 41-step recording that `verify` reproduces exactly: `per-step draw counts
   identical at every step - 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6 - but the order-sensitive fingerprints
