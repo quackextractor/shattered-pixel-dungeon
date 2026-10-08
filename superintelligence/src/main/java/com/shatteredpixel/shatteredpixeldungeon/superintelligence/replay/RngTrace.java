@@ -49,7 +49,7 @@ import java.util.List;
 public class RngTrace {
 
 	private static final String HEADER =
-			"# spd-rng-trace v1\tstep\tdraws\tfingerprint";
+			"# spd-rng-trace v2\tstep\tbaseDraws\tbaseFingerprint";
 
 	private final List< String > lines = new ArrayList<>();
 
@@ -67,9 +67,17 @@ public class RngTrace {
 		RandomTrace.reset();
 	}
 
-	/** Records the current cumulative counters. */
+	/**
+	 * Records the current cumulative base-generator counters.
+	 *
+	 * <p>Base-generator draws only, deliberately. A pushed generator is an independent stream that
+	 * cannot influence the simulation - {@code Dungeon.seedForDepth} derives a per-depth seed on one and
+	 * discards it - and including those draws reported a divergence where there was none. The rendered
+	 * viewer asks for one more per-depth seed than the headless path, and folding that in made a
+	 * byte-identical simulation look different.
+	 */
 	public void sample( int step ){
-		lines.add( step + "\t" + RandomTrace.draws() + "\t" + RandomTrace.fingerprint() );
+		lines.add( step + "\t" + RandomTrace.baseDraws() + "\t" + RandomTrace.baseFingerprint() );
 	}
 
 	/** {@link ReplayIO.StepObserver} view, so a trace can be passed straight to {@code verify}. */

@@ -54,6 +54,37 @@ public class RandomTrace {
 	 */
 	private static long fingerprint = 0;
 
+	/**
+	 * The same fold, over base-generator draws only.
+	 *
+	 * <p>This is the one that answers "do these two paths simulate the same randomness". A pushed
+	 * generator is an independent stream - {@code Dungeon.seedForDepth} derives a per-depth seed by
+	 * skipping ahead on one - so drawing on it cannot change any outcome. Folding those draws into the
+	 * fingerprint reported differences that did not exist: the rendered viewer calls
+	 * {@code seedForDepth} once more than the headless path does, on a stream that is discarded either
+	 * way, and that was enough to make a byte-identical simulation look divergent.
+	 */
+	private static long baseFingerprint = 0;
+
+	/**
+	 * When set, every draw is attributed to the call site that made it and tallied per site.
+	 *
+	 * <p>Off by default, and materially more expensive than counting: it walks the stack on every draw,
+	 * so it is a debugging mode to be switched on around a specific window and then switched off. That
+	 * window is usually the interesting one - level generation through to the first simulated step -
+	 * which is a few thousand draws rather than a whole run.
+	 *
+	 * <p>The purpose is to find <em>which code</em> consumes randomness, not how much. A count says a
+	 * stream is offset; a per-site tally says by how much and where, and the remedy is always to fix the
+	 * site rather than to compensate for it downstream - adjusting an index to hide an offset just moves
+	 * the divergence somewhere less visible.
+	 */
+	private static boolean attributing = false;
+
+	/** Draw site to draw count, in first-seen order. */
+	private static final java.util.LinkedHashMap< String, Integer > bySite =
+			new java.util.LinkedHashMap<>();
+
 	private RandomTrace() {}
 
 	public static void enable(){
@@ -74,6 +105,7 @@ public class RandomTrace {
 		draws = 0;
 		baseDraws = 0;
 		fingerprint = 0;
+		baseFingerprint = 0;
 	}
 
 	/**
@@ -89,6 +121,80 @@ public class RandomTrace {
 		//FNV-style: multiplication then xor, so the result depends on order and on every bit.
 		fingerprint ^= bits;
 		fingerprint *= 1099511628211L;
+		if (base){
+			baseFingerprint ^= bits;
+			baseFingerprint *= 1099511628211L;
+		}
+		if (attributing) attributeDraw();
+	}
+
+	/**
+	 * Starts attributing draws to call sites, clearing any previous tally.
+	 *
+	 * <p>Walks the stack on every draw, so turn it back off with {@link #attribute(boolean)} as soon as
+	 * the window of interest has passed.
+	 */
+	public static void attribute(){
+		attributing = true;
+		bySite.clear();
+	}
+
+	public static void attribute( boolean on ){
+		attributing = on;
+	}
+
+	public static boolean attributing(){
+		return attributing;
+	}
+
+	/** Draw count per calling site, first-seen first. */
+	public static java.util.Map< String, Integer > sites(){
+		return bySite;
+	}
+
+	/** The tally as lines of {@code count<TAB>site}, most frequent first. */
+	public static java.util.List< String > siteReport(){
+		java.util.List< java.util.Map.Entry< String, Integer > > entries =
+				new java.util.ArrayList<>( bySite.entrySet() );
+		entries.sort( (a, b) -> b.getValue() - a.getValue() );
+
+		java.util.List< String > lines = new java.util.ArrayList<>();
+		lines.add( "# draws-by-site\tcount\tsite" );
+		for (java.util.Map.Entry< String, Integer > e : entries){
+			lines.add( e.getValue() + "\t" + e.getKey() );
+		}
+		return lines;
+	}
+
+	/**
+	 * Records one draw against the nearest frame outside the RNG plumbing.
+	 *
+	 * <p>Both this class and {@link Random} are plumbing: {@code Random.Float(max)} calls
+	 * {@code Float()} calls {@code Float(boolean)} calls {@code record}, so the immediate caller is
+	 * always an RNG method and naming it would point at the plumbing rather than at the code that wanted
+	 * randomness. Walking past both leaves the first frame that actually made a decision, which is the
+	 * one worth naming and the one worth fixing.
+	 */
+	private static void attributeDraw(){
+		StackTraceElement[] stack = new Throwable().getStackTrace();
+
+		//0 is attributeDraw(), 1 is record(); the RNG methods follow
+		String self = RandomTrace.class.getName();
+		for (int i = 2; i < stack.length; i++){
+			String cls = stack[i].getClassName();
+			if (cls.equals( self ) || cls.equals( Random.class.getName() )) continue;
+			bySite.merge( frame( stack, i ), 1, Integer::sum );
+			return;
+		}
+
+		bySite.merge( "(no caller outside the RNG)", 1, Integer::sum );
+	}
+
+	private static String frame( StackTraceElement[] stack, int index ){
+		if (index < 0 || index >= stack.length) return "(no frame)";
+		StackTraceElement f = stack[ index ];
+		return f.getClassName() + "." + f.getMethodName()
+				+ (f.getLineNumber() > 0 ? ":" + f.getLineNumber() : "");
 	}
 
 	public static long draws(){
@@ -101,6 +207,11 @@ public class RandomTrace {
 
 	public static long fingerprint(){
 		return fingerprint;
+	}
+
+	/** Fingerprint of base-generator draws only. See {@link #baseFingerprint}. */
+	public static long baseFingerprint(){
+		return baseFingerprint;
 	}
 
 	/** One-line summary for assertions and diagnostics. */

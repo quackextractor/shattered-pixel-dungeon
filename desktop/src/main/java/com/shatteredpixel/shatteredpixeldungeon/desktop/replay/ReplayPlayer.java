@@ -137,6 +137,9 @@ public class ReplayPlayer {
 			rngTracePath = tracePath;
 			rngTrace = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace();
 			com.watabou.utils.RandomTrace.enable();
+			//attribution on from construction to the first step, because the window being asked about is
+			//exactly the one before it: the renderer draws here that the headless path does not
+			com.watabou.utils.RandomTrace.attribute();
 		} else {
 			rngTracePath = null;
 			rngTrace = null;
@@ -168,6 +171,31 @@ public class ReplayPlayer {
 					+ " (" + e.getClass().getSimpleName() + ")" );
 		}
 		System.err.println( "[replay] wrote " + rngTrace.size() + " rng trace samples to " + rngTracePath );
+	}
+
+	/**
+	 * Writes the draws-by-site tally for the window before the first replayed step.
+	 *
+	 * <p>That window is where a headless run and a rendered run come to differ, and a bare count cannot
+	 * say why. The tally names the code responsible, which is what makes the offset fixable rather than
+	 * merely measurable - and the fix belongs at the site, never downstream of it.
+	 */
+	private void flushDrawSites(){
+		if (rngTrace == null) return;
+		com.watabou.utils.RandomTrace.attribute( false );
+
+		java.nio.file.Path out = java.nio.file.Paths.get( rngTracePath + ".sites" );
+		try {
+			java.nio.file.Files.write( out,
+					String.join( "\n", com.watabou.utils.RandomTrace.siteReport() )
+							.getBytes( java.nio.charset.StandardCharsets.UTF_8 ) );
+			System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().size()
+					+ " draw sites ("
+					+ com.watabou.utils.RandomTrace.draws() + " draws before the first step) to " + out );
+		} catch (java.io.IOException e){
+			System.err.println( "[replay] could not write the draw-site tally to " + out
+					+ " (" + e.getClass().getSimpleName() + ")" );
+		}
 	}
 
 	/** Replays under the config the header carries. */
@@ -438,6 +466,7 @@ public class ReplayPlayer {
 		//armed here, not at construction: see rngTraceArmed. Everything above this line is setup the
 		//headless run does not do, and none of it belongs in the trace.
 		if (rngTrace != null && !rngTraceArmed){
+			flushDrawSites();
 			rngTrace.onReset();
 			rngTraceArmed = true;
 		}

@@ -102,8 +102,21 @@ public static synchronized void resetGenerators(){
 		float v;
 		if (useGeneratorStack)  v = generators.peekFirst().nextFloat();
 		else                    v = generators.peekLast().nextFloat();
-		RandomTrace.record( Float.floatToRawIntBits( v ), !useGeneratorStack );
+		RandomTrace.record( Float.floatToRawIntBits( v ), onSoleGenerator() );
 		return v;
+	}
+
+	/**
+	 * True when the draw reached the generator the simulation runs on.
+	 *
+	 * <p>Not the same question as whether the generator stack was used. On an empty stack both ends of
+	 * the deque are the same base generator, so an ordinary draw during gameplay is a base draw even
+	 * though it went through {@code peekFirst}. Answering with {@code !useGeneratorStack} instead
+	 * classified every gameplay draw as a non-base one, and {@link RandomTrace#baseDraws()} sat at zero
+	 * for entire runs - which reads exactly like a simulation that consumes no randomness at all.
+	 */
+	private static boolean onSoleGenerator(){
+		return generators.peekFirst() == generators.peekLast();
 	}
 
 	//returns a uniformly distributed float in the range [0, max)
@@ -132,7 +145,7 @@ public static synchronized void resetGenerators(){
 		int v;
 		if (useGeneratorStack)  v = generators.peekFirst().nextInt();
 		else                    v = generators.peekLast().nextInt();
-		RandomTrace.record( v, !useGeneratorStack );
+		RandomTrace.record( v, onSoleGenerator() );
 		return v;
 	}
 
@@ -189,7 +202,7 @@ public static synchronized void resetGenerators(){
 		long v;
 		if (useGeneratorStack)  v = generators.peekFirst().nextLong();
 		else                    v = generators.peekLast().nextLong();
-		RandomTrace.record( v, !useGeneratorStack );
+		RandomTrace.record( v, onSoleGenerator() );
 		return v;
 	}
 
