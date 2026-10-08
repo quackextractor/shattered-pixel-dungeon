@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
@@ -60,7 +61,7 @@ public class RestartCheck {
 			played++;
 		}
 
-		restart();
+		restart( env.pipeline() );
 		String second = signature();
 
 		if (first.equals( second )){
@@ -84,9 +85,16 @@ public class RestartCheck {
 	 * depth to 1, and then builds the level. Leaving a hero in place instead takes the transition
 	 * branch, which lands on the next floor.
 	 */
-	private static void restart(){
+	private static void restart( LevelPipeline pipeline ){
 		Dungeon.hero = null;
 		Dungeon.init();
+
+		//Mirrors LevelPipeline.startRun: sprites are attached before the floor is built, not after.
+		//Without this the hero had no sprite while the level was generated, and the emitter draws a
+		//level makes - Emitter.start takes a Random.Float for its delay - did not happen, so the same
+		//seed produced a different floor and this check failed on a heap count.
+		pipeline.attachSprites();
+
 		Level level = Dungeon.newLevel();
 		Dungeon.switchLevel( level, -1 );
 	}

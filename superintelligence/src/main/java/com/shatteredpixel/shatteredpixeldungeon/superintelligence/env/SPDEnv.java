@@ -78,6 +78,18 @@ public class SPDEnv {
 	// --------------------------------------------------------------------------- lifecycle
 
 	/**
+	 * The level pipeline this environment drives.
+	 *
+	 * <p>Exposed so a check can mirror the pipeline's own start-of-floor sequence exactly, rather than
+	 * approximating it. Restarting without {@code attachSprites} leaves the hero without a sprite while
+	 * the floor is built, which changes how much randomness generation consumes and so produced a
+	 * different floor from the same seed.
+	 */
+	public LevelPipeline pipeline(){
+		return pipeline;
+	}
+
+	/**
 	 * Starts an episode.
 	 *
 	 * @param seed     seed text; empty or null means a fresh random seed

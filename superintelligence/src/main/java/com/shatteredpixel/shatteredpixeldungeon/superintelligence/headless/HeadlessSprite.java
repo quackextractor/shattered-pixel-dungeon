@@ -225,8 +225,47 @@ public class HeadlessSprite extends CharSprite {
 		visible = false;
 	}
 
-	/** Emitter creation is the main remaining route from game logic into the particle system. */
-	@Override public com.watabou.noosa.particles.Emitter emitter(){ return null; }
-	@Override public com.watabou.noosa.particles.Emitter centerEmitter(){ return null; }
-	@Override public com.watabou.noosa.particles.Emitter bottomEmitter(){ return null; }
+	/**
+	 * A stand-in emitter for the particle system.
+	 *
+	 * <p>It exists because 150 call sites chain through the emitter - {@code sprite.emitter().burst(...)}
+	 * - so returning null, as this class used to, dereferenced it instead of reaching this class's own
+	 * no-op {@code burst}. Equipping a cursed item, burning, imbues and healing all reached one, and a
+	 * run died with a NullPointerException on the first cursed equip.
+	 *
+	 * <p>It has to draw, though. {@code Emitter.start} takes {@code Random.Float(interval)} as its
+	 * emission delay, so every one of those call sites consumes the game's randomness in a real
+	 * playthrough. A stand-in that drew nothing left the two RNG streams permanently apart - the same
+	 * fault the observation encoder had - and no recording made headlessly could ever replay in the
+	 * game.
+	 *
+	 * <p>What it must not do is remember. A live {@code Emitter} keeps the factory, interval and count
+	 * of the last request, and that state outlived a floor boundary, so the same seed stopped
+	 * rebuilding the same floor - {@code restartcheck} caught exactly that. Every method here is
+	 * therefore a no-op apart from the draw.
+	 */
+	private static final class Inert extends com.watabou.noosa.particles.Emitter {
+
+		@Override public void start( com.watabou.noosa.particles.Emitter.Factory factory,
+				float interval, int quantity ){
+			com.watabou.utils.Random.Float( interval );
+		}
+
+		@Override public void burst( com.watabou.noosa.particles.Emitter.Factory factory, int quantity ){
+			start( factory, 0, quantity );
+		}
+
+		@Override public void pour( com.watabou.noosa.particles.Emitter.Factory factory, float interval ){
+			start( factory, interval, 0 );
+		}
+
+		@Override public void startDelayed( com.watabou.noosa.particles.Emitter.Factory factory,
+				float interval, int quantity, float delay ){}
+	}
+
+	private static final Inert emitter = new Inert();
+
+	@Override public com.watabou.noosa.particles.Emitter emitter(){ return emitter; }
+	@Override public com.watabou.noosa.particles.Emitter centerEmitter(){ return emitter; }
+	@Override public com.watabou.noosa.particles.Emitter bottomEmitter(){ return emitter; }
 }
