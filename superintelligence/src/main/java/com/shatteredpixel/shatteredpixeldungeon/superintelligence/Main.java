@@ -126,6 +126,16 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 private static void rollout( String[] args ){
 		Options options = Options.parse( args );
 
+//An empty --seed used to be recorded as an empty seed field and produced a replay that
+		//could never be verified: the seed is the only handle on which world gets built, so
+		//verify had nothing to rebuild and either diverged from step 0 or died without saying
+		//which file or step was at fault. A random seed is still available - omit the flag.
+		if ( options.seed == null || options.seed.trim().isEmpty() ){
+			System.err.println( "[ERROR] --seed must not be empty; omit the flag for a random seed" );
+			System.exit( 1 );
+			return;
+		}
+
 		//started before anything else so the resource block is the cost of the whole command,
 		//level generation and engine boot included, not just the step loop
 		ResourceStats.Interval timing = ResourceStats.start();
@@ -219,7 +229,19 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
 			return;
 		}
 
-		System.out.println( "verify: seed=" + (replay.seedText.isEmpty() ? "<random>" : replay.seedText)
+		//Refused rather than guessed. The seed is the only handle on which world gets built, so a
+		//recording without one cannot be replayed at all; rebuilding it from a random seed would
+		//diverge at step 0 and report that as a corruption of the recording rather than of the
+		//recorder that wrote it. Name the file and the field, because the failure this replaces
+		//named neither.
+		if ( replay.seedText == null || replay.seedText.trim().isEmpty() ){
+			System.err.println( "[ERROR] " + file.getName() + " records no seed (header field 'seed=' is empty)."
+					+ " Its world cannot be rebuilt, so it cannot be verified. Re-record with a seed." );
+			System.exit( 1 );
+			return;
+		}
+
+		System.out.println( "verify: seed=" + replay.seedText
 				+ " hero=" + replay.heroClass
 				+ " steps=" + replay.steps.size()
 				+ " recorded score=" + replay.score );

@@ -227,17 +227,55 @@ failure `replaycp` documents.
    stream and are void; the CHANGELOG already says so for the first two faults, and this must extend to
    the config change.
 
+### 8.1 F1 - the viewer omits the trainer's per-step preamble
+
+**Found by validation (§11), and fixed.** `ReplayPlayer.applyNextStep` dispatched without the
+bookkeeping `SPDEnv.step` performs at :199-208, and called `mapper.refreshSlots()` *after* dispatch
+rather than before.
+
+The missing `GameScene.clearPendingCellListener()` is the one that mattered:
+
+```
+SlotAction.use(:93-98)      re-arms GameScene's aim listener when an item wants an aim
+ActionMapper.resolveTarget  prefers that listener over the sprite-free castAt fallback
+SPDEnv.step(:199)           clears it every step, so trainer throws always use castAt
+ReplayPlayer                never cleared it, so the throw used the game's own missile path
+                            -> recycles a sprite from hero.sprite.parent
+                            -> no parent without a scene -> throw threw, turn never advanced
+```
+
+Measured: 229-step `RF` reported `USE/0 in TARGETING: engine time is 0.0, recording says 1.0` at step 3,
+where the windowed viewer plays to 33. With the preamble mirrored, all 229 steps play with no
+divergence in 55 ms.
+
+The window hid it because it has a live `CellSelector` to aim with. **This is the argument for T1 in one
+line: a viewer bug that a window masks is invisible to every test that needs a window.**
+
+Fixed in `6d2f21e3c`.
+
+### 8.2 F2 - an empty seed is silently unrecoverable
+
+**Found by validation (§11).** `rollout` with an empty seed writes a header with no seed value, and
+`verify` on that file then dies with an unhandled null-valued expression, five times over, naming
+neither the file nor the step.
+
+Needs guards in **both** commands: reject an empty seed in `rollout` before recording, and reject one in
+`verify` before booting, each naming the file and the field. A check that cannot report *why* it failed
+is the same failure as no check.
+
 ---
 
 ## 9. Sequencing
 
 | Order | Item | Why there |
 | --- | --- | --- |
+| 0 | **F1** (§8.1) | A viewer bug the window masked; fixed, and it is what proved T1 viable |
 | 1 | Foundations (§8) | T1 is not trustworthy without them |
-| 2 | T2 | Hours, no dependencies, immediate net on the fault class that cost the most |
-| 3 | T1 | The real prize: an independent oracle plus a mutation-proof gate |
-| 4 | T4 | Small; makes everything above cheap to run |
-| 5 | T3 | Only as a gate once the corpus is stable |
+| 2 | **F2** (§8.2) | Guards in two commands, independent of everything else |
+| 3 | T2 | Hours, no dependencies, immediate net on the fault class that cost the most |
+| 4 | T1 | The real prize: an independent oracle plus a mutation-proof gate |
+| 5 | T4 | Small; makes everything above cheap to run |
+| 6 | T3 | Only as a gate once the corpus is stable |
 
 ---
 
