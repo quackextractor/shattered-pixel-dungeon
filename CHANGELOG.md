@@ -27,6 +27,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `readyToAct` also gained the `curAction == null` condition the trainer's READY test has always had.
   Testing `ready` alone walked through the window between injecting an action and the hero consuming
   it, applying the following step over the pending one.
+- **The viewer skipped the trainer's per-step preamble, so a throw never landed.** `SPDEnv.step` opens
+  every step by clearing `GameScene`'s aim listener and - unless the step is consuming an aim - the
+  pending use item, then refreshes the quickslots, and only then dispatches. `ReplayPlayer` dispatched
+  without any of it and refreshed the slots *afterwards*.
+  The missing `clearPendingCellListener` is what it cost. `SlotAction.use` re-arms that listener when
+  an item wants an aim, and `ActionMapper.resolveTarget` prefers it over the sprite-free `castAt`
+  fallback. The trainer clears it every step, so trainer throws always fall back to `castAt`. The
+  viewer kept it, so the throw went down the game's own missile path, which recycles a sprite from
+  `hero.sprite.parent` - there is no parent without a scene, so the throw threw, no turn was spent and
+  the hero kept the stone.
+  Found by running `ReplayPlayer` with no window and no scene for the first time, which is only possible
+  because `ReplayPlayer` turned out to have no UI dependency: 229-step `RF` reported *"USE/0 in
+  TARGETING: engine time is 0.0, recording says 1.0"* at step 3, where the windowed viewer plays to 33.
+  With the preamble mirrored it plays all 229 steps with no divergence, in 55 ms. The window hid this
+  because it has a live `CellSelector` to aim with.
 - **Four headless crashes on paths a longer run now reaches.** Once rollouts stopped dying early they
   got far enough to hit code that assumes a sprite exists. `Char.move`'s vertigo branch interrupted
   motion on a null sprite, as did `ShadowClone` and `ScrollOfTeleportation`; `SentryRoom` cast its

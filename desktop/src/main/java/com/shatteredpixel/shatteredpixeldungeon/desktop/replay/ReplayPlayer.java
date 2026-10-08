@@ -31,6 +31,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SlotAction;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
@@ -409,6 +410,27 @@ public class ReplayPlayer {
 			Quickslots.restore( step.quickslots );
 		}
 
+		//The trainer's per-step preamble, in the same order as SPDEnv.step:199-208. Without it the
+		//viewer and the trainer do not perform the same state transition, and the window hides which.
+		//
+		//clearPendingCellListener is the one that matters. SlotAction.use sets GameScene's aim
+		//listener (:93-98), and ActionMapper.resolveTarget prefers that listener over the sprite-free
+		//castAt fallback. SPDEnv clears it every step, so the trainer's throws always fall back to
+		//castAt. The viewer kept it, so the throw went through the game's own missile path, which
+		//recycles a sprite from hero.sprite.parent - there is no parent with no scene, the throw died,
+		//and the turn never advanced. Headless probe on RF: "USE/0 in TARGETING: engine time is 0.0,
+		//recording says 1.0", at the third step of a recording the windowed viewer plays to 33.
+		GameScene.clearPendingCellListener();
+		if (mode != EnvMode.TARGETING){
+			//The pending item survives a step that is consuming an aim; dropping it leaves the
+			//following TARGETING step with nothing to act on.
+			SlotAction.clearPendingUseItem();
+		}
+
+		//before the dispatch, not after: SPDEnv refreshes here, so the slot index has to resolve
+		//against the slots the step is about to be applied to.
+		mapper.refreshSlots();
+
 		//the follow-up half of a two-step action
 		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY || mode == EnvMode.MENU){
 			mapper.applySecondary( mode, action, step.slot );
@@ -417,8 +439,6 @@ public class ReplayPlayer {
 		} else {
 			mapper.apply( action, step.slot );
 		}
-
-		mapper.refreshSlots();
 
 		//Advance only after settle() has compared the landing cell. advance() clears the playback's
 		//expected position, so advancing first meant checkPosition() always saw "no expectation" and
