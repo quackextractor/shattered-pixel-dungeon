@@ -140,6 +140,7 @@ public class EpisodeDiff {
 		Map< String, Integer > baseline = new HashMap<>( RandomTrace.sites() );
 
 		List< String > rows = new ArrayList<>();
+		Map< Integer, String > lastRoster = null;
 		Random rng = new Random( POLICY_SEED );
 		Action[] all = Action.values();
 
@@ -158,6 +159,8 @@ public class EpisodeDiff {
 			baseline.putAll( now );
 			drew.sort( String::compareTo );
 
+			Map< Integer, String > roster = roster( env.heroPosition() );
+
 			StringBuilder row = new StringBuilder();
 			row.append( env.mode() ).append( "/" ).append( env.heroPosition() );
 			row.append( " turn=" ).append( Actor.now() );
@@ -168,7 +171,12 @@ public class EpisodeDiff {
 			row.append( " base=" ).append( RandomTrace.baseDraws() );
 			row.append( " fp=" ).append( RandomTrace.baseFingerprint() );
 			row.append( " drew=" ).append( drew.isEmpty() ? "-" : String.join( ",", drew ) );
-			if (includeRoster) row.append( " mobs=" ).append( roster( env.heroPosition() ));
+			if (includeRoster){
+				row.append( " moved=" ).append( moved( lastRoster, roster ) );
+				row.append( " resched=" ).append( rescheduled( lastRoster, roster ) );
+				row.append( " mobs=" ).append( flat( roster ) );
+			}
+			lastRoster = roster;
 
 			rows.add( row.toString() );
 		}
@@ -179,28 +187,81 @@ public class EpisodeDiff {
 	}
 
 	/**
-	 * Every mob, sorted by cell, as {@code name@pos:hp:state}.
+	 * Every mob, sorted, as {@code #id Name@cell:hp:state[:sees]}.
 	 *
 	 * <p>Sorted because a list order is not meaningful and an unsorted roster would report a difference
 	 * whenever two runs happened to spawn the same mobs in a different order.
 	 *
-	 * <p>{@code state} is a field rather than a method and is public, but {@code Char.fieldOfView} is
-	 * lazily allocated, so a mob that has never been seen has a null array. That is reported as its own
-	 * marker: "no FOV" says the mob never entered the player's sight, which is the opposite of "cannot
-	 * see", and conflating the two would hide the very fact being looked for.
+	 * <p>The actor id is in there on purpose. {@code Actor.nextID} is a static counter that
+	 * {@code reset()} does not clear, so the same mob has a different id in a second episode in the same
+	 * process. Anything that breaks a tie by id - and the scheduler does, when two actors come due on the
+	 * same turn - then resolves differently for reasons that have nothing to do with the seed. A roster
+	 * without ids cannot tell that apart from a genuine behavioural difference.
+	 *
+	 * <p>{@code fieldOfView} is allocated lazily, so a mob that has never been seen is marked
+	 * distinctly rather than being treated as one that cannot see; the two are opposite facts and
+	 * conflating them would hide the very thing being looked for.
 	 */
-	private static String roster( int heroPos ){
-		if (Dungeon.level == null || Dungeon.level.mobs == null) return "no-level";
-
+	private static String flat( Map< Integer, String > roster ){
 		List< String > entries = new ArrayList<>();
-		for (Mob mob : Dungeon.level.mobs){
-			boolean sees = mob.fieldOfView != null && mob.fieldOfView[ heroPos ];
-			entries.add( mob.getClass().getSimpleName() + "@" + mob.pos
-					+ ":" + mob.HP
-					+ ":" + (mob.state == null ? "none" : mob.state.getClass().getSimpleName())
-					+ (sees ? ":sees" : "") );
+		for (Map.Entry< Integer, String > e : roster.entrySet()){
+			entries.add( "#" + e.getKey() + " " + e.getValue() );
 		}
 		entries.sort( String::compareTo );
 		return String.join( " ", entries );
+	}
+
+	/** Which mobs stood somewhere else than they did last step, as {@code #id from->to}. */
+	private static String moved( Map< Integer, String > last, Map< Integer, String > now ){
+		if (last == null) return "base";
+		List< String > moved = new ArrayList<>();
+		for (Map.Entry< Integer, String > e : now.entrySet()){
+			String before = last.get( e.getKey() );
+			if (before == null) continue;
+			String a = before.split( ":" )[0];
+			String b = e.getValue().split( ":" )[0];
+			if (!a.equals( b )) moved.add( "#" + e.getKey() + " " + a + "->" + b );
+		}
+		return moved.isEmpty() ? "-" : String.join( " ", moved );
+	}
+
+	/** Which mobs were scheduled differently from last step, as {@code #id cdA->cdB}. */
+	private static String rescheduled( Map< Integer, String > last, Map< Integer, String > now ){
+		if (last == null) return "";
+		List< String > out = new ArrayList<>();
+		for (Map.Entry< Integer, String > e : now.entrySet()){
+			String before = last.get( e.getKey() );
+			if (before == null) continue;
+			String a = cooldownOf( before );
+			String b = cooldownOf( e.getValue() );
+			if (!a.equals( b )) out.add( "#" + e.getKey() + " " + a + "->" + b );
+		}
+		return out.isEmpty() ? "-" : String.join( " ", out );
+	}
+
+	private static String cooldownOf( String entry ){
+		for (String part : entry.split( ":" )){
+			if (part.startsWith( "cd" )) return part;
+		}
+		return "?";
+	}
+
+	private static Map< Integer, String > roster( int heroPos ){
+		Map< Integer, String > out = new HashMap<>();
+		if (Dungeon.level == null || Dungeon.level.mobs == null) return out;
+
+		for (Mob mob : Dungeon.level.mobs){
+			boolean sees = mob.fieldOfView != null && mob.fieldOfView[ heroPos ];
+			out.put( mob.id(), mob.pos + ":hp" + mob.HP
+					+ ":" + (mob.state == null ? "none" : mob.state.getClass().getSimpleName())
+					//cooldown is the mob's scheduled turn minus now, and it is the column that matters
+					//most. A mob that wanders toward a queued target steps one cell without drawing, so a
+					//divergence in who is due shows up as a moved mob and nothing else - and only at the step
+					//where the difference happens to be paid out. Comparing cooldowns finds it at the step
+					//where it was created instead.
+					+ ":cd" + mob.cooldown()
+					+ (sees ? ":sees" : "") );
+		}
+		return out;
 	}
 }
