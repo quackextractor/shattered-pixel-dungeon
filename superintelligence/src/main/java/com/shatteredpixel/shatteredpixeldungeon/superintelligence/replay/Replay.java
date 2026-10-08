@@ -97,6 +97,29 @@ public class Replay {
 		 */
 		public String quickslots = "";
 
+		/**
+		 * Hero HP after the step, or -1 when not recorded.
+		 *
+		 * <p>Recorded because position alone is not enough to tell two runs apart. A hero who is starving
+		 * stands exactly where a fed hero stands, so a recording that stored only {@link #heroPos} could
+		 * not detect an entire class of divergence - including the headless run whose hunger clock was
+		 * frozen by the intro setting, which played back perfectly while being wrong from step 454 on.
+		 */
+		public int heroHp = -1;
+
+		/**
+		 * Engine time after the step, or a negative value when not recorded.
+		 *
+		 * <p>A turn is a duration, not a count: a heavy weapon costs two, haste under one, so the
+		 * counter is fractional. Comparing it is what caught a step that spent a turn the recording said
+		 * it did not - the two environments were one turn apart from step 2 onwards and identical in
+		 * position throughout.
+		 */
+		public float turn = -1f;
+
+		/** Inventory contents after the step, as {@code ItemClass:count} pairs. Empty when not recorded. */
+		public String inventory = "";
+
 		public Step( String action, int slot, String mode, int heroPos, double reward ){
 			this.action = action;
 			this.slot = slot;

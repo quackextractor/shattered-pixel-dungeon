@@ -73,13 +73,31 @@ public class ScriptedPolicy {
 				slotOut[ 0 ] = 0;
 				return windowChoice( env );
 
-			case TARGETING:
+case TARGETING:
+				//Aim and use the item, rather than cancelling.
+				//
+				//This policy cancels every aim, which made pickItemWorthUsing's preference for an item
+				//that "usesTargeting" self-defeating: it selected such an item precisely so the use would
+				//enter TARGETING, and then discarded the aim. The result was a fixed three-step cycle -
+				//USE, USE, CANCEL - repeated forever. No turn was ever spent, so the hero stood still until
+				//the environment's stall guard ended the episode. Every seed did it within 20 turns.
+				//
+				//Aiming completes the action instead: one turn is spent, the item is used, and the policy
+				//can move on. The environment records the aim as a TARGETING step, which is what
+				//modecheck asserts is reachable.
 				slotOut[ 0 ] = chooseTarget( env );
-				return Action.CANCEL;
+				return Action.USE;
 
 case SLOT:
 			case INVENTORY:
-				slotOut[ 0 ] = pickItemWorthUsing( env );
+				int pick = pickItemWorthUsing( env );
+				//Nothing usable carried. Cancelling closes the pane, which spends the turn and lets the
+				//policy move on; using a slot index of -1 would be a refused action forever.
+				if (pick < 0){
+					slotOut[ 0 ] = 0;
+					return Action.CANCEL;
+				}
+				slotOut[ 0 ] = pick;
 				return Action.USE;
 
 			default:
@@ -485,7 +503,19 @@ private int firstOccupiedSlot( SPDEnv env ){
 			if (item != null && item.usesTargeting) return i;
 		}
 
-		return firstOccupiedSlot( env );
+		//Bags are skipped. A bag's default action opens its own inventory pane rather than doing
+		//anything to the world, so the hero does not move, no turn is spent, and the policy re-picks the
+		//same bag forever. The VelvetPouch every hero starts with sat in slot 0, which made this the
+		//default choice on every seed: each run stalled within 20 turns having done nothing at all.
+		for (int i = 0; i < mask.length; i++){
+			if (mask[ i ] <= 0.5f ) continue;
+			Item item = env.mapper().slot( i );
+			if (item != null && !(item instanceof com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag)){
+				return i;
+			}
+		}
+
+		return -1;
 	}
 
 	private int lastPos = -1;

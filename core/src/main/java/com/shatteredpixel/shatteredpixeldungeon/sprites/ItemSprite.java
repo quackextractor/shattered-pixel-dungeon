@@ -386,6 +386,14 @@ public class ItemSprite extends MovieClip {
 
 	public static int pick( int index, int x, int y ) {
 		SmartTexture tx = TextureCache.get( Assets.Sprites.ITEMS );
+
+		//No texture without a renderer. The pixel this reads is the item's display colour, used by
+		//Potion.splashColor to tint an effect - nothing reads it back for gameplay, and every value of it
+		//is equally correct when there is nothing to draw. Returning white keeps the arithmetic below
+		//well defined rather than dereferencing null, which is what drinking a potion headless did:
+		//ItemSprite.pick -> Potion.splashColor -> shatter, and the potion was simply never used.
+		if (tx == null) return 0xFFFFFFFF;
+
 		int rows = tx.width / SIZE;
 		int row = index / rows;
 		int col = index % rows;

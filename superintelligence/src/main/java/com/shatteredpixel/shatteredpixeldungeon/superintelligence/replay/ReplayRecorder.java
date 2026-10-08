@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
@@ -51,8 +52,33 @@ public class ReplayRecorder {
 		if (!recording) return;
 		int last = replay.length() - 1;
 		if (last < 0) return;
-		replay.steps.get( last ).heroPos = heroPosition;
-		replay.steps.get( last ).reward = reward;
+		Replay.Step step = replay.steps.get( last );
+		step.heroPos = heroPosition;
+		step.reward = reward;
+		//Recorded so that replaying a run is checked against something other than a re-run of the same
+		//code. Position alone cannot see a hero who is starving, or one turn adrift of the recording, and
+		//both of those played back cleanly while being wrong.
+		step.heroHp = Dungeon.hero.HP;
+		step.turn = Actor.now();
+		step.inventory = inventoryOf();
+	}
+
+	/** Inventory as {@code ItemClass:count}, sorted, so the comparison is order-independent. */
+	public static String inventory(){
+		java.util.TreeMap< String, Integer > counts = new java.util.TreeMap<>();
+		for (com.shatteredpixel.shatteredpixeldungeon.items.Item item : Dungeon.hero.belongings.backpack){
+			counts.merge( item.getClass().getSimpleName(), 1, Integer::sum );
+		}
+		StringBuilder sb = new StringBuilder();
+		for (java.util.Map.Entry< String, Integer > e : counts.entrySet()){
+			if (sb.length() > 0) sb.append( ',' );
+			sb.append( e.getKey() ).append( ':' ).append( e.getValue() );
+		}
+		return sb.toString();
+	}
+
+	private static String inventoryOf(){
+		return inventory();
 	}
 
 	/** Closes the recording and stores the run's outcome. */

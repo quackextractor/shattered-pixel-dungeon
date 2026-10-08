@@ -74,6 +74,19 @@ public class LevelPipeline {
 		SPDSettings.challenges( challenges );
 		SPDSettings.customSeed( seedText == null ? "" : seedText );
 
+		//Not intro, because an agent is not a player who has just installed the game.
+		//
+		//SPDSettings.intro() defaults to true, so without this the headless run has the tutorial
+		//enabled, and Hunger.act() returns early while it is set - which freezes the hunger clock for
+		//the whole run. The rendered viewer reads a real player's settings, where intro is false, so the
+		//hero starves there and never did in the recording: the hero lost a point of HP at step 454 of a
+		//1500 step run and died in a run whose recording has him alive at full health at turn 1500.
+		//
+		//This is a settings mismatch between the two environments rather than a bug in either, and it is
+		//the third found: quickslot bindings, then scheduler tie-breaking. A setting that only the
+		//headless side sets makes every recording describe a game that is not the one being replayed.
+		SPDSettings.intro( false );
+
 		//GameSettings.getString(key, def, maxLength) treats an over-long stored value as corrupt:
 		//it overwrites it with the default and returns the default. SPDSettings reads the custom
 		//seed with a 20 character cap, so a longer seed text is silently discarded here and

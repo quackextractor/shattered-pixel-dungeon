@@ -275,6 +275,12 @@ public class ReplayPlayer {
 		Replay.Step step = playback.peek();
 		if (step == null){
 			playback.finish();
+			//halt() rather than a bare finish(): finishing is not by itself an exit, and nothing else
+			//calls halt on the normal path. Reaching the end of the recording therefore left the window
+			//open with playback stopped, waiting for a keypress that a batch run has no way to send - so
+			//a run that had finished successfully looked identical to one that had hung. This is what made
+			//"no divergence reported" indistinguishable from "still going".
+			halt( "replay finished - all " + playback.total() + " steps played" );
 			return;
 		}
 
@@ -430,6 +436,16 @@ public class ReplayPlayer {
 	/** True once playback has ended and the frame loop may close the window. */
 	public boolean closing(){
 		return closingWhenSettled;
+	}
+
+	/**
+	 * True once playback has stopped, whether or not the window is closing.
+	 *
+	 * <p>Distinct from {@link #playing()} so a stopped run can be reported rather than left looking like
+	 * a run still in progress.
+	 */
+	public boolean finished(){
+		return !playing && haltReason != null && !haltReason.isEmpty();
 	}
 
 /**

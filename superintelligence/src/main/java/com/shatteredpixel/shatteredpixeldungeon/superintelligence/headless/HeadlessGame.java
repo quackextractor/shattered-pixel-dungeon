@@ -66,6 +66,12 @@ public class HeadlessGame extends Game {
 		//from stairs, traps and mining - dereferences it unconditionally.
 		Camera.reset();
 
+		//Every CellEmitter entry point dereferences the scene's emitter pool without checking, and
+		//GameScene.emitter() returns null with no scene. A heap of gold dropping reaches it from
+		//ItemSprite.drop, so the first chest opened headless died with an NPE.
+		com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.headlessEmitter(
+				new com.watabou.noosa.particles.Emitter() );
+
 		//PixelScene.uiCamera is created in PixelScene.create(), which never runs headlessly.
 		//Window's constructor reads its dimensions to size a click blocker, so every dialog
 		//constructed without a scene would fail here.

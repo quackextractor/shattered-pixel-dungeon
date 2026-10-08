@@ -48,11 +48,32 @@ public class HeadlessSprite extends CharSprite {
 		this.ch = ch;
 		ch.sprite = this;
 		renderShadow = false;
+		parent = headlessParent();
 	}
 
 	@Override
 	public void linkVisuals( Char ch ){
 		//no shadow, aura or health bar without Assets
+	}
+
+	/**
+	 * A real group, so that code adding to {@code sprite.parent} works.
+	 *
+	 * <p>{@code parent} is an inherited field rather than a method, so it cannot be overridden and is set
+	 * here instead. Game logic adds tweens straight to it without a null check -
+	 * {@code ScrollOfTeleportation.appear} does {@code ch.sprite.parent.add(new AlphaTweener(...))} -
+	 * and with no scene there is no parent, so reading a teleport scroll headless died with an NPE.
+	 *
+	 * <p>An orphaned Group: nothing draws, but tweens are added and removed as normal, so an
+	 * animation's effect on actor state still happens.
+	 */
+	private com.watabou.noosa.Group headlessParentStore = null;
+
+	private com.watabou.noosa.Group headlessParent(){
+		if (headlessParentStore == null){
+			headlessParentStore = new com.watabou.noosa.Group();
+		}
+		return headlessParentStore;
 	}
 
 	// ---------------------------------------------------------------- animations that gate the turn

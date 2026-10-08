@@ -331,15 +331,32 @@ public abstract class Actor implements Bundlable {
 			current = null;
 			if (!interrupted && !Game.switchingScene()) {
 				float earliest = Float.MAX_VALUE;
+				int lowestId = Integer.MAX_VALUE;
 
 				synchronized (Actor.class) {
 					for (Actor actor : all) {
 
-						//some actors will always go before others if time is equal.
+						//Some actors will always go before others if time is equal.
+						//
+						//Actor.id() breaks the final tie, matching headlessStep. It did not before: this
+						//method compared actPriority alone, so when two actors shared a timestamp - the
+						//hero and the Hunger buff routinely do - each scheduler picked a different
+						//winner and the rendered game diverged from the recording. The first symptom was
+						//starvation: Hunger.act() ran in the viewer and never in the trainer, so the hero
+						//lost a point of HP at step 454 of a 1500 step run and died in a run whose
+						//recording has the hero alive at full health.
+						//
+						//See headlessStep for why id() is the right tiebreak: it is assigned in creation
+						//order, so it is stable across processes, and Actor.all is insertion-ordered so
+						//the two methods cannot disagree on anything else either.
 						if (actor.time < earliest ||
-								actor.time == earliest && (current == null || actor.actPriority > current.actPriority)) {
+								(actor.time == earliest && (current == null
+										? true
+										: actor.actPriority > current.actPriority
+											|| (actor.actPriority == current.actPriority && actor.id() < lowestId)))) {
 							earliest = actor.time;
 							current = actor;
+							lowestId = actor.id();
 						}
 
 					}

@@ -161,6 +161,16 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 		if (controller.player.closing()){
 			log( "closing: " + controller.player.haltReason() );
 			if (game != null ) game.finish();
+		} else if (controller.player.finished()){
+			//Playback has stopped and nothing asked for the window to close. Without this the process
+			//lives forever: the frame loop keeps running, the heartbeat keeps reporting playing=false,
+			//and a batch run blocks on a keypress nobody will send. Reaching the end of a recording was
+			//indistinguishable from hanging on it, because neither printed anything.
+			//
+			//Reported rather than closed, since the point of leaving the window up is to read why it
+			//stopped. A run that is meant to finish unattended passes --close.
+			log( "stopped: " + controller.player.haltReason()
+					+ "   (window left open; pass --close to exit on completion)" );
 		}
 	}
 

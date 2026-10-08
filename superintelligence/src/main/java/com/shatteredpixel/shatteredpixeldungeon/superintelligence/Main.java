@@ -14,6 +14,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResetChec
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GraphCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ActionCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SlotCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.VerifyCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
@@ -68,6 +69,7 @@ public class Main {
 		case "graphcheck": GraphCheck.main( rest ); break;
 			case "actioncheck": ActionCheck.main( rest ); break;
 			case "slotcheck": SlotCheck.main( rest ); break;
+			case "verifycheck": VerifyCheck.main( rest ); break;
 		case "updatecost": UpdateCostCheck.main( rest ); break;
 		case "replayprobe": ReplayProbe.main( rest ); break;
 		case "gaecheck": GaeCheck.main( rest ); break;
@@ -240,7 +242,10 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
 			//every locked-seed comparison the trainer makes becomes meaningless
 			System.err.println( "[ERROR] replay diverged at step " + result.divergedAt
 					+ " of " + replay.steps.size() );
-			System.err.println( "        recorded position no longer matches the live game" );
+			System.err.println( "        " + result.divergence );
+			System.err.println( "        action " + replay.steps.get( result.divergedAt ).action
+					+ " slot " + replay.steps.get( result.divergedAt ).slot
+					+ " mode " + replay.steps.get( result.divergedAt ).mode );
 			System.exit( 2 );
 		} else {
 			System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "     replay reproduced in "

@@ -108,6 +108,7 @@ cliTask('modecheck', 'Fails if the environment cannot reach one of its own actio
   cliTask('graphcheck', 'Fails if a chart reports a range it did not observe.')
   cliTask('actioncheck', 'Fails if a movement action does not move the way it is named.')
 cliTask('slotcheck', 'Fails if a recorded slot index does not resolve to the item it was recorded against.')
+cliTask('verifycheck', 'Fails if replay verification cannot detect an altered recording.')
 
   cliTask('replayprobe', "Reports how far a replayed observation's value drifts from the rollout's.")
   cliTask('valuescale', "Reports the critic's target range against the range it can reach.")
@@ -138,7 +139,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 //compile plus test, and this runs neither a compiler pass nor JUnit.
 tasks.register('gates') {
 dependsOn 'gradcheck', 'gaecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck',
-		'replaycheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck'
+		'replaycheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck'
     group = 'verification'
     description = 'Runs every correctness gate in one invocation.'
     doLast { println "all gates passed" }

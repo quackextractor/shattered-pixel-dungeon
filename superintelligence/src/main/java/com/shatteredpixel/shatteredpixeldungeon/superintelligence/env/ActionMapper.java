@@ -284,6 +284,18 @@ public class ActionMapper {
 	public boolean applySecondary( EnvMode mode, Action action, int index ){
 		switch (mode) {
 			case TARGETING:
+				//CANCEL has to be handled before an aim. SPDEnv does the same, and has to: a cancel that
+				//falls through to resolveTarget is read as a throw at the default target, so the stone is
+				//spent and the hero is never released.
+				//
+				//Playback missed this, so a recorded CANCEL in TARGETING threw the stone, spent a turn,
+				//and left the run one turn ahead of the recording from step 2 onwards. Measured on
+				//REGEN-BRAVO: the trainer sat at turn 0.0 while the viewer sat at 1.0. Over a 1500 step run
+				//that drift stopped the hero fighting - HP fell to 1 and the run ended in a death the
+				//recording does not contain, because the recorded hero was still alive at turn 1500.
+				if (action == Action.CANCEL){
+					return SlotAction.cancelPendingUse( hero() );
+				}
 				return resolveTarget( index );
 
 			case MENU:

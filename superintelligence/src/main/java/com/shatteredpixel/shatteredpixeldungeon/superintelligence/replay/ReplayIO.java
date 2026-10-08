@@ -1,5 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay;
 
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
@@ -70,6 +72,13 @@ public class ReplayIO {
 				//reader's length check already tolerates a short step line.
 				out.write( ' ' );
 				out.write( step.quickslots );
+				//Fields 7-9. Absent on older recordings, which the length checks below tolerate.
+				out.write( ' ' );
+				out.write( Integer.toString( step.heroHp ));
+				out.write( ' ' );
+				out.write( Float.toString( step.turn ));
+				out.write( ' ' );
+				out.write( step.inventory );
 				out.newLine();
 			}
 		}
@@ -109,6 +118,9 @@ public class ReplayIO {
 			//back faithfully, because a slot index is meaningless without its bindings; the viewer says so
 			//rather than silently resolving slot 0 to whatever happens to be first in the backpack.
 			if (parts.length > 5) step.quickslots = parts[ 5 ];
+			if (parts.length > 6) step.heroHp = Integer.parseInt( parts[ 6 ] );
+			if (parts.length > 7) step.turn = Float.parseFloat( parts[ 7 ] );
+			if (parts.length > 8) step.inventory = parts[ 8 ];
 			replay.steps.add( step );
 		}
 
@@ -190,6 +202,9 @@ public class ReplayIO {
 		public int stepsVerified;
 		public boolean diverged;
 		public int divergedAt = -1;
+
+		/** What disagreed, naming the quantity. Empty when the run reproduced. */
+		public String divergence = "";
 	}
 
 	/**
@@ -230,11 +245,44 @@ public class ReplayIO {
 			cumulative += env.step( action, step.slot );
 			result.stepsVerified++;
 
-			//the recorded position is where the hero ended up, so this is an exact check that
-			//the replayed run is following the same path
+			//Each comparison below is against something the recording carries, not against another run of
+			//this code. Re-executing a replay through the same headless path only proves the engine is
+			//deterministic; it cannot see a headless-specific fault, because both sides share it. That is
+			//how a run whose hunger clock never advanced - the intro setting froze Hunger.act() - replayed
+			//perfectly in the viewer while being wrong from step 454 on, with the hero at full health in
+			//the recording and dying in the game.
+			//
+			//So the recorded state is the authority: position, health, engine time and inventory. Each
+			//catches a class the others cannot see.
 			if (step.heroPos >= 0 && env.heroPosition() != step.heroPos ){
 				result.diverged = true;
 				result.divergedAt = i;
+				result.divergence = "position: replayed " + env.heroPosition() + ", recorded " + step.heroPos;
+				break;
+			}
+
+			if (step.heroHp >= 0 && Dungeon.hero.HP != step.heroHp ){
+				result.diverged = true;
+				result.divergedAt = i;
+				result.divergence = "hp: replayed " + Dungeon.hero.HP + ", recorded " + step.heroHp;
+				break;
+			}
+
+			//A turn is a duration and can be fractional, so this is compared exactly rather than rounded.
+			//It is what catches a step that spends a turn the recording says it did not: the two
+			//environments were one turn apart from step 2 onwards while identical in position.
+			if (step.turn >= 0 && Actor.now() != step.turn ){
+				result.diverged = true;
+				result.divergedAt = i;
+				result.divergence = "turn: replayed " + Actor.now() + ", recorded " + step.turn;
+				break;
+			}
+
+			if (!step.inventory.isEmpty() && !step.inventory.equals( ReplayRecorder.inventory() )){
+				result.diverged = true;
+				result.divergedAt = i;
+				result.divergence = "inventory: replayed [" + ReplayRecorder.inventory()
+						+ "], recorded [" + step.inventory + "]";
 				break;
 			}
 		}

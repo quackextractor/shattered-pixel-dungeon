@@ -1330,13 +1330,34 @@ public synchronized void update() {
 		return (SpellSprite)scene.spells.recycle( SpellSprite.class );
 	}
 	
+	/**
+	 * Emitter pool for environments that run the engine without a scene.
+	 *
+	 * <p>Null while {@link #scene} is null, which every {@code CellEmitter} entry point dereferences
+	 * without checking. Anything reaching one of them headless therefore died with an NPE - a heap of
+	 * gold dropping, for instance, calls {@code CellEmitter.center(...).burst(...)} from
+	 * {@code ItemSprite.drop}.
+	 *
+	 * <p>Set by the headless module. An emitter draws nothing without a scene, so the only thing that
+	 * matters is that it is a real object the caller can position and burst into.
+	 */
+	private static com.watabou.noosa.particles.Emitter headlessEmitter = null;
+
+	/**
+	 * Installs a stand-in emitter for use with no scene present. Null argument restores the default,
+	 * which is to return null.
+	 */
+	public static void headlessEmitter( com.watabou.noosa.particles.Emitter emitter ){
+		headlessEmitter = emitter;
+	}
+
 	public static synchronized Emitter emitter() {
 		if (scene != null) {
 			Emitter emitter = (Emitter)scene.emitters.recycle( Emitter.class );
 			emitter.revive();
 			return emitter;
 		} else {
-			return null;
+			return headlessEmitter;
 		}
 	}
 
@@ -1345,6 +1366,8 @@ public synchronized void update() {
 			Emitter emitter = (Emitter)scene.floorEmitters.recycle( Emitter.class );
 			emitter.revive();
 			return emitter;
+		} else if (headlessEmitter != null) {
+			return headlessEmitter;
 		} else {
 			return null;
 		}
