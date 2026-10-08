@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`--out` did not move the checkpoint, or the metrics history.** Both are derived from the working
+  directory, and both were derived in `TrainOptions`'s constructor - which runs before the command line
+  is read. A run pointed at `--out D` put its replays in D and left a 43 MB `weights.bin` and a
+  `metrics.csv` in the old directory, reporting the save to a path nobody had named. Half a run's output
+  in the place that was asked for and half somewhere else, with nothing saying where the rest went - the
+  same failure the trainer's replay-index record was added to fix, one layer up.
+  Both are now re-derived after the flags are read, and only when nobody named them: an explicit
+  `--save` or `--metrics` is a deliberate path and does not move. `configcheck` grew a case that asserts
+  both halves, because a fix that re-derived them unconditionally would pass the first and introduce a
+  quieter bug in its place.
+
 - **A dead hero's remains were inherited by the next run, and 2 of 32 recordings stopped reproducing.**
   `Bones` holds a fallen hero's belongings in statics plus a `bones.dat` under the process's file root,
   and `RegularLevel.createItems` reads them to drop a `REMAINS` heap. That is the feature working: a
@@ -957,6 +968,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The learner and the trainer are split by responsibility, both of which were over the 500-line
+  limit.** `PPO` was 687 lines and about a quarter of that was the thread pool and the gradient
+  reduction; `ShardedUpdate` now owns the pool, the per-thread networks and their scratch. `Trainer`
+  was 561 logical lines and about a third of that was the half that talks to worker processes;
+  `TrainerWorkers` now owns the job record, the concurrent dispatch, the per-worker request/response,
+  the replay decode and the parallel policy push.
+  The boundary is drawn at the pipes. Everything that crosses one is in `TrainerWorkers`, so a field
+  added to the frame has exactly one reader, and a caller never receives a worker's streams - the
+  ordering between a request and its reply is what keeps two processes in step.
+  The split removed a duplication that had already cost something: the serial and sharded paths each
+  carried their own copy of the scale-clip-report tail, which is how two implementations come to report
+  different numbers for the same gradient. Both now return a result and one method folds it in, so
+  `parallelcheck`'s equality claim is structural rather than something re-established each time either
+  path is edited.
+  Also removed two private methods with no callers: `PPO.replay`, which `oneSample` duplicates inline,
+  and `PPO.oldLogProbabilityFor`, which returned its first argument and ignored its second. The latter
+  was listed in `TODO.md` section 5 as a known rough edge; it is now gone rather than listed.
 - **`resetcheck` grew a case per leaked static** (3 checks -> 5). An outstanding dialog is now tested as
   well as an outstanding aim, and a run following a hero's death is tested for inheriting nothing. Each
   is mutation-tested: deleting the corresponding clear makes the case fail, and the remains case
@@ -965,7 +993,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exist, and its matrix lists the two new gates.
 - **A pre-commit hook** runs the badge-consistency check and the full gate suite, and refuses the
   commit on failure. The badge check corrects `README.md` and re-stages it rather than aborting, because
-  a one-line mechanical mismatch is not worth teaching someone to reach for `--no-verify`.
+  a one-line mechanical mismatch is not worth teaching someone to reach for `--no-verify`. It lives in
+  `hooks/pre-commit` with an `install-hooks.ps1` to copy it into place, because `.git/hooks` is not
+  tracked and a hook written there exists only on the machine that wrote it.
 
 ## [4.1.0] - 2026-10-06
 

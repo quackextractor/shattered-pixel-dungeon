@@ -64,10 +64,16 @@ Main ──▶ SPDEnv ──▶ LevelPipeline ──▶ the game's engine (Dunge
              ├──▶ RewardModel ───────────▶ state diffing, per-turn scoring
              └──▶ ReplayRecorder ────────▶ decisions, not consequences
 
-train.Trainer ──▶ WorkerPool ──▶ N worker JVMs, stdin/stdout protocol
-      │                                    │
-      └──▶ PPO.update ◀── transitions ◀────┘  (each worker computes its own GAE)
+train.Trainer ──▶ TrainerWorkers ──▶ N worker JVMs, stdin/stdout protocol
+      │                                  │
+      └──▶ PPO.update ◀── transitions ◀──┘   (each worker computes its own GAE)
 ```
+
+The split follows the two boundaries that matter. `PPO` decides what a minibatch computes and
+`ShardedUpdate` decides how many threads compute it, because threading is a different responsibility with
+a different failure mode. `Trainer` decides what work exists and `TrainerWorkers` decides how a worker
+hears about it, because a pipe is not a learning problem. In both cases the moved half calls *into* the
+kept half rather than copying it - one implementation of the objective, one implementation of the frame.
 
 | Package | Responsibility |
 | --- | --- |
@@ -76,8 +82,8 @@ train.Trainer ──▶ WorkerPool ──▶ N worker JVMs, stdin/stdout protoco
 | `obs` | `ObservationEncoder`, spatial channel definitions, fixed inventory vector, hero scalars |
 | `reward` | `RewardModel` (state diffing), `RewardTerm`/`RewardLedger` (per-term, per-floor breakdown), `Curriculum` |
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and fixtures |
-| `rl` | `Network` (CNN + LSTM + heads), `PPO` (the learner), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector`, `EpisodeRecord` |
-| `train` | `Trainer` (generation loop), `WorkerPool`, `Protocol`, `TransitionCodec`, `TrainOptions`, `PpoHyperparameters`, `Checkpoint`, `MetricsHistory`, `SeedPool` |
+| `rl` | `Network` (CNN + LSTM + heads), `PPO` (the learner), `ShardedUpdate` (the parallel minibatch and its gradient reduction), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector`, `EpisodeRecord` |
+| `train` | `Trainer` (generation loop), `TrainerWorkers` (everything crossing a worker pipe), `WorkerPool`, `Protocol`, `TransitionCodec`, `TrainOptions`, `PpoHyperparameters`, `Checkpoint`, `MetricsHistory`, `SeedPool` |
 | `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `ReplayCatalog`, `RngTrace` |
 | `diag` | `RunReport`, `Graph`, `Ansi`, and the gates listed below |
 

@@ -436,7 +436,6 @@ Small things that are wrong but not blocking.
   depths to fade across. Until then a wrong fade is worse than no fade, because it silently distorts
   the first real runs.
 - `PPO.approximateKL` takes `t`, `logits` and `mask` parameters it does not use.
-- `PPO.oldLogProbabilityFor` returns `t.oldLogProbability` and ignores its second argument.
 - Some engine states end a rollout as `STALLED` early. Seed `HERO` terminates after 2 turns, where
   most seeds run the full budget - an encounter reaching a state the action space cannot answer.
   Coverage is uneven across seeds.
