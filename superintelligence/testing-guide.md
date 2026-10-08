@@ -1,10 +1,12 @@
 ### Key Issues to Test
 
 #### **1. Static State Leakage Across Resets & Episodes**
-* **The Issue**: Residual static variables (such as `GameScene.pendingCellListener`, `SlotAction.pendingUseItem`, and lingering UI or window listeners) persist across consecutive episode resets within the same JVM process. If an episode terminates while mid-aim or in a sub-menu, un-cleared static state forces the subsequent episode to start in `TARGETING` mode, causing immediate step-0 or step-1 position divergence.
+* **The Issue**: Residual static variables (such as `GameScene.pendingCellListener`, `GameScene`'s headless dialog slot, `SlotAction.pendingUseItem`, and a dead hero's remains in `Bones`) persist across consecutive episode resets within the same JVM process. If an episode terminates while mid-aim or in a sub-menu, un-cleared static state forces the subsequent episode to start in `TARGETING` or `MENU` mode, causing immediate step-0 or step-1 position divergence. Remains are the subtler case: a hero who dies leaves a `REMAINS` heap on a later floor, so the world a run generates depends on what died earlier in the same process.
 * **How to Test**:
   * **Sequential Multi-File Verification**: Run verification across multiple replay files sequentially within a **single JVM process** (or verify the same replay file 2–3 times consecutively in one process). A clean implementation must pass every pass without order-dependent divergence.
   * **`restartcheck` Gate**: Execute the automated `restartcheck` gate, which re-initialises an episode mid-session after hundreds of turns to prove that floor 1 regenerates identically without residual state corruption.
+  * **`resetcheck` Gate**: Execute the automated `resetcheck` gate, which arms an aim request, opens a dialog and kills a hero - one case each - then asserts the next episode starts clean.
+  * **`paritycheck` Gate**: Execute the automated `paritycheck` gate, which records a sweep of seeds and hero classes in one process and verifies each recording twice. This is the only gate that reaches the remains case, because it is the only one that lets the hero die repeatedly.
 
 ---
 
@@ -47,11 +49,19 @@
 
 | Test Command / Task | Subsystem Verified | Success Criterion |
 | :--- | :--- | :--- |
-| **`./gradlew :superintelligence:verifyall`** | Master aggregator running all 15 automated gate checks across all modules. | **All 15 gates pass cleanly** in ~15 seconds. |
+| **`./gradlew :superintelligence:gates`** | Master aggregator running all 19 automated gate checks across all modules. | **All 19 gates pass cleanly** in ~22 seconds. |
 | **`./gradlew :superintelligence:run --args="verify <file.replay>"`** | Headless re-execution of a recorded replay through `ActionMapper` & `LevelPipeline`. | Replays trajectory to completion, matching recorded position, HP, turns, and inventory. |
+| **`paritycheck` (`:superintelligence`)** | Records a sweep of seeds x hero classes in one process, then verifies each recording twice - once immediately, once after the whole sweep has run in between. | Every recording replays exactly, both times. |
 | **`playbackcheck` (`:desktop`)** | Drives `ReplayPlayer` logic headlessly without UI or display server. | Faithful replays pass; altered steps (HP, position, turn, quickslots) fail at exact step. |
 | **`observecheck` (`:superintelligence`)** | Verifies observation encoders (`ObservationEncoder`, `HeroEncoder`, `Quickslots`). | **0 RNG draws** consumed during state encoding; byte-identical vector output. |
+| **`configcheck` (`:superintelligence`)** | Verifies the configuration binder, and that `superintelligence.properties` agrees with the compiled defaults. | Every documented key changes the setting it names; malformed and out-of-range values are refused. |
 | **`rngtrace <file.replay>`** | Emits per-step draw counts and order-sensitive fingerprints (`baseFingerprint`). | Step-by-step fingerprint alignment between headless and rendered runs. |
 | **`collectcheck` (`:superintelligence`)** | Verifies that live recordings captured by `EpisodeCollector` replay cleanly. | 100% reproduction of recorded step positions and scores. |
 | **`modecheck` & `restartcheck`** | Verifies action modes (`WORLD`, `SLOT`, `TARGETING`, `MENU`, `INVENTORY`) and floor re-initialisation. | Zero mode traps; floor 1 regenerates identically after 400+ turns. |
 | **Multi-JVM Byte-Diff Sweep** | Runs identical seed/hero rollouts across separate JVMs. | Generated `.replay` files are **byte-identical** across fresh JVMs. |
+
+The sweep in `paritycheck` is the one that reaches the fault `resetcheck` cannot. `resetcheck` proves
+that two runs of one seed produce the same trajectory, which is a statement about the environment.
+`paritycheck` proves that a *recording* survives a write, a read and a second episode in the same
+process, which is a statement about the recording - and it is the only gate that lets the hero die
+repeatedly, which is where process-spanning game state such as a dead hero's remains becomes visible.

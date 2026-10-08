@@ -108,7 +108,9 @@ something.
 | Level pipeline, floor transitions, chasm falls | Verified |
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified |
-| Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score |
+| Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process |
+| Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate |
+| A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation |
 | Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
 | Update cost measurement | Measured - `updatecost`, 11.3 ms/sample, projects across sample rates |
 | Diagnostics dashboard (colour-coded floors, graphs) | Console only; live, with a per-generation history behind it |
@@ -145,16 +147,32 @@ something.
 # check the network's analytic gradients against central differences
 ./gradlew :superintelligence:gradcheck
 
+# record across many seeds in one process, then prove each recording replays exactly
+./gradlew :superintelligence:paritycheck
+./gradlew :superintelligence:paritycheck -PparityArgs="--seeds 8 --heroes 4 --turns 1500"
+
 # check the two advantage implementations agree and sampling behaves
 ./gradlew :superintelligence:gaecheck
 
 # measure what a PPO update costs, and project it across sample rates
 ./gradlew :superintelligence:updatecost
 
+# every correctness gate, one invocation, ~22 seconds
+./gradlew :superintelligence:gates
+
 # train
 
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"
 ```
+
+**Nineteen gates, one invocation.** Each has had the thing it guards deleted, and each has been
+required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
+cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
+process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives
+a write, a read and a second episode, which is the only gate that lets the hero die repeatedly. That is
+where process-spanning game state such as a dead hero's remains becomes visible - and it is how two of
+32 recordings were caught not reproducing. Full table in
+[`testing-guide.md`](testing-guide.md).
 
 `probeClasspath` prints the runtime classpath, which is what the trainer uses to launch workers.
 
@@ -200,14 +218,52 @@ survives disk exactly, Adam moments included, and that bad checkpoints are refus
 | Package | Responsibility |
 | --- | --- |
 | `headless` | libGDX/noosa shims: silent audio, classpath file resolution, inert `Game`, headless `Graphics`, sprite that resolves animations instantly |
-| `env` | `SPDEnv` (reset/step), `ActionMapper` (action injection and masking), `LevelPipeline` (run start, floor transitions, actor scheduling), `WindowBridge`, `SlotAction` |
+| `env` | `SPDEnv` (reset/step), `ActionMapper` (action injection and masking), `LevelPipeline` (run start, floor transitions, actor scheduling), `RunState` (what a new run must not inherit), `EnvConfigBinder` (settings from file and environment), `WindowBridge`, `SlotAction` |
 | `obs` | `ObservationEncoder`, spatial channel definitions, fixed inventory vector, hero scalars |
 | `reward` | `RewardModel` (state diffing), `RewardTerm`/`RewardLedger` (per-term, per-floor breakdown), `Curriculum` |
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and worker bootstrap |
-| `rl` | `Network` (CNN + LSTM + heads), `PPO` (buffer + update), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector` (plays an episode, computes its advantages), `EpisodeRecord` (one episode's scalars + sampled observations) |
-| `train` | `Trainer` (generation loop), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `Checkpoint` (save/resume), `MetricsHistory` (per-generation CSV + end-of-run trend), `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
-| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify) |
-| `diag` | `RunReport`, `Graph`, `Ansi`, and the checks: `GradientCheck`, `ModeCoverageCheck`, `RestartCheck`, `GaeCheck`, `UpdateCostCheck` |
+| `rl` | `Network` (CNN + LSTM + heads), `PPO` (the learner), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector` (plays an episode, computes its advantages), `EpisodeRecord` (one episode's scalars + sampled observations) |
+| `train` | `Trainer` (generation loop), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `PpoHyperparameters`, `Checkpoint` (save/resume), `MetricsHistory` (per-generation CSV + end-of-run trend), `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
+| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `ReplayCatalog`, `RngTrace` |
+| `diag` | `RunReport`, `Graph`, `Ansi`, and the checks: `GradientCheck`, `ModeCoverageCheck`, `RestartCheck`, `GaeCheck`, `UpdateCostCheck`, `ConfigCheck`, `ParityCheck` |
+
+## Configuration
+
+Settings come from four places. Lowest priority first:
+
+| Source | How |
+| --- | --- |
+| Compiled defaults | `EnvConfig` and `PpoHyperparameters` |
+| Properties file | `--config <path>` |
+| Environment | `SPD_*` - `rl.learning_rate` is `SPD_RL_LEARNING_RATE` |
+| Command-line flags | `--max-turns`, `--workers`, ... - these win over everything |
+
+```sh
+# tune from a file
+./gradlew :superintelligence:train --args="--config my-run.properties"
+
+# or from the environment, which is how a container or a .env does it
+SPD_RL_LEARNING_RATE=0.001 SPD_RL_SAMPLE_RATE=0.1 ./gradlew :superintelligence:train
+```
+
+[`superintelligence.properties`](superintelligence.properties) documents all 35 keys against their
+reasons, and its values are the compiled defaults - so a run with no `--config` and no `SPD_*` variables
+behaves exactly as it did before the file existed.
+
+Two rules, both because the alternative is silent: a value that cannot be read is **refused** rather
+than defaulted, and an unknown key **warns** naming itself and its file. A confidently-wrong
+configuration is worse than one that declines to load.
+
+`gradle :superintelligence:configcheck` gates all of it: that a value in a file really changes the
+setting it names (the positive control, without which the rest would pass on a binder that reads
+nothing), that every documented key is reachable, that the shipped file matches the compiled defaults
+in both directions, and that malformed values are refused with the key and file named.
+
+The learning values live in one place, `PpoHyperparameters`. They used to be duplicated - `learningRate`
+on both `Network` and `PPO`, `epochs` and `minibatchSize` on `PPO` and again on `TrainOptions` - and two
+of those copies are load-bearing: Adam's step size must agree between the network that steps and the one
+that reports it, and the per-episode sample cap must agree between the trainer that requests it and the
+worker that applies it. `PPO` keeps its public fields, so the update path is untouched.
 
 ## Design notes
 
@@ -271,3 +327,6 @@ rather than behaviour-changing when a renderer is present:
   context.
 - `ItemSpriteSheet.Icons.film()` - the icon film is built on first use, so item constructors no
   longer force a texture decode. The icon *indices* are game data and are still pure arithmetic.
+- `Bones.clear()` - forgets a fallen hero's remains. Nothing in the game calls it; a normal playthrough
+  wants the opposite. It exists because an environment playing many independent runs in one process
+  cannot have the world depend on which hero died last.

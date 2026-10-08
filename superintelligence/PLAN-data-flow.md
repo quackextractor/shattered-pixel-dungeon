@@ -341,10 +341,12 @@ difference between a prototype run and an overnight one.
    much optimiser movement for the batch, so 2 epochs (150 steps) is closer to sane. Not a
    compromise — a fix.
 2. **A `gates` task** running every check in one gradle invocation. Measured: `gaecheck` takes 0.22 s
-   bare and 2.4 s through gradle, so gradle's per-invocation overhead is ~90% of the cost. All six
-   gates: 7.9 s in one invocation against ~17 s run separately. The checks are not slow; the harness
-   around them is. Named `gates`, not `check`, because the `java-library` plugin already contributes
-   a lifecycle `check` and Gradle refuses to shadow it.
+   bare and 2.4 s through gradle, so gradle's per-invocation overhead is ~90% of the cost. Nineteen
+   gates: 21 s in one invocation against roughly a minute run separately. The checks are not slow; the
+   harness around them is. Named `gates`, not `check`, because the `java-library` plugin already
+   contributes a lifecycle `check` and Gradle refuses to shadow it. Two of the nineteen are
+   `configcheck` and `paritycheck`, added with the externalised configuration; `paritycheck` is the one
+   that found process-spanning game state (`Bones`), which no gate before it was able to reach.
 3. **Fewer generations per run, seed fixed.** Deliberately the prototype's choice: a prototype needs to
    see a trend in a minute, not a correct long run overnight.
 

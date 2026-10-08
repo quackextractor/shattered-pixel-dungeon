@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A dead hero's remains were inherited by the next run, and 2 of 32 recordings stopped reproducing.**
+  `Bones` holds a fallen hero's belongings in statics plus a `bones.dat` under the process's file root,
+  and `RegularLevel.createItems` reads them to drop a `REMAINS` heap. That is the feature working: a
+  player returning to a dungeon finds their stuff where they left it. For an environment playing
+  thousands of independent runs in one process it means the world a run generates is a function of
+  process history as well as of its seed.
+  Found by the new `paritycheck`, which records a sweep of 8 seeds x 4 hero classes in one process and
+  verifies every recording twice. Two recordings diverged, both on inventory, both on a remnant - one
+  carrying a HUNTRESS's `BowFragment` where the replay had a ROGUE's `CloakScrap`, one the other way
+  round. The recording and the replay were the same hero; only what had died in between differed.
+  Every existing gate missed it, and the reason is the same in each: one episode per process, or a hero
+  that never dies. `paritycheck` is the only gate that lets the hero die repeatedly.
+  `Bones.clear()` is new and additive, clearing the statics only - nothing in the game calls it, since a
+  normal playthrough wants the opposite. `RunState` now clears statics *and* the file, and does it
+  **before** `startRun` rather than after: remains are read during level generation, so clearing them
+  afterwards cleared them one floor too late. That ordering was the bug the first attempt at this fix
+  had, and every other reset case passed while it was in place. `resetcheck` covers it, by killing a
+  hero and asserting the next run's first floor carries none of it.
+- **The configuration that decides a run's settings was hardcoded in five classes, and two of the
+  values had to agree by coincidence.** `learningRate` was a field on both `Network` and `PPO`;
+  `epochs`, `minibatchSize` and the sampling caps were on `PPO` and again on `TrainOptions`; the stall
+  timeout was a literal in `WorkerPool` with a different default in `TrainOptions`. A hyperparameter
+  sweep that has to edit source and recompile to try a value is a sweep nobody runs.
+  Settings now load from a properties file (`--config`) or from `SPD_*` environment variables, which
+  override the file, which overrides the compiled defaults. Command-line flags still win over all of
+  it - someone who typed `--max-turns 400` meant 400 turns. `PpoHyperparameters` holds one copy of each
+  learning value; `PPO` and `Trainer` keep their public fields, so the update path is untouched.
+  A value that cannot be read is refused rather than defaulted, and an unknown key warns naming itself:
+  a confidently-wrong configuration is worse than one that declines to load. `superintelligence.properties`
+  ships with every key documented against its reason, and `configcheck` asserts it agrees with the
+  compiled defaults in both directions - a key whose file value has drifted from the code, and a key
+  the code gained that the file never learned about.
+
 - **Sound-effect pitch was drawn from the gameplay stream.** Thirty-four `Sample.INSTANCE.play` calls
   computed their pitch argument with `Random.Float(...)`, so every footstep, parry and hit consumed
   randomness the simulation runs on. `Hero.move` draws one per step - the terrain it lands on decides
@@ -896,6 +929,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   set, and those episodes were recorded with the *requested* seed, which is empty for them. `verify`
   resets onto a fresh draw and reports a divergence at step 0 — correct behaviour, and a message that
   reads as a broken seed lock. Any such file already on disk stays unfixable; re-record it.
+
+
+### Added
+
+### Added
+
+- **`paritycheck`, a replay-parity sweep across seeds in one process.** Records N seeds x M hero
+  classes under the scripted policy, writes each recording, reads it back, verifies it, and then
+  verifies every recording a second time after the whole sweep has run in between. The second pass is
+  what a recording's own round trip cannot see: nothing has happened between the two verifications of
+  one file, so a static that survived a reset has nothing to leak into. It is the gate that found the
+  remains fault above.
+- **`configcheck`, which asserts the configuration layer is capable of configuring anything.** The
+  first check is a positive control: a deliberately wrong value must produce a wrong setting, or every
+  other assertion would be satisfied by the compiled defaults alone by a binder that reads nothing.
+  The rest prove every documented key reaches the setting it names, that the shipped file's values equal
+  the compiled ones, that an unknown key warns rather than being absorbed, and that malformed or
+  out-of-range values are refused with the key and the file named.
+- **`RunState`, the one place that lists what a new run must not inherit.** Four statics: the armed aim
+  listener, the headless dialog slot, the pending use item, and a dead hero's remains. `SPDEnv.reset`
+  and the desktop replay viewer each cleared a subset of them by hand, which is precisely how the armed
+  listener survived a reset and put every new episode straight into `TARGETING` - 4 of 10 recorded runs
+  diverged at step 0, and each of those four verified cleanly on its own.
+- **`docs/documentation.md`** - the Superintelligence module: architecture, the environment contract,
+  configuration, the gate matrix, and what determinism does and does not guarantee.
+
+### Changed
+
+- **`resetcheck` grew a case per leaked static** (3 checks -> 5). An outstanding dialog is now tested as
+  well as an outstanding aim, and a run following a hero's death is tested for inheriting nothing. Each
+  is mutation-tested: deleting the corresponding clear makes the case fail, and the remains case
+  additionally fails if the clear is moved back to after level generation.
+- **`testing-guide.md` names `gates` rather than `verifyall`**, which it documented and which does not
+  exist, and its matrix lists the two new gates.
+- **A pre-commit hook** runs the badge-consistency check and the full gate suite, and refuses the
+  commit on failure. The badge check corrects `README.md` and re-stages it rather than aborting, because
+  a one-line mechanical mismatch is not worth teaching someone to reach for `--no-verify`.
 
 ## [4.1.0] - 2026-10-06
 

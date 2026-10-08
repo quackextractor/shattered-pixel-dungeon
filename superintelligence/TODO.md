@@ -3,8 +3,8 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-06, after the gradient repair, a second determinism audit, and the first
-successful multi-hero reproducibility sweep.
+Last updated: 2026-10-09, after the static-reset protocol, the externalised configuration, and the
+replay-parity sweep that found a fourth instance of process-spanning game state.
 
 ---
 
@@ -13,7 +13,38 @@ successful multi-hero reproducibility sweep.
 **Fixed.** Recording a run and re-executing it in a fresh process now reproduces exactly.
 
 Verified: 120 rollouts - 4 seeds x 5 hero classes x 6 repeats - produce 1 distinct score per
-seed/hero pair, and a recorded 499-step run verifies 4/4 in fresh processes.
+seed/hero pair, and a recorded 499-step run verifies 4/4 in fresh processes. Three rollouts of one seed
+across three fresh JVMs produce byte-identical `.replay` files, and a sweep of 32 recordings over 8 seeds
+x 4 hero classes in one process replays exactly, twice.
+
+### 0.4 A dead hero's remains reached the next run - found by the parity sweep
+
+The last one, and the only one that needed a *sweep* rather than a repeat to see. `Bones` keeps a fallen
+hero's belongings in statics plus a `bones.dat` under the process's file root, and
+`RegularLevel.createItems` reads them to drop a `REMAINS` heap. For a player returning to a dungeon that
+is the feature; for an environment playing thousands of independent runs in one process it means the
+world is a function of process history as well as of its seed.
+
+`diag.ParityCheck` recorded 32 runs and verified each twice. Two diverged, both on inventory, both on a
+remnant - one recording carrying a HUNTRESS's `BowFragment` where its own replay had a ROGUE's
+`CloakScrap`, one the other way round. Same seed, same hero, same actions; only what had died in
+between differed.
+
+Two things are worth recording about the fix rather than the fault:
+
+- **Every other gate was structurally blind to it.** Each either plays one episode per process or never
+  lets the hero die. `resetcheck` proves a reset is a function of its arguments, which is about the
+  environment; this was about the recording, and about game state that is supposed to persist.
+- **The first attempt at the fix was wrong in a way every other test passed straight through.** Clearing
+  the remains *after* `startRun` looks correct - it is where the other three statics are cleared - but
+  remains are read during level generation, so the new floor was already carrying the previous hero's
+  heap. `RunState` is now called before `startRun`, and `resetcheck` has a case that kills a hero and
+  asserts the next floor carries none of it. That case also needed a positive control of its own: for
+  its first few revisions it used a seed whose hero *survived*, so there was nothing to inherit and it
+  passed without testing anything.
+
+`Bones.clear()` is the one addition to the game, and it is additive only - nothing in the game calls
+it.
 
 A second pass found more identity-hash iteration after the first fix: `Char.buffs(Class)` handed
 callers a `HashSet`, `Random.chances(HashMap)` chose secret room contents off a `Class`-keyed
@@ -74,7 +105,12 @@ assigned in creation order and therefore stable.
   particle.
 - Determinism has been verified at 400 turns on a handful of seeds. Not verified across all 26
   floors, boss levels, or the shop/alchemy paths, which are exactly where exotic code lives. A
-  long-horizon soak across many seeds is the right next check.
+  long-horizon soak across many seeds is the right next check, and `paritycheck -PparityArgs="--turns
+  1500 --seeds 8 --heroes 4"` is already the command for it.
+- **State that persists between *processes* is only as isolated as the file root.** `Bones` was found
+  because a sweep let the hero die repeatedly; `Bones.clear()` plus deleting the file handles it. There
+  may be other save-shaped state the game reads during level generation - a sweep across more floors and
+  more heroes is what would find it, not another audit of the reset path.
 
 ---
 
@@ -326,6 +362,13 @@ These are all casualties of the state-diffing decision (see Deviations, D2). A d
 "an item was created in the alchemist", because the alchemy pot is a terrain tile and the result is
 one item delta indistinguishable from a pickup. Fixing them needs real observation points in the
 craft, equip and scroll/potion paths - i.e. the hooks research.md:8 actually asked for.
+
+**Both are now externally configurable, which is not the same as fixed.** `env.allow_alchemy` and
+`env.allow_trading` can be set in `superintelligence.properties` or through `SPD_ENV_ALLOW_ALCHEMY`,
+and `configcheck` proves the values reach the settings they name - but nothing reads those settings, so
+turning them changes nothing observable. That is deliberate: the key is visible in one documented place
+rather than inferred from behaviour, and the dead wiring is a row in a table rather than a gap in the
+source.
 
 ---
 

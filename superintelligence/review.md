@@ -332,3 +332,72 @@ public class AutomatedParityVerifier {
 2. **Static State Hygiene:** Ensure complete static state reset across consecutive episodes to guarantee zero replay divergence.
 
 **Final Verdict:** The Shattered Pixel Dungeon Superintelligence framework is an exceptionally engineered, high-performance reinforcement learning environment. With static state cleanup protocols and externalized configuration binders in place, the project is fully prepared for scaled model training and deployment.
+
+---
+
+## 7. As Implemented
+
+Written after the review, so the next reader does not re-investigate the parts of it that describe
+faults the code has not had for a while. Each was verified in the source, not taken from the prose.
+
+### Already present when this review was written
+
+**Issue 1, the permanent rest trap.** Fixed at `env/ActionMapper.java`: `apply` clears
+`hero.resting` for every action that is not `REST`, before the switch. `ActionMapper` now sets
+`hero.resting = true` and calls `hero.next()` for `REST` rather than `hero.rest()`, so the hero reaches
+a ready state. `rewardcheck` has a case that rests, escapes, and scores the escape as a legal action.
+
+**Issue 2, `HeroEncoder` drawing from the gameplay RNG.** Fixed at `obs/HeroEncoder.java`: the defence
+feature is `defenseCeiling()`, which takes each component's maximum rather than calling
+`hero.drRoll()`. `diag.ObserveCheck` gates it, with a positive control so a broken draw counter cannot
+make the gate pass for the wrong reason.
+
+**Issue 3, the static listener leaking across resets.** The clearing itself was already in
+`SPDEnv.reset`. What was missing was that it lived in three places, only some of which were cleared by
+each caller - see below.
+
+**The §3 PPO gradient-buffer item.** Already correct: `PPO` keeps separate
+`actionGrad`/`slotGrad`/`targetGrad` per head, and each parallel shard holds its own copy alongside its
+own probability buffers. The three heads have different widths, so a shared buffer would run off the
+end of the narrower masks.
+
+### What this review actually produced
+
+**The static-reset protocol (§1's recommendation).** Now `env/RunState.java`, one method listing every
+process-scoped static a run must not inherit, called by both `SPDEnv.reset` and the desktop viewer. It
+covers more than the review listed, because a sweep found a fourth: a dead hero's remains, held in
+`Bones` statics and a file under the process's file root. The ordering is load-bearing and was wrong
+on the first attempt - remains are read during level generation, so clearing them after `startRun`
+clears them one floor too late.
+
+**Configuration externalisation (the one `Fail`, and Feature 1).** `env/EnvConfigBinder.java`,
+`train/PpoHyperparameters.java` and a committed `superintelligence.properties`. The draft's shape
+(`loadFromFile` returning an `EnvConfig`) is close to what was built; the substantive additions are
+`SPD_*` environment overrides above the file, refusal rather than defaulting on an unreadable value,
+and a warning that names an unknown key. Draft code that could not be used literally:
+`EnvConfig` has no `learningRate`, `gamma`, `gaeLambda`, `clipEpsilon`, `rolloutCap`, `turnLimitPerFloor`
+defaults for every class named, and `rolloutCap` is gone - it bounded the wrong end of the pipeline and
+was replaced by two caps with different units.
+
+**Feature 2, the automated parity verifier.** `diag/ParityCheck.java`. The draft's body cannot be
+transcribed: `recorder.captureStep(env)`, `env.stepDefault()`, `ReplayIO.verify(replay, config)` and
+`result.passed`/`result.divergedStep` do not exist. It is bound to the real API - `ScriptedEpisode.record`
+-> write -> read back -> `ReplayIO.verify(replay, env)` -> `Verification.diverged`/`divergedAt` - and it
+does the thing the review describes: many seeds, one process, sequential verification.
+
+**Two gates added, nineteen in total.** `paritycheck` found the remains fault on its first run: 2 of 32
+recordings diverged. `configcheck` proves the configuration layer can configure anything at all, which
+is the property a binder that silently ignores its input cannot have.
+
+**Documentation.** [`../docs/documentation.md`](../docs/documentation.md) is new and framework-scoped.
+`README.md` gained a Configuration section; `TODO.md` records the remains fault as §0.4 alongside the
+three that came before it, because it is the fourth instance of the same shape.
+
+### Two claims in this review that the code contradicts
+
+- **"Critical parameters remain hardcoded across multiple Java classes."** Accurate at the time, and the
+  duplication it names was real - `learningRate` on both `Network` and `PPO`, the sampling caps on `PPO`
+  and `TrainOptions`. Now one copy each, in `PpoHyperparameters`.
+- **The `AutomatedParityVerifier` signature.** Worth repeating because it is the kind of draft that
+  reads as an instruction: none of the methods it calls exist. Verified by compiling rather than by
+  reading, which is the only way to tell.
