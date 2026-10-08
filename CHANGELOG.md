@@ -324,6 +324,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     not one.
   - Both guards are in. `rollout` refuses an empty `--seed` and points at the omitted flag; `verify`
     refuses a recording with no seed and names the file and the field.
+- **`observecheck`**, a gate asserting that *reading* the world draws no randomness. One violation of
+  this already cost a full parity investigation: `HeroEncoder` built its defence feature with
+  `hero.drRoll()`, which is not a property of the hero but a fresh draw per call, so encoding an
+  observation advanced the gameplay RNG twice per agent step and the stream stayed offset from the first
+  floor. Nothing caught it, because every gate re-executes through `HeadlessGame` — a gate that shares
+  its implementation with its subject cannot see a fault in it. This one measures the encoders directly.
+  4 checks: that `ObservationEncoder.encode` and `Quickslots.capture` draw nothing, that a second encode
+  of an unchanged world is byte-identical, and a positive control that draws on purpose and requires the
+  counter to move — without which every "no draws" check would pass for the wrong reason if the
+  instrument broke.
+  Mutation-tested: restoring `hero.drRoll()` fails it with `drew 6 value(s)` and a differing hero vector.
+  Backed by `RandomTrace`, a counter in `com.watabou.utils` that is off by default and instruments only
+  `Random`. Presentation randomness lives on `PRandom`, so what it counts is exactly the draws the
+  simulation is entitled to.
 - **A recording now says how wide its slot head was.** Replay v2 carries `max_slots` and
   `allow_equipping`. Neither was recorded, and they are the only two settings `ActionMapper` reads: the
   slot head is a fixed-width window over the inventory, so a recorded index names a different item at a

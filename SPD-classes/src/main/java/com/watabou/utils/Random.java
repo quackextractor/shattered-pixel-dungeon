@@ -99,8 +99,11 @@ public static synchronized void resetGenerators(){
 	}
 
 	public static synchronized float Float( boolean useGeneratorStack ) {
-		if (useGeneratorStack)  return generators.peekFirst().nextFloat();
-		else                    return generators.peekLast().nextFloat();
+		float v;
+		if (useGeneratorStack)  v = generators.peekFirst().nextFloat();
+		else                    v = generators.peekLast().nextFloat();
+		RandomTrace.record( Float.floatToRawIntBits( v ), !useGeneratorStack );
+		return v;
 	}
 
 	//returns a uniformly distributed float in the range [0, max)
@@ -126,8 +129,11 @@ public static synchronized void resetGenerators(){
 	//returns a uniformly distributed int in the range [-2^31, 2^31)
 	//can either use the current generator in the stack, or force the first generator (pure random)
 	public static synchronized int Int( boolean useGeneratorStack ) {
-		if (useGeneratorStack)  return generators.peekFirst().nextInt();
-		else                    return generators.peekLast().nextInt();
+		int v;
+		if (useGeneratorStack)  v = generators.peekFirst().nextInt();
+		else                    v = generators.peekLast().nextInt();
+		RandomTrace.record( v, !useGeneratorStack );
+		return v;
 	}
 
 
@@ -180,8 +186,11 @@ public static synchronized void resetGenerators(){
 	//returns a uniformly distributed long in the range [-2^63, 2^63)
 	//can either use the current generator in the stack, or force the first generator (pure random)
 	public static synchronized long Long( boolean useGeneratorStack ) {
-		if (useGeneratorStack)  return generators.peekFirst().nextLong();
-		else                    return generators.peekLast().nextLong();
+		long v;
+		if (useGeneratorStack)  v = generators.peekFirst().nextLong();
+		else                    v = generators.peekLast().nextLong();
+		RandomTrace.record( v, !useGeneratorStack );
+		return v;
 	}
 
 	//returns a mostly uniformly distributed long in the range [0, max)
