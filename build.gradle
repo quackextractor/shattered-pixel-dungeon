@@ -30,10 +30,31 @@ allprojects {
     }
     version = appVersionName
 
-    repositories {
-        google()
-        mavenCentral()
-        maven { url 'https://central.sonatype.com/repository/maven-snapshots/' }
-    }
+repositories {
+          google()
+          mavenCentral()
+          maven { url 'https://central.sonatype.com/repository/maven-snapshots/' }
+      }
+  
+  }
 
+//Every correctness gate in one invocation, across both modules.
+//
+//It has to live above the modules rather than inside one of them: :desktop depends on
+//:superintelligence, so :superintelligence:gates cannot depend on :desktop:playbackcheck without
+//a dependency cycle. A gate that cannot be run without hand-assembling a classpath is a gate that
+//gets skipped, and the classpath is exactly where the staleness lives.
+//
+//Freshness is a property of the graph rather than a check. Both gate tasks take their classpath from
+//sourceSets.main.runtimeClasspath, which is a buildable file collection, so gradle recompiles whatever
+//changed before any gate runs. There is therefore no path by which these can execute against a stale
+//build - which is worth more than reporting whether they did, and is why this task deliberately does not
+//print a freshness claim it cannot actually verify.
+tasks.register('verifyall') {
+    group = 'verification'
+    description = 'Builds what the gates need and runs every correctness gate in one invocation.'
+    dependsOn ':superintelligence:gates', ':desktop:playbackcheck'
+    doLast {
+        println "all gates passed: :superintelligence/gates and :desktop/playbackcheck"
+    }
 }

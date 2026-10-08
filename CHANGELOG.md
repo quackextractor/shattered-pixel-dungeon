@@ -324,6 +324,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     not one.
   - Both guards are in. `rollout` refuses an empty `--seed` and points at the omitted flag; `verify`
     refuses a recording with no seed and names the file and the field.
+- **`rngtrace`**, the first automated check that the rendered game and the headless environment consume
+  randomness identically. Everything else in the suite compares a headless run with another headless
+  run, so a fault in the headless path cannot show up in any of them. This compares against an artefact
+  produced by the viewer, which is the only thing in the project capable of disagreeing.
+  Per step it records the cumulative draw count *and* an order-sensitive fingerprint — a count alone
+  cannot tell "the same numbers in a different order" from "the same numbers in the same order", and
+  the first is just as broken. Counters start at zero once the world is built, so the trace measures
+  steps rather than the several thousand draws that level generation makes; the observer contract is
+  `ReplayIO.StepObserver`, so it reuses the verification loop rather than writing a second replay loop.
+  Comparison is keyed by step rather than line position, so "first divergence" keeps meaning what it
+  says when one run produces a different number of samples.
+  Landed as a diagnostic rather than a gate, per the plan: any engine change that touches a draw
+  invalidates a golden, and a gate people regenerate reflexively is worth less than one they read.
+  Against a 229-step recording the viewer's trace and the headless run's **agree on every step** — the
+  first independent confirmation in the project that the two agree on randomness, previously
+  established only by hand, one diff at a time.
+- **`gradlew verifyall`**, every gate in both modules in one invocation, ~14 s. It has to sit above the
+  modules rather than inside one: `:desktop` depends on `:superintelligence`, so
+  `:superintelligence:gates` cannot depend on `:desktop:playbackcheck` without a cycle. Freshness is a
+  property of the graph rather than a check — both gate tasks take their classpath from
+  `sourceSets.main.runtimeClasspath`, so gradle recompiles what changed before any gate runs, and there
+  is no path by which these execute against a stale build. That is worth more than reporting whether
+  they did, so the task deliberately prints no freshness claim it cannot verify.
 - **`playbackcheck`**, a gate that runs `ReplayPlayer` with no window, no scene and no `ReplayController`,
   and asserts both halves: that a faithful recording plays clean, and that a recording altered in
   `heroPos`, `heroHp`, `turn` or `inventory` is caught *at the altered step* with a message describing
@@ -337,6 +360,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the original probe produced — *"a faithful replay diverged at step 2: USE/0 in TARGETING: engine time is
   0.0, recording says 1.0"* — and the four field mutations then report step 2 instead of step 30, which
   is what proves the localisation check is doing work.
+- **Known limitation, found by `rngtrace`: a run that ended on the soft stall guard replays as a
+  stall.** `SPDEnv.checkFloorLimits` also terminates when the hero's position and health have not
+  changed for `stallLimit` consecutive turns. The recording is complete and the hero is alive, but the
+  viewer has no environment to ask, so after the final step it waits for a hero that will never become
+  ready and reports "stalled - hero did not become ready within 400 turns" — false, and useless, since
+  the recording was complete rather than truncated. The header records no termination reason, which is
+  the actual gap. A guard mirroring the per-floor turn cap was written and removed: the stall guard
+  fires first in practice, so nothing could exercise it, and shipping an unexercisable check would
+  contradict the argument the rest of this work is built on. Fixing it properly means recording the
+  termination reason in the header; see `PLAN-replay-verification.md` section 12.1.
 - **`observecheck`**, a gate asserting that *reading* the world draws no randomness. One violation of
   this already cost a full parity investigation: `HeroEncoder` built its defence feature with
   `hero.drRoll()`, which is not a property of the hero but a fresh draw per call, so encoding an

@@ -247,6 +247,32 @@ public class ReplayIO {
 	 * comparison in the trainer becomes meaningless.
 	 */
 	public static Verification verify( Replay replay, SPDEnv env ){
+		return verify( replay, env, null );
+	}
+
+	/** Notified once per replayed step, after the world has settled. */
+	public interface StepObserver {
+		/**
+		 * Called once the world is built and before the first step, so an observer measuring cumulative
+		 * counters can start from zero.
+		 *
+		 * <p>Level generation draws several thousand values, and folding them in would make every early
+		 * step look identical while saying nothing about the steps themselves. Determinism of generation
+		 * is already covered by the position comparison below.
+		 */
+		default void onReset(){}
+
+		void onStep( int index, Replay.Step step, boolean running );
+	}
+
+	/**
+	 * Replays, notifying {@code observer} after each step.
+	 *
+	 * <p>The observer is how {@code rngtrace} reuses this loop rather than writing a second one. A second
+	 * replay loop would be a second implementation of "replay a recording", which is the same
+	 * duplication that let the viewer and the trainer drift apart in the first place.
+	 */
+	public static Verification verify( Replay replay, SPDEnv env, StepObserver observer ){
 		Verification result = new Verification();
 
 		HeroClass heroClass;
@@ -263,6 +289,7 @@ public class ReplayIO {
 		env.config().maxSlots = replayed.maxSlots;
 		env.config().allowEquipping = replayed.allowEquipping;
 		env.reset( replay.seedText, heroClass );
+		if (observer != null) observer.onReset();
 
 		int cumulative = 0;
 		for (int i = 0; i < replay.steps.size(); i++){
@@ -314,6 +341,12 @@ public class ReplayIO {
 						+ "], recorded [" + step.inventory + "]";
 				break;
 			}
+
+			//reported after the comparisons, so a step that diverged is still traced: the point of a
+			//trace is often to see what the world was doing at the step where it stopped agreeing.
+			//One sample per replayed step and no trailing sentinel, so a trace lines up against one
+			//collected by the viewer step for step.
+			if (observer != null) observer.onStep( i, step, true );
 		}
 
 		result.score = env.ledger().total();

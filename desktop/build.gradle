@@ -36,6 +36,9 @@ tasks.register('replay', JavaExec) {
     if (project.hasProperty('spdMute')) { systemProperty 'spd.mute', '1' }
     if (project.hasProperty('spdFast')) { systemProperty 'spd.fast', project.property('spdFast') }
     if (project.hasProperty('spdWindowed')) { systemProperty 'spd.windowed', '1' }
+    //writes a per-step RNG trace for comparison against `rngtrace`; see
+    //superintelligence/PLAN-replay-verification.md section 6
+    if (project.hasProperty('spdRngTrace')) { systemProperty 'spd.rngTrace', project.property('spdRngTrace') }
     systemProperty 'Implementation-Title', appPackageName
     systemProperty 'Implementation-Version', appVersionCode
     standardInput = System.in

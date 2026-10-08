@@ -111,6 +111,7 @@ cliTask('slotcheck', 'Fails if a recorded slot index does not resolve to the ite
 cliTask('verifycheck', 'Fails if replay verification cannot detect an altered recording.')
 
   cliTask('replayprobe', "Reports how far a replayed observation's value drifts from the rollout's.")
+  cliTask('rngtrace', 'Reports how much randomness each replayed step consumed, for comparing headless against the rendered game.')
   cliTask('valuescale', "Reports the critic's target range against the range it can reach.")
   cliTask('parallelcheck', "Fails if a parallel update computes a different gradient from the serial one.")
   cliTask('rewardcheck', 'Fails if ending an episode can be cheaper than dying.')

@@ -4,8 +4,9 @@ Goal: give this project the ability to *prove* that a headless rollout and the r
 same simulation, and that the desktop viewer's own control flow works - without a human writing a new
 throwaway probe for every question.
 
-Status: **planned, not started.** Every claim in section 3 was read out of the source; section 9 records
-which were then confirmed by running something.
+Status: **built.** All four tools exist, the two findings from validation are fixed, and `gradlew
+verifyall` runs every gate in both modules in ~14 s. Section 12 records what each one actually caught,
+including one fault that is still open.
 
 ---
 
@@ -373,3 +374,78 @@ message are an understatement: it needs both the guard in `rollout` and one in `
 Nothing in section 3 was wrong. The one claim I would have had to soften - "the viewer's control
 flow is untested" - is worse than untested: it is *differently tested by its only execution
 context*, and that context is masking a real divergence from the trainer.
+
+---
+
+## 12. What was built, and what it caught
+
+| Tool | Where | State |
+| --- | --- | --- |
+| T1 headless playback verifier | `desktop/.../replay/PlaybackCheck.java`, `gradlew :desktop:playbackcheck` | 7 checks |
+| T2 observation purity | `superintelligence/.../diag/ObserveCheck.java`, `gradlew :superintelligence:observecheck` | 4 checks |
+| T3 RNG fingerprint | `superintelligence/.../replay/RngTrace.java`, `gradlew :superintelligence:rngtrace`, `-PspdRngTrace=<path>` on `:desktop:replay` | diagnostic, as recommended |
+| T4 one command | `gradlew verifyall` | 14 gates, ~14 s |
+| F1 viewer preamble | `ReplayPlayer.applyNextStep` | fixed, `6d2f21e3c` |
+| F2 empty seed | `Main.rollout`, `Main.verify` | fixed, `891ecb267` |
+
+### Each was mutation-tested, because a gate that cannot fail is decoration
+
+| Mutation | Result |
+| --- | --- |
+| Restore `hero.drRoll()` in `HeroEncoder` | T2 fails: `drew 6 value(s)`, differing hero vector |
+| Remove the `clearPendingCellListener` F1 added | T1 fails: `a faithful replay diverged at step 2`, and the field mutations then report step 2 instead of 30 |
+| Tamper one line of a golden trace | T3 reports `first divergence at step 6` with both sides |
+
+All reverted; the mutated files are byte-identical to their parents.
+
+### T3's first real result
+
+Against the 229-step `RF` recording, the rendered viewer's trace and the headless run's trace **agree
+on every step**:
+
+```
+[OK]     rng trace matches ...\rendered3.trace
+```
+
+This is the first automated, independent confirmation in the project that the viewer's randomness
+consumption equals the trainer's. Everything before this point established it by hand, one diff at a
+time.
+
+### 12.1 Still open - found by T3, not fixed
+
+A recording whose run ended on the trainer's **soft stall guard** (`SPDEnv.checkFloorLimits`: hero
+position and health unchanged for `stallLimit` consecutive turns) plays to its last step and then
+reports:
+
+```
+stalled - hero did not become ready within 400 turns
+```
+
+The recording is complete; the hero is alive and healthy. The viewer waits for a hero that will never
+be ready because it has no `SPDEnv` to ask, and the header records no termination reason. Measured on a
+26-step run recorded with `--max-turns 25` whose last recorded turn is 23, so the turn cap was not the
+cause.
+
+A guard mirroring `turnsThisFloor >= turnLimitPerFloor` was written and then **removed**: the stall
+guard fires first in practice, so no fixture could exercise it, and shipping a check that cannot be
+shown to fail would contradict the argument this whole plan is built on.
+
+The real fix is to record why the run ended. `Replay` gains a termination reason, the recorder writes
+it, and the viewer finishes rather than draining when the replay ends in a termination it can see.
+That is a schema change plus recorder and worker plumbing, and is the next piece of work rather than
+something to bolt on here.
+
+### 12.2 Decisions taken without asking
+
+Two, both reversible, both recorded here rather than buried:
+
+1. **Replay version bumped to 2, and v1 still parses with `EnvConfig` defaults.** The existing tooling
+   fixtures in `replays/` stay readable. They diverge, as they did before, because they were recorded
+   against the RNG stream since repaired - so this preserves readability, not fidelity.
+2. **T3 landed as a diagnostic, not a gate**, following the recommendation in section 10. It is invoked
+   by hand against a golden that any engine change can invalidate.
+
+### 12.3 Open decisions still open
+
+From section 10: corpus policy (check in 8-12 regenerated recordings, or generate on demand), and
+whether T1's budget should be split into a small fast gate and a larger periodic job.

@@ -131,6 +131,41 @@ public class ReplayPlayer {
 		this.playback = new ReplayPlayback( replay );
 		this.mapper = new ActionMapper( config );
 		Actor.manualScheduling = true;
+
+		String tracePath = System.getProperty( "spd.rngTrace" );
+		if (tracePath != null && !tracePath.trim().isEmpty()){
+			rngTracePath = tracePath;
+			rngTrace = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace();
+			com.watabou.utils.RandomTrace.enable();
+			rngTrace.onReset();
+		} else {
+			rngTracePath = null;
+			rngTrace = null;
+		}
+	}
+
+	/**
+	 * Per-step RNG trace, written when {@code -Dspd.rngTrace=<path>} is set.
+	 *
+	 * <p>Null unless asked for, so an ordinary playback costs one null check per step. The rendered trace
+	 * is the golden side of {@code rngtrace}: it is the only artefact in the project produced by the game
+	 * as a player sees it, and so the only one capable of disagreeing with a headless run.
+	 *
+	 * <p>Counters start at zero when the player is constructed, because the world is already built by then
+	 * and level generation draws several thousand values that say nothing about the steps.
+	 */
+	private final com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace rngTrace;
+	private final String rngTracePath;
+
+	private void flushRngTrace(){
+		if (rngTrace == null) return;
+		try {
+			rngTrace.writeTo( java.nio.file.Paths.get( rngTracePath ));
+		} catch (java.io.IOException e){
+			System.err.println( "[replay] could not write the rng trace to " + rngTracePath + ": "
+					+ e.getMessage() );
+		}
+		System.err.println( "[replay] wrote " + rngTrace.size() + " rng trace samples to " + rngTracePath );
 	}
 
 	/** Replays under the config the header carries. */
@@ -482,6 +517,9 @@ awaitingSettle = true;
 				diverged = true;
 				halt( playback.status() );
 			}
+			//sampled after the comparison but before advancing, so a step that diverged is still traced:
+			//the point of a trace is usually to see what the world was doing where it stopped agreeing
+			if (rngTrace != null) rngTrace.sample( playback.cursor() );
 			playback.advance();
 		} else {
 			playback.finish();
@@ -538,6 +576,7 @@ awaitingSettle = true;
 			playing = false;
 			haltReason = reason;
 			System.err.println( "[replay] halted: " + reason );
+		flushRngTrace();
 
 			boolean diverged = playback.diverged();
 			if (AUTO_CLOSE || ( AUTO_CLOSE_ON_DIVERGE && diverged ) ){

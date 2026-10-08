@@ -34,6 +34,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayCatalog;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace;
 
 /**
  * Entry point for the headless training framework.
@@ -63,6 +64,7 @@ public class Main {
 		switch (command) {
 		case "rollout":  rollout( rest );  break;
 		case "verify":    verify( rest );    break;
+		case "rngtrace": rngtrace( rest ); break;
 		case "gradcheck": gradcheck( rest ); break;
 		case "modecheck": ModeCoverageCheck.main( rest ); break;
 		case "restartcheck": RestartCheck.main( rest ); break;
@@ -211,6 +213,81 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
 
 	// --------------------------------------------------------------------------- replay
 
+	/**
+	 * Replays a recording and reports how much randomness each step consumed.
+	 *
+	 * <p>The headless half of the comparison in PLAN-replay-verification.md section 6. The other half is
+	 * the rendered viewer, which writes the identical format behind {@code -Dspd.rngTrace=<path>}.
+	 *
+	 * <p>A diagnostic, not a gate: golden traces are invalidated by any engine change that touches a draw,
+	 * and regenerating one reflexively would make the comparison worthless.
+	 */
+	private static void rngtrace( String[] args ){
+		if (args.length == 0){
+			System.err.println( "[ERROR] rngtrace needs a replay file" );
+			System.exit( 1 );
+			return;
+		}
+
+		java.io.File file = new java.io.File( args[ 0 ] );
+		Options options = Options.parse( tail( args ) );
+		boot( options );
+
+		java.nio.file.Path out = options.rngTraceOut;
+		java.nio.file.Path golden = options.rngTraceGolden;
+
+		Replay replay;
+		try {
+			replay = ReplayIO.read( file );
+		} catch (java.io.IOException e){
+			System.err.println( "[ERROR] " + e.getMessage() );
+			System.exit( 1 );
+			return;
+		}
+
+		if ( replay.seedText == null || replay.seedText.trim().isEmpty() ){
+			System.err.println( "[ERROR] " + file.getName() + " records no seed, so its world cannot be "
+					+ "rebuilt and there is nothing to trace." );
+			System.exit( 1 );
+			return;
+		}
+
+		SPDEnv env = new SPDEnv( ReplayIO.configFor( replay ), HeadlessGame.install() );
+
+		RngTrace trace = new RngTrace();
+		com.watabou.utils.RandomTrace.enable();
+
+		ReplayIO.verify( replay, env, trace.observer() );
+
+		com.watabou.utils.RandomTrace.disable();
+
+		if (out != null){
+			try {
+				trace.writeTo( out );
+			} catch (java.io.IOException e){
+				System.err.println( "[ERROR] cannot write " + out + ": " + e.getMessage() );
+				System.exit( 1 );
+				return;
+			}
+			System.out.println( "wrote " + trace.size() + " trace samples to " + out );
+		}
+
+		if (golden != null){
+			String problem = RngTrace.compare( golden, trace );
+			if (problem.isEmpty()){
+				System.out.println( "[OK]     rng trace matches " + golden );
+			} else {
+				System.out.println( "[ERROR] rng trace differs from " + golden );
+				System.out.println( "        " + problem.replace( "\n", "\n        " ) );
+				System.exit( 1 );
+			}
+		}
+
+		if (out == null && golden == null){
+			System.out.println( trace.render() );
+		}
+	}
+
 	private static void verify( String[] args ){
 		if (args.length == 0){
 			System.err.println( "[ERROR] replay needs a file" );
@@ -352,8 +429,12 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
 		java.io.File saveTo;
 		java.io.File outDir;
 		int maxTurns = 0;
-		boolean noColor = false;
-		boolean persistSaves = false;
+boolean noColor = false;
+      boolean persistSaves = false;
+      /** Where rngtrace writes its per-step trace, or null to print it. */
+      java.nio.file.Path rngTraceOut;
+      /** A rendered-game trace to compare against, or null. */
+      java.nio.file.Path rngTraceGolden;
 
 		static Options parse( String[] args ){
 			Options o = new Options();
@@ -374,9 +455,15 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + env.endReason()
 					case "--max-turns":
 						o.maxTurns = Integer.parseInt( args[ ++i ] );
 						break;
-					case "--no-color":
-						o.noColor = true;
-						break;
+case "--no-color":
+					o.noColor = true;
+					break;
+				case "--rng-trace-out":
+					o.rngTraceOut = java.nio.file.Paths.get( args[ ++i ] );
+					break;
+				case "--rng-trace-golden":
+					o.rngTraceGolden = java.nio.file.Paths.get( args[ ++i ] );
+					break;
 					case "--persist-saves":
 						o.persistSaves = true;
 						break;
