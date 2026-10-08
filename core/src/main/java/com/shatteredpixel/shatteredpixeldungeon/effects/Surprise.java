@@ -78,6 +78,7 @@ public class Surprise extends Image {
 	public static void hit(Char ch, float angle) {
 		if (ch.sprite != null && ch.sprite.parent != null) {
 			Surprise s = (Surprise) ch.sprite.parent.recycle(Surprise.class);
+			if (s == null) return;
 			ch.sprite.parent.bringToFront(s);
 			s.reset(ch.sprite);
 			s.angle = angle;
@@ -89,8 +90,10 @@ public class Surprise extends Image {
 	}
 
 	public static void hit(int pos, float angle) {
+		if (Dungeon.hero == null || Dungeon.hero.sprite == null || Dungeon.hero.sprite.parent == null) return;
 		Group parent = Dungeon.hero.sprite.parent;
 		Surprise s = (Surprise) parent.recycle(Surprise.class);
+		if (s == null) return;
 		parent.bringToFront(s);
 		s.reset(pos);
 		s.angle = angle;

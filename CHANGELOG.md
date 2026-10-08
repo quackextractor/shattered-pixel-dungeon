@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The trainer settled a turn before the game did.** `LevelPipeline.runToHeroReady` treated any idle,
+  non-resting hero with no pending action as unrecoverable and assigned `Hero.ready = true` directly
+  (`recoverStrandedHero`). The game has no such shortcut: `Hero.ready()` runs when the hero is next
+  picked with a null `curAction`, so the wait ends on its own, one turn later.
+  `Hero.actPickUp`'s success branch is the common case - it clears `curAction` at `Hero.java:1153`
+  without calling `ready()`, where every other terminating path does (`actMove`, `actInteract`, and
+  pickup's own failure branches). Forcing `ready` ended that turn early, so a recording claimed
+  `Actor.now() == 4.0` where the game reached `5.0`, and the desktop viewer correctly reported
+  `DIVERGED at step 8 - INTERACT/0 in WORLD: engine time is 5.0, recording says 4.0`.
+  Instrumenting `Actor.headlessStep`, which both environments call, showed the two runs byte-identical
+  through the hero's second pickup - `curAction=null ready=false heroT=5.0` - differing only by that
+  assignment. It fired 3 times across 1310 recorded steps, so the error was small and real rather than
+  cumulative: the mobs denied a turn at `t=4.0` act in *both* environments, and only the hero's
+  readiness was short-circuited.
+  The guard is now `!wantsMore && steps > 8 && Dungeon.hero.resting`. A resting hero is the one genuine
+  one-way door - `Hero.act` spends time and calls `next()` but never `ready()` - and `ActionMapper.apply`
+  already clears `resting` when a non-`REST` action is chosen, so `STALLED` stays reachable as a backstop
+  and `Outcome.STEP_LIMIT` still bounds the rest.
+  Three fresh recordings (222, 1589 and 1421 steps) now reproduce exactly through `ReplayIO.verify`,
+  and the viewer no longer reports a turn divergence on any of them.
+  **Existing recordings are void**, because the turns they recorded were early.
+
+- **Headless crashed on a surprise attack.** With drains no longer truncated early, attacks actually
+  resolved and reached `Mob.defenseProc` -> `Surprise.hit`, where `Effects.get` dereferenced
+  `icon.texture` - the effects sheet is never decoded without a renderer - and `Surprise.hit(int, float)`
+  dereferenced `Dungeon.hero.sprite.parent` and a `recycle` result that is null headless. Both now
+  return early instead. Purely cosmetic paths: the frame only selects which part of the sheet to show,
+  so a blank image loses no gameplay state, and behaviour is unchanged in the real game where neither
+  value is ever null.
+
 - **Every vertical direction was inverted.** `MOVE_N` carried `dy = +1`, so north walked south, and
   `MOVE_SE` / `MOVE_SW` walked north. Only the horizontal pair was right, which is why it survived: the
   two axes were written from opposite assumptions and neither was checked against the game's.

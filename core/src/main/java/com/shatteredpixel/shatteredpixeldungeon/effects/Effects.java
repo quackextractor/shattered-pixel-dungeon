@@ -40,6 +40,14 @@ public class Effects {
 	
 	public static Image get( Type type ) {
 		Image icon = new Image( Assets.Effects.EFFECTS );
+		if (icon.texture == null){
+			//No renderer, so the effects sheet was never decoded and the frame has nothing to select
+			//from. Headless reaches here whenever an effect is pooled for the first time - a surprise
+			//attack on an invisible target is one - and dereferencing the texture killed the worker.
+			//The frame is purely cosmetic: it chooses which part of the sheet to show, so leaving the
+			//image blank loses no gameplay state.
+			return icon;
+		}
 		switch (type) {
 			case RIPPLE:
 				icon.frame(icon.texture.uvRect(0, 0, 16, 16));

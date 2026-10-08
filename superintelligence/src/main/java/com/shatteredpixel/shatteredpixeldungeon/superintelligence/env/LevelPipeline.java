@@ -236,45 +236,23 @@ public class LevelPipeline {
 				return Outcome.READY;
 			}
 
-			//nothing left to act and the hero still cannot be given input.
-			if (!wantsMore && steps > 8){
-				if (recoverStrandedHero()) continue;
-				//Surfacing that beats a silent hang.
+			//A resting hero is the only genuine one-way door here. Hero.act() opens by clearing
+			//ready and then, with a null curAction, takes its `curAction == null && resting` branch:
+			//it spends time and calls next(), so !wantsMore, but it never calls ready(). The game escapes
+			//that by having a player choose another action, and ActionMapper.apply clears resting when
+			//it is given one, so this is a backstop rather than the usual path.
+			//
+			//Every other idle, non-resting hero with no action is not a stall and must be left to
+			//resolve. Hero.ready() runs when the hero is next picked with a null curAction, so the wait
+			//ends on its own - one turn later after actPickUp, whose success branch clears curAction
+			//without calling ready(). Setting ready here instead ended that turn early, which made a
+			//recording settle a turn before the game did.
+			if (!wantsMore && steps > 8 && Dungeon.hero.resting){
 				return Outcome.STALLED;
 			}
 		}
 
 		return Outcome.STEP_LIMIT;
-	}
-
-	/**
-	 * Hands the turn back to a hero the engine has stranded, and reports whether it could.
-	 *
-	 * {@code Hero.act()} opens by clearing {@code ready} and then dispatching on {@code curAction}.
-	 * With a null {@code curAction} no branch matches, so it returns having set {@code ready} false -
-	 * and {@code Hero.ready()} is the only thing in the game that ever sets it true. Nothing else can
-	 * recover from that state, so once the hero is idle, not resting, and has no action, no number of
-	 * scheduler steps will ever make it ready again.
-	 *
-	 * A normal playthrough never gets there, because the cell selector re-prompts for input and that
-	 * prompt is what calls {@code Hero.ready()}. Headless there is no scene and no selector, so
-	 * nothing is left to re-prompt, and the episode died here after eight to thirteen turns with
-	 * {@code ready=false curAction=null} - every rollout ended STALLED almost immediately, which made
-	 * the whole environment useless for collecting experience.
-	 *
-	 * Clearing the flag is the same thing the game's own prompt achieves, and is safe precisely
-	 * because it is gated on the hero having nothing left to do: if an action were pending, or
-	 * something still wanted animating, this is not reached.
-	 */
-	private boolean recoverStrandedHero(){
-		if (Dungeon.hero == null) return false;
-		if (Dungeon.hero.curAction != null) return false;
-		if (Dungeon.hero.resting) return false;
-		if (Dungeon.hero.paralysed > 0) return false;
-		if (Dungeon.hero.ready) return false;
-
-		Dungeon.hero.ready = true;
-		return true;
 	}
 
 	public enum Outcome {		/** Hero is waiting for the next action. Normal. */
