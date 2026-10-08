@@ -289,6 +289,28 @@ public class HeadlessServices {
 		@Override public boolean isExternalStorageAvailable() { return true; }
 		@Override public String getLocalStoragePath() { return root.getAbsolutePath(); }
 		@Override public boolean isLocalStorageAvailable() { return true; }
+
+		/**
+		 * Deletes a save file, wherever this process would write one.
+		 *
+		 * <p>The path is resolved rather than assembled by the caller because it is not the root: with
+		 * saving disabled - which is how every rollout and every check runs - saves are redirected into
+		 * {@link #sink}, and a caller that deleted {@code root/<name>} would report success having
+		 * removed nothing at all. That is not hypothetical: the remains file is written there, and reading
+		 * it back on the next run's floor generation is what made 2 of 32 recorded runs stop reproducing.
+		 *
+		 * <p>Removes the temporary sibling too. {@code FileUtils.bundleToFile} stages through
+		 * {@code .spdtmp}, so an interrupted write leaves that behind and {@link #getFileHandle} would
+		 * still find it a save.
+		 *
+		 * @return true if the file existed
+		 */
+		public boolean deleteSave( String name ){
+			File base = savingEnabled ? root : sink;
+			boolean existed = new File( base, name ).delete();
+			existed |= new File( base, name + ".spdtmp" ).delete();
+			return existed;
+		}
 	}
 
 	/**

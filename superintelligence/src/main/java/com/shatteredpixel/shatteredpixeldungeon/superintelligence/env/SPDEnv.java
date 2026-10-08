@@ -107,6 +107,26 @@ public class SPDEnv {
 		this.seedText = (seed == null) ? "" : seed;
 		this.heroClass = heroClass;
 
+		//Every pending-request static, in one call, and BEFORE the run starts. See RunState for what each
+		//one is and what it cost when only some of them were cleared here.
+		//
+		//Before startRun rather than after, and that ordering is load-bearing for one of the four. The
+		//other three are read by the settle() below and would be equally clear afterwards; remains are
+		//read by RegularLevel.createItems, which runs inside startRun, so clearing them afterwards cleared
+		//them one floor too late. The new floor was already carrying a heap of the previous episode's
+		//remains, and every recording made in that state described a dungeon that never existed for the
+		//run that replayed it. Measured by paritycheck: 2 of 32 recorded runs diverged, both on a remnant
+		//item, and neither verified alone.
+		//
+		//The armed aim listener it also clears was worth 4 of 10 recorded runs diverging at step 0 when
+		//only part of this set was cleared; deleting this call makes resetcheck fail 3 of its 4 cases.
+		//
+		//A dialog is cleared here rather than per step because it belongs to one run. Clearing it on
+		//every step meant the step that could have answered it arrived to find it already gone, so MENU
+		//could not be reached at all - and it cannot survive into a WORLD step anyway, since settle()
+		//switches to MENU whenever a dialog is open.
+		RunState.clearRunStatics();
+
 		pipeline.startRun( seedText, heroClass, 0 );
 
 		//An empty seed means the game drew one, and it does not write the result back to
@@ -123,26 +143,6 @@ public class SPDEnv {
 		}
 
 		mode = EnvMode.WORLD;
-		//A dialog belongs to one run. Clearing it per step instead meant the step that could have
-		//answered it arrived to find it already gone, so MENU could not be reached at all. It cannot
-		//survive into a WORLD step anyway: settle() switches to MENU whenever a dialog is open.
-		GameScene.clearHeadlessWindow();
-		SlotAction.clearPendingUseItem();
-
-		//The pending cell listener is static and belongs to the *process*, not to a run, so the last
-		//step of the previous episode left it armed. step() clears it on entry, but reset() did not, so
-		//the settle() below found it, reported TARGETING, and every action of the new episode was read
-		//as picking a target instead of being applied. The hero never moved, so the very first
-		//recorded position mismatched and the whole replay was reported as diverged at step 0.
-		//
-		//This is invisible on a single run - one process, one episode, nothing to leak from - which is
-		//why every per-process check passed. It only shows up when two episodes share a process, which
-		//is exactly what the replay viewer does and what the trainer's workers do across episodes.
-		//Measured: 4 of 10 recorded runs diverged when verified in sequence, and the same file verified
-		//cleanly on its own and again after being first in the list.
-		//
-		//Deleting this line makes resetcheck fail 2 of its 3 cases.
-		GameScene.clearPendingCellListener();
 		turnsThisFloor = 0;
 		turnsTotal = 0;
 		lastDepth = 1;

@@ -53,6 +53,32 @@ public class Bones {
 	private static Item item;
 	private static HeroClass heroClass;
 
+	/**
+	 * Forgets any remains left by a previous run, so the next one starts with none.
+	 *
+	 * <p>Remains are deliberately process-spanning state: a hero who dies leaves their belongings and one
+	 * class-specific remnant behind, and the next run picks them up where they fell. That is the feature,
+	 * and nothing in the game calls this method - a normal playthrough wants the opposite of this.
+	 *
+	 * <p>It exists for an environment that plays many independent runs in one process, where "the previous
+	 * run" is an accident of the loop rather than a player returning to a dungeon. Without it, the world a
+	 * run generates is a function of process history as well as its seed, and a recorded run stops
+	 * reproducing as soon as anything else has been played in that process: the run is handed a heap of
+	 * remains belonging to whichever hero died last, and every step after that point describes a different
+	 * dungeon. See the 'superintelligence' module.
+	 *
+	 * <p>Resets the in-memory state only. Any {@code bones.dat} on disk is untouched, so a caller that also
+	 * needs to forget a remains file written by an earlier process must remove that separately - a
+	 * {@code Bones} instance that never died in this process has nothing in memory to forget, but a file
+	 * left by a previous process is still read on the first {@link #get()}.
+	 */
+	public static void clear() {
+		depth = -1;
+		branch = -1;
+		item = null;
+		heroClass = null;
+	}
+
 	public static void leave() {
 
 		//remains will usually drop on the floor the hero died on

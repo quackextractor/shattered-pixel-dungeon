@@ -132,6 +132,12 @@ public class ReplayPlayer {
 		this.mapper = new ActionMapper( config );
 		Actor.manualScheduling = true;
 
+		//A viewer plays one recording per construction, but a batch run builds players back to back in
+		//one process, and a player inherits whatever the previous one left armed. Clearing the same set
+		//the trainer's reset clears is what keeps a second file in a batch from starting in TARGETING
+		//and diverging at step 0. See RunState.
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.RunState.clearRunStatics();
+
 		String tracePath = System.getProperty( "spd.rngTrace" );
 		if (tracePath != null && !tracePath.trim().isEmpty()){
 			rngTracePath = tracePath;
@@ -546,10 +552,16 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		//recording says 1.0", at the third step of a recording the windowed viewer plays to 33.
 		GameScene.clearPendingCellListener();
 		if (mode != EnvMode.TARGETING){
-			//The pending item survives a step that is consuming an aim; dropping it leaves the
-			//following TARGETING step with nothing to act on.
-			SlotAction.clearPendingUseItem();
-		}
+//The pending item survives a step that is consuming an aim; dropping it leaves the
+		//following TARGETING step with nothing to act on.
+		SlotAction.clearPendingUseItem();
+
+		//A dialog is deliberately NOT cleared here, and the asymmetry with the line above is the point.
+		//A dialog belongs to the *next* step, which is the one recorded in MENU to answer it - clearing
+		//it on entry is the fault that made MENU unreachable from the trainer's side, and mirroring it
+		//here would break the viewer's menu steps the same way. A dialog can only outlive a run, never
+		//a step, and that case is RunState's, at construction.
+	}
 
 		//before the dispatch, not after: SPDEnv refreshes here, so the slot index has to resolve
 		//against the slots the step is about to be applied to.
