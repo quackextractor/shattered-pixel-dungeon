@@ -24,6 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroAction;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.watabou.noosa.Game;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
@@ -178,6 +179,13 @@ public class ReplayPlayer {
 
 		sinceStep = 0;
 
+		//A step applied on an earlier frame has to settle before another one is applied, or the step
+		//whose comparison settle() performs is never compared at all.
+		if (awaitingSettle){
+			if (driveToHeroReady() == Drain.READY) settle();
+			return;
+		}
+
 		//Only ever step when the hero is not already ready.
 		//
 		//driveToHeroReady() always advances at least one scheduler step before it tests readiness, so
@@ -185,11 +193,11 @@ public class ReplayPlayer {
 		//frames spent waiting out the pacing timer, and at high speed that is every frame, because the
 		//timer is shorter than a frame. Each step handed a turn to some other actor while the hero stood
 		//ready and idle, so the world's actors advanced faster than the hero's actions did.
-		if (!heroIsReady() && !driveToHeroReady()) return;
+		if (!readyToAct() && driveToHeroReady() != Drain.READY) return;
 
 		applyNextStep();
 
-		//Settle in this same call, with no frame boundary in between.
+		//Settle in this same call where the turn resolves immediately.
 		//
 		//Applying and settling were separate frame callbacks, and the intervening GameScene.update()
 		//cleared the pending Hero.curAction before the hero ever acted: the scheduler log showed
@@ -197,12 +205,11 @@ public class ReplayPlayer {
 		//the recorded move was silently discarded. That is what "DIVERGED ... hero at 687, recording says
 		//655" was - a lost action, not a refused one.
 		//
-		//The trainer never has such a gap: it applies an action and drains the scheduler in one call, and
-		//it reproduces its own recordings exactly. Doing the same here removes the window rather than
-		//working around it.
-		if (!driveToHeroReady()) return;
-
-		settle();
+		//An animated action cannot settle here: its completion is an animation callback, so the drain
+		//reports PENDING and awaitingSettle carries the step to the frame that resolves it. That is the
+		//one case where a frame boundary falls between applying a step and the hero acting, which is why
+		//it is bounded rather than general - see DriveToHeroReady's note on GameScene.cancel().
+		if (driveToHeroReady() == Drain.READY) settle();
 	}
 
 	/** True when the hero can be given input now. Tests only; advances nothing. */
@@ -218,7 +225,7 @@ public class ReplayPlayer {
 	private static final int MAX_ACTOR_STEPS = 400;
 
 	/**
-	 * Advances turns until the hero can be given input, or reports that it cannot.
+	 * Advances turns until the hero can be given input, or reports why it cannot.
 	 *
 	 * <p>The readiness test is the same three conditions the headless trainer uses in
 	 * {@code LevelPipeline.runToHeroReady}: no pending action, ready for input, not paralysed.
@@ -232,25 +239,72 @@ public class ReplayPlayer {
 	 *
 	 * <p>At least one step is always taken before readiness is tested, for the same reason: testing first
 	 * would see the previous turn's {@code ready} and the hero would never act.
+	 *
+	 * <p>Returns {@link Drain#PENDING} rather than spinning when the scheduler is waiting on something
+	 * this loop cannot advance. {@code Hero.actAttack} and the other animated actions call
+	 * {@code CharSprite.attack}/{@code operate} and return without calling {@code next()}, so
+	 * {@code headlessStep} reports the actor still wants to act and no time passes. The completion that
+	 * finally calls {@code Hero.onAttackComplete} is an animation callback, driven by the render loop -
+	 * and this loop runs inside {@code GameScene.update()} ahead of it, so spinning here starves the
+	 * very thing being waited on. Yielding lets the frame finish and the animation complete. The trainer
+	 * never sees this because its sprites complete synchronously.
+	 *
+	 * <p>A genuine stall still ends the episode: {@link Drain#STALLED} after {@link #MAX_ACTOR_STEPS}.
 	 */
-	private boolean driveToHeroReady(){
+	private Drain driveToHeroReady(){
+		float lastNow = Actor.now();
+		HeroAction lastAction = Dungeon.hero == null ? null : Dungeon.hero.curAction;
+		int blocked = 0;
+
 		for (int steps = 0; steps < MAX_ACTOR_STEPS; steps++){
 
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()){
 				playback.finish();
 				halt( "run ended - hero is dead" );
-				return false;
+				return Drain.STALLED;
 			}
 
-			Actor.headlessStep();
+			boolean wantsMore = Actor.headlessStep();
 
 			if (Dungeon.hero.curAction == null && Dungeon.hero.ready && Dungeon.hero.paralysed == 0){
-				return true;
+				return Drain.READY;
 			}
+
+			//No time spent and the hero still on the action it was given: nothing this loop does can
+			//change that, so the next frame is where progress has to come from.
+			if (wantsMore && Actor.now() == lastNow && Dungeon.hero.curAction == lastAction){
+				if (++blocked >= BLOCKED_STEPS){
+					return Drain.PENDING;
+				}
+			} else {
+				blocked = 0;
+			}
+
+			lastNow = Actor.now();
+			lastAction = Dungeon.hero.curAction;
 		}
 
 		halt( "stalled - hero did not become ready within " + MAX_ACTOR_STEPS + " turns" );
-		return false;
+		return Drain.STALLED;
+	}
+
+	/**
+	 * Consecutive no-progress scheduler steps tolerated before yielding the frame.
+	 *
+	 * <p>A step that spends no time and leaves the action alone means the scheduler is waiting on the
+	 * render clock, so the yield is the correct answer rather than a tolerance. The count exists only
+	 * because a single such step is ambiguous: the first step of a turn routinely costs nothing.
+	 */
+	private static final int BLOCKED_STEPS = 3;
+
+	/** Outcome of one drain. */
+	private enum Drain {
+		/** The hero can be given input. */
+		READY,
+		/** Waiting on the render loop; retry on the next frame. */
+		PENDING,
+		/** Playback has ended. */
+		STALLED
 	}
 
 	/** True when the hero is waiting for input. */
