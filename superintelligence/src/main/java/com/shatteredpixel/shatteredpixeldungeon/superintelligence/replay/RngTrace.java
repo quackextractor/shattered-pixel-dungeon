@@ -87,6 +87,13 @@ public class RngTrace {
 	 * the caller cannot get between the world being built and the first step being replayed.
 	 */
 	public void onReset(){
+		//What generation left behind, recorded before the counters are zeroed. Every recorded step shows
+		//zero base draws, so the entire windowed-versus-headless difference has to be settled here or it
+		//is not settled at all: if these two agree, generation reproduced and the offset was introduced
+		//afterwards, and if they differ then the two paths never built the same base stream to begin with.
+		generationBaseDraws = RandomTrace.baseDraws();
+		generationBaseFingerprint = RandomTrace.baseFingerprint();
+
 		RandomTrace.reset();
 		//The current tally becomes the baseline rather than being cleared. Attribution is switched on
 		//before the world is built, so clearing would make step 0's delta the entire generation - several
@@ -101,7 +108,12 @@ public class RngTrace {
 		//one. onReset is called immediately after the environment reset, which is the first moment the
 		//seed exists.
 		dungeonSeed( com.shatteredpixel.shatteredpixeldungeon.Dungeon.seed );
+		lines.add( "# generationBaseDraws=" + generationBaseDraws
+				+ " generationBaseFingerprint=" + generationBaseFingerprint );
 	}
+
+	private long generationBaseDraws;
+	private long generationBaseFingerprint;
 
 	/**
 	 * Records the current cumulative base-generator counters, and the sites that drew since the last
