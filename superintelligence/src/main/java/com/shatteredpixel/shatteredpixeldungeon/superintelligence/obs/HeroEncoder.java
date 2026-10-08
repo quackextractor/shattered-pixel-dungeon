@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Blindness;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Bleeding;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Barkskin;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Burning;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Chill;
@@ -10,6 +11,9 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Doom;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Poison;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
+import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfForce;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
 
 /**
  * Encodes the hero's scalars: vitals, progression, and the status effects that gate which actions
@@ -59,6 +63,45 @@ public class HeroEncoder {
 
 	private HeroEncoder() {}
 
+	/**
+	 * The largest damage reduction this hero could roll, which is what {@code Hero.drRoll} is a draw
+	 * from.
+	 *
+	 * <p>{@code drRoll} is not a property of the hero - it is a fresh {@code Random.NormalIntRange} on
+	 * every call, and {@code Hero.drRoll} draws once for Barkskin, once for armour and once for the
+	 * weapon. Calling it to build an observation was therefore wrong twice over. It perturbed the
+	 * game's own randomness on every encode - twice per agent step, once from {@code reset} and once
+	 * from {@code settle} - which is what offset the trainer's RNG stream from the rendered game's
+	 * from the very first floor, and no recording made since could ever replay. And the feature itself
+	 * was noise: two identical worlds encoded to different vectors, so the agent was shown a number
+	 * that carried no information about the state it had to act on.
+	 *
+	 * <p>Taking each component's maximum instead yields the roll's ceiling, which is deterministic,
+	 * is a real property of the loadout, and leaves the game's randomness alone.
+	 */
+	private static int defenseCeiling( Hero hero ){
+		int dr = Barkskin.currentLevel( hero );
+
+		Armor armor = hero.belongings.armor();
+		if (armor != null){
+			dr += armor.DRMax();
+			if (hero.STR() < armor.STRReq()){
+				dr -= 2 * (armor.STRReq() - hero.STR());
+			}
+		}
+
+		if (hero.belongings.weapon() instanceof Weapon
+				&& !RingOfForce.fightingUnarmed( hero )){
+			Weapon weapon = (Weapon) hero.belongings.weapon();
+			dr += weapon.defenseFactor( hero );
+			if (hero.STR() < weapon.STRReq()){
+				dr -= 2 * (weapon.STRReq() - hero.STR());
+			}
+		}
+
+		return Math.max( 0, dr );
+	}
+
 	public static void encode( Hero hero, float[] out ){
 		for (int i = 0; i < FEATURES; i++) out[ i ] = 0f;
 
@@ -72,7 +115,7 @@ public class HeroEncoder {
 				? (float) hero.exp / Hero.maxExp( hero.lvl ) : 1f;
 
 		out[ F_STRENGTH ] = (hero.STR() - 3) / 40f;
-		out[ F_DEFENSE ]  = hero.drRoll() / 60f;
+		out[ F_DEFENSE ]  = defenseCeiling( hero ) / 60f;
 
 		//gold spans three orders of magnitude across a run, so it is logged
 		out[ F_GOLD_LOG ] = (float) (Math.log( 1 + Dungeon.gold ) / Math.log( 1000 ) );

@@ -9,9 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **The viewer deadlocked on every attack.** `ReplayPlayer.driveToHeroReady` spent up to 400 scheduler
-  steps inside one `GameScene.update()`, and `Hero.actAttack` returns without calling `next()` - the
-  completion that calls `Hero.onAttackComplete` is an animation callback on the render loop, which
+- **Encoding an observation was consuming the game's randomness.** `HeroEncoder` built its defence
+  feature with `hero.drRoll()`, and `drRoll` is not a property of the hero - it is a fresh
+  `Random.NormalIntRange` on every call, drawn once for Barkskin, once for armour and once for the
+  weapon. So reading state advanced the RNG stream, twice per agent step (once from `reset`, once from
+  `settle`), and the offset was permanent: the trainer's stream never lined up with the game's again
+  from the first floor, and no recording made since could replay. It was also a noise feature - two
+  identical worlds encoded to different vectors, showing the agent a number that carried no
+  information about the state it had to act on.
+  The feature is now the roll's *ceiling*, each component taken at its maximum, which is deterministic,
+  is a real property of the loadout, and leaves the game's randomness alone.
+  This was the last RNG consumer in the encoder package, and it is what `collectcheck` was failing on:
+  that check runs headless and so could not see a fault in the headless path. It passes now, and it was
+  the only red gate.
+
+- **Headless sprites had no particle emitter.** `HeadlessSprite.emitter()` returned null, but 150 call
+  sites chain through it - `sprite.emitter().burst(...)` - so they bypassed the class's own no-op
+  `burst` and dereferenced null instead. Equipping a cursed item, burning, imbues and healing all
+  reached one, and a run died with a NullPointerException the first time it cursed an item.
+  The stand-in draws: `Emitter.start` takes `Random.Float(interval)` as its emission delay, so those
+  call sites consume the game's randomness in a real playthrough and a draw-free stand-in would have
+  left the same permanent offset the encoder had. What it does not do is remember - a live `Emitter`
+  retains the factory and count of the last request, which outlived a floor boundary and stopped the
+  same seed rebuilding the same floor.
+
+- **The viewer's drain yields to the render loop.** `ReplayPlayer.driveToHeroReady` spent up to 400
+  scheduler steps inside one `GameScene.update()`, and `Hero.actAttack` returns without calling `next()` -
+  the completion that calls `Hero.onAttackComplete` is an animation callback on the render loop, which
   cannot run until this loop returns. So `curAction` stayed `Attack` and every recording reported
   `stalled - hero did not become ready within 400 turns`.
   The drain now returns `PENDING` when a step spends no time and leaves the hero's action alone, which
@@ -22,17 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the comparison it makes is not skipped by the frame boundary.
   `CharSprite.isMoving` is deliberately not the trigger: it is only set by `CharSprite.move`, never by
   `attack` or `operate`, so it cannot see a pending attack animation.
-  Playback now passes first combat instead of stalling at step 8. A separate divergence remains past
-  that point - see the FOV note below.
-
-- **A worn dart trap crashed headless.** `WornDartTrap`'s visible branch recycled a `MissileSprite` from
-  `ShatteredPixelDungeon.scene()`, which is null without a renderer, and it delivered the damage from the
-  sprite's animation callback - so the dart was unwinnable as well as fatal to the worker.
-  The callback is now built first and invoked directly when there is no scene.
-  This also keeps the random numbers honest: the visible branch draws `NormalIntRange` *and* a
-  `Random.Float` for the hit sound, while the invisible branch draws only the first, so which branch runs
-  changes how much of the RNG stream is consumed. Performing the callback preserves the stream the
-  rendered game uses rather than silently diverging from it at the first trap.
 
 - **The trainer settled a turn before the game did.** `LevelPipeline.runToHeroReady` treated any idle,
   non-resting hero with no pending action as unrecoverable and assigned `Hero.ready = true` directly
