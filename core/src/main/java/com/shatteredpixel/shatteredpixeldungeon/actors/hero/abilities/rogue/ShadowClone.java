@@ -313,7 +313,7 @@ public class ShadowClone extends ArmorAbility {
 
 		private static void appear( Char ch, int pos ) {
 
-			ch.sprite.interruptMotion();
+			if (ch.sprite != null) ch.sprite.interruptMotion();
 
 			if (Dungeon.level.heroFOV[pos] || Dungeon.level.heroFOV[ch.pos]){
 				Sample.INSTANCE.play(Assets.Sounds.PUFF);

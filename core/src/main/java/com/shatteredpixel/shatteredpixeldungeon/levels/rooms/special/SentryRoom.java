@@ -257,9 +257,12 @@ public class SentryRoom extends SpecialRoom {
 
 					if (curChargeDelay > 0.001f){ //helps prevent rounding errors
 						if (curChargeDelay == initialChargeDelay) {
-							((SentrySprite) sprite).charge();
-						}
-						curChargeDelay -= Dungeon.hero.cooldown();
+//Headless sprites are HeadlessSprites, not SentrySprites. The charge visual is
+						//purely cosmetic, so it is skipped rather than cast, and the zap that follows
+						//still fires.
+						if (sprite instanceof SentrySprite) ((SentrySprite) sprite).charge();
+					}
+					curChargeDelay -= Dungeon.hero.cooldown();
 						//pity mechanic so mistaps don't get people instakilled
 						if (Dungeon.hero.cooldown() >= 0.34f){
 							Dungeon.hero.interrupt();
@@ -302,11 +305,11 @@ public class SentryRoom extends SpecialRoom {
 
 		@Override
 		public CharSprite sprite() {
-			SentrySprite sprite = (SentrySprite) super.sprite();
-			if (curChargeDelay != initialChargeDelay){
-				sprite.charge();
+			CharSprite base = super.sprite();
+			if (base instanceof SentrySprite && curChargeDelay != initialChargeDelay){
+				((SentrySprite) base).charge();
 			}
-			return sprite;
+			return base;
 		}
 
 		@Override

@@ -1303,14 +1303,17 @@ public abstract class Char extends Actor {
 	public void move( int step, boolean travelling ) {
 
 		if (travelling && Dungeon.level.adjacent( step, pos ) && buff( Vertigo.class ) != null) {
-			sprite.interruptMotion();
+			//The two sprite calls are the visual half of vertigo; which way it pushes is gameplay and
+			//is rolled either way. An actor can reach here without a sprite headless, where sprites are
+			//attached lazily, and dereferencing null killed the worker mid-run.
+			if (sprite != null) sprite.interruptMotion();
 			int newPos = pos + PathFinder.NEIGHBOURS8[Random.Int( 8 )];
 			if (!(Dungeon.level.passable[newPos] || Dungeon.level.avoid[newPos])
 					|| (properties().contains(Property.LARGE) && !Dungeon.level.openSpace[newPos])
 					|| Actor.findChar( newPos ) != null)
 				return;
 			else {
-				sprite.move(pos, newPos);
+				if (sprite != null) sprite.move(pos, newPos);
 				step = newPos;
 			}
 		}

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Four headless crashes on paths a longer run now reaches.** Once rollouts stopped dying early they
+  got far enough to hit code that assumes a sprite exists. `Char.move`'s vertigo branch interrupted
+  motion on a null sprite, as did `ShadowClone` and `ScrollOfTeleportation`; `SentryRoom` cast its
+  sprite to `SentrySprite`, which no headless sprite is. Each is guarded at the visual call and none
+  touches the gameplay beside it - vertigo still rolls its direction, the sentry still zaps, and the
+  charge animation is simply skipped. Ten consecutive rollouts now record without a crash, on floors
+  up to 1577 steps.
+
 - **Presentation randomness was consuming the game's stream.** The particle system, emote icons, music
   selection, colour jitter, sewer ambience and sound-effect pitch all drew from `Random`, so a run that
   rendered consumed a different amount of randomness than one that did not - and headless never renders.
