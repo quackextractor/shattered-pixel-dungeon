@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The viewer spent a turn on steps that owe none.** `SPDEnv.settle` checks whether the game is
+  waiting on a cell before it reaches `runToHeroReady`, so a step that arms an aim - `USE` in `SLOT`
+  or `INVENTORY` - costs no turn and the scheduler is not advanced. The viewer drained regardless, so a
+  recording opening `USE / SLOT / TARGETING` had the trainer take no scheduler step at step 1 and the
+  viewer take one with the hero.
+  The question has to be answered from the recording, not from the live cell selector: the selector
+  keeps its aim listener until `Hero.ready()` runs, which needs the very drain being skipped, so asking
+  it reports "an aim is pending" on the step that consumes the aim - the mirror of the fault. The next
+  recorded step's mode says the same thing, and the viewer has the recording.
+  `readyToAct` also gained the `curAction == null` condition the trainer's READY test has always had.
+  Testing `ready` alone walked through the window between injecting an action and the hero consuming
+  it, applying the following step over the pending one.
 - **Four headless crashes on paths a longer run now reaches.** Once rollouts stopped dying early they
   got far enough to hit code that assumes a sprite exists. `Char.move`'s vertigo branch interrupted
   motion on a null sprite, as did `ShadowClone` and `ScrollOfTeleportation`; `SentryRoom` cast its

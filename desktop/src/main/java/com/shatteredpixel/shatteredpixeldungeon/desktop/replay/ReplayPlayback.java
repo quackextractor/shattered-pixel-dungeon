@@ -108,6 +108,15 @@ public class ReplayPlayback {
 	}
 
 	/**
+	 * The step after {@link #peek()}, or null at the end. Look-ahead only; does not touch the cursor.
+	 */
+	public Replay.Step peekNext(){
+		int next = cursor + 1;
+		if (next < 0 || next >= replay.steps.size()) return null;
+		return replay.steps.get( next );
+	}
+
+	/**
 	 * Returns to the first step.
 	 *
 	 * Used by the viewer's restart, which also rebuilds the level: the live game cannot be unwound

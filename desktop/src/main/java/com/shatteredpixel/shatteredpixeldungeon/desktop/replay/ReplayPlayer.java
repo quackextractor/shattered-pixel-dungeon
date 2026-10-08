@@ -182,7 +182,7 @@ public class ReplayPlayer {
 		//A step applied on an earlier frame has to settle before another one is applied, or the step
 		//whose comparison settle() performs is never compared at all.
 		if (awaitingSettle){
-			if (driveToHeroReady() == Drain.READY) settle();
+			if (owesNoTurn() || driveToHeroReady() == Drain.READY) settle();
 			return;
 		}
 
@@ -209,7 +209,29 @@ public class ReplayPlayer {
 		//reports PENDING and awaitingSettle carries the step to the frame that resolves it. That is the
 		//one case where a frame boundary falls between applying a step and the hero acting, which is why
 		//it is bounded rather than general - see DriveToHeroReady's note on GameScene.cancel().
-		if (driveToHeroReady() == Drain.READY) settle();
+		if (owesNoTurn() || driveToHeroReady() == Drain.READY) settle();
+	}
+
+	/**
+	 * True when the step just applied owes no turn, because the next step chooses an aim or a dialog.
+	 *
+	 * <p>{@code SPDEnv.settle} checks whether the engine is waiting on a cell before it ever reaches
+	 * {@code runToHeroReady}, so an arming step costs no turn and the scheduler is not advanced.
+	 * Draining anyway advanced it by one, and that is where the two runs parted: on step 1 of a
+	 * recording whose opening steps are {@code USE / SLOT / TARGETING}, the trainer took no scheduler
+	 * step at all while the viewer took one with the hero. Everything after it was a turn out of place.
+	 *
+	 * <p>It has to be read from the recording rather than from the engine. The live {@code CellSelector}
+	 * keeps its aim listener until {@code Hero.ready()} runs, which needs the very drain being
+	 * skipped, so asking it reports "an aim is pending" on the step that consumes the aim - the mirror
+	 * of the fault, not of the cause. The trainer's own flag is cleared as the aim is consumed; the next
+	 * recorded step's mode says the same thing, and the viewer has the recording.
+	 */
+	private boolean owesNoTurn(){
+		Replay.Step next = playback.peekNext();
+		if (next == null) return false;
+		EnvMode mode = modeOf( next.mode );
+		return mode == EnvMode.TARGETING || mode == EnvMode.MENU;
 	}
 
 	/** True when the hero can be given input now. Tests only; advances nothing. */
@@ -315,6 +337,17 @@ public class ReplayPlayer {
 			return false;
 		}
 		if (Dungeon.hero.paralysed > 0) return false;
+		//curAction, not just ready.
+		//
+		//Applying a step sets curAction and calls next(), and Hero.ready is only cleared inside
+		//Hero.act() when the action is consumed. So between the two there is a window where the hero
+		//is ready from the previous turn and already holding the new action - and testing ready alone
+		//walked straight through it, applying the following step over the pending one.
+		//
+		//That is what a trace caught: at step 8 the trainer's hero held PickUp, carried from the
+		//INTERACT recorded at step 7, while the viewer held Move, carried from step 6 - two actions
+		//behind. The trainer's READY test has always required curAction == null for this reason.
+		if (Dungeon.hero.curAction != null) return false;
 		return Dungeon.hero.ready;
 	}
 
@@ -390,7 +423,7 @@ public class ReplayPlayer {
 		//Advance only after settle() has compared the landing cell. advance() clears the playback's
 		//expected position, so advancing first meant checkPosition() always saw "no expectation" and
 		//silently passed - the on-screen divergence check could never fire.
-		awaitingSettle = true;
+awaitingSettle = true;
 	}
 
 	/**
