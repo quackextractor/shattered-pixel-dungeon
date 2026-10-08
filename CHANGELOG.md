@@ -324,6 +324,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     not one.
   - Both guards are in. `rollout` refuses an empty `--seed` and points at the omitted flag; `verify`
     refuses a recording with no seed and names the file and the field.
+- **`playbackcheck`**, a gate that runs `ReplayPlayer` with no window, no scene and no `ReplayController`,
+  and asserts both halves: that a faithful recording plays clean, and that a recording altered in
+  `heroPos`, `heroHp`, `turn` or `inventory` is caught *at the altered step* with a message describing
+  the quantity that changed, that altered quickslot bindings never play clean, and that an unresolvable
+  recording halts with a reason instead of hanging. 7 checks.
+  `ReplayPlayer`'s ~560 lines decide what a recorded step means, derive the mode, drain the scheduler,
+  work out whether a turn is owed, settle and compare against the recording, and until now the only
+  thing that executed them was the viewer — which cannot be put in a test. All three faults that lived
+  there were found by hand, by diffing traces.
+  Mutation-tested: removing the `clearPendingCellListener` that F1 added fails it with the exact message
+  the original probe produced — *"a faithful replay diverged at step 2: USE/0 in TARGETING: engine time is
+  0.0, recording says 1.0"* — and the four field mutations then report step 2 instead of step 30, which
+  is what proves the localisation check is doing work.
 - **`observecheck`**, a gate asserting that *reading* the world draws no randomness. One violation of
   this already cost a full parity investigation: `HeroEncoder` built its defence feature with
   `hero.drRoll()`, which is not a property of the hero but a fresh draw per call, so encoding an

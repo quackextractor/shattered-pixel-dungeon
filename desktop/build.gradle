@@ -68,6 +68,16 @@ tasks.register('replaycp') {
     }
 }
 
+//Runs ReplayPlayer with no window and no scene, and asserts both that a faithful recording plays
+ //clean and that an altered one is caught. Only possible because ReplayPlayer has no UI dependency.
+ tasks.register('playbackcheck', JavaExec) {
+    group = 'verification'
+    description = 'Fails if the replay viewer cannot play a recording headlessly, or cannot detect an altered one.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.PlaybackCheck'
+    jvmArgs '-Djava.awt.headless=true', '--enable-native-access=ALL-UNNAMED'
+ }
+
 tasks.register('debug', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     ignoreExitValue = true
