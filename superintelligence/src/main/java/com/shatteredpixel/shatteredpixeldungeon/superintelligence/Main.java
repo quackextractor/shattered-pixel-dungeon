@@ -248,8 +248,28 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 
 		RngTrace trace = new RngTrace();
 		com.watabou.utils.RandomTrace.enable();
+		//attribution on for the whole replay, so a windowed tally and a headless one cover the same span
+		//and can be diffed. The window between reset and the first step is a prefix of that, not a
+		//separate measurement - the viewer's .sites.gen file is the same span for comparison.
+		com.watabou.utils.RandomTrace.attribute();
 
 		ReplayIO.verify( replay, env, trace.observer() );
+
+		if (options.rngTraceSites != null){
+			try {
+				java.nio.file.Files.write( options.rngTraceSites,
+						String.join( "\n", com.watabou.utils.RandomTrace.siteReport() )
+								.getBytes( java.nio.charset.StandardCharsets.UTF_8 ) );
+			} catch (java.io.IOException e){
+				System.err.println( "[ERROR] cannot write the draw-site tally to "
+						+ options.rngTraceSites + " (" + e.getClass().getSimpleName() + ")" );
+				System.exit( 1 );
+				return;
+			}
+			System.out.println( "wrote " + com.watabou.utils.RandomTrace.sites().size()
+					+ " draw sites to " + options.rngTraceSites );
+		}
+		com.watabou.utils.RandomTrace.attribute( false );
 
 		com.watabou.utils.RandomTrace.disable();
 
@@ -429,6 +449,8 @@ boolean noColor = false;
       java.nio.file.Path rngTraceOut;
       /** A rendered-game trace to compare against, or null. */
       java.nio.file.Path rngTraceGolden;
+      /** Where to write the draws-by-site tally, or null. */
+      java.nio.file.Path rngTraceSites;
 
 		static Options parse( String[] args ){
 			Options o = new Options();
@@ -455,6 +477,9 @@ case "--no-color":
 					break;
 				case "--rng-trace-out":
 					o.rngTraceOut = java.nio.file.Paths.get( args[ ++i ] );
+					break;
+				case "--rng-trace-sites":
+					o.rngTraceSites = java.nio.file.Paths.get( args[ ++i ] );
 					break;
 				case "--rng-trace-golden":
 					o.rngTraceGolden = java.nio.file.Paths.get( args[ ++i ] );

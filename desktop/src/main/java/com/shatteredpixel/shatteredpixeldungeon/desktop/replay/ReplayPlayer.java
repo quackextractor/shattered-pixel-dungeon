@@ -197,18 +197,16 @@ public class ReplayPlayer {
 		return playback.replay().termination == null ? "" : playback.replay().termination;
 	}
 
-	private void flushDrawSites(){
+	private void flushDrawSites( String suffix ){
 		if (rngTrace == null) return;
-		com.watabou.utils.RandomTrace.attribute( false );
 
-		java.nio.file.Path out = java.nio.file.Paths.get( rngTracePath + ".sites" );
+		java.nio.file.Path out = java.nio.file.Paths.get( rngTracePath + ".sites" + suffix );
 		try {
 			java.nio.file.Files.write( out,
 					String.join( "\n", com.watabou.utils.RandomTrace.siteReport() )
 							.getBytes( java.nio.charset.StandardCharsets.UTF_8 ) );
-			System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().size()
-					+ " draw sites ("
-					+ com.watabou.utils.RandomTrace.draws() + " draws before the first step) to " + out );
+System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().size()
+				+ " draw sites over " + com.watabou.utils.RandomTrace.draws() + " draws to " + out );
 		} catch (java.io.IOException e){
 			System.err.println( "[replay] could not write the draw-site tally to " + out
 					+ " (" + e.getClass().getSimpleName() + ")" );
@@ -499,7 +497,11 @@ public class ReplayPlayer {
 		//armed here, not at construction: see rngTraceArmed. Everything above this line is setup the
 		//headless run does not do, and none of it belongs in the trace.
 		if (rngTrace != null && !rngTraceArmed){
-			flushDrawSites();
+			//flushed before the reset, because onReset zeroes the counters the report quotes. Attribution
+			//stays on past here and the tally is written again at halt: the window from construction to the
+			//first step answers "what drew during generation", and only the whole playback answers "what
+			//drew while the recording was applied", which is where a window-only divergence actually lives.
+			flushDrawSites( ".gen" );
 			rngTrace.onReset();
 			rngTraceArmed = true;
 		}
@@ -648,6 +650,7 @@ awaitingSettle = true;
 			haltReason = reason;
 			System.err.println( "[replay] halted: " + reason );
 		flushRngTrace();
+		flushDrawSites( ".all" );
 
 			boolean diverged = playback.diverged();
 			if (AUTO_CLOSE || ( AUTO_CLOSE_ON_DIVERGE && diverged ) ){

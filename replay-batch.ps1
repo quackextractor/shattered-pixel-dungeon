@@ -46,11 +46,20 @@ foreach ($f in $files) {
     $out = Receive-Job $job
     Remove-Job $job -Force -ErrorAction SilentlyContinue
 
+    # Two ways to finish cleanly, and recognising only one made a working viewer look broken.
+    # A recording that declares why it ended - TURN_LIMIT, STALLED - now ends by saying so, because the
+    # viewer cannot otherwise tell a complete recording from a truncated one. Reading only
+    # "replay finished - all N steps played" reported all of those as HALTED, which counted seven
+    # successes as failures.
     if ($out -match 'DIVERGED at step (\d+)') {
-      Write-Output ("  {0,-22} DIVERGED step {1,-6} {2,6:N0}ms" -f $f.BaseName, $Matches[1], $sw.Elapsed.TotalMilliseconds)
+      $detail = ($out -split "`n" | Where-Object { $_ -match 'DIVERGED at step' } | Select-Object -First 1)
+      Write-Output ("  {0,-22} DIVERGED step {1,-6} {2,6:N0}ms  {3}" -f $f.BaseName, $Matches[1], $sw.Elapsed.TotalMilliseconds, $detail.Trim())
       $diverged++
     } elseif ($out -match 'replay finished - all (\d+) steps played') {
       Write-Output ("  {0,-22} CLEAN      {1,6} steps {2,6:N0}ms" -f $f.BaseName, $Matches[1], $sw.Elapsed.TotalMilliseconds)
+      $clean++
+    } elseif ($out -match 'run ended - the recording ends here as (\w+)') {
+      Write-Output ("  {0,-22} CLEAN      ended as {1,-10} {2,6:N0}ms" -f $f.BaseName, $Matches[1], $sw.Elapsed.TotalMilliseconds)
       $clean++
     } else {
       $why = ($out -split "`n" | Where-Object { $_ -match 'halted' } | Select-Object -First 1)
