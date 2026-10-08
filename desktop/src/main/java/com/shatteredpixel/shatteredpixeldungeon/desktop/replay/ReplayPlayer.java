@@ -136,6 +136,7 @@ public class ReplayPlayer {
 		if (tracePath != null && !tracePath.trim().isEmpty()){
 			rngTracePath = tracePath;
 			rngTrace = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace();
+			rngTrace.dungeonSeed( Dungeon.seed );
 			com.watabou.utils.RandomTrace.enable();
 			//attribution on from construction to the first step, because the window being asked about is
 			//exactly the one before it: the renderer draws here that the headless path does not

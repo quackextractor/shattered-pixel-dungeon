@@ -49,12 +49,35 @@ import java.util.List;
 public class RngTrace {
 
 	private static final String HEADER =
-			"# spd-rng-trace v2\tstep\tbaseDraws\tbaseFingerprint";
+			"# spd-rng-trace v3\tstep\tbaseDraws\tbaseFingerprint\tsites";
 
 	private final List< String > lines = new ArrayList<>();
 
+	/**
+	 * The global site tally as it stood after the previous step, so each step's sites can be a delta.
+	 *
+	 * <p>A per-step diff of two runs that stop at different steps is meaningless if compared as totals:
+	 * the run that halted early did less work, so every later site looks "missing". Deltas against the
+	 * previous step make two traces comparable up to the shorter of them, which is the only span on which
+	 * they can honestly be compared.
+	 */
+	private final java.util.Map< String, Integer > previousSites = new java.util.HashMap<>();
+
 	public RngTrace(){
 		lines.add( HEADER );
+	}
+
+	/**
+	 * Records the numeric run seed in the trace header.
+	 *
+	 * <p>Put there because two paths can draw at the same sites in the same order and still get
+	 * different values, and the only thing that explains that is the base generator starting from a
+	 * different place. The seed text is not enough to compare: it goes through
+	 * {@code SPDSettings.customSeed} on one side and straight to the level pipeline on the other, so
+	 * "the same recording" does not by itself mean "the same seed was applied".
+	 */
+	public void dungeonSeed( long seed ){
+		lines.add( "# dungeonSeed=" + seed );
 	}
 
 	/**
@@ -65,19 +88,71 @@ public class RngTrace {
 	 */
 	public void onReset(){
 		RandomTrace.reset();
+		//The current tally becomes the baseline rather than being cleared. Attribution is switched on
+		//before the world is built, so clearing would make step 0's delta the entire generation - several
+		//thousand draws that have nothing to do with the first recorded step, and that every step would
+		//then be compared against.
+		previousSites.clear();
+		previousSites.putAll( RandomTrace.sites() );
+
+		//Read here, not by the caller before the run starts. Dungeon.seed is only set once the level
+		//pipeline has run, so a caller that samples it earlier reads whatever was there before - which is
+		//zero in a fresh headless process, and looks exactly like a seeding fault when it is a measurement
+		//one. onReset is called immediately after the environment reset, which is the first moment the
+		//seed exists.
+		dungeonSeed( com.shatteredpixel.shatteredpixeldungeon.Dungeon.seed );
 	}
 
 	/**
-	 * Records the current cumulative base-generator counters.
+	 * Records the current cumulative base-generator counters, and the sites that drew since the last
+	 * sample.
 	 *
-	 * <p>Base-generator draws only, deliberately. A pushed generator is an independent stream that
-	 * cannot influence the simulation - {@code Dungeon.seedForDepth} derives a per-depth seed on one and
-	 * discards it - and including those draws reported a divergence where there was none. The rendered
-	 * viewer asks for one more per-depth seed than the headless path, and folding that in made a
-	 * byte-identical simulation look different.
+	 * <p>The sites column is the per-step attribution, which is what makes a divergence actionable rather
+	 * than merely detectable: "first divergence at step 6" says where, and the two site sets on that line
+	 * say what each path did instead.
+	 *
+	 * <p>Sorted by site name, not left in first-seen order, because two runs that draw the same values in
+	 * a different order must still produce comparable lines - and first-seen order is exactly what
+	 * differs when they do not.
+	 */
+	private String sitesThisStep(){
+		java.util.Map< String, Integer > current = RandomTrace.sites();
+		java.util.List< String > parts = new ArrayList<>();
+
+		for (java.util.Map.Entry< String, Integer > e : current.entrySet()){
+			int delta = e.getValue() - previousSites.getOrDefault( e.getKey(), 0 );
+			if (delta > 0) parts.add( e.getKey() + "=" + delta );
+		}
+
+		previousSites.clear();
+		previousSites.putAll( current );
+
+		java.util.Collections.sort( parts );
+		return parts.isEmpty() ? "-" : String.join( ",", parts );
+	}
+
+/**
+	 * Records the current cumulative base-generator counters, and the sites that drew since the last
+	 * sample.
+	 *
+	 * <p>Base-generator draws only, deliberately. A pushed generator is an independent stream that cannot
+	 * influence the simulation - {@code Dungeon.seedForDepth} derives a per-depth seed on one and discards
+	 * it - and including those draws reported a divergence where there was none. The rendered viewer asks
+	 * for one more per-depth seed than the headless path, and folding that in made a byte-identical
+	 * simulation look divergent.
+	 *
+	 * <p>The sites column is the per-step attribution, which is what makes a divergence actionable rather
+	 * than merely detectable: "first divergence at step 6" says where, and the two site sets on that line
+	 * say what each path did instead. Totals would not: a run that halts early has simply done less work,
+	 * so every later site looks missing. Deltas against the previous step make two traces comparable up to
+	 * the shorter of them.
+	 *
+	 * <p>Sorted by site name rather than left in first-seen order, because first-seen order is precisely
+	 * what differs when two runs draw the same values in a different order.
 	 */
 	public void sample( int step ){
-		lines.add( step + "\t" + RandomTrace.baseDraws() + "\t" + RandomTrace.baseFingerprint() );
+		lines.add( step + "\t" + RandomTrace.baseDraws() + "\t" + RandomTrace.baseFingerprint()
+				+ "\t" + sitesThisStep() );
 	}
 
 	/** {@link ReplayIO.StepObserver} view, so a trace can be passed straight to {@code verify}. */
