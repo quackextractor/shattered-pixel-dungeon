@@ -14,8 +14,6 @@
 
 6. I am unsure if the env.gid dimensions are accurate. I read online that the max is 32x32. This number might've changed but a code sweep might be in order.
 
-7. The inventory slots / inventory system seems wrong. 
-
 "Each standard dungeon floor in Shattered Pixel Dungeon is hardcoded to a grid size of 32x32 tiles.   
 
 While the absolute boundaries of the floor remain locked at 32x32, the playable layout is procedurally generated within that space, leaving some of the grid as unused wall space. The rooms that generate within this grid fall into three primary size categories:   
@@ -25,7 +23,11 @@ While the absolute boundaries of the floor remain locked at 32x32, the playable 
     Large rooms: Ranging from 8x8 to 12x12 tiles.
 
     Giant rooms: Ranging from 12x12 to 16x16 tiles.
+"
 
+8. The inventory slots / inventory system seems wrong. 
+
+"
 What is the max inventory space available with all of the expansions?
 
 The maximum inventory space available in Shattered Pixel Dungeon is 96 item slots when you have acquired all of the expansion containers.
