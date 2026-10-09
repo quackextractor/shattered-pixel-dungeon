@@ -13,6 +13,15 @@ rem by score, and asks for a number. A name is not accepted here: the numbers ar
 rem what the listing shows, so a number is what can be typed back, and one way to
 rem select a recording is one that cannot be wrong in a new way.
 rem
+rem That form is a loop. Closing the viewer with ESC comes back to the catalog
+rem rather than ending the session - the listing was still there, and ending the
+rem only because a window closed made watching several recordings one process per
+rem recording. Enter or a bad number reprints the list instead of exiting, which
+rem is the same complaint about a stray keypress. q leaves.
+rem
+rem Passing a file is not a loop. That form is what a batch or a script invokes,
+rem and it ends when the playback does, so nothing about unattended use changes.
+rem
 rem The grouping, ranking and number-to-file mapping live in ReplayCatalog rather
 rem than here. Windows sort.exe on this machine rejects /n as an invalid switch,
 rem and the scores are floating point and can be negative, so sorting them in
@@ -40,6 +49,7 @@ set "GRADLE=%CD%\gradlew.bat"
 rem Options for unattended playback.
 rem
 rem   --trace              one line per settled step, for diffing against the trainer
+rem   --heartbeat          a liveness line every 2s, for debugging the viewer itself
 rem   --close              close the window when playback finishes or diverges
 rem   --close-on-diverge   close only when it diverges
 rem   --fast [n]           play at n times normal speed (default 40)
@@ -62,6 +72,7 @@ set "SPDJOPTS="
 :parseflags
 if "%~1"=="" goto :parsedone
 if /i "%~1"=="--trace"            set "SPDFLAGS=%SPDFLAGS% -PspdTrace"            & set "SPDJOPTS=%SPDJOPTS% -Dspd.trace=1"            & shift & goto :parseflags
+if /i "%~1"=="--heartbeat"        set "SPDFLAGS=%SPDFLAGS% -PspdHeartbeat"        & set "SPDJOPTS=%SPDJOPTS% -Dspd.heartbeat=1"        & shift & goto :parseflags
 if /i "%~1"=="--close"            set "SPDFLAGS=%SPDFLAGS% -PspdAutoClose"         & set "SPDJOPTS=%SPDJOPTS% -Dspd.autoClose=1"         & shift & goto :parseflags
 if /i "%~1"=="--close-on-diverge" set "SPDFLAGS=%SPDFLAGS% -PspdAutoCloseOnDiverge" & set "SPDJOPTS=%SPDJOPTS% -Dspd.autoCloseOnDiverge=1" & shift & goto :parseflags
 if /i "%~1"=="--mute"             set "SPDFLAGS=%SPDFLAGS% -PspdMute"               & set "SPDJOPTS=%SPDJOPTS% -Dspd.mute=1"               & shift & goto :parseflags
@@ -112,7 +123,7 @@ if /i "%~1"=="--list"   goto :list
 if /i "%~1"=="--record" goto :record
 if /i "%~1"=="--verify" goto :verify
 
-if "%~1"=="" goto :pick
+if "%~1"=="" goto :menu
 call :resolve "%~1" || exit /b 1
 goto :play
 
@@ -126,14 +137,34 @@ exit /b 0
 
 rem --- pick ------------------------------------------------------------------
 
-:pick
+rem The loop, entered at :menu. :play comes back here when the viewer closes, so
+rem the label the catalog is printed from has to sit above the code that leaves
+rem it rather than below.
+:menu
 call :catalog || exit /b 1
 echo.
-set /p "CHOICE=Play which? Enter its number: "
+set "CHOICE="
+set /p "CHOICE=Play which? Enter its number, or q to quit: "
 
+rem No test for end of input here. set /p returns errorlevel 1 for a blank line *and*
+rem for exhausted input, so an errorlevel check cannot tell Enter from EOF, and
+rem checking it made a plain Enter quit - the exact behaviour being removed. The
+rem alternatives all consume the line after the one being read, which would eat the
+rem next answer in an interactive session. So blank reprints and EOF reprints too;
+rem feeding this a redirected stream with nothing in it is not a thing anyone does.
+rem
+rem q before the digit test, because the digit test rejects it. Only q and quit,
+rem so a mistyped number is still refused rather than read as a request to leave.
+if /i "%CHOICE%"=="q"    goto :menuquit
+if /i "%CHOICE%"=="quit" goto :menuquit
+
+rem Empty input reprints instead of exiting. It used to print "Nothing selected."
+rem and exit, which was right for a one-shot prompt and wrong here: inside a loop
+rem it turns a stray Enter into the end of the session, and the listing is right
+rem there to be reprinted.
 if "%CHOICE%"=="" (
     echo Nothing selected.
-    exit /b 1
+    goto :menu
 )
 
 rem The test is inverted from what it looks like: with the digits as delimiters, an
@@ -143,11 +174,22 @@ set "ISNONNUM="
 for /f "delims=0123456789" %%a in ("%CHOICE%") do set "ISNONNUM=yes"
 if defined ISNONNUM (
     echo "%CHOICE%" is not one of the numbers listed above.
-    exit /b 1
+    goto :menu
 )
 
-call :bynumber %CHOICE% || exit /b 1
+rem A number outside the range is not fatal either. :bynumber has already said
+rem which numbers exist; reprinting the list is what makes the next attempt read
+rem against the same numbering that was just printed.
+call :bynumber %CHOICE% || goto :menu
+
+rem What :play tests to decide whether closing the viewer ends the session. Set
+rem here and nowhere else: :menu is the only path that loops, and :play has no way
+rem to tell which of its two callers sent it except this.
+set "MENU=1"
 goto :play
+
+:menuquit
+exit /b 0
 
 rem Resolves a number from the listing onto a file. The java side owns the order
 rem and answers the query, rather than this file keeping a second copy of the
@@ -162,7 +204,12 @@ rem Through a file rather than a `for /f` backtick loop. Inside one of those the
 rem quotes around --args="..." do not survive and gradle is handed a broken
 rem argument list, which fails with a bare "FAILURE" and no explanation. The path
 rem is read back with set /p, which takes the first line and nothing else.
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--select %TARGET% --dir "%REPLAYDIR%"" > "%SELECTFILE%" 2>nul
+rem
+rem No --no-daemon: this runs on every selection, and paying a fresh JVM plus a
+rem gradle startup for it made the menu feel broken. The daemon is started once and
+rem then reused for the listing, the lookup and every later playback's return to the
+rem menu, which is the whole point of being able to come back here.
+call "%GRADLE%" --offline -q :superintelligence:replays --args="--select %TARGET% --dir "%REPLAYDIR%"" > "%SELECTFILE%" 2>nul
 if errorlevel 1 (
     echo No recording numbered %TARGET%.
     del "%SELECTFILE%" >nul 2>&1
@@ -224,7 +271,11 @@ rem --- play ------------------------------------------------------------------
 :play
 echo.
 echo   replay  %FILE%
-echo   keys    SPACE pause   +/- speed   [ ] finer/coarser   R restart   ESC quit
+if defined MENU (
+    echo   keys    SPACE pause   +/- speed   [ ] finer/coarser   R restart   ESC back to the list
+) else (
+    echo   keys    SPACE pause   +/- speed   [ ] finer/coarser   R restart   ESC quit
+)
 echo.
 echo The [replay] lines report each keypress, which is the quickest way to tell
 echo "the key did nothing" apart from "the key did something invisible".
@@ -246,11 +297,30 @@ if not exist "%RUNBAT%" (
 if not exist "%RUNBAT%" (
     echo could not build the launcher; falling back to gradle
     call "%GRADLE%" --offline --no-daemon %SPDFLAGS% :desktop:replay --args="--file %FILE%"
-    exit /b %errorlevel%
+
+    rem Read here, inside the block, with ! rather than %. %RC% would be expanded when the
+    rem block was parsed - before the call above ran - so the exit code reported would be
+    rem whatever had failed earlier, or nothing at all on a first run.
+    set "RC=!errorlevel!"
+    if defined MENU goto :menu
+    exit /b !RC!
 )
 
 call "%RUNBAT%" %SPDJOPTS% -DImplementation-Title=shatteredpixel -DImplementation-Version=4.0.1 com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ReplayLauncher --file "%FILE%"
-exit /b %errorlevel%
+
+rem Captured before anything else can run: the menu prompt, the catalog, even a failed
+rem lookup would overwrite it, and the exit code is the only report the caller gets about
+rem whether that recording played.
+set "RC=!errorlevel!"
+
+rem The viewer has exited. In menu mode that is ESC or a close window, and the session
+rem continues from the catalog; given a file on the command line it is the end of the
+rem run, because that form is invoked by scripts which expect one playback and one exit.
+if defined MENU (
+    echo.
+    goto :menu
+)
+exit /b %RC%
 
 rem --- shared ----------------------------------------------------------------
 
@@ -262,8 +332,14 @@ rem against the working directory - and gradle runs a JavaExec task from the *mo
 rem the one this file lives in. So `replays` meant superintelligence\replays, which does not exist, and
 rem the committed corpus was invisible: --list showed only whatever a training run happened to have
 rem left in the temp directory. Naming it is the difference between the viewer working and not.
+rem
+rem No --no-daemon, and this is the one that matters most. The catalog is reprinted on
+rem every return to the menu, so a fresh JVM and a fresh gradle startup per print made
+rem coming back from a playback look like a hang: the window had closed, and nothing
+rem happened for several seconds. Paying for a daemon once and reusing it is what makes
+rem the menu worth returning to.
 :catargs
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--dir "%REPLAYDIR%""
+call "%GRADLE%" --offline -q :superintelligence:replays --args="--dir "%REPLAYDIR%""
 exit /b %errorlevel%
 
 :catalog

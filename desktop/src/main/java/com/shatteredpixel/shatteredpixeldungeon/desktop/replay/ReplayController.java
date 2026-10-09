@@ -64,8 +64,26 @@ private Signal.Listener<KeyEvent> viewerKeys;
 	/** Whether the per-frame pump has logged at least once, so it only speaks up once. */
 	private boolean pumpLogged;
 
-	/** Frames pumped, for the heartbeat. */
+	/**
+	 * Whether the halt has been reported to stderr, so the reason is printed once rather than every frame.
+	 *
+	 * <p>Not a counter and not a timestamp. The reason is a fact about one moment - the step playback
+	 * stopped agreeing on - and reprinting it at frame rate says nothing new sixty times a second.
+	 */
+	private boolean stoppedLogged;
+
+	/** Frames pumped, for the heartbeat. Only counted when {@link #HEARTBEAT} is on. */
 	private int frames;
+
+	/**
+	 * Whether to print the periodic liveness line. Enabled with {@code -Dspd.heartbeat}, off by default.
+	 *
+	 * <p>A diagnostic rather than a feature, the same as {@code -Dspd.trace}. It is worth having when the
+	 * viewer itself is suspected of being at fault, and worth nothing to someone watching a recording:
+	 * it kept printing after a halt - by design, the window stays open to be read - so it filled the
+	 * output with lines that said only that the window was still up.
+	 */
+	private static final boolean HEARTBEAT = System.getProperty( "spd.heartbeat" ) != null;
 
 	/** Scene the HUD was built against, so a replaced scene rebuilds it. */
 	private com.watabou.noosa.Scene hudScene;
@@ -149,19 +167,29 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 		//identical from the outside and have completely different causes. If this stops printing,
 		//the render loop is stalled and the queued key events are never dispatched; if it keeps
 		//printing, the loop is alive and the loss is between the key arriving and the listener.
-		controller.frames++;
-		if (controller.frames % 120 == 0){
-			log( "heartbeat frame " + controller.frames
-					+ " step " + controller.player.playback().cursor()
-					+ " playing=" + controller.player.playing()
-					+ " windowOpen=" + GameScene.showingWindow() );
+		//
+		//Opt-in with -Dspd.heartbeat, off by default. It answers a question only someone debugging the
+		//viewer asks, and it asks it forever: the window is deliberately left open on a halt, so the
+		//line kept printing at frame rate against a person who was only trying to watch a recording.
+		//That is the same rule -Dspd.trace follows: a diagnostic is not a feature.
+		//
+		//The one-off lines above and below stay on. Each prints at most once, and they are what tells a
+		//dead key apart from a dead loop, which is why they were added in the first place.
+		if (HEARTBEAT){
+			controller.frames++;
+			if (controller.frames % 120 == 0){
+				log( "heartbeat frame " + controller.frames
+						+ " step " + controller.player.playback().cursor()
+						+ " playing=" + controller.player.playing()
+						+ " windowOpen=" + GameScene.showingWindow() );
+			}
 		}
 
 		//Closed here rather than in halt(), so the frame's reporting above is written first.
 		if (controller.player.closing()){
 			log( "closing: " + controller.player.haltReason() );
 			if (game != null ) game.finish();
-		} else if (controller.player.finished()){
+		} else if (controller.player.finished() && !controller.stoppedLogged){
 			//Playback has stopped and nothing asked for the window to close. Without this the process
 			//lives forever: the frame loop keeps running, the heartbeat keeps reporting playing=false,
 			//and a batch run blocks on a keypress nobody will send. Reaching the end of a recording was
@@ -169,6 +197,12 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 			//
 			//Reported rather than closed, since the point of leaving the window up is to read why it
 			//stopped. A run that is meant to finish unattended passes --close.
+			//
+			//Once. pump() runs every frame for as long as the window is open, and finished() stays true
+			//after the first halt, so an unguarded print put the same DIVERGED line on stderr sixty times
+			//a second and buried everything printed around it. The window stays up either way - only the
+			//reporting is once.
+			controller.stoppedLogged = true;
 			log( "stopped: " + controller.player.haltReason()
 					+ "   (window left open; pass --close to exit on completion)" );
 		}
@@ -208,6 +242,10 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 		help = null;
 		hudScene = null;
 		dismissed = null;
+
+		//Otherwise the second run's halt is silent. A restart re-arms the one-shot report, because a
+		//fresh playback that stops again is a new event and the reason is a different one.
+		stoppedLogged = false;
 
 		Game.switchScene( InterlevelScene.class );
 	}

@@ -29,6 +29,7 @@ tasks.register('replay', JavaExec) {
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ReplayLauncher'
     //Diagnostics and unattended-playback options, all opt-in so a normal launch is unaffected.
     if (project.hasProperty('spdTrace')) { systemProperty 'spd.trace', '1' }
+    if (project.hasProperty('spdHeartbeat')) { systemProperty 'spd.heartbeat', '1' }
     if (project.hasProperty('spdAutoClose')) { systemProperty 'spd.autoClose', '1' }
     if (project.hasProperty('spdAutoCloseOnDiverge')) { systemProperty 'spd.autoCloseOnDiverge', '1' }
     if (project.hasProperty('spdMonitorX')) { systemProperty 'spd.monitorX', project.property('spdMonitorX') }
