@@ -53,7 +53,19 @@ foreach ($name in @('pre-commit', 'pre-push')) {
 
     # Windows has no executable bit, and git for Windows honours a hook whose shebang resolves through its
     # bundled sh, so this is a no-op here and matters on every other platform.
-    & git update-index --chmod=+x -- $source 2>$null | Out-Null
+    #
+    # -C and a relative pathspec, because neither was here before and both were load-bearing. git update-index
+    # without -C runs against the current directory, so from anywhere but a repository it exits 128 and
+    # changes nothing; an absolute Windows pathspec is rejected the same way. The exit code was discarded
+    # into Out-Null, so the mode was never set and the failure was invisible - which matters more than it
+    # sounds: git skips a hook without the executable bit on POSIX, so pre-push would have committed
+    # cleanly and simply never run on linux or mac, and never once said so.
+    & git -C $repoRoot update-index --chmod=+x -- "hooks/$name" 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[WARN] could not set the executable bit on hooks/$name in the git index." -ForegroundColor Yellow
+        Write-Host "[WARN] git skips a hook that is not executable on linux and mac, so it would never"
+        Write-Host "[WARN] run there. Fix it with: git update-index --chmod=+x -- hooks/$name"
+    }
 
     Write-Host "[OK]   installed $target"
 }
