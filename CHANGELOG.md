@@ -13,21 +13,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `GameScene`, real `ReplayController` frame driver, real GL context with the window hidden - and fails
   if any recording diverges. One child JVM per recording. Needs a display, so it is deliberately not
   part of `gates`. It exists because `playbackcheck` cannot see this class of fault: it calls
-  `ReplayPlayer.update` directly, whereas the viewer installs itself as `GameScene`'s frame driver, and
-  `GameScene.update` advances the world's actors on frames that apply no recorded step.
+  `ReplayPlayer.update` directly, whereas the viewer installs itself as `GameScene`'s frame driver.
+
+- **`WorldSnapshot` and `WorldDiff`** (`superintelligence/.../replay/`): a per-step and **per-frame**
+  record of the whole world - hero, full mob roster with AI state and three-state FOV, blobs, per-cell
+  terrain with a fingerprint over the cells it omits, and path-qualified inventory including nested bags -
+  plus a field-level diff that resolves a difference down to the coordinates. `worldtrace` is the
+  headless producer. Every existing comparison in the suite covers four fields; this one says which mob
+  moved and which cell changed, which is what turned "hp is 19, recording says 20" into an explanation.
+
+- **`FrameDelta`** and `-Dspd.fixedDelta`: pins the viewer's playback pacing, so the number of frames
+  between recorded steps is a function of the recording rather than of the machine. **It does not pin
+  the animation clock** and no arrangement of writes from the frame driver can - `Game.elapsed` is
+  derived in `Game.update` before any game code runs, so three separate approaches were tried and
+  measured, and all of them leave two clocks disagreeing. The class documents the measurements.
+
+- **`Actor.currentActor()`, `Mob.currentEnemy()`, `Mob.enemySeen()`, `Mob.alerted()` and
+  `MovieClip.animationInFlight()`**: getters only. No game logic changed. The first three let an observer
+  name which actor acted and on what; the last is the only way to ask whether an attack is still in
+  flight, since `CharSprite.isMoving` is set by movement and by nothing else.
 
 ### Fixed
 
-- **`replay-viewer` fidelity bug, diagnosed but not yet fixed (OPEN)**: 7-9 of the 17 committed
-  recordings diverge when played in the rendered viewer, while all 17 verify clean headlessly. The
-  hero takes hits the trainer never permitted, because the scene advances actors outside the viewer's
-  drain (e.g. `duelist-mid` step 23 and `warrior-mid` step 17, `hp is 19, recording says 20`). The
-  failing *membership* varies between runs as well as the failing step, so a fix cannot be confirmed
-  by re-running the gate. Reproduced and gated by `viewcheck`; the fix requires changing `GameScene`'s
-  update loop in the game itself, which is out of scope for the `superintelligence` module.
-  Full issue, troubleshooting options and known gaps: `superintelligence/ISSUE-viewer-frame-drift.md`.
+- **The rendered viewer took over the desktop on every gate run.** Two settings were inherited from
+  whatever preferences file happened to exist, and both default to values that break an unattended run:
+  `SPDSettings.fullscreen()` defaults to `true`, so `DesktopPlatformSupport` called `setFullscreenMode`
+  from the game's own `create()` - after the launcher's window configuration was complete, so no `-D`
+  flag could stop it, and GLFW ignores its visibility hint for fullscreen windows. `SPDSettings.intro()`
+  also defaults to `true`, and `Hunger.act()` returns early while it is set, which freezes the hero's
+  hunger clock for the whole run; the trainer has always stated `intro(false)` explicitly, and the
+  viewer inherited `false` from the developer's own settings by luck. Both are now stated rather than
+  inherited, and `viewcheck` reads the window mode back from the live context and fails if a run went
+  fullscreen, so this cannot regress silently. This is the third instance of the same class of fault -
+  a setting only one side states - after quickslot bindings and scheduler tie-breaking.
+
+- **`viewcheck` took six minutes and reported differently each run.** It now completes in ~90s, prints a
+  progress bar, and captures child output so a failure's detail is reprinted rather than interleaved
+  with sixteen other children. **Parallelism is now opt-in** (`VIEWCHECK_JOBS`, default 1): playback is
+  timing sensitive, and at ten children the same recordings failed at *different steps* between runs,
+  so the gate warns when it is not running one at a time. Two sequential runs now report the same
+  fourteen recordings failing at the same fourteen steps.
+
+- **`ReplayPlayer` frame counters reported zero whenever tracing was off**, because they sat after the
+  snapshot's null check. The frame ratio is the one number that says how timing-dependent a playback is,
+  so it has to be true on a normal run.
 
 ### Changed
+
+- **`viewcheck`'s `GATE_SPEED` of 40 was silently clamped to 16** by `ReplayPlayer.speed()`, in both the
+  system property and the direct call. Any reasoning about the gate's speed was off by 2.5x.
+
+- The documented cause of the viewer divergence was **wrong**, and is corrected in
+  `superintelligence/PLAN-viewer-fidelity.md` §7. `GameScene.update` does not advance the world during
+  playback - that branch is gated off by `Actor.manualScheduling`. A planned fix that would have added a
+  mid-turn check to the step gate was **measured and refuted**: the viewer already waits, for 48
+  consecutive frames while an attack animation resolves. The real cause is an attack resolving on the
+  render thread while `HeadlessSprite` resolves it synchronously in the trainer, so the two order the
+  same events differently.
+
+### Fixed
+
+- The `readyToAct()` step-gate hypothesis was measured and **refuted** before implementing it. Recorded
+  because a plan that predicted the wrong mechanism, and was caught, is worth more than one that was
+  never questioned. `superintelligence/PLAN-viewer-fidelity.md` §4.
+
+- 14 of 17 recordings still diverge in the rendered viewer, deterministically and at identical steps.
+  Cause measured, fix not yet made; see `PLAN-viewer-fidelity.md`.
 
 - **Merged upstream v4.0.2** (10 commits from `00-Evan/shattered-pixel-dungeon`). Clean merge, no
   conflicts, and it touched no file in `:superintelligence`. Our own additions to the engine all

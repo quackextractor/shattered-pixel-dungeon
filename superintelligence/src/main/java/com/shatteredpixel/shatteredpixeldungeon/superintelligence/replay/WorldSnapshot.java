@@ -130,6 +130,47 @@ public class WorldSnapshot {
 		return this;
 	}
 
+	/**
+	 * Records the step gate's own inputs on a frame record.
+	 *
+	 * <p>The three fields together are what a two-sided diff cannot show. Whether a recorded step was
+	 * applied while some actor was mid-turn, and while an animation was in flight, is the whole question
+	 * of whether the viewer honours the trainer's ordering - and it is invisible from world state alone,
+	 * because the world looks identical on both sides until the ordering has already gone wrong.
+	 *
+	 * <p>Read at the frame boundary, so it describes the moment the gate was consulted.
+	 */
+	public WorldSnapshot gate( boolean readyToAct, String currentActor, int animating ){
+		lines.add( "gate\t" + gateLabel++ + "\tgate\tready=" + readyToAct
+				+ "\tcurrent=" + currentActor
+				+ "\tanimating=" + animating );
+		return this;
+	}
+
+	/** Separate counter so a gate line cannot be mistaken for a frame record at the same label. */
+	private int gateLabel;
+
+	/**
+	 * Records what the animation clock actually saw on a frame.
+	 *
+	 * <p>{@code Game.elapsed} is what every animation accumulates and {@code timeTotal} is its running
+	 * sum, so their per-frame difference is precisely what {@code MovieClip} advanced by. Recording it is
+	 * the only way to tell a pinned frame clock that landed from one that did not: the player's own
+	 * pacing would look correct either way, and an animation still running on real frame time would show
+	 * up nowhere else.
+	 *
+	 * @param playerElapsed what {@link ReplayPlayer} was handed, which may differ from the game's own
+	 * @param gameElapsed   {@code Game.elapsed} at the frame boundary
+	 */
+	public WorldSnapshot clock( String kind, int label, float playerElapsed, float gameElapsed,
+			float timeTotal, float timeScale ){
+		lines.add( kind + "\t" + label + "\tclock\tplayer=" + playerElapsed
+				+ "\tgame=" + gameElapsed
+				+ "\ttotal=" + timeTotal
+				+ "\tscale=" + timeScale );
+		return this;
+	}
+
 	private String hero(){
 		Hero h = Dungeon.hero;
 		if (h == null) return "hero\t-";

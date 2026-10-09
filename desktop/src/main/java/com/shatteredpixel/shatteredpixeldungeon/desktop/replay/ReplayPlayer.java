@@ -36,6 +36,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quicksl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 
 /**
  * Replays a recording by applying its actions to the live game.
@@ -376,18 +377,63 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 	 *
 	 * @param appliedStep whether this frame applied a recorded step
 	 */
-private void frameBoundary( boolean appliedStep, float elapsed, Drain drain ){
+/**
+	 * What the animation clock has actually advanced by.
+	 *
+	 * <p>Recorded on every frame because a pinned delta that is not reaching {@code MovieClip} is
+	 * invisible from anywhere else: the player's own pacing would look correct and every animation would
+	 * still run on real frame time. {@code Game.elapsed} is what animations accumulate and
+	 * {@code timeTotal} is its running sum, so their per-frame difference is exactly what the animation
+	 * clock saw - the only way to tell a pin that landed from one that did not.
+	 *
+	 * @param elapsed the delta handed to this player, after {@link FrameDelta}
+	 * @param playerDelta recorded alongside so a disagreement between the two clocks is visible
+	 */
+	private void frameBoundary( boolean appliedStep, float elapsed, Drain drain ){
 		//Both counters advance whether or not a snapshot is being written. They used to sit after the
 		//snapshot's null check, which made the reported frame count zero whenever tracing was off - and
 		//the frame ratio is the one number that says how timing-dependent a playback is, so it has to be
 		//true on a normal run and not only on an instrumented one.
-		int label = frames++;
+int label = frames++;
 		if (appliedStep) steppedFrames++;
 
 		if (worldSnapshot == null) return;
-		if (worldSnapshot != null){
-			worldSnapshot.sample( "frame", label ).frame( "frame", label, elapsed, drain, appliedStep );
+		worldSnapshot.sample( "frame", label )
+				.frame( "frame", label, elapsed, drain, appliedStep )
+				.gate( readyToAct(), describeCurrent(), animatingCount() )
+				.clock( "frame", label, elapsed, com.watabou.noosa.Game.elapsed,
+						com.watabou.noosa.Game.timeTotal, com.watabou.noosa.Game.timeScale );
+	}
+
+	/**
+	 * Who the scheduler handed a turn to and has not yet heard back from, or "-" when nobody has.
+	 *
+	 * <p>{@code Actor.current} is set by {@code headlessStep} and cleared only by {@code next()}, which
+	 * is what {@code onAttackComplete} calls. So a non-null value means an actor has taken a turn and has
+	 * not completed it - the state the hero must not be given input in.
+	 */
+	private String describeCurrent(){
+		Actor who = Actor.currentActor();
+		return who == null ? "-" : who.getClass().getSimpleName() + "@" + who.id();
+	}
+
+	/**
+	 * How many actors have a non-looping animation in flight.
+	 *
+	 * <p>Covers the case {@code Actor.current} cannot: a mob that attacked while another was still
+	 * mid-swing has already cleared {@code current}, but its own animation has not resolved and its hit
+	 * has not landed.
+	 */
+	private int animatingCount(){
+		int n = 0;
+		if (Dungeon.hero != null && Dungeon.hero.sprite != null
+				&& Dungeon.hero.sprite.animationInFlight()) n++;
+		if (Dungeon.level != null){
+			for (Mob mob : Dungeon.level.mobs){
+				if (mob.sprite != null && mob.sprite.animationInFlight()) n++;
+			}
 		}
+		return n;
 	}
 
 	/**

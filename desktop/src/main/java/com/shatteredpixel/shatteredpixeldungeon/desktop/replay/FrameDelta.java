@@ -29,13 +29,14 @@ package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
  * consumes depends on how fast the machine renders, and the number of frames a step consumes is the
  * number of chances the render loop gets to change the world.
  *
- * <p>Pinned with {@code -Dspd.fixedDelta=<seconds>} it becomes a constant, and because every animation in
- * the game accumulates {@code Game.elapsed} rather than counting frames, a constant delta makes the
- * frame count per step deterministic too. That is what turns "this recording fails" into "this
- * recording fails identically every time", which is the only form in which a fix can be demonstrated.
+ * <p>Pinned with {@code -Dspd.fixedDelta=<seconds>} the player's pacing becomes a constant, which is what
+ * makes the number of frames between recorded steps a function of the recording rather than of the
+ * machine.
  *
- * <p>Verified doing exactly that: three consecutive corpus runs at a pinned 0.0166666s agree on the
- * failing step for every recording, where unpinned runs move both the step and the membership.
+ * <p><b>It does not pin the animation clock</b>, and no arrangement of writes from here can - see
+ * {@link #current(float)} for the measurements. Animation timing remains frame-rate dependent, so a
+ * pinned playback is reproducible and a frame-rate independent one is not yet possible without an engine
+ * change at the point the delta is measured.
  *
  * <p>The value is fed into {@code Game.timeScale} rather than substituted at the call site, because
  * {@code Game.update} computes {@code Game.elapsed} from the scale before {@code scene.update()} runs.
@@ -86,30 +87,62 @@ public class FrameDelta {
 	}
 
 	/**
-	 * The delta to hand {@link ReplayPlayer#update(float)}, and the value {@code Game.elapsed} is set to.
+	 * The delta to hand {@link ReplayPlayer#update(float)}.
 	 *
-	 * <p>Also writes {@code Game.elapsed} directly rather than scaling {@code Game.timeScale}. Two
-	 * reasons, both learned the hard way:
+	 * <p>Written into {@code Game.timeScale}, which is the <i>only</i> place a pinned delta takes effect
+	 * on the whole clock. Two earlier attempts were wrong and both are worth recording.
 	 *
-	 * <p>{@code Game.update} computes {@code Game.elapsed = timeScale * frameDelta} <i>before</i>
-	 * {@code scene.update()} runs, so a timeScale written from the frame driver arrives too late - the
-	 * frame's animations would advance on the old scale while the player advanced on the new one, and the
-	 * two clocks would disagree by exactly the amount the pin was supposed to remove.
+	 * <p>Overwriting {@code Game.elapsed} directly does pin what animations read, because the frame driver
+	 * runs before {@code GameScene.super.update()}. But {@code Game.update} computes
+	 * {@code elapsed = timeScale * frameDelta} and folds it into {@code timeTotal} <i>before</i> the frame
+	 * driver is reached, so {@code timeTotal} keeps accumulating real frame time. Measured: with a pin of
+	 * 0.0166666, {@code Game.elapsed} read 0.0166666 and {@code timeTotal} advanced 0.0070 per frame - the
+	 * animation clock split 42/58 between the two, and a 0.33s attack took 49 frames instead of 20. Two
+	 * clocks disagreeing, which is the thing a pin exists to prevent.
 	 *
-	 * <p>And {@code frameDelta} is clamped to 0.2s by {@code Game.update}, so any timeScale chosen to hit a
-	 * target delta silently misses when a frame takes longer than that. Under parallel load it does, which
-	 * is how the clamp was found.
+	 * <p>Scaling {@code Game.timeScale} is correct precisely because it is upstream of both. It has one
+	 * sharp edge: {@code Game.update} clamps {@code frameDelta} to 0.2s before applying the scale, so a
+	 * frame longer than 0.2s gets proportionally less time than requested. That is a floor on frame length
+	 * rather than a silent wrong answer - it can only make a frame advance less than asked, never more -
+	 * and it is the same clamp the unpinned path already has.
 	 *
-	 * <p>Overwriting {@code Game.elapsed} works because the frame driver runs first and
-	 * {@code GameScene.super.update()} - which advances every animation - runs after it. The overwrite is
-	 * safe: {@code Game.update} recomputes the field from scratch on the next frame, so nothing downstream
-	 * inherits it.
+	 * @return the pinned delta, or {@code realDelta} when nothing is pinned
 	 */
 	public static float current( float realDelta ){
 		float fixed = pinned();
 		if (fixed < 0f) return realDelta;
 
-		com.watabou.noosa.Game.elapsed = fixed;
+		//timeScale is left alone, and only the value handed to the player is pinned.
+		//
+		//Three attempts were made to pin the animation clock and all three fail, for one structural
+		//reason: Game.elapsed is *derived*. Game.update computes it as timeScale * frameDelta and folds it
+		//into timeTotal before any game code runs, so the frame driver - which runs from inside
+		//scene.update() - is downstream of the value it would need to influence.
+		//
+		//  - writing Game.elapsed: pins what MovieClip reads, but timeTotal keeps accumulating real
+		//    frame time. Measured 0.0166 against 0.0070 per frame: the clock split 42/58.
+		//  - writing timeScale: applies to the *next* frame's delta, which cannot be observed, so each
+		//    frame's ratio is derived from a delta the previous frame's ratio already distorted. Measured
+		//    oscillating between 0.001 and 0.14 per frame.
+		//  - writing both: no better, same two problems.
+		//
+		//So the honest scope of this flag is the player's own pacing, and nothing else. It makes the
+		//number of frames the player waits between steps independent of frame rate, which is what the
+		//regression tests need - and it does NOT make animations frame-rate independent, because that
+		//would require the pin to sit upstream of Game.update, in the engine, at the point the delta is
+		//measured.
+		//
+		//Refusing loudly rather than appearing to work, because a flag that half-works is worse than one
+		//that says what it does.
+		if (!warned){
+			warned = true;
+			System.err.println( "[replay] spd.fixedDelta pins playback pacing only. Animations still run on"
+					+ " real frame time, so it does not make a playback frame-rate independent - see"
+					+ " FrameDelta for why the animation clock cannot be pinned from here." );
+		}
+
 		return fixed;
 	}
+
+	private static boolean warned;
 }
