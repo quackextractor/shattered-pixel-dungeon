@@ -144,7 +144,11 @@ public static void pump(){
 		ReplayController controller = active;
 		if (controller == null) return;
 
-		controller.player.update( Game.elapsed );
+		//Through FrameDelta, so -Dspd.fixedDelta can pin playback's clock to the animations' clock.
+		//Left as raw Game.elapsed the two share a frame rate, which is what makes the number of frames
+		//per step - and therefore how much the render loop gets to change the world - a property of the
+		//machine rather than of the recording.
+		controller.player.update( FrameDelta.current( Game.elapsed ));
 
 if (controller.hud == null || controller.hudScene != Game.scene()){
 			//Not just "has a HUD been built". A restart replaces the scene, and the old scene's gizmos

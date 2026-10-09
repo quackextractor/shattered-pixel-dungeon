@@ -100,6 +100,11 @@ tasks.register('viewcheck', JavaExec) {
     workingDir = rootProject.projectDir
     systemProperty 'spd.replayDir', project.findProperty('spdReplayDir') ?: "${rootProject.projectDir}/replays"
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+
+    //Passed on to each forked child by ViewCheck, so the gate's own verdict is unchanged but a run can be
+    //investigated without editing anything. Both default to off.
+    if (project.hasProperty('spdWorldTrace')) { systemProperty 'spd.worldTrace', project.property('spdWorldTrace') }
+    if (project.hasProperty('spdFixedDelta')) { systemProperty 'spd.fixedDelta', project.property('spdFixedDelta') }
 }
 
 tasks.register('debug', JavaExec) {

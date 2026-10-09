@@ -216,7 +216,20 @@ static Lwjgl3ApplicationConfiguration windowConfig(){
 		String basePath;
 		Files.FileType baseFileType;
 
-		if (SharedLibraryLoader.os == Os.Windows){
+//An explicit file root wins over the platform default. Set by ViewCheck, which runs several
+		//playbacks at once and cannot have them sharing one preferences file and one save directory:
+		//the game writes preferences and a bones.dat there on the way in, and two children writing the
+		//same file produced GdxRuntimeException "Error copying source file ... .spdtmp" on any run that
+		//had more than one child in flight. Isolated roots also stop a gate run from touching whatever
+		//the developer's own game state is, which a shared default does on a machine that has played.
+		String rootOverride = System.getProperty( "spd.fileRoot" );
+		if (rootOverride != null && !rootOverride.trim().isEmpty()){
+			String root = rootOverride.trim();
+			if (!root.endsWith( "/" ) && !root.endsWith( File.separator )) root = root + "/";
+			basePath = root;
+			baseFileType = Files.FileType.Absolute;
+
+		} else if (SharedLibraryLoader.os == Os.Windows){
 			basePath = "AppData/Roaming/." + vendor() + "/Shattered Pixel Dungeon/";
 			baseFileType = Files.FileType.External;
 		} else if (SharedLibraryLoader.os == Os.MacOsX){
@@ -229,24 +242,74 @@ static Lwjgl3ApplicationConfiguration windowConfig(){
 			baseFileType = Files.FileType.Absolute;
 		}
 
+if (!new File( basePath ).isDirectory() && !new File( basePath ).mkdirs()){
+			//Not fatal - the game creates the directory itself when it saves - but it means nothing can be
+			//read back, so the window mode below is decided from defaults rather than from preferences. A
+			//caller who pointed spd.fileRoot at somewhere unwritable gets a surprising window rather than
+			//a clear failure, so it is reported.
+			System.err.println( "[replay] cannot create the file root at " + basePath
+					+ "; falling back to default preferences" );
+		}
+
 		config.setPreferencesConfig( basePath, baseFileType );
 		SPDSettings.set( new Lwjgl3Preferences(
 				new Lwjgl3FileHandle( basePath + SPDSettings.DEFAULT_PREFS_FILE, baseFileType ) ) );
 		FileUtils.setDefaultFileProperties( baseFileType, basePath );
 
-		config.setWindowSizeLimits( 720, 400, -1, -1 );
-		Point p = SPDSettings.windowResolution();
-		config.setWindowedMode( p.x, p.y );
+		//Fullscreen off, written into the preferences rather than requested of the window configuration.
+		//
+		//Every window call below is too early to stop this. The game goes fullscreen from its own
+		//create() - ShatteredPixelDungeon.updateSystemUI -> DesktopPlatformSupport.updateSystemUI ->
+		//Gdx.graphics.setFullscreenMode - which runs once the GL context exists, after this method has
+		//returned. It decides by reading SPDSettings.fullscreen(), and that getter defaults to TRUE for a
+		//key that is not present. So an isolated file root, which has no such key, produced a fullscreen
+		//window on every run: a real window, on the primary monitor, that then took the desktop away from
+		//whoever started the gate.
+		//
+		//GLFW_VISIBLE is ignored for fullscreen windows and glfwHideWindow does nothing to them, so once
+		//that switch happens no flag set here can undo it. The only place that can be stopped is the
+		//preference it reads.
+		//
+		//SPDSettings.put, not SPDSettings.fullscreen(false): the setter calls updateSystemUI() as a side
+		//effect, which dereferences Gdx.app, and there is no application yet at this point. GameSettings.put
+		//only writes and flushes, which is what is wanted here.
+		if (WINDOWED || HIDDEN || MONITOR_X != null || MONITOR_Y != null){
+			SPDSettings.put( SPDSettings.KEY_FULLSCREEN, false );
+		}
 
-		//A saved "maximised" preference maximises the window whatever position is requested, so an
-		//unattended run covered the display being worked on. Any explicit placement implies a normal
-		//windowed one.
+		//The tutorial off, always - not only for a gate run.
+		//
+		//SPDSettings.intro() defaults to true and Hunger.act() returns early while it is set, which
+		//freezes the hero's hunger clock for the whole run. So the world a recording describes is a world
+		//whose hero never starves, and playing that recording back with the intro on is not playing it.
+		//
+		//This was a real gate failure and not a hypothetical one. The viewer used to inherit intro=false
+		//from the developer's own settings.xml by luck; give it an isolated preferences file and the
+		//default applies, and recordings that had been passing started diverging several steps in. The
+		//trainer already sets this explicitly for exactly this reason, and the comment there names the
+		//same cause - see LevelPipeline.startRun. Both sides of a replay comparison must state the setting
+		//rather than inherit it, or the comparison is between two different games.
+		//
+		//Unconditional because a recording is never of the tutorial: the trainer cannot produce one.
+		SPDSettings.put( SPDSettings.KEY_INTRO, false );
+
+config.setWindowSizeLimits( 720, 400, -1, -1 );
+
+//A gate run must never take over the desktop, whatever the saved preferences say. ViewCheck passes
+		//-Dspd.windowed and -Dspd.hidden precisely so an unattended run cannot cover the display it was
+		//started from, and a saved "maximised" preference would otherwise defeat that. So the mode is
+		//stated rather than asked about. HIDDEN still creates a real GL context - the render loop is what
+		//is being tested, not the pixels. None of this is sufficient on its own; see the preference write
+		//above for the switch that actually fullscreens the game.
 		boolean placed = MONITOR_X != null || MONITOR_Y != null;
 
-		if (placed || WINDOWED){
+		if (placed || WINDOWED || HIDDEN){
+			config.setWindowedMode( WINDOW_SIZE.x, WINDOW_SIZE.y );
 			config.setMaximized( false );
 			config.setInitialVisible( !HIDDEN );
 		} else {
+			Point p = SPDSettings.windowResolution();
+			config.setWindowedMode( p.x, p.y );
 			config.setMaximized( SPDSettings.windowMaximized() );
 		}
 
@@ -268,9 +331,16 @@ static Lwjgl3ApplicationConfiguration windowConfig(){
 
 		//Every option is stated, so what the run is actually doing is never a guess. Silence and
 		//window closing in particular are easy to forget to ask for, and were both missed in practice.
+		//States what this process asked for, not what it ended up with. The window can still be made
+		//fullscreen later by the game itself, from a preference, after the context exists - which is why
+		//the fullscreen preference is written above and why the diagnostic is not evidence of the final
+		//mode. An earlier version of this line printed windowed=true while the window was fullscreen, and
+		//was believed.
 		System.err.println( "[replay] audio=" + (MUTE ? "off" : "on")
 				+ " speed=" + speedHint()
 				+ " windowed=" + (WINDOWED || placed)
+				+ " hidden=" + HIDDEN
+				+ " fullscreenPref=" + (WINDOWED || HIDDEN || placed ? "off" : "from settings")
 				+ " position=" + (placed ? String.valueOf(MONITOR_X) + "," + String.valueOf(MONITOR_Y) : "default")
 				+ " closeOnDiverge=" + AUTO_CLOSE_ON_DIVERGE
 				+ " closeAlways=" + AUTO_CLOSE );
@@ -286,6 +356,15 @@ static Lwjgl3ApplicationConfiguration windowConfig(){
 	 */
 	private static final Integer MONITOR_X = intProperty( "spd.monitorX" );
 	private static final Integer MONITOR_Y = intProperty( "spd.monitorY" );
+
+	/**
+	 * Window size used when the mode is stated rather than read from preferences.
+	 *
+	 * <p>Fixed rather than {@code SPDSettings.windowResolution()}, because that reads a file which a
+	 * gate run may have just created empty - and a missing or unreadable preferences file must not be what
+	 * decides how big a window an unattended run puts on the desktop.
+	 */
+	private static final Point WINDOW_SIZE = new Point( 800, 600 );
 
 	/** Mute everything, so an unattended run is silent. Enabled with {@code -Dspd.mute}. */
 	private static final boolean MUTE = System.getProperty( "spd.mute" ) != null;

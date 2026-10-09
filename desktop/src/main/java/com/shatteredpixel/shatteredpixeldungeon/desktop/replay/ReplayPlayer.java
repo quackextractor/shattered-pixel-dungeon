@@ -151,6 +151,19 @@ public class ReplayPlayer {
 			rngTracePath = null;
 			rngTrace = null;
 		}
+
+		String worldPath = System.getProperty( "spd.worldTrace" );
+		if (worldPath != null && !worldPath.trim().isEmpty()){
+			worldTracePath = worldPath;
+			//Cells are off by default here: a frame record is per frame, so a floor-sized cell dump would
+			//be tens of thousands of records for a 150-step recording and would drown the frames that
+			//matter. The roster is what identifies an actor, and it is on every record.
+			worldSnapshot = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot()
+					.cells( false );
+		} else {
+			worldTracePath = null;
+			worldSnapshot = null;
+		}
 	}
 
 	/**
@@ -168,6 +181,17 @@ public class ReplayPlayer {
 	private final com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace rngTrace;
 	private final String rngTracePath;
 	private boolean rngTraceArmed = false;
+
+	/**
+	 * Per-frame record of the world, and per-step alongside it.
+	 *
+	 * <p>Off unless {@code -Dspd.worldTrace} names a file. It exists because {@link #rngTrace} and the
+	 * viewer trace are both keyed to a settled step, so neither can see a turn taken on a frame that
+	 * applied no recorded step - which is the one thing a frame-driven viewer does that the trainer does
+	 * not.
+	 */
+	private final com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot worldSnapshot;
+	private final String worldTracePath;
 
 	private void flushRngTrace(){
 		if (rngTrace == null) return;
@@ -283,14 +307,23 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 		sinceStep += elapsed;
 
-		if (sinceStep < BASE_STEP_SECONDS / speed) return;
+		if (sinceStep < BASE_STEP_SECONDS / speed){
+			//Sampled on every frame, including the ones the pacing timer skips. Those are precisely the
+			//frames that apply no recorded step, so they are the only place a world change nothing
+			//accounted for can appear - and no step-keyed observer sees them, by construction.
+			frameBoundary( false, elapsed, null );
+			return;
+		}
 
 		sinceStep = 0;
 
 		//A step applied on an earlier frame has to settle before another one is applied, or the step
 		//whose comparison settle() performs is never compared at all.
 		if (awaitingSettle){
-			if (owesNoTurn() || driveToHeroReady() == Drain.READY) settle();
+			boolean owed = owesNoTurn();
+			Drain drain = owed ? Drain.READY : driveToHeroReady();
+			if (drain == Drain.READY) settle();
+			frameBoundary( owed, elapsed, drain );
 			return;
 		}
 
@@ -301,7 +334,10 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		//frames spent waiting out the pacing timer, and at high speed that is every frame, because the
 		//timer is shorter than a frame. Each step handed a turn to some other actor while the hero stood
 		//ready and idle, so the world's actors advanced faster than the hero's actions did.
-		if (!readyToAct() && driveToHeroReady() != Drain.READY) return;
+		if (!readyToAct() && driveToHeroReady() != Drain.READY){
+			frameBoundary( false, elapsed, null );
+			return;
+		}
 
 		applyNextStep();
 
@@ -317,7 +353,68 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		//reports PENDING and awaitingSettle carries the step to the frame that resolves it. That is the
 		//one case where a frame boundary falls between applying a step and the hero acting, which is why
 		//it is bounded rather than general - see DriveToHeroReady's note on GameScene.cancel().
-		if (owesNoTurn() || driveToHeroReady() == Drain.READY) settle();
+		//Held in a named local so the frame record can report what the drain concluded. It used to be
+		//an inline condition, which left nothing to record - and what the drain returned is the only
+		//thing that distinguishes "the animation finished this frame" from "the frame was skipped".
+		Drain after = owesNoTurn() ? Drain.READY : driveToHeroReady();
+		if (after == Drain.READY) settle();
+		frameBoundary( true, elapsed, after );
+	}
+
+	/**
+	 * Records the world at a frame boundary, if a snapshot is being taken.
+	 *
+	 * <p>Every existing viewer-side observer is keyed to a settled step, so a world change on a frame
+	 * that applied no step is invisible to all of them by construction. That is the gap this closes: the
+	 * suspect is a mob acting while the frame driver has yielded the frame to the animation that will
+	 * resolve its own attack, and only a per-frame record can see it.
+	 *
+	 * <p>Sampling is on the frame's own thread, immediately after the drain, so what it captures is the
+	 * world as the scheduler left it - the animation callbacks in {@code GameScene.super.update} have
+	 * not run yet. A change caused by one of those therefore shows up in the <i>next</i> frame's record,
+	 * which is still attributable: the record before it is the same instant in the previous frame.
+	 *
+	 * @param appliedStep whether this frame applied a recorded step
+	 */
+private void frameBoundary( boolean appliedStep, float elapsed, Drain drain ){
+		//Both counters advance whether or not a snapshot is being written. They used to sit after the
+		//snapshot's null check, which made the reported frame count zero whenever tracing was off - and
+		//the frame ratio is the one number that says how timing-dependent a playback is, so it has to be
+		//true on a normal run and not only on an instrumented one.
+		int label = frames++;
+		if (appliedStep) steppedFrames++;
+
+		if (worldSnapshot == null) return;
+		if (worldSnapshot != null){
+			worldSnapshot.sample( "frame", label ).frame( "frame", label, elapsed, drain, appliedStep );
+		}
+	}
+
+	/**
+	 * How many frames applied a recorded step, and how many did not.
+	 *
+	 * <p>The ratio is the frame-rate dependence made measurable. A recording that needs 20 frames per
+	 * step is one whose playback timing is decided by animation duration rather than by the recording,
+	 * and it is those recordings whose failure depends on how fast the machine renders.
+	 */
+	private int frames;
+	private int steppedFrames;
+
+	public String frameReport(){
+		return frames + " frames, " + steppedFrames + " applied a step, "
+				+ (frames - steppedFrames) + " did not";
+	}
+
+	private void flushWorldSnapshot(){
+		if (worldSnapshot == null) return;
+		try {
+			worldSnapshot.writeTo( java.nio.file.Paths.get( worldTracePath ));
+		} catch (java.io.IOException e){
+			System.err.println( "[replay] could not write the world snapshot to " + worldTracePath
+					+ " (" + e.getClass().getSimpleName() + ")" );
+		}
+		System.err.println( "[replay] wrote " + worldSnapshot.lines().size() + " world records to "
+				+ worldTracePath + " (" + frameReport() + ")" );
 	}
 
 	/**
@@ -623,6 +720,10 @@ awaitingSettle = true;
 			//sampled after the comparison but before advancing, so a step that diverged is still traced:
 			//the point of a trace is usually to see what the world was doing where it stopped agreeing
 			if (rngTrace != null) rngTrace.sample( playback.cursor() );
+			//before advance(), so the label is the step this record settled rather than the next one. The
+			//headless producer labels the same way, off the same cursor, which is what lets the two files
+			//be diffed by key.
+			if (worldSnapshot != null) worldSnapshot.sample( "step", playback.cursor() );
 			playback.advance();
 		} else {
 			playback.finish();
@@ -679,7 +780,9 @@ awaitingSettle = true;
 			playing = false;
 			haltReason = reason;
 			System.err.println( "[replay] halted: " + reason );
+			System.err.println( "[replay] " + frameReport() );
 		flushRngTrace();
+		flushWorldSnapshot();
 		flushDrawSites( ".all" );
 
 			boolean diverged = playback.diverged();

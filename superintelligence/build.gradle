@@ -117,6 +117,16 @@ tasks.register('configcheck', JavaExec) {
     jvmArgs trainerJvmArgs
 }
 
+tasks.register('worldtrace', JavaExec) {
+    group = 'diagnostics'
+    description = 'Replays a recording headlessly and records the whole world at every step, for diffing against the viewer.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.WorldTrace'
+    jvmArgs trainerJvmArgs
+    //Passed through untouched, so one recording can be traced without editing this file.
+    if (project.hasProperty('worldArgs')) args project.property('worldArgs').toString().split(' ')
+}
+
 tasks.register('paritycheck', JavaExec) {
     group = 'verification'
     description = 'Fails if a recorded run will not replay exactly, across several seeds in one process.'

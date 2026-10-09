@@ -53,6 +53,22 @@ public class MovieClip extends Image {
 	public boolean looping(){
 		return curAnim != null && curAnim.looped;
 	}
+
+	/**
+	 * Whether a non-looping animation is playing and has not finished.
+	 *
+	 * <p>Read-only observation, for a caller that needs to know whether an action's effect is still
+	 * pending. {@link #isMoving} cannot answer this: it is set by movement and by nothing else, so an
+	 * attack in flight is invisible to it even though that attack is exactly what decides whether the
+	 * attacker's turn has been spent.
+	 *
+	 * <p>A looping animation is excluded because it never completes, so waiting for one would wait
+	 * forever. That makes this the right question to ask - "is something in flight that will finish on
+	 * its own" - rather than "is anything playing".
+	 */
+	public boolean animationInFlight(){
+		return curAnim != null && !curAnim.looped && !finished;
+	}
 	
 	protected synchronized void updateAnimation() {
 		if (curAnim != null && curAnim.delay > 0 && (curAnim.looped || !finished)) {

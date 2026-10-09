@@ -181,6 +181,18 @@ public abstract class Actor implements Bundlable {
 	public static float now(){
 		return now;
 	}
+
+	/**
+	 * The actor the scheduler most recently handed a turn to, or null.
+	 *
+	 * <p>Readable so that a replay viewer can say <i>which</i> actor acted on a frame, rather than
+	 * only how many turns passed. Without it an observer can count the turns but not attribute them,
+	 * which is the difference between "the world advanced" and "a rat acted on a frame that applied
+	 * no recorded step".
+	 */
+	public static Actor currentActor(){
+		return current;
+	}
 	
 	public static synchronized void clear() {
 		

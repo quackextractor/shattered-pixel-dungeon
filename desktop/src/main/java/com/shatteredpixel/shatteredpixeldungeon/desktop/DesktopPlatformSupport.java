@@ -59,11 +59,41 @@ public class DesktopPlatformSupport extends PlatformSupport {
 
 	private static boolean first = true;
 
+	/**
+	 * True when the caller has asked for a windowed or hidden window with a system property.
+	 *
+	 * <p>An unattended run - the replay viewer, and the gate that forks it - passes one of these so it
+	 *cannot end up covering the display it was started from. Without this check the request is silently
+	 * ignored, because {@link #updateSystemUI()} runs after the GL context exists and reads the saved
+	 * preference rather than the launcher's configuration. That preference defaults to fullscreen when
+	 *the key is absent, so an isolated preferences file produced a fullscreen window on every run.
+	 *
+	 * <p>Read here rather than in the launcher because this is where the decision is actually made. The
+	 *launcher can only state its intent before the context exists; by the time this runs, a fullscreen
+	 *switch has already been issued and no flag can undo it - GLFW ignores its visibility hint for
+	 *fullscreen windows, and hiding one does nothing.
+	 */
+	private static boolean windowRequested(){
+		return System.getProperty( "spd.windowed" ) != null
+				|| System.getProperty( "spd.hidden" ) != null;
+	}
+
 	@Override
 	public void updateSystemUI() {
 		Gdx.app.postRunnable( new Runnable() {
 			@Override
 			public void run () {
+				if (windowRequested()){
+					//Nothing is done to the window here on purpose.
+					//
+					//The launcher already stated a windowed mode before the context existed, and this runs
+					//after it. Calling setWindowedMode again would resize the framebuffer mid-run, which
+					//costs a frame and shifts when animations tick - measured as two recordings that had
+					//played clean now diverging, and every failure moving to a different step. The job
+					//here is only to decline the fullscreen switch; the window is already what was asked for.
+					first = false;
+					return;
+				}
 				if (SPDSettings.fullscreen()){
 					int monitorNum = 0;
 					if (!first){

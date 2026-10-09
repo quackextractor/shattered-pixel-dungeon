@@ -141,6 +141,26 @@ public abstract class Mob extends Char {
 
 	protected static final float TIME_TO_WAKE_UP = 1f;
 
+	/**
+	 * Who this mob is currently hunting, or null.
+	 *
+	 * <p>Readable so a replay viewer can report mob targeting. Without it an observer can see that a
+	 * mob's AI state and position changed but not what it changed in response to, which is the
+	 * difference between "a mob moved" and "a mob moved because it re-picked the hero as its target".
+	 */
+	public Char currentEnemy(){ return enemy; }
+
+	/**
+	 * Whether this mob can currently see its target.
+	 *
+	 * <p>Distinct from both "has not noticed the hero" and "sees the hero and is ignoring it", and the
+	 * distinction matters when a run diverges between two replays of the same seed.
+	 */
+	public boolean enemySeen(){ return enemySeen; }
+
+	/** Whether this mob noticed something on the turn it last acted. */
+	public boolean alerted(){ return alerted; }
+
 	protected boolean firstAdded = true;
 	protected void onAdd(){
 		if (firstAdded) {
