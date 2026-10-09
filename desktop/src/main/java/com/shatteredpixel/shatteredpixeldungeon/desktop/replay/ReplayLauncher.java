@@ -143,7 +143,7 @@ public class ReplayLauncher {
 	 *
 	 * @return false if the seed was rejected, in which case nothing should be launched
 	 */
-	private static boolean startRun( Replay replay ){
+	static boolean startRun( Replay replay ){
 		String seed = replay.seedText == null ? "" : replay.seedText;
 
 		if (seed.length() > MAX_SEED_TEXT_LENGTH){
@@ -194,7 +194,7 @@ public class ReplayLauncher {
 	 * dialog, the update service and the news service, none of which a replay viewer should be
 	 * talking to the network about.
 	 */
-private static Lwjgl3ApplicationConfiguration windowConfig(){
+static Lwjgl3ApplicationConfiguration windowConfig(){
 		//DeviceCompat.isDebug() reads this and InterlevelScene.create() calls it on the way in, so
 		//it has to be set before the game starts or the first scene throws on a null.
 		//

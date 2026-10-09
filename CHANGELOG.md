@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`viewcheck` gate** (`:desktop`): plays the whole committed corpus through the *real* viewer - real
+  `GameScene`, real `ReplayController` frame driver, real GL context with the window hidden - and fails
+  if any recording diverges. One child JVM per recording. Needs a display, so it is deliberately not
+  part of `gates`. It exists because `playbackcheck` cannot see this class of fault: it calls
+  `ReplayPlayer.update` directly, whereas the viewer installs itself as `GameScene`'s frame driver, and
+  `GameScene.update` advances the world's actors on frames that apply no recorded step.
+
+### Fixed
+
+- **`replay-viewer` fidelity bug, diagnosed but not yet fixed (OPEN)**: 7-9 of the 17 committed
+  recordings diverge when played in the rendered viewer, while all 17 verify clean headlessly. The
+  hero takes hits the trainer never permitted, because the scene advances actors outside the viewer's
+  drain (e.g. `duelist-mid` step 23 and `warrior-mid` step 17, `hp is 19, recording says 20`). The
+  failing subset varies between runs, so viewer fidelity is currently frame-rate dependent. Reproduced
+  and gated by `viewcheck`; the fix requires changing `GameScene`'s update loop in the game itself,
+  which is out of scope for the `superintelligence` module.
+
 ### Changed
 
 - **Merged upstream v4.0.2** (10 commits from `00-Evan/shattered-pixel-dungeon`). Clean merge, no

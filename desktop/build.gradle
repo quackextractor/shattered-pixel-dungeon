@@ -81,6 +81,26 @@ tasks.register('replaycp') {
     jvmArgs '-Djava.awt.headless=true', '--enable-native-access=ALL-UNNAMED'
  }
 
+//Plays the committed corpus through the real rendered viewer and fails on any divergence.
+//
+//  Not in :superintelligence:gates, deliberately. It needs a GL context and a fork per recording, so
+//  it costs far more than the other gates and cannot run where there is no display. It is here because
+//  the fault it exists for is invisible to every gate that does not drive the real frame loop:
+//  playbackcheck calls ReplayPlayer.update directly, so it passes recordings the viewer diverges on.
+//
+//  The corpus directory is passed absolute from the repository root. A gradle JavaExec runs with the
+//  *module* directory as its working directory, so a relative "replays" resolves against desktop\ and
+//  finds nothing - the same trap documented in replay-viewer.bat.
+tasks.register('viewcheck', JavaExec) {
+    group = 'verification'
+    description = 'Fails if any committed recording diverges when played in the real viewer.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ViewCheck'
+    workingDir = rootProject.projectDir
+    systemProperty 'spd.replayDir', project.findProperty('spdReplayDir') ?: "${rootProject.projectDir}/replays"
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
 tasks.register('debug', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     ignoreExitValue = true
