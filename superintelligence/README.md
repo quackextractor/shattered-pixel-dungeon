@@ -32,8 +32,9 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
 - **`REST` was a one-way door, and that was the real cause of a 100% stall rate.** The agent was not
   choosing to idle - it was being trapped. `ActionMapper` set `hero.resting = true` without setting a
   `curAction`, so `Hero.act` took the rest branch forever and never called `ready()`; and
-  `recoverStrandedHero` refuses a resting hero, correctly, because a *player* escapes rest by choosing
-  another action - headless input has nobody to do that. Instrumenting the two stall guards settled it:
+  the recovery path that used to exist (no method of that name is in the tree any more) refused a
+  resting hero, correctly, because a *player* escapes rest by choosing another action - headless input
+  has nobody to do that. Instrumenting the two stall guards settled it:
   36 of 36 stalls came from `LevelPipeline` and **zero** from the idle guard, at turns 10-51 rather than
   121. Any non-`REST` action now ends the rest. Stall share is now **0%**.
 - **A second recording in one process was unreproducible.** `GameScene.pendingCellListener` is static,

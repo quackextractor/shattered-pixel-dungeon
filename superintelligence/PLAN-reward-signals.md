@@ -295,10 +295,10 @@ if (curAction == null) {
 A resting hero therefore takes the rest branch forever. `ready()` is never
 reached, control is never handed back, and no further action is ever read.
 
-Nothing recovers it. `recoverStrandedHero` refuses a resting hero outright —
-correct for a player, since a player escapes rest by choosing another action.
-Headless input has nobody to do that. After 8 scheduler steps `LevelPipeline`
-returns `STALLED`.
+Nothing recovers it. The recovery path of the time refused a resting hero
+outright — correct for a player, since a player escapes rest by choosing another
+action. Headless input has nobody to do that. After 8 scheduler steps
+`LevelPipeline` returns `STALLED`.
 
 So `REST` was a one-way door, and the agent fell into it within a few dozen turns
 of any policy that chose `REST` once. That is what "100% stalled" was measuring.

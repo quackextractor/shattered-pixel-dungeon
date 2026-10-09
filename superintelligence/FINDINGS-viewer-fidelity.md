@@ -40,8 +40,9 @@ viewer   first gameplay draw = generator value #17
 ```
 
 Both report `generationBaseDraws = 0`. So both reached the first recorded step with the base generator
-freshly seeded and, on the trace's own account, never drawn — while the two were in fact four and
-sixteen values along. The four sites, all presentation, all spending the gameplay stream:
+freshly seeded and, on the trace's own account, never drawn — while the two were in fact 12 values
+apart (zero-indexed: positions 4 and 16, which is the same pair as "#5 and #17" above). The four sites,
+all presentation, all spending the gameplay stream:
 
 | site | viewer-only draws | what it decides |
 | --- | --- | --- |
@@ -70,7 +71,7 @@ instrument — that "the RNG stream is not offset". Every hypothesis after that 
 because a counter that could not see the offset said there was no offset. Restoring the two paths
 makes the counts agree *and* the fingerprints agree, which is a different and much stronger statement.
 
-`observecheck` now asserts the invariant directly: all eighteen public draw paths must move the counter,
+`observecheck` now asserts the invariant directly: all 17 public draw paths must move the counter,
 and `shuffle` must too. Mutation-tested — removing the `record` call from `Int` fails two of its six
 checks and names `Int(10), Int(10, false), Int(1, 2), IntRange(1, 2), element(list)`.
 
@@ -92,7 +93,12 @@ Splitting on whitespace as well names `exp`, and turns the inventory blob into p
 
 ### E-1. Headless and viewer agreed for 12 steps, then diverged
 
-`warrior-mid`, produced by:
+Recorded as `warrior-long`, matching E-3, E-11 and `ISSUE-viewer-frame-drift.md`. An earlier draft said
+`warrior-mid`; the corpus has since been regenerated, so the two recordings are no longer
+interchangeable and the original cannot be recovered from the tree. The 12-vs-13 step numbering is a
+separate leftover of the same edit.
+
+Produced by:
 
 ```
 gradle :superintelligence:worldtrace -PworldArgs="<replay> <out>" --no-cells
@@ -113,8 +119,9 @@ including nested bag contents. The comparator is self-tested against a tampered 
 
 ### E-2. The divergence was created by one action, not accumulated
 
-Nothing accumulates. With E-9 understood the chain is short and total: the renderer's stream starts
-twelve values along, so a damage roll at step 12 comes out differently, and the hero's swing that the
+Nothing accumulates. With E-9 understood the chain is short and total: the renderer's stream starts 12
+values along, so a damage roll at the step where the hero first attacks (E-3 numbers it step 13)
+comes out differently, and the hero's swing that the
 trainer recorded as leaving the rat at 3/8 kills it instead. Every later difference is downstream of
 that one.
 
@@ -254,13 +261,14 @@ animation completes, not *what happens when it does*.
 The four presentation draws in E-9 are game files, so `instructions.md` §12.3 applies to them. They are
 proposed in `ENGINE-CHANGES.md`, which is also where the engine changes made earlier are inventoried
 and where the draws deliberately left alone are recorded — `DungeonTileSheet.setupVariance`, which is
-inert because it draws on a generator it pushes and discards, and the sound-pitch draw in 34 places,
+inert because it draws on a generator it pushes and discards, and the sound-pitch draw at 11 sites,
 which is symmetric across both environments and so does not separate them. Committed together with this
 fix; before it, `viewcheck` is 14 of 17 red on a committed tree exactly as it was.
 
 ### O-4. A new public draw path would not be caught
 
-`observecheck` enumerates the eighteen draw paths that exist. A nineteenth added later does not
+`observecheck` enumerates **17** draw paths in `checkEveryDrawPathIsCounted`
+(`ObserveCheck.java:224-241`), and checks `shuffle` separately. An eighteenth added later does not
 appear in the list. The invariant is about the paths it knows about, not about future ones.
 
 ### O-5. The remaining divergence shapes were never separately explained

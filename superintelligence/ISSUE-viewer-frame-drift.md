@@ -59,8 +59,8 @@ viewer   first gameplay draw = generator value #17
 ```
 
 Both report `generationBaseDraws = 0`. Both reached the first recorded step with the base generator
-freshly seeded and — on the trace's own account — never drawn. They were in fact four and sixteen
-values along.
+freshly seeded and — on the trace's own account — never drawn. They were in fact 12 values apart
+(zero-indexed positions 4 and 16; the same pair as "#5 and #17" above).
 
 The sites, all presentation, none of them able to affect an outcome:
 
@@ -111,7 +111,7 @@ health and engine time — the one every divergence is decided on — was a whol
 difference in `pos`. Measured, and it changed the answer: on `warrior-long` the sides differ at step 13
 in exactly one hero field, `exp`, and the tool reported `pos` for a position that was identical in both.
 
-Both are fixed. `observecheck` now asserts the first directly — all eighteen public draw paths must move
+Both are fixed. `observecheck` now asserts the first directly — all 17 public draw paths must move
 the counter, mutation-tested — and `WorldDiff` splits on whitespace as well as tab.
 
 ---

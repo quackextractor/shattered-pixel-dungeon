@@ -623,6 +623,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `hooks/pre-commit` with an `install-hooks.ps1` to copy it into place, because `.git/hooks` is not
   tracked and a hook written there exists only on the machine that wrote it.
 
+### Changed
+
+- **Documentation corrected against the source.** Every stale claim in `superintelligence/*.md` and
+  `docs/documentation.md` was re-derived from the code rather than trusted, and the ones that did not
+  survive were fixed. Documentation only; no behavioural change.
+
+  The corrections that would have misled a reader who went looking:
+
+  - **Counts.** `gates` runs **19** gates and `verifyall` **20** (was 16 and 14). `PlaybackCheck` has
+    **10** checks (was 7), `ObserveCheck` **6** (was 4). `ReplayPlayer` is **1064** lines (was ~560).
+    The corpus is **17 recordings at header version 3** (was "5 files, version 1"), 2032 steps.
+    `observecheck` enumerates **17** draw paths (was "eighteen"). The observation grid is **21** planes,
+    not 20, which also moves the `Transition` figure from 50,564 B to 52,868 B. The metrics CSV is **29**
+    columns wide (24 named plus 5 derived from `TerminateReason`).
+  - **A method that does not exist.** `recoverStrandedHero` is in no Java source in the repo. The
+    `CHANGELOG.md` mentions describing its removal are correct; three files read as though it were
+    present and now do not.
+  - **A class that does not exist.** Action masking is three methods on `ActionMapper`
+    (`actionMask`, `targetMask`, `slotMask`), not an `ActionMask` type.
+  - **Code that contradicted its own draft.** `review.md`'s Issue 1 sketch calls `hero.rest()` for `REST`
+    and `spendConstant`/`busy` for `WAIT`; the shipped code sets `hero.resting = true` and calls
+    `hero.next()` for both, and calling `next()` without a `curAction` is what hands control back.
+  - **A dead gap presented as open.** The soft-stall termination gap in
+    `PLAN-replay-verification.md` §12.1 is fixed - `Replay.termination` plus
+    `checkDeclaredTerminationEndsPlayback` - and the section now says so while keeping the reasoning.
+  - **A fixture that was never there.** `world-death.replay` does not exist; the death recordings are
+    `warrior-death`, `huntress-mid` and `warrior-long`, all `termination=DEATH`.
+  - **`recoverStrandedHero` and `Collections.shuffle`.** `Mob.holdAllies` still calls
+    `Collections.shuffle` (`Mob.java:1782`) and is now recorded as a remaining gap in
+    `ENGINE-CHANGES.md` §7 rather than being described as exhaustive in §3.
+  - **Sound-pitch draws.** The number still on `Random` is **11**, not 34, and the sites are now
+    enumerated. The neighbouring sites already on `PRandom` are what a partial conversion leaves behind.
+  - **`FogOfWar.java`, `Alchemy.java` and the `tiles` package.** All three exist; `TODO.md` §7 reported
+    them as absent. What is true is narrower - they are reached through `Level` and the scene layer
+    rather than called directly.
+  - **Stale line references.** Nine in `PLAN-replay-verification.md`, five in `PLAN-viewer-fidelity.md`,
+    and the `ActionMapper` config reads, which were cited at `:308` and are at `:307`.
+
+  Where a claim could not be reconciled against the artefacts still in the tree - `FINDINGS` E-1's
+  recording name, which no longer resolves because the corpus was regenerated - that is recorded as an
+  inconsistency rather than silently resolved.
+
 ### Fixed
 
 - **The rendered viewer played the game with different randomness, so recordings that verified exactly

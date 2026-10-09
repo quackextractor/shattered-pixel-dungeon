@@ -5,8 +5,8 @@ same simulation, and that the desktop viewer's own control flow works - without 
 throwaway probe for every question.
 
 Status: **built.** All four tools exist, the two findings from validation are fixed, and `gradlew
-verifyall` runs every gate in both modules in ~14 s. Section 12 records what each one actually caught,
-including one fault that is still open.
+verifyall` runs every gate in both modules. Section 12 records what each one actually caught. The one
+fault §12.1 described as open is fixed; what remains open is in §12.3.
 
 ---
 
@@ -36,7 +36,7 @@ A gate whose implementation is shared with its subject is not weak evidence. It 
 
 ### 1.2 Code with no coverage at all
 
-`ReplayPlayer` is ~560 lines that apply a recorded step, derive the mode, drain the scheduler, decide
+`ReplayPlayer` is ~1000 lines that apply a recorded step, derive the mode, drain the scheduler, decide
 whether a turn is owed, settle, and compare position/health/turn/inventory. **Nothing executes it
 except the windowed viewer.**
 
@@ -57,7 +57,7 @@ The same fault shape appeared three times, in three layers:
 1. `HeroEncoder` - `drRoll()` to read a property (§1.1)
 2. the particle system, emote icons, music, colour jitter, sewer ambience - `Emitter.start` takes
    `Random.Float(interval)` as its emission delay, and none of it can change an outcome
-3. 34 `Sample.INSTANCE.play` calls computing a **sound pitch** with `Random.Float(...)`;
+3. 11 `Sample.INSTANCE.play` calls computing a **sound pitch** with `Random.Float(...)`;
    `Hero.move` draws one per step, the terrain it lands on deciding which
 
 Each was found serially, several instrument-and-run cycles apart, each time concluded to be *the* root
@@ -97,9 +97,9 @@ already fixed).
 | --- | --- | --- |
 | C1 | `ReplayPlayer` has **no UI dependency**. Its only `GameScene` mentions are in comments; `halt()` writes to stderr and sets a flag that `ReplayController` reads | `ReplayPlayer.java` - no `GameScene.`/`ReplayController.` call sites |
 | C2 | `desktop` already depends on `:superintelligence` and `:core`, so a driver there can use `HeadlessGame`, `SPDEnv`, `ActionMapper` with no new module edges | `desktop/build.gradle` |
-| C3 | World setup for a replay is `SPDEnv.reset(seedText, heroClass)` -> `LevelPipeline.startRun`. `ReplayPlayer.restart()` only rewinds *playback* - it does not rebuild the world | `SPDEnv.java:110`, `ReplayPlayer.java:546` |
-| C4 | `ActionMapper` reads exactly two config values: `config.maxSlots` and `config.allowEquipping` | `ActionMapper.java:66,308` |
-| C5 | **Neither is recorded in `Replay`.** A replay cannot guarantee it resolves slot indices the same way | `Replay.java` fields; `ReplayIO` header writes |
+| C3 | World setup for a replay is `SPDEnv.reset(seedText, heroClass)` -> `LevelPipeline.startRun`. `ReplayPlayer.restart()` only rewinds *playback* - it does not rebuild the world | `SPDEnv.java:110`, `ReplayPlayer.java:1048` |
+| C4 | `ActionMapper` reads exactly two config values: `config.maxSlots` and `config.allowEquipping` | `ActionMapper.java:66`, `ActionMapper.java:307` |
+| C5 | **Neither was recorded in `Replay`, as found.** A replay could not guarantee it resolved slot indices the same way. **Fixed since:** the header carries `max_slots=` and `allow_equipping=` on all 17 recordings | `Replay.java` fields; `ReplayIO` header writes; `replays/*.replay` header |
 | C6 | `ReplayRecorder` is already a complete fixture source: `record()` captures action/slot/mode + quickslots for `SLOT`/`INVENTORY`; `afterStep()` captures position/hp/turn/inventory | `ReplayRecorder.java:40-64` |
 | C7 | Existing gates record their **own** fixtures via `ReplayRecorder` + `ScriptedPolicy` - structurally unable to catch a build-wide fault | `VerifyCheck.recordAShortRun`, `VerifyCheck.java:67` |
 | C8 | `Main rollout --seed ""` writes an **empty** seed, so such recordings cannot be verified at all | verified by running it |
@@ -112,7 +112,7 @@ a different shape entirely.
 
 ## 4. T1 - Headless playback verifier
 
-**Purpose:** an independent oracle for `ReplayPlayer`, covering the 560 lines nothing executes.
+**Purpose:** an independent oracle for `ReplayPlayer`, covering the ~1000 lines nothing else executes.
 
 A driver with no dependency on `ReplayController` and no window:
 
@@ -133,9 +133,11 @@ assert player.haltReason().isEmpty();
 unambiguous with no scene present (C1). Restarting means re-running `env.reset` (C3), not
 `player.restart()`.
 
-**Prerequisite:** the constructor takes an `EnvConfig` instead of hardcoding `new EnvConfig()`
-(`ReplayPlayer.java:120`). Without it the driver and whatever produced the recording can disagree on
-slot resolution (C4) and the verifier will report phantom divergences.
+**Prerequisite, and done:** the constructor takes an `EnvConfig` rather than hardcoding
+`new EnvConfig()` (`ReplayPlayer.java:132`, with a convenience overload at `ReplayPlayer.java:255`).
+Without it the driver and whatever produced the recording can disagree on slot resolution (C4) and the
+verifier reports phantom divergences. `max_slots` and `allow_equipping` now travel in the header
+(C5), so `Replay` reconstructs the config rather than assuming defaults.
 
 **Gate** `desktop:playbackcheck`, modelled on `VerifyCheck`:
 
@@ -210,7 +212,7 @@ that it is worth more as a diagnostic.
 
 **Purpose:** remove the stale-build ambiguity that cost three cycles.
 
-A `verifyall` task depending on every gate (superintelligence's 16 plus `playbackcheck`) and on the jar
+A `verifyall` task depending on every gate (superintelligence's 19 plus `playbackcheck`) and on the jar
 and classpath tasks, printing a table of gate -> pass/fail and whether anything was actually rebuilt. It
 should verify classpath freshness rather than trusting gradle's up-to-date decision, which is the exact
 failure `replaycp` documents.
@@ -239,7 +241,7 @@ The missing `GameScene.clearPendingCellListener()` is the one that mattered:
 ```
 SlotAction.use(:93-98)      re-arms GameScene's aim listener when an item wants an aim
 ActionMapper.resolveTarget  prefers that listener over the sprite-free castAt fallback
-SPDEnv.step(:199)           clears it every step, so trainer throws always use castAt
+SPDEnv.step(:199)          clears it every step, so trainer throws always use castAt
 ReplayPlayer                never cleared it, so the throw used the game's own missile path
                             -> recycles a sprite from hero.sprite.parent
                             -> no parent without a scene -> throw threw, turn never advanced
@@ -283,9 +285,9 @@ is the same failure as no check.
 ## 10. Open decisions
 
 1. **T3 as gate or diagnostic?** Recommendation: diagnostic first.
-2. **Corpus policy.** The repo has 5 fixtures in `replays/`. Proposal: 8-12 recordings across hero
-   classes and shapes (short, death, stall, multi-floor), regenerated when the engine changes. Checked
-   in, or generated on demand and compared by fingerprint?
+2. **Corpus policy - settled.** Checked in: 17 recordings under `replays/`, spanning hero classes and
+   shapes (short, death, stall, turn-limit), regenerated by `regenerate-corpus.ps1` when the engine
+   changes. Fingerprint comparison is not used as a gate.
 3. **T1's budget** - small fast corpus as a gate, larger corpus as a periodic job?
 4. **Scope** - all four, or T1 alone first, demonstrated catching a live divergence before the rest?
 
@@ -319,10 +321,10 @@ Cause: `SPDEnv.step` performs per-step bookkeeping that `ReplayPlayer` never doe
 
 | `SPDEnv.step` | `ReplayPlayer.applyNextStep` |
 | --- | --- |
-| `GameScene.clearPendingCellListener()` (:199) | absent |
-| `SlotAction.clearPendingUseItem()` (:205) | absent |
-| `mapper.applySecondary(...)` | present (:414, :416) |
-| - | `mapper.refreshSlots()` (:421) - extra |
+| `GameScene.clearPendingCellListener()` (`SPDEnv.java:199`) | absent |
+| `SlotAction.clearPendingUseItem()` (`SPDEnv.java:205`) | absent |
+| `mapper.applySecondary(...)` | present |
+| - | `mapper.refreshSlots()` - extra |
 
 The windowed viewer gets away with this because a live `CellSelector` exists, so aim requests never
 route through `pendingCellListener`. Headless has no selector, so they do, and the throw never
@@ -337,21 +339,25 @@ the first thing the new gate covers.
 `ReplayPlayer.restart()` rewinds `ReplayPlayback` only; it never touches the world. A driver that
 wants a second pass must call `SPDEnv.reset` again.
 
-### C4 / C5 - config not carried by the replay - **CONFIRMED**
+### C4 / C5 - config not carried by the replay - **CONFIRMED at the time, fixed since**
 
-`ActionMapper` reads `config.maxSlots` (:66) and `config.allowEquipping` (:308). Searching
-`Replay.java` and `ReplayIO.java` for `maxSlots|allowEquipping` returns **nothing**. The header
-carries version, seed, hero, challenges and turn limit only.
+`ActionMapper` reads `config.maxSlots` (`ActionMapper.java:66`) and `config.allowEquipping`
+(`ActionMapper.java:307`). At the time of this validation, searching `Replay.java` and `ReplayIO.java`
+for `maxSlots|allowEquipping` returned **nothing**, and the header carried version, seed, hero,
+challenges and turn limit only.
+
+Both values are now in the header - `max_slots=` and `allow_equipping=` appear on all 17 committed
+recordings - and `Replay` reconstructs the config from them.
 
 ### C6 - `ReplayRecorder` is a complete fixture source - **CONFIRMED**
 
-`ReplayRecorder.java:56,61,62,63` assign `step.heroPos`, `step.heroHp`, `step.turn`, `step.inventory`;
+`afterStep` assigns `step.heroPos`, `step.heroHp`, `step.turn`, `step.inventory`;
 `record()` adds action, slot, mode and quickslots. Enough to build T1's fixtures with no new capture
 code.
 
 ### C7 - gates share the path they check - **CONFIRMED**
 
-`Main.java:138` and `Main.java:227` both call `HeadlessGame.install()`. Every gate re-executes through
+`Main.java` calls `HeadlessGame.install()` at three sites (`Main.java:163`, `:289`, `:383`), and so does every gate in `superintelligence/.../diag/`. Every gate re-executes through
 the headless path, which is what makes §1.1 invisible to all of them.
 
 ### C8 - empty seed is unrecoverable - **CONFIRMED, and worse than stated**
@@ -360,7 +366,7 @@ the headless path, which is what makes §1.1 invisible to all of them.
 
 ```
 header: SPD-REPLAY
-header: version=1
+header: version=1  # superseded; the corpus is version 3 now
 header: seed=
 ```
 
@@ -381,10 +387,10 @@ context*, and that context is masking a real divergence from the trainer.
 
 | Tool | Where | State |
 | --- | --- | --- |
-| T1 headless playback verifier | `desktop/.../replay/PlaybackCheck.java`, `gradlew :desktop:playbackcheck` | 7 checks |
-| T2 observation purity | `superintelligence/.../diag/ObserveCheck.java`, `gradlew :superintelligence:observecheck` | 4 checks |
+| T1 headless playback verifier | `desktop/.../replay/PlaybackCheck.java`, `gradlew :desktop:playbackcheck` | 10 checks |
+| T2 observation purity | `superintelligence/.../diag/ObserveCheck.java`, `gradlew :superintelligence:observecheck` | 6 checks |
 | T3 RNG fingerprint | `superintelligence/.../replay/RngTrace.java`, `gradlew :superintelligence:rngtrace`, `-PspdRngTrace=<path>` on `:desktop:replay` | diagnostic, as recommended |
-| T4 one command | `gradlew verifyall` | 14 gates, ~14 s |
+| T4 one command | `gradlew verifyall` | 20 gates |
 | F1 viewer preamble | `ReplayPlayer.applyNextStep` | fixed, `6d2f21e3c` |
 | F2 empty seed | `Main.rollout`, `Main.verify` | fixed, `891ecb267` |
 
@@ -437,41 +443,46 @@ start at zero when the first step is applied, which fixes the *measurement*. It 
 draws, so the two streams stay offset for the whole run. That is the next parity bug, and this tool now
 points at it with a step number.
 
-### 12.1 Still open - found by T3, not fixed
+### 12.1 Closed - the soft-stall gap, found by T3
+
+**Fixed.** `Replay` carries a `termination` field (`Replay.java:180`), `ReplayRecorder.end` writes it,
+and `ReplayController` finishes playback rather than draining when the replay ends in a termination it
+can see. Gated by `PlaybackCheck.checkDeclaredTerminationEndsPlayback`. The corpus records four values -
+`TURN_LIMIT`, `DEATH`, `STALLED`, and empty for a run that ended some other way.
+
+Kept because the reasoning is the reusable part. What was found:
 
 A recording whose run ended on the trainer's **soft stall guard** (`SPDEnv.checkFloorLimits`: hero
-position and health unchanged for `stallLimit` consecutive turns) plays to its last step and then
-reports:
+position and health unchanged for `stallLimit` consecutive turns) played to its last step and then
+reported:
 
 ```
 stalled - hero did not become ready within 400 turns
 ```
 
-The recording is complete; the hero is alive and healthy. The viewer waits for a hero that will never
-be ready because it has no `SPDEnv` to ask, and the header records no termination reason. Measured on a
-26-step run recorded with `--max-turns 25` whose last recorded turn is 23, so the turn cap was not the
-cause.
+The recording was complete; the hero was alive and healthy. The viewer waited for a hero that would
+never be ready because it had no `SPDEnv` to ask, and the header recorded no termination reason. Two
+readings were available - the turn cap (`26-step run recorded with --max-turns 25 whose last recorded
+turn is 23`, so the cap was not the cause) or the stall guard - and the header could not distinguish
+them.
 
 A guard mirroring `turnsThisFloor >= turnLimitPerFloor` was written and then **removed**: the stall
 guard fires first in practice, so no fixture could exercise it, and shipping a check that cannot be
-shown to fail would contradict the argument this whole plan is built on.
-
-The real fix is to record why the run ended. `Replay` gains a termination reason, the recorder writes
-it, and the viewer finishes rather than draining when the replay ends in a termination it can see.
-That is a schema change plus recorder and worker plumbing, and is the next piece of work rather than
-something to bolt on here.
+shown to fail would contradict the argument this whole plan is built on. Recording the reason was the
+fix that also let the guard be removed.
 
 ### 12.2 Decisions taken without asking
 
 Two, both reversible, both recorded here rather than buried:
 
-1. **Replay version bumped to 2, and v1 still parses with `EnvConfig` defaults.** The existing tooling
-   fixtures in `replays/` stay readable. They diverge, as they did before, because they were recorded
-   against the RNG stream since repaired - so this preserves readability, not fidelity.
+1. **Replay version was bumped to 2, and v1 still parses with `EnvConfig` defaults.** The tooling
+   fixtures in `replays/` stayed readable. The corpus has since been regenerated and is now at **header
+   version 3** with all 17 files, so the readability caveat is historical - see `PLAN-replay-parity.md`
+   §4.
 2. **T3 landed as a diagnostic, not a gate**, following the recommendation in section 10. It is invoked
    by hand against a golden that any engine change can invalidate.
 
 ### 12.3 Open decisions still open
 
-From section 10: corpus policy (check in 8-12 regenerated recordings, or generate on demand), and
-whether T1's budget should be split into a small fast gate and a larger periodic job.
+From section 10: whether T1's budget should be split into a small fast gate and a larger periodic job.
+Corpus policy is settled (§10.2) - the corpus is checked in at 17 recordings.

@@ -90,10 +90,13 @@ observes directly.
 Which means the remaining fault is behavioural, and `rngtrace` has said everything it can. The next
 step is to locate the step-27 health divergence by state rather than by randomness.
 
-### 1.5 The fault, now reproducible
+### 1.5 The fault, then reproducible
 
 Rebuilding the corpus produced a minimal reproduction, which the previous work never had: a recording
-made by the *current* build that does not replay.
+made by the *current* build that does not replay. Kept as written because the shape of the fault was the
+useful part. The reproduction itself is **historical**: it was taken against a 119-step `mage-long`
+recording from an 8-file corpus. The committed `mage-long.replay` is now 599 steps and terminates
+`TURN_LIMIT`, and no file in the current 17-recording corpus carries this signature.
 
 ```
 verify: seed=mage-long hero=MAGE steps=119
@@ -211,21 +214,26 @@ viewer and the trainer drifted apart in the first place.
 
 ## 4. The committed replay corpus is dead
 
-All five files in `replays/` are header version 1 and predate the RNG repair, so they diverge when
-verified. They stay *readable* - v1 parses with defaults - which preserves the tooling fixtures and not
-their fidelity.
+Done. The corpus was regenerated after the RNG repair: `replays/` holds **17 recordings, all header
+version 3**, and each one's declared `steps=` header matches the step lines actually present in the
+file. The v1 files this section was written about are gone, and with them the readability caveat -
+v1 still parses with `EnvConfig` defaults, but nothing in the corpus needs it.
 
-**Design.** Depends on item 1. Once the streams agree, regenerate. Settle the policy question at the same
-time; see section 6.
+Verification is `:superintelligence:paritycheck`, plus `:desktop:viewcheck` for the rendered path.
+
+**Corpus at time of writing** (2026-10): 17 recordings, 2032 steps total - WORLD 1613, SLOT 246,
+TARGETING 156, INVENTORY 17, MENU 0. Terminations: TURN_LIMIT 12, DEATH 3, STALLED 2.
 
 ---
 
 ## 5. Documentation audit
 
-Stale `recoverStrandedHero` references survive in `ActionMapper` and `RewardCheck`, describing a method
-that no longer exists. More broadly the brief is: documentation states what the code does, not how it got
-there. Remove chronology, narrative about the investigation, assumptions, and mistake logs - including in
-the comments added by this work.
+`recoverStrandedHero` appears in no Java source in the repo. The mentions in `CHANGELOG.md` are correct -
+they describe removing it. The three files that read as though the method still exists have been fixed:
+`PLAN-reward-signals.md`, `superintelligence/README.md` and `TODO.md` now describe the recovery path in
+prose without naming a method that is not there.
+
+The broader brief still stands: documentation states what the code does, not how it got there.
 
 **Design.** Fix references that are factually wrong first, since those mislead a reader who goes looking
 for the method. Then sweep the files touched by this work for narrative and remove it.

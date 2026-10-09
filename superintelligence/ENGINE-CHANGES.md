@@ -74,7 +74,8 @@ time ties on iteration order, which meant *who moved first* varied.
 - A second pass: `Char.buffs(Class)` handed callers a `HashSet`, `Random.chances(HashMap)` chose secret
   room contents off a `Class`-keyed map, `Mob.chooseEnemy` resolved ties by iteration order, and
   `CursingTrap` / `VaultLevel` / `Hero` used `Collections.shuffle`, which ignores the seeded generator
-  entirely. Insertion-ordered, or switched to `Random.shuffle`.
+  entirely. Insertion-ordered, or switched to `Random.shuffle`. `Mob.holdAllies` still uses
+  `Collections.shuffle` — see §7.
 
 ## 4. Presentation draws moved to `PRandom`
 
@@ -123,10 +124,23 @@ which is what that one cause looks like from the outside.
   `Emitter` would, so the two consume the same number of values. That is the right shape for a
   substitution that stands in for the real thing, and it is the opposite of the fault above: this one
   compensates, the four above failed to.
-- **`Sample.INSTANCE.play` sound pitch** in `Hero.move` and 33 other sites is still on `Random`. It is
-  the largest remaining presentation draw on the gameplay stream and it is symmetric — both
-  environments make it — so it does not currently separate the two. It is worth moving on its own
-  merits.
+- **`Sample.INSTANCE.play` sound pitch** at 11 sites is still on `Random`. It is the largest remaining
+  presentation draw on the gameplay stream and it is symmetric — both environments make it — so it does
+  not currently separate the two. It is worth moving on its own merits.
+
+  The 11, counted by scanning `core` and `SPD-classes` for a `Random.*` draw passed as the pitch
+  argument of `play` / `playDelayed` / `hitSound` / `blockSound`:
+
+  | Site | Note |
+  | --- | --- |
+  | `Hero.move` × 5 (`Hero.java:2337`, `:2339`, `:2344`, `:2346`, `:2349`) | one per terrain type the step lands on |
+  | `Char.takeDamage` × 2 (`Char.java:502`, `:503`) | `blockSound` then `hitSound` |
+  | `HolyLance.java:126`, `GreatCrab.java:104`, `WandOfLivingEarth.java:178` | |
+  | `WndSettings.java:931` | `Random.oneOf` over sound ids, not a pitch |
+
+  An earlier version of this section said 34. That was wrong; 11 is the measured number, and the
+  neighbouring sites that already read `PRandom` (`GreatCrab.java:88`, `WandOfLivingEarth.java:111`,
+  `:167`, `Char.java:384`, and others) are what a partial conversion leaves behind.
 
 ## 5. Instrumentation that had to become honest
 
@@ -157,7 +171,7 @@ reading exactly like a simulation that consumes no randomness at all.
 
 | Gate | What it refuses |
 | --- | --- |
-| `observecheck` | All eighteen public `Random` draw paths and `shuffle` must move the counter. Removing the `record` call from `Int` fails two of its six checks and names every affected path. Without this, a count that agrees for the wrong reason reads as parity. |
+| `observecheck` | All 17 public `Random` draw paths and `shuffle` must move the counter. Removing the `record` call from `Int` fails two of its six checks and names every affected path. Without this, a count that agrees for the wrong reason reads as parity. |
 | `observecheck` | Encoding an observation or capturing quickslots draws nothing — the invariant whose one violation, `HeroEncoder` calling `hero.drRoll()`, offset the stream from the first floor of every run. |
 | `resetcheck` | A reset is a function of its arguments. Needs two episodes in one process, because with one there is nothing to leak from — which is why every single-episode check passed while a static listener carried an aim across every reset. |
 | `paritycheck` | A recording survives a write, a read, and a second episode. The only gate that lets the hero die repeatedly, which is where `Bones` becomes visible. Found that fault on its first run. |
@@ -170,8 +184,13 @@ reading exactly like a simulation that consumes no randomness at all.
 - **`viewcheck` is not in `gates`** and stays out: it needs a display, forks a JVM per recording, and
   costs about 200 seconds sequential. That is a real hole rather than a decision — this class of
   regression returns silently between manual runs.
-- **Sound pitch still draws from `Random`** in 34 places, symmetric across both environments.
-- **`observecheck` enumerates the draw paths that exist.** A nineteenth added later does not appear in
+- **Sound pitch still draws from `Random`** at 11 sites, symmetric across both environments (§4).
+- **`Mob.holdAllies` still uses `Collections.shuffle`** (`Mob.java:1782`). §3 lists the sites that
+  ignored the seeded generator and were converted; this one was missed, so it is still unseeded. It does
+  not show up in the recorded corpus — nothing reachable by the scripted policy calls `holdAllies` — so
+  `paritycheck` cannot see it. `observecheck` does not look for it either, since it gates draw *paths*,
+  not call sites that bypass them.
+- **`observecheck` enumerates the draw paths that exist** - 17 of them, in `ObserveCheck.java:224-241`. An eighteenth added later does not appear in
   its list, so the gate protects what it knows about rather than what is added next.
 - **`Mob` and `Char` do not override `hashCode`.** Nothing found iterates them through a hash
   collection during play, but that is an invariant a future change could break.

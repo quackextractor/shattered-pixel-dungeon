@@ -418,7 +418,7 @@ deliberately exempts `WndOptions` and would have left it on screen forever. `Win
 `GameScene.answerableWindow()`, which prefers the live window.
 
 **`TARGETING` is entered and now used.** The six bugs below are fixed and the recorded corpus exercises
-the aim path: **154 `TARGETING` steps across the corpus, every one a real aim, none a `CANCEL`.**
+the aim path: **156 `TARGETING` steps across the corpus, every one a real aim, none a `CANCEL`.**
 
 ## 12. Driving it by hand, and what that found
 
@@ -474,8 +474,10 @@ Still untested:
   it needs a real `WndOptions`, and eight seeds at 1501 turns each produced none. The scripted policy
   never reaches an NPC, a shop or an upgraded missile, which are the reachable triggers.
 - **Whether a viewer session can leave a save behind.** A viewer run uses the real preferences path.
-- **A genuine death recording.** `world-death.replay` is named for its ending but the hero starved
-  rather than died.
+- **A death recording plays its last step.** Three recordings end in death (`warrior-death`,
+  `huntress-mid`, `warrior-long`), each carrying `termination=DEATH` and a final step worth `-100.0`.
+  `PlaybackCheck.checkADeathRunPlaysItsLastStep` asserts the cursor reaches the end; what it cannot see
+  is whether the hero actually acts and dies on screen, which needs `viewcheck` and a display.
 - **Visual fidelity.** The controls have been driven by a human; nobody has checked that the sprites
   and animation actually look right.
 - **`PlatformSupport.getFont` throws "No cap character found in font."** The viewer logs hundreds of

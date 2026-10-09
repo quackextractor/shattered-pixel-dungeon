@@ -28,11 +28,11 @@ the open issue said did not exist.
 
 The open issue's leading cause — that `GameScene.update` advances the world's actors on its own
 schedule — is **wrong**. `GameScene.java:942` gates its scheduler thread on
-`!Actor.manualScheduling`, and `ReplayPlayer.java:133` sets that flag, so the branch is dead during
+`!Actor.manualScheduling`, and `ReplayPlayer.java:135` sets that flag, so the branch is dead during
 playback. `Actor.headlessStep()` called from `driveToHeroReady()` is the only scheduler advance, and it
 is the same function the trainer uses.
 
-The `PENDING` yield is also not the fault. Its comment at `ReplayPlayer.java:373-380` is correct:
+The `PENDING` yield is also not the fault. Its comment at `ReplayPlayer.java:357-366` is correct:
 spinning inside the drain would starve the very animation callback being waited on.
 
 ## 2. The verified cause
@@ -127,14 +127,14 @@ and it cannot, because nothing in the trainer changes.
 `ReplayPlayer.update` decides whether to apply a recorded step like this:
 
 ```java
-//ReplayPlayer.java:337
+//ReplayPlayer.java:339
 if (!readyToAct() && driveToHeroReady() != Drain.READY){
     return;
 }
 applyNextStep();
 ```
 
-`readyToAct()` (`ReplayPlayer.java:469-488`) asks three questions, all about the hero: is there a hero,
+`readyToAct()` (`ReplayPlayer.java:763`) asks three questions, all about the hero: is there a hero,
 is it alive, is it not paralysed, is `curAction` null, is it `ready`. **If the hero answers yes, the
 drain is skipped entirely** and the next recorded step is applied with zero scheduler advance.
 
@@ -182,7 +182,7 @@ On `warrior-mid`, frames 71-74:
 **Frame 72: a recorded step was applied while `WaterOfHealth@14` held the scheduler.**
 
 `Actor.processing()` was `true`, `animating` was `0`, and `applyNextStep()` ran anyway. The reason is in
-`ReplayPlayer.readyToAct()` (`ReplayPlayer.java:469-488`), which asks three questions, all about the hero.
+`ReplayPlayer.readyToAct()` (`ReplayPlayer.java:763`), which asks three questions, all about the hero.
 The hero was free, so the drain was skipped and a step was injected mid-turn.
 
 That is the condition `GameScene.java:942` exists to prevent. In the real game, `Actor.processing()`
@@ -196,8 +196,9 @@ and `animating=0` says so explicitly.
 ### Also unresolved: the redundant acts
 
 While the rat's animation resolves, `driveToHeroReady` calls `headlessStep()` up to
-`BLOCKED_STEPS = 3` times per frame (`ReplayPlayer.java:599`). Over the ~49 frames of the stall that is
-~147 extra `Mob.act()` calls on the same mob, which the real game makes **zero** of while parked.
+`BLOCKED_STEPS = 3` times per frame (`ReplayPlayer.java:727`; the constant is declared at
+`ReplayPlayer.java:750`). Over the ~49 frames of the stall that is ~147 extra `Mob.act()` calls on the
+same mob, which the real game makes **zero** of while parked.
 
 Nothing observed so far says these matter. `Char.act()` recomputes FOV, `Mob.act()` calls
 `chooseEnemy()` (which builds a `PathFinder` distance map — deterministic) and `processSwarmIntel()`,

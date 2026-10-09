@@ -18,7 +18,10 @@ Added module: `superintelligence` — headless RL trainer around real game code.
 - Game runs with renderer bypassed. No drawing. Same game logic as desktop build.
 - Policy: CNN + LSTM actor-critic. 3,583,827 parameters.
 - Learner: PPO. Written, gradients verified against finite differences.
-- Not built: any training. Workers still act with `ScriptedPolicy`, a hand-written if/else.
+- Workers play with the real policy. `Worker` builds a `Network` and an `EpisodeCollector`
+  (`Worker.java:108`, `:113`) and collects through them; `ScriptedPolicy` survives only as a fixture
+  source for the gates (`VerifyCheck`, `ObserveCheck`, `RestartCheck`, `CollectCheck`,
+  `ScriptedEpisode`) and for `Main rollout`.
 - Goal from `research.md`: train one agent on one seed until it beats first boss (Goo, depth 5).
 
 ### Why processes, not threads
@@ -38,14 +41,28 @@ Consequence: every parallel decision here is really a decision about *processes 
 
 | Field | Size |
 | --- | --- |
-| Spatial grid, packed | 46,080 B (20 planes × 48 × 48) |
+| Spatial grid, packed | 48,384 B (21 planes × 48 × 48) |
 | Inventory (32 slots × 14 floats) | 1,792 B |
 | Hero scalars (23 floats) | 92 B |
 | 3 masks (action 17, slot 32, target 9) | 232 B |
 | Scalars: reward, value, next value, advantage, return, log-prob, head, indices | ~2.3 KB total incl. object overhead |
-| **Measured total** | **50,564 B ≈ 49.4 KB** |
+| **Total, computed** | **52,868 B ≈ 51.6 KB** |
 
-**Grid is 91% of it.** Inventory, hero and masks together are under 4KB.
+The grid is **91%** of it: 48,384 of 52,868 B. Inventory, hero and masks together are 2,116 B.
+
+Two of these figures were stale. The grid is 21 planes, not 20 — `EnvConfig.spatialChannels()` counts
+every `GridChannel` whose kind is not `SCALAR`, which is 21 spatial plus 1 scalar (`DEPTH_BIAS`) out of
+22 total. The plane count grew after this table was written (`VISIBLE_EDGE` is one of the additions).
+
+On the total: the original 50,564 B was **measured**, and this one is **computed** by adding the
+2,304 B the extra plane costs to that measured figure. The other rows are pure arithmetic from the
+sizes named above, so the only unverified part is the object-overhead estimate on the scalars row,
+which is carried over unchanged. Re-run whatever produced the original measurement if the total has to
+be exact — `:superintelligence:updatecost` reports per-sample cost, not `Transition` size.
+
+The remaining rows were re-derived from source and hold: `HeroEncoder.FEATURES = 23`,
+`InventoryEncoder.FEATURES_PER_SLOT = 14` against `EnvConfig.maxSlots = 32`, `Action.size() = 17`,
+`ActionMapper.TARGET_COUNT = 9`.
 
 ### Grid is binary, stored as bytes
 
@@ -163,7 +180,9 @@ Bit-packing the grid alone: 2.4 GB → ~430 MB. Still large, but no longer a cli
 ### B — Workers update locally, send weights back
 
 - Transport is already proven: 14.3 MB per worker per generation, and it already works.
-- No observation transfer at all. Worker buffer is already capped at ~98 MB (`rolloutCap` 2048).
+- No observation transfer at all. Worker buffer is already capped at ~98 MB
+  (`PpoHyperparameters.maxSampledPerEpisode = 2048`). The `rolloutCap` this used to name is gone; it
+  bounded the trainer's buffer, the wrong end, and was replaced by two caps with different units.
 - 20 × 98 MB ≈ 2 GB total. Comfortable.
 - Cost: no pooled gradient. N policies drift. Weight averaging across independently-updated nets is
   wrong — they are not in a shared basin — and averaging gradients is wrong once workers start from
@@ -254,9 +273,11 @@ should not be started until both are measured.
 
 ## 11. Unrelated but adjacent
 
-**Hero class appears not to affect score.** All five hero classes produced identical score and turn
+**Hero class appears not to affect score.** The hero classes exercised produced identical score and turn
 count on the same seed. `GamesInProgress.selectedClass` is applied in `Dungeon.init`, so class does
-reach the hero. Score is probably driven by turns and depth only. Not confirmed either way.
+reach the hero. Score is probably driven by turns and depth only. Not confirmed either way. `HeroClass`
+defines six — WARRIOR, MAGE, ROGUE, HUNTRESS, DUELIST, CLERIC (`HeroClass.java:87-92`) — and how many
+this measurement covered is not stated here.
 
 **Headless coverage is incomplete.** Running the real policy surfaced three crashes the scripted
 policy never hit: blobs had no emitter (15 blob types NPE in `evolve()`), `GameScene.cancel()`

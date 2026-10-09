@@ -51,7 +51,7 @@ The neural engine implements an Actor-Critic architecture featuring 2D Convoluti
 
 `ActionMapper` translates high-level discrete agent actions (`Action`) into game-level commands (`HeroAction`, `SlotAction`, `WindowBridge`).
 
-* **Observations:** `LevelPipeline.runToHeroReady()` advances the game scheduler until the player hero requires input. Action masking (`ActionMask`) correctly restricts invalid moves based on environment mode (`WORLD`, `SLOT`, `TARGETING`, `MENU`, `INVENTORY`).
+* **Observations:** `LevelPipeline.runToHeroReady()` advances the game scheduler until the player hero requires input. Action masking correctly restricts invalid moves based on environment mode (`WORLD`, `SLOT`, `TARGETING`, `MENU`, `INVENTORY`); it is three methods on `ActionMapper` rather than a separate type - `actionMask(EnvMode, float[])`, `targetMask(int)`, `slotMask(float[])` (`ActionMapper.java:110`, `:183`, `:190`).
 * **Fix/Optimization:** Ensure that non-movement actions (e.g., `WAIT`, `SEARCH`, `USE`, `DROP`) explicitly clear `Dungeon.hero.resting` state in `ActionMapper.apply()`. Failing to clear `resting` creates an unrecoverable rest loop where the actor scheduler spends turns indefinitely.
 
 ### State & Observation Encoding (`com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs`)
@@ -79,57 +79,49 @@ The neural engine implements an Actor-Critic architecture featuring 2D Convoluti
 
 **Problem:** When a hero enters resting mode, `Dungeon.hero.resting` is set to `true`. If the agent subsequently selects a non-movement action (such as `WAIT` or `SEARCH`), `Hero.act()` continues executing the rest branch because `curAction` is `null` and `resting` remains `true`. This causes the environment to freeze or hit the maximum actor step limit, producing replay diversion and artificially low scores.
 
-**Fix:**
+**Fix** (landed at `ActionMapper.java:216-240`):
 
 ```java
-package com.shatteredpixel.shatteredpixeldungeon.superintelligence.env;
+public boolean apply( Action action, int slotOrTarget ){
+    if (action == null) return false;
+    Hero hero = hero();
 
-import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
-import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
-
-public class ActionMapper {
-
-    public boolean apply(Action action, int slot) {
-        Hero hero = Dungeon.hero;
-        if (hero == null) {
-            return false;
-        }
-
-        // If hero is resting and selected action is not REST, wake hero up
-        if (hero.resting && action != Action.REST) {
-            hero.resting = false;
-        }
-
-        switch (action) {
-            case MOVE_N:
-                return moveOffset(0, -1);
-            case MOVE_S:
-                return moveOffset(0, 1);
-            case MOVE_W:
-                return moveOffset(-1, 0);
-            case MOVE_E:
-                return moveOffset(1, 0);
-            case REST:
-                hero.rest();
-                return true;
-            case WAIT:
-                hero.spendConstant(1.0f);
-                hero.busy();
-                return true;
-            default:
-                return executeExtendedAction(action, slot);
-        }
+    if (hero.resting && action != Action.REST){
+        hero.resting = false;
     }
 
-    private boolean moveOffset(int dx, int dy) {
-        int targetCell = Dungeon.hero.pos + dx + dy * Dungeon.level.width();
-        return handleCell(targetCell);
+    switch (action) {
+        case WAIT:
+            hero.next();
+            return true;
+        case REST:
+            hero.resting = true;
+            hero.next();
+            return true;
+        case SEARCH:
+            hero.search( true );
+            hero.next();
+            return true;
+        case USE:
+        case DROP:
+            SlotAction.clearPendingUseItem();
+            return true;
+        // ... OPEN_INVENTORY, CANCEL, INTERACT
+
+        default:
+            break;
     }
 
-    private boolean handleCell(int cell) {
-        // Implementation logic for cell interaction
-        return true;
-    }
+    // Only the eight directions remain, and they name their own cell.
+    return handleCell( offsetCell( action.dx, action.dy ));
+}
+```
+
+Two details the earlier draft in this file got wrong, both since corrected in code: `REST` sets
+`hero.resting = true` and calls `hero.next()` rather than calling `hero.rest()`, and `WAIT` calls
+`hero.next()` with no `spendConstant`/`busy`. The second matters because `Hero.rest()` never sets a
+`curAction`, so the hero keeps taking the resting branch of `Hero.act()` and never reaches `ready()` -
+calling `next()` without a `curAction` is what hands control back.
 
     private boolean executeExtendedAction(Action action, int slot) {
         // Implementation logic for extended actions

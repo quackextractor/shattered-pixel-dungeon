@@ -4,8 +4,9 @@ Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), wri
 code as it stands. "Verified" means it was run and observed, not merely written.
 
 Last updated: 2026-10-09, after the static-reset protocol, the externalised configuration, the
-replay-parity sweep that found a fourth instance of process-spanning game state, and the viewer
-divergence being found and fixed.
+replay-parity sweep that found a fourth instance of process-spanning game state, the viewer
+divergence being found and fixed, and a documentation sweep that re-checked every stale claim in this
+file and its companions against the source.
 
 ---
 
@@ -348,8 +349,8 @@ reconcile with a bootstrap should do. Depth is still 1. That is now 1.8.
 > **Both columns of that table were correct and the conclusion drawn from them was
 > wrong.** The agent was not choosing to stall. `REST` was a one-way door: it set
 > `hero.resting` without setting a `curAction`, so `Hero.act` took the rest branch
-> forever and never called `ready()`, and `recoverStrandedHero` refuses a resting
-> hero because a *player* escapes rest by choosing another action. Every episode
+> forever and never called `ready()`, and the recovery path of the time refused a
+> resting hero because a *player* escapes rest by choosing another action. Every episode
 > that rested was over. Instrumenting the two stall guards showed 36 of 36 stalls
 > came from `LevelPipeline` and **zero** from the idle guard this section is about,
 > at turns 10-51 rather than 121 — which is the whole tell.
@@ -600,10 +601,14 @@ not exist in this v4.0.1 checkout:
 
 | Document | Referenced | Reality |
 | --- | --- | --- |
-| research.md:5 | `FogOfWar.java` (in `tiles`) | Does not exist. FOV lives in `Level.updateFieldOfView` + `mechanics/ShadowCaster`. I read `Level.heroFOV` directly. |
-| research.md:5 | `ShadowCaster.java` (in `mechanics`) | Exists, in the right place, but is reached through `Level`, not called directly. |
+| research.md:5 | `FogOfWar.java` (in `tiles`) | Exists, in the right package: `tiles/FogOfWar.java`. Reached through `Level`, not called directly. `Level.heroFOV` is what I read. |
+| research.md:5 | `ShadowCaster.java` (in `mechanics`) | Exists, in the right package, but is reached through `Level`, not called directly. |
 | research.md:5 | `InputHandler.java`, `ControllerHandler.java` (in core) | Not in core. They live in `com.watabou.input` in `SPD-classes`. Bypassed either way. |
-| research.md:55 | `Alchemy.java` | Does not exist. The pot is `Terrain.ALCHEMY`; the UI is `scenes/AlchemyScene`. |
-| research.md:5 | `tiles` package | No `tiles` package in core. |
+| research.md:55 | `Alchemy.java` | Exists, as the blob at `actors/blobs/Alchemy.java` — not a scene. The pot is `Terrain.ALCHEMY`; the UI is `scenes/AlchemyScene`. Both readings of the reference are reachable, so this one needed no correction. |
+| research.md:5 | `tiles` package | Exists. Eleven files, including `FogOfWar.java` and the tilemap classes. |
+
+An earlier version of this table reported `FogOfWar.java`, `Alchemy.java` and the `tiles` package as
+absent. All three exist; what is true is narrower — they are reached through `Level` and the scene
+layer rather than called directly, which is why the literal instruction still did not apply.
 
 The *intent* of every reference is achievable. The literal instruction is not always expressible.

@@ -149,8 +149,11 @@ An update costs one forward and one backward per sample per epoch. At the then-c
 single thread** (`PPO.update`, `rl/PPO.java`). The default is now 2 — see step 2b — which halves
 every figure below.
 
-Per sample, the shape is expensive. The convolution is 20 planes of 48x48 im2col'd into a
-12,696×320 matvec; the trunk is 12,696×256; the LSTM is 256→128.
+Per sample, the shape is expensive. The convolution is 21 planes of 48x48 im2col'd into a
+12,696×320 matvec; the trunk is 12,696×256; the LSTM is 256→128. The plane count is
+`EnvConfig.spatialChannels()` → `GridChannel.spatialCount()`, which counts every channel whose kind is
+not `SCALAR` — **21** spatial plus 1 scalar (`DEPTH_BIAS`), out of 22 channels total
+(`GridChannel.java:29-92`).
 
 **Measured.** `gradle :superintelligence:updatecost`, on this machine, 3,583,827 parameters, one
 thread:
@@ -271,7 +274,8 @@ originally scheduled after the parallel update, which was wrong on both counts.
 work below adds to it. Extracted first, as pure moves, so the behavioural commits below have a small
 diff to review: `train/WorkerPool` (launch, `WorkerHandle`, watchdog), `train/GenerationReport`,
 `train/TrainOptions`, `train/Protocol` (message constants, then duplicated as bare literals across
-`Worker` and `Trainer`). `Trainer` is now 465 and is the loop itself.
+`Worker` and `Trainer`). `Trainer` is now 822 and the loop itself, with the parallel update step in
+`train/TrainerWorkers` (305).
 
 Not a pure move after all — it also fixed two real defects, disclosed in its commit: a policy-push
 acknowledgement that was read and discarded, and an episode reply check that read a second int off the
@@ -427,9 +431,11 @@ visible rather than invisible. Declining afterwards is what settling looks like.
 CSV and graph both, because they answer different questions: CSV is how two runs are compared, the
 graph is how one run reads.
 
-Gate, met: 9 generations of history survive the process in a 24-column CSV; appending a second run adds
-rows without a second header; `clip=` is the real ratio-clip fraction and the check fails when
-`Policy` is mutated to report a non-binding clip.
+Gate, met: 9 generations of history survive the process in a CSV; appending a second run adds rows
+without a second header; `clip=` is the real ratio-clip fraction and the check fails when `Policy` is
+mutated to report a non-binding clip. The shape has since grown: `MetricsHistory.HEADER` names **24**
+columns and 5 end-reason columns are derived from `RewardModel.TerminateReason` and appended, so the
+file is **29 columns wide** (`MetricsHistory.java:46-68`).
 
 ### Step 4 — Parallel minibatch update — **done**
 

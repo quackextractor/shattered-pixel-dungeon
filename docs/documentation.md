@@ -180,11 +180,11 @@ Three of them are worth singling out, because they reach faults the others struc
 - **`paritycheck`** proves a *recording* survives a write, a read, and a second episode in the same
   process. It is the only gate that lets the hero die repeatedly, which is where process-spanning game
   state such as a dead hero's remains becomes visible. It found that fault on its first run.
-- **`observecheck`** checks its own instrument. All eighteen public `Random` draw paths and `shuffle`
+- **`observecheck`** checks its own instrument. All 17 public `Random` draw paths and `shuffle`
   must move the counter, so "the draw counts match" means the streams match. It has to: `Random.Int`
   and `Random.shuffle` were advancing the generator without being counted, which made a headless run
   and a rendered run report identical counts at every step of a 126-step recording while their gameplay
-  streams were sixteen values apart. Six hypotheses about the divergence had been refuted by
+  streams were 12 values apart. Six hypotheses about the divergence had been refuted by
   measurement before that was found, because the instrument that was supposed to catch it was blind to
   the draws that caused it.
 
@@ -214,9 +214,9 @@ Guaranteed, and gated:
 - Presentation randomness runs on its own generator, so a rendered run and a headless one consume the
   same gameplay stream. This one was broken for a long time and is the reason
   [`../superintelligence/ISSUE-viewer-frame-drift.md`](../superintelligence/ISSUE-viewer-frame-drift.md)
-  exists: four presentation draws were still on the gameplay stream, which put the viewer's twelve
-  values from the trainer's and made 14 of 17 recordings diverge in the viewer while verifying
-  exactly headlessly. The rendered viewer now reproduces the corpus, and
+  exists: four presentation draws were still on the gameplay stream, which put the viewer's 12 values
+  from the trainer's and made 14 of 17 recordings diverge in the viewer while verifying exactly
+  headlessly. The rendered viewer now reproduces the corpus, and
   [`../superintelligence/ENGINE-CHANGES.md`](../superintelligence/ENGINE-CHANGES.md) records every
   change made to the game to get there.
 - A new run inherits nothing from the previous one - not an armed aim, not an open dialog, not a dead
