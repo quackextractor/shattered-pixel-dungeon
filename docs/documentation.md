@@ -158,17 +158,18 @@ Nineteen gates, one invocation, ~22 seconds:
 | `actioncheck` | A movement action that does not move the way it is named |
 | `slotcheck` | A recorded slot index resolving to a different item |
 | `verifycheck` | Verification that cannot detect an altered recording |
-| `observecheck` | Reading the world drawing from the gameplay RNG |
+| `observecheck` | Reading the world drawing from the gameplay RNG, **or** a draw path the RNG trace cannot see |
 | `configcheck` | A configuration binder that ignores its input |
 | `paritycheck` | A recording that will not replay exactly, across seeds in one process |
 
-Plus `playbackcheck` in `:desktop`, which drives the rendered viewer with no window and no scene.
+Plus `playbackcheck` in `:desktop`, which drives the rendered viewer with no window and no scene, and
+`viewcheck`, which plays the whole corpus through the real viewer and needs a display.
 
 Every gate is mutation-tested: each one has had the thing it guards deleted, and the gate has been
 required to fail. A check that cannot fail is not a check, and several of these exist only because the
 property they protect had already been broken.
 
-Two of them are worth singling out, because they reach faults the others structurally cannot:
+Three of them are worth singling out, because they reach faults the others structurally cannot:
 
 - **`resetcheck`** proves a reset is a function of its arguments. It needs two episodes in one process,
   because with one there is nothing to leak from - which is why every single-episode check in the
@@ -176,6 +177,13 @@ Two of them are worth singling out, because they reach faults the others structu
 - **`paritycheck`** proves a *recording* survives a write, a read, and a second episode in the same
   process. It is the only gate that lets the hero die repeatedly, which is where process-spanning game
   state such as a dead hero's remains becomes visible. It found that fault on its first run.
+- **`observecheck`** checks its own instrument. All eighteen public `Random` draw paths and `shuffle`
+  must move the counter, so "the draw counts match" means the streams match. It has to: `Random.Int`
+  and `Random.shuffle` were advancing the generator without being counted, which made a headless run
+  and a rendered run report identical counts at every step of a 126-step recording while their gameplay
+  streams were sixteen values apart. Six hypotheses about the divergence had been refuted by
+  measurement before that was found, because the instrument that was supposed to catch it was blind to
+  the draws that caused it.
 
 ## Replay and determinism
 
@@ -198,10 +206,14 @@ Guaranteed, and gated:
 
 - A seed plus a hero class plus the recorded header is a function of the whole trajectory. Six rollouts
   of one seed across six separate JVMs give one distinct score.
-- Observations are side-effect free - encoding state draws nothing from the gameplay RNG.
+- Observations are side-effect free - encoding state draws nothing from the gameplay RNG - and every
+  draw path the RNG trace counts is one the trace can actually see.
 - Presentation randomness runs on its own generator, so a rendered run and a headless one consume the
-  same gameplay stream. Measured: a 14-step floor draws within one call of identical in the trainer and
-  the rendered game, against 249 before.
+  same gameplay stream. This one was broken for a long time and is the reason
+  [`../superintelligence/ISSUE-viewer-frame-drift.md`](../superintelligence/ISSUE-viewer-frame-drift.md)
+  exists: four presentation draws were still on the gameplay stream, which put the viewer's twelve
+  values from the trainer's and made 14 of 17 recordings diverge in the viewer while verifying
+  exactly headlessly. The rendered viewer now reproduces the corpus.
 - A new run inherits nothing from the previous one - not an armed aim, not an open dialog, not a dead
   hero's remains.
 
@@ -230,3 +242,8 @@ this work:
 - **`Bones.clear()`** - forgets a fallen hero's remains. Nothing in the game calls it; a normal
   playthrough wants the opposite. It exists because an environment playing many independent runs in one
   process cannot have the world depend on which hero died last.
+- **`GameScene.answerableWindow()`** - a getter that prefers the scene's live window over the headless
+  dialog slot. `show()` fills the slot only when there is no scene, so a caller reading the slot alone
+  saw no dialog in the rendered game, and a recorded `MENU` step resolved against nothing.
+- **`PRandom.element`** - mirrors `Random.element` for the presentation stream, so a caller choosing
+  presentation can be moved across without reimplementing the indexing.

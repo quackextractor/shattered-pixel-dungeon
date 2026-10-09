@@ -405,13 +405,20 @@ tramples high grass before trying to collect from it.
 `loot-a` now opens with `WORLD → SLOT → TARGETING → WORLD → INVENTORY → TARGETING`, verifies 3/3, and
 is byte-identical across fresh JVMs. A six-seed determinism sweep still matches exactly.
 
-**`MENU` is still uncovered.** It needs a real `WndOptions` dialog, which movement cannot produce.
-The reachable triggers are the unequip-third-ring prompt (`KindofMisc`) and the upgraded-missile
-break warning (`MissileWeapon.doThrow`); both need specific loot first.
+**`MENU` is still uncovered.** It needs a real `WndOptions` dialog, which movement cannot produce. The
+reachable triggers are the unequip-third-ring prompt (`KindofMisc`) and the upgraded-missile break
+warning (`MissileWeapon.doThrow`); both need specific loot first. Measured: **zero** of the seventeen
+committed recordings contain a `MENU` step, so the mode is exercised by `modecheck` and by nothing
+else.
 
-**`TARGETING` is entered but never *used*.** Every targeting step in every recording is `CANCEL`, so
-`ActionMapper.resolveTarget` - the real aim, `aim.onSelect(cell)` and `SlotAction.castAt` - is still
-never executed. The mode appearing in a header is not the same as its inner path being covered.
+The asymmetry that would have bitten it is fixed. `WindowBridge` read `GameScene.headlessWindow()`,
+which `GameScene.show` fills only when there is no scene — so in the rendered viewer it was always
+null and a recorded `MENU` step resolved against nothing, while `ReplayController.dismissUnanswerableWindow`
+deliberately exempts `WndOptions` and would have left it on screen forever. `WindowBridge` now reads
+`GameScene.answerableWindow()`, which prefers the live window.
+
+**`TARGETING` is entered and now used.** The six bugs below are fixed and the recorded corpus exercises
+the aim path: **154 `TARGETING` steps across the corpus, every one a real aim, none a `CANCEL`.**
 
 ## 12. Driving it by hand, and what that found
 

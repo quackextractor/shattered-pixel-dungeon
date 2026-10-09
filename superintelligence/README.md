@@ -60,8 +60,18 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   stalls, and `meanScore` is falling (186 -> 59 across 6 generations) as the critic fits longer episodes.
   But `bestDepth` is still 1 and nothing dies. `depthReward` of +10 against `turnCost` of 0.002 means
   descending pays 5,000 turns of idling, and `KILL` / `GOLD_GAIN` / `ITEM_PICKUP` still never fire
-  (`TODO.md` 1.8). The desktop viewer also still disagrees with the trainer step-for-step - see
-  `PLAN-reward-signals.md` section 10, "Still open".
+  (`TODO.md` 1.8).
+- **The desktop viewer and the trainer now agree.** They did not, and it was not a viewer fault:
+  four presentation draws — a sprite's random facing, the attack overlay's highlight target, and two
+  Mages Staff particle effects — were spending the gameplay RNG stream, which only the rendered game
+  makes. The viewer's stream ran twelve values from the trainer's, so every damage and defence roll
+  after the first differed and recordings that verified exactly headlessly diverged in the viewer:
+  **14 of 17**, deterministically. Worse, `RngTrace` reported identical draw counts at every step
+  throughout, because `Random.Int` and `Random.shuffle` were advancing the generator without being
+  counted — so the instrument that was supposed to catch it was blind to the draws that caused it.
+  `gradle :desktop:viewcheck` is now **green on all 17**, and stable across repeated runs. The four
+  fixes are engine changes and are uncommitted, per `instructions.md` §12.3; see
+  `ISSUE-viewer-frame-drift.md`.
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
@@ -109,6 +119,7 @@ something.
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process |
+| Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 17 committed recordings, and stable across repeated runs. The four engine fixes this required are uncommitted |
 | Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate |
 | A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation |
 | Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
@@ -176,6 +187,19 @@ where process-spanning game state such as a dead hero's remains becomes visible 
 
 `probeClasspath` prints the runtime classpath, which is what the trainer uses to launch workers.
 
+**Two-sided diffing, as one command.** `worldtrace` produces the headless side of a world snapshot and
+the viewer's `-Dspd.worldTrace` produces the rendered side; `viewdiff` reads both and names the first
+step and field that differ, plus the frames on which the world moved with no recorded step applied:
+
+```sh
+./gradlew :superintelligence:worldtrace -PworldArgs="<replay> <out> --no-cells"
+./gradlew :desktop:replay --args="--file <replay>" -PspdWorldTrace=<out>.viewer.txt
+./gradlew :superintelligence:viewdiff -PviewDiffArgs="<out> <out>.viewer.txt"
+```
+
+This is the only comparison in the suite where the two sides do not share a code path, which is why
+it found a fault that `verify`, `playbackcheck` and `paritycheck` all agreed was not there.
+
 **The update is parallelisable and now is.** 11.3 ms per sample single-threaded, almost all of it
 forward and backward rather than Adam. `--update-threads N` splits a minibatch across N threads, each
 with its own scratch and its own gradient accumulators, reduced before the Adam step:
@@ -224,7 +248,7 @@ survives disk exactly, Adam moments included, and that bad checkpoints are refus
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and worker bootstrap |
 | `rl` | `Network` (CNN + LSTM + heads), `PPO` (the learner), `ShardedUpdate` (the parallel minibatch and its gradient reduction), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector` (plays an episode, computes its advantages), `EpisodeRecord` (one episode's scalars + sampled observations) |
 | `train` | `Trainer` (generation loop), `TrainerWorkers` (everything crossing a worker pipe), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `PpoHyperparameters`, `Checkpoint` (save/resume), `MetricsHistory` (per-generation CSV + end-of-run trend), `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
-| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `ReplayCatalog`, `RngTrace` |
+| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `ReplayCatalog`, `RngTrace`, `WorldSnapshot`, `WorldDiff` |
 | `diag` | `RunReport`, `Graph`, `Ansi`, and the checks: `GradientCheck`, `ModeCoverageCheck`, `RestartCheck`, `GaeCheck`, `UpdateCostCheck`, `ConfigCheck`, `ParityCheck` |
 
 ## Configuration

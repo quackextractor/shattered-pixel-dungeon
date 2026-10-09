@@ -127,6 +127,15 @@ tasks.register('worldtrace', JavaExec) {
     if (project.hasProperty('worldArgs')) args project.property('worldArgs').toString().split(' ')
 }
 
+tasks.register('viewdiff', JavaExec) {
+    group = 'diagnostics'
+    description = 'Diffs a headless world snapshot against a rendered one and names the first difference.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.WorldCompare'
+    jvmArgs trainerJvmArgs
+    if (project.hasProperty('viewDiffArgs')) args project.property('viewDiffArgs').toString().split(' ')
+}
+
 tasks.register('paritycheck', JavaExec) {
     group = 'verification'
     description = 'Fails if a recorded run will not replay exactly, across several seeds in one process.'

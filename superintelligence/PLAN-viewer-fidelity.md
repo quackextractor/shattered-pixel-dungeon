@@ -1,7 +1,18 @@
 # Plan: viewer fidelity — the step gate, and why the trainer is not what needs changing
 
-**Status:** in progress. Written after the fullscreen and reproducibility work landed in
-`e0c986c27`, and before the step-gate fix.
+**Status: the plan is superseded.** The divergence is fixed and the cause was neither the scheduler nor
+the step gate. It was four presentation draws spending the gameplay RNG stream, which put the rendered
+viewer's stream twelve values from the trainer's. `gradle :desktop:viewcheck` is green on all 17
+recordings and stays green across repeated runs.
+
+Kept because §7 is the correction table and §4a-§4b are the record of three wrong mechanisms, which is
+the reason the next reader should not re-derive them. **`ISSUE-viewer-frame-drift.md` is now the
+current document** and `FINDINGS-viewer-fidelity.md` holds the measurements.
+
+Every claim below marked as the cause, the verified cause, or the suspected mechanism is **wrong**, and
+was wrong before it was tested rather than after. The one thing that survived contact with a run is the
+conclusion in §3: the trainer is not what needs changing. It survived for a reason that is not the one
+given here — the trainer's ordering was never the problem.
 
 Supersedes nothing. `ISSUE-viewer-frame-drift.md` recorded this as open with an incorrect leading
 cause; §7 below says which of its claims survived measurement.
@@ -343,14 +354,15 @@ construction time states it, and neither side inherits from ambient preferences.
 Recorded so the file stops misleading the next reader:
 
 | claim | verdict |
-|---|---|
+| --- | --- |
 | "`GameScene.update` advances the world on its own schedule" | **wrong.** Gated off by `Actor.manualScheduling`. |
 | "the viewer hands out extra turns" | **wrong.** No actor takes a turn that the trainer did not. One *recorded step* is applied too early. |
-| "failing membership varies between runs" | **was true, no longer.** Fixed by a pinned delta and sequential default; 14 of 17 now stable at identical steps. |
-| "the suspected cause is redundant `Mob.act()` re-selection" | **wrong.** The 31 idle frames show no such churn. One level up. |
+| "failing membership varies between runs" | **was true, no longer.** Fixed by a pinned delta and sequential default; 14 of 17 were stable at identical steps. |
+| "the suspected cause is redundant `Mob.act()` re-selection" | **wrong as a cause.** The re-selection is real — 290 of 303 scheduler calls on `warrior-long` — but it costs `Mob.act()` evaluations and no animation restart, and it happens identically headlessly. The original refutation of it used a cooldown, which cannot change during a park. |
 | "make the trainer replicate the viewer" | **backwards.** The trainer already matches the game; see §3. |
 | "needs a tool comparing actions and HP" | **done.** `WorldSnapshot` + `WorldDiff`, per-cell and per-field. |
 | "`viewcheck` cannot be a gate" | still true, for needing a display. |
+| — | **and the actual cause, which none of the above anticipated:** four presentation draws on the gameplay RNG stream, plus `Random.Int` and `Random.shuffle` not being counted, so the trace reported two streams as identical while they were sixteen values apart. |
 
 ## 8. Blast radius
 

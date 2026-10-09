@@ -478,12 +478,20 @@ public class ViewCheck {
 			ReplayPlayback playback = player.playback();
 			boolean clean = !playback.diverged();
 
+			//The frame accounting is printed on every line, pass or fail. It is the one number that says
+			//how much of the render loop was spent not applying a recorded step, which is the whole
+			//subject here: a recording needing 40 frames per step is one whose playback timing is decided
+			//by animation duration rather than by the recording, and it is those recordings whose outcome
+			//depends on how fast the machine renders. A failure that does not print it sends the next
+			//reader back to the viewer with nothing to compare against.
 			if (clean){
 				System.out.println( "[viewcheck] ok    " + file.getName()
-						+ "  (" + playback.cursor() + "/" + playback.total() + " steps)" );
+						+ "  (" + playback.cursor() + "/" + playback.total() + " steps;  "
+						+ player.frameReport() + ")" );
 			} else {
 				System.out.println( "[viewcheck] FAIL  " + file.getName()
-						+ "  " + player.haltReason() );
+						+ "  " + player.haltReason()
+						+ "   [" + player.frameReport() + "]" );
 			}
 			System.out.flush();
 			System.err.flush();

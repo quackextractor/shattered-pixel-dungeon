@@ -9,8 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`viewcheck` gate** (`:desktop`): plays the whole committed corpus through the *real* viewer - real
-  `GameScene`, real `ReplayController` frame driver, real GL context with the window hidden - and fails
+- **`gradle :superintelligence:viewdiff`** (`:superintelligence`): reads a headless `worldtrace` snapshot
+  and a rendered `-Dspd.worldTrace` one, and reports the first step and **field** that differ, plus the
+  frames on which the world moved with no recorded step applied. This is the reader half of the only
+  two-sided comparison in the project - every other check compares a headless run against a headless
+  run, so a fault in the render loop cannot appear in any of them - and it replaces a hand-written
+  comparator that had itself been wrong twice.
+
+- **`# generationSites=` in every RNG trace:** the draw-by-site tally for the window between level
+  generation and the first recorded step. It is the one part of a run the per-step comparison excludes,
+  so it had nowhere to be looked at, and it is where an offset introduced before playback begins
+  appears with nothing else to point at it.
+
+- **`RandomTrace` frame and gate records:** which actor advanced engine time, by how much, on frames
+  that applied no recorded step; and the step gate's own inputs at the moment it was consulted.
+
+- **`PRandom.element`**, mirroring `Random.element` so a presentation caller can be moved across
+  without reimplementing the indexing.
+
+
+- **`viewcheck` gate** (`:desktop`): plays the whole committed corpus through the *real* viewer - real  `GameScene`, real `ReplayController` frame driver, real GL context with the window hidden - and fails
   if any recording diverges. One child JVM per recording. Needs a display, so it is deliberately not
   part of `gates`. It exists because `playbackcheck` cannot see this class of fault: it calls
   `ReplayPlayer.update` directly, whereas the viewer installs itself as `GameScene`'s frame driver.
@@ -33,30 +51,307 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   name which actor acted and on what; the last is the only way to ask whether an attack is still in
   flight, since `CharSprite.isMoving` is set by movement and by nothing else.
 
-### Fixed
 
-- **The rendered viewer took over the desktop on every gate run.** Two settings were inherited from
-  whatever preferences file happened to exist, and both default to values that break an unattended run:
-  `SPDSettings.fullscreen()` defaults to `true`, so `DesktopPlatformSupport` called `setFullscreenMode`
-  from the game's own `create()` - after the launcher's window configuration was complete, so no `-D`
-  flag could stop it, and GLFW ignores its visibility hint for fullscreen windows. `SPDSettings.intro()`
-  also defaults to `true`, and `Hunger.act()` returns early while it is set, which freezes the hero's
-  hunger clock for the whole run; the trainer has always stated `intro(false)` explicitly, and the
-  viewer inherited `false` from the developer's own settings by luck. Both are now stated rather than
-  inherited, and `viewcheck` reads the window mode back from the live context and fails if a run went
-  fullscreen, so this cannot regress silently. This is the third instance of the same class of fault -
-  a setting only one side states - after quickslot bindings and scheduler tie-breaking.
+- **Parallel minibatch update** (`--update-threads N`, default 1). Each minibatch is split across N
+  threads, each with its own forward/backward scratch and gradient accumulators, reduced into the
+  master before the Adam step. A thread's network is a *copy* of the parameters rather than a view onto
+  them, so no thread can observe another's writes even if the reduction is wrong.
+  Measured, 8 workers × 3 generations: **8.98 → 5.09 → 2.73 → 2.59 ms/sample at 1, 2, 4 and 8
+  threads** (1.00×, 1.76×, 3.29×, 3.47×). The plan predicted ~5× at 8; the shortfall is the gradient
+  reduction, which is why 4 and 8 threads are nearly identical.
+- **`rewardcheck`**, a gate asserting that ending an episode is never cheaper than dying — replayed
+  through the real environment rather than compared against a literal, so it holds however the
+  constants are retuned. 6 cases. Mutation-tested: restoring `STALLED` to -5.0 fails the
+  terminal-reward case; restoring `WAIT`'s `return false` fails the refusal case with "435 refusals over
+  29 WORLD turns".
+- **Termination reasons reported per generation.** A console `ended` line, one CSV column per reason,
+  and an end-of-run first-third-vs-last-third trend. Written because a 20-generation run converged
+  `meanScore` on exactly -5.0 and the reason had to be *inferred* by arithmetic; it is now `ended
+  stalled 16 (100%)`, read.
+- **`parallelcheck`**, a gate asserting that a sharded accumulation equals a single-network one, at 2, 4
+  and 8 shards, and that the answer does not depend on the shard count. Tolerance is 1e-4 relative to
+  each tensor's own L2 norm; observed disagreement ~2e-7. Mutation-tested — reverting the `dCell` clear
+  fails all four cases.
+- **The LSTM state now travels with each sampled transition**, so the update replays an observation
+  under the state the behaviour policy actually used. 1 KB per step at the default 128-wide LSTM,
+  about 2% of a step's wire cost.
+- **`statecheck`**, a gate asserting a sampled observation replays to the value the rollout recorded
+  *regardless of processing order* — and, separately, that replay is order-independent, which is the
+  precondition for splitting a minibatch across threads. Mutation-tested: removing the restore fails
+  two of its four cases.
+- **`replayprobe`** and **`valuescale`**, probes rather than gates. Both exist because a number was
+  needed to settle a question that reading the code could not: how far a shuffled replay drifts, and
+  whether the critic's targets fit inside the range it can reach.
+- **`PLAN-replay-verification.md`**, the plan for the tooling that is still missing, and the report of
+  what validating its premises turned up. Three faults got past every existing gate because a gate that
+  shares its implementation cannot see a fault in it: `collectcheck`, `verify` and the rest all
+  re-execute through `HeadlessGame`, so a build-wide RNG fault is invisible to all of them by
+  construction. `ReplayPlayer`'s 560 lines were covered by nothing at all. The proposal is four tools —
+  a headless playback verifier, an observation-purity gate, a rendered-vs-headless RNG fingerprint, and
+  one command that runs the lot — plus `maxSlots`/`allowEquipping` added to the replay header, without
+  which a replay cannot guarantee it resolves slot indices the same way twice.
+  Validating the premises confirmed every one of them, and turned up two things reading alone had not:
+  - `ReplayPlayer` *can* be driven with no window, no scene and no `ReplayController` — a probe loaded
+    a 229-step recording, built the world, applied steps and reported a divergence in 7 ms, so T1 needs
+    no refactor to make the viewer headless-testable.
+  - That same probe diverged at step 3 of a recording the windowed viewer plays to step 33, because
+    `ReplayPlayer` never performs the `GameScene.clearPendingCellListener()` /
+    `SlotAction.clearPendingUseItem()` that `SPDEnv.step` does. The windowed viewer masks this by
+    having a live `CellSelector`; headless has none, so the aim request routes through
+    `pendingCellListener` and the throw never resolves. The viewer and the trainer do not perform the
+    same per-step state transition, and only this tool makes that visible.
+  - `rollout --seed ""` writes `seed=` and `verify` then dies on an unhandled null-valued expression,
+    five times over, naming neither the file nor the step — so the guard needs to go in both commands,
+    not one.
+  - Both guards are in. `rollout` refuses an empty `--seed` and points at the omitted flag; `verify`
+    refuses a recording with no seed and names the file and the field.
+- **`rngtrace`**, the first automated check that the rendered game and the headless environment consume
+  randomness identically. Everything else in the suite compares a headless run with another headless
+  run, so a fault in the headless path cannot show up in any of them. This compares against an artefact
+  produced by the viewer, which is the only thing in the project capable of disagreeing.
+  Per step it records the cumulative draw count *and* an order-sensitive fingerprint — a count alone
+  cannot tell "the same numbers in a different order" from "the same numbers in the same order", and
+  the first is just as broken. Counters start at zero once the world is built, so the trace measures
+  steps rather than the several thousand draws that level generation makes; the observer contract is
+  `ReplayIO.StepObserver`, so it reuses the verification loop rather than writing a second replay loop.
+  Comparison is keyed by step rather than line position, so "first divergence" keeps meaning what it
+  says when one run produces a different number of samples.
+  Landed as a diagnostic rather than a gate, per the plan: any engine change that touches a draw
+  invalidates a golden, and a gate people regenerate reflexively is worth less than one they read.
+  **Correction.** An earlier note here claimed a 229-step recording agreed "on every step" between the
+  viewer and the headless run, and called it the first independent confirmation that the two agree on
+  randomness. That comparison drove `ReplayPlayer` *headlessly*, so it compared two headless paths — the
+  viewer's logic against `ReplayIO.verify` — and not the rendered game against anything. It shows the
+  viewer's control flow consumes randomness identically to the trainer's replay path; it says nothing
+  about the renderer.
+  The first genuine rendered comparison, through `gradlew :desktop:replay -PspdRngTrace`, is below.
+- **`rollout` with no `--seed` works again, and a random-seed recording is now verifiable.** The empty-seed
+  guard added earlier rejected the flag *and* its absence, so it told a user to omit `--seed` in order to
+  reach the only path that then refused them — random seeds had become unreachable. The guard now
+  distinguishes a flag given empty from a flag omitted, which is the distinction it was supposed to make.
+  Separately, `rollout` recorded the seed it was *asked* for rather than the seed the environment
+  *resolved*. On a random episode those differ: `SPDEnv` encodes the seed it drew into its own
+  `seedText`, and recording the empty request instead produced a replay `verify` could never rebuild — it
+  would draw a *different* random world and report a step-0 divergence that looks like a broken seed lock
+  and is not one. `recorder.begin` now runs after the reset and is given `env.seedText()`. Measured: a
+  no-seed run records `seed=RVN-SWK-ZVJ` and verifies; `--seed ""` and `--seed "   "` are still refused,
+  with a message that now matches what it does; an explicit seed is unaffected.
+- **The rendered game and the headless environment draw from different positions in the RNG stream.**
+  Found by `rngtrace` on a 41-step recording that `verify` reproduces exactly: `per-step draw counts
+  identical at every step - 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6 - but the order-sensitive fingerprints
+  differing from step 6 onward`, and the windowed run eventually diverging on health at step 27 while
+  the headless replay reproduced all 41 steps. Same count, different value is the signature of a stream
+  offset, and it is exactly what a count-only oracle would report as identical: the two paths agree on
+  *how many* values each step consumes and disagree on *which*.
+  The offset is roughly 2800 values consumed by the rendered path between level generation and the first
+  replayed step. Arming the trace at construction showed those values directly, and the counters now
+  start at zero when the first step is applied - but that only fixes the measurement. The underlying
+  draws are still made by the renderer and not by the headless path, so the two streams remain offset
+  for the whole run. That is the next parity bug to chase, and the tool now points at it.
+- **`playbackcheck` gained a check for non-default header settings, and both gates now count failed
+  checks rather than failed assertions.** `max_slots` and `allow_equipping` had only ever been round
+  tripped at their defaults, which cannot catch a writer that omits the fields: `32` and `true` are
+  exactly the values the reader falls back to, so a header that wrote nothing would pass. Non-defaults
+  are the only values that distinguish "written" from "not written and defaulted", so the fixture writes
+  `max_slots=7` and `allow_equipping=false` and checks the parsed object, the reconstructed
+  `EnvConfig`, and the file's own bytes. Mutation-tested by dropping the `allow_equipping` line.
+  Separately, both gates reported `failures.size()` against a check count, so one check making three
+  assertions announced itself as three failed checks - visible as "3 of 8 checks failed" when exactly one
+  check had failed. They now report `N of M checks failed, K assertions`.
+- **`gradlew verifyall`**, every gate in both modules in one invocation, ~14 s. It has to sit above the
+  modules rather than inside one: `:desktop` depends on `:superintelligence`, so
+  `:superintelligence:gates` cannot depend on `:desktop:playbackcheck` without a cycle. Freshness is a
+  property of the graph rather than a check — both gate tasks take their classpath from
+  `sourceSets.main.runtimeClasspath`, so gradle recompiles what changed before any gate runs, and there
+  is no path by which these execute against a stale build. That is worth more than reporting whether
+  they did, so the task deliberately prints no freshness claim it cannot verify.
+- **`playbackcheck`**, a gate that runs `ReplayPlayer` with no window, no scene and no `ReplayController`,
+  and asserts both halves: that a faithful recording plays clean, and that a recording altered in
+  `heroPos`, `heroHp`, `turn` or `inventory` is caught *at the altered step* with a message describing
+  the quantity that changed, that altered quickslot bindings never play clean, and that an unresolvable
+  recording halts with a reason instead of hanging. 7 checks.
+  `ReplayPlayer`'s ~560 lines decide what a recorded step means, derive the mode, drain the scheduler,
+  work out whether a turn is owed, settle and compare against the recording, and until now the only
+  thing that executed them was the viewer — which cannot be put in a test. All three faults that lived
+  there were found by hand, by diffing traces.
+  Mutation-tested: removing the `clearPendingCellListener` that F1 added fails it with the exact message
+  the original probe produced — *"a faithful replay diverged at step 2: USE/0 in TARGETING: engine time is
+  0.0, recording says 1.0"* — and the four field mutations then report step 2 instead of step 30, which
+  is what proves the localisation check is doing work.
+- **Known limitation, found by `rngtrace`: a run that ended on the soft stall guard replays as a
+  stall.** `SPDEnv.checkFloorLimits` also terminates when the hero's position and health have not
+  changed for `stallLimit` consecutive turns. The recording is complete and the hero is alive, but the
+  viewer has no environment to ask, so after the final step it waits for a hero that will never become
+  ready and reports "stalled - hero did not become ready within 400 turns" — false, and useless, since
+  the recording was complete rather than truncated. The header records no termination reason, which is
+  the actual gap. A guard mirroring the per-floor turn cap was written and removed: the stall guard
+  fires first in practice, so nothing could exercise it, and shipping an unexercisable check would
+  contradict the argument the rest of this work is built on. Fixing it properly means recording the
+  termination reason in the header; see `PLAN-replay-verification.md` section 12.1.
+- **`observecheck`**, a gate asserting that *reading* the world draws no randomness. One violation of
+  this already cost a full parity investigation: `HeroEncoder` built its defence feature with
+  `hero.drRoll()`, which is not a property of the hero but a fresh draw per call, so encoding an
+  observation advanced the gameplay RNG twice per agent step and the stream stayed offset from the first
+  floor. Nothing caught it, because every gate re-executes through `HeadlessGame` — a gate that shares
+  its implementation with its subject cannot see a fault in it. This one measures the encoders directly.
+  4 checks: that `ObservationEncoder.encode` and `Quickslots.capture` draw nothing, that a second encode
+  of an unchanged world is byte-identical, and a positive control that draws on purpose and requires the
+  counter to move — without which every "no draws" check would pass for the wrong reason if the
+  instrument broke.
+  Mutation-tested: restoring `hero.drRoll()` fails it with `drew 6 value(s)` and a differing hero vector.
+  Backed by `RandomTrace`, a counter in `com.watabou.utils` that is off by default and instruments only
+  `Random`. Presentation randomness lives on `PRandom`, so what it counts is exactly the draws the
+  simulation is entitled to.
+- **A recording now says how wide its slot head was.** Replay v2 carries `max_slots` and
+  `allow_equipping`. Neither was recorded, and they are the only two settings `ActionMapper` reads: the
+  slot head is a fixed-width window over the inventory, so a recorded index names a different item at a
+  different width, and `allowEquipping` decides whether a USE equips a weapon or arms an aim. A replay
+  that could not say which it was recorded under could not guarantee it resolved an index the same way
+  twice, and every replay-based check inherited that ambiguity. `ReplayRecorder.begin` takes the
+  config, `Main.rollout` and `Worker` pass theirs, and `ReplayIO.configFor` is the one place a header
+  becomes settings, so the viewer, `verify` and the headless verifier cannot each pick their own.
+  `ReplayPlayer` takes an `EnvConfig` rather than hardcoding one, for the same reason. v1 still parses,
+  with defaults, so the existing tooling fixtures stay readable — though they were recorded against the
+  RNG stream since repaired, and so reproduce nothing.
 
-- **`viewcheck` took six minutes and reported differently each run.** It now completes in ~90s, prints a
-  progress bar, and captures child output so a failure's detail is reprinted rather than interleaved
-  with sixteen other children. **Parallelism is now opt-in** (`VIEWCHECK_JOBS`, default 1): playback is
-  timing sensitive, and at ten children the same recordings failed at *different steps* between runs,
-  so the gate warns when it is not running one at a time. Two sequential runs now report the same
-  fourteen recordings failing at the same fourteen steps.
 
-- **`ReplayPlayer` frame counters reported zero whenever tracing was off**, because they sat after the
-  snapshot's null check. The frame ratio is the one number that says how timing-dependent a playback is,
-  so it has to be true on a normal run.
+- **Policy checkpoints, so a training run can be stopped and continued.** `--save <file>` writes a
+  checkpoint every `--checkpoint-every` generations (default 25) and on exit; `--resume <file>`
+  continues from one, keeping the generation and optimiser-step numbering so the two runs'
+  `metrics.csv` rows do not collide. Writes go to a sibling temp file and are renamed, so a power cut
+  cannot leave a half-written checkpoint that is newer than the last good one.
+
+  **The format carries more than weights, and that is the substance of it.** `Network.layers()` does
+  not include Adam's moments, and a checkpoint without them restarts the optimiser's averages from
+  zero — the run still trains, and trains worse, with nothing in the metrics to say why. Neither does
+  it include the optimiser step count, and Adam's bias correction divides by `1 - beta^step`, so
+  restarting at 1 makes that correction ~0.1 instead of ~1. Both are now saved. The moments are not
+  sent to workers: a worker runs forward passes only, so pushing four times the floats per generation
+  would cost ~57 MB per worker per push for nothing.
+
+  Also **refuses four kinds of bad file** rather than misreading them: foreign (bad magic),
+  truncated, one with trailing bytes, and one from a different `EnvConfig` — the last naming the
+  offending field, since "trained with gridWidth=32, this run has 48" says which flag to change.
+- **`checkpointcheck`**, a gate that asserts a policy survives disk bit-for-bit including its moments,
+  and that each of those four refusals happens. Mutation-tested: dropping the moments, the
+  trailing-byte check, or the config check each fails it.
+- **`weightsdiff <file>`**, reporting how far a checkpoint is from a freshly initialised policy. The
+  complement to `checkpointcheck`, which proves the bytes arrive but not that the resumed network is
+  a *trained* one — a checkpoint written from the wrong tensor passes every equality assertion and
+  then trains a random policy with entirely normal-looking metrics.
+- **Per-generation metrics history** (`MetricsHistory`), written to `metrics.csv` in the work
+  directory by default and overridable with `--metrics`. `Trainer` previously kept one generation of
+  episodes and discarded it, so a run's history existed only in console scrollback. Rows are flushed
+  per generation and appended rather than rewritten, so a crashed or extended run keeps what it
+  reached. At the end of a run it renders score, depth and both losses as bars — reviving `diag.Graph`,
+  which was written and never used — plus a 7-generation moving average of score, since per-generation
+  score is noisy enough to invite reading a trend into noise.
+- **`--sample-rate`, `--max-sampled-per-episode`, `--max-samples` and `--metrics`** on the trainer. The
+  first three existed as `Trainer` public fields with the documented defaults but were never reachable
+  from the command line, so the sampling knobs the plan documents could not actually be turned.
+
+
+- **A TODO entry for the thing that will block the first real training run: the weights are never
+  written to disk.** No `saveWeights`, no checkpoint, no `--resume`. Every run starts from `Network`'s
+  random initialisation and is discarded at the end, so no attempt so far has been extendable — a run
+  has to be babysit from start to finish on a machine whose pagefile is 2 GB and which thrashes rather
+  than degrades, `--generations` cannot be split across sittings, and no two training runs can be
+  compared because only one line of them can exist at a time. `Network.layers()` / `loadLayer` are
+  already the checkpoint format and already validate against the `EnvConfig` shape, so a stale
+  checkpoint fails loudly rather than loading into the wrong parameters, and `Worker.writeWeights` /
+  `readWeights` already serialise exactly that. It is plumbing, not design, and it is written down
+  before it is built because it is invisible until you try to keep a model.
+- **`gradle :superintelligence:gaecheck`** fails if the two advantage implementations disagree, or if
+  sampling misbehaves. `Policy` computes GAE twice — once over an `ArrayList<Transition>` and once over
+  an episode's scalar arrays — because a worker's backward pass must run where the whole episode is
+  still resident. Nothing forces them to agree, and two implementations that both produce finite
+  advantages while differing slightly is a bug that surfaces only as a policy that learns marginally
+  worse, forever. Nine checks: the two agree, a terminal cuts the recursion both ways, a truncated
+  episode bootstraps, sampling is uniform and seed-reproducible, the tail is always retained, retention
+  is idempotent, advantages are independent of sampling, and the wire round trip is exact. Verified by
+  mutation — transposing a field in the codec fails it, and removing the lambda term fails three
+  checks. It does **not** drive the collector, only its arithmetic and its stated policy; the class
+  comment says so.
+- **The generation report prints what it is for.** `sampled steps of N collected`, the raw advantage
+  mean and standard deviation *before* normalisation, and the buffer's resident size with the packed
+  grid's share of it. A batch whose advantages are all identical has no gradient direction to offer,
+  and after normalisation it would present as a textbook mean of zero and standard deviation of one —
+  so the figure that catches it has to be the one taken before.
+- **`gradle :superintelligence:updatecost`** measures what a PPO update actually costs and projects it
+  across sample rates. The worker-data-flow decision was argued entirely on bandwidth, and the update
+  behind it — 9,600 forward and backward passes per generation on one thread — had never been
+  estimated. Measured at **11.29 ms per sample**: 107 s per generation at a 5% sample rate and 4
+  epochs, against 0.12 s of transport and ~7 s of collection. Bandwidth was never the binding
+  constraint at these sample rates.
+- **Reported gradient norms and clip fraction,** per minibatch and averaged. A norm that climbs
+  without bound is the earliest signal that an update is about to diverge, and clipping hides it.
+- **`gradle :superintelligence:modecheck`** fails if the environment cannot reach one of its own
+  action modes. It drives an explicit script through `WORLD`, `SLOT`, `TARGETING`, `INVENTORY` and
+  `MENU`, resolves a real aim rather than cancelling one, and executes a drop. Six real bugs reached
+  main while every recording was `WORLD`-only, and a replay fixture cannot prevent a recurrence:
+  nothing failed when a mode quietly stopped being reachable.
+- **`gradle :superintelligence:restartcheck`** fails if restarting a run does not rebuild an identical
+  floor 1, even after several hundred turns have churned the random generators.
+- **`replay-viewer.bat`** plays, records and verifies recordings from a terminal: `replay-viewer`
+  plays the newest one, `--record <seed>` makes one, `--verify <file>` checks one, `--list` shows them.
+  It drives Gradle tasks rather than hand-building a classpath, and resolves paths to absolute first
+  because Gradle's `run` task uses the module directory as its working directory.
+- **Replay fixtures in `replays/`,** including `modes-all.replay`, whose first six steps cover `WORLD`,
+  `SLOT`, `TARGETING` and `INVENTORY`. Every recording made before this was pure movement.
+- **Diagnostics on stderr.** The viewer reports each keypress and a per-two-second heartbeat, because
+  "the key did nothing" and "the render loop is stalled" look identical from the outside and need
+  different fixes.
+
+
+
+- **Desktop replay viewer.** `gradle :desktop:replay --args="--file <replay>"` plays a recorded run
+  back in the rendered game. Recorded actions are applied through `ActionMapper`, which hands them to
+  `Hero.handle` — the same call the game's own cell selector makes — so attack-versus-loot-versus-
+  stairs-versus-menu resolves exactly as it does for a player. The HUD shows step count, seed, hero,
+  recorded score, depth, turns, speed and any divergence.
+
+  Two engine hooks were needed, both general rather than replay-specific: `Game.lockCellInput`
+  disables the cell selector each frame so nothing but the recording can inject an action, and
+  `Game.setSceneClass` lets an entry point that builds the game choose its initial scene.
+  `InterlevelScene.autoContinue` skips the region continue prompt so a viewer run starts on its own,
+  and the viewer's keys are hard-bound because `InputHandler` only emits a `KeyEvent` for keys present
+  in `KeyBindings`, which left space, `R` and `+`/`-` unreachable.
+
+  Entering through `InterlevelScene` with `Mode.DESCEND` is what makes this work: `InterlevelScene`
+  switches to `GameScene` hardcoded, so a `GameScene` subclass would never be entered. A static
+  `frameDriver` hook pumps playback instead, and the recording is watched in the real scene with real
+  sprites.
+
+
+- `PPO.rolloutCap` bounds collection between updates. It is not only a memory guard: PPO measures
+  how far the policy has drifted since it collected the data, so frequent updates are what PPO
+  wants anyway.
+
+- `gradle :superintelligence:gradcheck` (or `gradcheck --verbose`) finite-difference checks the
+  network's analytic gradients against central differences and exits non-zero on a mismatch, so a
+  broken backward pass fails loudly instead of silently training the wrong function.
+
+
+
+- **`paritycheck`, a replay-parity sweep across seeds in one process.** Records N seeds x M hero
+  classes under the scripted policy, writes each recording, reads it back, verifies it, and then
+  verifies every recording a second time after the whole sweep has run in between. The second pass is
+  what a recording's own round trip cannot see: nothing has happened between the two verifications of
+  one file, so a static that survived a reset has nothing to leak into. It is the gate that found the
+  remains fault above.
+- **`configcheck`, which asserts the configuration layer is capable of configuring anything.** The
+  first check is a positive control: a deliberately wrong value must produce a wrong setting, or every
+  other assertion would be satisfied by the compiled defaults alone by a binder that reads nothing.
+  The rest prove every documented key reaches the setting it names, that the shipped file's values equal
+  the compiled ones, that an unknown key warns rather than being absorbed, and that malformed or
+  out-of-range values are refused with the key and the file named.
+- **`RunState`, the one place that lists what a new run must not inherit.** Four statics: the armed aim
+  listener, the headless dialog slot, the pending use item, and a dead hero's remains. `SPDEnv.reset`
+  and the desktop replay viewer each cleared a subset of them by hand, which is precisely how the armed
+  listener survived a reset and put every new episode straight into `TARGETING` - 4 of 10 recorded runs
+  diverged at step 0, and each of those four verified cleanly on its own.
+- **`docs/documentation.md`** - the Superintelligence module: architecture, the environment contract,
+  configuration, the gate matrix, and what determinism does and does not guarantee.
 
 ### Changed
 
@@ -92,14 +387,344 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   frames applying zero steps. That experiment was reverted rather than committed; a committed tree has
   to build and pass `verifyall`, and the finding is more useful than the dead gate.
 
+
+- **`STALLED` is a truncation and only `DEATH`/`VICTORY` are natural endings**, now named as
+  `SPDEnv.isNaturalEnding` with `isTruncation` as its complement, so the classification can be asserted
+  against the real predicate rather than restated. A stalled episode used to be penalised *and*
+  bootstrapped — one signal said the episode was over, the other that it carried on, which is why
+  `valueLoss` sat at 3.0–8.1 without trending. `gaecheck` gained a case covering the advantage half;
+  setting `nonTerminal = 1f` unconditionally fails 5 of its 12.
+- **`PLAN-data-flow.md` corrected against the code** rather than against its own prose: removed
+  `rolloutCap`/`PPO.collect` references to deleted code, restored a missing `### Step 3` heading whose
+  body had been orphaned under step 2b, marked steps 0 and 3 done, and corrected every cost figure
+  that the `epochs` default change from 4 to 2 had doubled. Two claims were withdrawn rather than
+  fixed: "re-simulation costs ~2.3 ms a turn" was 17× wrong (measured 0.136 ms/turn), and "collection
+  throughput roughly doubles" had never been measured.
+- **Ordering corrected: instrumentation now precedes the parallel update.** Steps 0–3 built a loop that
+  learns and no way to tell whether it does. The parallel update is still required — the measurement
+  does not care what else is on the list — but its only success criterion was "faster", so doing it
+  first would optimise a loop whose behaviour cannot be observed. Checkpointing also moves ahead of
+  it: it is smaller, it is on the critical path to the Goo milestone, and it is what makes two runs
+  comparable at all.
+- **The reward curriculum is recorded as deliberately inert.** `Curriculum` is written and
+  `SPDEnv` applies it, but nothing calls `observe()`, so shaping is a constant 1f. Wiring it is three
+  lines and was *not* done: it would start fading dense rewards by depth 3, changing the reward
+  function, with no evidence those terms help. Deferred until a run can be judged.
+
+
+- **Every episode ended `STALLED` after 8-13 turns,** which made the environment useless for
+  collecting experience. `Hero.act()` was being entered with a null `curAction`: it clears `ready` and
+  then dispatches on `curAction`, so no branch matches, and `Hero.ready()` is the only thing in the
+  game that sets `ready` back to true. A normal playthrough never reaches that state because the cell
+  selector re-prompts for input, and that prompt is what calls `ready()`; headless there is no scene
+  and no selector, so nothing was left to re-prompt. Five seeds that all stalled now run the full
+  turn budget.
+- **`MENU` mode was unreachable in a real run,** not merely hard to record. `step()` cleared the
+  pending dialog on every turn, so the step that could have answered it arrived to find it gone and
+  the rollout sat selecting at nothing until it stalled. Clearing now happens on `reset()`, where
+  per-run state belongs.
+- **The `MENU` branch never returned to `WORLD`,** so a dialog could be answered successfully and the
+  mode still never changed hands again.
+- **`WindowBridge.open()` meant "a window is showing" rather than "a dialog the agent can answer."**
+  `GameScene.show` parks informational windows there too, and "you cannot leave the dungeon yet"
+  arrives that way constantly, so each one put the environment into `MENU` with nothing to select.
+- **`SLOT` had no entry in the action mask** and fell through to the `WORLD` mask, which offered
+  movement and `WAIT` while the environment was waiting for an item choice. `SlotAction.execute`
+  treats every action that is neither `CANCEL` nor `DROP` as a use, so a legal-looking move there spent
+  the item.
+- **`EnvMode.INVENTORY` was unreachable.** The mode was documented on `Action.OPEN_INVENTORY` but
+  never assigned, and `OPEN_INVENTORY` fell through to the generic cell handling as a no-op, so no
+  rollout could ever contain the mode and no replay could exercise it. It is now entered from the
+  `WORLD` step and offered in the `WORLD` action mask, and its branch resolves an aim the same way
+  `SLOT` does instead of dropping it.
+- **Throwing stones were equipped rather than thrown.** `SlotAction.use` tested equipability before
+  the item's own action, and `Weapon extends EquipableItem`, so a missile weapon took the equip path.
+- **Every equipment change invented a targeting step.** `SlotAction.use` returned `toggleEquip`'s
+  "equipped OK" boolean, which the environment read as "needs an aim", and its success path returned
+  `true` outright, so plain consumables falsely demanded an aim too.
+- **A refused equip stalled the episode.** `toggleEquip` returned without releasing the hero, which
+  left it permanently mid-action; the pipeline never saw it become ready and the run ended `STALLED`
+  within about a dozen turns.
+- **No aim could ever be resolved or cancelled.** `SPDEnv.step` cleared the pending use item on every
+  step, including the `TARGETING` step that needed it. `CANCEL` during targeting was also treated as a
+  throw at the default target, spending the item. `CANCEL` is now handled on its own and releases the
+  hero's turn.
+- **The replay viewer could leave the game completely unresponsive.** Reaching a transition the hero
+  cannot use raises an informational `WndMessage` - "you cannot leave the dungeon yet" - and windows
+  are modal, so the scene stopped accepting input while playback carried on, driven by the frame hook
+  rather than by keys. The viewer now dismisses windows a recording has no step to answer, and leaves
+  `WndOptions` alone because a recorded `MENU` step does resolve that one.
+- **`lockCellInput` did not lock the keyboard.** It disabled the cell selector's pointer path, but the
+  selector's own `KeyEvent` listener ignored `enabled` and kept turning arrow keys into movement, so a
+  viewer could still have its hero walked away and desync the recording.
+- **Viewer keys could not override a game binding.** `KeyBindings.getActionForKey` consults
+  `hardBindings` last, so forcing `SPACE` to nothing lost to the default `SPACE`→`WAIT` and a press
+  both paused and waited the hero. `KeyBindings` gained an explicit override layer for this instead of
+  reordering the existing lookup, which would have broken players who rebound `ENTER` or `ALT_RIGHT`.
+- **`R` did not restart.** It rewound the cursor while leaving the live game where it was; it now
+  rebuilds the level through the same path the viewer starts on.
+- **Viewer controls died after `R`.** `InterlevelScene` calls `KeyEvent.clearListeners()` to drop its
+  own continue-button listener, which clears every listener including the viewer's. The viewer
+  re-registers on each scene rebuild.
+- **The replay HUD vanished after `R`,** because it was rebuilt against the outgoing scene and the
+  non-null field then prevented a rebuild. It is now rebuilt whenever the live scene changes.
+- **Resuming a diverged replay re-reported the same divergence forever.** Divergence is now sticky,
+  since a diverged game can never rejoin the recording's path.
+- **On-screen replay divergence could never fire.** `ReplayPlayer` advanced the playback cursor before
+  comparing the landing cell, and advancing clears the expected position, so the check always passed.
+- **`GameScene` gained `topWindow()`.** `showingWindow()` only reports whether a window exists, which
+  is not enough to decide what to do about one.
+- **The libGDX natives were never loaded in any headless JVM,** so the first game code that allocated
+  a `Pixmap` died with `UnsatisfiedLinkError`. Desktop gets the library implicitly from
+  `Lwjgl3NativesLoader`; the headless backend replaces that, and a natives jar sitting on the classpath
+  does not load itself. `TextureCache.getBitmap` is guarded on `Gdx.gl == null` and returns null,
+  which is why the item-icon film decoded fine, but its three programmatic constructors —
+  `createSolid`, `createGradient` and `create` — are not. Those are reached from a `Flare` at roughly
+  forty item and buff sites, and a `ColorBlock` from every inventory slot.
+  `GdxNativesLoader.load()` now runs in `HeadlessServices.install()`, the earliest point every entry
+  path already passes through.
+- **`BitmapText` threw on every measuring call with no font.** Its no-argument constructor already
+  built one with a null font, and nothing had ever constructed one without immediately giving it a
+  font — until the headless platform, which has no font generator to give. `measure`, `baseLine` and
+  `updateVertices` now treat a null font as zero-sized text. Reached from `Bag.execute`, which opens a
+  quick-bag window whose item slots lay out text.
+- **Both of the above were live crashes on item use, not latent ones.** They only appeared once
+  workers stopped playing the scripted heuristic — the class of bug TODO.md §1 predicted, where a
+  policy sampling the action mask reaches code a hand-written if/else never did.
+- **Global gradient clipping did not exist.** `Network.gradClip` was declared with the comment
+  "applied by the caller before `step()`" and no caller applied it; `PPO.update` never computed a
+  gradient norm. Harmless while the buffer is empty, which is why it survived. It is implemented now,
+  over every layer's gradient accumulator at once, accumulated in double because a network this size
+  has millions of entries spanning many orders of magnitude.
+- **A recording of a random-seed episode could never be replayed or verified.** `SeedPool` deliberately
+  leaks 10% of episodes onto fully random seeds so the agent cannot memorise the locked set, and those
+  episodes were recorded with the *requested* seed — which is empty for them. `verify` resets onto a
+  fresh draw and reports a divergence at step 0: correct behaviour, and a message that reads as a broken
+  seed lock. `SPDEnv.reset` now resolves the drawn seed and reports it, and the recorder begins from
+  that rather than from the request, so every recording names the run it actually produced. Measured:
+  a 3-generation run wrote 5 recordings and all 5 re-execute exactly, including one that was previously
+  written as `random.dat` and always failed.
+- **The reported losses were running sums, not means.** Each minibatch averaged over its own samples
+  and the totals were summed across every minibatch and epoch, so `policy=` and `value=` grew with
+  update length rather than measuring anything. They are now means over the samples seen.
+- **Clipping now happens after the minibatch average.** Clipping the raw accumulated gradient would
+  have made the ceiling mean something that changes with `minibatchSize`, and `gradClip` is declared
+  as an absolute norm. It also means the reported norm is the norm of the gradient that was applied.
+- **`gradle :superintelligence:train` rejected its own arguments.** The subcommand was prepended in
+  `doFirst` for every CLI task except `train`, so the documented
+  `--args="--workers 8 --generations 200"` reached `Main` with no subcommand and died on
+  "unknown command: --workers". The trainer had never been launched through Gradle.
+- **A worker that acknowledged a policy push with the wrong message went unnoticed.** The handshake
+  read the reply and discarded it.
+- **A worker that replied to an episode request with the wrong message went unnoticed** for the same
+  reason, and on that path the diagnostic read a second int off the wire to name it, so the error
+  message itself consumed part of the frame it was describing.
+
+- **`gradle :superintelligence:collectcheck`** fails if a recording made by the policy-driven
+  collector will not reproduce. Every recording the trainer wrote diverged at step 0 while still
+  playing: `EpisodeCollector` read `heroPosition` before `env.step()` rather than after, while the
+  recorder documents that field as where the hero *ended up*. The file parsed, the run scored, the
+  dungeon looked like a dungeon — only `verify` caught it. The scripted path steps and then reads, and
+  always has, so `replay-viewer.bat --record` was unaffected and only trainer output was. Behavioural
+  rather than a unit test of the recorder, because the recorder was never wrong on its own; the caller
+  passed it the wrong moment.
+- **`gradle :superintelligence:replays`** lists recordings grouped by hero class and ranked by score
+  within each group, and `--select N` resolves a listing number to a file. Both live in Java because
+  Windows `sort.exe` on this machine rejects `/n` as an invalid switch and the scores are floating
+  point and can be negative — batch would have sorted them lexically and wrongly, and could not group
+  by a field parsed out of each file at all.
+- **`gradle :superintelligence:replaycheck`** covers that catalog: ranking within a group, grouping by
+  class, depth breaking a score tie, a truncated or unreadable file listed rather than hidden and
+  sorted out of the way, name lookup bare and with an extension and case-insensitively and by path,
+  `readHeader` agreeing with `read`, and one listing per seed across directories.
+- **`Replay.declaredSteps` and `Replay.truncatedAt`**, so a header-only read can report a body that is
+  short instead of failing on it.
+
+
+- **A recording is selected by number.** `replay-viewer.bat` with no argument lists the catalog and
+  asks for a number, resolved through the same scan that printed it, so the number under a recording
+  and the recording that number selects cannot drift apart.
+- **`--epochs`, default 2 instead of 4.** An update is 11.3 ms per sample and dominated by forward and
+  backward, so this scales it linearly: ~107 s of trainer CPU per generation at 4 epochs, ~53 s at 2.
+  Four was never a considered choice — it gives 300 Adam steps over a 2,400-sample batch, far more than
+  a batch that size supports. Measured end to end: a 6-generation prototype run went from ~36 minutes
+  to 2.
+- **`gradle :superintelligence:gates` runs every correctness check in one invocation.** Gradle's
+  per-invocation overhead is about 90% of a gate's cost — `gaecheck` is 0.22 s of work and 2.4 s through
+  gradle — so the checks were never slow and the harness around them was. Six gates together take 7.9 s
+  against roughly 17 s run one after another. Named `gates` because the `java-library` plugin already
+  contributes a lifecycle `check` and Gradle refuses to shadow it.
+- **Workers compute advantages and ship a sample of them; the trainer runs a pooled update on it.**
+  The worker plays its own episode with the real policy, keeps every step's GAE scalars, and retains
+  observations for a uniform 5% of steps plus the last 20 of the episode. Because the backward pass
+  reads only scalars, which observations are kept cannot change the numbers it writes — so sampling
+  happens during collection and needs neither an all-observations residency of 1.9 GB nor a second
+  simulation pass. The frame is observation + masks + decision + advantage + return + terminal;
+  `reward`, `value` and `nextValue` no longer travel, since nothing on the far side recomputes from
+  them.
+- **One forward pass per step, not two.** `t.nextValue` is read at exactly one index of the GAE
+  recursion; every other bootstrap is the next step's own value. The extra pass also advanced the LSTM
+  over the post-step observation, so every observation was absorbed into the recurrent state twice.
+- **gamma, lambda, sampleRate and maxSampledPerEpisode travel with the weights.** The first two were
+  `PPO` fields on each side with identical defaults — agreement by coincidence, which would have
+  drifted the first time either side was tuned. The last two are new knobs.
+- **`PPO` no longer collects.** `collect()` drove the env, the network and the masks, and `update()`
+  computed the advantages over whatever it had. Collection is now `EpisodeCollector` in a worker
+  process, because the advantage recursion needs consecutive steps and a worker holds its whole
+  episode while a trainer never would. `PPO` is the learner only, at 325 lines, and `collect`,
+  `rollout`, `rolloutCap`, `episodeInProgress` and `recurrentStateStale` are gone rather than left
+  unreferenced — two step loops would have drifted.
+- **The worker keeps its transitions on a pool; the trainer allocates.** A pooled object is recycled
+  across generations, so a decode that missed a field would read the previous generation's value
+  rather than fail. The trainer's buffer is large and cold, which is the case the pool is wrong for.
+- **A per-generation memory cap on the update buffer,** dropping the oldest transitions and saying so.
+  The per-episode cap bounds one worker; the generation is 320 episodes wide, and this machine's
+  2 GB pagefile does not degrade gracefully — it thrashes.
+- **The trainer is split into five classes.** `Trainer.java` was 824 lines against the project's own
+  500-line rule, and the worker-data-flow work adds to it. Process lifetime, the stall watchdog and the
+  per-worker pipes are now `WorkerPool`; the console block is `GenerationReport`, which renders a
+  snapshot of plain numbers rather than reading the trainer; the command line is `TrainOptions`; the
+  per-episode summary is `Episode`; and the wire constants are `Protocol` rather than bare literals
+  duplicated on both sides of the pipe. `Trainer` is now the loop itself.
+- **Worker pipe buffers are 1 MB, not the 8 KB default.** A policy push is ~14 MB and a generation's
+  transitions will be tens of MB; the default turns those into thousands of syscalls per worker per
+  generation.
+- **The generation report prints the transition count.** `sampled steps of N collected` is the number
+  the whole sampled-transition design rests on, so it is measured and shown rather than derived on
+  demand. It reads 0 until the workers start returning transitions.
+
+
+- **The learner and the trainer are split by responsibility, both of which were over the 500-line
+  limit.** `PPO` was 687 lines and about a quarter of that was the thread pool and the gradient
+  reduction; `ShardedUpdate` now owns the pool, the per-thread networks and their scratch. `Trainer`
+  was 561 logical lines and about a third of that was the half that talks to worker processes;
+  `TrainerWorkers` now owns the job record, the concurrent dispatch, the per-worker request/response,
+  the replay decode and the parallel policy push.
+  The boundary is drawn at the pipes. Everything that crosses one is in `TrainerWorkers`, so a field
+  added to the frame has exactly one reader, and a caller never receives a worker's streams - the
+  ordering between a request and its reply is what keeps two processes in step.
+  The split removed a duplication that had already cost something: the serial and sharded paths each
+  carried their own copy of the scale-clip-report tail, which is how two implementations come to report
+  different numbers for the same gradient. Both now return a result and one method folds it in, so
+  `parallelcheck`'s equality claim is structural rather than something re-established each time either
+  path is edited.
+  Also removed two private methods with no callers: `PPO.replay`, which `oneSample` duplicates inline,
+  and `PPO.oldLogProbabilityFor`, which returned its first argument and ignored its second. The latter
+  was listed in `TODO.md` section 5 as a known rough edge; it is now gone rather than listed.
+- **`resetcheck` grew a case per leaked static** (3 checks -> 5). An outstanding dialog is now tested as
+  well as an outstanding aim, and a run following a hero's death is tested for inheriting nothing. Each
+  is mutation-tested: deleting the corresponding clear makes the case fail, and the remains case
+  additionally fails if the clear is moved back to after level generation.
+- **`testing-guide.md` names `gates` rather than `verifyall`**, which it documented and which does not
+  exist, and its matrix lists the two new gates.
+- **A pre-commit hook** runs the badge-consistency check and the full gate suite, and refuses the
+  commit on failure. The badge check corrects `README.md` and re-stages it rather than aborting, because
+  a one-line mechanical mismatch is not worth teaching someone to reach for `--no-verify`. It lives in
+  `hooks/pre-commit` with an `install-hooks.ps1` to copy it into place, because `.git/hooks` is not
+  tracked and a hook written there exists only on the machine that wrote it.
+
 ### Fixed
+
+- **The rendered viewer played the game with different randomness, so recordings that verified exactly
+  headlessly diverged in the viewer.** 14 of the 17 committed recordings failed `viewcheck`, all
+  deterministically at the same steps - and two of them reported a *different* field value on different
+  runs of the same build, which is what finally made it a fault rather than a rounding difference.
+
+  Four presentation draws were spending the gameplay RNG stream, and only the rendered game makes them:
+  `CharSprite.link`'s random sprite facing (once per actor, and `HeadlessSprite` overrides `link()` so
+  the trainer never drew it - 12 base-generator values per run), `AttackIndicator.checkEnemies`'s
+  choice of highlight target, `Wand.staffFx`'s particle direction, and `MagesStaff`'s staff particle
+  size jitter. Every damage roll, defence roll and mob decision after the first draw therefore came
+  from a different point in the stream than the recording was made from. Located by computing the base
+  generator's expected output from `scrambleSeed(Dungeon.seed)` and looking up where each side's first
+  gameplay draw fell: headless at value #5, the viewer at #17, on a recording whose recorded seed is
+  `warrior-long`.
+
+  On that recording the hero's recorded `INTERACT` at step 13 became an attack that left the rat at 3/8
+  in the trainer and killed it in the viewer - one roll differing by enough - and everything downstream
+  of it, which is why 13 of the 14 reported health and one reported engine time.
+
+  All four are moved to `PRandom`, the stream created for exactly this. `DungeonTileSheet.setupVariance`
+  draws 962 times during generation but inside a `pushGenerator`/`popGenerator` pair that is discarded,
+  so it cannot affect an outcome and was left alone rather than moved for symmetry.
+
+- **The RNG trace could not see the draws that caused it.** `Random.Int(int, boolean)` and
+  `Random.shuffle(List)` advanced the generator and never called `RandomTrace.record`; only `Float()`
+  and `Long()` were counted. So `RngTrace` reported identical base-draw counts at every step of every
+  recording while the two streams were sixteen values apart, and `PLAN-replay-parity.md` §1.4 concluded
+  - correctly, given what it could see - that the stream was not offset. Five subsequent hypotheses
+  about ordering were refuted by measurement before that was found. Both paths now record, and
+  `shuffle` is routed through `Int` with its permutation unchanged.
+
+- **`WorldDiff` never named the hero field that differed.** `WorldSnapshot`'s hero row joins its
+  fields with spaces while every other row joins with tabs, and the comparator split on tab only, so
+  every hero record parsed as one key: the comparison of the record carrying position, health and engine
+  time was a whole-row compare reported as a difference in `pos`. Measured, and it changed the answer -
+  the two sides differ at step 13 in exactly one field, `exp`, and the tool reported `pos` for a
+  position that was identical in both.
+
+- **`regenerate-corpus.ps1` appended the freshly compiled classes after the stale
+  `:superintelligence` jar** on its classpath, so a jar silently shadowed the build the script had just
+  made. It regenerated the corpus with old code and the gate then reported ten divergences that had
+  nothing to do with the fault under test. The classes are prepended now.
+
+- **`viewcheck` reported only a step index,** so two recordings that reached the same step with a
+  different field value were indistinguishable from two that reached it identically. It prints the full
+  frame accounting on every line now - frames, frames that applied a step, frames that did not, refused
+  steps, and frames that advanced engine time.
+
+- **`replay-viewer`'s answer to a recorded `MENU` step was against nothing.** `WindowBridge` read
+  `GameScene.headlessWindow()`, which `GameScene.show` fills only when there is no scene, so in the
+  rendered viewer it was always null - and `ReplayController.dismissUnanswerableWindow` deliberately
+  exempts `WndOptions`, so the dialog would have stayed on screen forever. `WindowBridge` now reads
+  `GameScene.answerableWindow()`, a new getter that prefers the live window. No committed recording
+  contains a `MENU` step, so this was latent.
+
+- **`ReplayRecorder.inventory()` ignored the contents of bags,** counting a `VelvetPouch` the same way
+  whether it held anything or not. A recording could carry a different pouch from its own replay,
+  compare equal, and diverge several steps later on a slot index resolved against different contents.
+  It is path-qualified now, matching what `WorldSnapshot` has always walked. This changes the recorded
+  string, so the corpus is regenerated; `regenerate-corpus.ps1` rebuilds and re-verifies all 17.
+
+- **`ReplayPlayer` discarded whether the engine accepted a recorded step,** so a refused action - a
+  move onto a non-adjacent cell, a slot index resolving to nothing - was indistinguishable from a step
+  applied and then lost. It is counted and reported now.
+
+
+- **The rendered viewer took over the desktop on every gate run.** Two settings were inherited from
+  whatever preferences file happened to exist, and both default to values that break an unattended run:
+  `SPDSettings.fullscreen()` defaults to `true`, so `DesktopPlatformSupport` called `setFullscreenMode`
+  from the game's own `create()` - after the launcher's window configuration was complete, so no `-D`
+  flag could stop it, and GLFW ignores its visibility hint for fullscreen windows. `SPDSettings.intro()`
+  also defaults to `true`, and `Hunger.act()` returns early while it is set, which freezes the hero's
+  hunger clock for the whole run; the trainer has always stated `intro(false)` explicitly, and the
+  viewer inherited `false` from the developer's own settings by luck. Both are now stated rather than
+  inherited, and `viewcheck` reads the window mode back from the live context and fails if a run went
+  fullscreen, so this cannot regress silently. This is the third instance of the same class of fault -
+  a setting only one side states - after quickslot bindings and scheduler tie-breaking.
+
+- **`viewcheck` took six minutes and reported differently each run.** It now completes in ~90s, prints a
+  progress bar, and captures child output so a failure's detail is reprinted rather than interleaved
+  with sixteen other children. **Parallelism is now opt-in** (`VIEWCHECK_JOBS`, default 1): playback is
+  timing sensitive, and at ten children the same recordings failed at *different steps* between runs,
+  so the gate warns when it is not running one at a time. Two sequential runs now report the same
+  fourteen recordings failing at the same fourteen steps.
+
+- **`ReplayPlayer` frame counters reported zero whenever tracing was off**, because they sat after the
+  snapshot's null check. The frame ratio is the one number that says how timing-dependent a playback is,
+  so it has to be true on a normal run.
+
 
 - The `readyToAct()` step-gate hypothesis was measured and **refuted** before implementing it. Recorded
   because a plan that predicted the wrong mechanism, and was caught, is worth more than one that was
   never questioned. `superintelligence/PLAN-viewer-fidelity.md` §4.
 
-- 14 of 17 recordings still diverge in the rendered viewer, deterministically and at identical steps.
-  Cause measured, fix not yet made; see `PLAN-viewer-fidelity.md`.
+- ~~14 of 17 recordings still diverge in the rendered viewer, deterministically and at identical steps.~~
+  **Superseded by the first entry in this section.** That count was correct when written and described a
+  real, reproducible fault; it was caused by presentation draws on the gameplay RNG stream rather than
+  by anything about the viewer's scheduling, and it is now zero of seventeen. The entry is left rather
+  than deleted because the reasoning that produced it - a scheduler difference, proposed from reading
+  and then measured four times - is what the current document exists to warn against.
 
 - **Merged upstream v4.0.2** (10 commits from `00-Evan/shattered-pixel-dungeon`). Clean merge, no
   conflicts, and it touched no file in `:superintelligence`. Our own additions to the engine all
@@ -116,7 +741,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   merge - `policy=0.0126 value=376.5506` on generation 0, unchanged. That is evidence the merge did not
   perturb the simulation, though it is not a proof about floors no recording happens to visit.
 
-### Fixed
 
 - **`--out` did not move the checkpoint, or the metrics history.** Both are derived from the working
   directory, and both were derived in `TrainOptions`'s constructor - which runs before the command line
@@ -422,171 +1046,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the point: it is the one signal that says the policy is moving too far per update, and it could not
   be read before. Covered by a new `gaecheck` case, mutation-tested.
 
-### Added
-
-- **Parallel minibatch update** (`--update-threads N`, default 1). Each minibatch is split across N
-  threads, each with its own forward/backward scratch and gradient accumulators, reduced into the
-  master before the Adam step. A thread's network is a *copy* of the parameters rather than a view onto
-  them, so no thread can observe another's writes even if the reduction is wrong.
-  Measured, 8 workers × 3 generations: **8.98 → 5.09 → 2.73 → 2.59 ms/sample at 1, 2, 4 and 8
-  threads** (1.00×, 1.76×, 3.29×, 3.47×). The plan predicted ~5× at 8; the shortfall is the gradient
-  reduction, which is why 4 and 8 threads are nearly identical.
-- **`rewardcheck`**, a gate asserting that ending an episode is never cheaper than dying — replayed
-  through the real environment rather than compared against a literal, so it holds however the
-  constants are retuned. 6 cases. Mutation-tested: restoring `STALLED` to -5.0 fails the
-  terminal-reward case; restoring `WAIT`'s `return false` fails the refusal case with "435 refusals over
-  29 WORLD turns".
-- **Termination reasons reported per generation.** A console `ended` line, one CSV column per reason,
-  and an end-of-run first-third-vs-last-third trend. Written because a 20-generation run converged
-  `meanScore` on exactly -5.0 and the reason had to be *inferred* by arithmetic; it is now `ended
-  stalled 16 (100%)`, read.
-- **`parallelcheck`**, a gate asserting that a sharded accumulation equals a single-network one, at 2, 4
-  and 8 shards, and that the answer does not depend on the shard count. Tolerance is 1e-4 relative to
-  each tensor's own L2 norm; observed disagreement ~2e-7. Mutation-tested — reverting the `dCell` clear
-  fails all four cases.
-- **The LSTM state now travels with each sampled transition**, so the update replays an observation
-  under the state the behaviour policy actually used. 1 KB per step at the default 128-wide LSTM,
-  about 2% of a step's wire cost.
-- **`statecheck`**, a gate asserting a sampled observation replays to the value the rollout recorded
-  *regardless of processing order* — and, separately, that replay is order-independent, which is the
-  precondition for splitting a minibatch across threads. Mutation-tested: removing the restore fails
-  two of its four cases.
-- **`replayprobe`** and **`valuescale`**, probes rather than gates. Both exist because a number was
-  needed to settle a question that reading the code could not: how far a shuffled replay drifts, and
-  whether the critic's targets fit inside the range it can reach.
-- **`PLAN-replay-verification.md`**, the plan for the tooling that is still missing, and the report of
-  what validating its premises turned up. Three faults got past every existing gate because a gate that
-  shares its implementation cannot see a fault in it: `collectcheck`, `verify` and the rest all
-  re-execute through `HeadlessGame`, so a build-wide RNG fault is invisible to all of them by
-  construction. `ReplayPlayer`'s 560 lines were covered by nothing at all. The proposal is four tools —
-  a headless playback verifier, an observation-purity gate, a rendered-vs-headless RNG fingerprint, and
-  one command that runs the lot — plus `maxSlots`/`allowEquipping` added to the replay header, without
-  which a replay cannot guarantee it resolves slot indices the same way twice.
-  Validating the premises confirmed every one of them, and turned up two things reading alone had not:
-  - `ReplayPlayer` *can* be driven with no window, no scene and no `ReplayController` — a probe loaded
-    a 229-step recording, built the world, applied steps and reported a divergence in 7 ms, so T1 needs
-    no refactor to make the viewer headless-testable.
-  - That same probe diverged at step 3 of a recording the windowed viewer plays to step 33, because
-    `ReplayPlayer` never performs the `GameScene.clearPendingCellListener()` /
-    `SlotAction.clearPendingUseItem()` that `SPDEnv.step` does. The windowed viewer masks this by
-    having a live `CellSelector`; headless has none, so the aim request routes through
-    `pendingCellListener` and the throw never resolves. The viewer and the trainer do not perform the
-    same per-step state transition, and only this tool makes that visible.
-  - `rollout --seed ""` writes `seed=` and `verify` then dies on an unhandled null-valued expression,
-    five times over, naming neither the file nor the step — so the guard needs to go in both commands,
-    not one.
-  - Both guards are in. `rollout` refuses an empty `--seed` and points at the omitted flag; `verify`
-    refuses a recording with no seed and names the file and the field.
-- **`rngtrace`**, the first automated check that the rendered game and the headless environment consume
-  randomness identically. Everything else in the suite compares a headless run with another headless
-  run, so a fault in the headless path cannot show up in any of them. This compares against an artefact
-  produced by the viewer, which is the only thing in the project capable of disagreeing.
-  Per step it records the cumulative draw count *and* an order-sensitive fingerprint — a count alone
-  cannot tell "the same numbers in a different order" from "the same numbers in the same order", and
-  the first is just as broken. Counters start at zero once the world is built, so the trace measures
-  steps rather than the several thousand draws that level generation makes; the observer contract is
-  `ReplayIO.StepObserver`, so it reuses the verification loop rather than writing a second replay loop.
-  Comparison is keyed by step rather than line position, so "first divergence" keeps meaning what it
-  says when one run produces a different number of samples.
-  Landed as a diagnostic rather than a gate, per the plan: any engine change that touches a draw
-  invalidates a golden, and a gate people regenerate reflexively is worth less than one they read.
-  **Correction.** An earlier note here claimed a 229-step recording agreed "on every step" between the
-  viewer and the headless run, and called it the first independent confirmation that the two agree on
-  randomness. That comparison drove `ReplayPlayer` *headlessly*, so it compared two headless paths — the
-  viewer's logic against `ReplayIO.verify` — and not the rendered game against anything. It shows the
-  viewer's control flow consumes randomness identically to the trainer's replay path; it says nothing
-  about the renderer.
-  The first genuine rendered comparison, through `gradlew :desktop:replay -PspdRngTrace`, is below.
-- **`rollout` with no `--seed` works again, and a random-seed recording is now verifiable.** The empty-seed
-  guard added earlier rejected the flag *and* its absence, so it told a user to omit `--seed` in order to
-  reach the only path that then refused them — random seeds had become unreachable. The guard now
-  distinguishes a flag given empty from a flag omitted, which is the distinction it was supposed to make.
-  Separately, `rollout` recorded the seed it was *asked* for rather than the seed the environment
-  *resolved*. On a random episode those differ: `SPDEnv` encodes the seed it drew into its own
-  `seedText`, and recording the empty request instead produced a replay `verify` could never rebuild — it
-  would draw a *different* random world and report a step-0 divergence that looks like a broken seed lock
-  and is not one. `recorder.begin` now runs after the reset and is given `env.seedText()`. Measured: a
-  no-seed run records `seed=RVN-SWK-ZVJ` and verifies; `--seed ""` and `--seed "   "` are still refused,
-  with a message that now matches what it does; an explicit seed is unaffected.
-- **The rendered game and the headless environment draw from different positions in the RNG stream.**
-  Found by `rngtrace` on a 41-step recording that `verify` reproduces exactly: `per-step draw counts
-  identical at every step - 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6 - but the order-sensitive fingerprints
-  differing from step 6 onward`, and the windowed run eventually diverging on health at step 27 while
-  the headless replay reproduced all 41 steps. Same count, different value is the signature of a stream
-  offset, and it is exactly what a count-only oracle would report as identical: the two paths agree on
-  *how many* values each step consumes and disagree on *which*.
-  The offset is roughly 2800 values consumed by the rendered path between level generation and the first
-  replayed step. Arming the trace at construction showed those values directly, and the counters now
-  start at zero when the first step is applied - but that only fixes the measurement. The underlying
-  draws are still made by the renderer and not by the headless path, so the two streams remain offset
-  for the whole run. That is the next parity bug to chase, and the tool now points at it.
-- **`playbackcheck` gained a check for non-default header settings, and both gates now count failed
-  checks rather than failed assertions.** `max_slots` and `allow_equipping` had only ever been round
-  tripped at their defaults, which cannot catch a writer that omits the fields: `32` and `true` are
-  exactly the values the reader falls back to, so a header that wrote nothing would pass. Non-defaults
-  are the only values that distinguish "written" from "not written and defaulted", so the fixture writes
-  `max_slots=7` and `allow_equipping=false` and checks the parsed object, the reconstructed
-  `EnvConfig`, and the file's own bytes. Mutation-tested by dropping the `allow_equipping` line.
-  Separately, both gates reported `failures.size()` against a check count, so one check making three
-  assertions announced itself as three failed checks - visible as "3 of 8 checks failed" when exactly one
-  check had failed. They now report `N of M checks failed, K assertions`.
-- **`gradlew verifyall`**, every gate in both modules in one invocation, ~14 s. It has to sit above the
-  modules rather than inside one: `:desktop` depends on `:superintelligence`, so
-  `:superintelligence:gates` cannot depend on `:desktop:playbackcheck` without a cycle. Freshness is a
-  property of the graph rather than a check — both gate tasks take their classpath from
-  `sourceSets.main.runtimeClasspath`, so gradle recompiles what changed before any gate runs, and there
-  is no path by which these execute against a stale build. That is worth more than reporting whether
-  they did, so the task deliberately prints no freshness claim it cannot verify.
-- **`playbackcheck`**, a gate that runs `ReplayPlayer` with no window, no scene and no `ReplayController`,
-  and asserts both halves: that a faithful recording plays clean, and that a recording altered in
-  `heroPos`, `heroHp`, `turn` or `inventory` is caught *at the altered step* with a message describing
-  the quantity that changed, that altered quickslot bindings never play clean, and that an unresolvable
-  recording halts with a reason instead of hanging. 7 checks.
-  `ReplayPlayer`'s ~560 lines decide what a recorded step means, derive the mode, drain the scheduler,
-  work out whether a turn is owed, settle and compare against the recording, and until now the only
-  thing that executed them was the viewer — which cannot be put in a test. All three faults that lived
-  there were found by hand, by diffing traces.
-  Mutation-tested: removing the `clearPendingCellListener` that F1 added fails it with the exact message
-  the original probe produced — *"a faithful replay diverged at step 2: USE/0 in TARGETING: engine time is
-  0.0, recording says 1.0"* — and the four field mutations then report step 2 instead of step 30, which
-  is what proves the localisation check is doing work.
-- **Known limitation, found by `rngtrace`: a run that ended on the soft stall guard replays as a
-  stall.** `SPDEnv.checkFloorLimits` also terminates when the hero's position and health have not
-  changed for `stallLimit` consecutive turns. The recording is complete and the hero is alive, but the
-  viewer has no environment to ask, so after the final step it waits for a hero that will never become
-  ready and reports "stalled - hero did not become ready within 400 turns" — false, and useless, since
-  the recording was complete rather than truncated. The header records no termination reason, which is
-  the actual gap. A guard mirroring the per-floor turn cap was written and removed: the stall guard
-  fires first in practice, so nothing could exercise it, and shipping an unexercisable check would
-  contradict the argument the rest of this work is built on. Fixing it properly means recording the
-  termination reason in the header; see `PLAN-replay-verification.md` section 12.1.
-- **`observecheck`**, a gate asserting that *reading* the world draws no randomness. One violation of
-  this already cost a full parity investigation: `HeroEncoder` built its defence feature with
-  `hero.drRoll()`, which is not a property of the hero but a fresh draw per call, so encoding an
-  observation advanced the gameplay RNG twice per agent step and the stream stayed offset from the first
-  floor. Nothing caught it, because every gate re-executes through `HeadlessGame` — a gate that shares
-  its implementation with its subject cannot see a fault in it. This one measures the encoders directly.
-  4 checks: that `ObservationEncoder.encode` and `Quickslots.capture` draw nothing, that a second encode
-  of an unchanged world is byte-identical, and a positive control that draws on purpose and requires the
-  counter to move — without which every "no draws" check would pass for the wrong reason if the
-  instrument broke.
-  Mutation-tested: restoring `hero.drRoll()` fails it with `drew 6 value(s)` and a differing hero vector.
-  Backed by `RandomTrace`, a counter in `com.watabou.utils` that is off by default and instruments only
-  `Random`. Presentation randomness lives on `PRandom`, so what it counts is exactly the draws the
-  simulation is entitled to.
-- **A recording now says how wide its slot head was.** Replay v2 carries `max_slots` and
-  `allow_equipping`. Neither was recorded, and they are the only two settings `ActionMapper` reads: the
-  slot head is a fixed-width window over the inventory, so a recorded index names a different item at a
-  different width, and `allowEquipping` decides whether a USE equips a weapon or arms an aim. A replay
-  that could not say which it was recorded under could not guarantee it resolved an index the same way
-  twice, and every replay-based check inherited that ambiguity. `ReplayRecorder.begin` takes the
-  config, `Main.rollout` and `Worker` pass theirs, and `ReplayIO.configFor` is the one place a header
-  becomes settings, so the viewer, `verify` and the headless verifier cannot each pick their own.
-  `ReplayPlayer` takes an `EnvConfig` rather than hardcoding one, for the same reason. v1 still parses,
-  with defaults, so the existing tooling fixtures stay readable — though they were recorded against the
-  RNG stream since repaired, and so reproduce nothing.
-
-### Fixed
 
 - **The reward paid the agent to give up on an episode.** `STALLED` carried a terminal reward of
   `-depthReward * 0.5` = -5.0, against `deathPenalty` of -100 and a `TURN_LIMIT` cost of -80 — so
@@ -638,335 +1097,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   incompatibly since. Bumped to 2, so the handshake check that exists to catch a desync now
   distinguishes them.
 
-### Added (earlier in this release)
-
-- **Policy checkpoints, so a training run can be stopped and continued.** `--save <file>` writes a
-  checkpoint every `--checkpoint-every` generations (default 25) and on exit; `--resume <file>`
-  continues from one, keeping the generation and optimiser-step numbering so the two runs'
-  `metrics.csv` rows do not collide. Writes go to a sibling temp file and are renamed, so a power cut
-  cannot leave a half-written checkpoint that is newer than the last good one.
-
-  **The format carries more than weights, and that is the substance of it.** `Network.layers()` does
-  not include Adam's moments, and a checkpoint without them restarts the optimiser's averages from
-  zero — the run still trains, and trains worse, with nothing in the metrics to say why. Neither does
-  it include the optimiser step count, and Adam's bias correction divides by `1 - beta^step`, so
-  restarting at 1 makes that correction ~0.1 instead of ~1. Both are now saved. The moments are not
-  sent to workers: a worker runs forward passes only, so pushing four times the floats per generation
-  would cost ~57 MB per worker per push for nothing.
-
-  Also **refuses four kinds of bad file** rather than misreading them: foreign (bad magic),
-  truncated, one with trailing bytes, and one from a different `EnvConfig` — the last naming the
-  offending field, since "trained with gridWidth=32, this run has 48" says which flag to change.
-- **`checkpointcheck`**, a gate that asserts a policy survives disk bit-for-bit including its moments,
-  and that each of those four refusals happens. Mutation-tested: dropping the moments, the
-  trailing-byte check, or the config check each fails it.
-- **`weightsdiff <file>`**, reporting how far a checkpoint is from a freshly initialised policy. The
-  complement to `checkpointcheck`, which proves the bytes arrive but not that the resumed network is
-  a *trained* one — a checkpoint written from the wrong tensor passes every equality assertion and
-  then trains a random policy with entirely normal-looking metrics.
-- **Per-generation metrics history** (`MetricsHistory`), written to `metrics.csv` in the work
-  directory by default and overridable with `--metrics`. `Trainer` previously kept one generation of
-  episodes and discarded it, so a run's history existed only in console scrollback. Rows are flushed
-  per generation and appended rather than rewritten, so a crashed or extended run keeps what it
-  reached. At the end of a run it renders score, depth and both losses as bars — reviving `diag.Graph`,
-  which was written and never used — plus a 7-generation moving average of score, since per-generation
-  score is noisy enough to invite reading a trend into noise.
-- **`--sample-rate`, `--max-sampled-per-episode`, `--max-samples` and `--metrics`** on the trainer. The
-  first three existed as `Trainer` public fields with the documented defaults but were never reachable
-  from the command line, so the sampling knobs the plan documents could not actually be turned.
-
-### Changed
-
-- **`STALLED` is a truncation and only `DEATH`/`VICTORY` are natural endings**, now named as
-  `SPDEnv.isNaturalEnding` with `isTruncation` as its complement, so the classification can be asserted
-  against the real predicate rather than restated. A stalled episode used to be penalised *and*
-  bootstrapped — one signal said the episode was over, the other that it carried on, which is why
-  `valueLoss` sat at 3.0–8.1 without trending. `gaecheck` gained a case covering the advantage half;
-  setting `nonTerminal = 1f` unconditionally fails 5 of its 12.
-- **`PLAN-data-flow.md` corrected against the code** rather than against its own prose: removed
-  `rolloutCap`/`PPO.collect` references to deleted code, restored a missing `### Step 3` heading whose
-  body had been orphaned under step 2b, marked steps 0 and 3 done, and corrected every cost figure
-  that the `epochs` default change from 4 to 2 had doubled. Two claims were withdrawn rather than
-  fixed: "re-simulation costs ~2.3 ms a turn" was 17× wrong (measured 0.136 ms/turn), and "collection
-  throughput roughly doubles" had never been measured.
-- **Ordering corrected: instrumentation now precedes the parallel update.** Steps 0–3 built a loop that
-  learns and no way to tell whether it does. The parallel update is still required — the measurement
-  does not care what else is on the list — but its only success criterion was "faster", so doing it
-  first would optimise a loop whose behaviour cannot be observed. Checkpointing also moves ahead of
-  it: it is smaller, it is on the critical path to the Goo milestone, and it is what makes two runs
-  comparable at all.
-- **The reward curriculum is recorded as deliberately inert.** `Curriculum` is written and
-  `SPDEnv` applies it, but nothing calls `observe()`, so shaping is a constant 1f. Wiring it is three
-  lines and was *not* done: it would start fading dense rewards by depth 3, changing the reward
-  function, with no evidence those terms help. Deferred until a run can be judged.
-
-
-- **Every episode ended `STALLED` after 8-13 turns,** which made the environment useless for
-  collecting experience. `Hero.act()` was being entered with a null `curAction`: it clears `ready` and
-  then dispatches on `curAction`, so no branch matches, and `Hero.ready()` is the only thing in the
-  game that sets `ready` back to true. A normal playthrough never reaches that state because the cell
-  selector re-prompts for input, and that prompt is what calls `ready()`; headless there is no scene
-  and no selector, so nothing was left to re-prompt. Five seeds that all stalled now run the full
-  turn budget.
-- **`MENU` mode was unreachable in a real run,** not merely hard to record. `step()` cleared the
-  pending dialog on every turn, so the step that could have answered it arrived to find it gone and
-  the rollout sat selecting at nothing until it stalled. Clearing now happens on `reset()`, where
-  per-run state belongs.
-- **The `MENU` branch never returned to `WORLD`,** so a dialog could be answered successfully and the
-  mode still never changed hands again.
-- **`WindowBridge.open()` meant "a window is showing" rather than "a dialog the agent can answer."**
-  `GameScene.show` parks informational windows there too, and "you cannot leave the dungeon yet"
-  arrives that way constantly, so each one put the environment into `MENU` with nothing to select.
-- **`SLOT` had no entry in the action mask** and fell through to the `WORLD` mask, which offered
-  movement and `WAIT` while the environment was waiting for an item choice. `SlotAction.execute`
-  treats every action that is neither `CANCEL` nor `DROP` as a use, so a legal-looking move there spent
-  the item.
-- **`EnvMode.INVENTORY` was unreachable.** The mode was documented on `Action.OPEN_INVENTORY` but
-  never assigned, and `OPEN_INVENTORY` fell through to the generic cell handling as a no-op, so no
-  rollout could ever contain the mode and no replay could exercise it. It is now entered from the
-  `WORLD` step and offered in the `WORLD` action mask, and its branch resolves an aim the same way
-  `SLOT` does instead of dropping it.
-- **Throwing stones were equipped rather than thrown.** `SlotAction.use` tested equipability before
-  the item's own action, and `Weapon extends EquipableItem`, so a missile weapon took the equip path.
-- **Every equipment change invented a targeting step.** `SlotAction.use` returned `toggleEquip`'s
-  "equipped OK" boolean, which the environment read as "needs an aim", and its success path returned
-  `true` outright, so plain consumables falsely demanded an aim too.
-- **A refused equip stalled the episode.** `toggleEquip` returned without releasing the hero, which
-  left it permanently mid-action; the pipeline never saw it become ready and the run ended `STALLED`
-  within about a dozen turns.
-- **No aim could ever be resolved or cancelled.** `SPDEnv.step` cleared the pending use item on every
-  step, including the `TARGETING` step that needed it. `CANCEL` during targeting was also treated as a
-  throw at the default target, spending the item. `CANCEL` is now handled on its own and releases the
-  hero's turn.
-- **The replay viewer could leave the game completely unresponsive.** Reaching a transition the hero
-  cannot use raises an informational `WndMessage` - "you cannot leave the dungeon yet" - and windows
-  are modal, so the scene stopped accepting input while playback carried on, driven by the frame hook
-  rather than by keys. The viewer now dismisses windows a recording has no step to answer, and leaves
-  `WndOptions` alone because a recorded `MENU` step does resolve that one.
-- **`lockCellInput` did not lock the keyboard.** It disabled the cell selector's pointer path, but the
-  selector's own `KeyEvent` listener ignored `enabled` and kept turning arrow keys into movement, so a
-  viewer could still have its hero walked away and desync the recording.
-- **Viewer keys could not override a game binding.** `KeyBindings.getActionForKey` consults
-  `hardBindings` last, so forcing `SPACE` to nothing lost to the default `SPACE`→`WAIT` and a press
-  both paused and waited the hero. `KeyBindings` gained an explicit override layer for this instead of
-  reordering the existing lookup, which would have broken players who rebound `ENTER` or `ALT_RIGHT`.
-- **`R` did not restart.** It rewound the cursor while leaving the live game where it was; it now
-  rebuilds the level through the same path the viewer starts on.
-- **Viewer controls died after `R`.** `InterlevelScene` calls `KeyEvent.clearListeners()` to drop its
-  own continue-button listener, which clears every listener including the viewer's. The viewer
-  re-registers on each scene rebuild.
-- **The replay HUD vanished after `R`,** because it was rebuilt against the outgoing scene and the
-  non-null field then prevented a rebuild. It is now rebuilt whenever the live scene changes.
-- **Resuming a diverged replay re-reported the same divergence forever.** Divergence is now sticky,
-  since a diverged game can never rejoin the recording's path.
-- **On-screen replay divergence could never fire.** `ReplayPlayer` advanced the playback cursor before
-  comparing the landing cell, and advancing clears the expected position, so the check always passed.
-- **`GameScene` gained `topWindow()`.** `showingWindow()` only reports whether a window exists, which
-  is not enough to decide what to do about one.
-- **The libGDX natives were never loaded in any headless JVM,** so the first game code that allocated
-  a `Pixmap` died with `UnsatisfiedLinkError`. Desktop gets the library implicitly from
-  `Lwjgl3NativesLoader`; the headless backend replaces that, and a natives jar sitting on the classpath
-  does not load itself. `TextureCache.getBitmap` is guarded on `Gdx.gl == null` and returns null,
-  which is why the item-icon film decoded fine, but its three programmatic constructors —
-  `createSolid`, `createGradient` and `create` — are not. Those are reached from a `Flare` at roughly
-  forty item and buff sites, and a `ColorBlock` from every inventory slot.
-  `GdxNativesLoader.load()` now runs in `HeadlessServices.install()`, the earliest point every entry
-  path already passes through.
-- **`BitmapText` threw on every measuring call with no font.** Its no-argument constructor already
-  built one with a null font, and nothing had ever constructed one without immediately giving it a
-  font — until the headless platform, which has no font generator to give. `measure`, `baseLine` and
-  `updateVertices` now treat a null font as zero-sized text. Reached from `Bag.execute`, which opens a
-  quick-bag window whose item slots lay out text.
-- **Both of the above were live crashes on item use, not latent ones.** They only appeared once
-  workers stopped playing the scripted heuristic — the class of bug TODO.md §1 predicted, where a
-  policy sampling the action mask reaches code a hand-written if/else never did.
-- **Global gradient clipping did not exist.** `Network.gradClip` was declared with the comment
-  "applied by the caller before `step()`" and no caller applied it; `PPO.update` never computed a
-  gradient norm. Harmless while the buffer is empty, which is why it survived. It is implemented now,
-  over every layer's gradient accumulator at once, accumulated in double because a network this size
-  has millions of entries spanning many orders of magnitude.
-- **A recording of a random-seed episode could never be replayed or verified.** `SeedPool` deliberately
-  leaks 10% of episodes onto fully random seeds so the agent cannot memorise the locked set, and those
-  episodes were recorded with the *requested* seed — which is empty for them. `verify` resets onto a
-  fresh draw and reports a divergence at step 0: correct behaviour, and a message that reads as a broken
-  seed lock. `SPDEnv.reset` now resolves the drawn seed and reports it, and the recorder begins from
-  that rather than from the request, so every recording names the run it actually produced. Measured:
-  a 3-generation run wrote 5 recordings and all 5 re-execute exactly, including one that was previously
-  written as `random.dat` and always failed.
-- **The reported losses were running sums, not means.** Each minibatch averaged over its own samples
-  and the totals were summed across every minibatch and epoch, so `policy=` and `value=` grew with
-  update length rather than measuring anything. They are now means over the samples seen.
-- **Clipping now happens after the minibatch average.** Clipping the raw accumulated gradient would
-  have made the ceiling mean something that changes with `minibatchSize`, and `gradClip` is declared
-  as an absolute norm. It also means the reported norm is the norm of the gradient that was applied.
-- **`gradle :superintelligence:train` rejected its own arguments.** The subcommand was prepended in
-  `doFirst` for every CLI task except `train`, so the documented
-  `--args="--workers 8 --generations 200"` reached `Main` with no subcommand and died on
-  "unknown command: --workers". The trainer had never been launched through Gradle.
-- **A worker that acknowledged a policy push with the wrong message went unnoticed.** The handshake
-  read the reply and discarded it.
-- **A worker that replied to an episode request with the wrong message went unnoticed** for the same
-  reason, and on that path the diagnostic read a second int off the wire to name it, so the error
-  message itself consumed part of the frame it was describing.
-
-- **`gradle :superintelligence:collectcheck`** fails if a recording made by the policy-driven
-  collector will not reproduce. Every recording the trainer wrote diverged at step 0 while still
-  playing: `EpisodeCollector` read `heroPosition` before `env.step()` rather than after, while the
-  recorder documents that field as where the hero *ended up*. The file parsed, the run scored, the
-  dungeon looked like a dungeon — only `verify` caught it. The scripted path steps and then reads, and
-  always has, so `replay-viewer.bat --record` was unaffected and only trainer output was. Behavioural
-  rather than a unit test of the recorder, because the recorder was never wrong on its own; the caller
-  passed it the wrong moment.
-- **`gradle :superintelligence:replays`** lists recordings grouped by hero class and ranked by score
-  within each group, and `--select N` resolves a listing number to a file. Both live in Java because
-  Windows `sort.exe` on this machine rejects `/n` as an invalid switch and the scores are floating
-  point and can be negative — batch would have sorted them lexically and wrongly, and could not group
-  by a field parsed out of each file at all.
-- **`gradle :superintelligence:replaycheck`** covers that catalog: ranking within a group, grouping by
-  class, depth breaking a score tie, a truncated or unreadable file listed rather than hidden and
-  sorted out of the way, name lookup bare and with an extension and case-insensitively and by path,
-  `readHeader` agreeing with `read`, and one listing per seed across directories.
-- **`Replay.declaredSteps` and `Replay.truncatedAt`**, so a header-only read can report a body that is
-  short instead of failing on it.
-
-### Changed
-
-- **A recording is selected by number.** `replay-viewer.bat` with no argument lists the catalog and
-  asks for a number, resolved through the same scan that printed it, so the number under a recording
-  and the recording that number selects cannot drift apart.
-- **`--epochs`, default 2 instead of 4.** An update is 11.3 ms per sample and dominated by forward and
-  backward, so this scales it linearly: ~107 s of trainer CPU per generation at 4 epochs, ~53 s at 2.
-  Four was never a considered choice — it gives 300 Adam steps over a 2,400-sample batch, far more than
-  a batch that size supports. Measured end to end: a 6-generation prototype run went from ~36 minutes
-  to 2.
-- **`gradle :superintelligence:gates` runs every correctness check in one invocation.** Gradle's
-  per-invocation overhead is about 90% of a gate's cost — `gaecheck` is 0.22 s of work and 2.4 s through
-  gradle — so the checks were never slow and the harness around them was. Six gates together take 7.9 s
-  against roughly 17 s run one after another. Named `gates` because the `java-library` plugin already
-  contributes a lifecycle `check` and Gradle refuses to shadow it.
-- **Workers compute advantages and ship a sample of them; the trainer runs a pooled update on it.**
-  The worker plays its own episode with the real policy, keeps every step's GAE scalars, and retains
-  observations for a uniform 5% of steps plus the last 20 of the episode. Because the backward pass
-  reads only scalars, which observations are kept cannot change the numbers it writes — so sampling
-  happens during collection and needs neither an all-observations residency of 1.9 GB nor a second
-  simulation pass. The frame is observation + masks + decision + advantage + return + terminal;
-  `reward`, `value` and `nextValue` no longer travel, since nothing on the far side recomputes from
-  them.
-- **One forward pass per step, not two.** `t.nextValue` is read at exactly one index of the GAE
-  recursion; every other bootstrap is the next step's own value. The extra pass also advanced the LSTM
-  over the post-step observation, so every observation was absorbed into the recurrent state twice.
-- **gamma, lambda, sampleRate and maxSampledPerEpisode travel with the weights.** The first two were
-  `PPO` fields on each side with identical defaults — agreement by coincidence, which would have
-  drifted the first time either side was tuned. The last two are new knobs.
-- **`PPO` no longer collects.** `collect()` drove the env, the network and the masks, and `update()`
-  computed the advantages over whatever it had. Collection is now `EpisodeCollector` in a worker
-  process, because the advantage recursion needs consecutive steps and a worker holds its whole
-  episode while a trainer never would. `PPO` is the learner only, at 325 lines, and `collect`,
-  `rollout`, `rolloutCap`, `episodeInProgress` and `recurrentStateStale` are gone rather than left
-  unreferenced — two step loops would have drifted.
-- **The worker keeps its transitions on a pool; the trainer allocates.** A pooled object is recycled
-  across generations, so a decode that missed a field would read the previous generation's value
-  rather than fail. The trainer's buffer is large and cold, which is the case the pool is wrong for.
-- **A per-generation memory cap on the update buffer,** dropping the oldest transitions and saying so.
-  The per-episode cap bounds one worker; the generation is 320 episodes wide, and this machine's
-  2 GB pagefile does not degrade gracefully — it thrashes.
-- **The trainer is split into five classes.** `Trainer.java` was 824 lines against the project's own
-  500-line rule, and the worker-data-flow work adds to it. Process lifetime, the stall watchdog and the
-  per-worker pipes are now `WorkerPool`; the console block is `GenerationReport`, which renders a
-  snapshot of plain numbers rather than reading the trainer; the command line is `TrainOptions`; the
-  per-episode summary is `Episode`; and the wire constants are `Protocol` rather than bare literals
-  duplicated on both sides of the pipe. `Trainer` is now the loop itself.
-- **Worker pipe buffers are 1 MB, not the 8 KB default.** A policy push is ~14 MB and a generation's
-  transitions will be tens of MB; the default turns those into thousands of syscalls per worker per
-  generation.
-- **The generation report prints the transition count.** `sampled steps of N collected` is the number
-  the whole sampled-transition design rests on, so it is measured and shown rather than derived on
-  demand. It reads 0 until the workers start returning transitions.
-
-### Added
-
-- **A TODO entry for the thing that will block the first real training run: the weights are never
-  written to disk.** No `saveWeights`, no checkpoint, no `--resume`. Every run starts from `Network`'s
-  random initialisation and is discarded at the end, so no attempt so far has been extendable — a run
-  has to be babysit from start to finish on a machine whose pagefile is 2 GB and which thrashes rather
-  than degrades, `--generations` cannot be split across sittings, and no two training runs can be
-  compared because only one line of them can exist at a time. `Network.layers()` / `loadLayer` are
-  already the checkpoint format and already validate against the `EnvConfig` shape, so a stale
-  checkpoint fails loudly rather than loading into the wrong parameters, and `Worker.writeWeights` /
-  `readWeights` already serialise exactly that. It is plumbing, not design, and it is written down
-  before it is built because it is invisible until you try to keep a model.
-- **`gradle :superintelligence:gaecheck`** fails if the two advantage implementations disagree, or if
-  sampling misbehaves. `Policy` computes GAE twice — once over an `ArrayList<Transition>` and once over
-  an episode's scalar arrays — because a worker's backward pass must run where the whole episode is
-  still resident. Nothing forces them to agree, and two implementations that both produce finite
-  advantages while differing slightly is a bug that surfaces only as a policy that learns marginally
-  worse, forever. Nine checks: the two agree, a terminal cuts the recursion both ways, a truncated
-  episode bootstraps, sampling is uniform and seed-reproducible, the tail is always retained, retention
-  is idempotent, advantages are independent of sampling, and the wire round trip is exact. Verified by
-  mutation — transposing a field in the codec fails it, and removing the lambda term fails three
-  checks. It does **not** drive the collector, only its arithmetic and its stated policy; the class
-  comment says so.
-- **The generation report prints what it is for.** `sampled steps of N collected`, the raw advantage
-  mean and standard deviation *before* normalisation, and the buffer's resident size with the packed
-  grid's share of it. A batch whose advantages are all identical has no gradient direction to offer,
-  and after normalisation it would present as a textbook mean of zero and standard deviation of one —
-  so the figure that catches it has to be the one taken before.
-- **`gradle :superintelligence:updatecost`** measures what a PPO update actually costs and projects it
-  across sample rates. The worker-data-flow decision was argued entirely on bandwidth, and the update
-  behind it — 9,600 forward and backward passes per generation on one thread — had never been
-  estimated. Measured at **11.29 ms per sample**: 107 s per generation at a 5% sample rate and 4
-  epochs, against 0.12 s of transport and ~7 s of collection. Bandwidth was never the binding
-  constraint at these sample rates.
-- **Reported gradient norms and clip fraction,** per minibatch and averaged. A norm that climbs
-  without bound is the earliest signal that an update is about to diverge, and clipping hides it.
-- **`gradle :superintelligence:modecheck`** fails if the environment cannot reach one of its own
-  action modes. It drives an explicit script through `WORLD`, `SLOT`, `TARGETING`, `INVENTORY` and
-  `MENU`, resolves a real aim rather than cancelling one, and executes a drop. Six real bugs reached
-  main while every recording was `WORLD`-only, and a replay fixture cannot prevent a recurrence:
-  nothing failed when a mode quietly stopped being reachable.
-- **`gradle :superintelligence:restartcheck`** fails if restarting a run does not rebuild an identical
-  floor 1, even after several hundred turns have churned the random generators.
-- **`replay-viewer.bat`** plays, records and verifies recordings from a terminal: `replay-viewer`
-  plays the newest one, `--record <seed>` makes one, `--verify <file>` checks one, `--list` shows them.
-  It drives Gradle tasks rather than hand-building a classpath, and resolves paths to absolute first
-  because Gradle's `run` task uses the module directory as its working directory.
-- **Replay fixtures in `replays/`,** including `modes-all.replay`, whose first six steps cover `WORLD`,
-  `SLOT`, `TARGETING` and `INVENTORY`. Every recording made before this was pure movement.
-- **Diagnostics on stderr.** The viewer reports each keypress and a per-two-second heartbeat, because
-  "the key did nothing" and "the render loop is stalled" look identical from the outside and need
-  different fixes.
-
-### Added
-
-
-- **Desktop replay viewer.** `gradle :desktop:replay --args="--file <replay>"` plays a recorded run
-  back in the rendered game. Recorded actions are applied through `ActionMapper`, which hands them to
-  `Hero.handle` — the same call the game's own cell selector makes — so attack-versus-loot-versus-
-  stairs-versus-menu resolves exactly as it does for a player. The HUD shows step count, seed, hero,
-  recorded score, depth, turns, speed and any divergence.
-
-  Two engine hooks were needed, both general rather than replay-specific: `Game.lockCellInput`
-  disables the cell selector each frame so nothing but the recording can inject an action, and
-  `Game.setSceneClass` lets an entry point that builds the game choose its initial scene.
-  `InterlevelScene.autoContinue` skips the region continue prompt so a viewer run starts on its own,
-  and the viewer's keys are hard-bound because `InputHandler` only emits a `KeyEvent` for keys present
-  in `KeyBindings`, which left space, `R` and `+`/`-` unreachable.
-
-  Entering through `InterlevelScene` with `Mode.DESCEND` is what makes this work: `InterlevelScene`
-  switches to `GameScene` hardcoded, so a `GameScene` subclass would never be entered. A static
-  `frameDriver` hook pumps playback instead, and the recording is watched in the real scene with real
-  sprites.
-
-
-- `PPO.rolloutCap` bounds collection between updates. It is not only a memory guard: PPO measures
-  how far the policy has drifted since it collected the data, so frequent updates are what PPO
-  wants anyway.
-
-- `gradle :superintelligence:gradcheck` (or `gradcheck --verbose`) finite-difference checks the
-  network's analytic gradients against central differences and exits non-zero on a mismatch, so a
-  broken backward pass fails loudly instead of silently training the wrong function.
-
-### Fixed
 
 - **An uncapped PPO rollout was an out-of-memory crash waiting to happen.** Collection stored every
   step of an episode until the next update. A step is dominated by its packed grid at ~49KB and
@@ -1044,67 +1174,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known limitations
 
+- **The viewer fidelity fix is an engine change and is not in this commit.** Four presentation draws
+  move from `Random` to `PRandom` — `CharSprite.link`, `AttackIndicator`, `Wand.staffFx` and
+  `MagesStaff`'s staff particle — one line each, and none can change an outcome. `instructions.md`
+  §12.3 keeps engine logic changes out of a commit until they are proposed, so they sit in the working
+  tree. Consequence, stated so nobody has to infer it: **this commit passes `verifyall` and fails
+  `viewcheck` 14 of 17.** Accept the change and the gate is green on all seventeen, stable across
+  repeated runs; leave it and the tree reproduces the fault exactly as documented. Evidence is in
+  `superintelligence/ISSUE-viewer-frame-drift.md`.
+
+- **`viewcheck` is outside `gates` and stays there.** It needs a display, it forks a JVM per recording,
+  and it costs about 200 seconds sequential. That is a real gap rather than a decision: this class of
+  regression returns silently between runs of it.
+
 - **A replay recorded before this change with an empty `seed=` cannot be verified.** `SeedPool`
   deliberately leaks 10% of episodes onto fully random seeds so the agent cannot memorise the locked
   set, and those episodes were recorded with the *requested* seed, which is empty for them. `verify`
   resets onto a fresh draw and reports a divergence at step 0 — correct behaviour, and a message that
   reads as a broken seed lock. Any such file already on disk stays unfixable; re-record it.
-
-
-### Added
-
-### Added
-
-- **`paritycheck`, a replay-parity sweep across seeds in one process.** Records N seeds x M hero
-  classes under the scripted policy, writes each recording, reads it back, verifies it, and then
-  verifies every recording a second time after the whole sweep has run in between. The second pass is
-  what a recording's own round trip cannot see: nothing has happened between the two verifications of
-  one file, so a static that survived a reset has nothing to leak into. It is the gate that found the
-  remains fault above.
-- **`configcheck`, which asserts the configuration layer is capable of configuring anything.** The
-  first check is a positive control: a deliberately wrong value must produce a wrong setting, or every
-  other assertion would be satisfied by the compiled defaults alone by a binder that reads nothing.
-  The rest prove every documented key reaches the setting it names, that the shipped file's values equal
-  the compiled ones, that an unknown key warns rather than being absorbed, and that malformed or
-  out-of-range values are refused with the key and the file named.
-- **`RunState`, the one place that lists what a new run must not inherit.** Four statics: the armed aim
-  listener, the headless dialog slot, the pending use item, and a dead hero's remains. `SPDEnv.reset`
-  and the desktop replay viewer each cleared a subset of them by hand, which is precisely how the armed
-  listener survived a reset and put every new episode straight into `TARGETING` - 4 of 10 recorded runs
-  diverged at step 0, and each of those four verified cleanly on its own.
-- **`docs/documentation.md`** - the Superintelligence module: architecture, the environment contract,
-  configuration, the gate matrix, and what determinism does and does not guarantee.
-
-### Changed
-
-- **The learner and the trainer are split by responsibility, both of which were over the 500-line
-  limit.** `PPO` was 687 lines and about a quarter of that was the thread pool and the gradient
-  reduction; `ShardedUpdate` now owns the pool, the per-thread networks and their scratch. `Trainer`
-  was 561 logical lines and about a third of that was the half that talks to worker processes;
-  `TrainerWorkers` now owns the job record, the concurrent dispatch, the per-worker request/response,
-  the replay decode and the parallel policy push.
-  The boundary is drawn at the pipes. Everything that crosses one is in `TrainerWorkers`, so a field
-  added to the frame has exactly one reader, and a caller never receives a worker's streams - the
-  ordering between a request and its reply is what keeps two processes in step.
-  The split removed a duplication that had already cost something: the serial and sharded paths each
-  carried their own copy of the scale-clip-report tail, which is how two implementations come to report
-  different numbers for the same gradient. Both now return a result and one method folds it in, so
-  `parallelcheck`'s equality claim is structural rather than something re-established each time either
-  path is edited.
-  Also removed two private methods with no callers: `PPO.replay`, which `oneSample` duplicates inline,
-  and `PPO.oldLogProbabilityFor`, which returned its first argument and ignored its second. The latter
-  was listed in `TODO.md` section 5 as a known rough edge; it is now gone rather than listed.
-- **`resetcheck` grew a case per leaked static** (3 checks -> 5). An outstanding dialog is now tested as
-  well as an outstanding aim, and a run following a hero's death is tested for inheriting nothing. Each
-  is mutation-tested: deleting the corresponding clear makes the case fail, and the remains case
-  additionally fails if the clear is moved back to after level generation.
-- **`testing-guide.md` names `gates` rather than `verifyall`**, which it documented and which does not
-  exist, and its matrix lists the two new gates.
-- **A pre-commit hook** runs the badge-consistency check and the full gate suite, and refuses the
-  commit on failure. The badge check corrects `README.md` and re-stages it rather than aborting, because
-  a one-line mechanical mismatch is not worth teaching someone to reach for `--no-verify`. It lives in
-  `hooks/pre-commit` with an `install-hooks.ps1` to copy it into place, because `.git/hooks` is not
-  tracked and a hook written there exists only on the machine that wrote it.
 
 ## [4.1.0] - 2026-10-06
 

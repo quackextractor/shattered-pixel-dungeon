@@ -1546,6 +1546,28 @@ public synchronized void update() {
 	public static Window headlessWindow(){ return headlessWindow; }
 	public static void clearHeadlessWindow(){ headlessWindow = null; }
 
+	/**
+	 * The window a caller should answer, whichever way the game opened it.
+	 *
+	 * <p>Getter only, and it exists because {@link #headlessWindow()} answers the question for exactly
+	 * one of the two environments that ask it. {@link #show(Window)} parks a dialog in that slot only
+	 * when there is no scene; with a scene - which is every rendered run, the desktop replay viewer
+	 * included - the dialog goes onto the scene instead and the slot is never set. A caller reading the
+	 * slot therefore sees no dialog in a rendered game, and a dialog the game did open is invisible to
+	 * it, which is the same asymmetry in the two environments a replay is compared across.
+	 *
+	 * <p>So this prefers the live window and falls back to the parked one. Both are the game's own
+	 * window objects, so answering either runs the game's own option handling; nothing here decides
+	 * what a dialog means.
+	 *
+	 * <p>{@link #topWindow()} is the scene's own accessor and iterates the same members as
+	 * {@link #showingWindow()}, so the two agree on which window is meant.
+	 */
+	public static Window answerableWindow(){
+		if (scene != null) return topWindow();
+		return headlessWindow;
+	}
+
 public static boolean showingWindow(){
 		if (scene == null) return false;
 

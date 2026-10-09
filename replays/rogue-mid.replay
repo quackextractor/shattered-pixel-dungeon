@@ -12,193 +12,193 @@ max_slots=32
 allow_equipping=true
 termination=TURN_LIMIT
 steps=190
-USE 0 WORLD 1376 -0.0020000000949949026  20 0.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 1376 0.0 ThrowingKnife:1,Waterskin:2 20 0.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 1376 -0.0020000000949949026  20 1.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-OPEN_INVENTORY 0 WORLD 1376 -0.0020000000949949026  20 1.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 INVENTORY 1376 0.0 ThrowingKnife:1,Waterskin:2 20 1.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 1376 -0.0020000000949949026  20 2.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 1340 0.5480000376701355  20 3.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 1376 -0.0020000000949949026  20 5.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 1340 -0.0020000000949949026  20 6.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 1376 -0.0020000000949949026  20 7.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 1340 -0.0020000000949949026  20 8.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 1304 0.24799999594688416  20 9.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 1268 -0.0020000000949949026  20 10.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_NW 0 WORLD 1231 0.9480000138282776  20 11.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 1195 -0.0020000000949949026  20 12.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 1159 -0.0020000000949949026  20 13.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 1123 0.24799999594688416  20 14.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_NW 0 WORLD 1086 0.14800000190734863  20 15.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_NW 0 WORLD 1049 0.1979999989271164  20 16.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 1013 -0.0020000000949949026  20 17.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 977 0.4480000138282776  20 18.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 942 4.548000335693359  20 20.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 906 -0.0020000000949949026  20 21.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_NW 0 WORLD 869 0.49799999594688416  20 22.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_NW 0 WORLD 832 0.04800000041723251  20 23.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_W 0 WORLD 831 0.39800000190734863  20 24.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 831 -0.0020000000949949026  20 25.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 831 -0.0020000000949949026  20 26.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 831 -0.20200000703334808  18 27.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 831 -0.20200000703334808  16 28.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 831 -0.20200000703334808  14 29.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 831 -0.0020000000949949026  14 29.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 831 0.0 ThrowingKnife:1,Waterskin:2 14 29.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 7 TARGETING 831 -0.0020000000949949026  14 30.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 831 -0.0020000000949949026  14 30.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 831 0.0 ThrowingKnife:1,Waterskin:2 14 30.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 7 TARGETING 831 -0.0020000000949949026  14 31.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 831 -0.0020000000949949026  14 31.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 831 0.0 ThrowingKnife:1,Waterskin:2 14 31.0 Food:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 7 TARGETING 831 -0.10199999809265137  13 32.0 Food:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 831 -0.0020000000949949026  13 32.0 Food:1,VelvetPouch:1,Waterskin:1
-USE 0 SLOT 831 -0.4020000100135803 Waterskin:2 9 35.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 831 -0.0020000000949949026  9 36.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 795 0.6980000138282776  10 38.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.497999906539917  10 40.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  10 40.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 10 40.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  10 41.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  10 41.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 10 41.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  10 42.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  10 42.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 10 42.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  10 43.0 VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  10 44.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.497999906539917  10 46.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  10 46.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 10 46.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 0.49799999594688416  11 47.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  11 47.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 11 47.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  11 48.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  11 48.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 11 48.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  11 49.0 VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  11 50.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.497999906539917  11 52.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  11 52.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 11 52.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  11 53.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  11 53.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 11 53.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  11 54.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  11 54.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 11 54.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  11 55.0 VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  11 56.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.997999906539917  12 58.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  12 58.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 58.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  12 59.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  12 59.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 59.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  12 60.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  12 60.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 60.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  12 61.0 VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  12 62.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.497999906539917  12 64.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  12 64.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 64.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  12 65.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  12 65.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 65.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  12 66.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  12 66.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 66.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 0.49799999594688416  13 67.0 VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  13 68.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.497999906539917  13 70.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  13 70.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 13 70.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  13 71.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  13 71.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 13 71.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  13 72.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  13 72.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 13 72.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  13 73.0 VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  13 74.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.497999906539917  13 76.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  13 76.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 13 76.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 0.49799999594688416  14 77.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  14 77.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 14 77.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  14 78.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  14 78.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 14 78.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  14 79.0 VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  14 80.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.497999906539917  14 82.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  14 82.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 14 82.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  14 83.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  14 83.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 14 83.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  14 84.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  14 84.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 14 84.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  14 85.0 VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  14 86.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.997999906539917  15 88.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  15 88.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 88.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  15 89.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  15 89.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 89.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  15 90.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  15 90.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 90.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  15 91.0 VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  15 92.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.497999906539917  15 94.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  15 94.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 94.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  15 95.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  15 95.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 95.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 -0.0020000000949949026  15 96.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 830 -0.0020000000949949026  15 96.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 96.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 830 0.49799999594688416  16 97.0 VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  16 98.0 VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 830 3.497999906539917  16 100.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 831 -0.0020000000949949026  16 101.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 832 -0.0020000000949949026  16 102.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 833 -0.0020000000949949026  16 104.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 834 -0.0020000000949949026  16 105.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_E 0 WORLD 835 0.49799999594688416  16 106.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 835 0.49799999594688416  17 107.0 ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 872 1.1979999542236328  17 109.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 836 -0.0020000000949949026  17 110.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_NE 0 WORLD 801 1.8980000019073486  17 111.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_NE 0 WORLD 766 1.7480000257492065  17 112.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 766 -0.0020000000949949026  17 113.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 766 -0.10199999809265137  16 114.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 766 -0.0020000000949949026  16 115.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-MOVE_N 0 WORLD 730 0.2980000078678131  16 116.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 730 -0.0020000000949949026  16 117.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-INTERACT 0 WORLD 730 -0.10199999809265137  15 118.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 730 -0.0020000000949949026  15 118.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 730 0.0 ThrowingKnife:1,Waterskin:2 15 118.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 2 TARGETING 730 -0.0020000000949949026  15 119.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 730 -0.0020000000949949026  15 119.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 730 0.0 ThrowingKnife:1,Waterskin:2 15 119.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 TARGETING 730 -0.10199999809265137  14 120.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 730 -0.0020000000949949026  14 120.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 730 0.0 ThrowingKnife:1,Waterskin:2 14 120.0 Seed:1,ThrowingKnife:1,VelvetPouch:1,Waterskin:1
-USE 1 TARGETING 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 730 0.0 Waterskin:2 14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 730 0.0 Waterskin:2 14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
-USE 1 SLOT 730 0.0 Waterskin:2 14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
-USE 0 TARGETING 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
-USE 0 WORLD 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch:1,Waterskin:1
+USE 0 WORLD 1376 -0.0020000000949949026  20 0.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 1376 0.0 ThrowingKnife:1,Waterskin:2 20 0.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1376 -0.0020000000949949026  20 1.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+OPEN_INVENTORY 0 WORLD 1376 -0.0020000000949949026  20 1.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 INVENTORY 1376 0.0 ThrowingKnife:1,Waterskin:2 20 1.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1376 -0.0020000000949949026  20 2.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 1340 0.5480000376701355  20 3.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1376 -0.0020000000949949026  20 5.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 1340 -0.0020000000949949026  20 6.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1376 -0.0020000000949949026  20 7.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 1340 -0.0020000000949949026  20 8.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 1304 0.24799999594688416  20 9.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 1268 -0.0020000000949949026  20 10.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_NW 0 WORLD 1231 0.9480000138282776  20 11.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 1195 -0.0020000000949949026  20 12.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 1159 -0.0020000000949949026  20 13.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 1123 0.24799999594688416  20 14.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_NW 0 WORLD 1086 0.14800000190734863  20 15.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_NW 0 WORLD 1049 0.1979999989271164  20 16.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 1013 -0.0020000000949949026  20 17.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 977 0.4480000138282776  20 18.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 942 4.548000335693359  20 20.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 906 -0.0020000000949949026  20 21.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_NW 0 WORLD 869 0.49799999594688416  20 22.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_NW 0 WORLD 832 0.04800000041723251  20 23.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 831 0.39800000190734863  20 24.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 831 -0.0020000000949949026  20 25.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 831 -0.0020000000949949026  20 26.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 831 -0.20200000703334808  18 27.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 831 -0.20200000703334808  16 28.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 831 -0.20200000703334808  14 29.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 831 -0.0020000000949949026  14 29.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 831 0.0 ThrowingKnife:1,Waterskin:2 14 29.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 7 TARGETING 831 -0.0020000000949949026  14 30.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 831 -0.0020000000949949026  14 30.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 831 0.0 ThrowingKnife:1,Waterskin:2 14 30.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 7 TARGETING 831 -0.0020000000949949026  14 31.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 831 -0.0020000000949949026  14 31.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 831 0.0 ThrowingKnife:1,Waterskin:2 14 31.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 7 TARGETING 831 -0.10199999809265137  13 32.0 Food:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 831 -0.0020000000949949026  13 32.0 Food:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 831 -0.4020000100135803 Waterskin:2 9 35.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 831 -0.0020000000949949026  9 36.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 795 0.6980000138282776  10 38.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.497999906539917  10 40.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  10 40.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 10 40.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  10 41.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  10 41.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 10 41.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  10 42.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  10 42.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 10 42.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  10 43.0 VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  10 44.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.497999906539917  10 46.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  10 46.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 10 46.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 0.49799999594688416  11 47.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  11 47.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 11 47.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  11 48.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  11 48.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 11 48.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  11 49.0 VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  11 50.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.497999906539917  11 52.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  11 52.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 11 52.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  11 53.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  11 53.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 11 53.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  11 54.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  11 54.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 11 54.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  11 55.0 VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  11 56.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.997999906539917  12 58.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  12 58.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 58.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  12 59.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  12 59.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 59.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  12 60.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  12 60.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 60.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  12 61.0 VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  12 62.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.497999906539917  12 64.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  12 64.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 64.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  12 65.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  12 65.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 65.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  12 66.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  12 66.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 12 66.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 0.49799999594688416  13 67.0 VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  13 68.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.497999906539917  13 70.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  13 70.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 13 70.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  13 71.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  13 71.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 13 71.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  13 72.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  13 72.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 13 72.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  13 73.0 VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  13 74.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.497999906539917  13 76.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  13 76.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 13 76.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 0.49799999594688416  14 77.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  14 77.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 14 77.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  14 78.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  14 78.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 14 78.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  14 79.0 VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  14 80.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.497999906539917  14 82.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  14 82.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 14 82.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  14 83.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  14 83.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 14 83.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  14 84.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  14 84.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 14 84.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  14 85.0 VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  14 86.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.997999906539917  15 88.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  15 88.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 88.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  15 89.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  15 89.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 89.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  15 90.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  15 90.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 90.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  15 91.0 VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  15 92.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.497999906539917  15 94.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  15 94.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 94.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  15 95.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  15 95.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 95.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 -0.0020000000949949026  15 96.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 830 -0.0020000000949949026  15 96.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 830 0.0 ThrowingKnife:1,Waterskin:2 15 96.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 830 0.49799999594688416  16 97.0 VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  16 98.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 830 3.497999906539917  16 100.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 831 -0.0020000000949949026  16 101.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 832 -0.0020000000949949026  16 102.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 833 -0.0020000000949949026  16 104.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 834 -0.0020000000949949026  16 105.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 835 0.49799999594688416  16 106.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 835 0.49799999594688416  17 107.0 ThrowingKnife:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 872 1.1979999542236328  17 109.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+MOVE_N 0 WORLD 836 -0.0020000000949949026  17 110.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+MOVE_NE 0 WORLD 801 1.8980000019073486  17 111.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+MOVE_NE 0 WORLD 766 1.7480000257492065  17 112.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+INTERACT 0 WORLD 766 -0.0020000000949949026  17 113.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+INTERACT 0 WORLD 766 -0.10199999809265137  16 114.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+INTERACT 0 WORLD 766 -0.0020000000949949026  16 115.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+MOVE_N 0 WORLD 730 0.2980000078678131  16 116.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+INTERACT 0 WORLD 730 -0.0020000000949949026  16 117.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+INTERACT 0 WORLD 730 -0.10199999809265137  15 118.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+USE 0 WORLD 730 -0.0020000000949949026  15 118.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+USE 1 SLOT 730 0.0 ThrowingKnife:1,Waterskin:2 15 118.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+USE 2 TARGETING 730 -0.0020000000949949026  15 119.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+USE 0 WORLD 730 -0.0020000000949949026  15 119.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+USE 1 SLOT 730 0.0 ThrowingKnife:1,Waterskin:2 15 119.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+USE 1 TARGETING 730 -0.10199999809265137  14 120.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+USE 0 WORLD 730 -0.0020000000949949026  14 120.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+USE 1 SLOT 730 0.0 ThrowingKnife:1,Waterskin:2 14 120.0 Seed:1,ThrowingKnife:1,VelvetPouch(Seed):1,Waterskin:1
+USE 1 TARGETING 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
+USE 0 WORLD 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
+USE 1 SLOT 730 0.0 Waterskin:2 14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
+USE 0 TARGETING 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
+USE 0 WORLD 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
+USE 1 SLOT 730 0.0 Waterskin:2 14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
+USE 0 TARGETING 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
+USE 0 WORLD 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
+USE 1 SLOT 730 0.0 Waterskin:2 14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
+USE 0 TARGETING 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
+USE 0 WORLD 730 -0.0020000000949949026  14 121.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1

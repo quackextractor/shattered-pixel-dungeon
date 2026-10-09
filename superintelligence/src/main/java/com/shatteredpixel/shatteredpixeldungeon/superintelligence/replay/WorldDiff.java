@@ -165,11 +165,30 @@ public class WorldDiff {
 		return "";
 	}
 
-	/** Splits a record into {@code key -> value}, keyed so order is not compared. */
+	/**
+	 * Splits a record into {@code key -> value}, keyed so order is not compared.
+	 *
+	 * <p>On tab <i>and</i> space, and that is a fix rather than a preference. Record rows are not
+	 * internally consistent: the mob, cell, gate and clock rows join their fields with tabs, while
+	 * {@link WorldSnapshot}'s hero row joins them with spaces - {@code pos=684 hp=20/20 turn=11.0}.
+	 * Splitting on tabs alone therefore made every hero record a single key, so a comparison of the hero
+	 * - the one record that carries position, health and engine time, and the one every divergence is
+	 * decided on - compared the whole row and reported the failure as a difference in whichever field
+	 * happened to come first, always {@code pos}. It never named the field that actually differed.
+	 *
+	 * <p>Measured, and it changed the answer: on warrior-long the headless and rendered runs differ at
+	 * step 13 in exactly one hero field, and the tool reported {@code hero field pos} for a position
+	 * that was identical in both.
+	 *
+	 * <p>Splitting on space costs nothing elsewhere. The only record that uses spaces is the hero's
+	 * inventory, where each item is a self-contained descriptor with no space inside it, so the items
+	 * become individual keys - {@code weapon=...}, {@code armor=...}, {@code backpack/0=...} - which is a
+	 * finer comparison than the single {@code inv=...} blob it replaces.
+	 */
 	private static Map< String, String > fields( String row ){
 		Map< String, String > out = new LinkedHashMap<>();
 
-		for (String token : row.split( "\t" )){
+		for (String token : row.split( "[ \t]+" )){
 			int eq = token.indexOf( '=' );
 			if (eq > 0) out.put( token.substring( 0, eq ), token.substring( eq + 1 ) );
 		}

@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroAction;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
@@ -340,6 +341,14 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			return;
 		}
 
+		//Counted here, at the only point a recorded step is injected, because that is the question the
+		//real game answers before it hands a turn to anyone: GameScene.update only pokes the scheduler
+		//when Actor.processing() is false, so a player is never given input while an actor holds it. The
+		//viewer consults only the hero, and the hero reads ready for as long as it is idle - which
+		//includes the whole of another actor's attack animation.
+		Actor holding = Actor.currentActor();
+		if (holding != null && holding != Dungeon.hero) stepsAppliedMidTurn++;
+
 		applyNextStep();
 
 		//Settle in this same call where the turn resolves immediately.
@@ -394,15 +403,57 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		//snapshot's null check, which made the reported frame count zero whenever tracing was off - and
 		//the frame ratio is the one number that says how timing-dependent a playback is, so it has to be
 		//true on a normal run and not only on an instrumented one.
-int label = frames++;
+	int label = frames++;
 		if (appliedStep) steppedFrames++;
+
+		attributeTurn( Actor.now() );
 
 		if (worldSnapshot == null) return;
 		worldSnapshot.sample( "frame", label )
 				.frame( "frame", label, elapsed, drain, appliedStep )
 				.gate( readyToAct(), describeCurrent(), animatingCount() )
 				.clock( "frame", label, elapsed, com.watabou.noosa.Game.elapsed,
-						com.watabou.noosa.Game.timeTotal, com.watabou.noosa.Game.timeScale );
+						com.watabou.noosa.Game.timeTotal, com.watabou.noosa.Game.timeScale )
+				.turns( lastNow, Actor.now(), lastTurnTaker, spentTurns );
+	}
+
+	/** Engine time at the previous frame boundary, so a frame record can say what it advanced by. */
+	private float lastNow = Float.NaN;
+
+	/**
+	 * Who the scheduler handed the last turn to, sampled at each boundary.
+	 *
+	 * <p>This is the attribution the per-frame roster cannot supply. A roster record says what a mob's
+	 * cooldown is now; it does not say that the cooldown changed <i>on this frame</i>, or which actor
+	 * caused it. Since a frame that applied no recorded step is exactly where an unaccounted turn
+	 * appears, the two facts have to be on the same record for the question "did the world move while
+	 * the player was waiting" to be answerable at all.
+	 *
+	 * <p>Attributed to {@code Actor.currentActor()} at the boundary rather than to whoever was
+	 * selected inside the drain, because a drain that takes several turns ends holding only its last.
+	 */
+	private String lastTurnTaker = "-";
+
+	/** Frames on which engine time advanced without a recorded step being applied. */
+	private int spentTurns;
+
+	/**
+	 * Compares engine time against the previous frame and records who moved it.
+	 *
+	 * <p>Called at the boundary, so a change caused by an animation callback in
+	 * {@code GameScene.super.update} - which runs after the drain - is attributed to the next frame's
+	 * record. That is still attributable: the record before it is the same instant a frame earlier.
+	 */
+	private void attributeTurn( float now ){
+		if (Float.isNaN( lastNow )){ lastNow = now; return; }
+
+		if (now != lastNow){
+			Actor who = Actor.currentActor();
+			lastTurnTaker = who == null ? "-" : who.getClass().getSimpleName() + "@" + who.id();
+			spentTurns++;
+		}
+
+		lastNow = now;
 	}
 
 	/**
@@ -446,9 +497,22 @@ int label = frames++;
 	private int frames;
 	private int steppedFrames;
 
+	/**
+	 * Recorded steps the environment refused, out of steps applied.
+	 *
+	 * <p>Not a divergence and not asserted on. It exists because the boolean {@code ActionMapper.apply}
+	 * returns was being discarded on this path, which made a refused action - a move onto a
+	 * non-adjacent cell, a slot index resolving to nothing - indistinguishable from a step that was
+	 * applied and then lost. The trainer counts the same refusals as {@code INVALID_ACTION}, so a
+	 * recording where the two disagree is a real finding, and it now shows up as a count.
+	 */
+	private int refusedSteps;
+
 	public String frameReport(){
 		return frames + " frames, " + steppedFrames + " applied a step, "
-				+ (frames - steppedFrames) + " did not";
+				+ (frames - steppedFrames) + " did not, "
+				+ refusedSteps + " refused by the engine, "
+				+ spentTurns + " frames advanced engine time";
 	}
 
 	private void flushWorldSnapshot(){
@@ -524,6 +588,65 @@ int label = frames++;
 	 *
 	 * <p>A genuine stall still ends the episode: {@link Drain#STALLED} after {@link #MAX_ACTOR_STEPS}.
 	 */
+	/**
+	 * The drain, instrumented for what it is asked to do and what it actually did.
+	 *
+	 * <p>{@link Actor#headlessStep()} re-selects an actor on every call, with no equivalent of the park
+	 * {@link Actor#process()} has: an actor that took a turn and did not spend time - a mob mid attack
+	 * animation, say - is handed the turn again on the next call. Three of those cost nothing and yield
+	 * the frame, so a single unresolved animation produces a burst of redundant {@code Mob.act()} calls
+	 * that the real game never makes, because in the real game the render thread stops poking the
+	 * scheduler while an actor holds it.
+	 *
+	 * <p>Counted rather than assumed. {@code Actor.headlessStep()} is what the trainer uses too, so this
+	 * is a count of how often the viewer asks for a turn it cannot use, not an assertion that doing so is
+	 * wrong - an earlier claim that it did not happen was refuted by watching cooldowns, which cannot
+	 * change during a park.
+	 */
+	private int schedulerCalls;
+
+	/** Scheduler calls that re-selected the actor already holding the scheduler. */
+	private int redundantCalls;
+
+	/** Steps applied while some actor other than the hero still held the scheduler. */
+	private int stepsAppliedMidTurn;
+
+	/** Frames on which a drain ran and returned without the hero being ready. */
+	private int pendingFrames;
+
+	private int countSchedulerCall( Actor previous ){
+		schedulerCalls++;
+		Actor now = Actor.currentActor();
+		if (previous != null && now == previous){
+			redundantCalls++;
+			//By class, because the count alone says how much repetition happened and not what was
+			//repeating. An actor that never spends time is one whose turn is being deferred to an
+			//animation, and which of them it is decides whether that is a mob waiting out its swing or a
+			//mob whose swing never completes.
+			String who = now == null ? "none" : now.getClass().getSimpleName();
+			redundantByClass.merge( who, 1, Integer::sum );
+		}
+		return schedulerCalls;
+	}
+
+	/** Which classes the scheduler re-selected while already holding the scheduler. */
+	private final java.util.LinkedHashMap< String, Integer > redundantByClass =
+			new java.util.LinkedHashMap<>();
+
+	public String schedulerReport(){
+		StringBuilder byClass = new StringBuilder();
+		for (java.util.Map.Entry< String, Integer > e : redundantByClass.entrySet()){
+			if (byClass.length() > 0) byClass.append( ", " );
+			byClass.append( e.getKey() ).append( ' ' ).append( e.getValue() );
+		}
+
+		return schedulerCalls + " scheduler calls, " + redundantCalls
+				+ " re-selected an actor already holding the scheduler ["
+				+ byClass + "], "
+				+ stepsAppliedMidTurn + " steps applied while another actor held it, "
+				+ pendingFrames + " frames the drain yielded";
+	}
+
 	private Drain driveToHeroReady(){
 		float lastNow = Actor.now();
 		HeroAction lastAction = Dungeon.hero == null ? null : Dungeon.hero.curAction;
@@ -558,6 +681,31 @@ int label = frames++;
 				return Drain.STALLED;
 			}
 
+			//Park while another actor's turn is genuinely unresolved.
+			//
+			//REFUTED BY MEASUREMENT, and kept here because the measurement is the useful part. The idea
+			//was that Actor.headlessStep() re-selects an actor that is still finishing its turn, which
+			//Actor.process() would refuse to do, and that this is why the viewer hands out turns the
+			//trainer does not. Measured on warrior-long before the park: 290 of 303 scheduler calls did
+			//re-select the actor already holding the scheduler. Two things that looks like are not it.
+			//
+			//Re-selecting does not restart the animation. CharSprite.attack calls MovieClip.play, which
+			//returns immediately when the same non-looped animation is already in flight, so the ~3 calls
+			//per frame cost three Mob.act() evaluations and no restart.
+			//
+			//And Actor.current cannot tell a finished turn from an unfinished one. It is cleared only by
+			//Actor.next(), which Hero.act and Buff.act never call - Hero.act calls ready() and Buff.act
+			//diactivates, both returning without it. Actor.process hides this by setting current = null at
+			//the top of every iteration; headlessStep does not, so Actor.current is "who acted last", not
+			//"who is mid-turn". Parking on it wedges immediately, and both times for an actor that had
+			//already finished: first Regeneration@2, a Buff, then Sentry@5 / Piranha@5 / Rat@5 / Snake@5,
+			//every one reporting cooldown 1.0 - which is attackDelay(), so they had spent their turn and
+			//Actor.current was simply stale.
+			//
+			//So Actor.current is not usable as a turn-ownership gate from the viewer. What remains is
+			//that the scheduler re-evaluates an actor three times a frame, which the real game does not do
+			//and which is worth counting rather than assuming harmless.
+
 			//The last recorded step, and the recording says why the run ended. The trainer applied this
 			//step's action and *then* terminated, so the action is still applied here - what is skipped
 			//is the drain and the comparison, because the trainer did not complete this step either and
@@ -565,6 +713,8 @@ int label = frames++;
 			//turns for a hero that would never be ready and then report "stalled", which is false: the
 			//recording was complete, not truncated.
 
+			Actor before = Actor.currentActor();
+			countSchedulerCall( before );
 			boolean wantsMore = Actor.headlessStep();
 
 			if (Dungeon.hero.curAction == null && Dungeon.hero.ready && Dungeon.hero.paralysed == 0){
@@ -575,6 +725,7 @@ int label = frames++;
 			//change that, so the next frame is where progress has to come from.
 			if (wantsMore && Actor.now() == lastNow && Dungeon.hero.curAction == lastAction){
 				if (++blocked >= BLOCKED_STEPS){
+					pendingFrames++;
 					return Drain.PENDING;
 				}
 			} else {
@@ -727,13 +878,36 @@ int label = frames++;
 		//against the slots the step is about to be applied to.
 		mapper.refreshSlots();
 
+		//Whether the environment accepted the action, which was discarded here.
+		//
+		//ActionMapper.apply and applySecondary both return a boolean saying whether the action was
+		//taken, and SPDEnv reads it to note INVALID_ACTION. Playback read it as nothing, so a recorded
+		//step the engine refused - a move onto a non-adjacent cell, a slot index that resolves to no
+		//item, an unreachable target - was applied silently and the divergence it caused surfaced
+		//later as a position or health mismatch with no mention of the step that actually failed.
+		//
+		//A refusal is not itself a divergence: the trainer recorded the same refusal, and the recording
+		//stores the position the hero really ended up at, which is where he is too. So this counts
+		//refusals and puts the count in the halt message and the frame report, rather than failing on
+		//them. A recording whose refusals do not match the trainer's is still a real finding, and it
+		//is now a number rather than an absence.
+		boolean acted;
+
 		//the follow-up half of a two-step action
 		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY || mode == EnvMode.MENU){
-			mapper.applySecondary( mode, action, step.slot );
+			acted = mapper.applySecondary( mode, action, step.slot );
 		} else if (mode == EnvMode.TARGETING){
-			mapper.applySecondary( mode, action, step.slot );
+			acted = mapper.applySecondary( mode, action, step.slot );
 		} else {
-			mapper.apply( action, step.slot );
+			acted = mapper.apply( action, step.slot );
+		}
+
+		if (!acted){
+			refusedSteps++;
+			if (worldSnapshot != null){
+				worldSnapshot.sample( "step", playback.cursor() )
+						.accepted( false );
+			}
 		}
 
 		//Advance only after settle() has compared the landing cell. advance() clears the playback's
@@ -827,6 +1001,7 @@ awaitingSettle = true;
 			haltReason = reason;
 			System.err.println( "[replay] halted: " + reason );
 			System.err.println( "[replay] " + frameReport() );
+			System.err.println( "[replay] " + schedulerReport() );
 		flushRngTrace();
 		flushWorldSnapshot();
 		flushDrawSites( ".all" );

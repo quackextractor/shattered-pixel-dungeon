@@ -67,6 +67,20 @@ public class PRandom {
 		return generator.nextBoolean();
 	}
 
+	/**
+	 * A random element of a collection, or null when it is empty.
+	 *
+	 * <p>Mirrors {@code Random.element} so that a caller choosing presentation can be moved across
+	 * without having to reimplement the indexing. {@code AttackIndicator} picks the mob its overlay
+	 * highlights, which is why it is here rather than on the gameplay stream: the highlight is a UI
+	 * decision, and spending a gameplay value on it shifted every later roll in the rendered viewer.
+	 */
+	@SuppressWarnings("unchecked")
+	public static synchronized < T > T element( java.util.Collection<? extends T > collection ){
+		int size = collection.size();
+		return size > 0 ? (T) collection.toArray()[ Int( size ) ] : null;
+	}
+
 	public static synchronized < T > void shuffle( List< T > list ){
 		Collections.shuffle( list, generator );
 	}

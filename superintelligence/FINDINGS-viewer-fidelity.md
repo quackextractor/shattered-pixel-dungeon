@@ -1,16 +1,96 @@
 # Findings: viewer fidelity investigation, measured state
 
-Written after `69fcf8582`. Records what is **established**, what is **refuted**, and what is **open**,
-with the measurement each claim rests on. Written after four hypotheses were proposed and three were
-refuted by running them, so the refutations are kept rather than tidied away.
+Written after `020751c2a`, revised after the divergence was found and fixed. Records what is
+**established**, what is **refuted**, and what is **open**, with the measurement each claim rests on.
+Six hypotheses were proposed and five were refuted by running them, so the refutations are kept rather
+than tidied away.
 
 Companion to `PLAN-viewer-fidelity.md`, which holds the plan. This file holds the evidence.
 
 ---
 
-## Established
+## Resolved
 
-### E-1. Headless and viewer agree bit-for-bit for 16 steps, then diverge
+### E-8. The corpus was verified clean in the rendered viewer
+
+**Cause found, fixed, and measured across the whole corpus.** `gradle :desktop:viewcheck` reports:
+
+```
+[OK]  rendered playback: 17 recordings played clean in the real viewer (1 at a time, 201.3s)
+```
+
+Two consecutive full runs, and every recording replayed three times individually, give the same verdict
+all 17 times each. Before the work it was 14 of 17 diverging, with two of those reporting a
+*different* field value on different runs.
+
+The cause was not the scheduler. See E-9.
+
+### E-9. Four presentation draws were on the gameplay RNG stream
+
+Found by comparing the two sides' base-generator streams value by value, not by counting them.
+
+`Random.reseedBase` seeds the base generator from the run seed, so its output is computable: generate
+the first few hundred values from `new java.util.Random( scrambleSeed( Dungeon.seed ) )` and look up
+where each observed draw falls. Measured on `warrior-long`, seed 2547414048295, scrambled
+2466687093574357806:
+
+```
+headless first gameplay draw = generator value #5
+viewer   first gameplay draw = generator value #17
+```
+
+Both report `generationBaseDraws = 0`. So both reached the first recorded step with the base generator
+freshly seeded and, on the trace's own account, never drawn — while the two were in fact four and
+sixteen values along. The four sites, all presentation, all spending the gameplay stream:
+
+| site | viewer-only draws | what it decides |
+| --- | --- | --- |
+| `CharSprite.link:156` | 12 (base) | the random facing a sprite is given when it is linked |
+| `AttackIndicator.checkEnemies:130` | 1 per step (base) | which mob the attack overlay highlights |
+| `Wand.staffFx:453` | per cast (base) | which way a cosmetic particle flies |
+| `MagesStaff.StaffParticle.update:558` | per frame (base) | cosmetic size jitter on a particle |
+| `DungeonTileSheet.setupVariance:485` | 962 (pushed) | alternate tile visuals; inside `pushGenerator`/`popGenerator`, so inert |
+
+All four base ones are now `PRandom`, which is the stream `PRandom` was created for and which every
+other presentation draw in the game already uses. `DungeonTileSheet` was left alone: it draws inside a
+pushed generator that is discarded, so it cannot affect an outcome and moving it would be churn.
+
+`CharSprite.link` is the one that mattered most, and it explains the whole count. `HeadlessSprite`
+overrides `link()` and so never reaches that line, which is exactly why the trainer never made the draw
+and the viewer always did: 12 base values, once per actor the viewer attaches a real sprite to.
+
+### E-10. The trace could not see the draws that caused the fault
+
+`Random.Int(int, boolean)` and `Random.shuffle(List)` both advanced the generator and never called
+`RandomTrace.record`. Only `Float()` and `Long()` were counted.
+
+This is why the investigation went the way it did. `RngTrace` reported identical `baseDraws` at every
+step of every recording, and `PLAN-replay-parity.md` §1.4 concluded from that — correctly, given the
+instrument — that "the RNG stream is not offset". Every hypothesis after that was about ordering,
+because a counter that could not see the offset said there was no offset. Restoring the two paths
+makes the counts agree *and* the fingerprints agree, which is a different and much stronger statement.
+
+`observecheck` now asserts the invariant directly: all eighteen public draw paths must move the counter,
+and `shuffle` must too. Mutation-tested — removing the `record` call from `Int` fails two of its six
+checks and names `Int(10), Int(10, false), Int(1, 2), IntRange(1, 2), element(list)`.
+
+### E-11. The world diff was not comparing the hero field by field
+
+`WorldSnapshot`'s hero row joins its fields with **spaces** (`pos=684 hp=20/20 turn=11.0`) while every
+other row joins with tabs. `WorldDiff.fields()` split on tab only, so every hero record parsed as a
+single key: a comparison of the hero — the record that carries position, health and engine time, and
+the one every divergence is decided on — compared the whole row and reported the failure as a difference
+in whichever field came first, always `pos`.
+
+Measured, and it changed the answer. On `warrior-long` the two sides differ at step 13 in exactly one
+hero field, `exp`, and the tool reported `hero field pos` for a position that was identical in both.
+Splitting on whitespace as well names `exp`, and turns the inventory blob into per-item keys.
+
+---
+
+## Established, and still true
+
+### E-1. Headless and viewer agreed for 12 steps, then diverged
 
 `warrior-mid`, produced by:
 
@@ -19,225 +99,189 @@ gradle :superintelligence:worldtrace -PworldArgs="<replay> <out>" --no-cells
 viewer  -Dspd.worldTrace=<out>
 ```
 
-compared field by field (`step:N` records only, 19 fields each):
+compared field by field (`step:N` records, 19 fields each):
 
 ```
-parsed: headless steps=154 viewer steps=16 fields/record=19
-step:0 … step:15   same  (19 fields)
-RESULT: all 16 shared steps agree on all 19 fields.
+step:0 … step:11   same  (19 fields)
+step:12            hero field exp
+  expected: 0
+  actual:   1
 ```
 
-Identical `pos`, `hp`, `turn`, `buffs`, `depth`, `gold`, `str`, and full path-qualified inventory including
-nested bag contents.
+Identical `pos`, `hp`, `turn`, `buffs`, `depth`, `gold`, `str`, and full path-qualified inventory
+including nested bag contents. The comparator is self-tested against a tampered copy.
 
-**The comparator is self-tested.** Tampering one field of a copy produces
-`DIFF hp: '7/20' -> '20/20'; turn: '9.0' -> '1.0'`, so the agreement above is a real result and not a
-parse failure reporting nothing compared.
+### E-2. The divergence was created by one action, not accumulated
 
-Two earlier comparison scripts were wrong and reported agreement from a failure to parse — a PowerShell
-one that split on tab where fields are space-separated inside a single token, and a second that
-enumerated a hashtable incorrectly. Both were discarded. Only the Python comparator is validated.
+Nothing accumulates. With E-9 understood the chain is short and total: the renderer's stream starts
+twelve values along, so a damage roll at step 12 comes out differently, and the hero's swing that the
+trainer recorded as leaving the rat at 3/8 kills it instead. Every later difference is downstream of
+that one.
 
-### E-2. The divergence is created by the last action, not accumulated
+### E-3. What the traces said about the rat, once the tool worked
 
-The viewer halts at step 17, so step 16's record is never written. E-1's identical first 16 steps mean
-no RNG drift, no AI drift, no accumulated divergence. Everything that differs happened on the final
-action.
-
-### E-3. A hunting, hero-targeting rat is unpaid when the hero moves
-
-Per-frame roster from the same run, rat `id=9`:
+`Rat@15` adjacent to the hero, hunting, `cd=0.0`, and the hero's recorded `INTERACT` resolved to an
+attack. Per-frame roster on the old build, then a stack trace at the death (`Mob.die`, from
+`Hero.onAttackComplete` ← `CharSprite.onComplete` ← `GameScene.update`):
 
 ```
-frame 68  state=Sleeping  cd=0.0  sees=N -> Y
-frame 70  state=Hunting   cd=1.0  tgt=- -> Hero
-frame 73  state=Hunting   cd=0.0  tgt=Hero      <-- hero moves 528 -> 492 on this frame
-frame 86  state=Hunting   cd=1.0                 <-- hit lands, hp 20/20 -> 19/20
-frame 87  buffs: WarriorShield:0.0 -> 1.0
+headless step 13   Rat@15 hp=3/8   exp=0
+viewer   step 13   Rat@15 dead     exp=1
 ```
 
-`cd` is `cooldown()` = `time - now`, so `0.0` means due this instant. At frame 73 the rat is awake,
-targeting the hero, and **has not been given its turn**. The recorded step applies anyway. The hit lands
-13 frames later.
+The hit landed; the damage roll simply differed.
 
-In the recording the hero's step 17 kills the rat (`mob9 hp 8/8 -> 2/8`); in the viewer the rat hits
-first. The `WarriorShield` buff one frame after the damage confirms a combat hit rather than a trap.
+### E-4. The real game parks its scheduler; `headlessStep` does not
 
-`turn` never advances past 14.0 across the whole window.
+`Actor.process()` blocks in `Thread.wait()` when an actor returns `false`, and `GameScene.java:942`
+only re-pokes when `!Actor.processing()`. `Actor.headlessStep()` has no equivalent — it re-selects on
+every call. **This is real and it is not the cause.** Measured on `warrior-long` before any change: 290
+of 303 scheduler calls re-selected the actor already holding the scheduler. Two things that looks like
+are not it:
 
-### E-4. The real game parks its scheduler; the viewer does not
+- Re-selecting does not restart the animation. `MovieClip.play` returns immediately when the same
+  non-looped animation is already in flight.
+- `Actor.current` cannot tell a finished turn from an unfinished one. It is cleared only by
+  `Actor.next()`, which neither `Hero.act` nor `Buff.act` calls — `Hero.act` calls `ready()` and
+  `Buff.act` diactivates, both returning without it. `Actor.process` hides this by setting
+  `current = null` at the top of every iteration; `headlessStep` does not.
 
-`GameScene.java:942`:
+The park was implemented, measured, and reverted. Parking on any non-hero actor wedged on the first
+buff (`Regeneration@2`, 600 frames, three scheduler calls); parking on a `Char` wedged on
+`Sentry@5 / Piranha@5 / Rat@5 / Snake@5`, every one reporting `cd=1.0` — which is `attackDelay()`, so
+they had spent their turn and `Actor.current` was simply stale.
 
-```java
-if (!Actor.processing() && Dungeon.hero.isAlive() && !Actor.manualScheduling) {
-    if (actorThread == null || !actorThread.isAlive()) { ... }
-    else if (notifyDelay <= 0f) {
-        notifyDelay += 1/60f;
-        synchronized (actorThread) { actorThread.notify(); }
-    }
-}
-```
-
-`Actor.processing()` returns `current != null` (`Actor.java:272-274`). So when a mob attacks,
-`Mob.doAttack` returns `false` without spending (`Mob.java:817-829`), `current` stays set to that mob, and
-`Actor.process()` falls to `if (!doNext)` and parks in `Thread.wait()` at `Actor.java:423` — and the
-render thread **stops poking it**, because the poke is gated on the condition that is now false.
-
-**The scheduler does not spin. The mob's turn is genuinely blocked** until `CharSprite.onComplete` fires
-`Mob.onAttackComplete`, which applies damage and calls `spend(attackDelay())`.
-
-`PLAN-viewer-fidelity.md` §3 previously claimed the scheduler re-picks the mob and spins. That was wrong,
-and wrong in the way that matters: the spin is not what the game does, so it is not what the viewer must
-match. The document's *conclusion* survives — game and trainer produce the same ordering — but for a
-different reason.
-
-### E-5. `FrameDelta` does not pin the animation clock
+### E-5. `FrameDelta` cannot pin the animation clock
 
 Per-frame `clock` record, pin requested at `0.0166666`:
 
 | attempt | measured |
-|---|---|
+| --- | --- |
 | overwrite `Game.elapsed` | `Game.elapsed` read 0.0166, `timeTotal` advanced **0.0070**/frame — clock split 42/58 |
 | write `Game.timeScale` | applies to the *next* frame's delta, unobservable; observed oscillating between 0.001 and 0.14/frame |
 | both | no better |
 
-Structural reason: `Game.elapsed` is **derived**. `Game.update` computes
-`elapsed = timeScale * frameDelta` and folds it into `timeTotal` at `Game.java:283-284`, *before*
-`scene.update()` runs. The frame driver is downstream of the value it would need to influence.
+Structural reason: `Game.elapsed` is **derived**. `Game.update` computes `elapsed = timeScale *
+frameDelta` and folds it into `timeTotal` at `Game.java:283-284`, *before* `scene.update()` runs. The
+frame driver is downstream of the value it would need to influence.
 
-Arithmetic closes: 49 frames x 0.0070 = 0.34 s, the attack animation's real duration. **The animation was
-completing correctly all along** — the pin was dividing it across 49 frames instead of 20.
-
-`-Dspd.fixedDelta` now pins playback pacing only and prints a warning saying so. Animation timing remains
-frame-rate dependent; fixing that needs an engine change at the point the delta is measured, which is a
-separate decision.
+Arithmetic closes: 49 frames x 0.0070 = 0.34 s, the attack animation's real duration. **The animation
+was completing correctly all along.** `-Dspd.fixedDelta` pins playback pacing only and prints a
+warning saying so.
 
 ### E-6. Two real bugs in the viewer's settings, one of them latent
 
-- **`fullscreen`** — `SPDSettings.fullscreen()` defaults to `true` (`SPDSettings.java:67`).
-  `DesktopPlatformSupport.java:85` then calls `setFullscreenMode` from the game's own `create()`, after the
-  launcher's window configuration is complete, so no `-D` flag can stop it. GLFW ignores its visibility
-  hint for fullscreen windows, so hiding cannot either. Verified in both directions: flags keep it windowed,
-  dropping them trips the new `viewcheck` check.
-- **`intro`** — `SPDSettings.intro()` also defaults to `true`, and `Hunger.act()` returns early while set
-  (`Hunger.java:68`), freezing the hunger clock. The trainer has always stated `intro(false)`
-  (`LevelPipeline.java:88`); the viewer inherited `false` from the developer's own settings by luck.
-  Isolated preferences made the default apply and recordings that had been passing started failing.
+- **`fullscreen`** — `SPDSettings.fullscreen()` defaults to `true` (`SPDSettings.java:67`), and
+  `DesktopPlatformSupport` then calls `setFullscreenMode` from the game's own `create()`, after the
+  launcher's window configuration is complete, so no `-D` flag can stop it.
+- **`intro`** — `SPDSettings.intro()` also defaults to `true`, and `Hunger.act()` returns early while
+  set, freezing the hunger clock. The trainer has always stated `intro(false)`; the viewer inherited
+  `false` from the developer's own settings by luck.
 
 Third instance of the same class — a setting only one side states — after quickslot bindings and
 scheduler tie-breaking.
 
 ### E-7. The corpus is deterministic
 
-Full corpus, twice, sequential: **14 of 17, identical recordings and identical steps** both runs.
-Parallelism at 10 children reports the same recordings but shuffles steps, so `VIEWCHECK_JOBS` defaults to
-1 and the gate warns when it is not.
+Full corpus, twice, sequential: identical recordings and identical steps both runs. Parallelism at 10
+children shuffles steps, so `VIEWCHECK_JOBS` defaults to 1 and the gate warns when it is not.
 
 ---
 
 ## Refuted
 
 Kept because a hypothesis that was measured and killed is worth more than one never questioned, and
-because three of these would otherwise be re-proposed.
+because five of these would otherwise be re-proposed.
 
-### R-1. Redundant `Mob.act()` re-selection
+### R-1. Redundant `Mob.act()` re-selection — refuted as a cause, confirmed as real
 
-**Predicted:** while a mob's attack animation plays, `driveToHeroReady` calls `headlessStep()` up to
-`BLOCKED_STEPS = 3` times per frame, so ~147 extra `Mob.act()` calls over a 49-frame stall.
+The 290-of-303 measurement stands, and the earlier claim that it was "not spinning" was **refuted by
+the wrong observable**: `cooldown()` cannot change during a park, so it could not have detected it.
+Re-selection is real and harmless — it costs `Mob.act()` evaluations and no animation restart, and it
+happens identically on the headless side. Recorded here because the original refutation is in the
+change history and would otherwise stand.
 
-**Refuted:** the 49 stall frames show no cooldown churn on the rat. It is not spinning.
+### R-2. Blocking on an in-flight animation — refuted
 
-*(Not separately measured: whether those ~147 calls consume RNG. Still open — see O-3.)*
+**48 consecutive frames** where the viewer applies nothing and waits for the animation. The proposed
+check would have forced behaviour the code already exhibits, so it was dropped rather than implemented.
 
-### R-2. Blocking on an in-flight animation
+### R-3. `Actor.currentActor() != null` as the gate — refuted
 
-**Predicted:** `readyToAct()` lets a step be applied across a pending mob attack.
+At the frame where the hero moves, `Actor.current` is `Hero@1` or a blob, not the rat. See E-4 for the
+stronger version: `Actor.current` is not a turn-ownership signal at all under `headlessStep`.
 
-**Refuted by measurement**, frames 74-121 of `warrior-mid`:
+### R-4. `cooldown() <= 0` as the gate — refuted, and it wedged playback
 
-```
-applied=false  drain=PENDING  ready=false  current=Rat@9  anim=1
-```
-
-**48 consecutive frames** where the viewer applies nothing and waits for the animation. The proposed check
-would have forced behaviour the code already exhibits, so it was dropped rather than implemented.
-
-**Scoped:** this tested steps applied *during an animation*. It does not cover a step applied while an
-unrelated actor holds the turn with no animation running — which E-3 shows is what actually happens.
-
-### R-3. `Actor.currentActor() != null` as the gate
-
-**Predicted:** mirroring `GameScene.java:942`'s `!Actor.processing()`.
-
-**Refuted:** at frame 73, when the hero moves, `Actor.current` is `Hero@1` or a blob — **not the rat**.
-The rat had not been given a turn at all, so `current` cannot see it.
-
-### R-4. `cooldown() <= 0` as the gate
-
-**Predicted:** a due, unpaid mob is the defect.
-
-**Refuted, and it wedged playback.** Sleeping mobs legitimately sit at `cd=0.0` until they wake, so "due"
-has no discriminating power:
+Sleeping mobs legitimately sit at `cd=0.0` until they wake, so "due" has no discriminating power:
 
 ```
 [replay] halted: stalled - a recorded step was withheld for 600 frames,
           still waiting on Sentry@5 owing a turn at cd=0.0
-[replay] 607 frames, 0 applied a step, 607 did not
-[viewcheck] ok    wm.replay  (0/154 steps)
 ```
 
-**Reverted before this file was written**; the working tree is clean of it. Two lessons recorded: the gate
-needed a bound (it had one, and it reported rather than hung), and `cd=0.0` distinguishes nothing because
-sleeping and about-to-strike both read the same.
+Reverted before this file was written; the working tree is clean of it.
+
+### R-5. A step applied while another actor held the scheduler — refuted
+
+Counted at the injection point, where the question is actually asked. **Zero, on every recording
+measured** (`warrior-mid`, `mage-mid`, `warrior-long`, `cleric-mid`). This was the plan's leading
+hypothesis and it is simply not what happens.
+
+### R-6. The RNG stream being offset — right answer, wrong reason, held too long
+
+`PLAN-replay-parity.md` §1.4 declared this dead from matching draw counts. The counts matched because
+`Random.Int` was not counted (E-10). The stream *was* offset, by 4 and 16 values, from the very first
+gameplay draw.
 
 ---
 
 ## Open
 
-### O-1. No fix yet, and three wrong gates is the reason to be careful
+### O-1. `viewcheck` is still outside `gates`
 
-Four candidates proposed, three refuted. The remaining evidence (E-3) points at turn accounting — the drain
-declares hero-ready while a mob that owes a turn has not taken it — but **no gate has been shown to fix
-it**, and the natural narrowing ("hunting and targeting the hero") is a guess from one recording.
+It needs a display, so it is excluded and the fault class it covers returns silently. Recorded rather
+than solved: 203 seconds sequential, and it forks a JVM per recording.
 
-### O-2. Corpus-wide test before another single-recording guess
-
-Three wrong gates in a row came from picking a predicate and testing it on `warrior-mid`. The next move is
-instrumentation that answers across all 17: record, per frame, whether the drain returned ready while a
-hunting mob targeting the hero was unpaid. Let the corpus say which recordings that bites on before any
-behaviour changes.
-
-### O-3. Whether the redundant acts draw RNG
-
-R-1 refuted the *spinning* but not the RNG question. Reading finds no draw in `Char.act()`, `chooseEnemy()`
-or `processSwarmIntel()`, but `Mob.chooseEnemy` is long and "no draw found by reading" is not "no draw".
-
-### O-4. Three anomalies with different signatures
-
-- **`mage-alt`, `mage-mid`** — `hp is 20, recording says 18`. The viewer has **more** health than the
-  recording, the opposite sign of every other failure. Something is failing to *apply* a hit.
-- **`duelist-short`** — fails on position (`hero at 169, recording says 170`), not health.
-
-Neither is explained. E-4 may bear on the first.
-
-### O-5. The animation clock cannot be pinned from the viewer
+### O-2. The animation clock cannot be pinned from the viewer
 
 See E-5. Closing it needs an engine change at `Game.java:283-284`. It would make animation timing
-deterministic for diagnosis, and on its own would **not** fix the divergence — it changes *when* an
+deterministic for diagnosis and on its own would not have fixed any of this — it changes *when* an
 animation completes, not *what happens when it does*.
+
+### O-3. Four engine changes are uncommitted
+
+The four presentation draws in E-9 are game files. They are engine changes and `instructions.md` §12.3
+keeps them uncommitted unless proposed. They are the fix, and without them `viewcheck` is 14 of 17 red
+on a committed tree exactly as before.
+
+### O-4. A new public draw path would not be caught
+
+`observecheck` enumerates the eighteen draw paths that exist. A nineteenth added later does not
+appear in the list. The invariant is about the paths it knows about, not about future ones.
+
+### O-5. The remaining divergence shapes were never separately explained
+
+`duelist-short` failing on position by one cell, and `mage-mid` reporting two points of health below
+the recording, were recorded as distinct signatures. Both were present before the fix and both are
+gone now, so they were downstream of the same cause — but that was not shown at the time, and the
+shape of a fault class is worth more than its tally.
 
 ---
 
 ## Notes on method
 
-**Measurements are reliable; predictions from reading were not.** Three of four mechanisms proposed from
-source were wrong on running. The reads that survived were the ones backed by a measurement, and every one
-that changed a conclusion came from running something.
+**Measurements are reliable; predictions from reading were not.** Six mechanisms proposed from source;
+one survived contact with the run. The reads that survived were the ones backed by a measurement, and
+every conclusion that changed came from running something.
 
-**Two comparison scripts reported agreement while failing to parse.** A tool that says "all fields agree"
-when it compared nothing is worse than no tool. The Python comparator prints its field count and aborts
-below 5, and is self-tested against a tampered copy.
+**The instrument was the thing that was wrong, twice.** `RngTrace` could not see `Random.Int`, so it
+reported two streams as identical while they were sixteen values apart. `WorldDiff` split on tab only,
+so it never named the hero field that differed. A tool that says "they agree" when it compared less
+than it claims to is worse than no tool, and both of these said exactly that for as long as anyone
+relied on them.
 
-**The wedge guard earned its place.** R-4's gate hung for 600 frames and reported exactly what it was
-waiting on, instead of either hanging forever or silently applying steps it should not have.
+**Recovering values from a fingerprint turned a symptom into a position.** `RngTrace` folds each draw
+with `fp = (fp ^ bits) * PRIME`, so the values behind two traces are computable, and the base
+generator's output is computable from its seed. Comparing those located the fault in two runs. Every
+previous attempt on this had to infer the offset from a count.

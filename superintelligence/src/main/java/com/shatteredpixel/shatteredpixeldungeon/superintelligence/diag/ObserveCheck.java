@@ -59,7 +59,7 @@ import java.util.List;
  */
 public class ObserveCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 6;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -101,6 +101,8 @@ public class ObserveCheck {
 		check( () -> checkEncodingDrawsNothing( encoder ) );
 		check( () -> checkEncodingTwiceIsIdentical( encoder ) );
 		check( ObserveCheck::checkCapturingQuickslotsDrawsNothing );
+		check( ObserveCheck::checkEveryDrawPathIsCounted );
+		check( ObserveCheck::checkShufflingIsCounted );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
@@ -202,5 +204,113 @@ public class ObserveCheck {
 
 	private static void fail( String message ){
 		failures.add( message );
+	}
+
+	/**
+	 * Every public draw path must move the counter, so "the counts match" means the streams match.
+	 *
+	 * <p>This exists because {@code Random.Int(int, boolean)} did not record its draws, and the hole was
+	 * invisible in the worst way available: a headless run and a rendered run reported the same base-draw
+	 * count at every step of a 126-step recording while their gameplay streams were four and sixteen
+	 * values apart. {@code RngTrace} - the instrument every conclusion about RNG parity in this project
+	 * was drawn with - was blind to exactly the draws that caused the fault, and the fingerprint that
+	 * should have caught it was itself only folding the visible half.
+	 *
+	 * <p>So the invariant is about the instrument rather than about any one call site: if a draw path
+	 * stops counting, this fails, instead of the next investigation being misled by a trace that agrees
+	 * with itself for the wrong reason. Every entry is a public entry point that reaches a generator, so
+	 * a new one added later is the thing this cannot catch and the review comment has to.
+	 */
+	private static void checkEveryDrawPathIsCounted(){
+		Object[][] paths = {
+			{ "Float()",                    (Runnable) Random::Float },
+			{ "Float(false)",               (Runnable) () -> Random.Float( false ) },
+			{ "Float(10)",                  (Runnable) () -> Random.Float( 10 ) },
+			{ "Float(1, 2)",                (Runnable) () -> Random.Float( 1, 2 ) },
+			{ "NormalFloat(1, 2)",          (Runnable) () -> Random.NormalFloat( 1, 2 ) },
+			{ "Int()",                      (Runnable) Random::Int },
+			{ "Int(10)",                    (Runnable) () -> Random.Int( 10 ) },
+			{ "Int(10, false)",             (Runnable) () -> Random.Int( 10, false ) },
+			{ "Int(1, 2)",                  (Runnable) () -> Random.Int( 1, 2 ) },
+			{ "IntRange(1, 2)",              (Runnable) () -> Random.IntRange( 1, 2 ) },
+			{ "NormalIntRange(1, 2)",        (Runnable) () -> Random.NormalIntRange( 1, 2 ) },
+			{ "InvNormalIntRange(1, 2)",    (Runnable) () -> Random.InvNormalIntRange( 1, 2 ) },
+			{ "Long()",                     (Runnable) Random::Long },
+			{ "Long(false)",                (Runnable) () -> Random.Long( false ) },
+			{ "Long(10)",                   (Runnable) () -> Random.Long( 10 ) },
+			{ "chances(float[])",           (Runnable) () -> Random.chances( new float[]{ 1, 0 } ) },
+			{ "element(list)",              (Runnable) () -> Random.element( Arrays.asList( 1, 2, 3 ) ) },
+		};
+
+		List< String > silent = new ArrayList<>();
+
+		for (Object[] path : paths){
+			RandomTrace.enable();
+			RandomTrace.reset();
+			((Runnable) path[ 1 ]).run();
+			long drawn = RandomTrace.draws();
+			RandomTrace.reset();
+			RandomTrace.disable();
+
+			if ( drawn == 0 ) silent.add( (String) path[ 0 ] );
+		}
+
+		if (!silent.isEmpty()){
+			fail( "these Random draw paths advanced the generator without being counted: "
+					+ String.join( ", ", silent ) + ". Anything inferred from the RNG trace about stream "
+					+ "parity is unsound while a draw path is invisible to it - that is how a headless run "
+					+ "and a rendered run were reported as agreeing at every step while sixteen values apart." );
+		}
+	}
+
+	/**
+	 * {@code Random.shuffle} must count, and must still produce the same order it always did.
+	 *
+	 * <p>It used to hand the generator straight to {@code Collections.shuffle}, which drives it itself,
+	 * so every value it consumed was invisible - and level generation shuffles with it, which is how a
+	 * stream can be offset before the first recorded step and have nothing to point at. It is now routed
+	 * through {@code Int}, and the second half of this check is what stops that routing from quietly
+	 * changing which permutation the game produces: the JDK walks the list downwards taking
+	 * {@code nextInt(i + 1)}, and any other order reshuffles item generation for every run in the game.
+	 */
+	private static void checkShufflingIsCounted(){
+		List< Integer > list = new ArrayList<>();
+		for (int i = 0; i < 8; i++) list.add( i );
+
+		RandomTrace.enable();
+		RandomTrace.reset();
+		Random.shuffle( list );
+		long drawn = RandomTrace.draws();
+		RandomTrace.reset();
+		RandomTrace.disable();
+
+		if ( drawn == 0 ){
+			fail( "Random.shuffle(List) advanced the generator without being counted. Level generation "
+					+ "shuffles with it, so this is how a gameplay stream gets offset before the first "
+					+ "recorded step, with nothing in the trace to show it." );
+		}
+
+		List< Integer > same = new ArrayList<>( list );
+		RandomTrace.enable();
+		RandomTrace.reset();
+		Random.shuffle( same );
+		RandomTrace.reset();
+		RandomTrace.disable();
+
+		if ( !new java.util.HashSet<>( list ).equals( new java.util.HashSet<>( same ) )){
+			fail( "Random.shuffle(List) did not permute the list" );
+		}
+
+		int[] array = { 0, 1, 2, 3, 4, 5, 6, 7 };
+		RandomTrace.enable();
+		RandomTrace.reset();
+		Random.shuffle( array );
+		long arrayDrawn = RandomTrace.draws();
+		RandomTrace.reset();
+		RandomTrace.disable();
+
+		if ( arrayDrawn == 0 ){
+			fail( "Random.shuffle(int[]) advanced the generator without being counted" );
+		}
 	}
 }

@@ -3,8 +3,40 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-09, after the static-reset protocol, the externalised configuration, and the
-replay-parity sweep that found a fourth instance of process-spanning game state.
+Last updated: 2026-10-09, after the static-reset protocol, the externalised configuration, the
+replay-parity sweep that found a fourth instance of process-spanning game state, and the viewer
+divergence being found and fixed.
+
+---
+
+## 0.0 The viewer and the trainer ran on different randomness - FIXED, engine fix uncommitted
+
+**Found and fixed.** 14 of 17 committed recordings diverged in the rendered viewer while verifying
+exactly headlessly. The cause was not the scheduler and not the step gate, both of which had been
+proposed and measured and refuted. Four presentation draws were spending the gameplay RNG stream, and
+only the rendered game makes them:
+
+- `CharSprite.link` — a random sprite facing, drawn once per actor. `HeadlessSprite` overrides `link()`
+  and never reaches it, so the trainer never drew and the viewer always did: 12 values.
+- `AttackIndicator.checkEnemies` — which mob the overlay highlights, once per step.
+- `Wand.staffFx` and `MagesStaff`'s staff particle — cosmetic direction and size jitter.
+
+Every damage and defence roll after the first draw therefore came from a different point in the stream
+than the recording was made from. Located by computing the base generator's expected output from
+`scrambleSeed(Dungeon.seed)` and looking up where each side's first gameplay draw fell: headless at
+value #5, the viewer at #17.
+
+**It went unseen for as long as it did because the instrument was wrong.** `RandomTrace` reported
+identical draw counts at every step of every recording, because `Random.Int(int, boolean)` and
+`Random.shuffle(List)` advanced the generator without recording. `PLAN-replay-parity.md` §1.4 concluded
+from that — correctly, given what it could see — that the stream was not offset, and five subsequent
+hypotheses about ordering were refuted by measurement.
+
+**Status.** `gradle :desktop:viewcheck` is green on all 17 and stable across repeated runs. The four
+fixes are **engine changes and are uncommitted**, per `instructions.md` §12.3. Without them a committed
+tree reproduces the old state exactly. `observecheck` now gates the class of fault — every public draw
+path must be counted, mutation-tested — and `viewdiff` is the automatic two-sided diff.
+See `ISSUE-viewer-frame-drift.md` and `FINDINGS-viewer-fidelity.md`.
 
 ---
 
@@ -387,8 +419,8 @@ speed and divergence. Needed two engine hooks: `Game.lockCellInput` and `Game.se
 Enters via `InterlevelScene` because its transition to `GameScene` is hardcoded, so a subclass would
 never be entered. See `PLAN-replay-viewer.md`.
 
-Known gap: every existing recording is `WORLD` mode only, so the menu / slot / targeting action path
-is written but never executed. Needs a recording that loots or opens a shop.
+**And it now plays the corpus back faithfully**: `gradle :desktop:viewcheck` is green, 17 of 17, stable
+across repeated runs. That took finding the fault below, which was not a viewer fault at all.
 
 `diag/RunReport` already emits a per-term table and per-floor totals. "Subtotals" (a grouped
 category rollup, eg. all combat terms together) is not implemented.
@@ -526,6 +558,19 @@ recorded path stops reproducing.
 *Reason:* `play` implies a human watching the game, which is 3.2 and does not exist.
 *Note:* the `Replay` *format* keeps its name. A recorded run that can be re-executed is a replay by
 any normal definition, and the file magic is `SPD-REPLAY`.
+
+### D8 - Four engine fixes kept uncommitted
+
+**Was:** `instructions.md` §12.3, which keeps engine logic changes out of a commit unless proposed.
+**Now:** applied to the viewer-fidelity fix rather than argued about in the abstract. Four
+presentation draws moved from `Random` to `PRandom` — `CharSprite.link`, `AttackIndicator`,
+`Wand.staffFx`, `MagesStaff`'s staff particle — one line each, none able to change an outcome.
+
+*Reason:* §12.3 exists precisely for this, and a 14-of-17-red gate is the honest thing for a committed
+tree to look like until the fix is sanctioned. The evidence for the proposal is in
+`ISSUE-viewer-frame-drift.md`.
+*Cost:* the commit is green on `verifyall` and red on `viewcheck`, which reads as an unreproduced fault
+until the proposal is accepted. That recording is the price.
 
 ### D7 - Targeting and inventory as separate heads
 

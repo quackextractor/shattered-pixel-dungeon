@@ -104,6 +104,7 @@ public class WorldSnapshot {
 	 *              early compares honestly against one that did not.
 	 */
 	public WorldSnapshot sample( String kind, int label ){
+		if (kind.equals( "step" )) lastStepLabel = label;
 		String prefix = kind + "\t" + label + "\t";
 		lines.add( prefix + hero() );
 		lines.add( prefix + roster() );
@@ -149,6 +150,49 @@ public class WorldSnapshot {
 
 	/** Separate counter so a gate line cannot be mistaken for a frame record at the same label. */
 	private int gateLabel;
+
+	/**
+	 * Records whether the engine accepted the recorded step this record follows.
+	 *
+	 * <p>{@code ActionMapper.apply} and {@code applySecondary} both answer that question and the viewer
+	 * discarded the answer, so a step the engine refused looked exactly like a step that was applied and
+	 * then lost somewhere else. The trainer reads the same boolean as {@code INVALID_ACTION}, which makes
+	 * this the one field of a step record that has an oracle on both sides rather than only on one.
+	 *
+	 * @param accepted whether the environment took the action
+	 */
+	public WorldSnapshot accepted( boolean accepted ){
+		lines.add( "step\t" + lastStepLabel + "\taccepted\taccepted=" + accepted );
+		return this;
+	}
+
+	/** Label of the most recent {@code step} sample, so {@link #accepted} attaches to the right one. */
+	private int lastStepLabel = -1;
+
+	/**
+	 * Records what this frame did to the turn order.
+	 *
+	 * <p>The gap a roster record cannot close on its own. A roster says what a mob's cooldown is now;
+	 * it does not say whether it changed <i>on this frame</i>, or which actor caused it. A frame that
+	 * applied no recorded step is precisely where a turn the recording never authorised appears, so the
+	 * "did the world move while the player waited" question needs both facts on one record.
+	 *
+	 * @param previousNow engine time at the previous frame boundary, or NaN for the first frame
+	 * @param now         engine time now
+	 * @param taker       who held the scheduler at this boundary, or "-"
+	 * @param spent       frames so far on which engine time advanced
+	 */
+	public WorldSnapshot turns( float previousNow, float now, String taker, int spent ){
+		String delta = Float.isNaN( previousNow ) ? "-" : String.valueOf( now - previousNow );
+		lines.add( "frame\t" + turnsLabel++ + "\tturns\tnow=" + now
+				+ "\tdelta=" + delta
+				+ "\ttaker=" + taker
+				+ "\tspent=" + spent );
+		return this;
+	}
+
+	/** Separate counter, so a turns line cannot be mistaken for the frame record at the same index. */
+	private int turnsLabel;
 
 	/**
 	 * Records what the animation clock actually saw on a frame.
