@@ -4,14 +4,14 @@ seed=huntress-short
 hero=HUNTRESS
 challenges=0
 generation=0
-score=5.47000004327856
+score=11.650000104913488
 depth=1
-turns=15
-turn_limit=15
+turns=25
+turn_limit=25
 max_slots=32
 allow_equipping=true
 termination=TURN_LIMIT
-steps=15
+steps=25
 USE 0 WORLD 829 -0.0020000000949949026  20 0.0 Food:1,SpiritBow:1,VelvetPouch:1,Waterskin:1
 USE 2 SLOT 829 0.0 Waterskin:1,SpiritBow:0 20 0.0 Food:1,SpiritBow:1,VelvetPouch:1,Waterskin:1
 USE 0 TARGETING 829 -0.0020000000949949026  20 1.0 Food:1,VelvetPouch:1,Waterskin:1
@@ -27,3 +27,13 @@ MOVE_E 0 WORLD 830 -0.0020000000949949026  20 13.0 SpiritBow:1,VelvetPouch:1,Wat
 MOVE_NE 0 WORLD 797 0.5980000495910645  20 14.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
 MOVE_E 0 WORLD 798 -0.0020000000949949026  20 15.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
 MOVE_E 0 WORLD 799 0.24799999594688416  20 16.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
+MOVE_NE 0 WORLD 766 0.14800000190734863  20 17.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
+MOVE_NE 0 WORLD 733 0.1979999989271164  20 18.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
+MOVE_E 0 WORLD 734 -0.0020000000949949026  20 19.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
+MOVE_E 0 WORLD 735 2.247999906539917  20 20.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
+MOVE_NE 0 WORLD 702 1.8980000019073486  20 21.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
+MOVE_N 0 WORLD 668 0.1979999989271164  20 22.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
+MOVE_NE 0 WORLD 635 -0.0020000000949949026  20 23.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
+MOVE_NE 0 WORLD 602 -0.0020000000949949026  20 24.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
+MOVE_N 0 WORLD 568 0.1979999989271164  20 25.0 SpiritBow:1,VelvetPouch:1,Waterskin:1
+MOVE_NE 0 WORLD 535 1.2980000972747803  20 26.0 SpiritBow:1,VelvetPouch:1,Waterskin:1

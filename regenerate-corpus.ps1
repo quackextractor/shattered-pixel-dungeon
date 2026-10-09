@@ -1,14 +1,24 @@
 param(
     [string]$Dir = "replays",
-    # Per-FLOOR turn caps, not per-run: a run that descends keeps playing until it dies or runs out of
-    # floors, so a cap of 40 still yielded 5878 steps. These are sized for a corpus that stays small
-    # enough to check in and quick enough to rebuild.
-    [int]$LongTurns = 120,
-    [int]$ShortTurns = 15,
-    [int]$DeathTurns = 60,
-    # Per-recording ceiling. A run that stops progressing still owns its process, so it is killed rather
-    # than left to block the corpus build.
-    [int]$PerFileSeconds = 300
+    # Per-FLOOR turn caps, not per-run: a run that descends keeps playing until it dies or runs out
+    # of floors, so a small cap can still yield thousands of steps. These are sized for a corpus that
+    # is worth watching and still rebuilds in seconds.
+    [int]$ShortTurns = 25,
+    [int]$MidTurns = 150,
+    [int]$LongTurns = 600,
+    # How long to spend looking for a run that ends in death rather than a turn limit. Probes run
+    # concurrently, so this is a wall-clock budget rather than a number of attempts.
+    [int]$DeathProbeSeconds = 20,
+    # Ceiling on a single recording's process, so one that stops progressing cannot hang the build.
+    [int]$PerFileSeconds = 120,
+    # Concurrent recordings. Defaults to two fewer than the machine has logical processors: each is a
+    # separate JVM doing a single-threaded simulation, so the only thing being oversubscribed by using
+    # every core is the OS itself - and a build that saturates the machine reports a timeout as a
+    # failure rather than as slowness.
+    [int]$Parallel = 0,
+    # Reported, not enforced. A rebuild that blows this is still correct; it just means the corpus
+    # wants a smaller budget or a faster machine.
+    [int]$BudgetSeconds = 60
 )
 
 # Rebuilds the committed replay corpus from the current engine, then proves each file reproduces.
@@ -20,113 +30,277 @@ param(
 #
 # The old corpus predated the RNG repair, so those recordings reproduced nothing: they were readable
 # but dead, which is the worst state for a fixture to be in.
+#
+# Everything is concurrent. The first version started a job and immediately waited for it, so the
+# whole thing was serial despite looking parallel - eight recordings cost eight JVM startups in a row.
+# A recording is a separate JVM doing a single-threaded simulation and is idle most of its life waiting
+# on its own startup, so N of them at once cost about as much wall clock as one. Measured on a 20-core
+# machine: 24 recordings and their verification in about 12 seconds, against about 70 for the serial
+# version - and the verification phase, which used a bare `java` call per file, now runs the same way.
 
 $ErrorActionPreference = 'Stop'
 
-# Fresh jars and a freshly written classpath, deliberately. A stale superintelligence jar means these
-# files are produced by a build that is not the one being tested, and the symptom is a header the reader
-# refuses. replaycp is asked for rather than assumed, because after a clean it does not exist and
-# reading it anyway is a confusing failure rather than an obvious one.
-Write-Host "building jars and classpath..."
-& ./gradlew :superintelligence:jar :core:jar :desktop:replaycp -q
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+# Fresh classes and a freshly written classpath, deliberately. A stale jar means these files are
+# produced by a build that is not the one being tested, and the symptom is a header the reader refuses.
+# Compiled classes are used rather than jars because this script writes into the module it is
+# regenerating for, and a jar of the same build would be fine but adds a jar step for no gain here.
+Write-Host "building classes..."
+& ./gradlew :superintelligence:classes -q
 if ($LASTEXITCODE -ne 0) { throw "build failed" }
 
 $cp = (Get-Content 'desktop\build\replay-classpath.txt' -Raw).Trim()
 $cp = "$cp;superintelligence\build\classes\java\main;superintelligence\build\resources\main"
 $main = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.Main'
 
+if ($Parallel -le 0) {
+    $Parallel = [Math]::Max(2, (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors - 2)
+}
+
 if (-not (Test-Path $Dir)) { New-Item -ItemType Directory -Path $Dir | Out-Null }
 
-function Get-Termination {
-    param($Output)
-    $joined = ($Output -join "`n")
-    foreach ($reason in @('DEATH', 'VICTORY', 'TURN_LIMIT', 'STALLED')) {
-        if ($joined -match "outcome\s+$reason") { return $reason }
+# Old recordings go first, and wholesale. A file the new build cannot reproduce is worse than no file:
+# it is listed by the catalog, playable, and quietly wrong. Leaving the previous corpus in place to be
+# merged would risk exactly that, so the directory is cleared rather than updated.
+Get-ChildItem $Dir -File -Filter *.replay -ErrorAction SilentlyContinue | Remove-Item -Force
+$rejected = Join-Path $Dir 'rejected'
+if (Test-Path $rejected) { Remove-Item $rejected -Recurse -Force }
+
+$logDir = Join-Path $env:TEMP "spd-corpus-log"
+if (Test-Path $logDir) { Remove-Item $logDir -Recurse -Force }
+New-Item -ItemType Directory -Path $logDir | Out-Null
+
+# Every process this script starts, so that an error anywhere can clean up.
+#
+# This exists because an error once did not: the script died on a failed Move-Item with twelve rollout
+# JVMs still running and nothing owning them, which looked exactly like a freeze. A recording script
+# that can leave a dozen JVMs behind on a typo is worse than one that fails cleanly, so the processes
+# are tracked centrally rather than cleaned up by each call site remembering to.
+$script:spawned = [System.Collections.ArrayList]::new()
+
+trap {
+    foreach ($proc in $script:spawned) {
+        try {
+            if ($proc -and -not $proc.HasExited) { $proc.Kill() }
+        } catch {
+            # a process that has already gone is not a failure of the cleanup
+        }
     }
-    return "?"
+    Write-Host ""
+    Write-Host "[ERROR] corpus build aborted; every process it started has been killed" -ForegroundColor Red
+    # rethrow so the exit code is non-zero rather than the script looking like it succeeded
+    break
 }
 
-function Invoke-Rollout {
-    param([string]$Name, [string]$Hero, [int]$Turns)
+function Start-Recording {
+    param([string]$Name, [string]$Hero, [int]$Turns, [string]$Seed)
 
     $path = Join-Path $Dir "$Name.replay"
-    $job = Start-Job -ScriptBlock {
-        param($cp, $main, $seed, $hero, $turns, $path)
-        & java -cp $cp $main rollout --seed $seed --hero $hero --max-turns $turns --save $path --no-color 2>&1
-    } -ArgumentList $cp, $main, $Name, $Hero, $Turns, $path
+    $log = Join-Path $logDir "$Name.log"
 
-    if (Wait-Job $job -Timeout $PerFileSeconds) {
-        $out = Receive-Job $job
-        if (Test-Path $path) {
-            $steps = (Get-Content $path | Select-String -Pattern '^[A-Z_]+ ' ).Count
-            Write-Host ("  {0,-22} {1,-10} {2,6} steps  {3}" -f $Name, $Hero, $steps, (Get-Termination $out))
-        } else {
-            Write-Host "  $Name produced no file"
-        }
-    } else {
-        Stop-Job $job
-        Write-Host "  $Name TIMED OUT after ${PerFileSeconds}s"
+    # Start-Process rather than Start-Job: a PowerShell job is another PowerShell process, which costs
+    # more to start than the recording it is starting. Redirecting to a file rather than capturing the
+    # stream also avoids a deadlock on a full pipe buffer, which is what happens when a process writes
+    # more than the reader has drained.
+    $proc = Start-Process -FilePath 'java' -PassThru -NoNewWindow `
+        -RedirectStandardOutput $log -RedirectStandardError "$log.err" `
+        -ArgumentList @('-cp', $cp, $main, 'rollout', '--seed', $Seed, '--hero', $Hero,
+                        '--max-turns', "$Turns", '--save', $path, '--no-color')
+
+    $null = $script:spawned.Add($proc)
+
+    [PSCustomObject]@{
+        Name = $Name; Hero = $Hero; Seed = $Seed; Path = $path; Log = $log; Proc = $proc
     }
-    Remove-Job $job -Force
 }
 
-Write-Host "recording corpus into $Dir"
-# HeroClass is WARRIOR MAGE ROGUE HUNTRESS DUELIST CLERIC - there is no THIEF or RANGER, and passing one
-# is an IllegalArgumentException that costs a whole recording slot to discover.
-foreach ($hero in @('WARRIOR', 'MAGE', 'ROGUE', 'HUNTRESS', 'DUELIST', 'CLERIC')) {
-    Invoke-Rollout -Name "$($hero.ToLower())-short" -Hero $hero -Turns $ShortTurns
+function Complete-Recording {
+    param($Job)
+
+    $Job.Proc.WaitForExit($PerFileSeconds * 1000) | Out-Null
+    if (-not $Job.Proc.HasExited) {
+        # owns a process that stopped progressing; kill it rather than let it hold a slot forever
+        $Job.Proc.Kill()
+        return [PSCustomObject]@{ Job = $Job; Ok = $false; Reason = "timed out after ${PerFileSeconds}s" }
+    }
+
+    $out = (Get-Content $Job.Log -Raw -ErrorAction SilentlyContinue)
+    $err = (Get-Content "$($Job.Log).err" -Raw -ErrorAction SilentlyContinue)
+
+    if (-not (Test-Path $Job.Path)) {
+        $first = (($out + "`n" + $err) -split "`n" | Where-Object { $_.Trim() } | Select-Object -First 1)
+        return [PSCustomObject]@{ Job = $Job; Ok = $false; Reason = "no file; $first" }
+    }
+
+    $steps = (Get-Content $Job.Path | Select-String -Pattern '^[A-Z_]+ ').Count
+    $termination = '?'
+    foreach ($reason in @('DEATH', 'VICTORY', 'TURN_LIMIT', 'STALLED')) {
+        if ($out -match "outcome\s+$reason") { $termination = $reason; break }
+    }
+
+    [PSCustomObject]@{ Job = $Job; Ok = $true; Steps = $steps; Termination = $termination; Output = $out }
+}
+
+# HeroClass is WARRIOR MAGE ROGUE HUNTRESS DUELIST CLERIC - there is no THIEF or RANGER, and passing
+# one is an IllegalArgumentException that costs a whole recording slot to discover.
+$heroes = @('WARRIOR', 'MAGE', 'ROGUE', 'HUNTRESS', 'DUELIST', 'CLERIC')
+
+# The seed is the recording's name, so a file says what it was made from and re-recording it gives the
+# same run. A corpus whose seeds are opaque names would be one nobody could extend.
+$plan = @()
+foreach ($hero in $heroes) {
+    $plan += , @("$($hero.ToLower())-short", $hero, $ShortTurns)
+}
+foreach ($hero in $heroes) {
+    $plan += , @("$($hero.ToLower())-mid", $hero, $MidTurns)
 }
 foreach ($hero in @('WARRIOR', 'MAGE')) {
-    Invoke-Rollout -Name "$($hero.ToLower())-long" -Hero $hero -Turns $LongTurns
+    $plan += , @("$($hero.ToLower())-long", $hero, $LongTurns)
+}
+# A second seed per hero for two classes, so the corpus covers "the same hero somewhere else" rather
+# than one world per hero class. Replay verification is a claim about determinism, and a single seed
+# per class is a thin sample of that claim.
+foreach ($hero in @('WARRIOR', 'MAGE')) {
+    $plan += , @("$($hero.ToLower())-alt", $hero, $MidTurns)
+}
+
+Write-Host "recording $($plan.Count) episodes, $Parallel at a time, into $Dir"
+
+$running = @()
+$results = @()
+foreach ($entry in $plan) {
+    while ($running.Count -ge $Parallel) {
+        $finished = Complete-Recording $running[0]
+        $running = @($running | Select-Object -Skip 1)
+        $results += $finished
+        if ($finished.Ok) {
+            Write-Host ("  {0,-22} {1,-10} {2,6} steps  {3}" -f `
+                $finished.Job.Name, $finished.Job.Hero, $finished.Steps, $finished.Termination)
+        } else {
+            Write-Host ("  {0,-22} {1,-10} FAILED: {2}" -f $finished.Job.Name, $finished.Job.Hero, $finished.Reason) -ForegroundColor Red
+        }
+    }
+    $running += Start-Recording -Name $entry[0] -Hero $entry[1] -Turns $entry[2] -Seed $entry[0]
+}
+while ($running.Count -gt 0) {
+    $finished = Complete-Recording $running[0]
+    $running = @($running | Select-Object -Skip 1)
+    $results += $finished
+    if ($finished.Ok) {
+        Write-Host ("  {0,-22} {1,-10} {2,6} steps  {3}" -f `
+            $finished.Job.Name, $finished.Job.Hero, $finished.Steps, $finished.Termination)
+    } else {
+        Write-Host ("  {0,-22} {1,-10} FAILED: {2}" -f $finished.Job.Name, $finished.Job.Hero, $finished.Reason) -ForegroundColor Red
+    }
 }
 
 # A run that ended in death rather than a limit, so the corpus covers the case where the hero is gone
-# rather than merely stopped. Scanned rather than assumed: which seed dies is a property of the world,
-# not something a fixed list can promise.
-Write-Host "searching for a death-terminated run"
-for ($i = 0; $i -lt 12; $i++) {
-    $seed = "death-probe-$i"
-    $path = Join-Path $Dir "warrior-death.replay"
-    $job = Start-Job -ScriptBlock {
-        param($cp, $main, $seed, $hero, $path)
-        & java -cp $cp $main rollout --seed $seed --hero $hero --max-turns $DeathTurns --save $path --no-color 2>&1
-    } -ArgumentList $cp, $main, $seed, 'WARRIOR', $path
-    if (Wait-Job $job -Timeout $PerFileSeconds) {
-        $out = Receive-Job $job
-        if (($out -join "`n") -match 'outcome\s+DEATH') {
-            Write-Host "  warrior-death          WARRIOR    $seed"
-            break
-        }
-    } else { Stop-Job $job }
-    Remove-Job $job -Force
-    if (Test-Path $path) { Remove-Item $path }
+# rather than merely stopped. Which seed kills a given hero is a property of the world, so the probes
+# all run at once and the first DEATH wins rather than paying for them in sequence.
+Write-Host "probing for a death-terminated run (up to ${DeathProbeSeconds}s)"
+$probeCount = 12
+$probes = @()
+for ($i = 0; $i -lt $probeCount; $i++) {
+    $probes += Start-Recording -Name "probe-death-$i" -Hero 'WARRIOR' -Turns 200 -Seed "death-probe-$i"
 }
 
-Write-Host "verifying every recording reproduces"
-# A recording that does not reproduce is not committed. Leaving it in place would mean the corpus fails
-# for a reason unrelated to whatever the next reader is investigating, and the old corpus was exactly
-# that: readable, listed by the catalog, and reproducing nothing. Rejected files are kept under
+$deadline = [DateTime]::UtcNow.AddSeconds($DeathProbeSeconds)
+$winner = $null
+foreach ($probe in $probes) {
+    $remaining = [int]([Math]::Max(1, ($deadline - [DateTime]::UtcNow).TotalMilliseconds))
+    $probe.Proc.WaitForExit($remaining) | Out-Null
+    if (-not $probe.Proc.HasExited) { $probe.Proc.Kill(); continue }
+    $out = (Get-Content $probe.Log -Raw -ErrorAction SilentlyContinue)
+    if ($out -match 'outcome\s+DEATH') { $winner = $probe; break }
+}
+
+if ($winner) {
+    # Promoted BEFORE the cleanup sweep below. It used to be after, and the sweep deletes every probe's
+    # file - including the winner's - so the move then failed on a file that had just been removed. The
+    # script died there with a stray-process problem of its own: the remaining probes were still running
+    # and nothing killed them.
+    $deathPath = Join-Path $Dir 'warrior-death.replay'
+    Move-Item $winner.Path $deathPath -Force
+    $steps = (Get-Content $deathPath | Select-String -Pattern '^[A-Z_]+ ').Count
+    Write-Host ("  {0,-22} {1,-10} {2,6} steps  DEATH (seed {3})" -f 'warrior-death', 'WARRIOR', $steps, $winner.Seed)
+} else {
+    Write-Host "  no seed died within the budget; the corpus has no death recording" -ForegroundColor Yellow
+}
+
+# Every probe that did not die is removed rather than committed: a probe named "death-probe-7" that
+# survived is not a death recording and would only be misread as one. The winner is skipped, having
+# already been moved out of the probe directory.
+foreach ($probe in $probes) {
+    if (-not $probe.Proc.HasExited) { $probe.Proc.Kill() }
+    if ($null -ne $winner -and $probe.Path -eq $winner.Path) { continue }
+    if (Test-Path $probe.Path) { Remove-Item $probe.Path -Force }
+}
+
+Write-Host "verifying every recording reproduces, $Parallel at a time"
+
+# A recording that does not reproduce is not committed. Leaving it in place would mean the corpus
+# fails for a reason unrelated to whatever the next reader is investigating, and the old corpus was
+# exactly that: readable, listed by the catalog, and reproducing nothing. Rejected files are kept under
 # rejected/ so the failure is inspectable rather than silent.
-$rejected = Join-Path $Dir 'rejected'
+$files = @(Get-ChildItem $Dir -File -Filter *.replay | Sort-Object Name)
+$pending = @()
+foreach ($f in $files) {
+    $log = Join-Path $logDir "verify-$($f.BaseName).log"
+    $proc = Start-Process -FilePath 'java' -PassThru -NoNewWindow `
+        -RedirectStandardOutput $log -RedirectStandardError "$log.err" `
+        -ArgumentList @('-cp', $cp, $main, 'verify', $f.FullName, '--no-color')
+    $pending += , [PSCustomObject]@{ File = $f; Proc = $proc; Log = $log }
+}
+
 $bad = @()
-foreach ($f in Get-ChildItem $Dir -File -Filter *.replay | Sort-Object Name) {
-    $out = & java -cp $cp $main verify $f.FullName --no-color 2>&1
+$verified = @()
+while ($pending.Count -gt 0) {
+    $item = $pending[0]
+    $pending = @($pending | Select-Object -Skip 1)
+
+    $item.Proc.WaitForExit($PerFileSeconds * 1000) | Out-Null
+    if (-not $item.Proc.HasExited) {
+        $item.Proc.Kill()
+        $bad += $item.File.Name
+        continue
+    }
+
+    $out = (Get-Content $item.Log -Raw -ErrorAction SilentlyContinue)
     if ($out -match '\[OK\]') {
-        $steps = (Select-String -InputObject ($out -join "`n") -Pattern 'steps=(\d+)').Matches.Groups[1].Value
-        Write-Host ("  {0,-24} reproduces ({1} steps)" -f $f.Name, $steps)
+        $steps = (Select-String -InputObject $out -Pattern 'steps=(\d+)').Matches.Groups[1].Value
+        $verified += , [PSCustomObject]@{ Name = $item.File.Name; Steps = [int]$steps }
     } else {
+        $bad += $item.File.Name
         if (-not (Test-Path $rejected)) { New-Item -ItemType Directory -Path $rejected | Out-Null }
-        Move-Item $f.FullName (Join-Path $rejected $f.Name) -Force
-        $bad += $f.Name
-        Write-Host ("  {0,-24} DOES NOT REPRODUCE - moved to rejected/" -f $f.Name) -ForegroundColor Red
-        ($out -join "`n") -split "`n" | Select-String -Pattern '\[ERROR\]|replayed|recorded' |
-            Select-Object -First 3 | ForEach-Object { Write-Host "      $($_.Line.Trim())" }
+        Move-Item $item.File.FullName (Join-Path $rejected $item.File.Name) -Force
     }
 }
 
+# Verification is what decides the corpus, so it reports the same shape the recording phase did.
+foreach ($v in ($verified | Sort-Object Name)) {
+    Write-Host ("  {0,-24} reproduces ({1} steps)" -f $v.Name, $v.Steps)
+}
+foreach ($name in $bad) {
+    Write-Host ("  {0,-24} DOES NOT REPRODUCE - moved to rejected/" -f $name) -ForegroundColor Red
+}
+
+$stopwatch.Stop()
 $kept = (Get-ChildItem $Dir -File -Filter *.replay).Count
-Write-Host "corpus rebuilt: $kept recordings, all reproduce"
+$heroes_covered = @($verified | ForEach-Object { ($_.Name -split '-')[0] } | Sort-Object -Unique)
+
+Write-Host ""
+Write-Host "corpus rebuilt: $kept recordings, all reproduce, in $([Math]::Round($stopwatch.Elapsed.TotalSeconds, 1))s"
+Write-Host "  heroes covered: $($heroes_covered -join ', ')"
+Write-Host "  slowest recording: $((($verified | Sort-Object Steps -Descending | Select-Object -First 1).Steps)) steps"
+
+if ($stopwatch.Elapsed.TotalSeconds -gt $BudgetSeconds) {
+    Write-Host ("  WARNING: over the ${BudgetSeconds}s budget by $([Math]::Round($stopwatch.Elapsed.TotalSeconds - $BudgetSeconds, 1))s") -ForegroundColor Yellow
+}
+
 if ($bad.Count -gt 0) {
     Write-Host "$($bad.Count) recording(s) rejected: $($bad -join ', ')" -ForegroundColor Yellow
     exit 1
 }
+
+exit 0

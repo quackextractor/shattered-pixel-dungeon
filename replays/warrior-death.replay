@@ -1,0 +1,57 @@
+SPD-REPLAY
+version=3
+seed=death-probe-11
+hero=WARRIOR
+challenges=0
+generation=0
+score=-95.07599997380748
+depth=1
+turns=38
+turn_limit=200
+max_slots=32
+allow_equipping=true
+termination=DEATH
+steps=43
+USE 0 WORLD 343 -0.0020000000949949026  20 0.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 0 SLOT 343 0.0 ThrowingStone:0,Waterskin:1 20 0.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 0 TARGETING 343 -0.0020000000949949026  20 1.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+OPEN_INVENTORY 0 WORLD 343 -0.0020000000949949026  20 1.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 0 INVENTORY 343 0.0 ThrowingStone:0,Waterskin:1 20 1.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 0 TARGETING 343 -0.0020000000949949026  20 2.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 372 -0.0020000000949949026  20 3.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 343 -0.0020000000949949026  20 5.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 372 -0.0020000000949949026  20 6.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 343 -0.0020000000949949026  20 7.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 372 -0.0020000000949949026  20 8.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 401 -0.0020000000949949026  20 9.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_SE 0 WORLD 431 0.4480000138282776  20 10.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 460 0.24799999594688416  20 11.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_SW 0 WORLD 488 0.14800000190734863  20 12.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_SW 0 WORLD 516 0.1979999989271164  20 13.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 545 -0.0020000000949949026  20 14.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 574 3.497999906539917  20 15.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 603 1.6980000734329224  20 16.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 603 -0.0020000000949949026  20 17.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 632 0.3479999899864197  20 18.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+MOVE_S 0 WORLD 661 0.09800000488758087  19 19.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 661 -0.10199999809265137  18 20.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 661 -0.0020000000949949026  18 21.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 661 -0.10199999809265137  17 22.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 661 -0.0020000000949949026  17 23.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 661 -0.20200000703334808  15 24.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 0 WORLD 661 -0.0020000000949949026  15 24.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 0 SLOT 661 0.0 ThrowingStone:0,Waterskin:1 15 24.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 5 TARGETING 661 -0.10199999809265137  14 25.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 0 WORLD 661 -0.0020000000949949026  14 25.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 0 SLOT 661 0.0 ThrowingStone:0,Waterskin:1 14 25.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 5 TARGETING 661 -0.0020000000949949026  14 26.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 0 WORLD 661 -0.0020000000949949026  14 26.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 0 SLOT 661 0.0 ThrowingStone:0,Waterskin:1 14 26.0 Food:1,ThrowingStone:1,VelvetPouch:1,Waterskin:1
+USE 5 TARGETING 661 -0.10199999809265137  13 27.0 Food:1,VelvetPouch:1,Waterskin:1
+USE 0 WORLD 661 -0.0020000000949949026  13 27.0 Food:1,VelvetPouch:1,Waterskin:1
+USE 0 SLOT 661 -0.4020000100135803 Waterskin:1 9 30.0 VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 661 -0.3020000159740448  6 31.0 VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 661 -0.3020000159740448  3 32.0 VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 661 -0.0020000000949949026  3 33.0 VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 661 -0.10199999809265137  2 34.0 VelvetPouch:1,Waterskin:1
+INTERACT 0 WORLD 661 -100.0  0 0.0 VelvetPouch:1,Waterskin:1

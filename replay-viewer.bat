@@ -162,7 +162,7 @@ rem Through a file rather than a `for /f` backtick loop. Inside one of those the
 rem quotes around --args="..." do not survive and gradle is handed a broken
 rem argument list, which fails with a bare "FAILURE" and no explanation. The path
 rem is read back with set /p, which takes the first line and nothing else.
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--select %TARGET%" > "%SELECTFILE%" 2>nul
+call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--select %TARGET% --dir "%REPLAYDIR%"" > "%SELECTFILE%" 2>nul
 if errorlevel 1 (
     echo No recording numbered %TARGET%.
     del "%SELECTFILE%" >nul 2>&1
@@ -255,8 +255,19 @@ exit /b %errorlevel%
 rem --- shared ----------------------------------------------------------------
 
 rem Prints the catalog.
+rem
+rem The corpus directory is named explicitly, and that is the whole reason this line is not just
+rem ":superintelligence:replays". ReplayCatalog falls back to a relative "replays", which resolves
+rem against the working directory - and gradle runs a JavaExec task from the *module* directory, not
+rem the one this file lives in. So `replays` meant superintelligence\replays, which does not exist, and
+rem the committed corpus was invisible: --list showed only whatever a training run happened to have
+rem left in the temp directory. Naming it is the difference between the viewer working and not.
+:catargs
+call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--dir "%REPLAYDIR%""
+exit /b %errorlevel%
+
 :catalog
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays
+call :catargs
 exit /b %errorlevel%
 
 rem Accepts a bare recording name as well as a path, and always leaves %FILE%
@@ -279,7 +290,7 @@ set "FILE=%~1"
 if exist "%FILE%" goto :absolute
 
 set "RESOLVEFILE=%TEMP%\spd-replay-resolve.txt"
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--resolve %~1" > "%RESOLVEFILE%" 2>nul
+call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--resolve %~1 --dir "%REPLAYDIR%"" > "%RESOLVEFILE%" 2>nul
 
 rem The java side answers with either a path or a sentence, and always exits 0 so gradle
 rem does not wrap a refusal in its own FAILURE block. A sentence is not a path, so the
