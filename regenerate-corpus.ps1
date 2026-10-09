@@ -32,11 +32,16 @@ param(
 # but dead, which is the worst state for a fixture to be in.
 #
 # Everything is concurrent. The first version started a job and immediately waited for it, so the
-# whole thing was serial despite looking parallel - eight recordings cost eight JVM startups in a row.
-# A recording is a separate JVM doing a single-threaded simulation and is idle most of its life waiting
-# on its own startup, so N of them at once cost about as much wall clock as one. Measured on a 20-core
-# machine: 24 recordings and their verification in about 12 seconds, against about 70 for the serial
-# version - and the verification phase, which used a bare `java` call per file, now runs the same way.
+# whole thing was serial despite looking parallel - sixteen recordings cost sixteen JVM startups in a
+# row. A recording is a separate JVM doing a single-threaded simulation and is idle most of its life
+# waiting on its own startup, so N of them at once cost about as much wall clock as one. Measured on a
+# 20-core machine: 17 recordings, a death probe and their verification in 8.8 seconds, against roughly
+# 70 for the serial version - and the verification phase, which used a bare `java` call per file, now
+# runs the same way.
+#
+# Concurrency has one hard requirement, which is that no two processes may share a work directory. The
+# game keeps its save files there, so sharing it lets parallel runs corrupt each other - see
+# Start-Recording.
 
 $ErrorActionPreference = 'Stop'
 
@@ -94,10 +99,22 @@ trap {
 }
 
 function Start-Recording {
-    param([string]$Name, [string]$Hero, [int]$Turns, [string]$Seed)
+    param([string]$Name, [string]$Hero, [int]$Turns, [string]$Seed, [string]$SaveDir = $Dir)
 
-    $path = Join-Path $Dir "$Name.replay"
+    $path = Join-Path $SaveDir "$Name.replay"
     $log = Join-Path $logDir "$Name.log"
+
+    # Each recording gets its own --out, and this is not tidiness.
+    #
+    # Without it every concurrent rollout shares one work directory under the temp root, and that is
+    # where the game keeps its save files - bones.dat among them. Sixteen JVMs then read and delete each
+    # other's files while they run, which is the same cross-episode contamination RunState exists to stop
+    # inside one process, reproduced across processes. It showed up as a recording that would not
+    # reproduce and as a seed producing a different run on a second rebuild: same seed, 126 steps one day
+    # and 128 the next. Serial builds never saw it, because one recording owns the directory outright.
+    $work = Join-Path $logDir "work-$Name"
+    if (Test-Path $work) { Remove-Item $work -Recurse -Force }
+    New-Item -ItemType Directory -Path $work | Out-Null
 
     # Start-Process rather than Start-Job: a PowerShell job is another PowerShell process, which costs
     # more to start than the recording it is starting. Redirecting to a file rather than capturing the
@@ -106,12 +123,12 @@ function Start-Recording {
     $proc = Start-Process -FilePath 'java' -PassThru -NoNewWindow `
         -RedirectStandardOutput $log -RedirectStandardError "$log.err" `
         -ArgumentList @('-cp', $cp, $main, 'rollout', '--seed', $Seed, '--hero', $Hero,
-                        '--max-turns', "$Turns", '--save', $path, '--no-color')
+                        '--max-turns', "$Turns", '--save', $path, '--out', $work, '--no-color')
 
     $null = $script:spawned.Add($proc)
 
     [PSCustomObject]@{
-        Name = $Name; Hero = $Hero; Seed = $Seed; Path = $path; Log = $log; Proc = $proc
+        Name = $Name; Hero = $Hero; Seed = $Seed; Path = $path; Log = $log; Work = $work; Proc = $proc
     }
 }
 
@@ -137,6 +154,13 @@ function Complete-Recording {
     $termination = '?'
     foreach ($reason in @('DEATH', 'VICTORY', 'TURN_LIMIT', 'STALLED')) {
         if ($out -match "outcome\s+$reason") { $termination = $reason; break }
+    }
+
+    if ($termination -eq '?') {
+        # Not a cosmetic default. A recording whose outcome cannot be read is not a recording this
+        # script understands, and reporting it as a normal episode would hide it.
+        return [PSCustomObject]@{ Job = $Job; Ok = $false
+            Reason = "wrote a file but reported no outcome; see $($Job.Log)" }
     }
 
     [PSCustomObject]@{ Job = $Job; Ok = $true; Steps = $steps; Termination = $termination; Output = $out }
@@ -199,10 +223,22 @@ while ($running.Count -gt 0) {
 # rather than merely stopped. Which seed kills a given hero is a property of the world, so the probes
 # all run at once and the first DEATH wins rather than paying for them in sequence.
 Write-Host "probing for a death-terminated run (up to ${DeathProbeSeconds}s)"
+
+# Probes write into a scratch directory outside $Dir, and this is the fix rather than another sweep.
+#
+# Probes are killed rather than waited for, and a killed JVM does not stop instantly: it can still be
+# writing when the next phase starts. Writing into the corpus directory meant a probe could drop a file
+# in at any point - after the cleanup sweep, even during verification - and the verification phase picks
+# up whatever .replay files it finds, so the probe was verified and kept as a corpus member. A name-based
+# sweep could not fix this because the file appeared after the sweep. Keeping scratch output out of the
+# directory being published makes the failure impossible rather than unlikely.
+$probeDir = Join-Path $logDir 'probes'
+New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
+
 $probeCount = 12
 $probes = @()
 for ($i = 0; $i -lt $probeCount; $i++) {
-    $probes += Start-Recording -Name "probe-death-$i" -Hero 'WARRIOR' -Turns 200 -Seed "death-probe-$i"
+    $probes += Start-Recording -Name "probe-death-$i" -Hero 'WARRIOR' -Turns 200 -Seed "death-probe-$i" -SaveDir $probeDir
 }
 
 $deadline = [DateTime]::UtcNow.AddSeconds($DeathProbeSeconds)
@@ -221,21 +257,25 @@ if ($winner) {
     # script died there with a stray-process problem of its own: the remaining probes were still running
     # and nothing killed them.
     $deathPath = Join-Path $Dir 'warrior-death.replay'
-    Move-Item $winner.Path $deathPath -Force
+    Copy-Item $winner.Path $deathPath -Force
     $steps = (Get-Content $deathPath | Select-String -Pattern '^[A-Z_]+ ').Count
     Write-Host ("  {0,-22} {1,-10} {2,6} steps  DEATH (seed {3})" -f 'warrior-death', 'WARRIOR', $steps, $winner.Seed)
 } else {
     Write-Host "  no seed died within the budget; the corpus has no death recording" -ForegroundColor Yellow
 }
 
-# Every probe that did not die is removed rather than committed: a probe named "death-probe-7" that
-# survived is not a death recording and would only be misread as one. The winner is skipped, having
-# already been moved out of the probe directory.
+# Every probe is killed, and every probe file left in the scratch directory is discarded: a probe named
+# "death-probe-7" that survived is not a death recording and would only be misread as one. Nothing here
+# needs to be selective, because the winner was already copied out above.
 foreach ($probe in $probes) {
-    if (-not $probe.Proc.HasExited) { $probe.Proc.Kill() }
-    if ($null -ne $winner -and $probe.Path -eq $winner.Path) { continue }
-    if (Test-Path $probe.Path) { Remove-Item $probe.Path -Force }
+    if (-not $probe.Proc.HasExited) {
+        $probe.Proc.Kill()
+        # Wait for the kill to land. Without this the JVM can still be running when verification starts,
+        # which is how a probe file reappeared after the sweep that was supposed to have removed it.
+        $probe.Proc.WaitForExit(5000) | Out-Null
+    }
 }
+Remove-Item $probeDir -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "verifying every recording reproduces, $Parallel at a time"
 
@@ -247,9 +287,17 @@ $files = @(Get-ChildItem $Dir -File -Filter *.replay | Sort-Object Name)
 $pending = @()
 foreach ($f in $files) {
     $log = Join-Path $logDir "verify-$($f.BaseName).log"
+    # --out here for the same reason as in Start-Recording: verification boots a real run and resets
+    # it, so it touches the same save files. Seventeen verifiers sharing one work directory would
+    # corrupt each other's state and report recordings as broken that are not.
+    $work = Join-Path $logDir "verifywork-$($f.BaseName)"
+    if (Test-Path $work) { Remove-Item $work -Recurse -Force }
+    New-Item -ItemType Directory -Path $work | Out-Null
+
     $proc = Start-Process -FilePath 'java' -PassThru -NoNewWindow `
         -RedirectStandardOutput $log -RedirectStandardError "$log.err" `
-        -ArgumentList @('-cp', $cp, $main, 'verify', $f.FullName, '--no-color')
+        -ArgumentList @('-cp', $cp, $main, 'verify', $f.FullName, '--out', $work, '--no-color')
+    $null = $script:spawned.Add($proc)
     $pending += , [PSCustomObject]@{ File = $f; Proc = $proc; Log = $log }
 }
 
@@ -286,7 +334,19 @@ foreach ($name in $bad) {
 }
 
 $stopwatch.Stop()
-$kept = (Get-ChildItem $Dir -File -Filter *.replay).Count
+
+# Counted from what verification actually proved, not from what is sitting in the directory.
+#
+# Counting files made the summary claim a corpus of 20 when 16 had been verified: the extra four were
+# probe scratch files that had been swept up and verified like corpus members. Nothing was wrong with
+# them individually, so no check complained - the summary was simply describing a different set of
+# files than the one it had verified. "All reproduce" has to mean all of what is being reported.
+$kept = @($verified).Count
+$onDisk = (Get-ChildItem $Dir -File -Filter *.replay).Count
+if ($onDisk -ne $kept) {
+    Write-Host "  WARNING: $onDisk files on disk but $kept verified; the corpus is not what was reported" -ForegroundColor Red
+}
+
 $heroes_covered = @($verified | ForEach-Object { ($_.Name -split '-')[0] } | Sort-Object -Unique)
 
 Write-Host ""
