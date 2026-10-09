@@ -61,44 +61,51 @@ This is the part that reversed direction, so it is worth stating carefully.
 The obvious reading is "the trainer resolves animations instantly, make it behave like the viewer". That
 would be **making the trainer wrong**, and it is checkable:
 
-`Actor.process()` — the scheduler the shipped game runs — blocks on exactly one thing:
+**`GameScene.java:942`** gates the render thread's poke at the scheduler:
 
 ```java
-//Actor.java:379-391
-if (acting instanceof Char && ((Char) acting).sprite != null) {
-    synchronized (((Char)acting).sprite) {
-        if (((Char) acting).sprite.isMoving) {
-            ((Char) acting).sprite.wait();
-        }
+if (!Actor.processing() && Dungeon.hero.isAlive() && !Actor.manualScheduling) {
+    if (actorThread == null || !actorThread.isAlive()) {
+        actorThread = new Thread() { public void run() { Actor.process(); } };
+        ...
+    } else if (notifyDelay <= 0f) {
+        notifyDelay += 1/60f;
+        synchronized (actorThread) { actorThread.notify(); }
     }
 }
 ```
 
-`sprite.isMoving` is set by `CharSprite.move()` (`CharSprite.java:230`) and **by nothing else** — not by
-`attack()`, not by `operate()`. So in a real game an attack animation does **not** park the scheduler.
-What it does is leave `Mob.act()` returning `false` with `mob.time` unchanged, so the scheduler selects
-the same mob again, calls `Mob.act()` again, and spins there until the animation finishes and
-`onAttackComplete` spends the turn.
+`Actor.processing()` returns `current != null` (`Actor.java:272-274`). So when a mob attacks,
+`Mob.doAttack` returns `false` without spending (`Mob.java:817-829`), `current` stays set to that mob,
+`Actor.process()` falls to `if (!doNext)` and parks in `Thread.wait()` at `Actor.java:423` — and the
+render thread **stops poking it**, because the poke is gated on the exact condition that is now false.
 
-The event order is therefore the same on both sides:
+**The real game parks the scheduler for the whole attack animation.** It does not spin, and it does not
+re-run `Mob.act()`. The mob's turn is genuinely blocked until `CharSprite.onComplete` fires
+`Mob.onAttackComplete`, which applies damage and calls `spend(attackDelay())` — after which `next()`
+clears `current` and the poke resumes.
+
+An earlier version of this document claimed the scheduler re-picks the mob and spins in place. **That
+was wrong**, and it was wrong in the way that matters: the spin is not what the game does, so it is not
+what the viewer has to match. Corrected on reading `GameScene.java:942`, which the original claim never
+consulted.
+
+What survives is the conclusion, and it survives for a stronger reason than the one originally given:
 
 | | order |
 |---|---|
-| real game | decide → [animation] → damage → spend turn → next actor |
+| real game | decide → **park** → animation completes → damage → spend turn → next actor |
 | trainer | decide → damage → spend turn → next actor |
-| viewer, currently | decide → [animation] → **hero acts** → damage → spend turn |
+| viewer, currently | decide → park, **but the hero may still act** → animation completes → damage → spend |
 
-The only thing between "decide" and "damage" is a wall-clock pause. Nothing in it changes state, and
-the repeated `Mob.act()` calls are side-effect free: `Char.act()` recomputes FOV, `Mob.act()` calls
-`chooseEnemy()` and `processSwarmIntel()`, and `Hunting.act()` returns `doAttack()`. `chooseEnemy`
-builds a `PathFinder` distance map — deterministic, no draws. The one AI state that rolls is
-`Sleeping.act()`'s detection check (`Mob.java:1220-1300`), and it calls `spend(TICK)`, so it never
-spins.
+The park contains no state change and no `Mob.act()` re-run in either the game or the trainer. So both
+produce the same ordering. The viewer differs not in the park but in what it is allowed to do **while
+parked** — see §4a.
 
-**Consequence:** the trainer already produces the game's ordering, so teaching it to wait would teach
-the agent a reordering the game does not have — and would need a virtual clock in a loop that has none,
-plus a re-recorded corpus. The user raised exactly this concern when the plan still pointed the other
-way, and the evidence settles it: **fix the viewer.**
+**Consequence:** teaching the trainer to wait would teach the agent a reordering the game does not have,
+and would need a virtual clock in a loop that has none, plus a re-recorded corpus. The user raised
+exactly this concern when the plan still pointed the other way, and the evidence settles it: **fix the
+viewer.**
 
 This also answers the standing question of whether the fault limits what the agent can do. It does not,
 and it cannot, because nothing in the trainer changes.
@@ -147,10 +154,52 @@ before the hero moves, in which case the ordering is lost inside the scheduler r
 
 Step 1 below exists to tell those apart.
 
-## 4a. Measurement: the gate is not the bug
+## 4b. The gap the trace actually shows
+
+Recorded because it is easy to conclude §4 from the stall frames and miss this.
+
+On `warrior-mid`, frames 71-74:
+
+```
+71  applied=false drain=PENDING  current=Rat@13            animating=0
+72  applied=true  drain=PENDING  current=WaterOfHealth@14  animating=0
+73  applied=false drain=PENDING  current=Rat@7             animating=0
+74  applied=false drain=PENDING  current=Rat@9             animating=1
+```
+
+**Frame 72: a recorded step was applied while `WaterOfHealth@14` held the scheduler.**
+
+`Actor.processing()` was `true`, `animating` was `0`, and `applyNextStep()` ran anyway. The reason is in
+`ReplayPlayer.readyToAct()` (`ReplayPlayer.java:469-488`), which asks three questions, all about the hero.
+The hero was free, so the drain was skipped and a step was injected mid-turn.
+
+That is the condition `GameScene.java:942` exists to prevent. In the real game, `Actor.processing()`
+being true means the render thread does not poke the scheduler, and the scheduler is parked. The viewer
+has no equivalent gate: it consults only the hero.
+
+So the §4a refutation is narrower than it looked. It was scoped to frames 74-121 and tested for a step
+applied *during an animation*. Frame 72 is a different case — no animation, an unrelated actor mid-turn —
+and `animating=0` says so explicitly.
+
+### Also unresolved: the redundant acts
+
+While the rat's animation resolves, `driveToHeroReady` calls `headlessStep()` up to
+`BLOCKED_STEPS = 3` times per frame (`ReplayPlayer.java:599`). Over the ~49 frames of the stall that is
+~147 extra `Mob.act()` calls on the same mob, which the real game makes **zero** of while parked.
+
+Nothing observed so far says these matter. `Char.act()` recomputes FOV, `Mob.act()` calls
+`chooseEnemy()` (which builds a `PathFinder` distance map — deterministic) and `processSwarmIntel()`,
+and `Hunting.act()` returns `doAttack()`. No RNG draw has been found in that path. But "no draw found by
+reading" is not "no draw", and `Mob.chooseEnemy` is long. E3 measures it rather than assuming.
+
+## 4a. Measurement: the animation gate is not the bug
 
 Recorded because a plan that predicted the wrong mechanism, and was caught by measurement, is worth more
 than one that was never questioned.
+
+**Scoped to the stall.** What was tested was whether the viewer applies a step *while an animation is in
+flight*. That it does not is established below. It is not the whole hypothesis — see §4b for the case
+this measurement did not cover.
 
 `gate` fields added to the frame record: `readyToAct()`, `Actor.currentActor()`, count of actors with an
 animation in flight, and the drain outcome. Run on `warrior-mid`, 124 frames.
@@ -167,8 +216,9 @@ a change that cannot change an outcome is a cost with no benefit.
 
 Two consequences:
 
-- The `readyToAct()` short-circuit identified in §4 is real, but it is **not** the fault. `ready=false`
-  throughout the stall, so the short-circuit never fires during it.
+- Blocking on `animationInFlight()` specifically is a **no-op**. `ready=false` throughout the stall, so
+  the short-circuit never fires during it. That part of the change was dropped; the `Actor.current` part
+  in §4b was not, and is a different condition.
 - **§2's frame count was wrong.** The stall is **49 frames ≈ 0.82 s**, not 31 frames ≈ 0.52 s. And an
   animation that takes 2.5× its expected duration is not a separate mystery to be chased later — it is
   in the same causal chain as the divergence.
@@ -203,48 +253,53 @@ animation was completing correctly all along — the pin was simply dividing it 
 Viewer-only. `ReplayPlayer` and `FrameDelta`. No engine logic, no `HeadlessSprite`, no trainer change,
 no corpus re-recording, no replay format change.
 
-### Step 1 — measure
+### E1 - two-sided diff, no hypothesis
 
-Add four fields to the frame record in `WorldSnapshot`, off unless `-Dspd.worldTrace` is set:
+`WorldSnapshot` and `WorldDiff` already exist and were used per-frame on one recording, but a two-sided
+diff has not been run on a recording that fails. It is the cheapest way to find out whether the cause is
+the one 4b names.
 
-| field | why |
-|---|---|
-| `readyToAct` | the gate's own answer, per frame |
-| `currentActor` | non-null means an actor took a turn and has not called `next()` |
-| `animating` | count of actors with a non-looping animation in flight |
-| `drain` | already recorded: `READY` / `PENDING` / `STALLED` / `-` |
+1. `gradle :superintelligence:worldtrace -PworldArgs="<replay> <out>"` - headless, per step.
+2. Viewer with `-Dspd.worldTrace=<out>` - per step, same labels.
+3. `WorldDiff.compare` on the `step` records only.
 
-The signature to look for is **a step applied on a frame where `readyToAct=true` and
-`currentActor!=null`**. That is the hypothesis, directly.
+Output: the first step where roster, cooldowns or `Actor.now()` differ, and the field. If it points
+somewhere other than 4b, the change below is not the next move.
 
-Run: `warrior-mid`, `-Dspd.fixedDelta=0.0166666`, one pass.
+### E2 - the `processing()` gate
 
-### Step 2 — the gate
+`ReplayPlayer.readyToAct()` additionally requires `Actor.currentActor() == null`.
 
-`readyToAct()` gains two conditions:
+This mirrors `GameScene.java:942`'s `!Actor.processing()`, which is what stops the real game from giving
+the hero input while any actor holds the scheduler. Read through the getter already committed in
+`e0c986c27`, so it is viewer-only and there is no engine edit to keep or revert.
 
-1. **`Actor.currentActor() == null`.** `Actor.current` is set by `headlessStep` and cleared only by
-   `next()`, which is called from `onAttackComplete`. So non-null means *an actor has taken a turn and
-   not completed it* — which is exactly the state the hero must not be given input in.
-2. **No `animationInFlight()` on any actor.** Covers a mob attacking while another is still mid-swing,
-   where the mob that attacked has already cleared `current` but the animation has not resolved.
+`Actor.current` is set by `headlessStep` and cleared only by `next()`, which is what `onAttackComplete`
+calls - so non-null means *an actor has taken a turn and has not completed it*.
 
-Both use getters added in `e0c986c27` (`Actor.currentActor()`, `MovieClip.animationInFlight()`). No new
-engine surface.
+**Bounded, or it can wedge.** Count consecutive frames the gate refuses. Past a limit, halt naming the
+blocking actor rather than hanging: a gate that can wedge a playback forever is a worse failure than the
+divergence being fixed.
 
-**Bounded, or it can deadlock.** Count consecutive frames the gate refuses. Past a limit, halt and
-report the blocking actor and its animation state rather than hanging: a gate that can wedge a
-playback forever is a worse failure than the divergence being fixed.
+Prediction: `warrior-mid` green if this is the cause. One recording must fail identically before and
+after - a change that merely moves failures onto other recordings has fixed nothing.
 
-### Step 3 — verify
+### E3 - count the redundant acts
+
+Instrument `driveToHeroReady` to count `headlessStep()` calls that re-select an actor already holding
+`Actor.current`, and whether any of those `act()` calls consumes RNG (`RandomTrace.baseDraws()` delta
+around the call).
+
+Runs alongside E2, because it is what would explain an incomplete fix: if the redundant acts do draw,
+the ~147 of them the real game never makes are a second fault.
+
+### E4 - verify
 
 Full corpus, twice, sequential (`VIEWCHECK_JOBS` defaults to 1, from `e0c986c27`).
 
-Both membership **and** step numbers must match between runs. One recording must fail identically
-before and after — `warrior-mid@17 hp is 19, recording says 20` is the known instance, and a change that
-merely moves failures onto other recordings has fixed nothing.
+Both membership **and** step numbers must match between runs.
 
-### Step 4 — the survivors
+### E5 - the survivors
 
 Three failures have a different signature from the other eleven and may be separate causes:
 
@@ -253,8 +308,25 @@ Three failures have a different signature from the other eleven and may be separ
   one early.
 - **`duelist-short`** fails on position (`hero at 169, recording says 170`), not health.
 
-Step 3 says whether they survive the gate. Each is then traced with the same tools.
+E4 says whether they survive the gate. Each is then traced with the same tools.
 
+### Rejected: deferring `HeadlessSprite`
+
+The experiment this plan started with, and it is not the one to run. Four reasons, all found by reading:
+
+1. **There is no tick point.** `HeadlessGame.update()` exists but nothing calls it; `Game.update` is never
+   reached from the module. `LevelPipeline` would have to add the pump itself.
+2. **`postRunnable` runs inline** (`HeadlessServices.java:174`), so anything deferred through
+   `Game.runOnRenderThread` resolves inside the `act()` that queued it. No deferral.
+3. **The drain cannot yield.** `runToHeroReady` has no no-progress counter and no yield point, so an
+   unresolved actor spins to `actorStepLimit` (20000), returns `STEP_LIMIT`, and `SPDEnv` terminates the
+   episode as `STALLED` - zero reward, `truncated = true`. Every episode containing one mob attack would
+   end.
+4. **`onOperateComplete` is load-bearing.** `Hero.onOperateComplete` is the only thing that opens chests,
+   removes keys, changes terrain and spends `Key.TIME_TO_UNLOCK`. `actOpenChest` leaves `curAction` set,
+   so a tick that never fires wedges the hero with no timeout.
+
+Plus it would require re-recording the corpus. Recorded here so the next reader does not reach for it.
 ## 6. Where this leaves the trainer
 
 Unchanged, and that is the finding. For the record, three settings mismatches have now been found
