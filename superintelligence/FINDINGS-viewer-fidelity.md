@@ -249,11 +249,14 @@ See E-5. Closing it needs an engine change at `Game.java:283-284`. It would make
 deterministic for diagnosis and on its own would not have fixed any of this — it changes *when* an
 animation completes, not *what happens when it does*.
 
-### O-3. Four engine changes are uncommitted
+### O-3. The fix is four game files, and the record of them is a separate document
 
-The four presentation draws in E-9 are game files. They are engine changes and `instructions.md` §12.3
-keeps them uncommitted unless proposed. They are the fix, and without them `viewcheck` is 14 of 17 red
-on a committed tree exactly as before.
+The four presentation draws in E-9 are game files, so `instructions.md` §12.3 applies to them. They are
+proposed in `ENGINE-CHANGES.md`, which is also where the engine changes made earlier are inventoried
+and where the draws deliberately left alone are recorded — `DungeonTileSheet.setupVariance`, which is
+inert because it draws on a generator it pushes and discards, and the sound-pitch draw in 34 places,
+which is symmetric across both environments and so does not separate them. Committed together with this
+fix; before it, `viewcheck` is 14 of 17 red on a committed tree exactly as it was.
 
 ### O-4. A new public draw path would not be caught
 

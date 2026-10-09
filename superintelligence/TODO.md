@@ -9,7 +9,7 @@ divergence being found and fixed.
 
 ---
 
-## 0.0 The viewer and the trainer ran on different randomness - FIXED, engine fix uncommitted
+## 0.0 The viewer and the trainer ran on different randomness - FIXED
 
 **Found and fixed.** 14 of 17 committed recordings diverged in the rendered viewer while verifying
 exactly headlessly. The cause was not the scheduler and not the step gate, both of which had been
@@ -33,10 +33,10 @@ from that — correctly, given what it could see — that the stream was not off
 hypotheses about ordering were refuted by measurement.
 
 **Status.** `gradle :desktop:viewcheck` is green on all 17 and stable across repeated runs. The four
-fixes are **engine changes and are uncommitted**, per `instructions.md` §12.3. Without them a committed
-tree reproduces the old state exactly. `observecheck` now gates the class of fault — every public draw
-path must be counted, mutation-tested — and `viewdiff` is the automatic two-sided diff.
-See `ISSUE-viewer-frame-drift.md` and `FINDINGS-viewer-fidelity.md`.
+fixes are **engine changes**, per `instructions.md` §12.3, and are now committed with the proposal
+record in `ENGINE-CHANGES.md`. `observecheck` gates the class of fault — every public draw path must be
+counted, mutation-tested — and `viewdiff` is the automatic two-sided diff.
+See `ISSUE-viewer-frame-drift.md`, `FINDINGS-viewer-fidelity.md` and `ENGINE-CHANGES.md`.
 
 ---
 
@@ -559,18 +559,21 @@ recorded path stops reproducing.
 *Note:* the `Replay` *format* keeps its name. A recorded run that can be re-executed is a replay by
 any normal definition, and the file magic is `SPD-REPLAY`.
 
-### D8 - Four engine fixes kept uncommitted
+### D8 - Four engine fixes proposed, then committed separately
 
 **Was:** `instructions.md` §12.3, which keeps engine logic changes out of a commit unless proposed.
-**Now:** applied to the viewer-fidelity fix rather than argued about in the abstract. Four
-presentation draws moved from `Random` to `PRandom` — `CharSprite.link`, `AttackIndicator`,
-`Wand.staffFx`, `MagesStaff`'s staff particle — one line each, none able to change an outcome.
+**Now:** applied to the viewer-fidelity fix rather than argued about in the abstract, and then resolved.
+Four presentation draws moved from `Random` to `PRandom` — `CharSprite.link`, `AttackIndicator`,
+`Wand.staffFx`, `MagesStaff`'s staff particle — one line each, none able to change an outcome. Plus
+`Random.Int` recording its draws and `Random.shuffle(List)` routed through it, without which the trace
+that was supposed to catch this was blind to the draws that caused it.
 
-*Reason:* §12.3 exists precisely for this, and a 14-of-17-red gate is the honest thing for a committed
-tree to look like until the fix is sanctioned. The evidence for the proposal is in
-`ISSUE-viewer-frame-drift.md`.
-*Cost:* the commit is green on `verifyall` and red on `viewcheck`, which reads as an unreproduced fault
-until the proposal is accepted. That recording is the price.
+*Reason:* §12.3 exists precisely for this. The evidence went into `ISSUE-viewer-frame-drift.md` and
+`FINDINGS-viewer-fidelity.md`, the proposal record into `ENGINE-CHANGES.md`, and the fixes were then
+committed in their own commit once sanctioned.
+*Cost, accepted deliberately:* the tree sat green on `verifyall` and red on `viewcheck` — 14 of 17 —
+for the length of that proposal. A gate reporting a real fault is the correct behaviour; the delay was
+the price of §12.3, and it is recorded here so the next reader knows the red state was chosen.
 
 ### D7 - Targeting and inventory as separate heads
 

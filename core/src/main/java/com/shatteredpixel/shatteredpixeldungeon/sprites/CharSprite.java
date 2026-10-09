@@ -56,6 +56,7 @@ import com.watabou.noosa.tweeners.AlphaTweener;
 import com.watabou.noosa.tweeners.PosTweener;
 import com.watabou.noosa.tweeners.Tweener;
 import com.watabou.utils.Callback;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.PointF;
 import com.watabou.utils.Random;
 
@@ -153,7 +154,16 @@ public class CharSprite extends MovieClip implements Tweener.Listener, MovieClip
 		ch.sprite = this;
 		
 		place( ch.pos );
-		turnTo( ch.pos, Random.Int( Dungeon.level.length() ) );
+		//PRandom, not Random. This is a cosmetic facing, and it was the one presentation draw still on
+		//the gameplay stream - which cost the rendered viewer 12 base-generator values per run that a
+		//headless run never spent, because HeadlessSprite overrides link() and so never reaches this
+		//line. Every subsequent gameplay draw in the viewer therefore came from a different point in the
+		//stream than the recording was made from: damage rolls, defence rolls and every mob decision
+		//disagreed, and a recording that verified exactly headlessly diverged in the viewer on health or
+		//position. Measured on warrior-long: headless's first gameplay draw was the base generator's
+		//5th value, the viewer's its 17th, and the RNG trace reported baseDraws=0 for both because
+		//Random.Int() did not record its draws.
+		turnTo( ch.pos, PRandom.Int( Dungeon.level.length() ) );
 		renderShadow = true;
 		
 		if (ch != Dungeon.hero) {

@@ -2,7 +2,8 @@
 
 **Status:** FIXED. `gradle :desktop:viewcheck` is green on the whole corpus and stays green across
 repeated runs. Cause found and measured; the fix is four presentation draws moving off the gameplay RNG
-stream. **Those four are engine changes and are uncommitted** — see *Definition of done*.
+stream. Those four are engine changes under `instructions.md` §12.3 and are committed, with the
+proposal record in `ENGINE-CHANGES.md` — see *Definition of done*.
 
 **Module:** the fault was in the game, not in `:superintelligence`. Two of the four sites are in
 `:core` (`CharSprite.link`, `AttackIndicator`) and two more (`Wand.staffFx`, `MagesStaff`'s particle).
@@ -178,8 +179,9 @@ the counter, mutation-tested — and `WorldDiff` splits on whitespace as well as
   full 126-step trace is compared against the headless one.
 - [x] The observer reports on the render-loop behaviour it was added for. The frame records name which
   actor advanced engine time and by how much; `viewdiff` names frames that moved with no step applied.
-- [ ] **The fix itself is committed.** Four engine changes — `CharSprite.link`, `AttackIndicator`,
-  `Wand.staffFx`, `MagesStaff`'s particle — move a draw from `Random` to `PRandom`. They are in the
-  working tree and deliberately **not** committed, per `instructions.md` §12.3. Without them a committed
-  tree reproduces this file exactly: 14 of 17 red. Each is one line, none can change an outcome, and
-  together they are the whole difference between the two states.
+- [x] **The fix itself is committed.** Four engine changes — `CharSprite.link`, `AttackIndicator`,
+  `Wand.staffFx`, `MagesStaff`'s particle — move a draw from `Random` to `PRandom`, plus
+  `Random.Int` recording its draws and `Random.shuffle(List)` routed through it. Each draw change is
+  one line, none can change an outcome, and together they are the whole difference between the two
+  states. Proposed in `ENGINE-CHANGES.md`, which also records what was deliberately left on the
+  gameplay stream and why.

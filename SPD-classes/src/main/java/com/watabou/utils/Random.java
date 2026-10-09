@@ -160,8 +160,17 @@ public static synchronized void resetGenerators(){
 	//can either use the current generator in the stack, or force the first generator (pure random)
 	public static synchronized int Int( int max, boolean useGeneratorStack ) {
 		if (max <= 0)                   return 0;
-		else if (useGeneratorStack)     return generators.peekFirst().nextInt(max);
-		else                            return generators.peekLast().nextInt(max);
+		int v;
+		if (useGeneratorStack)          v = generators.peekFirst().nextInt(max);
+		else                            v = generators.peekLast().nextInt(max);
+		//Recorded here as well as in Float() and Long(). It used not to be, and the hole was invisible
+		//from the outside in the worst way available: a headless run and a rendered run reported the same
+		//base-draw count at every step of a 126-step recording while their gameplay streams were four and
+		//sixteen values apart, because Int() consumed the generator without counting. Every conclusion
+		//drawn from "the counts match, so the stream is not offset" was therefore about the counter
+		//rather than about the stream.
+		RandomTrace.record( v, onSoleGenerator() );
+		return v;
 	}
 
 	//returns a uniformly distributed int in the range [min, max)
@@ -298,7 +307,20 @@ public static synchronized void resetGenerators(){
 	}
 
 	public synchronized static<T> void shuffle( List<?extends T> list){
-		Collections.shuffle(list, generators.peek());
+		//Routed through Int() rather than straight into Collections.shuffle, so the draws are counted.
+		//
+		//Collections.shuffle takes a java.util.Random and drives it itself, so every value it consumes
+		//bypasses RandomTrace entirely. Level generation shuffles with it, so a run that shuffles N lists
+		//advances its base generator by a number of values no trace can see. Same failure as an
+		//unrecorded Int(), and the same reason it has to be routed back through the counting path.
+		//
+		//Same permutation as before: Collections.shuffle walks the list downwards taking nextInt(i + 1) at
+		//index i - 1, which is exactly this loop. Getting the order wrong would reshuffle item generation
+		//for every run in the game, so observecheck asserts the property rather than trusting it.
+		int size = list.size();
+		for (int i = size - 1; i > 0; i--){
+			Collections.swap( list, i, Int( i + 1 ) );
+		}
 	}
 
 	public static void shuffle( int[] array ) {

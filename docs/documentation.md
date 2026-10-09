@@ -24,6 +24,9 @@ scored by a configurable reward function, with the best run per seed recorded an
   unblocks learning first, plus deliberate deviations and what each costs
 - [`superintelligence/testing-guide.md`](../superintelligence/testing-guide.md) - how each class of
   fault is tested, and with which command
+- [`superintelligence/ENGINE-CHANGES.md`](../superintelligence/ENGINE-CHANGES.md) - every change this
+  work has made to `:core` and `:SPD-classes`, what each one costs, and what is still unfixed. Read this
+  before touching game code for this project
 - [`superintelligence/docs.md`](../superintelligence/docs.md) and
   [`research.md`](../superintelligence/research.md) - the design brief this was built from
 
@@ -213,7 +216,9 @@ Guaranteed, and gated:
   [`../superintelligence/ISSUE-viewer-frame-drift.md`](../superintelligence/ISSUE-viewer-frame-drift.md)
   exists: four presentation draws were still on the gameplay stream, which put the viewer's twelve
   values from the trainer's and made 14 of 17 recordings diverge in the viewer while verifying
-  exactly headlessly. The rendered viewer now reproduces the corpus.
+  exactly headlessly. The rendered viewer now reproduces the corpus, and
+  [`../superintelligence/ENGINE-CHANGES.md`](../superintelligence/ENGINE-CHANGES.md) records every
+  change made to the game to get there.
 - A new run inherits nothing from the previous one - not an armed aim, not an open dialog, not a dead
   hero's remains.
 

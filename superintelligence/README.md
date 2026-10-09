@@ -69,9 +69,9 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   **14 of 17**, deterministically. Worse, `RngTrace` reported identical draw counts at every step
   throughout, because `Random.Int` and `Random.shuffle` were advancing the generator without being
   counted — so the instrument that was supposed to catch it was blind to the draws that caused it.
-  `gradle :desktop:viewcheck` is now **green on all 17**, and stable across repeated runs. The four
-  fixes are engine changes and are uncommitted, per `instructions.md` §12.3; see
-  `ISSUE-viewer-frame-drift.md`.
+`gradle :desktop:viewcheck` is now **green on all 17**, and stable across repeated runs. The four
+   fixes are engine changes under `instructions.md` §12.3; the proposal record is
+   `ENGINE-CHANGES.md` and they are committed. See `ISSUE-viewer-frame-drift.md`.
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
@@ -119,7 +119,7 @@ something.
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process |
-| Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 17 committed recordings, and stable across repeated runs. The four engine fixes this required are uncommitted |
+| Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 17 committed recordings, and stable across repeated runs. The four engine fixes this required are committed, with the record in `ENGINE-CHANGES.md` |
 | Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate |
 | A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation |
 | Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
@@ -354,3 +354,18 @@ rather than behaviour-changing when a renderer is present:
 - `Bones.clear()` - forgets a fallen hero's remains. Nothing in the game calls it; a normal playthrough
   wants the opposite. It exists because an environment playing many independent runs in one process
   cannot have the world depend on which hero died last.
+- `Random.reseedBase(long)` - seeds the base generator in place, so a recording can be replayed in a
+  second process.
+- `RandomTrace`, `Actor.currentActor()`, `Mob.currentEnemy()/enemySeen()/alerted()`,
+  `MovieClip.animationInFlight()`, `GameScene.answerableWindow()`, `PRandom.element()` - getters and
+  observation-only additions.
+- `Actor.all`, `Actor.chars`, `Level.mobs`, `Level.blobs` and the tie-breaks that consume them are
+  insertion-ordered, so turn order is a function of the run rather than of identity hash codes.
+- `CharSprite.link`, `AttackIndicator.checkEnemies`, `Wand.staffFx` and
+  `MagesStaff.StaffParticle.update` draw from `PRandom`. These are presentation draws that only the
+  rendered game makes, and they were spending the gameplay RNG stream.
+
+The last one is not cosmetic bookkeeping. **Four presentation draws on the gameplay stream cost the
+viewer 16 generator values per run that a headless run never spent**, which is why a recording could
+verify exactly headlessly and diverge in the viewer. See `ENGINE-CHANGES.md` for the full inventory,
+what each change cost, and what is still unfixed.

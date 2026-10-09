@@ -7,7 +7,8 @@ recordings and stays green across repeated runs.
 
 Kept because §7 is the correction table and §4a-§4b are the record of three wrong mechanisms, which is
 the reason the next reader should not re-derive them. **`ISSUE-viewer-frame-drift.md` is now the
-current document** and `FINDINGS-viewer-fidelity.md` holds the measurements.
+current document** and `FINDINGS-viewer-fidelity.md` holds the measurements, and
+`ENGINE-CHANGES.md` holds the inventory of what was changed in `:core` and `:SPD-classes` to fix it.
 
 Every claim below marked as the cause, the verified cause, or the suspected mechanism is **wrong**, and
 was wrong before it was tested rather than after. The one thing that survived contact with a run is the

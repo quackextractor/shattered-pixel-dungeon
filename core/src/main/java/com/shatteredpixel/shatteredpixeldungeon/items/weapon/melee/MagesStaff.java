@@ -55,6 +55,7 @@ import com.watabou.noosa.audio.Sample;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.Bundle;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -555,7 +556,7 @@ public class MagesStaff extends MeleeWeapon {
 		@Override
 		public void update() {
 			super.update();
-			size(minSize + (left / lifespan)*(maxSize-minSize) + Random.Float(sizeJitter));
+			size(minSize + (left / lifespan)*(maxSize-minSize) + PRandom.Float(sizeJitter));
 		}
 	}
 }
