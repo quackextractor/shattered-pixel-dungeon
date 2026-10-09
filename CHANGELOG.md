@@ -67,9 +67,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `superintelligence/PLAN-viewer-fidelity.md` §7. `GameScene.update` does not advance the world during
   playback - that branch is gated off by `Actor.manualScheduling`. A planned fix that would have added a
   mid-turn check to the step gate was **measured and refuted**: the viewer already waits, for 48
-  consecutive frames while an attack animation resolves. The real cause is an attack resolving on the
-  render thread while `HeadlessSprite` resolves it synchronously in the trainer, so the two order the
-  same events differently.
+  consecutive frames while an attack animation resolves. The "real cause" this entry previously named -
+  an attack resolving on the render thread while `HeadlessSprite` resolves it synchronously in the
+  trainer, so the two order the same events differently - **is itself not established**; it was the
+  reading that came before the measurements, and it predicts no measurement that then held. No cause is
+  claimed for the divergence yet.
+
+- **`superintelligence/FINDINGS-viewer-fidelity.md`**, an evidence file separate from the plan: the plan
+  says what will be tried, the findings say what happened, and after four hypotheses in a row were
+  refuted on running code, conflating the two is how the next one gets re-proposed. Seven items
+  established, four refuted with the measurement that refuted them, five still open - and no gate is
+  claimed to fix anything.
+
+  The load-bearing measurement is that headless and viewer agree on all 19 world fields for 16
+  consecutive steps and then diverge on the final action. Nothing accumulates; this is one ordering
+  fault, not a drift, which narrows the search considerably and rules out every "it slowly goes wrong"
+  explanation.
+
+- **Each refuted hypothesis is kept with both what predicted it and what the run showed.** Four
+  mechanisms were read out of the source and three were wrong: the alleged spinning in `Mob.act()`
+  shows no cooldown churn, the animation gate already blocks for 48 consecutive frames so it was a
+  no-op, and `Actor.current` is not the mob whose action coincides with the divergence. The fourth -
+  gating on `cooldown() <= 0` - wedged a sleeping `Sentry@5`, which reads the same value, for 600
+  frames applying zero steps. That experiment was reverted rather than committed; a committed tree has
+  to build and pass `verifyall`, and the finding is more useful than the dead gate.
 
 ### Fixed
 
