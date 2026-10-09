@@ -190,14 +190,19 @@ public class ReplayPlayer {
 	/**
 	 * True when this is the last recorded step and the recording declares why the run ended.
 	 *
-	 * <p>{@code DEATH} is excluded because the hero-alive check already covers it, and it is the one
-	 * ending the viewer can observe without being told. Absent in versions 1 and 2 of the format, which
-	 * then leave the reason unknown and are played to their last step as before.
+	 * <p>Absent in versions 1 and 2 of the format, which leave the reason unknown and are played to
+	 * their last step as before.
 	 */
 	private boolean recordingEndsHere(){
 		if (playback.cursor() != playback.total() - 1) return false;
 		String reason = recordingTermination();
-		return !reason.isEmpty() && !reason.equals( "DEATH" );
+		//DEATH is included, and it used to be excluded on the claim that the hero-alive check covered
+		//it. It does not: that check is an observation, and it fires on the last step of a death run
+		//before this function was ever consulted, so excluding DEATH handed the final step to the
+		//observation and stopped playback one step early. A death run still ends here like any other,
+		//and saying so is more useful than saying the hero is dead - the recording knows why, and the
+		//step it declares finished is one the trainer applied.
+		return !reason.isEmpty();
 	}
 
 	private String recordingTermination(){
@@ -383,6 +388,27 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 		for (int steps = 0; steps < MAX_ACTOR_STEPS; steps++){
 
+			//Checked before the hero-alive test below, which is the ordering that used to cost a step.
+			//
+			//On the last recorded step of a DEATH run the hero is already dead by the time playback
+			//arrives here, so the hero-alive check fired first, called playback.finish() and halted
+			//"hero is dead" - and this branch was never reached. The result was a recording that played
+			//N-1 of N steps and then stopped, on a file the headless verifier called clean, because
+			//ReplayIO.verify drives the env rather than this loop and never had the bug. Three of the
+			//seventeen corpus files ended in death; all three stopped one step short.
+			//
+			//A viewer that stops one step early is not reporting the recording faithfully, and "the
+			//recording is complete but the hero is dead" is a different message from "the recording ends
+			//here", so the recorded reason is the one worth printing. DEATH is excluded from
+			//recordingEndsHere() only because a run can die without the recording saying so; when it
+			//does say so, this branch is what should handle it.
+			if (recordingEndsHere()){
+				playback.advance();
+				playback.finish();
+				halt("run ended - the recording ends here as " + recordingTermination());
+				return Drain.STALLED;
+			}
+
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()){
 				playback.finish();
 				halt( "run ended - hero is dead" );
@@ -395,15 +421,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			//there is no settled state to compare against. Draining it instead made the viewer wait 400
 			//turns for a hero that would never be ready and then report "stalled", which is false: the
 			//recording was complete, not truncated.
-			//
-			//DEATH is excluded because the hero-alive check above handles it, and it is the one ending
-			//the viewer can observe without being told.
-			if (recordingEndsHere()){
-				playback.advance();
-				playback.finish();
-				halt("run ended - the recording ends here as " + recordingTermination());
-				return Drain.STALLED;
-			}
 
 			boolean wantsMore = Actor.headlessStep();
 

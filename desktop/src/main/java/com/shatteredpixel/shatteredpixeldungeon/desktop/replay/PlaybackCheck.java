@@ -62,7 +62,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 9;
+	private static final int CHECKS = 10;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -111,6 +111,7 @@ public class PlaybackCheck {
 		check( () -> checkAStalledPlayerFailsInsteadOfHanging() );
 		check( () -> checkNonDefaultConfigRoundTrips() );
 		check( () -> checkDeclaredTerminationEndsPlayback( good ) );
+		check( () -> checkADeathRunPlaysItsLastStep( good ) );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
@@ -474,6 +475,66 @@ private static void checkDeclaredTerminationEndsPlayback( Replay good ){
 		if ( undeclared.haltReason != null && undeclared.haltReason.contains( "the recording ends here" )){
 			fail( "a recording with no recorded termination still ended as if it had one" );
 		}
+	}
+}
+
+/**
+ * A run that ends with the hero dead must still play every recorded step.
+ *
+ * <p>This check exists because three of the seventeen committed recordings failed it, and every other
+ * check passed while they did. The cause was an ordering inside {@link ReplayPlayer#driveToHeroReady()}:
+ * the hero-alive test ran before the test for the recording declaring its own ending, so on the final
+ * step of a death run - where the hero is already dead - playback halted "hero is dead" and never reached
+ * the step it should have applied. Each of those files played N-1 of N steps and stopped.
+ *
+ * <p>Nothing caught it because nothing was looking. {@code ReplayIO.verify} drives the environment
+ * rather than the player, so {@code replay-viewer --verify} reported all three clean; and this gate
+ * played its own fixture, which ended on a turn limit rather than a death, so the branch the bug lived in
+ * was never taken. A corpus check is what was missing.
+ *
+ * <p>The hero's health is forced to zero on the last step rather than by playing until it happens to die,
+ * so the check is about the branch and not about whether the scripted policy died on this run. Both
+ * halves matter: a run that dies early is asserted to stop early, and a run marked DEATH whose hero is
+ * still alive is asserted <em>not</em> to be cut short, which is what makes the first assertion a claim
+ * about death rather than about an early halt.
+ */
+private static void checkADeathRunPlaysItsLastStep( Replay good ){
+	//hero dies on the final recorded step, and the recording says so
+	Replay dying = recordAShortRun();
+	int last = dying.length() - 1;
+	dying.steps.get( last ).heroHp = 0;
+	dying.termination = "DEATH";
+
+	Outcome outcome = play( dying );
+
+	if ( outcome.ranOutOfFrames ){
+		fail( "a recording declaring DEATH hung instead of finishing" );
+		return;
+	}
+	if ( outcome.diverged ){
+		fail( "a recording declaring DEATH diverged: " + outcome.haltReason );
+		return;
+	}
+	if ( outcome.cursor != dying.length() ){
+		fail( "a recording declaring DEATH played " + outcome.cursor + " of " + dying.length()
+				+ " steps and halted with: " + outcome.haltReason
+				+ ". The final step's action is still applied, so a death run must play all of them." );
+		return;
+	}
+	if ( outcome.haltReason == null || !outcome.haltReason.contains( "DEATH" )){
+		fail( "a recording declaring DEATH halted with: " + outcome.haltReason
+				+ " - the recorded reason should be what it says, rather than a bare death report" );
+	}
+
+	//and the converse: DEATH is not a licence to stop early on a hero that is still standing
+	Replay falseDeath = recordAShortRun();
+	falseDeath.termination = "DEATH";
+
+	Outcome standing = play( falseDeath );
+	if ( standing.cursor < falseDeath.length() ){
+		fail( "a recording declaring DEATH whose hero is alive stopped at step " + standing.cursor
+				+ " of " + falseDeath.length() + ": " + standing.haltReason
+				+ ". A declared ending truncates the recording, it does not describe one already in progress." );
 	}
 }
 
