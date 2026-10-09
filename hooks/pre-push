@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+# Pre-push gate: the rendered viewer.
+#
+# Runs :desktop:viewcheck, which plays the committed corpus the way a person plays it - real GameScene,
+# real frame driver, real GL context - and is the only check that can see a fault in the render loop.
+# It lives here rather than in pre-commit for two reasons: it takes about 90 seconds, and it needs a real
+# GL context, so it is neither quick enough for a commit nor runnable everywhere a commit is.
+#
+# IT DOES NOT BLOCK THE PUSH, and that is deliberate rather than an oversight.
+#
+# viewcheck is red by design today. 7-9 of the 17 committed recordings diverge in the viewer while all 17
+# verify clean headlessly - see superintelligence/ISSUE-viewer-frame-drift.md. A pre-push hook that
+# aborted on that would block every push in the repository until the underlying bug is fixed, which is the
+# fastest way to get a hook deleted. Reporting instead of blocking keeps the gate visible and costs
+# nothing to keep.
+#
+# It is also not a clean signal to gate on. The failing *membership* changes between runs on the same
+# machine and the same corpus - 7 of one run, 9 of the next, with different recordings in each - so a
+# pass/fail verdict here would be flaky by nature even once the bug is fixed. The count and the failing
+# list are printed so they can be compared with last time by eye.
+#
+# When that issue is closed, this becomes a blocking gate and the exit below changes from 0 to 1 on a
+# non-zero result. Nothing else about the hook needs to change.
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root" || exit 1
+
+echo "[INFO] running :desktop:viewcheck (the rendered viewer; needs a GL context, takes ~90s)"
+echo "[INFO] divergences here are EXPECTED while ISSUE-viewer-frame-drift.md is open."
+echo "[INFO] reporting only - this hook does not block the push. See the note at the top of this file."
+
+if ./gradlew --quiet :desktop:viewcheck; then
+    echo ""
+    echo "[OK]   every committed recording played clean in the viewer."
+    echo "       That is not expected yet; if it holds, the open issue may be closer to closed than its"
+    echo "       measurements suggest. Re-run before believing it."
+else
+    echo ""
+    echo "[INFO] viewer gate failed, as expected while the issue is open."
+    echo "[INFO] the failing recordings are listed above. Note which ones - the set changes between"
+    echo "[INFO] runs, so compare against the previous run rather than expecting a fixed list."
+    echo "[INFO] tracked in superintelligence/ISSUE-viewer-frame-drift.md"
+fi
+
+exit 0

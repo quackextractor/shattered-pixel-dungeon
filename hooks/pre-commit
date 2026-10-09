@@ -1,13 +1,19 @@
 #!/bin/sh
 #
-# Pre-commit gate for the Superintelligence module.
+# Pre-commit gate.
 #
 # Two checks, in order of cost. The badge sync runs first because it is instant and its failure mode is
-# trivially fixable, so there is no reason to spend 20 seconds on the test suite to then find out the
+# trivially fixable, so there is no reason to spend the test suite's time to then find out the
 # commit would have been rejected for a version number.
 #
 # Both abort the commit. Neither is ever bypassed: a hook that can be skipped with --no-verify is a
 # suggestion, and the value here is that a broken gate stops the commit rather than being noticed later.
+#
+# The test suite is `verifyall`, not `:superintelligence:gates`. Those are not the same thing and the
+# difference mattered: gates covers only the Superintelligence module, so a commit touching the desktop
+# replay player - ReplayController, ReplayPlayer, ReplayLauncher, replay-viewer.bat - passed this hook
+# without a single one of its own tests running. verifyall adds :desktop:playbackcheck, which drives
+# ReplayPlayer directly and is the cheapest check there is for the code most replay work changes.
 
 set -e
 
@@ -55,12 +61,14 @@ fi
 
 # ---------------------------------------------------------------- test suite
 
-echo "[INFO] running :superintelligence:gates"
+# verifyall = :superintelligence:gates + :desktop:playbackcheck. See the note at the top for why the
+# aggregate rather than the Superintelligence half.
+echo "[INFO] running verifyall (:superintelligence:gates + :desktop:playbackcheck)"
 
-if ! ./gradlew --quiet :superintelligence:gates; then
+if ! ./gradlew --quiet verifyall; then
     echo ""
     echo "[ERROR] the gate suite failed. The commit was not made."
-    echo "        Run './gradlew :superintelligence:gates' on its own to see which gate, and why."
+    echo "        Run './gradlew verifyall' on its own to see which gate, and why."
     echo "        A failing gate is never to be worked around by disabling it; see the project's own"
     echo "        notes on why each one exists."
     exit 1
