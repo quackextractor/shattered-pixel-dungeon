@@ -17,8 +17,7 @@ local.properties
 
 #intellij project files
 *.iml
-*.idea
-superintelligence/instructions.md
+*.ideaS
 
 # LWJGL extracts its native libraries into the working directory on first run. Nothing here is ours, it
 # is rebuilt from the jar, and viewcheck creates it under the repo root because that is its working dir.
