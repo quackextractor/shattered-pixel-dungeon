@@ -22,9 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recordings diverge when played in the rendered viewer, while all 17 verify clean headlessly. The
   hero takes hits the trainer never permitted, because the scene advances actors outside the viewer's
   drain (e.g. `duelist-mid` step 23 and `warrior-mid` step 17, `hp is 19, recording says 20`). The
-  failing subset varies between runs, so viewer fidelity is currently frame-rate dependent. Reproduced
-  and gated by `viewcheck`; the fix requires changing `GameScene`'s update loop in the game itself,
-  which is out of scope for the `superintelligence` module.
+  failing *membership* varies between runs as well as the failing step, so a fix cannot be confirmed
+  by re-running the gate. Reproduced and gated by `viewcheck`; the fix requires changing `GameScene`'s
+  update loop in the game itself, which is out of scope for the `superintelligence` module.
+  Full issue, troubleshooting options and known gaps: `superintelligence/ISSUE-viewer-frame-drift.md`.
 
 ### Changed
 
