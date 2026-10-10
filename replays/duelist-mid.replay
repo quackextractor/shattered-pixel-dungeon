@@ -4,14 +4,14 @@ seed=duelist-mid
 hero=DUELIST
 challenges=0
 generation=0
-score=-60.643999844789505
+score=-60.64199984469451
 depth=2
-turns=272
+turns=271
 turn_limit=150
 max_slots=32
 allow_equipping=true
 termination=STALLED
-steps=297
+steps=296
 USE 0 WORLD 1295 -0.0020000000949949026  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1295 0.0 ThrowingSpike:1,Waterskin:2 20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1295 -0.0020000000949949026  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
@@ -172,7 +172,6 @@ INTERACT 0 WORLD 337 -0.0020000000949949026  20 128.0 Food:1,PotionOfStrength:1,
 INTERACT 0 WORLD 88 12.248000144958496  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 89 0.3479999899864197  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 282 4.498000144958496  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_SE 0 WORLD 282 -0.0020000000949949026  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_SE 0 WORLD 317 -0.0020000000949949026  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 282 -0.0020000000949949026  20 2.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_SE 0 WORLD 317 -0.0020000000949949026  20 3.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1

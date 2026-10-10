@@ -137,7 +137,7 @@ code that reads it unnoticed.
 
 ## Gates
 
-Nineteen gates, one invocation, ~22 seconds:
+Twenty gates, one invocation, ~22 seconds:
 
 ```sh
 ./gradlew :superintelligence:gates
@@ -152,6 +152,7 @@ Nineteen gates, one invocation, ~22 seconds:
 | `statecheck` | A sampled observation that does not replay to its rollout's value |
 | `parallelcheck` | A parallel update that differs from the serial one |
 | `rewardcheck` | Ending an episode being cheaper than dying |
+| `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
 | `replaycheck` | A catalog that misgroups, misranks or misresolves |
 | `rolloutcheck` | A recording with no usable seed |
 | `modecheck` | An action mode the environment cannot reach |
@@ -192,6 +193,16 @@ Three of them are worth singling out, because they reach faults the others struc
   streams were 12 values apart. Six hypotheses about the divergence had been refuted by
   measurement before that was found, because the instrument that was supposed to catch it was blind to
   the draws that caused it.
+- **`transitioncheck`** looks at what the hero *did* on arrival rather than only at where he landed. A
+  hero arrives on a new floor where everything is at time 0, so the game's own scheduler gives him
+  exactly one act before the player can act at all - and `Hero.act()` is where the floor's sleeping mobs
+  notice him. The environment used to hand control to the agent first, so the agent's first action on
+  every new floor was spent being interrupted by a rat, and the recording recorded a turn that moved
+  nobody. A recording cannot catch that: a step whose action was thrown away still records a step. The
+  case that does has to end with a real action and assert the hero moved, which in turn needs a fixture
+  where something is in range to interrupt - so the fixture is searched for at run time rather than
+  hard-coded, and failing to find one is a reported failure. The gate also drives the ascent, which is
+  the one direction no other gate exercised.
 
 ## Replay and determinism
 
@@ -274,6 +285,9 @@ Guaranteed, and gated:
   change made to the game to get there.
 - A new run inherits nothing from the previous one - not an armed aim, not an open dialog, not a dead
   hero's remains.
+- A floor change is handed back the way the game hands it back. The hero takes the one act the game
+  gives him on arrival, in both directions, so the agent's first action on a new floor is not spent
+  being interrupted by whatever noticed him. `transitioncheck` gates it in both directions.
 
 **Not guaranteed, and worth stating plainly:**
 

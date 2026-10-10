@@ -78,29 +78,38 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 
 10. A run that descends and then walks back up the stairs diverges from its recording, and the viewer
     stops on screen with "Cannot read save file". Found while closing 9; `duelist-mid` is the only
-    recording in the corpus that descends, and it does this on its second floor change.
+    recording in the corpus that descends, and it does this on its second floor change. (closed)
 
-    Both environments now agree on the symptom and disagree on the world:
+    Both environments now agree. The "Cannot read save file" half was already closed before this was
+    filed — `ReplayPlayer` clears `Dungeon.generatedLevels` on the frame a transition is pending,
+    because `InterlevelScene.ascend()` reads a floor off disk whenever the depth is in that set and
+    descending is what puts it there — and that fix removed the error window and the hang without
+    touching the divergence.
+
+    The divergence was neither `Mob.holdAllies` nor `Dungeon.saveAll()`, both of which were the prime
+    suspects and neither of which the pipeline ever needed: the regenerated floor came back identical
+    in both environments, roster for roster.
+
+    **The fault is that the environment never gave the hero a turn on the new floor.** The hero arrives
+    where everything on the floor is at time 0, so the game's own scheduler picks him for exactly one
+    act before the player can act at all, and `Hero.act()` is where `Hero.checkVisibleMobs()` runs. A
+    mob seeing the hero for the first time calls `Hero.interrupt()`, which throws away whatever action
+    is pending. Injecting the agent's next action first therefore has it eaten by a rat noticing the
+    hero, and the recording records a turn that moves nobody:
 
     ```
-    DIVERGED at step 161 - MOVE_SE/0 in WORLD: hero at (11, 9) pos 317, recording says (10, 8) pos 282
+    step 159  INTERACT  pos 282  engine time 0.0   <- the ascent
+    step 160  MOVE_SE   pos 282  engine time 0.0   <- the trainer: interrupted, no time spent
+    step 161  MOVE_SE   pos 317  engine time 1.0   <- the viewer, one action later
     ```
 
-    `:desktop:viewcheck` and `:desktop:playbackcheck` report it identically, so it is not a viewer
-    artefact, and it is what is currently keeping `verifyall` red.
+    `SPDEnv.settle` now gives the hero that act after servicing a transition, and it is one act rather
+    than a drain because `Hero.act()` with no action pending calls `ready()` and returns without
+    spending anything — which is also what stops the loop on its first iteration. This is the sixth
+    instance of the class `PLAN-viewer-fidelity.md` §6 names.
 
-    Two differences between `InterlevelScene.ascend()` and `LevelPipeline.handleTransition()` are known
-    and neither is confirmed as the cause:
-
-    - `ascend()` calls `Mob.holdAllies(Dungeon.level)` and `Dungeon.saveAll()`; the pipeline calls
-      neither. `Mob.holdAllies` still uses `Collections.shuffle`, which ignores the seeded generator
-      entirely and has been an open engine gap since `ENGINE-CHANGES.md` §7 recorded it. That is the
-      prime suspect and it has not been tested. It is an engine file.
-    - `ascend()` calls `Dungeon.loadLevel(GamesInProgress.curSlot)` when
-      `Dungeon.levelHasBeenGenerated(depth, branch)` is true, reading a `depth<n>.dat` a viewer run has
-      never written. `ReplayPlayer` now clears `Dungeon.generatedLevels` on the frame a transition is
-      pending, which is what the pipeline already does and why; that removed the error window and the
-      hang, and did **not** remove the divergence.
-
-    Next step is to make the two paths agree, in the same way 9 was closed: find the mechanism by
-    measurement rather than by reading, and put it behind a case that fails when it is reinstated.
+    Gated by two new `transitioncheck` cases, 7 -> 9. The first drives a real descent *and* ascent and
+    then asserts the agent's first action on the floor it comes back to actually moves the hero; the
+    second asserts the ascent is serviced at all, which no gate had ever exercised — every one of the
+    other seven descends. Both are mutation-tested: removing the landing act fails the first with "the
+    agent's first action on depth 1 moved nobody", and refusing to service an ascent fails the second.

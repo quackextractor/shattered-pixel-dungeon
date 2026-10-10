@@ -55,8 +55,9 @@
 
 | Test Command / Task | Subsystem Verified | Success Criterion |
 | :--- | :--- | :--- |
-| **`./gradlew :superintelligence:gates`** | Master aggregator running all 19 automated gate checks across all modules. | **All 19 gates pass cleanly** in ~22 seconds. |
+| **`./gradlew :superintelligence:gates`** | Master aggregator running all 20 automated gate checks across all modules. | **All 20 gates pass cleanly** in ~22 seconds. |
 | **`./gradlew :superintelligence:run --args="verify <file.replay>"`** | Headless re-execution of a recorded replay through `ActionMapper` & `LevelPipeline`. | Replays trajectory to completion, matching recorded position, HP, turns, and inventory. |
+| **`transitioncheck` (`:superintelligence`)** | Drives real descents **and** an ascent through `Level.activateTransition`, and asserts the hero's first action on the new floor is not swallowed by the act where the floor's mobs notice him. 9 cases, mutation-tested. | Depth changes in both directions, the episode continues, the engine clock restarts with the floor, and the agent's first action there moves the hero. |
 | **`paritycheck` (`:superintelligence`)** | Records a sweep of seeds x hero classes in one process, then verifies each recording twice - once immediately, once after the whole sweep has run in between. | Every recording replays exactly, both times. |
 | **`playbackcheck` (`:desktop`)** | Drives `ReplayPlayer` logic headlessly without UI or display server. Covers the player's own logic only. | Faithful replays pass; altered steps (HP, position, turn, quickslots) fail at exact step. |
 | **`viewcheck` (`:desktop`)** | Plays the **whole committed corpus through the real viewer** - real `GameScene`, real frame driver, real GL context, window hidden. Needs a display, so it is outside `gates`. | Every committed recording plays clean in the viewer. **Green**: 17 of 17, and stable across repeated runs. |
@@ -80,3 +81,11 @@ environments twelve values apart; `verify`, `playbackcheck` and `paritycheck` al
 run against a headless run and could not see it, and `RngTrace` reported identical draw counts at
 every step because `Random.Int` was never counted. A gate that checks its own instrument found it,
 after six hypotheses about ordering had been refuted by measurement.
+
+`transitioncheck` is the third counter-example, and its shape is the useful part: it looked at the floor
+the hero lands on and the clock he lands with, and never at whether he **acted** on arrival - so a fault
+that ate the agent's first action on every new floor sat behind a gate that was passing. A recording
+cannot catch it either, because a step whose action was thrown away still records a step. The case that
+does has to end with a real action and assert the hero moved, which means it also needs a fixture where
+something is actually in range to interrupt it - which is why the fixture is searched for at run time
+rather than hard-coded, and why failing to find one is itself a reported failure.

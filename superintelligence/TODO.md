@@ -3,12 +3,90 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-10, after `issues.md` "Training" 8 and 9 were worked through. 9 turned out to be
-five faults, not one, and the last two of them are **still open**.
+Last updated: 2026-10-10, after `issues.md` "Training" 10 — the ascent that follows the descent — was
+worked through. `verifyall` is green: `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 20,
+and `:desktop:viewcheck` **17 of 17**, which is the state it was in before the corpus grew a descending
+recording and has not been in since.
 
 ---
 
-## 0.1 `issues.md` "Training" 9 — descending ended the episode - FIXED, except for the ascent
+## 0.5 `issues.md` "Training" 10 — the agent's first action on a new floor was being eaten - FIXED
+
+**The report:** *"a run that descends and then walks back up the stairs diverges from its recording."*
+Both sides agreed on the symptom and disagreed on the world, by exactly one cell and one step:
+
+```
+DIVERGED at step 161 - MOVE_SE/0 in WORLD: hero at (11, 9) pos 317, recording says (10, 8) pos 282
+```
+
+**The two suspects were both innocent, and the interesting part is how they were eliminated.**
+`InterlevelScene.ascend()` calls `Mob.holdAllies(Dungeon.level)` and `Dungeon.saveAll()` and
+`LevelPipeline.handleTransition()` calls neither — that is real, and `Mob.holdAllies` still uses
+`Collections.shuffle` (`ENGINE-CHANGES.md` §7), but it is not this. The regenerated floor came back
+**identical in both environments, roster for roster**, which the world trace shows directly. A premise
+that had been carried through several documents turned out to describe a difference that could not
+produce the symptom it was blamed for.
+
+**The fault is one the recording cannot show.** The hero arrives on a new floor where everything is at
+time 0 — `Dungeon.newLevel()` calls `Actor.clear()` — so the game's own scheduler picks him for exactly
+one act before the player can act at all. `Hero.act()` runs `Hero.checkVisibleMobs()`, and *that* is
+where the new floor's sleeping mobs notice a hero standing among them; a mob seeing him for the first
+time calls `Hero.interrupt()`, which discards whatever action is pending.
+
+`SPDEnv.settle` returned from the transition without giving the hero that act — deliberately, and for a
+reason that was right at the time. Draining on arrival meant working the new floor's sleeping mobs up
+to the hero's stale clock, and the trainer recorded `engine time 129.0` where the viewer read `0.0`
+(the fourth instance of the class `PLAN-viewer-fidelity.md` §6 names). `Actor.fixTime()` removed the
+stale clock; the "do not drain" workaround outlived it, and with it went the arrival act.
+
+So the agent's action was injected first, and the hero's very first act on the new floor interrupted
+it. On `duelist-mid`, which ascends at step 159:
+
+```
+step 160  MOVE_SE  ->  282  engine time 0.0     the trainer: interrupted, no time spent
+```
+
+and the viewer, replaying the same recording in the real game, moved to 317.
+
+**Fixed** by `SPDEnv.settleLanding()`: one scheduler step after a transition, not a drain.
+`Hero.act()` with no action pending calls `ready()` and returns without spending anything, which is
+also what stops the loop on its first iteration — "one act" and "a drain" are different things here
+rather than the same thing at a different size. It costs no turn, and the transition's own turn is
+already charged by the branch around it.
+
+### Why no gate saw it
+
+`transitioncheck` looked at the floor the hero lands on and the clock he lands with, and never at
+whether he *acted* on arrival. Nothing in the suite injected an action on the frame a transition
+completed — every case spent a `WAIT`, which a noticing mob cannot interrupt into anything different.
+
+Two cases were added (7 -> 9). The first drives a descent *and* an ascent and then asserts the agent's
+first action on the floor it comes back to actually moves the hero. The fixture is found at run time
+rather than hard-coded, because a hero arrives at a floor's **entrance** and level generation keeps
+entrances clear: the arrival FOV of all nine seeds tried was empty of enemies, so a case built on a
+descent alone would have passed with the fault present. Climbing back up lands in an ordinary room,
+which is exactly the shape `issues.md` 10 diverged on.
+
+The second drives the ascent itself, which no gate had ever exercised — every one of the other seven
+descends, and an ascent is the one direction with a second engine behaviour attached to it
+(`InterlevelScene.ascend()` reads a floor off disk when the depth is in `generatedLevels`, and
+descending is what puts it there).
+
+Both are mutation-tested. Removing the landing act fails the first with *"the agent's first action on
+depth 1 moved nobody"*. Refusing to service an ascent fails the second, and fails the first too,
+because it cannot build the fixture — worth noting as a case in its own right: a fixture that cannot be
+built is reported rather than skipped.
+
+### Corpus
+
+`duelist-mid` was the only recording that descended, so it is the only one the change touches, and it
+was regenerated. It still descends at step 157 and climbs back at 159, so the path stays covered by the
+corpus as well as by the gate. The other sixteen are byte-identical, which is the determinism claim
+being made by the regeneration script rather than a coincidence.
+
+---
+
+## 0.1 `issues.md` "Training" 9 — descending ended the episode - FIXED, including the ascent
 
 **The report:** *"the same duelist-mid recording shows him descending to a new floor, with full health
 too. But immediately as he descends, the recording ends as stalled."* It was, and the cause was the
@@ -54,35 +132,29 @@ bindings and the intro flag: `PLAN-viewer-fidelity.md` §6. `transitioncheck` ca
 ### Status
 
 `:superintelligence:gates` is green at 20, `playbackcheck` is green at 20, `:desktop:viewcheck` is
-**16 of 17** — and the one failure is not a regression but the far side of this same fault.
+**17 of 17**. It was 16 of 17 when this was written, and the one failure was not a regression but the
+far side of this same fault — see §0.5.
 
-### **OPEN: ascending after descending still diverges**
+### Ascending after descending
 
-`duelist-mid` descends to floor 2 at step 157 and climbs back to floor 1 at step 159. Both environments
-now agree on the symptom and disagree on the world:
+**Closed. See §0.5.** In short: the regenerated floor was identical in both environments, roster for
+roster, so neither of the differences below could produce the symptom, and the fault was that the
+environment never gave the hero a turn on the new floor. `Hero.act()` is where
+`Hero.checkVisibleMobs()` wakes the floor's sleeping mobs, and a mob seeing the hero for the first
+time calls `Hero.interrupt()`, which discarded the agent's first action on every new floor.
 
-```
-DIVERGED at step 161 - MOVE_SE/0 in WORLD: hero at (11, 9) pos 317, recording says (10, 8) pos 282
-```
+What is left of the two differences recorded here:
 
-`viewcheck` (rendered, muted) and `playbackcheck` (headless) report it identically, so it is not a
-viewer artefact. The `ascend` path is where `InterlevelScene` differs from `LevelPipeline`:
-
-- **`InterlevelScene.ascend()` calls `Mob.holdAllies(Dungeon.level)` and `Dungeon.saveAll()`;
-  `LevelPipeline.handleTransition()` calls neither.** `Mob.holdAllies` still uses
-  `Collections.shuffle` — unseeded, so process-history dependent — which `ENGINE-CHANGES.md` §7 has
-  listed as an open engine gap since it was found. That is the prime suspect and it has not been tested.
-- **`ascend()` calls `Dungeon.loadLevel(GamesInProgress.curSlot)` when
-  `Dungeon.levelHasBeenGenerated(depth, branch)`** is true, reading `depth<n>.dat` out of the platform
-  file root. A viewer run has written none, so a run that descends and climbs back up stopped with
-  `Cannot read save file` on screen and never finished — the first form of this failure, seen
-  interactively. `ReplayPlayer` now clears `Dungeon.generatedLevels` on the frame a transition is
-  pending, which is what `LevelPipeline` does and why; it removed the window and the hang, and did
-  **not** remove the divergence. The load branch is therefore not the whole of it.
-- `Mob.holdAllies` is the difference that would still be left, and it is an engine file.
-
-**This is the next thing to do.** `duelist-mid` is the corpus's only descending recording and it cannot
-be replayed until this is closed, so `viewcheck` is red until then.
+- **`InterlevelScene.ascend()` calls `Mob.holdAllies(Dungeon.level)` and `Dungeon.saveAll()`; the
+  pipeline calls neither.** Still true, and not this. The regenerated floor came back identical in both
+  environments, so neither could have been the cause.
+- **`ascend()` reads `depth<n>.dat` off the platform file root** when the depth is in
+  `generatedLevels`. Still true, and still the reason a viewer run that descended and climbed back up
+  stopped on `Cannot read save file`. `ReplayPlayer` clears `Dungeon.generatedLevels` on the frame a
+  transition is pending; the transition's second form — the divergence — was elsewhere.
+- **`Mob.holdAllies` still uses `Collections.shuffle`** and is still unseeded (`ENGINE-CHANGES.md` §7).
+  An engine file, and still not tested, because nothing reachable by the scripted policy calls
+  `holdAllies`.
 
 ---
 

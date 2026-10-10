@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.1] - 2026-10-10
+
+### Fixed
+
+- **A run that descended and then climbed back up diverged from its own recording.** `duelist-mid` goes
+  down at step 157 and back up at 159, and from the ascent on the trainer and the rendered viewer
+  described different worlds - `DIVERGED at step 161 - MOVE_SE/0 in WORLD: hero at (11, 9) pos 317,
+  recording says (10, 8) pos 282` - which is what `issues.md` 10 filed and what had `verifyall` red.
+
+  The two differences between `InterlevelScene.ascend()` and `LevelPipeline.handleTransition()` were
+  both innocent, and the way they were eliminated is worth stating: **the regenerated floor came back
+  identical in both environments, roster for roster.** `Mob.holdAllies` and `Dungeon.saveAll`, the two
+  calls the pipeline omits, could not have been it.
+
+  The fault is one a recording cannot show, because a step whose action was thrown away still records
+  a step. The hero arrives on a new floor where everything is at time 0 - `Dungeon.newLevel()` calls
+  `Actor.clear()` - so the game's own scheduler picks him for exactly one act before the player can act
+  at all, and `Hero.act()` is where `Hero.checkVisibleMobs()` runs. That is what wakes the floor's
+  sleeping mobs, and a mob seeing the hero for the first time calls `Hero.interrupt()`, which discards
+  whatever action is pending. `SPDEnv.settle` was handing control to the agent before that act, so
+  **the agent's first action on every new floor was spent being noticed by a rat**:
+
+  ```
+  step 160  MOVE_SE  ->  282  engine time 0.0     the trainer: interrupted, no time spent
+  ```
+
+  while the viewer, replaying the same recording in the real game, moved to 317.
+
+  Not draining on arrival was deliberate, and correct when it was written: the new floor's sleeping mobs
+  had to be worked up to the hero's stale clock, and the trainer recorded `engine time 129.0` where the
+  viewer read `0.0`. `Actor.fixTime()` removed the stale clock and the workaround outlived it. This is
+  the sixth instance of the class `PLAN-viewer-fidelity.md` §6 names - quickslot bindings, scheduler
+  tie-breaking, the intro flag, `Actor.fixTime()`, the extra drain, and this.
+
+  `SPDEnv.settleLanding()` now gives the hero that act. One act and not a drain, because
+  `Hero.act()` with no action pending calls `ready()` and returns without spending anything - which is
+  also what stops the loop on its first iteration, so the two are different things here rather than the
+  same thing at different sizes.
+
+- **The "Known issue" carried in 4.3.0 is closed.** `viewcheck` is **17 of 17** for the first time since
+  the corpus grew a recording that descends, `playbackcheck` is green at 20, and `verifyall` passes.
+
+### Added
+
+- **Two more `transitioncheck` cases** (7 -> 9). One drives a descent *and* an ascent and then asserts
+  the agent's first action on the floor it comes back to actually moves the hero; the other asserts the
+  ascent is serviced at all, which no gate had ever exercised - every one of the other seven descends,
+  and an ascent is the one direction with a second engine behaviour attached to it
+  (`InterlevelScene.ascend()` reads a floor off disk when the depth is in `generatedLevels`, and
+  descending is what puts it there).
+
+  The first case's fixture is found at run time rather than hard-coded. A hero arrives at a floor's
+  *entrance* and level generation keeps entrances clear: the arrival field of view of all nine seeds
+  tried was empty of enemies, so a case built on a descent alone would have passed with the fault present
+  and said nothing. Climbing back up lands in an ordinary room, which is the shape `issues.md` 10
+  actually diverged on. Both are mutation-tested - removing the landing act fails the first with "the
+  agent's first action on depth 1 moved nobody", and refusing to service an ascent fails the second.
+
+### Changed
+
+- **`duelist-mid` regenerated**, and only that one. It is the corpus's only descending recording, so it
+  is the only file the change touches; the other sixteen are byte-identical, which is the determinism
+  claim the regeneration script makes rather than a coincidence. It still descends at 157 and climbs
+  back at 159, so the path stays covered by the corpus as well as by the gate.
+- **`transitioncheck` added to the gates table** in `docs/documentation.md` and `testing-guide.md`,
+  which listed nineteen gates and had been one short since it was added.
+
 ## [4.3.0] - 2026-10-10
 
 ### Fixed
@@ -133,15 +200,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known issue
 
-- **Ascending after descending still diverges, and `verifyall` is red because of it.**
-  `duelist-mid` descends at step 157 and climbs back at 159; `:desktop:viewcheck` and
-  `:desktop:playbackcheck` report the same `DIVERGED at step 161 - hero at (11, 9) pos 317, recording
-  says (10, 8) pos 282`, so it is not a viewer artefact. Two differences between
-  `InterlevelScene.ascend()` and `LevelPipeline.handleTransition()` are known and neither is confirmed:
-  `ascend()` calls `Mob.holdAllies` and `Dungeon.saveAll()` and the pipeline calls neither, and
-  `Mob.holdAllies` still uses `Collections.shuffle` — unseeded, and open since `ENGINE-CHANGES.md` §7.
-  Recorded as `issues.md` 10 rather than left implicit, because a green `verifyall` is not available and
-  the pre-commit hook is right to refuse it.
+- ~~**Ascending after descending still diverges, and `verifyall` is red because of it.**~~
+  **Fixed in 4.3.1.** `duelist-mid` descends at step 157 and climbs back at 159; `:desktop:viewcheck`
+  and `:desktop:playbackcheck` reported the same `DIVERGED at step 161 - hero at (11, 9) pos 317,
+  recording says (10, 8) pos 282`, so it was not a viewer artefact. Two differences between
+  `InterlevelScene.ascend()` and `LevelPipeline.handleTransition()` were known and neither was
+  confirmed: `ascend()` calls `Mob.holdAllies` and `Dungeon.saveAll()` and the pipeline calls neither,
+  and `Mob.holdAllies` still uses `Collections.shuffle` - unseeded, and open since
+  `ENGINE-CHANGES.md` §7.
+
+  Both were innocent: the regenerated floor came back identical in both environments. The real fault
+  was that the environment never gave the hero a turn on the new floor, so a mob waking up and seeing
+  him for the first time interrupted the agent's first action there. Recorded as `issues.md` 10 rather
+  than left implicit, because a green `verifyall` is now available and the pre-commit hook was right to
+  refuse it before.
 
 ### Changed
 

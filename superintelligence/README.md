@@ -73,6 +73,16 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
 `gradle :desktop:viewcheck` is now **green on all 17**, and stable across repeated runs. The four
    fixes are engine changes under `instructions.md` §12.3; the proposal record is
    `ENGINE-CHANGES.md` and they are committed. See `ISSUE-viewer-frame-drift.md`.
+- **Descending now survives the whole journey, including climbing back up.** A hero who walks down the
+  stairs was ending the episode on the spot: `Game.switchScene(...)` raises a request and returns, and
+  the acknowledgement that turns it into "a scene wants to take over" is raised in `Game.step()`,
+  reached from `Game.render()` — which never runs headlessly. That is why `bestDepth` was 1 in every
+  generation of every run: the one action that would have moved the agent was ending it.
+  Four more faults were only reachable because nothing descended. The last of them was the mirror image
+  of the first, and `issues.md` 10: the environment never gave the hero a turn on the new floor, so a
+  mob waking up and seeing him for the first time interrupted the agent's first action there — the
+  agent's first move on every new floor was spent being noticed by a rat. Both environments now agree,
+  and `viewcheck` is 17 of 17 with `verifyall` green. See `TODO.md` §0.1 and §0.5.
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
@@ -116,7 +126,7 @@ something.
 | Area | State |
 | --- | --- |
 | Headless engine (renderer bypassed, single-threaded scheduler) | Verified, reproducible across processes |
-| Level pipeline, floor transitions, chasm falls | Verified |
+| Level pipeline, floor transitions, chasm falls | Verified - descending and ascending, in both directions, with the hero's landing act. `transitioncheck` is a gate, 9 cases |
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process |
@@ -177,13 +187,16 @@ something.
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"
 ```
 
-**Nineteen gates, one invocation.** Each has had the thing it guards deleted, and each has been
+**Twenty gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives
 a write, a read and a second episode, which is the only gate that lets the hero die repeatedly. That is
 where process-spanning game state such as a dead hero's remains becomes visible - and it is how two of
-32 recordings were caught not reproducing. Full table in
+32 recordings were caught not reproducing. A third, `transitioncheck`, covers the path that was
+unreachable until descending worked: a hero's first action on a new floor used to be eaten by a mob
+waking up, and every recording in the corpus that descended described a run that could not happen.
+Full table in
 [`testing-guide.md`](testing-guide.md).
 
 `probeClasspath` prints the runtime classpath, which is what the trainer uses to launch workers.

@@ -316,24 +316,42 @@ if (mode == EnvMode.WORLD){
 
 			if (outcome == LevelPipeline.Outcome.TRANSITION){
 				accumulated += onFloorTransition();
-				//One turn is spent and the hand goes straight back, because that is what the game does.
+				//One turn is spent, and the hand goes back after exactly one scheduler step.
 				//
-				//The game does not drain after a transition. InterlevelScene builds the floor and
-				//GameScene.create() puts the player back in control on the frame the new floor appears.
-				//Draining here instead meant the scheduler had to work the new floor's sleeping mobs up
-				//to the hero's stale clock before the hero could be picked again - and Dungeon.newLevel()
-				//starts that clock again from zero, so "stale" was 128 turns on a typical floor. Measured
-				//on duelist-mid: the trainer recorded engine time 129.0 on the descent step and the
-				//rendered viewer, faithfully replaying the same recording, reported 0.0 and called the
-				//trainer wrong.
+				//"Exactly one" is the part that was wrong for a long time, in both directions, and each
+				//direction had its own reason for looking right.
 				//
-				//It is the fourth instance of the same class PLAN-viewer-fidelity.md §6 names: something
-				//only one side does, and the recording is a statement about a game the viewer does not
-				//play. The hero is also not re-ready here, deliberately: runToHeroReady gives the hero a
-				//scheduler step before testing readiness, which is what makes the recorded action actually
-				//happen rather than being skipped.
+				//Draining here instead - running the whole new floor's turns before handing control back -
+				//was wrong because InterlevelScene builds the floor and hands the player straight back,
+				//and because a long drain meant working the new floor's sleeping mobs up to the hero's
+				//stale clock: Dungeon.newLevel() starts that clock again from zero, so "stale" was 128
+				//turns on a typical floor. Measured on duelist-mid - the trainer recorded engine time
+				//129.0 on the descent step and the rendered viewer, replaying that recording in the real
+				//game, reported 0.0 and called the trainer wrong. That is fixed by Actor.fixTime() and by
+				//not draining, and it is the fourth instance of the class PLAN-viewer-fidelity.md §6 names.
+				//
+				//Not giving the hero its landing act at all is wrong for the reason the game's own
+				//scheduler makes obvious. The hero arrives on the new floor and is the earliest actor on
+				//it - everything is at time 0 - so the real game selects him for exactly one act before
+				//the player can act at all, and Hero.act() is where Hero.checkVisibleMobs() runs. That
+				//call is what wakes the new floor's sleeping mobs: a mob that sees the hero for the
+				//first time calls Hero.interrupt(), which throws away whatever action is pending.
+				//
+				//Injecting the agent's next action before that act therefore has it eaten by a rat
+				//noticing the hero, and the recording records a turn that moves nobody while the real
+				//game moves. Measured on duelist-mid, issues.md 10: the hero ascends at step 159 and the
+				//recorded MOVE_SE at 160 leaves him on 282 with the clock still at 0.0, because
+				//checkVisibleMobs interrupted it; the rendered viewer replays the same recording, gives
+				//the hero his landing act, and moves to 317. DIVERGED at step 161, on both sides, on a
+				//recording that describes a game which cannot happen.
+				//
+				//One act, not a drain: it costs no turn - Hero.act() with no action calls ready() and
+				//returns - and the loop stops the moment the hero is waiting for input, which is the
+				//first iteration because he is at time 0 on a floor where everything else is too.
 				turnsThisFloor++;
 				turnsTotal++;
+				settleLanding();
+				if (!running) break;
 				accumulated += reward.step( encoder.encode(), true );
 				checkFloorLimits();
 				mapper.refreshSlots();
@@ -369,6 +387,37 @@ if (mode == EnvMode.WORLD){
 	}
 
 	// --------------------------------------------------------------------------- transitions
+
+	/**
+	 * Gives the hero the one turn the game gives him on arrival at a new floor.
+	 *
+	 * <p>Separate from {@link #settle} because it must not score a turn. The hero arrives at time 0 on a
+	 * floor where every other actor is also at time 0, so the scheduler picks him first and
+	 * {@code Hero.act()} - with no action pending - calls {@code ready()} and returns without spending
+	 * anything. The loop then finds him waiting for input and stops on its first iteration, which is
+	 * what makes "one act" and "a drain" different things here rather than the same thing at different
+	 * sizes.
+	 *
+	 * <p>What the act carries is the point. {@code Hero.act()} runs {@code checkVisibleMobs()}, and
+	 * that is where the new floor's sleeping mobs notice a hero standing among them; a mob seeing the
+	 * hero for the first time calls {@code Hero.interrupt()}, which discards the pending action. Handing
+	 * control to the agent before this happens means the agent's first action on every new floor is
+	 * spent being interrupted by a rat waking up, and the recording says so while the real game does not.
+	 *
+	 * <p>Terminates on the same outcomes the rest of {@code settle} does, so a hero that dies in the
+	 * landing act - a chasm fall is the case that exists - ends the episode rather than being handed
+	 * back with no hero.
+	 */
+	private void settleLanding(){
+		LevelPipeline.Outcome landed = pipeline.runToHeroReady( config.actorStepLimit );
+
+		if (landed == LevelPipeline.Outcome.HERO_DEAD){
+			terminate( RewardModel.TerminateReason.DEATH );
+		} else if (landed == LevelPipeline.Outcome.STALLED
+				|| landed == LevelPipeline.Outcome.STEP_LIMIT){
+			terminate( RewardModel.TerminateReason.STALLED );
+		}
+	}
 
 	private double onFloorTransition(){
 		LevelPipeline.Transition transition = pipeline.handleTransition();

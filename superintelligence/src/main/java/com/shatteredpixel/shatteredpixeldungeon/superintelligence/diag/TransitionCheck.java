@@ -4,6 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -52,9 +53,18 @@ import java.util.List;
  */
 public class TransitionCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 9;
 
 	private static final String SEED = "TRANSITION";
+
+	/**
+	 * Seeds searched for a floor the hero arrives on with an enemy in sight. See
+	 * {@link #arrivalRun()} for why the search happens at run time rather than being frozen here.
+	 */
+	private static final String[] ARRIVAL_SEEDS = {
+		"ARRIVAL-A", "ARRIVAL-B", "ARRIVAL-C", "ARRIVAL-D", "ARRIVAL-E", "ARRIVAL-F",
+		"ARRIVAL-G", "ARRIVAL-H", SEED
+	};
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -69,6 +79,8 @@ public class TransitionCheck {
 		checkTheFloorLeftBehindIsTheOneMarkedCleared();
 		checkTheNewFloorIsPlayable();
 		checkTheEngineClockRestartsWithTheFloor();
+		checkTheHeroActsOnArrivalBeforeTheAgentDoes();
+		checkAscendingAfterDescendingIsServiced();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     floor transitions: " + CHECKS + " checks passed" );
@@ -108,11 +120,42 @@ public class TransitionCheck {
 		return accepted;
 	}
 
+	/**
+	 * Walks the hero onto the entrance - the stairs a hero who is on floor N and wants floor N-1 uses -
+	 * and asks the level to do the same thing.
+	 *
+	 * <p>The up stairs of a floor are its {@code REGULAR_ENTRANCE}, which is the naming the game uses
+	 * throughout: an entrance is where a hero arrives, an exit is where a hero leaves, and the two are
+	 * the same tile seen from either direction. Asking for an {@code UP} type would return the entrance
+	 * anyway - {@code getTransition} falls back - so the point of naming it here is that a reader can see
+	 * which tile this is.
+	 *
+	 * <p>{@code issues.md} 10. The whole of the gate was written for a descent, which left the other
+	 * direction untested by construction: an ascend is the one transition that reads a floor back
+	 * ({@code InterlevelScene.ascend()} calls {@code Dungeon.loadLevel} whenever the depth is in
+	 * {@code generatedLevels}, and descending first puts it there), so it is the direction with a second
+	 * engine behaviour attached to it, and it was the one nothing exercised.
+	 */
+	private static boolean ascend( SPDEnv env ){
+		LevelTransition entrance = Dungeon.level.getTransition( LevelTransition.Type.REGULAR_ENTRANCE );
+		if (entrance == null) return false;
+
+		Hero hero = Dungeon.hero;
+		hero.pos = entrance.cell();
+		boolean accepted = Dungeon.level.activateTransition( hero, entrance );
+		hero.ready = false;
+		return accepted;
+	}
+
 	/** A fresh run, with a few turns taken on floor 1 so the first floor has a scored history. */
 	private static SPDEnv freshRun(){
+		return freshRun( SEED );
+	}
+
+	private static SPDEnv freshRun( String seed ){
 		EnvConfig config = new EnvConfig();
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
-		env.reset( SEED, HeroClass.WARRIOR );
+		env.reset( seed, HeroClass.WARRIOR );
 		for (int i = 0; i < 3; i++){
 			if (!env.running()) break;
 			env.step( Action.WAIT, 0 );
@@ -413,6 +456,221 @@ public class TransitionCheck {
 
 		System.out.println( "  the engine clock restarts with the floor: " + before + " -> "
 				+ Actor.now() + " on depth " + Dungeon.depth );
+	}
+
+	/**
+	 * The hero gets his turn on the new floor before the agent does.
+	 *
+	 * <p><b>This is {@code issues.md} 10, and it is invisible from the recording.</b> Every other case in
+	 * this gate looks at the floor the hero lands on and the clock he lands with. Nothing looks at
+	 * whether he <i>acted</i> on arrival, and a recording cannot: a step whose action was thrown away
+	 * still records a step, and the recording of a step the hero did not perform is well-formed.
+	 *
+	 * <p><b>What the game does.</b> The hero arrives on the new floor and is the earliest actor on it -
+	 * {@code Dungeon.newLevel} zeroes the clock, so everything on the floor is at time 0 - so the game's
+	 * own scheduler picks him for exactly one act before the player can act at all. That act is not a
+	 * formality: {@code Hero.act()} runs {@code checkVisibleMobs()}, which is where the new floor's
+	 * sleeping mobs notice a hero standing among them, and a mob seeing him for the first time calls
+	 * {@code Hero.interrupt()}, which discards whatever action is pending.
+	 *
+	 * <p><b>What this environment used to do.</b> It returned from the transition without giving the hero
+	 * that act, so the agent's action was injected first and the hero's very first act on the new floor
+	 * interrupted it. The agent's first move on every new floor was spent being noticed by a rat. On
+	 * {@code duelist-mid} the recorded {@code MOVE_SE} at step 160 left the hero on cell 282 with the
+	 * clock still at 0.0 - a turn that moved nobody - and the rendered viewer, replaying the same
+	 * recording in the real game, moved to 317 and reported the trainer as diverged.
+	 *
+	 * <p><b>Why this gate did not have it.</b> Nothing in the suite injected an action on the frame a
+	 * transition completed; every case here spent a {@code WAIT}, which a noticing mob cannot interrupt
+	 * into anything different, and then looked at the floor. So the case has to end with a real action
+	 * and has to assert the hero moved - asserting only that the hero is waiting for input would be
+	 * asserting the mechanism, and the mechanism is the part that is allowed to change.
+	 *
+	 * <p>Mutation-tested by deleting the landing act: the first action is then eaten and the case fails
+	 * with "the agent's first action on depth 1 moved nobody".
+	 */
+	private static void checkTheHeroActsOnArrivalBeforeTheAgentDoes(){
+		SPDEnv env = arrivalRun();
+		if (env == null ){
+			fail( "no seed on the list arrived on a floor with an enemy in the hero's field of view, so"
+					+ " there was no action that could have been interrupted. This case measured nothing." );
+			return;
+		}
+
+		int depth = Dungeon.depth;
+		Action move = firstFreeStep( env );
+		if (move == null ){
+			fail( "the hero arrived on depth " + depth + " with no free neighbouring cell, so there is"
+					+ " no action this case could have had interrupted. It measured nothing." );
+			return;
+		}
+
+		int before = Dungeon.hero.pos;
+		env.step( move, 0 );
+
+		if (Dungeon.hero.pos == before ){
+			fail( "the agent's first action on depth " + depth + " moved nobody: " + move
+					+ " into an empty passable cell left the hero on " + before + " at engine time "
+					+ Actor.now() + ". The game gives the hero one act on arrival before the player can"
+					+ " act, and that act is what wakes the sleeping mobs; without it the mob's first look"
+					+ " at the hero calls Hero.interrupt() and throws the action away. This is issues.md 10:"
+					+ " a recording in which the hero descends and climbs back up diverges from itself,"
+					+ " and the step that first disagrees is one that moves nobody." );
+			return;
+		}
+
+		System.out.println( "  the hero acts on arrival: first " + move + " on depth " + depth
+				+ " moved " + before + " -> " + Dungeon.hero.pos );
+	}
+
+	/**
+	 * A run that arrives back on floor 1 with an enemy in the hero's field of view.
+	 *
+	 * <p>Descending is not enough to find one. A hero arrives on a new floor at its entrance, and
+	 * level generation keeps the entrance clear, so the arrival FOV of every one of nine seeds was empty
+	 * of enemies - and a case built on an empty FOV cannot be interrupted, so it passes whether the bug
+	 * is present or not. {@code issues.md} 10 diverged on the *ascent*, where the hero comes back to the
+	 * stairs of a floor he has already played, and those sit in an ordinary room. So the fixture is the
+	 * whole journey: down, then up, then look.
+	 *
+	 * <p>The search happens at run time rather than being frozen into a seed, because a level-generation
+	 * change would silently turn a hard-coded fixture into a no-op and nothing would report it.
+	 *
+	 * @return an environment parked on arrival, or null if no seed qualified
+	 */
+	private static SPDEnv arrivalRun(){
+		for (String seed : ARRIVAL_SEEDS){
+			SPDEnv env = freshRun( seed );
+			if (!descend( env )) continue;
+			env.step( Action.WAIT, 0 );
+			if (!env.running()) continue;
+			if (!ascend( env )) continue;
+			env.step( Action.WAIT, 0 );
+			if (!env.running()) continue;
+			if (visibleMobs() > 0 ) return env;
+		}
+		return null;
+	}
+
+	/**
+	 * Descending and then climbing back up is one journey, and it is the one {@code issues.md} 10 filed.
+	 *
+	 * <p>Three things can go wrong on the way back up and each has its own shape. {@code InterlevelScene
+	 * .ascend()} asks {@code Dungeon.levelHasBeenGenerated(depth, branch)} and reads the floor off disk
+	 * when the answer is yes - and descending first puts that depth in the set, so an ascent follows a
+	 * descent into a read of a {@code depth<n>.dat} a viewer run never wrote, which stopped on screen with
+	 * "Cannot read save file". {@code LevelPipeline} clears the set before generating, and the viewer now
+	 * does the same; this case is what says so.
+	 *
+	 * <p>Second, the hero has to arrive at all: an ascent that ends the episode is {@code issues.md} 9's
+	 * symptom on the other side. Third, the engine clock restarts again, because the upstairs floor is a
+	 * fresh build.
+	 *
+	 * <p>The direction matters for a reason worth stating, because it is not symmetric in the game: the
+	 * trainer always regenerates and a real playthrough loads, so an ascent is the only transition with a
+	 * second engine behaviour hanging off it - and it was the one no gate drove.
+	 */
+	private static void checkAscendingAfterDescendingIsServiced(){
+		SPDEnv env = freshRun();
+		int start = Dungeon.depth;
+
+		if (!descend( env )){
+			fail( "no exit to descend from, so this case measured nothing." );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+
+		if (Dungeon.depth != start + 1 ){
+			fail( "the descent did not happen (depth is " + Dungeon.depth + ", expected " + ( start + 1 )
+					+ "), so the ascent this case is about was never attempted." );
+			return;
+		}
+
+		if (!env.running()){
+			fail( "the episode ended as " + env.endReason() + " on arrival at depth " + Dungeon.depth
+					+ ", so the ascent was never attempted." );
+			return;
+		}
+
+		if (!ascend( env )){
+			fail( "depth " + Dungeon.depth + " has no REGULAR_ENTRANCE to climb back up from, so this"
+					+ " case measured nothing. Every standard floor generates one." );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+
+		if (Dungeon.depth != start ){
+			fail( "the hero climbed back up and is on depth " + Dungeon.depth + ", expected " + start
+					+ ". InterlevelScene.ascend() reads the floor off disk whenever the depth is in"
+					+ " Dungeon.generatedLevels, and descending first puts it there, so an ascent that does"
+					+ " not clear the set tries to read a depth<n>.dat no headless run ever wrote. That is"
+					+ " how a viewer run stopped on 'Cannot read save file' with nothing to show for it." );
+			return;
+		}
+
+		if (Dungeon.hero == null || !Dungeon.hero.isAlive()){
+			fail( "the ascent left no living hero on depth " + Dungeon.depth + "." );
+			return;
+		}
+
+		if (!env.running()){
+			fail( "climbing back up ended the episode as " + env.endReason() + ", at "
+					+ Dungeon.hero.HP + "/" + Dungeon.hero.HT + " health." );
+			return;
+		}
+
+		if (Actor.now() > 1f ){
+			fail( "engine time is " + Actor.now() + " on arrival back at depth " + start + ", so the"
+					+ " upstairs floor did not restart the clock." );
+			return;
+		}
+
+		System.out.println( "  descend then ascend: depth " + start + " -> " + ( start + 1 ) + " -> "
+				+ Dungeon.depth + ", hero alive on " + Dungeon.hero.pos + " at engine time " + Actor.now() );
+	}
+
+	/**
+	 * The first action the mask offers that walks the hero into a cell nothing is standing in.
+	 *
+	 * <p>A cell with a mob in it is excluded because the move would become an attack and the case would
+	 * be asserting about combat; one with a heap on it because the move would become a pickup. Either
+	 * would still move the hero, but a case about being interrupted should not also be a case about
+	 * resolving something else first.
+	 */
+	private static Action firstFreeStep( SPDEnv env ){
+		for (Action a : Action.values()){
+			if (!a.directional()) continue;
+			if (env.actionMask()[ a.index ] == 0f ) continue;
+
+			int cell = env.mapper().offsetCell( a.dx, a.dy );
+			if (cell < 0 || cell >= Dungeon.level.length()) continue;
+			if (!Dungeon.level.insideMap( cell )) continue;
+			if (!Dungeon.level.passable[ cell ]) continue;
+			if (Actor.findChar( cell ) != null) continue;
+			if (Dungeon.level.heaps.get( cell ) != null) continue;
+
+			return a;
+		}
+		return null;
+	}
+
+	/**
+	 * Enemies inside the hero's field of view, which is the set
+	 * {@code Hero.checkVisibleMobs()} walks and the set whose first sighting calls
+	 * {@code Hero.interrupt()}.
+	 *
+	 * <p>{@code heroFOV} rather than a mob's own field of view, because that is the array the hero's own
+	 * code reads: a mob can see the hero without the hero being able to see the mob, and it is the
+	 * latter that cancels the action.
+	 */
+	private static int visibleMobs(){
+		Hero hero = Dungeon.hero;
+		int seen = 0;
+		for (Mob mob : Dungeon.level.mobs){
+			if (mob.pos >= 0 && mob.pos < Dungeon.level.heroFOV.length
+					&& Dungeon.level.heroFOV[ mob.pos ]) seen++;
+		}
+		return seen;
 	}
 
 	/**
