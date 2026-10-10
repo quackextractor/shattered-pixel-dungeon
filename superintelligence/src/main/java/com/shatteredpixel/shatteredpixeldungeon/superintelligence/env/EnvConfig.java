@@ -108,6 +108,27 @@ public class EnvConfig {
 	/** Reward per point of maximum HP gained. */
 	public float maxHpReward = 0.5f;
 
+	/**
+	 * Reward for spending a talent point.
+	 *
+	 * <p><b>Deliberately close to a floor's worth.</b> Levelling itself pays {@code 2} per level, and
+	 * that is correct — a level gives +1 attack, +1 defence and a little max HP, and it happens whether
+	 * the agent plays well or not. A talent point is a different thing: it is a permanent choice about
+	 * <i>which</i> gains to take, and the choices are not remotely equal. {@code LiquidAgility} 2 is
+	 * infinite evasion. {@code VeteranIntuition} 2 identifies the hero's armour the moment it is taken.
+	 * {@code GrowingPower} 1 is +75% speed. Paying that the same as a level would say the choice does
+	 * not matter, which is the opposite of what the game is built on.
+	 *
+	 * <p>Sized at 20 — most of a floor's 25 — so that spending a point clearly beats another turn of
+	 * the same floor, which is what makes it worth an action the agent would otherwise not have a
+	 * reason to take. Not the largest term here: a descent is still the objective, and a talent is
+	 * worthless on a floor the agent never survives.
+	 *
+	 * <p><b>Nothing can spend a point yet.</b> It is UI-only in the game — {@code TalentButton} ->
+	 * {@code TalentsPane} -> {@code WndHero} — and none of that exists headlessly. The emission site is
+	 * wired and gated; the action that reaches it is {@code TODO.md} 1.10.
+	 */
+	public float talentReward = 20f;
 	/** Reward per point of gold gained, scaled by the item's tier. */
 	public float goldReward = 0.05f;
 
@@ -233,6 +254,7 @@ public class EnvConfig {
 		c.depthReward = depthReward;
 		c.exploreReward = exploreReward;
 		c.maxHpReward = maxHpReward;
+		c.talentReward = talentReward;
 		c.goldReward = goldReward;
 		c.damagePenalty = damagePenalty;
 		c.killReward = killReward;

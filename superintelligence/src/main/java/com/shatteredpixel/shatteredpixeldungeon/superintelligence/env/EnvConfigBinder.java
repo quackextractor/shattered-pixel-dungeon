@@ -81,6 +81,7 @@ public class EnvConfigBinder {
 			"reward.depth_reward",
 			"reward.explore_reward",
 			"reward.max_hp_reward",
+			"reward.talent_reward",
 			"reward.gold_reward",
 			"reward.damage_penalty",
 			"reward.kill_reward",
@@ -254,6 +255,7 @@ public class EnvConfigBinder {
 			case "reward.depth_reward":      config.depthReward = decimal( key, value, origin ); break;
 			case "reward.explore_reward":    config.exploreReward = decimal( key, value, origin ); break;
 			case "reward.max_hp_reward":     config.maxHpReward = decimal( key, value, origin ); break;
+			case "reward.talent_reward":     config.talentReward = decimal( key, value, origin ); break;
 			case "reward.gold_reward":       config.goldReward = decimal( key, value, origin ); break;
 			case "reward.damage_penalty":    config.damagePenalty = decimal( key, value, origin ); break;
 			case "reward.kill_reward":       config.killReward = decimal( key, value, origin ); break;

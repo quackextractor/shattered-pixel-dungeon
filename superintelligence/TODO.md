@@ -304,6 +304,83 @@ hero carries more than the window.
 
 ---
 
+## 1.11 The agent levels up and can never spend the point - REWARD DONE, ACTION MISSING
+
+Found while checking what a talent does, prompted by the question of whether the hero grows at all.
+
+### The two halves, and only one of them is true
+
+**Levelling up: works.** `Mob.destroy` calls `Dungeon.hero.earnExp`, whose `while (exp >= maxExp())`
+loop at `Hero.java:2059` raises `lvl`, `attackSkill`, `defenseSkill` and calls `updateHT(true)`. Every
+kill levels the hero. `RewardModel` pays `LEVEL_UP` and `HeroEncoder` feeds `F_LEVEL` and
+`F_EXP_FRACTION` to the network.
+
+**Spending the point: impossible.** `Hero.upgradeTalent` exists, is public, and works. **Nothing
+headless calls it.** The only path in the game is `TalentButton.upgradeTalent()` →
+`TalentsPane` → `WndHero.TalentsTab`, and `WindowBridge.open()` returns true only for `WndOptions`.
+There is no `Action` that reaches any of it.
+
+### This is not an endgame gap
+
+`Talent.tierLevelThresholds` is `{0, 2, 7, 13, 21, 31}`, and `Hero.talentPointsAvailable(1)` is
+`1 + lvl - 2 - spent`. **At level 2 the hero has a point.** That is two rats on floor 1 — inside the
+first floor, in the range the agent already operates in. Every talent point the hero has ever earned,
+in every run and every recording in `replays/`, has been discarded.
+
+### And it is the largest combat lever in the game
+
+`hasTalent(...)` is false everywhere until a point is spent, and it is threaded through
+`Hero.accuracyRoll`, `defenseRoll`, `speed()`, and dozens of buff procs. The choices are not
+interchangeable: `LIQUID_AGILITY` 2 is **infinite evasion**, `VETERANS_INTUITION` 2 identifies the
+hero's armour the moment it is taken, `GROWING_POWER` 1 is +75% speed. `Talent.onTalentUpgraded` fires
+side effects on pick.
+
+**It is also invisible.** `HeroEncoder.FEATURES` is 23 and none of them carry talent state, so the
+agent cannot see that a point exists, let alone what it buys.
+
+### What is done: the reward, so the action has something to pay
+
+`RewardTerm.TALENT_UPGRADE` at `reward.talent_reward=20.0`, emitted from a diff of
+`Hero.talentPointsSpent(tier)` summed across tiers — **not** from `hasTalent`, which is true for any
+non-zero allocation and cannot tell one point from two.
+
+Priced deliberately high: most of a floor's 25. `LEVEL_UP` pays 2 and that is right, because a level is
++1 attack, +1 defence and a little max HP happening automatically. A point is a permanent choice about
+*which* gains to take, and paying it like a level would say the choice does not matter.
+
+Gated by `checkSpendingATalentIsWorthALot`, which **spends points through the engine**
+(`hero.upgradeTalent`, 38 of them) and asserts the term records and pays, against `LEVEL_UP` and against
+a floor's worth of turns. Mutation-tested: removing the emission site fails it.
+
+**That gate is doing the same job as `checkTheHeroCanDie`** — producing the event deterministically
+rather than waiting for the game to produce it — so the site is proven live *before* the action that
+reaches it exists. **A term wired and gated but with nothing calling it is the exact shape `KILL` had**,
+and the difference here is only that it is written down rather than discovered.
+
+### What is not done: the action
+
+Option 2 of three considered, and the one that keeps the game faithful:
+
+| | shape | cost | honest verdict |
+| --- | --- | --- | --- |
+| 1 | auto-spend on level, scripted per class | three lines | the build stops being a build |
+| **2** | **a `TALENT` action and `EnvMode.TALENT`, mirroring `INVENTORY`** | **a head, a mask case, a mode** | **what a player does; the only one that is faithful** |
+| 3 | log the points as a miss and move on | none | keeps the gap visible, teaches nothing |
+
+The shape is the one `OPEN_INVENTORY` already uses: a WORLD action enters the mode, the mode's mask
+offers `CANCEL` plus one entry per spendable talent, `applySecondary` calls `upgradeTalent`, and the
+mode returns to `WORLD`.
+
+**The part that is not a copy of `INVENTORY`:** a talent is chosen by *tier then talent*, so it is two
+decisions where `INVENTORY` is one. Two heads (like the slot and target heads), or one head over the
+flattened list of currently-spendable talents — the latter is simpler, and the "which talent did index
+N mean" ambiguity is the one `slotcheck` exists to close, so it should be gated the same way.
+
+`modecheck` will have to cover `TALENT`, and `EnvMode` gains a value, which touches the replay format's
+mode column and therefore the committed corpus.
+
+---
+
 ## 1.9 Giving up is priced below dying, which prices it as an option - FIXED
 
 `issues.md` 9 asked for stall and death to be balanced; `TODO.md` 1.8 asked what surviving is worth.
@@ -1124,6 +1201,7 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. Still blocked on 1.4. |
 | 1.9 | ~~Five harness faults that made the agent unable to have a correct episode~~ | done | Every one found by driving paths a weak policy almost never reaches, and every one hidden behind the one before it. REST was a one-way door (36/36 episodes stalled, idle guard fired zero times); headless had no texture and every TextureFilm dereferenced the null, killing workers on hunger damage; every death blew the stack, so DEATH - the ending the reward function is built around - was unreachable; a reset did not clear the static pending cell listener, so 4 of 10 recordings diverged when verified in sequence and all 10 verified clean alone; and OPEN_INVENTORY fell through to INTERACT's cell handling, so opening the inventory also acted on a neighbouring cell - which reached training. All fixed and gated: PLAN-reward-signals.md sections 7-8 and 10, with resetcheck, graphcheck and a new modecheck case. |
 | 1.6 | ~~Parallelise the update across minibatches~~ | done | --update-threads N. Measured 8.98 -> 2.73 ms/sample at 1 -> 4 threads (3.29x), 2.59 at 8 (3.47x). parallelcheck is a gate and mutation-tested. Required three fixes first, of which the dCell gradient leak was the real blocker. PLAN-data-flow.md step 4. |
+| 1.10 | **Let the agent spend talent points** | M | **The agent levels up and can never spend the point.** §1.11 below. Reward side is done — `TALENT_UPGRADE` at 20, wired and gated. The action is missing. |
 
 **Ordering was wrong and has been corrected.** 1.6 was originally next. It is still required — the
 measurement does not care what else is on the list — but two smaller items now come first:

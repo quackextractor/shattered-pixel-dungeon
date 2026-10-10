@@ -54,7 +54,7 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 13;
+	private static final int CHECKS = 14;
 
 	/** How many heaps to try before calling a floor that offers none a failure. */
 	private static final int MAX_HEAP_TRIES = 12;
@@ -77,6 +77,7 @@ public class RewardCheck {
 		checkPickingUpAndDroppingIsNotProfitable( config );
 		checkKillingIsWorthDoing( config );
 		checkFreeStepsCostSomething( config );
+		checkSpendingATalentIsWorthALot( config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reward signals: " + CHECKS + " checks passed" );
@@ -656,6 +657,126 @@ public class RewardCheck {
 			}
 		}
 		return 0;
+	}
+
+	/**
+	 * Spending a talent point must pay, and must pay for more than levelling does.
+	 *
+	 * <p>The point is {@code TODO.md} 1.10 and the bug that motivates it. {@code Hero.upgradeTalent}
+	 * works and is public, and <b>nothing headless calls it</b>: spending a point is UI-only
+	 * ({@code TalentButton} -> {@code TalentsPane} -> {@code WndHero}), and {@code WindowBridge.open}
+	 * only answers {@code WndOptions}, so the agent has no way to reach it. Meanwhile
+	 * {@code talentPointsAvailable} gates at {@code {2, 7, 13, 21, 31}} — so the <b>first point arrives
+	 * at level 2</b>, which two rats on floor 1 will do. This is not an endgame gap.
+	 *
+	 * <p>So the emission site is wired and gated now, so that the action has something to pay when it
+	 * lands, and the gate drives it by calling {@code upgradeTalent} directly. That is the same
+	 * technique {@link #checkTheHeroCanDie} uses to produce a death without waiting for the mob cluster:
+	 * the ending is produced deterministically and everything downstream of it runs for real.
+	 *
+	 * <p>Asserted against {@link RewardTerm#LEVEL_UP} rather than against a literal, because the
+	 * relationship is the claim: a talent point is a choice about which gains to take, while a level is
+	 * +1 attack, +1 defence and a little max HP that happen automatically. Paying them the same would
+	 * say the choice does not matter.
+	 */
+	private static void checkSpendingATalentIsWorthALot( EnvConfig config ){
+		//The opportunity it has to beat is another turn of the same floor - and, eventually, a whole
+		//floor's worth of them. Spending a point must clear that by a wide margin or the agent simply
+		//keeps playing.
+		double wholeFloorOfTurns = config.turnCost * config.turnLimitPerFloor;
+		if (!( config.talentReward > wholeFloorOfTurns * 4f )){
+			fail( "a talent point pays " + config.talentReward + " against " + wholeFloorOfTurns
+					+ " for a whole floor's worth of turns. A term that does not clear the price of its"
+					+ " opportunity is a term the agent has no reason to act on, and the opportunity"
+					+ " here is every remaining turn of the floor it is standing on." );
+			return;
+		}
+
+		final int[] spent = { 0 };
+
+		Outcome o = play( config, 40, "TALENTCHECK", turn -> {
+			Hero hero = Dungeon.hero;
+			if (hero == null || !hero.isAlive()) return;
+
+			//One plain turn first, for the same reason the pickup case takes one: the first settled
+			//turn of an episode only establishes the reward model's snapshot.
+			if (turn.step < 2){
+				turn.env.step( Action.WAIT, 0 );
+				return;
+			}
+
+			com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent talent = firstTalent( hero );
+			if (talent == null){
+				turn.env.step( Action.WAIT, 0 );
+				return;
+			}
+
+			hero.upgradeTalent( talent );
+			spent[ 0 ]++;
+			turn.env.step( Action.WAIT, 0 );
+		} );
+
+		int notes = o.ledger == null ? 0 : o.ledger.notes( RewardTerm.TALENT_UPGRADE );
+
+		if (spent[ 0 ] == 0 ){
+			fail( "the driver could not find a talent to spend on this hero, so the emission site was"
+					+ " never reached. Hero.talents is what the game itself reads, so an empty one means"
+					+ " the hero was never initialised - a fault this case is supposed to detect rather"
+					+ " than be confused by." );
+			return;
+		}
+
+		if (notes == 0 ){
+			fail( spent[ 0 ] + " talent point(s) were spent and TALENT_UPGRADE was never recorded."
+					+ " Nothing headless calls Hero.upgradeTalent yet, which is TODO.md 1.10, but the"
+					+ " emission site is supposed to be live now so the action has something to pay."
+					+ " This is the shape KILL had: declared, plumbed, and never emitted." );
+			return;
+		}
+
+		double paid = o.termTotal( RewardTerm.TALENT_UPGRADE );
+		if (paid <= 0 ){
+			fail( "TALENT_UPGRADE was recorded " + notes + " time(s) and paid " + paid + "." );
+			return;
+		}
+
+		//The relationship is the claim, and LEVEL_UP is the natural yardstick: a level is a fixed
+		//automatic gain, a point is a permanent choice about which gains to take.
+		double levelUp = 2f;
+		if (!( paid > levelUp * notes )){
+			fail( "a talent point pays " + ( paid / notes ) + " against " + levelUp + " for a level."
+					+ " Levelling raises attack, defence and max HP by one each and happens whether the"
+					+ " agent plays well or not; a point is a permanent choice between options that"
+					+ " differ by an order of magnitude. Paying them alike says the choice does not"
+					+ " matter." );
+			return;
+		}
+
+		//And against a floor, because that is the opportunity it has to beat.
+		if (!( config.talentReward >= config.depthReward * 0.5f )){
+			fail( "a talent point pays " + config.talentReward + " against a whole floor's "
+					+ config.depthReward + ". It has to be close to a floor to be worth an action,"
+					+ " because the alternative on offer is another turn of the same floor." );
+			return;
+		}
+
+		System.out.println( "  a talent point pays " + fmt( config.talentReward ) + " against "
+				+ fmt( levelUp ) + " for a level and " + fmt( config.depthReward ) + " for a floor; "
+				+ notes + " point(s) recorded" );
+	}
+
+	/**
+	 * Any talent this hero could take, or null.
+	 *
+	 * <p>The first key of the first tier, which is what {@code TalentsPane} offers the player first and
+	 * is therefore the least surprising choice for a gate.
+	 */
+	private static com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent firstTalent( Hero hero ){
+		if (hero.talents.isEmpty()) return null;
+		for (com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent t : hero.talents.get( 0 ).keySet()){
+			return t;
+		}
+		return null;
 	}
 
 	/**

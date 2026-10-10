@@ -71,7 +71,7 @@
 | **`rngtrace <file.replay>`** | Emits per-step draw counts and order-sensitive fingerprints (`baseFingerprint`). | Step-by-step fingerprint alignment between headless and rendered runs. |
 | **`collectcheck` (`:superintelligence`)** | Verifies that live recordings captured by `EpisodeCollector` replay cleanly. | 100% reproduction of recorded step positions and scores. |
 | **`modecheck` & `restartcheck`** | Verifies action modes (`WORLD`, `SLOT`, `TARGETING`, `MENU`, `INVENTORY`) and floor re-initialisation. | Zero mode traps; floor 1 regenerates identically after 400+ turns. |
-| **`rewardcheck` (`:superintelligence`)** | Drives the real environment and asserts the reward **prices the objective**, as properties rather than as constants. 13 cases. | Terminal outcomes are **ordered** (stall < death < turn limit < a cleared floor); stalling costs *more* than dying; descending beats idling out the floor's turn budget; mapping 120 tiles pays less than a descent; a step that advanced no engine time costs more than a real one; killing and surprise-attacking both pay, the surprise more. |
+| **`rewardcheck` (`:superintelligence`)** | Drives the real environment and asserts the reward **prices the objective**, as properties rather than as constants. 14 cases. | Terminal outcomes are **ordered** (stall < death < turn limit < a cleared floor); stalling costs *more* than dying; descending beats idling out the floor's turn budget; mapping 120 tiles pays less than a descent; a step that advanced no engine time costs more than a real one; killing and surprise-attacking both pay, the surprise more; a talent point pays more than a level. |
 | **Multi-JVM Byte-Diff Sweep** | Runs identical seed/hero rollouts across separate JVMs. | Generated `.replay` files are **byte-identical** across fresh JVMs. |
 
 ### The reward gate, and what "property rather than constant" means there
@@ -95,6 +95,15 @@ through the three steps `SummoningTrap` uses.
 The general form, and it is the same one `observecheck` and `graphcheck` were built for: **a check that
 cannot reach the code it guards is not a check.** Where reaching it requires a fixture, build the fixture
 from the engine's own path — and assert that it was built, rather than skipping when it could not be.
+
+**Producing the event rather than waiting for it is the other half.** `checkTheHeroCanDie` damages the
+hero outright instead of waiting for the mob cluster, because whether a random walk dies on floor 1 is a
+property of the game's balance and a gate that failed on it would start failing the moment the hero got
+better at surviving. `checkSpendingATalentIsWorthALot` spends 38 talent points through
+`Hero.upgradeTalent` for the same reason — **nothing in the game can spend one yet**, so a case that
+waited for the agent to do it would measure nothing forever. That distinction is the difference between
+"the emission site is proven live" and `KILL`'s "declared, plumbed and never emitted", which is the
+same shape and the same silence.
 
 The sweep in `paritycheck` is the one that reaches the fault `resetcheck` cannot. `resetcheck` proves
 that two runs of one seed produce the same trajectory, which is a statement about the environment.

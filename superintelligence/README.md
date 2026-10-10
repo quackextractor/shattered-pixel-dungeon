@@ -2,13 +2,13 @@
 
 | Badge | Version |
 | --- | --- |
-| [![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](CHANGELOG.md) | 0.5.0 |
+| [![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](CHANGELOG.md) | 0.6.0 |
 [![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
 
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
 described in [`docs.md`](docs.md) and [`research.md`](research.md).
 
-**Two versions, two subjects.** The `version-` badge is this module's - `0.5.0` - and its history is in
+**Two versions, two subjects.** The `version-` badge is this module's - `0.6.0` - and its history is in
 [`CHANGELOG.md`](CHANGELOG.md). The `game-` badge is Shattered Pixel Dungeon's - `4.0.2` - which is
 upstream's and moves only when this fork merges upstream. Neither moves because of anything recorded in
 the other's changelog, and the module's series starts at **0** specifically so the two cannot be read as
@@ -188,6 +188,7 @@ something.
 | Terminal rewards are honest | Done, and ordered - `STALLED` was -5.0 (ending an episode beat losing and the agent learned to), then `-deathPenalty` (quitting and losing became one decision with two labels). Now stall -150 < death -100 < turn limit -25 < a cleared floor +25, asserted as an ordering rather than as constants. `rewardcheck` is a gate, 13 cases |
 | **Killing pays; approaching pays more** | Done - `KILL` was declared and never emitted, so fighting was worth nothing while being hit cost something. `reward.kill_reward` 12.0, and `reward.sneak_attack_reward` **22.0** above it, read from `Statistics.sneakAttacks` - the one combat outcome that costs no health, because `Mob.surprisedBy` skips the defender's defence outright |
 | **A free action is not free** | Done - equipping and unequipping advance no engine time at all, and a policy alternated them for 120 consecutive steps on one `Rapier`. `reward.no_progress_penalty` 0.05, **priced rather than prevented**, so the stall guard still ends recordings where it did and the corpus stays valid |
+| **The hero levels but cannot spend the point** | **Partial** - `TALENT_UPGRADE` at `reward.talent_reward` 20.0, wired from `Hero.talentPointsSpent` and gated. **No action reaches it**: spending is UI-only (`TalentButton` → `TalentsPane` → `WndHero`) and `WindowBridge` answers only `WndOptions`. The first point arrives at **level 2** — two rats on floor 1 — so this is not an endgame gap. `TODO.md` 1.10 |
 | Actions report what happened | Done - `WAIT`/`REST`/`SEARCH` were recorded as `INVALID_ACTION`, and the term carried no weight, so nothing observed it |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
 | Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included. `checkpointcheck` is a gate |

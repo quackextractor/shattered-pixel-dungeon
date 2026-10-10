@@ -23,6 +23,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-10
+
+### Added
+
+- **`RewardTerm.TALENT_UPGRADE`, at `reward.talent_reward=20.0` — the largest single payout after a
+  floor**, emitted from a diff of `Hero.talentPointsSpent(tier)` summed across tiers. Not from
+  `hasTalent`, which is true for any non-zero allocation and cannot distinguish one point from two.
+
+  Found by asking whether the hero grows at all. **It does** — `Mob.destroy` calls
+  `Hero.earnExp`, whose loop raises `lvl`, `attackSkill`, `defenseSkill` and max HP, and every kill
+  levels the hero. **It can never spend the point.** `Hero.upgradeTalent` is public and works, and the
+  only path to it in the game is `TalentButton` → `TalentsPane` → `WndHero`, none of which exists
+  headlessly; `WindowBridge.open` answers only `WndOptions`, and no `Action` reaches any of it.
+
+  **Not an endgame gap.** `Talent.tierLevelThresholds` is `{0, 2, 7, 13, 21, 31}` and
+  `talentPointsAvailable(1)` is `1 + lvl - 2 - spent`, so the first point arrives at **level 2** — two
+  rats on floor 1. Every talent point earned by every run and every recording in `replays/` has been
+  discarded.
+
+  It is also the largest combat lever in the game and it is invisible: `hasTalent(...)` is false
+  everywhere until a point is spent, and it is threaded through `accuracyRoll`, `defenseRoll`,
+  `speed()` and dozens of buff procs. `LIQUID_AGILITY` 2 is infinite evasion; `VETERANS_INTUITION` 2
+  identifies the hero's armour on the spot. None of the 23 hero features carry talent state, so the
+  agent cannot see that a point exists.
+
+  Priced deliberately high — most of a floor's 25. `LEVEL_UP` pays 2 and that is correct, because a
+  level is +1 attack, +1 defence and a little max HP happening automatically. A point is a permanent
+  choice about *which* gains to take, and paying it like a level would say the choice does not matter.
+
+- **`checkSpendingATalentIsWorthALot`**, which **spends points through the engine** — 38 of them, via
+  `hero.upgradeTalent` — and asserts the term records and pays, against `LEVEL_UP` and against a floor's
+  worth of turns. Mutation-tested; removing the emission site fails it.
+
+  This is the same technique `checkTheHeroCanDie` uses to produce a death without waiting for the mob
+  cluster: the event is produced deterministically so everything downstream of it runs for real. It is
+  what makes the site provably live **before** the action that reaches it exists.
+
+### Known issue
+
+- **Nothing can spend a talent point yet.** The reward is wired and gated; the action is missing, and
+  so the term cannot fire in a real run. Recorded as `TODO.md` 1.10, with the design for the action
+  alongside it.
+
+  **A term wired and gated with nothing calling it is the exact shape `KILL` had** — declared,
+  plumbed, and never emitted. The only difference is that this one is written down rather than
+  discovered later. The gate is what stops it staying that way: it reaches the code by driving it.
+
+  The planned shape is option 2 of three in `TODO.md` 1.11: a `TALENT` action and `EnvMode.TALENT`
+  mirroring `OPEN_INVENTORY`. It is not a copy of `INVENTORY` in one respect — a talent is chosen by
+  *tier then talent*, so it is two decisions where the inventory pane is one. `modecheck` will need to
+  cover it, and adding an `EnvMode` value touches the replay format's mode column and therefore the
+  committed corpus.
+
 ## [0.5.0] - 2026-10-10
 
 The reward function did not price the objective. This release re-prices it, and the substance of the

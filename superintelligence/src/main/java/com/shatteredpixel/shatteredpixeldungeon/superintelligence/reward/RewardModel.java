@@ -46,6 +46,7 @@ public class RewardModel {
 	private int prevDebuffCount;
 	private int prevKills;
 	private int prevSneaks;
+	private int prevTalentsSpent;
 	private float prevHunger;
 	private float prevEngineTime;
 
@@ -120,6 +121,27 @@ public class RewardModel {
 
 		if (hero.lvl > prevLevel){
 			ledger.add( RewardTerm.LEVEL_UP, 2f * (hero.lvl - prevLevel), false );
+		}
+
+		//A talent point is worth far more than the level that granted it, and is scored separately so
+		//the per-term report can say which happened.
+		//
+		//Levelling is automatic: Hero.earnExp raises attackSkill, defenseSkill and max HP by one each
+		//and the agent had no part in it. Spending the point is a choice about which of those gains to
+		//emphasise, and the options differ by an order of magnitude - LiquidAgility 2 is infinite
+		//evasion, VeteranIntuition 2 identifies the armour on the spot. Paying both at 2 would say the
+		//choice does not matter.
+		//
+		//Diffed from Hero.talentPointsSpent rather than from hasTalent, because hasTalent is true for any
+		//non-zero allocation and cannot distinguish one point from two.
+		//
+		//Nothing can spend a point yet - Hero.upgradeTalent is only reachable through WndHero's
+		//TalentsPane, which is UI - so this cannot fire in a real run until TODO.md 1.10 adds the
+		//action. Wired and gated now so that the action, when it lands, has something to pay.
+		int talents = talentsSpent();
+		if (talents > prevTalentsSpent){
+			ledger.add( RewardTerm.TALENT_UPGRADE,
+					config.talentReward * (talents - prevTalentsSpent), false );
 		}
 
 		int strength = hero.STR();
@@ -347,6 +369,7 @@ public class RewardModel {
 		prevHunger = hungerLevel( hero );
 		prevKills = kills();
 		prevSneaks = sneaks();
+		prevTalentsSpent = talentsSpent();
 		prevEngineTime = Actor.now();
 		snapshotValid = true;
 	}
@@ -477,6 +500,29 @@ public class RewardModel {
 	 */
 	private int sneaks(){
 		return Statistics.sneakAttacks;
+	}
+
+	/**
+	 * Talent points the hero has spent, summed over every tier.
+	 *
+	 * <p>Read through {@code Hero.talentPointsSpent(tier)} rather than by walking the map, because
+	 * that is the game's own answer and it also handles the subclass and armour-ability gates.
+	 *
+	 * <p>Summed rather than read per tier because the tiers unlock at different levels
+	 * ({@code {2, 7, 13, 21, 31}}) and diffing one tier at a time would need four snapshot fields for a
+	 * quantity that only ever goes up.
+	 */
+	private int talentsSpent(){
+		Hero hero = Dungeon.hero;
+		if (hero == null) return 0;
+
+		int total = 0;
+		//talentPointsSpent indexes talents.get(tier-1), so the bound is the tier count and the
+		//index is one-based.
+		for (int tier = 1; tier <= hero.talents.size(); tier++){
+			total += hero.talentPointsSpent( tier );
+		}
+		return total;
 	}
 
 	private float hungerLevel( Hero hero ){

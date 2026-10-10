@@ -54,6 +54,27 @@ public enum RewardTerm {
 	/** Gained a level. */
 	LEVEL_UP,
 
+	/**
+	 * Spent a talent point.
+	 *
+	 * <p>Distinct from {@link #LEVEL_UP} and worth more than it, because they are not the same event.
+	 * Levelling raises {@code attackSkill}, {@code defenseSkill} and max HP by one each — a fixed,
+	 * small, automatic gain that happens whether the agent does anything clever or not. A talent point
+	 * is a permanent choice about <i>which</i> of those gains to emphasise, and the choices differ by an
+	 * order of magnitude: {@code LiquidAgility} 2 is infinite evasion, {@code GrowingPower} 1 is +75%
+	 * speed, and {@code Vitality} is simply a bigger health bar.
+	 *
+	 * <p>Priced deliberately high for the same reason the kill reward is sized against the damage
+	 * penalty rather than picked: a term that does not clear the price of its opportunity is a term the
+	 * agent has no reason to take. See {@code EnvConfig.talentReward}.
+	 *
+	 * <p><b>No action reaches this yet.</b> Spending a point is UI-only — {@code TalentButton} ->
+	 * {@code TalentsPane} -> {@code WndHero}, none of which exists headlessly — so this term cannot
+	 * fire in a real run. The gate proves the emission site works by spending a point through
+	 * {@code Hero.upgradeTalent} directly. Recorded at {@code TODO.md} 1.10, which is the missing action.
+	 */
+	TALENT_UPGRADE,
+
 	/** Gained strength. */
 	STRENGTH_GAIN,
 
@@ -144,6 +165,7 @@ public enum RewardTerm {
 			case IDENTIFIED:
 			case CURED_DEBUFF:
 			case LEVEL_UP:
+			case TALENT_UPGRADE:
 			case STRENGTH_GAIN:
 			case CURSE_REMOVED:
 			case CRAFTED:

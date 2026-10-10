@@ -456,6 +456,7 @@ public class ConfigCheck {
 			case "reward.depth_reward":       return String.valueOf( config.depthReward );
 			case "reward.explore_reward":     return String.valueOf( config.exploreReward );
 			case "reward.max_hp_reward":      return String.valueOf( config.maxHpReward );
+			case "reward.talent_reward":      return String.valueOf( config.talentReward );
 			case "reward.gold_reward":        return String.valueOf( config.goldReward );
 			case "reward.damage_penalty":     return String.valueOf( config.damagePenalty );
 			case "reward.kill_reward":       return String.valueOf( config.killReward );
@@ -552,6 +553,7 @@ public class ConfigCheck {
 			case "reward.depth_reward":       return "77.5";
 			case "reward.explore_reward":     return "0.5";
 			case "reward.max_hp_reward":      return "1.5";
+			case "reward.talent_reward":      return "7.5";
 			case "reward.gold_reward":        return "0.5";
 			case "reward.damage_penalty":     return "0.5";
 			case "reward.kill_reward":       return "1.5";

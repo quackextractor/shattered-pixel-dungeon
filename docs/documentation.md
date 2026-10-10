@@ -199,9 +199,11 @@ objective:
 | `reward.stall_penalty` | `150.0` | What giving up costs. **Worse than dying** |
 | `reward.death_penalty` | `100.0` | What dying costs |
 | `reward.turn_limit_penalty` | `25.0` | What running out of a floor costs |
-| `reward.kill_reward` | `3.0` | Per mob killed, from `Statistics.enemiesSlain` |
-| `reward.sneak_attack_reward` | `6.0` | Per surprise attack, from `Statistics.sneakAttacks` |
+| `reward.kill_reward` | `12.0` | Per mob killed, from `Statistics.enemiesSlain` |
+| `reward.sneak_attack_reward` | `22.0` | Per surprise attack, from `Statistics.sneakAttacks` |
+| `reward.talent_reward` | `20.0` | Per talent point spent, from `Hero.talentPointsSpent`. **Nothing can spend one yet** — see below |
 | `reward.no_progress_penalty` | `0.05` | A step that advanced no engine time |
+| `reward.damage_penalty` | `2.5` | Per HP lost. A full floor-1 bar costs half a death |
 
 **`depth_reward` against `explore_reward` is the objective.** A regular floor holds several hundred
 walkable tiles (`TODO.md` §0.8 measured 419 of 1040 sampled floors exceeding 48 on at least one side,
@@ -220,6 +222,24 @@ skips the defender's defence skill outright, so the same hit lands for far more 
 combat outcome that costs the hero nothing. Paying the kill alone teaches trading blows with whatever is
 in reach, and trading blows is what the recorded deaths look like: the hero does not lose a fight, he
 runs out of room.
+
+### One reward is live that nothing can earn yet
+
+`reward.talent_reward` pays 20 for a talent point, the second-largest payout in the function. **The hero
+levels up — `Mob.destroy` calls `Hero.earnExp`, which raises level, attack and defence — and can never
+spend the point.** `Hero.upgradeTalent` is public and works; the only path to it in the game is
+`TalentButton` → `TalentsPane` → `WndHero`, none of which exists headlessly, and `WindowBridge` answers
+only `WndOptions`.
+
+It is not an endgame gap: `Talent.tierLevelThresholds` is `{0, 2, 7, 13, 21, 31}`, so the **first point
+arrives at level 2** — two rats on floor 1. And it is the largest combat lever in the game, because
+`hasTalent(...)` is false everywhere until a point is spent, and it is threaded through the accuracy,
+defence and speed rolls.
+
+The reward is wired and gated anyway, so that the action has something to pay when it lands. The gate
+drives it by spending points through the engine directly — the same technique the death case uses to
+produce a death without waiting for the mob cluster — which is what distinguishes "wired and proven"
+from `KILL`'s "declared, plumbed and never emitted". `TODO.md` 1.10 is the missing action.
 
 ## Gates
 
