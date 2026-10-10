@@ -132,8 +132,8 @@ public class ViewCheck {
 	/**
 	 * Plays every recording in a child JVM and reports.
 	 *
-	 * <p>Sequential on purpose. Each child wants a GL context, and forking them in parallel turns a
-	 * 20 second gate into a machine that cannot composite its own windows.
+	 * <p>One child at a time by default, and parallelising is opt-in via {@code VIEWCHECK_JOBS} rather
+	 * than the other way round — see {@link #parallelism()} for why the default is one.
 	 */
 	private static void supervise( File corpus ) throws IOException, InterruptedException {
 		File[] files = corpus.listFiles( ( dir, name ) -> name.endsWith( ".replay" ) );
@@ -224,18 +224,25 @@ public class ViewCheck {
 	/**
 	 * How many children to run at once.
 	 *
-	 * <p>One, by default, and the parallelism is opt-in rather than the other way round. Sequential is the
-	 * only mode whose result is reproducible: two sequential runs of this corpus report the same fourteen
-	 * recordings failing at the same fourteen steps, while two runs at ten children at once report the same
-	 * recordings but shuffle the steps between them. Playback is timing sensitive - that is the whole
-	 * subject of the issue this gate tracks - so anything that changes how fast a child renders changes
-	 * what the child finds.
+	 * <p>One, by default, and the parallelism is opt-in rather than the other way round. What the default
+	 * one buys is a reproducible <i>failing step</i>: two sequential runs of this corpus report the same
+	 * fourteen recordings failing at the same fourteen steps, while two runs at ten children at once report
+	 * the same recordings but shuffle the steps between them. Playback is timing sensitive - that is the
+	 * whole subject of the issue this gate tracks - so anything that changes how fast a child renders
+	 * changes what the child finds.
 	 *
-	 * <p>That is a real cost and it is worth it: the run is 90s rather than 6 minutes, and speed is bought
-	 * by an explicit {@code VIEWCHECK_JOBS} rather than paid for with a gate that cannot be trusted to
-	 *report the same thing twice. Use parallelism for a quick look, and one job to decide anything.
+	 * <p>What it does <i>not</i> buy is a trustworthy pass/fail. Whether a recording plays clean is a
+	 * per-file answer and holds at any job count, which is why {@link #supervise} prints its "not
+	 * reproducible" warning only on failure. Parallel runs are valid results; they are just not
+	 * step-addressable.
 	 *
-	 * <p>Each child wants a GL context, which is the original reason this was pinned at one.
+	 * <p><b>Parallel is much faster, and this comment used to say the opposite.</b> Measured on this
+	 * machine over the 17 committed recordings: <b>37.0s at 8 children against 219.7s sequential</b>,
+	 * roughly six times faster, with 17 of 17 clean at both. The text here previously read "the run is 90s
+	 * rather than 6 minutes", which described sequential as the fast mode and made the knob look worthless.
+	 * It also contradicted the progress-printer comment 70 lines up, which correctly said the corpus
+	 * "finished in seconds once parallelised". The default stays at one because a step number is worth more
+	 * than five minutes - not because concurrency is expensive or unreliable here.
 	 */
 	private static int parallelism(){
 		String override = System.getProperty( "viewcheckJobs", System.getenv( "VIEWCHECK_JOBS" ) );

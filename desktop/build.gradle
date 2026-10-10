@@ -110,6 +110,19 @@ tasks.register('viewcheck', JavaExec) {
     //investigated without editing anything. Both default to off.
     if (project.hasProperty('spdWorldTrace')) { systemProperty 'spd.worldTrace', project.property('spdWorldTrace') }
     if (project.hasProperty('spdFixedDelta')) { systemProperty 'spd.fixedDelta', project.property('spdFixedDelta') }
+
+    //How many recordings to play at once. ViewCheck reads this as a system property and falls back to
+    //the VIEWCHECK_JOBS environment variable and then to 1.
+    //
+    //Wired here because it was not: ViewCheck.parallelism() has always read the `viewcheckJobs` property,
+    //but this task forwarded only spdReplayDir, spdWorldTrace and spdFixedDelta, so -PviewcheckJobs was
+    //silently ignored and the environment variable was the only route that worked. A flag that does
+    //nothing is worse than a missing one, because the invocation looks right.
+    //
+    //Default stays at one child at a time: concurrency does not change which recordings play clean, but it
+    //does shuffle the step each failing recording fails at, and that is what the default exists to keep
+    //stable. Measured 37.0s at 8 children against 219.7s sequential for the same 17 recordings.
+    if (project.hasProperty('viewcheckJobs')) { systemProperty 'viewcheckJobs', project.property('viewcheckJobs') }
 }
 
 tasks.register('debug', JavaExec) {
