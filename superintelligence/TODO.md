@@ -4,8 +4,8 @@ Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), wri
 code as it stands. "Verified" means it was run and observed, not merely written.
 
 Last updated: 2026-10-10, after the five viewer/recording issues in
-[`issues.md`](issues.md) were worked through, and after the HUD overflow that followed from them was
-found and fixed.
+[`issues.md`](issues.md) were worked through, and after the HUD overflow that followed from them and
+the moveable HUD anchor were found and fixed.
 
 ---
 
@@ -74,6 +74,37 @@ disarming the restart wait fails the rebuild case, flipping the y axis fails the
 reporting the net instead of the gain half fails the score case. The old death check was passing for the
 wrong reason and had to be rebuilt — it forced the recorded health to zero on the last step of a run
 whose hero was at full health, which was a lie the drain had been skipping the comparison for.
+
+---
+
+## 0.0.3 The HUD is anchored top left, and movable - FIXED
+
+**`A` cycles the HUD through all four corners; the default is now top left.** It was pinned to bottom
+left, which puts the block directly over the hero — and a recording spends most of its time on a hero
+that has not moved. Top left is the one corner the game keeps clear: the depth banner is centred, the
+item log runs up the right edge.
+
+Cycled rather than toggled between two corners. Which corner is right depends on the window and on what
+else is on screen, so a two-way toggle makes someone press the key twice to reach the other three.
+Cycled in reading order — top left, top right, bottom right, bottom left — which keeps the block on
+one side of the screen between presses instead of jumping across it.
+
+Two things the move forced, both of which were already latent:
+
+- **The help line had to stack inward from the current corner.** It was stacked always upward, which was
+  correct only while the HUD was pinned to the bottom. At a top anchor it would have been drawn off the
+  top of the screen. `drawBlock` now takes the anchor and an inset, and reports the height it used so
+  the next block stacks against it.
+- **`maxTextWidth` had to become anchor-independent.** It was `width - x - 4`, measured once from the
+  left. A right-anchored line measures from the far end of the same run of text, so the bound is now
+  `width - 2 * MARGIN` and serves both sides.
+
+The geometry lives in two package-visible pure functions, `anchorX` and `anchorStartY`, rather than
+inline in `drawBlock`. That is what makes it checkable at all: the drawn result needs a window, and the
+arithmetic is where this can go wrong. The 20th `playbackcheck` case asserts the default is top left,
+that every corner places text inside the window, that a top anchor grows downward and a bottom anchor
+upward, that cycling reaches all four corners and returns, and that the help line stacks clear of the
+HUD everywhere. Mutation-tested three ways.
 
 ---
 

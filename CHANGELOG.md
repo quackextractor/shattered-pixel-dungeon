@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.2.0] - 2026-10-10
 
+### Added
+
+- **The viewer's HUD can be moved, and now defaults to the top left.** `A` cycles the block through all
+  four corners. It was pinned to the bottom left, which puts it directly over the hero — and a
+  recording spends most of its time on a hero that has not moved. Top left is the one corner the game
+  keeps clear: the depth banner is centred, the item log runs up the right edge. Cycled rather than
+  toggled between two corners, because which one is right depends on the window and on what else is on
+  screen, and a two-way toggle makes someone press the key twice to reach the other three. The help
+  line stacks inward from whichever corner is current, so it stays adjacent to the HUD at every anchor.
+
 ### Fixed
 
 - **The viewer, five faults from `superintelligence/issues.md` "Viewer / recordings".** Each was
@@ -90,6 +100,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   three separate properties: no line comes out wider than the limit, wrapping does not alter the
   content, and an explicit `\n` still forces a break. Mutation-tested by disabling the width test,
   which fails it.
+
+- **One more check in `playbackcheck`** (19 -> 20), covering the HUD anchor: that the default is top
+  left, that every corner places text inside the window, that a top anchor grows downward and a bottom
+  anchor upward, that cycling reaches all four corners and returns, and that the help line stacks clear
+  of the HUD at every corner. Asserted on the geometry rather than the drawn result, since the drawn
+  result needs a window. Mutation-tested three ways — reverting the default, dropping `lineWidth` from
+  the right-anchor arithmetic, and making top anchors grow upward each fail it.
 
 - **`gradle :superintelligence:viewdiff`** (`:superintelligence`): reads a headless `worldtrace` snapshot
   and a rendered `-Dspd.worldTrace` one, and reports the first step and **field** that differ, plus the

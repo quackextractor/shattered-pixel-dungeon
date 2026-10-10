@@ -63,7 +63,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 19;
+	private static final int CHECKS = 20;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -122,6 +122,7 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		check( () -> checkPositionsAreReportedAsCoordinates( good ) );
 		check( () -> checkADivergenceMessageNamesCoordinates() );
 		check( () -> checkHudTextWrapsInsteadOfRunningOffScreen() );
+		check( () -> checkTheHudAnchorIsMovableAndDefaultsTopLeft() );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
@@ -957,6 +958,86 @@ private static void checkADivergenceMessageNamesCoordinates(){
 }
 
 // --------------------------------------------------------------------------- helpers
+
+	/**
+	 * The HUD anchor is movable, cycles through every corner, and defaults to top left.
+	 *
+	 * <p>Asserted on the geometry rather than on the drawn result, because the drawn result needs a
+	 * window. What can go wrong here is arithmetic - a right-anchored line measuring from the wrong
+	 * edge, or the help line stacking off-screen at the anchors that now sit at the top - and all of
+	 * it is reachable from the anchor alone.
+	 */
+	private static void checkTheHudAnchorIsMovableAndDefaultsTopLeft(){
+		final float cameraW = 640;
+		final float cameraH = 400;
+		final float margin = 4;
+
+		if (ReplayController.DEFAULT_ANCHOR != ReplayController.Anchor.TOP_LEFT){
+			fail( "the HUD defaults to " + ReplayController.DEFAULT_ANCHOR
+					+ "; it should default to TOP_LEFT. Bottom left puts the block over the hero, which is "
+					+ "where a recording spends most of its time sitting still." );
+		}
+
+		//every corner must place text inside the window, for the widest line the HUD can produce
+		float widest = cameraW - 2 * margin;
+		for (ReplayController.Anchor at : ReplayController.Anchor.values()){
+			for (float lineWidth : new float[]{ 0f, widest }){
+				float x = ReplayController.anchorX( at, cameraW, lineWidth );
+				if (x < margin - 0.01f){
+					fail( at + " put a line of width " + lineWidth + " at x=" + x
+							+ ", which runs off the left edge of a " + cameraW + "-wide camera" );
+				}
+				if (x + lineWidth > cameraW - margin + 0.01f){
+					fail( at + " put a line of width " + lineWidth + " at x=" + x
+							+ ", which runs off the right edge of a " + cameraW + "-wide camera (ends at "
+							+ (x + lineWidth) + ")" );
+				}
+			}
+
+			//the block must grow inward, so its far end stays on screen however tall it gets
+			float top = ReplayController.anchorStartY( at, cameraH, 0 );
+			boolean growsDown = top < cameraH / 2f;
+			if (growsDown != !at.bottom()){
+				fail( at + " starts at y=" + top + ", which does not match its own bottom=" + at.bottom()
+						+ ". A top anchor has to grow downward and a bottom anchor upward, or the block "
+						+ "grows off the screen in the direction it is anchored." );
+			}
+			if (top < 0 || top > cameraH){
+				fail( at + " starts at y=" + top + ", which is outside a " + cameraH + "-tall camera" );
+			}
+		}
+
+		//cycling must reach all four corners and come back round, so the hotkey is not a dead end
+		java.util.Set<ReplayController.Anchor> seen = new java.util.HashSet<>();
+		ReplayController.Anchor at = ReplayController.DEFAULT_ANCHOR;
+		for (int i = 0; i < ReplayController.Anchor.values().length; i++){
+			seen.add( at );
+			at = at.next();
+		}
+		if (seen.size() != ReplayController.Anchor.values().length){
+			fail( "cycling the anchor visited only " + seen.size() + " of "
+					+ ReplayController.Anchor.values().length + " corners" );
+		}
+		if (at != ReplayController.DEFAULT_ANCHOR){
+			fail( "cycling the anchor did not return to " + ReplayController.DEFAULT_ANCHOR
+					+ " after one full cycle; it came back to " + at );
+		}
+
+		//the help line stacks inward from the same corner, pushed clear of the HUD block. At a bottom
+		//anchor that puts it above the HUD; at a top anchor, below it.
+		for (ReplayController.Anchor corner : ReplayController.Anchor.values()){
+			float hudTop = ReplayController.anchorStartY( corner, cameraH, 0 );
+			float helpTop = ReplayController.anchorStartY( corner, cameraH, 100 );
+			if (helpTop == hudTop){
+				fail( corner + " placed the help line at the same y as the HUD, so the two would "
+						+ "overlap instead of stacking" );
+			}
+			if (Math.abs( helpTop - hudTop ) < 90){
+				fail( corner + " placed the help line only " + Math.abs( helpTop - hudTop )
+						+ "px from the HUD; the 100px inset was not honoured" );
+			}
+		}
+	}
 
 	/**
 	 * The HUD must wrap, not run off the screen.

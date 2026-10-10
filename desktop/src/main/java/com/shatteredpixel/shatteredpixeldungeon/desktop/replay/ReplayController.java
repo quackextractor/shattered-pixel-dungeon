@@ -419,17 +419,92 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 	}
 
 	/**
-	 * Draws wrapped lines bottom-up, so the block hangs off the bottom edge and grows upward.
+	 * Which corner of the window the HUD is pinned to.
+	 *
+	 * <p>Not a preference stored anywhere: the HUD's anchor is a property of how someone wants to
+	 * watch this run, and which corner is right depends on the window and on whatever else is on
+	 * screen. It cycles on a hotkey rather than being configured, because the alternative is a
+	 * setting that has to be found, changed and then found again.
+	 *
+	 * <p>Default is {@link #TOP_LEFT}. It was {@link #BOTTOM_LEFT}, which put the block directly over
+	 * the hero: at the bottom of the screen the text sits exactly where the hero is, and a recording
+	 * spends most of its time on a hero that has not moved. Top left is the one corner the game keeps
+	 * clear - the depth banner is centred, and the item log runs up the right edge.
+	 */
+	enum Anchor {
+		TOP_LEFT( false, false ),
+		TOP_RIGHT( true, false ),
+		BOTTOM_RIGHT( true, true ),
+		BOTTOM_LEFT( false, true );
+
+		private final boolean right;
+		private final boolean bottom;
+
+		Anchor( boolean right, boolean bottom ){
+			this.right = right;
+			this.bottom = bottom;
+		}
+
+		boolean right(){ return right; }
+
+		boolean bottom(){ return bottom; }
+
+		/** The next corner in reading order, wrapping. */
+		Anchor next(){
+			Anchor[] all = values();
+			return all[ (ordinal() + 1) % all.length ];
+		}
+	}
+
+	/** Default anchor. Top left - see {@link Anchor}. Package-visible so a check can assert it. */
+	static final Anchor DEFAULT_ANCHOR = Anchor.TOP_LEFT;
+
+	/** Where the HUD is pinned right now. */
+	private Anchor anchor = DEFAULT_ANCHOR;
+
+	/** Gap between the window edge and the text, in UI pixels. */
+	private static final float MARGIN = 4;
+
+	/**
+	 * Where a line of the given width starts, for an anchor.
+	 *
+	 * <p>A pure function of the anchor and the window so the geometry can be checked without a
+	 * renderer, which is the only way it can be checked at all - the rendered viewer needs a window.
+	 */
+	static float anchorX( Anchor at, float cameraWidth, float lineWidth ){
+		return at.right() ? cameraWidth - MARGIN - lineWidth : MARGIN;
+	}
+
+	/**
+	 * Where the first line of a block starts, before any line has been drawn.
+	 *
+	 * <p>{@code inset} pushes the block away from the anchored edge, which is how the help line is
+	 * stacked next to the HUD rather than drawn on top of it.
+	 */
+	static float anchorStartY( Anchor at, float cameraHeight, float inset ){
+		return at.bottom() ? cameraHeight - MARGIN - inset : MARGIN + inset;
+	}
+
+	/**
+	 * Draws wrapped lines outward from the anchored corner, and reports the height it used.
 	 *
 	 * <p>Grows the pool as needed rather than fixing a count, because how many lines the HUD needs
 	 * depends on the window: the same text is one line on a wide monitor and four on a narrow one.
 	 * A fixed pool silently truncated the overflow, which is the failure being fixed here.
+	 *
+	 * @param inset distance to push the whole block away from the anchored edge
+	 * @return the height consumed, so the next block can be stacked against it
 	 */
-	private void drawBlock( ArrayList<BitmapText> pool, ArrayList<String> lines,
-						   float x, float bottomY ){
+	private float drawBlock( ArrayList<BitmapText> pool, ArrayList<String> lines,
+							 Anchor at, float inset ){
 		while (pool.size() < lines.size()){
 			pool.add( lineGizmo() );
 		}
+
+		float cameraWidth = PixelScene.uiCamera.width;
+		float y = anchorStartY( at, PixelScene.uiCamera.height, inset );
+		float used = 0;
+
 		for (int i = 0; i < pool.size(); i++){
 			BitmapText gizmo = pool.get( i );
 			if (i >= lines.size()){
@@ -440,11 +515,21 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 			gizmo.visible = true;
 			gizmo.text( lines.get( i ) );
 			gizmo.measure();
-			gizmo.x = x;
-			gizmo.y = bottomY - gizmo.height;
-			bottomY = gizmo.y - 1;
+			gizmo.x = anchorX( at, cameraWidth, gizmo.width );
+			if (at.bottom()){
+				gizmo.y = y - gizmo.height;
+				y = gizmo.y - LINE_GAP;
+			} else {
+				gizmo.y = y;
+				y = gizmo.y + gizmo.height + LINE_GAP;
+			}
+			used += gizmo.height + (i > 0 ? LINE_GAP : 0 );
 		}
+		return used;
 	}
+
+	/** Space between two lines of the same block. */
+	private static final float LINE_GAP = 1;
 
 /**
 	 * Viewer controls.
@@ -469,7 +554,7 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 	private void bindKeys(){
 		if (viewerKeys == null){
 			viewerKeys = newViewerKeyListener();
-			log( "listener registered for SPACE/R/+/-/[/]/ESC" );
+			log( "listener registered for SPACE/R/A/+/-/[/]/ESC" );
 		} else {
 			//A no-op when already registered, and the repair when KeyEvent.clearListeners() has dropped
 			//it - which InterlevelScene does every time it hands off to the game scene, so on any restart.
@@ -483,7 +568,7 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 
 	/** The keys the viewer claims, and the reason each is listed is in {@link #bindKeys()}. */
 	private static final int[] VIEWER_KEYS = {
-			Input.Keys.SPACE, Input.Keys.R, Input.Keys.PLUS, Input.Keys.EQUALS,
+			Input.Keys.SPACE, Input.Keys.R, Input.Keys.A, Input.Keys.PLUS, Input.Keys.EQUALS,
 			Input.Keys.MINUS, Input.Keys.LEFT_BRACKET, Input.Keys.RIGHT_BRACKET };
 
 	private Signal.Listener<KeyEvent> newViewerKeyListener(){
@@ -518,6 +603,14 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 					case Input.Keys.R:
 						restart();
 						log( "  -> restart requested" );
+						return true;
+					case Input.Keys.A:
+						//Cycled rather than toggled between two corners. The HUD is five lines tall
+						//once it wraps, and which corner it wants depends on the window and on what
+						//else is on screen - the hero at the bottom, the item log at the right. A
+						//two-way toggle makes someone press it twice to get to the other three.
+						anchor = anchor.next();
+						log( "  -> HUD anchor=" + anchor );
 						return true;
 					case Input.Keys.ESCAPE:
 						//A window on top of the scene gets BACK first and swallows it - that is what
@@ -561,18 +654,17 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 	private void layout(){
 		if (hudLines.isEmpty() || PixelScene.uiCamera == null || PixelScene.pixelFont == null) return;
 
-		float x = 4;
-		float y = PixelScene.uiCamera.height - 4;
-
-		//Text is bounded by the camera, so leave a small margin rather than letting the right edge
-		//of the last glyph sit exactly on the screen edge where it is half-clipped.
+		//Text is bounded by the camera, so leave a margin rather than letting the right edge of the
+		//last glyph sit exactly on the screen edge where it is half-clipped. The same bound serves both
+		//left and right anchors: the available run of text is the window minus both margins either way,
+		//and a right-anchored line starts from the far end of it.
 		//
 		//Tracked by camera identity rather than by a dirty flag, because PixelScene builds a new
 		//uiCamera whenever the UI zoom changes - so a resized or maximised window gets a different
 		//camera object with a different width, and caching the width against anything but that
 		//camera would keep wrapping to the old window's width.
 		if (textWidthCamera != PixelScene.uiCamera){
-			maxTextWidth = PixelScene.uiCamera.width - x - 4;
+			maxTextWidth = PixelScene.uiCamera.width - 2 * MARGIN;
 			textWidthCamera = PixelScene.uiCamera;
 		}
 
@@ -610,21 +702,14 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 				+ ( player.haltReason().isEmpty() ? "" : "   " + player.haltReason() ),
 				maxTextWidth );
 
-		drawBlock( hudLines, wrapped, x, y );
+		float used = drawBlock( hudLines, wrapped, anchor, 0 );
 
+		//The help line stacks inward from the same corner as the HUD, so it stays adjacent to it at
+		//every anchor. Stacking it always upward - which is what it did when the HUD was pinned to the
+		//bottom - would throw it off the top of the screen the moment the anchor moved up there.
 		drawBlock( helpLines, wrapText(
-				"SPACE pause  +/- speed  [ ] coarser/finer  R restart  ESC quit", maxTextWidth ),
-				x, y - hudHeight( wrapped ) - 2 );
-	}
-
-	/** Total drawn height of a wrapped block, for stacking one block above another. */
-	private float hudHeight( ArrayList<String> lines ){
-		float lineHeight = PixelScene.pixelFont.baseLine;
-		float total = 0;
-		for (int i = 0; i < lines.size(); i++){
-			total += lineHeight + (i > 0 ? 1 : 0 );
-		}
-		return total;
+				"SPACE pause  +/- speed  [ ] coarser/finer  R restart  A anchor  ESC quit", maxTextWidth ),
+				anchor, used + MARGIN );
 	}
 
 /** Releases cell input and stops driving. Called when the viewer quits. */

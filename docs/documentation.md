@@ -208,6 +208,30 @@ Divergence is a hard error, not a warning. The moment a replay stops reproducing
 comparison in the trainer becomes meaningless, and a run that looks fine is worth less than one that
 stops loudly.
 
+### Watching a recording
+
+`replay-viewer.bat` plays a recording in the real game with a HUD over it. The keys are:
+
+| Key | Does |
+| --- | --- |
+| `SPACE` | pause / resume |
+| `+` `-` `[` `]` | speed, coarser and finer |
+| `R` | restart from floor 1 |
+| `A` | move the HUD to the next corner |
+| `ESC` | close the top window, else quit to the title |
+
+The HUD is anchored **top left** by default. It used to be bottom left, which put the block directly
+over the hero — and a recording spends most of its time on a hero that has not moved. Top left is the
+one corner the game keeps clear: the depth banner is centred and the item log runs up the right edge.
+`A` cycles all four corners rather than toggling between two, because which corner is right depends on
+the window and on what else is on screen.
+
+The HUD wraps rather than clipping. This is not incidental: `BitmapText` cannot wrap *or* break a line
+— its font has no newline glyph, so a `\n` draws as a blank and the text keeps running right until it
+leaves the window. The HUD therefore draws each line as its own gizmo, wrapped on spaces against the
+real font. No `BitmapText` anywhere in the game is given a `\n`, because the game's own
+`RenderedTextBlock` exists precisely because this one will not wrap.
+
 ### The last recorded step is a step like any other
 
 A recording ends where the trainer terminated, and the final step is one the trainer *applied* - so it
