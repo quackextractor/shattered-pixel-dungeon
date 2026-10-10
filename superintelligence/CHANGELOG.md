@@ -5,30 +5,69 @@ All notable changes to the **Superintelligence module** are documented in this f
 This module is versioned independently of the game it wraps. The game is
 [Shattered Pixel Dungeon](../README.md), tracked upstream and pinned here at the version its newest tag
 names; the `version-` badge in that file is the **game's** version and is not touched by anything
-recorded here. The version series below is the module's own, and `4.x.y` here means something entirely
-different from `4.x.y` there.
+recorded here. The version series below is the module's own, and it starts at **0** so that it cannot
+be mistaken for a game release even when read out of context: the game is at `4.0.2`, this module is at
+`0.4.0`, and no `0.x.y` here corresponds to any `x.y.z` there.
+
+**The module is pre-1.0, and that is a statement about stability rather than about numbering.** Under
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html) a `0.x.y` release carries no compatibility
+promise, so a minor bump here may still change behaviour a caller depended on - and one already did:
+`0.3.0` re-priced `STALLED` from zero to the death penalty, which is a semantic change to the reward
+function and invalidated the recording corpus. What the `0.x` line buys is that **major** does not
+happen by accident. Under the old `4.x` numbering a `0.1.0`-scale change to this module would have been
+forced to call itself `5.0.0` and would have sat next to a game `4.0.2` in the same repository, two
+badges reading `5.x` and `4.0.x` for two things that had nothing to do with each other.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [4.4.0] - 2026-10-10
+## [0.4.0] - 2026-10-10
 
 ### Changed
 
-- **The changelog moved here, and the module's version is now its own.** Everything below was written
-  under a repository-wide changelog whose version series had drifted ahead of the game's - `4.3.3`
-  here against a game pinned at `4.0.2` - so a reader of the root `README.md` badge had two
-  incompatible answers to "what version is this". Two artefacts, two version lines, and each one moves
-  when its own subject moves.
+- **The changelog moved here, and the module's version is now its own, on its own line.** Everything
+  below was written under a repository-wide changelog whose version series had drifted ahead of the
+  game's - `4.3.3` here against a game pinned at `4.0.2` - so a reader of the root `README.md` badge
+  had two incompatible answers to "what version is this". Two artefacts, two version lines, and each
+  one moves when its own subject moves.
 
   The split is not cosmetic in one direction: **the game's version is upstream's.** This fork's work
   touches `:core`, `:SPD-classes` and `:desktop` only through the additive, guarded changes recorded in
   [`ENGINE-CHANGES.md`](ENGINE-CHANGES.md), so there is nothing for it to release. A game-side entry
   claiming a release that upstream never made would be a second thing to be wrong about.
 
-  - [`superintelligence/CHANGELOG.md`](CHANGELOG.md) (this file) - the module's history, 4.1.0 onward.
+- **The module's series now starts at 0 rather than at 4.** `4.1.0` → `0.1.0`, `4.2.0` → `0.2.0`,
+  `4.3.0` → `0.3.0`, and the three patches below it unchanged in kind. This is a re-base of the number,
+  not a re-reading of the history: `4.x.y` and `0.x.y` here differ by exactly 4.0 at every point, which
+  is the check that the classification had to be right before the offset was applied.
+
+  Each release was classified on what it actually did rather than on the number it was given, and the
+  classification is the offset - which is the useful part, because it is the part that could have
+  differed:
+
+  | was | what it did | class | now |
+  | --- | --- | --- | --- |
+  | 4.1.0 | The module's first release. The whole headless RL framework, the engine getters it needs, the replay format, and `ReplayIO.play` renamed to `verify`. Nothing in this repository existed to call before it. | minor | **0.1.0** |
+  | 4.2.0 | `feat(viewer)`: HUD corner cycling, five viewer faults closed, and `playbackcheck` grown 7 → 18 → 20 checks, alongside `viewdiff`, `WorldSnapshot`/`WorldDiff`, `FrameDelta`, `viewcheck`, `observecheck`, `rngtrace`, checkpoints, `verifyall` and the parallel update. Added surface, no existing caller changed meaning. | minor | **0.2.0** |
+  | 4.3.0 | `feat`: floor transitions serviced headlessly behind `transitioncheck`, and `STALLED` re-priced from zero to `-deathPenalty` - which is the one release here that *did* break behaviour a caller depended on. | minor | **0.3.0** |
+  | 4.3.1 | `fix(superintelligence)`: the hero takes the landing act on a new floor. | patch | **0.3.1** |
+  | 4.3.2 | `fix(viewer)`: a recording ending in death no longer leaves a remains file in the player's profile. | patch | **0.3.2** |
+  | 4.3.3 | `docs` only: `issues.md` "Env" 6 and 7 investigated, `TODO.md` §0.8 added, one README table row corrected. No code, no configuration, no public surface. | patch | **0.3.3** |
+
+  Two consequences worth stating. **The old numbers were not wrong about major/minor/patch** - the
+  classification was already correct, and it stays correct at 4.0 lower; what was wrong was the
+  *neighbourhood*, since a `4.4.0` module next to a `4.0.2` game invites a reader to treat them as
+  one line. And **no release becomes a major.** Nothing in this module's history changed a caller's
+  meaning in a way that was not already announced as a fix or a feature, which is why the series can
+  begin at `0.1.0` rather than at a placeholder `0.0.1` that implies a release came before any release.
+
+  Cross-references inside this file were moved with the headings rather than left pointing at numbers
+  that no longer exist, because a changelog whose entries cite versions nobody can reach is worse than
+  one with no cross-references at all.
+
+  - [`superintelligence/CHANGELOG.md`](CHANGELOG.md) (this file) - the module's history, 0.1.0 onward.
   - [`../README.md`](../README.md) - the game's history is upstream's. Its `version-` badge is checked
     against the newest `v*` git tag rather than against anything written by hand, so it follows a merge
     and cannot drift from it.
@@ -67,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   carried over, so the "17 of 17" every other entry in this file quotes is measured rather than
   inherited.
 
-## [4.3.3] - 2026-10-10
+## [0.3.3] - 2026-10-10
 
 ### Documentation
 
@@ -108,7 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `README.md` status table row for the observation encoder no longer reads a bare "Verified"; it names
   the limit and points at §0.8.
 
-## [4.3.2] - 2026-10-10
+## [0.3.2] - 2026-10-10
 
 ### Fixed
 
@@ -142,7 +181,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   real-backend branch that was broken. The viewer-side half is guarded; the backend half has no headless
   oracle, and claiming otherwise would be worse than saying so.
 
-## [4.3.1] - 2026-10-10
+## [0.3.1] - 2026-10-10
 
 ### Fixed
 
@@ -181,7 +220,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also what stops the loop on its first iteration, so the two are different things here rather than the
   same thing at different sizes.
 
-- **The "Known issue" carried in 4.3.0 is closed.** `viewcheck` is **17 of 17** for the first time since
+- **The "Known issue" carried in 0.3.0 is closed.** `viewcheck` is **17 of 17** for the first time since
   the corpus grew a recording that descends, `playbackcheck` is green at 20, and `verifyall` passes.
 
 ### Added
@@ -209,7 +248,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`transitioncheck` added to the gates table** in `docs/documentation.md` and `testing-guide.md`,
   which listed nineteen gates and had been one short since it was added.
 
-## [4.3.0] - 2026-10-10
+## [0.3.0] - 2026-10-10
 
 ### Fixed
 
@@ -336,7 +375,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known issue
 
 - ~~**Ascending after descending still diverges, and `verifyall` is red because of it.**~~
-  **Fixed in 4.3.1.** `duelist-mid` descends at step 157 and climbs back at 159; `:desktop:viewcheck`
+  **Fixed in 0.3.1.** `duelist-mid` descends at step 157 and climbs back at 159; `:desktop:viewcheck`
   and `:desktop:playbackcheck` reported the same `DIVERGED at step 161 - hero at (11, 9) pos 317,
   recording says (10, 8) pos 282`, so it was not a viewer artefact. Two differences between
   `InterlevelScene.ascend()` and `LevelPipeline.handleTransition()` were known and neither was
@@ -358,7 +397,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`viewcheck` is 16 of 17**, down from green on 17 — not a regression, but the far side of the same
   fault: the recordings that descend are new to the corpus and one of them ascends again.
 
-## [4.2.0] - 2026-10-10
+## [0.2.0] - 2026-10-10
 
 ### Added
 
@@ -1685,7 +1724,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resets onto a fresh draw and reports a divergence at step 0 — correct behaviour, and a message that
   reads as a broken seed lock. Any such file already on disk stays unfixable; re-record it.
 
-## [4.1.0] - 2026-10-06
+## [0.1.0] - 2026-10-06
 
 ### Fixed
 
@@ -1785,6 +1824,6 @@ No compare links, deliberately. The versions here are the module's and they are 
 tags in this repository belong to the game and come from upstream. The two link definitions this file
 carried before the move pointed at `v4.0.1...v4.1.0`, a tag that has never existed, so they rendered as a
 404 rather than as a range. Tagging the module would mean a `v`-prefixed series that collides with the
-game's by name; the fix is a separate namespace (`si-v4.4.0`) and is not worth doing for a module whose
+game's by name; the fix is a separate namespace (`si-v0.4.0`) and is not worth doing for a module whose
 release cadence is its changelog.
 -->

@@ -52,6 +52,20 @@ will otherwise assume the other means the same thing.
 | Shattered Pixel Dungeon | upstream, and the `version-` badge in the root [`README.md`](../README.md) | this fork merges a new upstream tag |
 | The Superintelligence module | [`superintelligence/CHANGELOG.md`](../superintelligence/CHANGELOG.md), and the `version-` badge in [`superintelligence/README.md`](../superintelligence/README.md) | work lands in this module |
 
+**The module's series starts at 0** — it is at `0.4.0` while the game is at `4.0.2`. This is deliberate.
+The module's history began at `4.1.0`, which put it in the same numeric neighbourhood as the game it
+wraps, and two badges reading `4.x` and `4.0.x` in one readme invite a reader to treat them as one
+line with a fork applied. Nothing about a reinforcement-learning harness is comparable to a game
+release, so a shared-looking number is a false affinity. Every version moved by exactly −4.0, which is
+how the renumbering was checked against a per-release major/minor/patch classification rather than
+applied as an offset and hoped for; that classification is in `0.4.0`'s entry.
+
+**Pre-1.0 is a statement about stability, not about the digits.** Under
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html) a `0.x.y` release carries no compatibility
+promise, so a minor bump here may still change behaviour a caller depended on — and one did: `0.3.0`
+re-priced `STALLED` from zero to the death penalty and invalidated the recording corpus. What the `0.x`
+line prevents is `major` happening by accident.
+
 The split is not cosmetic in the first row. **The game's version is upstream's**, and this fork does
 not release the game: its changes to `:core`, `:SPD-classes` and `:desktop` are the additive, guarded
 ones listed under *Changes to the game* below. A repository-wide changelog claiming game releases would

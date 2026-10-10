@@ -1,15 +1,16 @@
 # Shattered Pixel Dungeon - Superintelligence
 
-[![Version](https://img.shields.io/badge/version-4.4.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](CHANGELOG.md)
 [![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
 
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
 described in [`docs.md`](docs.md) and [`research.md`](research.md).
 
-**Two versions, two subjects.** The `version-` badge is this module's, and its history is in
-[`CHANGELOG.md`](CHANGELOG.md). The `game-` badge is Shattered Pixel Dungeon's, which is upstream's and
-moves only when this fork merges upstream - it is not touched by anything recorded in this module's
-changelog.
+**Two versions, two subjects.** The `version-` badge is this module's - `0.4.0` - and its history is in
+[`CHANGELOG.md`](CHANGELOG.md). The `game-` badge is Shattered Pixel Dungeon's - `4.0.2` - which is
+upstream's and moves only when this fork merges upstream. Neither moves because of anything recorded in
+the other's changelog, and the module's series starts at **0** specifically so the two cannot be read as
+one line. This module is pre-1.0: a `0.x.y` minor bump may still change behaviour a caller depended on.
 
 The game runs as a pure simulation - no window, no renderer, no audio - so runs can be rolled out
 thousands of turns per second, each scored by a configurable reward function, with the best run per

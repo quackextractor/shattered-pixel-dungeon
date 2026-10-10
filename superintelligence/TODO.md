@@ -4,7 +4,8 @@ Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), wri
 code as it stands. "Verified" means it was run and observed, not merely written.
 
 Last updated: 2026-10-10, after the repository's documentation layout was split — the module's changelog
-and version line moved out of the repository root and into this directory (§0.9). That work touched no
+and version line moved out of the repository root and into this directory, and the module's series
+re-based from 4.x onto **0.x** so it cannot be mistaken for a game release (§0.9). That work touched no
 code, so no gate result is re-measured by it; `verifyall` was re-run afterwards and is green, and
 `:desktop:viewcheck` was re-run and is 17 of 17. The previous entry — `issues.md` "Env" 6 and 7
 investigated, 6 closed on measurement — is below at §0.8.
@@ -27,13 +28,34 @@ the number had drifted 3 minor versions past the game it claimed to describe.
 | | Before | After |
 | --- | --- | --- |
 | Game version | 4.3.3, in a changelog that did not exist upstream | **4.0.2**, the newest `v*` tag |
-| Module version | shared the game's series | **4.4.0**, its own line in `superintelligence/CHANGELOG.md` |
+| Module version | shared the game's series, at 4.x | **0.4.0**, its own line in `superintelligence/CHANGELOG.md`, starting at 0 |
 | Changelog | `CHANGELOG.md` (root) | `superintelligence/CHANGELOG.md` |
-| Root `README.md` | one badge | two badges: `version-4.0.2` and `superintelligence-4.4.0`, plus the module link that was already there |
+| Root `README.md` | one badge | two badges: `version-4.0.2` and `superintelligence-0.4.0`, plus the module link that was already there |
 
 Moved with `git mv`, so `git log --follow CHANGELOG.md` reaches the whole history through the rename.
-Nothing was trimmed: the file is byte-identical below the new 4.4.0 entry apart from a header that says
-which subject it versions and why.
+Nothing was trimmed: below the new 0.4.0 entry the file is byte-identical apart from the six release
+headings, the two in-text cross-references that cited them, and a header that says which subject it
+versions and why.
+
+**The module's series starts at 0, and that was the right call for a reason beyond tidiness.** At
+`4.4.0` it sat in the same numeric neighbourhood as a `4.0.2` game — close enough that a reader
+meeting both badges in one README could reasonably assume one line with a fork applied to it. Nothing
+about the module's work is comparable to a game release, so a shared-looking number was a false
+affinity. At `0.4.0` there is none.
+
+**What the renumbering did and did not change.** The old numbers were already classified correctly as
+major/minor/patch — the check was to confirm that, not to assume it, and the per-release reasoning is
+in `CHANGELOG.md` 0.4.0. Every version moves by exactly −4.0, which is what makes the exercise a
+verification rather than a judgement call. Two things follow:
+
+- **No release becomes a major.** Nothing in the module's history changed a caller's meaning in a way
+  that was not already announced as a fix or a feature, so the series can begin at `0.1.0` rather than
+  at a `0.0.1` that would imply a release before any release existed.
+- **Being pre-1.0 is a statement about stability, not about the digits.** A `0.x.y` carries no
+  compatibility promise, so `0.3.0` was free to re-price `STALLED` from zero to the death penalty and
+  invalidate the recording corpus — and did. What the `0.x` line prevents is `major` happening by
+  accident: a breaking change here should be a minor bump on a line that already says nothing is
+  promised, rather than a `5.0.0` that would read as an event.
 
 **The game badge is now derived rather than written.** It is checked against the newest `v*` git tag,
 which *is* the game's version — so an upstream merge brings the readme into agreement without anyone
@@ -44,9 +66,9 @@ literal that only moved when somebody remembered.
 
 `hooks/pre-commit` compared `README.md`'s badge to `CHANGELOG.md`'s newest heading. Left unchanged
 after the split, it reads the **game's** badge and the **module's** changelog, finds `4.0.2` against
-`4.4.0`, and rewrites the game's readme to say `version-4.4.0` — then reports `[OK]`. A check that
-writes the wrong answer and says it succeeded is worse than a check that fails, because the failure it
-is meant to catch is the one it is now manufacturing.
+the module's release, and rewrites the game's readme to carry the module's version — then reports
+`[OK]`. A check that writes the wrong answer and says it succeeded is worse than a check that fails,
+because the failure it is meant to catch is the one it is now manufacturing.
 
 The hook now reads each badge from its own file against its own source: game against the tag, both
 module badges against `superintelligence/CHANGELOG.md`. All of them still correct-and-re-stage rather
