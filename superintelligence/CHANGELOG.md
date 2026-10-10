@@ -1,11 +1,112 @@
-# Changelog
+# Changelog - Superintelligence
 
-All notable changes to this project are documented in this file.
+All notable changes to the **Superintelligence module** are documented in this file.
+
+This module is versioned independently of the game it wraps. The game is
+[Shattered Pixel Dungeon](../README.md), tracked upstream and pinned here at the version its newest tag
+names; the `version-` badge in that file is the **game's** version and is not touched by anything
+recorded here. The version series below is the module's own, and `4.x.y` here means something entirely
+different from `4.x.y` there.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [4.4.0] - 2026-10-10
+
+### Changed
+
+- **The changelog moved here, and the module's version is now its own.** Everything below was written
+  under a repository-wide changelog whose version series had drifted ahead of the game's - `4.3.3`
+  here against a game pinned at `4.0.2` - so a reader of the root `README.md` badge had two
+  incompatible answers to "what version is this". Two artefacts, two version lines, and each one moves
+  when its own subject moves.
+
+  The split is not cosmetic in one direction: **the game's version is upstream's.** This fork's work
+  touches `:core`, `:SPD-classes` and `:desktop` only through the additive, guarded changes recorded in
+  [`ENGINE-CHANGES.md`](ENGINE-CHANGES.md), so there is nothing for it to release. A game-side entry
+  claiming a release that upstream never made would be a second thing to be wrong about.
+
+  - [`superintelligence/CHANGELOG.md`](CHANGELOG.md) (this file) - the module's history, 4.1.0 onward.
+  - [`../README.md`](../README.md) - the game's history is upstream's. Its `version-` badge is checked
+    against the newest `v*` git tag rather than against anything written by hand, so it follows a merge
+    and cannot drift from it.
+  - The root `README.md` gains exactly two lines: a separate `superintelligence-<version>` badge, and
+    the link to [`README.md`](README.md) that was already there. Nothing else about the game's readme
+    moved.
+
+- **The pre-commit hook checks two badges instead of one, and they are checked against two different
+  sources.** It previously read a single `CHANGELOG.md` and a single `README.md`, so after the split it
+  would have compared the game's badge against the module's changelog and silently rewritten the wrong
+  file. Now: the root `README.md` badge against the newest `v*` tag, and this module's badge against the
+  newest heading here. Both are corrected and re-staged rather than refused, which is what the hook
+  already did for one of them.
+
+### Fixed
+
+- **The repository had a changelog it had no right to have.** Upstream `shattered-pixel-dungeon` has
+  never shipped a root `CHANGELOG.md` - its release notes live in `metadata/en-US/changelogs/` - so
+  every version from 4.1.0 to 4.3.3 was this fork asserting a game release it did not make. The file is
+  removed rather than trimmed; nothing was lost with it, and `git log --follow CHANGELOG.md` still
+  reaches the whole history through the rename.
+
+- **The pre-push hook still described a red viewer.** `hooks/pre-push` printed *"divergences here are
+  EXPECTED while ISSUE-viewer-frame-drift.md is open"* and attributed its non-blocking behaviour to
+  the gate failing 7-9 of 17. That issue is fixed and `:desktop:viewcheck` is green on all 17,
+  re-measured for this release (219.7 s, one child JVM per recording). The hook was telling every
+  pusher to expect a failure that no longer happens, and teaching the wrong reason for why it does not
+  block. The header now states the measured state and gives the real one: it needs a GL context, so it
+  cannot run on a build machine. Making it blocking is a one-line change left explicitly undecided
+  rather than decided for whoever pushes next.
+
+### Verified
+
+- `verifyall` - `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 21, both green.
+- `:desktop:viewcheck` - 17 of 17 played clean in the real viewer, re-run for this release rather than
+  carried over, so the "17 of 17" every other entry in this file quotes is measured rather than
+  inherited.
+
+## [4.3.3] - 2026-10-10
+
+### Documentation
+
+- **`issues.md` "Env" 6 closed on measurement: the 32x32 figure is wrong, and 48 is not too small.**
+  Regular floors are not hardcoded to any size at all - `RegularPainter.java:113` ends level generation
+  with `level.setSize(rightMost + 1, bottomMost + 1)`, where the extents are those of the rooms that just
+  generated. Measured 1040 floors over 40 seeds at depths 1-26: max width 67, max height 81, and **419 of
+  1040 exceed 48 on at least one side**. The 32s are the hand-built boss floors, not the regular ones.
+
+  Which does **not** mean the agent is unprepared for the other 60%. `ObservationEncoder.buildSpatial`
+  never sees the whole floor: it samples a hero-centred window, `spanX = gridWidth + MARGIN * 2`, so on a
+  67-wide floor `stepX = 52/48 = 1.083` and the window subsamples at about 92% while sliding with the
+  hero. The clamp at `ObservationEncoder.java:126-132` makes no floor shape able to read it out of bounds.
+  A tall floor is one the encoder represents as a window rather than a map, which is the design.
+
+  What was left open rather than folded into the closure: `EnvConfig.java:16`'s claim that 48 "covers the
+  widest floors" is false against the measurement above, and `env.grid_height` is a documented key that
+  only the encoder implements - `Network`, `Conv2D`, `TransitionCodec`, `PPO`, `EpisodeCollector` and five
+  more all use `gridWidth * gridWidth`, so a non-square pair desynchronises the two halves silently.
+  Neither `env.max_slots`, `env.grid_width` nor `env.grid_height` has a range check either.
+
+- **`issues.md` "Env" 7 investigated; the quote is right and the shipped width is not.**
+  `env.max_slots=32` against an engine ceiling of 96, truncating silently. `TODO.md` 0.8 records the
+  measurement, what raising the width costs (96 is +238k parameters, a larger addition than the entire
+  convolution stack, and bought entirely for an endgame state), and three alternatives - a pooled set
+  encoding, attention over per-item tokens, and a bag-aware `OPEN_BAG` action. **Nothing is fixed.**
+
+  The finding behind it is that `TODO.md` D7's stated justification does not hold: keeping slot out of the
+  action enum does make the *action* head capacity-independent, but the *slot* head's output width **is**
+  `maxSlots` and the input width is `maxSlots * 14`, so the property D7 claims is not present in the
+  implementation.
+
+### Changed
+
+- `TODO.md` gains §0.8 (the inventory window, recorded not fixed) and its header states which suite
+  results were re-measured and which were carried over — `verifyall` re-run and green after this work,
+  `viewcheck` not run because it needs a display.
+- The `README.md` status table row for the observation encoder no longer reads a bare "Verified"; it names
+  the limit and points at §0.8.
 
 ## [4.3.2] - 2026-10-10
 
@@ -1679,5 +1780,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   subcommand and Gradle task are now `verify`. The `Replay` file format keeps its name: a recorded
   run that can be re-executed is a replay.
 
-[4.1.0]: https://github.com/00-Evan/shattered-pixel-dungeon/compare/v4.0.1...v4.1.0
-[Unreleased]: https://github.com/00-Evan/shattered-pixel-dungeon/compare/v4.1.0...HEAD
+<!--
+No compare links, deliberately. The versions here are the module's and they are not git-tagged: the `v*`
+tags in this repository belong to the game and come from upstream. The two link definitions this file
+carried before the move pointed at `v4.0.1...v4.1.0`, a tag that has never existed, so they rendered as a
+404 rather than as a range. Tagging the module would mean a `v`-prefixed series that collides with the
+game's by name; the fix is a separate namespace (`si-v4.4.0`) and is not worth doing for a module whose
+release cadence is its changelog.
+-->

@@ -2,62 +2,110 @@
 #
 # Pre-commit gate.
 #
-# Two checks, in order of cost. The badge sync runs first because it is instant and its failure mode is
-# trivially fixable, so there is no reason to spend the test suite's time to then find out the
-# commit would have been rejected for a version number.
+# Three checks, in order of cost. The two badge syncs run first because they are instant and their
+# failure modes are trivially fixable, so there is no reason to spend the test suite's time to then
+# find out the commit would have been rejected for a version number.
 #
-# Both abort the commit. Neither is ever bypassed: a hook that can be skipped with --no-verify is a
-# suggestion, and the value here is that a broken gate stops the commit rather than being noticed later.
+# Both the badges and the test suite abort the commit. Neither is ever bypassed: a hook that can be
+# skipped with --no-verify is a suggestion, and the value here is that a broken gate stops the commit
+# rather than being noticed later.
 #
 # The test suite is `verifyall`, not `:superintelligence:gates`. Those are not the same thing and the
 # difference mattered: gates covers only the Superintelligence module, so a commit touching the desktop
 # replay player - ReplayController, ReplayPlayer, ReplayLauncher, replay-viewer.bat - passed this hook
 # without a single one of its own tests running. verifyall adds :desktop:playbackcheck, which drives
 # ReplayPlayer directly and is the cheapest check there is for the code most replay work changes.
+#
+# ---------------------------------------------------------------------------------------------------
+# TWO VERSION LINES, AND THIS IS THE PART THAT IS EASY TO GET WRONG
+#
+# The repository versions two subjects that move for different reasons and must never be compared to
+# each other:
+#
+#   the game              - upstream Shattered Pixel Dungeon. Its badge is checked against the newest
+#                           `v*` git tag, because that tag *is* the game's version. Nothing written by
+#                           hand can outvote it, and a merge brings the two into agreement by itself.
+#   the Superintelligence - this fork's module, versioned on its own line. Its badge is checked against
+#                           `superintelligence/CHANGELOG.md`.
+#
+# Before the split there was one changelog and one badge, and the hook read both at the repo root. Left
+# as it was, it would compare the *game's* badge against the *module's* changelog and, finding a
+# mismatch, silently rewrite the game's readme with a module version - a wrong answer committed by a
+# check that reported success. The two are read from their own file and their own source, and the game
+# check is skipped with a warning rather than guessed at when the clone has no tags.
 
 set -e
 
 repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root"
 
-# ---------------------------------------------------------------- version badge consistency
+# BSD and GNU sed disagree about -i, so every file below is rewritten rather than edited in place. One
+# extra temp file in a hook that runs once per commit costs nothing; a sed that works on the developer's
+# machine and silently does nothing on CI is worth more.
+set_badge() {
+    # $1 file, $2 label the badge carries, $3 current value, $4 correct value
+    _file="$1"; _label="$2"; _have="$3"; _want="$4"
 
-# The badge must name the newest released version in CHANGELOG.md. Compared rather than assumed, and
-# corrected rather than refused, because a mismatch is a one-line mechanical fix and aborting a developer
-# over it teaches them to reach for --no-verify.
-changelog_version=$(grep -o '^## \[[0-9][^]]*\]' CHANGELOG.md \
+    if [ -z "$_have" ]; then
+        echo "[ERROR] no '$_label' badge found in $_file."
+        return 1
+    fi
+
+    if [ "$_have" = "$_want" ]; then
+        return 0
+    fi
+
+    echo "[INFO] $_file '$_label' badge says $_have, the correct version is $_want. correcting it."
+    sed "s|img.shields.io/badge/$_label-$_have-blue.svg|img.shields.io/badge/$_label-$_want-blue.svg|g" \
+        "$_file" > "$_file.tmp"
+    mv "$_file.tmp" "$_file"
+    git add "$_file"
+    echo "[OK]   $_file '$_label' badge updated to $_want and staged."
+    return 0
+}
+
+read_badge() {
+    # $1 file, $2 badge label. First match wins, which is why the two badges in README.md carry
+    # different labels rather than the same one twice - `version-` and `superintelligence-`.
+    grep -o "img.shields.io/badge/$2-[0-9][^-]*-blue.svg" "$1" \
+        | head -1 \
+        | sed "s|.*$2-||; s|-blue.svg||"
+}
+
+# ---------------------------------------------------------------- the game: newest v* tag
+
+game_version=$(git tag --list 'v[0-9]*' --sort=-v:refname 2>/dev/null | head -1 | sed 's/^v//')
+
+if [ -z "$game_version" ]; then
+    echo "[WARN] no v* tag in this clone, so the game's version badge cannot be checked."
+    echo "[WARN] fetch tags with 'git fetch --tags' to have it checked."
+else
+    readme_game=$(read_badge README.md 'version')
+    set_badge README.md 'version' "$readme_game" "$game_version"
+fi
+
+# ---------------------------------------------------------------- the module: its own changelog
+
+# The changelog's newest *released* heading. 'Unreleased' does not match the numeric pattern, so an
+# unreleased section above it is skipped rather than being read as the current version.
+si_changelog_version=$(grep -o '^## \[[0-9][^]]*\]' superintelligence/CHANGELOG.md \
     | head -1 \
     | sed 's/^## \[//; s/\]$//')
 
-badge_version=$(grep -o 'img.shields.io/badge/version-[0-9][^-]*-blue.svg' README.md \
-    | head -1 \
-    | sed 's|.*version-||; s|-blue.svg||')
-
-if [ -z "$changelog_version" ]; then
-    echo "[ERROR] could not read a released version heading from CHANGELOG.md."
+if [ -z "$si_changelog_version" ]; then
+    echo "[ERROR] could not read a released version heading from superintelligence/CHANGELOG.md."
     echo "        Expected a line like '## [1.2.3] - 2026-10-09'."
     exit 1
 fi
 
-if [ -z "$badge_version" ]; then
-    echo "[ERROR] no version badge found in README.md."
-    exit 1
-fi
+si_readme_version=$(read_badge superintelligence/README.md 'version')
+set_badge superintelligence/README.md 'version' "$si_readme_version" "$si_changelog_version"
 
-if [ "$changelog_version" != "$badge_version" ]; then
-    echo "[INFO] README badge says $badge_version, CHANGELOG's newest release is $changelog_version."
-    echo "[INFO] correcting the badge."
-
-    # BSD and GNU sed disagree about -i, so the file is rewritten rather than edited in place. One
-    # extra temp file in a hook that runs once per commit costs nothing; a sed that works on the
-    # developer's machine and silently does nothing on CI is worth more.
-    sed "s|img.shields.io/badge/version-$badge_version-blue.svg|img.shields.io/badge/version-$changelog_version-blue.svg|g" \
-        README.md > README.md.tmp
-    mv README.md.tmp README.md
-
-    git add README.md
-    echo "[OK] README version badge updated to $changelog_version and staged."
-fi
+# The root README carries the module's version a second time, as its own badge, because that is the one
+# place a reader arrives who has not opened this directory yet. Checked against the same source rather
+# than copied, so the two cannot disagree.
+root_si_version=$(read_badge README.md 'superintelligence')
+set_badge README.md 'superintelligence' "$root_si_version" "$si_changelog_version"
 
 # ---------------------------------------------------------------- test suite
 

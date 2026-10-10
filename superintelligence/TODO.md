@@ -3,11 +3,74 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-10, after `issues.md` "Training" 10 — the ascent that follows the descent — was
-worked through, and after a follow-up report of a rare viewer divergence that has not been reproduced in
-roughly fifty attempts. `verifyall` is green: `:superintelligence:gates` at 20, `:desktop:playbackcheck`
-at 21, and `:desktop:viewcheck` **17 of 17**, which is the state it was in before the corpus grew a
-descending recording and has not been in since.
+Last updated: 2026-10-10, after the repository's documentation layout was split — the module's changelog
+and version line moved out of the repository root and into this directory (§0.9). That work touched no
+code, so no gate result is re-measured by it; `verifyall` was re-run afterwards and is green, and
+`:desktop:viewcheck` was re-run and is 17 of 17. The previous entry — `issues.md` "Env" 6 and 7
+investigated, 6 closed on measurement — is below at §0.8.
+
+---
+
+## 0.9 The repository versioned one thing it has no right to version - FIXED
+
+The repository had a root `CHANGELOG.md` running 4.1.0 → 4.3.3 and a root `README.md` badge reading
+**4.3.3**, over a game pinned at upstream **v4.0.2**. Two incompatible answers to "what version is
+this", in the two files a reader opens first.
+
+**Upstream has never shipped a root changelog.** `00-Evan/shattered-pixel-dungeon` at `v4.0.2` has no
+such file — its release notes live in `metadata/en-US/changelogs/`, one text file per version code.
+Every version in that changelog was therefore *this fork asserting a game release it did not make*, and
+the number had drifted 3 minor versions past the game it claimed to describe.
+
+### What changed
+
+| | Before | After |
+| --- | --- | --- |
+| Game version | 4.3.3, in a changelog that did not exist upstream | **4.0.2**, the newest `v*` tag |
+| Module version | shared the game's series | **4.4.0**, its own line in `superintelligence/CHANGELOG.md` |
+| Changelog | `CHANGELOG.md` (root) | `superintelligence/CHANGELOG.md` |
+| Root `README.md` | one badge | two badges: `version-4.0.2` and `superintelligence-4.4.0`, plus the module link that was already there |
+
+Moved with `git mv`, so `git log --follow CHANGELOG.md` reaches the whole history through the rename.
+Nothing was trimmed: the file is byte-identical below the new 4.4.0 entry apart from a header that says
+which subject it versions and why.
+
+**The game badge is now derived rather than written.** It is checked against the newest `v*` git tag,
+which *is* the game's version — so an upstream merge brings the readme into agreement without anyone
+editing it, and nothing hand-written can outvote it. That is the property the old badge lacked: it was a
+literal that only moved when somebody remembered.
+
+### The part that would have bitten quietly
+
+`hooks/pre-commit` compared `README.md`'s badge to `CHANGELOG.md`'s newest heading. Left unchanged
+after the split, it reads the **game's** badge and the **module's** changelog, finds `4.0.2` against
+`4.4.0`, and rewrites the game's readme to say `version-4.4.0` — then reports `[OK]`. A check that
+writes the wrong answer and says it succeeded is worse than a check that fails, because the failure it
+is meant to catch is the one it is now manufacturing.
+
+The hook now reads each badge from its own file against its own source: game against the tag, both
+module badges against `superintelligence/CHANGELOG.md`. All of them still correct-and-re-stage rather
+than abort, which is what this hook has always done and why a one-line mismatch never teaches anyone to
+reach for `--no-verify`. With no tags in the clone the game check skips with a warning instead of
+guessing.
+
+`hooks/pre-push` came along because the viewer was re-run for this entry and it no longer matched
+what it printed. It announced *"divergences here are EXPECTED while ISSUE-viewer-frame-drift.md is
+open"* and justified its non-blocking exit by the gate failing 7-9 of 17. The issue is fixed and the
+gate is green. Corrected: the header states the measured state, and the real reason for not blocking is
+that it needs a display. Left non-blocking rather than made blocking, because that is a behaviour change
+nobody asked for and a pre-push hook that fails on a build machine gets deleted.
+
+### Verification
+
+- `verifyall` green after the change — `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 21.
+- `:desktop:viewcheck` re-run, not carried over: **17 of 17**, 219.7 s. The "17 of 17" every other entry
+  in this file quotes is therefore measured rather than inherited, which is the claim the previous entry
+  (§0.8) could not make — it never re-ran it because it needs a display.
+- Root `README.md` diffed against `git show v4.0.2:README.md`: the game adds three lines and changes
+  nothing else.
+- Both badges re-derived by the new hook logic and matching; the derivation was run directly before the
+  gates rather than only through a commit.
 
 ---
 
@@ -47,6 +110,123 @@ Mutation-tested; removing the `halt()` call fails it. The case states what it do
 on the headless backend, so it exercises the branch that already worked and cannot reach the branch that
 was broken. The viewer-side half is guarded; the backend half has no headless oracle, which is worth
 saying rather than papering over with a case that appears to cover it.
+
+---
+
+## 0.8 The inventory the agent can address is narrower than the inventory the game gives it - RECORDED, not fixed
+
+`issues.md` "Env" 7 reports that the inventory slots seem wrong, quoting a ceiling of 96. The ceiling is
+right and the shipped `env.max_slots=32` is not. Nothing is fixed here; this entry records what was
+measured and what the alternatives cost, because the fix is not the obvious one and the obvious one is
+the expensive one.
+
+### What the engine actually offers
+
+Bags are obtainable and are already in every run, which is worth stating because the report reads as
+though they were not: `HeroClass.java:111` hands every hero a `VelvetPouch` at run start, `ShopRoom.java:361`
+(`ChooseBag`) stocks the other three behind a `Dungeon.LimitedDrops` one-shot each, and
+`SandalsOfNature`, `MagesStaff`, `UnstableSpellbook`, `LiquidMetal`, `ArcaneResin` and `Dart` all return
+a bag when they upgrade. All 17 committed recordings carry a `VelvetPouch`.
+
+- `Bag.capacity()` is 20 (`Bag.java:55`).
+- `Belongings.Backpack.capacity()` is 20 **+ 1 per bag held** (`Belongings.java:58`), so 24 with all four.
+- Each bag is 19 (`VelvetPouch:47`, `ScrollHolder:49`, `PotionBandolier:45`, `MagicalHolster:48`).
+- `ActionMapper.refreshSlots` iterates `hero().belongings.backpack`, and `Bag`'s iterator **recurses into
+  nested bags** (`Bag.java:232`), so the whole tree is reachable in principle: 24 + 4x19 = 100 positions,
+  of which 4 are the containers themselves, giving the 96 of the quote.
+
+### What the agent gets
+
+Measured on a hero holding all four bags, filled with non-stackable items each bag accepts:
+
+```
+backpack.capacity() 4 bags total = 24
+items reachable iterating backpack = 68
+config.maxSlots                     = 32
+items the slot head can address     = 32
+items the agent can never touch      = 36
+```
+
+68 is what this fixture reached, not the ceiling — it needed ~40 item prototypes to fill the bags, and
+`Bag.canHold` filters by category so a bag that refuses a wand must be filled with something else. The
+ceiling is 96. Either way `maxSlots=32` truncates.
+
+**And it truncates silently.** `ActionMapper.java:91` does `slots.indexOf(null)`, gets -1 when the window
+is full, and drops the item with no return value, no log and no flag. `mapper.slot(35)` returns null and
+`SlotAction.execute` returns false on null. So the agent cannot see, use or drop those items, and the
+`slotMask` reports every slot as legitimately full — there is no way to tell "I have nothing there" from
+"there are 36 items I was never shown".
+
+The properties file asserts the opposite: *"Backpack capacity is 20 plus one per bag, so 32 covers a
+fully-loaded hero with room to spare."* Measured, that is false, and the false claim is the only place
+the number was ever justified.
+
+### The obvious fix, and what it costs
+
+Raising `maxSlots` is not one array. It fans into `Network.java:89` (`extraInputs = maxSlots * 14 +
+HeroEncoder.FEATURES`, feeding `trunk = new Dense(convFeatures + extraInputs, 256)`) and
+`Network.java:101` (`slotHead = new Dense(128, maxSlots)`), and into `TransitionCodec.java:48` on the wire.
+
+| width | input | +params | wire/step | 17 recordings |
+| --- | --- | --- | --- | --- |
+| 32 (now) | 448 | — | baseline | all verify |
+| 64 | 896 | ~120k | +3.5% | all verify, replayed at 32 |
+| 96 | 1344 | ~238k | +7% | all verify, replayed at 32 |
+
+The +238k at 96 is larger than the entire convolution stack. `max_slots` is recorded in every replay
+header, so recordings keep verifying at their own width — my earlier claim that raising it "invalidates
+every recording's header" was wrong. What it does break is **cross-width playback**, which nothing in the
+suite tests: a 96-slot recording replayed at 32 silently loses slots 32-95. `Checkpoint.java:221` refuses
+a mismatched width by name, so training fails loudly; recordings are the soft failure.
+
+The deeper objection is that 96 is a bad default for a different reason: it needs four shop visits and a
+favourable `ChooseBag` ordering. A hero starts with a `VelvetPouch`, a `Waterskin`, a `Food`, one
+`ScrollOfIdentify` and one weapon — six items. 32 already covers that five times over, so the width is
+bought entirely for an endgame state at the cost of every early turn.
+
+### Why the design does not achieve what D7 claims
+
+`TODO.md` D7 justifies the separate slot head with *"Keeping slot out of the flat action enum means output
+width does not change with the hero's carrying capacity."* That is true of the **action** head. It is
+false of the **slot** head, whose output width *is* `maxSlots` (`Network.java:101`), and false of the
+input width, which is `maxSlots * 14`. The capacity-independence D7 claims is not present in the
+implementation. That is the actual defect behind issue 7, and it is why "just raise the number" treats
+the symptom.
+
+`research.md:47` mandates the flattened per-slot vector, but that paragraph is the weakest-specified claim
+in the document — it asserts "neural networks require consistent input sizes" and stops. That is a
+constraint on the first dense layer's input width, not on what may be fed into the network. The document
+picks one implementation that satisfies it and reads the choice as forced.
+
+### The alternatives, and what each costs
+
+- **Set encoding — one shared vector per item, pooled.** A small shared MLP maps each item's 14 features
+  to one 32-dim vector; mean/max/attention pooling reduces the set to a fixed summary. `maxSlots` leaves
+  the network entirely, the trunk input *shrinks* to ~55, and the encoding is capacity-invariant by
+  construction. Two costs are real: pooling is permutation-invariant, so it partly destroys the
+  per-slot positional structure `research.md:31`'s memory requirement depends on ("remember that it left a
+  health potion three rooms behind"); and the slot head becomes an attention read-out, which re-opens
+  exactly the "which item did slot 12 mean" ambiguity that `slotcheck` and the quickslot divergence in
+  `ENGINE-CHANGES.md` §1 were built to close.
+- **Attention over learned per-item tokens, slot head preserved.** Keeps identity — attention weights *are*
+  the slot choice — and is the highest-fidelity option. Also the largest: it touches `PPO`'s log-prob path,
+  `TransitionCodec`'s wire format, the mask plumbing, and every gate that builds a fixture.
+- **Bag-aware slots: keep 32, add an `OPEN_BAG` action** giving a nested view of a specific bag. 24 + 4 =
+  28 addressable positions, inside the current window. Bags stop being invisible and become a navigation
+  step, which is also how a human plays. Smallest change that makes the current architecture honest, and
+  it keeps the slot head, the replay format and every existing gate.
+
+### Why it is not being fixed yet
+
+Sequencing, not caution. `TODO.md` 1.4 is the blocker: nothing has ever left floor 1, and
+`duelist-mid` shows a policy that found a *zero-cost infinite loop* rather than one that mismanaged a full
+inventory. There is no evidence inventory management is the bottleneck, so re-architecting the
+observation before anything trains risks optimising the one thing never measured as important.
+
+The cheapest honest step that is not a re-architecture is an **overflow signal** — report on every
+`refreshSlots` that items were dropped, so truncation is visible rather than silent. That is worth doing
+whatever the width ends up being, because at *any* fixed width the same truncation returns the moment a
+hero carries more than the window.
 
 ---
 

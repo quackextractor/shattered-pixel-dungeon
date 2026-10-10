@@ -1,7 +1,15 @@
 # Shattered Pixel Dungeon - Superintelligence
 
+[![Version](https://img.shields.io/badge/version-4.4.0-blue.svg)](CHANGELOG.md)
+[![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
+
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
 described in [`docs.md`](docs.md) and [`research.md`](research.md).
+
+**Two versions, two subjects.** The `version-` badge is this module's, and its history is in
+[`CHANGELOG.md`](CHANGELOG.md). The `game-` badge is Shattered Pixel Dungeon's, which is upstream's and
+moves only when this fork merges upstream - it is not touched by anything recorded in this module's
+changelog.
 
 The game runs as a pure simulation - no window, no renderer, no audio - so runs can be rolled out
 thousands of turns per second, each scored by a configurable reward function, with the best run per
@@ -128,7 +136,7 @@ something.
 | Headless engine (renderer bypassed, single-threaded scheduler) | Verified, reproducible across processes |
 | Level pipeline, floor transitions, chasm falls | Verified - descending and ascending, in both directions, with the hero's landing act. `transitioncheck` is a gate, 9 cases |
 | Action space, action masking, menus, targeting | Verified |
-| Observation encoder (spatial planes + inventory + hero scalars) | Verified |
+| Observation encoder (spatial planes + inventory + hero scalars) | Verified, **with a known limit** - `env.max_slots=32` against an engine ceiling of 96, so a full inventory is silently truncated. `TODO.md` §0.8 |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process |
 | Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 17 committed recordings. The four engine fixes that required are committed, with the record in `ENGINE-CHANGES.md`. **Note the limit**: every child is forked hidden at speed 40, so the gate has never run the timing path a human run takes - see `TODO.md` §0.7 |
 | Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate |

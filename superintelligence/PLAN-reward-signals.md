@@ -340,7 +340,8 @@ time is `depth=1`. Depth 2 has still never happened.
 >
 > Nothing else disagreed with it. Every replay file and every metrics row said
 > depth 1, and a summary line is what a reader trusts over the raw column. See
-> the graph fix in `CHANGELOG.md` and the `graphcheck` gate.
+> the graph fix in `CHANGELOG.md` (now `superintelligence/CHANGELOG.md`; upstream ships no root
+> changelog, so there is only ever one in this repository) and the `graphcheck` gate.
 
 So the REST fix is real and measured - 36 stalls became 0, and episodes run to
 the turn cap instead of dying at turn 10 - and the milestone in `TODO.md` 1.4

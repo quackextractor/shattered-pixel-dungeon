@@ -59,9 +59,20 @@
     `EnvConfig.java:16` says 48 "covers the widest floors", and the measurement above says it does not.
     `env.grid_height` is also a documented key that nothing implements — see the note under §Env.
 
-7. The inventory slots / inventory system seems wrong. 
+7. The inventory slots / inventory system seems wrong. (investigated - see `TODO.md` 0.8)
 
-"
+    Confirmed, and the quoted ceiling of 96 is the right one. Bags are obtainable and already present in
+    every run - `HeroClass.java:111` gives every hero a `VelvetPouch` at start and `ShopRoom.java:361`
+    stocks the other three - so this is not a wiki-only claim. `Backpack.capacity()` is 20 plus one per
+    bag, each bag is 19, and `Bag`'s iterator recurses, so 96 items are reachable and
+    `env.max_slots=32` addresses 32 of them. The truncation is silent: `ActionMapper.java:91` drops the
+    overflow with no report and the mask claims every slot is legitimately full.
+
+    Not closed, because the fix is not the obvious one and `TODO.md` D7 turns out to claim a
+    capacity-independence the implementation does not have. Costs, alternatives and the reason for not
+    re-architecting before anything has trained are all in `TODO.md` 0.8.
+
+    "
 What is the max inventory space available with all of the expansions?
 
 The maximum inventory space available in Shattered Pixel Dungeon is 96 item slots when you have acquired all of the expansion containers.

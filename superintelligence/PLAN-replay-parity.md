@@ -229,9 +229,10 @@ TARGETING 156, INVENTORY 17, MENU 0. Terminations: TURN_LIMIT 12, DEATH 3, STALL
 ## 5. Documentation audit
 
 `recoverStrandedHero` appears in no Java source in the repo. The mentions in `CHANGELOG.md` are correct -
-they describe removing it. The three files that read as though the method still exists have been fixed:
-`PLAN-reward-signals.md`, `superintelligence/README.md` and `TODO.md` now describe the recovery path in
-prose without naming a method that is not there.
+they describe removing it. (That file has since moved to `superintelligence/CHANGELOG.md`; this is the
+module's own changelog either way, since upstream ships no root one.) The three files that read as
+though the method still exists have been fixed: `PLAN-reward-signals.md`, `superintelligence/README.md`
+and `TODO.md` now describe the recovery path in prose without naming a method that is not there.
 
 The broader brief still stands: documentation states what the code does, not how it got there.
 

@@ -20,6 +20,8 @@ simulation - no window, no renderer, no audio - so runs roll out thousands of tu
 scored by a configurable reward function, with the best run per seed recorded and re-verified.
 
 - [`superintelligence/README.md`](../superintelligence/README.md) - status, usage, design notes
+- [`superintelligence/CHANGELOG.md`](../superintelligence/CHANGELOG.md) - the module's own history and
+  its own version line
 - [`superintelligence/TODO.md`](../superintelligence/TODO.md) - what is missing, ordered by what
   unblocks learning first, plus deliberate deviations and what each costs
 - [`superintelligence/testing-guide.md`](../superintelligence/testing-guide.md) - how each class of
@@ -39,6 +41,34 @@ first boss at depth 5 (`research.md`).
 
 Read `TODO.md` for what stands between here and there. The two things that matter are a reward
 function that asks for survival rather than tolerating it, and a run long enough to judge.
+
+## Versioning
+
+**Two version lines, and they are not comparable.** This matters because a reader who sees one badge
+will otherwise assume the other means the same thing.
+
+| Subject | Version lives in | Moves when |
+| --- | --- | --- |
+| Shattered Pixel Dungeon | upstream, and the `version-` badge in the root [`README.md`](../README.md) | this fork merges a new upstream tag |
+| The Superintelligence module | [`superintelligence/CHANGELOG.md`](../superintelligence/CHANGELOG.md), and the `version-` badge in [`superintelligence/README.md`](../superintelligence/README.md) | work lands in this module |
+
+The split is not cosmetic in the first row. **The game's version is upstream's**, and this fork does
+not release the game: its changes to `:core`, `:SPD-classes` and `:desktop` are the additive, guarded
+ones listed under *Changes to the game* below. A repository-wide changelog claiming game releases would
+be a second thing to be wrong about, on top of the version numbers themselves.
+
+Consequently the root `README.md` carries both badges, and they are checked against two different
+sources by `hooks/pre-commit`:
+
+- the game's `version-` badge against the newest `v*` git tag, which *is* the game's version — so it
+  follows an upstream merge without anyone editing it, and cannot drift from it;
+- the module's badges — `superintelligence-` in the root readme, `version-` in its own — against the
+  newest released heading in `superintelligence/CHANGELOG.md`.
+
+Both are corrected and re-staged rather than refused. Before the split the hook read one changelog and
+one badge, and left as it was it would have compared the game's badge against the module's changelog
+and rewritten the game's readme with a module version — a wrong answer, committed by a check that
+reported success.
 
 ## Quick start
 

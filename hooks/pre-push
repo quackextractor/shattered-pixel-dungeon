@@ -4,43 +4,42 @@
 #
 # Runs :desktop:viewcheck, which plays the committed corpus the way a person plays it - real GameScene,
 # real frame driver, real GL context - and is the only check that can see a fault in the render loop.
-# It lives here rather than in pre-commit for two reasons: it takes about 90 seconds, and it needs a real
+# It lives here rather than in pre-commit for two reasons: it takes about 220 seconds, and it needs a real
 # GL context, so it is neither quick enough for a commit nor runnable everywhere a commit is.
 #
 # IT DOES NOT BLOCK THE PUSH, and that is deliberate rather than an oversight.
 #
-# viewcheck is red by design today. 7-9 of the 17 committed recordings diverge in the viewer while all 17
-# verify clean headlessly - see superintelligence/ISSUE-viewer-frame-drift.md. A pre-push hook that
-# aborted on that would block every push in the repository until the underlying bug is fixed, which is the
-# fastest way to get a hook deleted. Reporting instead of blocking keeps the gate visible and costs
-# nothing to keep.
+# An earlier version of this header said viewcheck was "red by design", and that was true when it was
+# written: 7-9 of the 17 committed recordings diverged in the viewer while all 17 verified clean
+# headlessly (superintelligence/ISSUE-viewer-frame-drift.md). That issue is FIXED, and the gate is green
+# on all 17 - measured, not quoted. The reason for staying non-blocking is therefore no longer "it fails";
+# it is that it needs a display, and a pre-push hook that cannot run on a build machine gets deleted by
+# the first person it blocks. It reports, so the number is on the screen every time.
 #
-# It is also not a clean signal to gate on. The failing *membership* changes between runs on the same
-# machine and the same corpus - 7 of one run, 9 of the next, with different recordings in each - so a
-# pass/fail verdict here would be flaky by nature even once the bug is fixed. The count and the failing
-# list are printed so they can be compared with last time by eye.
+# Turning it into a blocking gate is a one-line change - `exit 0` at the bottom becomes `exit 1` on a
+# non-zero result - and is the right call on a machine that always has a GL context. It is left
+# undecided here rather than decided for whoever pushes next.
 #
-# When that issue is closed, this becomes a blocking gate and the exit below changes from 0 to 1 on a
-# non-zero result. Nothing else about the hook needs to change.
+# Make it blocking, and read the failure list rather than the count: viewcheck forks one JVM per
+# recording and playback is timing-sensitive by its own nature, so the *membership* of a failing set is
+# more informative than how many failed. See TODO.md §0.7 for a divergence that was reported by hand,
+# never reproduced in ~50 automated attempts, and is a different shape from a stream or ordering fault.
 
 repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root" || exit 1
 
-echo "[INFO] running :desktop:viewcheck (the rendered viewer; needs a GL context, takes ~90s)"
-echo "[INFO] divergences here are EXPECTED while ISSUE-viewer-frame-drift.md is open."
-echo "[INFO] reporting only - this hook does not block the push. See the note at the top of this file."
+echo "[INFO] running :desktop:viewcheck (the rendered viewer; needs a GL context, takes ~220s)"
+echo "[INFO] green is the expected result. Reporting only - this hook does not block the push."
 
 if ./gradlew --quiet :desktop:viewcheck; then
     echo ""
     echo "[OK]   every committed recording played clean in the viewer."
-    echo "       That is not expected yet; if it holds, the open issue may be closer to closed than its"
-    echo "       measurements suggest. Re-run before believing it."
 else
     echo ""
-    echo "[INFO] viewer gate failed, as expected while the issue is open."
-    echo "[INFO] the failing recordings are listed above. Note which ones - the set changes between"
-    echo "[INFO] runs, so compare against the previous run rather than expecting a fixed list."
-    echo "[INFO] tracked in superintelligence/ISSUE-viewer-frame-drift.md"
+    echo "[WARN] viewer gate failed. The recordings are listed above; compare the set against the"
+    echo "[WARN] previous run rather than the count, since playback is timing-sensitive."
+    echo "[WARN] history: superintelligence/ISSUE-viewer-frame-drift.md (fixed),"
+    echo "[WARN]           superintelligence/TODO.md 0.7 (a reported divergence, not reproduced)."
 fi
 
 exit 0

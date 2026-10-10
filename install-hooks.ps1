@@ -9,17 +9,25 @@
 
     Two hooks, split by cost and by what they can run:
 
-      pre-commit - the version badge in README.md matches the newest released version in CHANGELOG.md,
-        correcting and re-staging it if not; then every correctness gate passes, via
-        `gradlew verifyall`. That is :superintelligence:gates plus :desktop:playbackcheck - the
-        aggregate rather than the Superintelligence half, so that a commit touching the desktop replay
-        player is tested by the replay player's own checks. Aborts the commit.
+      pre-commit - two version badges, then every correctness gate passes, via `gradlew verifyall`. That
+        is :superintelligence:gates plus :desktop:playbackcheck - the aggregate rather than the
+        Superintelligence half, so that a commit touching the desktop replay player is tested by the
+        replay player's own checks. Aborts the commit.
 
-      pre-push - :desktop:viewcheck, which plays the corpus through the real rendered viewer. About 90
+        The badges are two, because the repository versions two subjects that must never be compared to
+        each other. The root README's `version-` badge is the game's, and it is checked against the
+        newest `v*` git tag rather than against anything written by hand, so it follows an upstream merge
+        without anyone editing it. The root README's `superintelligence-` badge and the module's own
+        README `version-` badge are both checked against `superintelligence/CHANGELOG.md`. Each is
+        corrected and re-staged rather than refused, which is what this hook has always done for one
+        badge. With no tags in the clone the game badge is skipped with a warning rather than guessed at.
+
+      pre-push - :desktop:viewcheck, which plays the corpus through the real rendered viewer. About 220
         seconds and it needs a real GL context, which is why it is not in pre-commit. Reports, and does
-        NOT block: it is red by design while the viewer fidelity issue is open
-        (superintelligence/ISSUE-viewer-frame-drift.md), and its failing set varies between runs, so it
-        is not a sound pass/fail gate yet. Its own header says what to change when that issue closes.
+        NOT block - but not because it is red: the viewer fidelity issue is fixed and the gate is green
+        on all 17. It stays non-blocking because a hook that needs a display cannot run on a build
+        machine, and gets deleted by the first person it blocks. Its header says what to change if you
+        want it to block.
 
     The pre-commit hook is not meant to be bypassed with --no-verify: a gate that can be skipped is a
     suggestion.
@@ -70,7 +78,8 @@ foreach ($name in @('pre-commit', 'pre-push')) {
     Write-Host "[OK]   installed $target"
 }
 
-Write-Host "[INFO] pre-commit syncs the README version badge and runs 'gradlew verifyall'."
-Write-Host "[INFO] pre-push runs ':desktop:viewcheck' and reports; it does not block while"
-Write-Host "[INFO] superintelligence/ISSUE-viewer-frame-drift.md is open."
+Write-Host "[INFO] pre-commit checks two version badges (game vs newest v* tag, module vs its own"
+Write-Host "[INFO] changelog) and runs 'gradlew verifyall'."
+Write-Host "[INFO] pre-push runs ':desktop:viewcheck' and reports; it needs a GL context, so it does"
+Write-Host "[INFO] not block the push."
 Write-Host "[INFO] remove them with: Remove-Item .git/hooks/pre-commit, .git/hooks/pre-push"
