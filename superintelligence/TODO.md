@@ -3,12 +3,18 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-10, after the repository's documentation layout was split — the module's changelog
-and version line moved out of the repository root and into this directory, and the module's series
-re-based from 4.x onto **0.x** so it cannot be mistaken for a game release (§0.9). That work touched no
-code, so no gate result is re-measured by it; `verifyall` was re-run afterwards and is green, and
-`:desktop:viewcheck` was re-run and is 17 of 17. The previous entry — `issues.md` "Env" 6 and 7
-investigated, 6 closed on measurement — is below at §0.8.
+Last updated: 2026-10-10, after `issues.md` "Training" 13 was investigated — the stall is real but the
+hero was looping rather than idling, and the recommended remedy of removing the stall would hide the
+fault rather than fix it (§0.10). Two defects found alongside it are recorded in §0.8: `env.grid_height`
+is documented and bound but only the encoder implements it, and none of the three geometry keys has a
+range check.
+
+Before that: the repository's documentation layout was split — the module's changelog and version line
+moved out of the repository root and into this directory, and the module's series re-based from 4.x onto
+**0.x** so it cannot be mistaken for a game release (§0.9). That work touched no code, so no gate result
+is re-measured by it; `verifyall` was re-run afterwards and is green, and `:desktop:viewcheck` was re-run
+and is 17 of 17. The entry before that — `issues.md` "Env" 6 and 7 investigated, 6 closed on measurement
+— is at §0.8.
 
 ---
 
@@ -238,6 +244,45 @@ picks one implementation that satisfies it and reads the choice as forced.
   step, which is also how a human plays. Smallest change that makes the current architecture honest, and
   it keeps the slot head, the replay format and every existing gate.
 
+### The environment's grid keys are not validated, and one of them is not implemented
+
+Found while closing `issues.md` 6, and recorded separately because it is a defect rather than a
+limitation: **both halves are fixable, and neither is a design question.**
+
+**`env.grid_height` is documented and bound, and only the encoder implements it.** It is listed in
+`superintelligence.properties`, read by `EnvConfigBinder.java:233`, and stored on `EnvConfig`. But
+`ObservationEncoder.java:57,60,61` is the only place that uses it, and it uses it as
+`gridWidth * gridHeight`. Every other consumer assumes a square: `Network.java:93` constructs
+`new Conv2D(channels, config.gridWidth, 24, 4, 2, rng)` — `Conv2D` is square by construction, with an
+im2col scratch of `(kernel*kernel*inChannels) x (outSize*outSize)` — and `Network.java:129`,
+`TransitionCodec.java:47,159`, `PPO.java:156`, `EpisodeCollector.java:138`, `GradientCheck:72`,
+`ParallelFixtures:50`, `GaeCheck:488` and `ReplayProbe:54` all compute `gridWidth * gridWidth`.
+
+So `env.grid_height=64` at the shipped `env.grid_width=48` allocates a 48x64 encoder feeding a network
+built for 48x48. Harmless today only because both are 48 — which is exactly the failure mode of a key
+that has never been set to anything but its default. Two honest options: implement the rectangle
+throughout (`Conv2D` would need generalising, and it is the im2col layout that decides whether that is
+cheap), or **refuse a non-square pair and say so in the binder**, which is a small change and removes the
+silent path. The second is worth doing regardless of what happens with the first.
+
+**None of the three geometry keys has a range check.** `EnvConfig` has no `validate()` method at all, and
+`PpoHyperparameters.validate()` (`PpoHyperparameters.java:116`) covers only `rl.*`, so `EnvConfigBinder`
+does exactly one validation call (`EnvConfigBinder.java:214`) and it is for the PPO half.
+`env.max_slots=-1`, `env.grid_width=0` and `env.grid_height=-5` are all accepted and fail later and far
+from their cause: `ObservationEncoder.java:57` throws `NegativeArraySizeException`, `Conv2D.java:49`
+computes `outSize = (inSize - kernel)/stride + 1` which goes **negative** for `gridWidth < 3` rather than
+throwing something legible, and `ActionMapper.java:66` builds a zero-length slot list whose `slotMask` is
+then uniformly zero.
+
+`ConfigCheck` has sentinels for these keys (`ConfigCheck.java:528-530`) but only to prove the binder
+*reaches* them — its out-of-range refusals (`ConfigCheck.java:344-347`) cover `rl.*` and parse failures
+only. A sentinel that proves a key is read is not a check that the value is usable.
+
+Two related dead ends worth noting so nobody re-derives them: `ObservationEncoder.java:116` computes a
+`float scale` that is never read (the clamp is done per-pixel at `:126-132`), and the properties comment
+describes the window as covering "the hero's 8-tile view radius", which does not correspond to
+`MARGIN = 2` — the actual half-window is 26 tiles. The bound that matters is `level.width()`/`height()`.
+
 ### Why it is not being fixed yet
 
 Sequencing, not caution. `TODO.md` 1.4 is the blocker: nothing has ever left floor 1, and
@@ -249,6 +294,83 @@ The cheapest honest step that is not a re-architecture is an **overflow signal**
 `refreshSlots` that items were dropped, so truncation is visible rather than silent. That is worth doing
 whatever the width ends up being, because at *any* fixed width the same truncation returns the moment a
 hero carries more than the window.
+
+---
+
+## 0.10 `duelist-mid` ends `STALLED` after a zero-cost equip loop - INVESTIGATED, not fixed
+
+`issues.md` "Training" 13 asks why the recording stalls when the hero does not look idle, and offers
+"remove stalled and regen the recording" as a worst case. The question is right; the remedy would not work,
+and the reason is the useful part.
+
+### What actually happens
+
+Replaying the recording through the real environment and sampling `Actor.now()` on every step:
+
+```
+step 286 USE/0  mode=SLOT   pos=317  hp=9  eng=12.0  dEng=0.0
+step 287 USE/0  mode=WORLD  pos=317  hp=9  eng=12.0  dEng=0.0
+...
+step 295 USE/0  mode=WORLD  pos=317  hp=9  eng=12.0  dEng=0.0
+120 consecutive steps spent zero engine time (first at step 176)
+```
+
+`USE` on slot 0, which holds a `Rapier`. `SlotAction.use` (`SlotAction.java:77`) routes an equippable,
+non-targeting item to `toggleEquip`, which equips; the next `USE` unequips; the next equips. `hero.next()`
+releases the hero each time, so the drain returns `READY` and the environment believes the turn resolved.
+
+**`STALLED` is a true verdict.** `checkFloorLimits` (`SPDEnv.java:504`) tests
+`hero.pos == lastStallPos && hero.HP == lastStallHp`; both are constant across the loop, so 120 counts end
+it. The guard is not broken and the hero is not idle — it is looping on an action that costs nothing.
+
+And the action costs nothing *in the real game too*: `WndUseItem.onClick` calls `item.execute` and
+returns, spending no turn. So this is not a harness artefact. The policy found a genuinely free action and
+the environment let it repeat 120 times before the position/HP heuristic noticed.
+
+### Why "remove stalled" is the wrong remedy
+
+It removes the only thing that stopped the loop and extends it by `turnLimitTotal = 40000` more zero-cost
+steps. It also destroys the signal: a run that made no progress would then end `TURN_LIMIT` and be
+recorded as a normal truncation. The recording is a symptom; the loop is the fault.
+
+### The fix that does help, and is not done
+
+Make the stall guard count **engine time**, not only position and HP. A step that does not advance
+`Actor.now()` is a step in which nothing happened in the game, and that is a stronger and more general
+predicate than "the hero did not move" — it covers equip toggles and any other free action rather than
+only this one, and it makes the recorded reason say what actually occurred.
+
+Not done because it changes termination behaviour for every recording in the corpus, needs its own gate,
+and interacts with the `REST` question below.
+
+### `cleric-mid` is a second, unrelated `STALLED`
+
+Same header value, different producer, and conflating the two is what makes this look like one bug.
+
+| | `duelist-mid` | `cleric-mid` |
+| --- | --- | --- |
+| turns vs cap | 271 of 150 | 49 of 150 |
+| engine time | **0.0 per step** for 120 steps | 1.0-3.0 per step |
+| position | fixed at 317 | 427 → 463 → 427 |
+| ends | `checkFloorLimits`, `SPDEnv.java:504` | resting backstop, `LevelPipeline.java:259` |
+| resting | false | **true** |
+
+`cleric-mid` never accumulates 120 same-cell steps, so `checkFloorLimits` cannot be what ended it. It is
+`!wantsMore && steps > 8 && Dungeon.hero.resting`, which fires on a hero resting legitimately who was
+about to heal — and `REST` is a legitimate strategy, being the only way to regenerate. This is the same
+conflation `PLAN-reward-signals.md` §7 documents for the one-way-door version of the same backstop.
+
+### The gap underneath both: `termination` cannot be triaged
+
+`Replay.termination` (`Replay.java:168`) is a bare enum name. Three distinct outcomes —
+`checkFloorLimits`, the resting backstop, and `STEP_LIMIT` drain exhaustion — all write the string
+`STALLED`, and the viewer cannot tell a free-loop stall from a legitimate rest from an exhausted drain
+budget. `issues.md` 10 was diagnosed this way: "the recording says STALLED" had to be resolved by
+replaying and instrumenting, because the header could not say which.
+
+**Recording which producer fired is worth doing before either fix**, because both fixes otherwise have to
+be reasoned about through a field that cannot distinguish the case being fixed from the case not being
+fixed. It is also the cheapest change on the list.
 
 ---
 

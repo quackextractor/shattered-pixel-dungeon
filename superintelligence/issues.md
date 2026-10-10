@@ -162,7 +162,7 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 11. `duelist-mid` played by hand at speed 1 in a fullscreen window halted at step 25 with `engine time is
     21.0, recording says 22.0` — one turn short, position and health identical. Not reproduced: not on a
     re-run, and not in ~50 attempts including 20 concurrent visible children. Recorded as open in
-    `TODO.md` §0.7 with the hypothesis and with what a green `viewcheck` does not cover. (open)
+    `TODO.md` §0.7 with the hypothesis and with what a green `viewcheck` does not cover. (closed, not reproducable after many replays of the same recording)
 
 12. The viewer creates `bones.dat` in the player's own profile. (closed)
 
@@ -183,4 +183,53 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
     next-frame cleanup would pass every rendered run and never run in a gate. Gated by `playbackcheck`
     case 21, mutation-tested, and the case states that it cannot reach the real-backend branch.
 
-13. Duelist-mid ends with stalled without really being stalled? What's causing this? It didn't seem like the hero was idling for this many actions. Investigate. Worst case: Remove stalled and regen the recording? thx.
+13. Duelist-mid ends with stalled without really being stalled? What's causing this? It didn't seem like the hero was idling for this many actions. Investigate. Worst case: Remove stalled and regen the recording? thx. (investigated - not fixed, `TODO.md` 0.10)
+
+    The instinct is right and the conclusion "remove stalled" would be wrong. Replaying `duelist-mid`
+    through the real environment, step by step, with the engine clock sampled on each one:
+
+    ```
+    step 286 USE/0  mode=SLOT   pos=317  hp=9  eng=12.0  dEng=0.0
+    step 287 USE/0  mode=WORLD  pos=317  hp=9  eng=12.0  dEng=0.0
+    ...
+    step 295 USE/0  mode=WORLD  pos=317  hp=9  eng=12.0  dEng=0.0
+    120 consecutive steps spent ZERO engine time (first at step 176)
+    ```
+
+    **The hero was not idling, and it was not doing anything either.** It was oscillating `USE` on a
+    Rapier, alternating SLOT and WORLD, for 120 steps. Slot 0 held a Rapier - an `EquipableItem`, not a
+    targeting item - so `SlotAction.use` routes to `toggleEquip` (`SlotAction.java:77`), which equips, then
+    next step unequips, then equips. `hero.next()` releases the hero, the drain returns READY, and the
+    turn resolves without the clock moving. `checkFloorLimits` (`SPDEnv.java:504`) sees an unchanged
+    position and unchanged HP, counts 120, and terminates.
+
+    So `STALLED` is a **true** verdict on a run that made no progress. The guard is not broken. What is
+    wrong is that the environment let a **zero-cost action** repeat 120 times before noticing — and
+    equip/unequip costs zero time in the real game too: `WndUseItem.onClick` calls `item.execute` and
+    nothing else, spending no turn. The policy found a genuinely free infinite action.
+
+    **Therefore removing STALLED, as the report suggests, would not help and would hide this.** Without
+    the guard the run continues for `turnLimitTotal=40000` more zero-cost steps. The fix that does help is
+    to make the stall guard count engine time rather than only position and HP, so any zero-cost loop
+    terminates and - more usefully - is *labelled* as what it is. Not done; it changes termination
+    behaviour for every recording and needs its own gate.
+
+    ### `cleric-mid` is a different fault, and shares no cause with the above
+
+    Also `termination=STALLED`, 49 turns against a 150 cap, ending `resting=true`. But it is spent real
+    engine time (`dEng` 1.0-3.0 per step) and it moves: position 427 → 463 → 427, HP 12 → 11 → 12. It
+    never accumulates 120 same-cell steps, so `checkFloorLimits` cannot be what ended it. It is the
+    resting backstop at `LevelPipeline.java:259` — `!wantsMore && steps > 8 && Dungeon.hero.resting` —
+    firing on a hero who was resting legitimately and was about to heal.
+
+    Two `STALLED`s, two producers, one header field. `Replay.termination` (`Replay.java:168`) is a bare
+    name with no distinguishing detail, so the corpus cannot be triaged from it, and the viewer cannot tell
+    a free-loop stall from a resting backstop from a `STEP_LIMIT` drain exhaustion. **Worth recording
+    before either fix**: the recorded reason should say which guard fired.
+
+    ### What this means for the recommendation to regenerate the recordings
+
+    Regenerating would work and would fix nothing. The policy that produced `duelist-mid` will produce it
+    again, because the free action is still there — `duelist-mid` has already been regenerated twice during
+    earlier work, which is why `issues.md` 8's evidence no longer exists in the file. The recording is a
+    symptom; the loop is the fault.

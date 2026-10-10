@@ -6,7 +6,7 @@
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
 described in [`docs.md`](docs.md) and [`research.md`](research.md).
 
-**Two versions, two subjects.** The `version-` badge is this module's - `0.4.0` - and its history is in
+**Two versions, two subjects.** The `version-` badge is this module's - `0.4.1` - and its history is in
 [`CHANGELOG.md`](CHANGELOG.md). The `game-` badge is Shattered Pixel Dungeon's - `4.0.2` - which is
 upstream's and moves only when this fork merges upstream. Neither moves because of anything recorded in
 the other's changelog, and the module's series starts at **0** specifically so the two cannot be read as

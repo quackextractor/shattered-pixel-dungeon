@@ -106,6 +106,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   carried over, so the "17 of 17" every other entry in this file quotes is measured rather than
   inherited.
 
+## [0.4.1] - 2026-10-10
+
+### Documentation
+
+- **`issues.md` "Training" 13 investigated: the stall is real, but the hero is looping rather than
+  idling, and the recommended remedy would hide the fault rather than fix it.** Replaying `duelist-mid`
+  through the real environment with the engine clock sampled per step shows the last 120 steps alternating
+  `USE` on a `Rapier` at **zero engine time each** — `SlotAction.use` (`SlotAction.java:77`) routes an
+  equippable, non-targeting item to `toggleEquip`, which equips, then unequips, then equips, and
+  `hero.next()` releases the hero every time so the drain returns `READY` and believes the turn resolved.
+  `checkFloorLimits` (`SPDEnv.java:504`) sees an unchanged position and HP and terminates after 120.
+
+  **`STALLED` is a true verdict here.** Removing it, as the report offers as a worst case, would let the
+  loop run for another `turnLimitTotal = 40000` zero-cost steps and record the result as an ordinary
+  truncation — destroying the only signal that the run made no progress. And the action is genuinely free
+  in the real game, not a harness artefact: `WndUseItem.onClick` calls `item.execute` and returns,
+  spending no turn. The policy found a real free action. The fix that would help is making the stall guard
+  count engine time rather than only position and HP, so any zero-cost loop terminates *and is labelled as
+  one*. **Not done** — it changes termination behaviour for the whole corpus and needs its own gate.
+
+- **`cleric-mid` is a second and unrelated `STALLED`, and conflating the two is what makes this look like
+  one bug.** It spends 1.0–3.0 engine time per step, moves (427 → 463 → 427), and ends `resting=true`, so
+  it never accumulates the 120 same-cell steps the stall guard needs and must have been ended by the
+  resting backstop at `LevelPipeline.java:259` instead — on a hero resting legitimately, who was about to
+  heal. Three distinct outcomes (the stall guard, the resting backstop, and `STEP_LIMIT` drain exhaustion)
+  all write the same `STALLED` string to `Replay.termination`, so the corpus cannot be triaged from its
+  own header. That is why `issues.md` 10 had to be diagnosed by replaying and instrumenting instead of by
+  reading the recording. **Recording which producer fired is worth doing before either fix.**
+
+- **The recommendation to regenerate the recordings is recorded as the wrong remedy, with the reason.**
+  It would work and fix nothing: the policy that produced `duelist-mid` will produce it again, because the
+  free action is still in the environment. `duelist-mid` has already been regenerated twice during earlier
+  work, which is why the evidence `issues.md` 8 cites no longer exists in that file. The recording is a
+  symptom; the loop is the fault.
+
+- **Two defects found alongside it, recorded in `TODO.md` §0.8.** Neither is fixed.
+
+  - **`env.grid_height` is documented and bound, and only the encoder implements it.**
+    `ObservationEncoder.java:57,60,61` is the only consumer that uses `gridWidth * gridHeight`. `Network.java:93`
+    constructs `Conv2D` from `gridWidth` alone — it is square by construction — and `Network.java:129`,
+    `TransitionCodec.java:47,159`, `PPO.java:156`, `EpisodeCollector.java:138`, `GradientCheck:72`,
+    `ParallelFixtures:50`, `GaeCheck:488` and `ReplayProbe:54` all compute `gridWidth * gridWidth`. So
+    `env.grid_height=64` at the shipped 48 allocates a 48×64 encoder feeding a 48×48 network. Harmless
+    only because the key has never been set to anything but its default. Either implement the rectangle
+    throughout or **refuse a non-square pair in the binder**, which is small and removes the silent path.
+  - **None of `env.max_slots`, `env.grid_width` or `env.grid_height` has a range check.** `EnvConfig` has
+    no `validate()` and `PpoHyperparameters.validate()` (`PpoHyperparameters.java:116`) covers only `rl.*`,
+    so `EnvConfigBinder`'s single validation call (`:214`) never sees them. `env.grid_width=0` is accepted
+    and fails later as a `NegativeArraySizeException`; worse, `Conv2D.java:49` computes a *negative*
+    `outSize` for `gridWidth < 3` rather than failing legibly. `ConfigCheck`'s sentinels for these keys
+    (`:528-530`) only prove the binder *reaches* them — its refusal cases (`:344-347`) cover `rl.*` and
+    parse failures. A sentinel that proves a key is read is not a check that its value is usable.
+
+### Changed
+
+- `TODO.md` gains **§0.10** for the equip loop, and its header names it alongside the two §0.8 defects.
+  The section is numbered 0.10 rather than 0.9 because **§0.9 was already taken** — by the versioning
+  entry added in 0.4.0 — and a file that indexes work by number cannot carry two of the same one.
+- `issues.md` 13 now cites `TODO.md` 0.10 in its status line rather than an unnumbered "see below".
+
 ## [0.3.3] - 2026-10-10
 
 ### Documentation
