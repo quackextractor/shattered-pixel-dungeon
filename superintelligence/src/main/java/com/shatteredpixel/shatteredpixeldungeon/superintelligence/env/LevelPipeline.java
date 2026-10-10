@@ -59,10 +59,19 @@ public class LevelPipeline {
 	}
 
 	/**
-	 * Boots a brand new run.
+	 * The game this pipeline drives.
 	 *
-	 * @param seedText  any string {@link DungeonSeed#convertFromText} accepts, or null/empty for
-	 *                  a random seed.
+	 * <p>Exposed so a harness can ask whether a scene switch is pending - {@code :desktop:playbackcheck}
+	 * has no render loop, so nothing raises the acknowledgement {@link HeadlessGame#switchRequested}
+	 * reads, and a recording that descends cannot be played without something standing in for it.
+	 */
+	public HeadlessGame game(){
+		return game;
+	}
+
+	/**
+	 * Services a pending level transition.
+	 *
 	 * @param heroClass which hero to play.
 	 * @param challenges challenge bitmask, see {@link com.shatteredpixel.shatteredpixeldungeon.Challenges}.
 	 */
@@ -293,6 +302,7 @@ public class LevelPipeline {
 	 * @return the transition that was serviced.
 	 */
 	public Transition handleTransition(){
+		fixTimeBeforeSwitching();
 
 		LevelTransition transition = com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.curTransition;
 		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.Mode mode =
@@ -343,6 +353,8 @@ public class LevelPipeline {
 	 * Mirrors {@code InterlevelScene.fall()}.
 	 */
 	public void handleFall(){
+		fixTimeBeforeSwitching();
+
 		Dungeon.depth++;
 		Dungeon.branch = 0;
 		Dungeon.generatedLevels.clear();
@@ -354,6 +366,31 @@ public class LevelPipeline {
 		PathFinder.setMapSize( level.width(), level.height() );
 
 		clearSwitchRequest();
+	}
+
+	/**
+	 * The step the real game takes on its way out of a floor, and the one this pipeline was missing.
+	 *
+	 * <p>{@code InterlevelScene}'s descend thread opens with {@code Actor.fixTime()}, which pulls every
+	 * actor's time back by the smallest of them and moves {@code Actor.now} down with it. It runs
+	 * <i>before</i> {@code Dungeon.newLevel()}, and {@code newLevel} then calls {@code Actor.clear()},
+	 * which zeroes the clock. Net effect on the way to a new floor: every actor arrives at time 0,
+	 * including the hero, and the elapsed time goes into {@code Statistics.duration}.
+	 *
+	 * <p>Without it the hero kept the time it had on the floor above - 128 on a typical mid-run descent -
+	 * and every other actor on the new floor started at 0. So the scheduler had to work the new floor's
+	 * sleeping mobs up to the hero before the hero could be picked again, and the run's engine clock
+	 * jumped by the whole previous floor's length on arrival. Measured on {@code duelist-mid}: the trainer
+	 * recorded {@code engine time 129.0} on the descent step where the viewer read {@code 0.0}, and
+	 * {@code 130.0} on the step after where the viewer read {@code 1.0} -
+	 * {@code DIVERGED at step 158 - engine time is 0.0, recording says 129.0}.
+	 *
+	 * <p>It is the fifth instance of the class {@code PLAN-viewer-fidelity.md} §6 records: something the
+	 * game does that only one side of this project was doing, found the same way as the last four - by
+	 * replaying a recording in the real game and reading what it said.
+	 */
+	private static void fixTimeBeforeSwitching(){
+		com.shatteredpixel.shatteredpixeldungeon.actors.Actor.fixTime();
 	}
 
 	public void clearSwitchRequest(){

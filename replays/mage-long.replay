@@ -4,7 +4,7 @@ seed=mage-long
 hero=MAGE
 challenges=0
 generation=0
-score=4.450000045821071
+score=3.9500000458210707
 depth=1
 turns=600
 turn_limit=600
@@ -13,7 +13,7 @@ allow_equipping=true
 termination=TURN_LIMIT
 steps=599
 USE 0 WORLD 1153 -0.0020000000949949026  20 0.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 1153 -0.0020000000949949026 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 1153 -0.5019999742507935 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
 OPEN_INVENTORY 0 WORLD 1153 -0.0020000000949949026  20 3.0 VelvetPouch():1,Waterskin:1
 CANCEL 0 INVENTORY 1153 -0.0020000000949949026 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
 MOVE_W 0 WORLD 1152 -0.0020000000949949026  20 4.0 VelvetPouch():1,Waterskin:1

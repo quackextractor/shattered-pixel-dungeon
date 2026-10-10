@@ -4,7 +4,7 @@ seed=huntress-mid
 hero=HUNTRESS
 challenges=0
 generation=0
-score=-92.51399991824292
+score=-97.01399991824292
 depth=1
 turns=57
 turn_limit=150
@@ -14,11 +14,11 @@ termination=DEATH
 steps=59
 USE 0 WORLD 814 -0.0020000000949949026  20 0.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1
 USE 2 SLOT 814 0.0 Waterskin:1,SpiritBow:0 20 0.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 814 -0.0020000000949949026  20 1.0 Food:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 814 -1.0019999742507935  20 1.0 Food:1,VelvetPouch():1,Waterskin:1
 OPEN_INVENTORY 0 WORLD 814 -0.0020000000949949026  20 1.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 INVENTORY 814 -0.0020000000949949026 Waterskin:1 20 4.0 VelvetPouch():1,Waterskin:1
+USE 0 INVENTORY 814 -0.5019999742507935 Waterskin:1 20 4.0 VelvetPouch():1,Waterskin:1
 MOVE_NW 0 WORLD 771 0.2980000078678131  20 5.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 814 3.497999906539917  20 7.0 SpiritBow:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 814 1.4980000257492065  20 7.0 SpiritBow:1,VelvetPouch():1,Waterskin:1
 MOVE_NW 0 WORLD 771 -0.0020000000949949026  20 8.0 SpiritBow:1,VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 814 -0.0020000000949949026  20 9.0 SpiritBow:1,VelvetPouch():1,Waterskin:1
 MOVE_NW 0 WORLD 771 -0.0020000000949949026  20 10.0 SpiritBow:1,VelvetPouch():1,Waterskin:1
@@ -39,7 +39,7 @@ INTERACT 0 WORLD 306 -0.0020000000949949026  18 24.0 SpiritBow:1,VelvetPouch():1
 INTERACT 0 WORLD 306 -0.4020000100135803  14 24.5 SpiritBow:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 306 -0.0020000000949949026  14 24.5 SpiritBow:1,VelvetPouch():1,Waterskin:1
 USE 0 SLOT 306 0.0 Waterskin:1 14 24.5 SpiritBow:1,VelvetPouch():1,Waterskin:1
-USE 2 TARGETING 306 -0.10199999809265137  13 25.5 VelvetPouch():1,Waterskin:1
+USE 2 TARGETING 306 -1.1019999980926514  13 25.5 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 306 -0.0020000000949949026  13 26.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 306 -0.10199999809265137  12 26.5 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 306 -0.0020000000949949026  12 27.0 VelvetPouch():1,Waterskin:1

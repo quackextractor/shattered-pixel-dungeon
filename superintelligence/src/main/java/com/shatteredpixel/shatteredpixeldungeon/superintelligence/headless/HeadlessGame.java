@@ -178,9 +178,40 @@ public class HeadlessGame extends Game {
 
 	// ---------------------------------------------------------------- switch observation
 
-	/** True once the game has been asked to switch scenes, until {@link #clearSwitchRequest}. */
+	/**
+	 * True once the game has been asked to switch scenes, until {@link #clearSwitchRequest}.
+	 *
+	 * <p><b>This reads the request as well as the acknowledgement, and that is the whole fix.</b>
+	 * There are two signals and the difference between them is what ended every episode that reached
+	 * a set of stairs:
+	 *
+	 * <ul>
+	 *   <li>{@code Game.switchScene(...)} sets {@code requestedReset}, synchronously, from inside
+	 *       whatever asked - {@code Level.activateTransition} on the way down. That is the
+	 *       <i>request</i>.</li>
+	 *   <li>{@link #step()} clears it and records {@link #switchRequested} instead. That is the
+	 *       <i>acknowledgement</i>, and it only happens because a real game reaches {@code step()}
+	 *       from {@code Game.render()}. A headless rollout never renders - that is the entire point
+	 *       of {@link HeadlessGame#render()} being empty - so the acknowledgement was never raised
+	 *       and the field stayed false for the whole run.</li>
+	 * </ul>
+	 *
+	 * <p>{@code LevelPipeline.runToHeroReady} polls this to decide whether the game is handing off to
+	 * a level transition, so it never saw the hand-off. {@code Actor.headlessStep()} already honours
+	 * the request - it reads {@code Game.switchingScene()}, the same {@code requestedReset}, and
+	 * refuses to advance - so the scheduler stopped dead while the pipeline kept asking for an
+	 * acknowledgement that could not arrive. The drain then ran out its budget and reported
+	 * {@code STEP_LIMIT}, which {@code SPDEnv} maps to {@code STALLED}: the hero walked onto the
+	 * stairs at full health and the episode ended on the spot.
+	 *
+	 * <p>Measured on {@code duelist-mid}, whose last step is {@code INTERACT} onto the exit at cell
+	 * 338 and whose header says {@code termination=STALLED}. It is why no rollout had ever reported a
+	 * depth above 1 - {@code TODO.md} 1.4, open across every run - and why the rendered viewer, which
+	 * <i>does</i> render and therefore <i>does</i> descend, showed the hero on a new floor while the
+	 * recording declared the run over.
+	 */
 	public boolean switchRequested(){
-		return switchRequested;
+		return switchRequested || requestedReset;
 	}
 
 	/** The scene class the game last asked for. Useful for asserting we never wanted a UI scene. */

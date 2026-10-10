@@ -667,6 +667,19 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 	/** Frames on which a drain ran and returned without the hero being ready. */
 	private int pendingFrames;
 
+	/**
+	 * Consecutive frames a drain yielded because a level transition was pending.
+	 *
+	 * <p>Separate from {@link #drainSteps}, which counts scheduler iterations rather than frames, because
+	 * a transition can legitimately take a second or more: {@code InterlevelScene} generates the floor on
+	 * its own thread and then asks for the game scene, so the switch is cleared and re-raised before the
+	 * hero is back on a map. 900 frames is 15 seconds at 60 fps, which is generous rather than tuned -
+	 * the alternative is a drain that can wait forever.
+	 */
+	private int switchPendingFrames;
+
+	private static final int SWITCH_PENDING_FRAMES = 900;
+
 	private int countSchedulerCall( Actor previous ){
 		schedulerCalls++;
 		Actor now = Actor.currentActor();
@@ -724,6 +737,49 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 				halt( "run ended - hero is dead" );
 				return Drain.STALLED;
 			}
+
+			//A level transition is pending, and this loop cannot resolve it.
+			//
+			//Game.switchScene only sets a flag; the scene is instantiated by Game.step(), which runs from
+			//Game.render() - after this method returns. Actor.headlessStep() honours the flag by refusing
+			//to advance, so every remaining iteration of this budget spends itself on nothing and the
+			//drain ends with "hero did not become ready within 400 turns" on a hero who is standing on
+			//the stairs at full health. Measured on duelist-mid and warrior-death, both of which descend
+			//in their final steps: the drain ran out three steps before the recording ended, and the
+			//rendered game went on to descend exactly as the trainer had.
+			//
+			//Yielding is the answer, for the same reason the animation case below yields: the thing being
+			//waited for is driven by the render loop this method is running ahead of. Bounded, because a
+			//drain that can wait forever is a worse failure than the one it replaced - and a switch that
+			//stays pending is a real possibility if InterlevelScene's own level-generation thread is what
+			//has stalled.
+			if (com.watabou.noosa.Game.switchingScene()){
+				//The viewer never persists anything, so it must never read a floor back either.
+				//
+				//InterlevelScene's ascend branch asks Dungeon.levelHasBeenGenerated(depth, branch) and,
+				//when the answer is yes, calls Dungeon.loadLevel - which reads depth<n>.dat out of the
+				//platform's file root. Descending first records the depth in generatedLevels, so a run
+				//that goes down and then walks back up the stairs satisfies that test and the viewer stops
+				//to show "Cannot read save file", with nothing to show it for: nothing wrote that file.
+				//Reproduced on duelist-mid, the corpus's only descending recording - issues.md 9's shape,
+				//one floor further on.
+				//
+				//Clearing it is what LevelPipeline.handleTransition already does, for the same reason and
+				//with the same comment: a recording is rebuilt from its seed, never from disk. Doing it
+				//here rather than in the engine keeps the change viewer-side and keeps a real playthrough -
+				//where the file genuinely exists - untouched.
+				Dungeon.generatedLevels.clear();
+
+				pendingFrames++;
+				if (++switchPendingFrames > SWITCH_PENDING_FRAMES){
+					playback.finish();
+					halt( "stalled - a level transition was pending for " + SWITCH_PENDING_FRAMES
+							+ " frames and was never serviced" );
+					return Drain.STALLED;
+				}
+				return Drain.PENDING;
+			}
+			switchPendingFrames = 0;
 
 			//Park while another actor's turn is genuinely unresolved.
 			//

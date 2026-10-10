@@ -34,6 +34,17 @@ public enum RewardTerm {
 	/** Picked up an item, weighted by tier and by whether it expands inventory. */
 	ITEM_PICKUP,
 
+	/**
+	 * Put an item back on the floor, or consumed one. The negative of what picking it up paid.
+	 *
+	 * <p>A separate term rather than a silent no-op, because the pickup term used to be a count
+	 * compared one way: gaining an item paid and losing one was free, so {@code INTERACT} then
+	 * {@code DROP} then {@code INTERACT} again raised the score forever without the world changing.
+	 * Charging the loss is the fix; naming it separately is what makes the loop visible in the
+	 * per-term report instead of showing up only as a total that does not add up to its parts.
+	 */
+	ITEM_DROPPED,
+
 	/** Identified a potion or scroll, either directly or by using it. */
 	IDENTIFIED,
 
@@ -108,6 +119,7 @@ public enum RewardTerm {
 			case MAX_HP_GAIN:
 			case GOLD_GAIN:
 			case ITEM_PICKUP:
+			case ITEM_DROPPED:
 			case IDENTIFIED:
 			case CURED_DEBUFF:
 			case LEVEL_UP:

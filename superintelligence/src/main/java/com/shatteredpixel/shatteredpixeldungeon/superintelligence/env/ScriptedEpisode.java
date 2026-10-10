@@ -100,7 +100,7 @@ public class ScriptedEpisode {
 			report.sample( (float) env.ledger().total(), env.depth() );
 		}
 
-		recorder.end( env.ledger().total(), env.depth(), env.turnsTotal(), 0,
+		recorder.end( env.ledger().total(), env.deepestDepth(), env.turnsTotal(), 0,
 				env.endReason().name() );
 
 		return new Result( env, recorder.replay(), report );

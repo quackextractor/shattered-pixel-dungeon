@@ -20,6 +20,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ObserveCh
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.VerifyCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.TransitionCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ValueScale;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.WeightsDiff;
@@ -87,6 +88,7 @@ public class Main {
 		case "valuescale": ValueScale.main( rest ); break;
 		case "parallelcheck": ParallelCheck.main( rest ); break;
 		case "rewardcheck": RewardCheck.main( rest ); break;
+		case "transitioncheck": TransitionCheck.main( rest ); break;
 		case "rolloutcheck": RolloutCheck.main( rest ); break;
 			case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
@@ -115,6 +117,7 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "  parallelcheck             fail if a parallel update differs from the serial one" );
 		System.out.println( "  statecheck                fail if a sample does not replay to its rollout's value" );
 		System.out.println( "  rewardcheck               fail if ending an episode can be cheaper than dying" );
+		System.out.println( "  transitioncheck           fail if descending ends the episode, or is worth nothing" );
 		System.out.println( "  replayprobe               report how far a shuffled replay drifts" );
 		System.out.println( "  valuescale                report the critic's targets against what it can reach" );
 		System.out.println( "  replays [--dir d]...     list recordings, grouped by hero class and ranked" );

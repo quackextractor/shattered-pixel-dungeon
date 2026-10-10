@@ -156,6 +156,7 @@ cliTask('verifycheck', 'Fails if replay verification cannot detect an altered re
   cliTask('valuescale', "Reports the critic's target range against the range it can reach.")
   cliTask('parallelcheck', "Fails if a parallel update computes a different gradient from the serial one.")
   cliTask('rewardcheck', 'Fails if ending an episode can be cheaper than dying.')
+cliTask('transitioncheck', 'Fails if descending ends the episode, or is worth nothing.')
   cliTask('statecheck', 'Fails if a sampled observation does not replay to the value the rollout saw.')
   cliTask('updatecost', 'Measures what a PPO update costs and projects it across sample rates.')
 
@@ -183,7 +184,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 //Gradle refuses to shadow it. `check` also conventionally means compile plus test, and this runs
 //neither a compiler pass nor JUnit.
 tasks.register('gates') {
-dependsOn 'gradcheck', 'gaecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck',
+dependsOn 'gradcheck', 'gaecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck', 'transitioncheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
 		'observecheck', 'configcheck', 'paritycheck'
     group = 'verification'

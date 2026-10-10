@@ -46,6 +46,61 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 
 # Training
 
-8. I saw a hero pick up and drop an item in a recording, presumably cheating score. This has not yet been confirmed though. I don't see configuration for such things in the properties file. Duelist-mid
+8. I saw a hero pick up and drop an item in a recording, presumably cheating score. This has not yet been confirmed though. I don't see configuration for such things in the properties file. Duelist-mid (closed)
 
-9. The same duelist-mid recording shows him descending to a new floor, with full health too. But immediately as he descends, the recording ends as stalled. Is this a bug with the STALLED state detection?
+   Confirmed, and it was not a configuration problem. `RewardModel` compared a **count** of carried
+   items one way: `items > prevItemCount` paid out and a decrease paid nothing, so `INTERACT, DROP,
+   INTERACT, DROP` raised the score on every pickup while the world did not change. It is now a net
+   diff of what the inventory is worth, in both directions, with a new `ITEM_DROPPED` term for the loss.
+   Gated by a `rewardcheck` case that drives the real environment; mutation-tested by removing the
+   refund. See TODO.md 0.2.
+
+   Note that `duelist-mid` no longer contains a `DROP` step at all — the corpus has been regenerated
+   twice since this was filed, so the evidence this report cites is gone. The fault was in the reward
+   function rather than in that file, which is why the case drives the environment and not a recording.
+
+9. Critical: The same duelist-mid recording shows him descending to a new floor, with full health too. But immediately as he descends, the recording ends as stalled. Is this a bug with the STALLED state detection? Also stalled should punish as much as death to restore balance between these two endings. (closed)
+
+   It was a bug in stall detection, and there were four faults behind it. `Game.switchScene` raises a
+   request and a real game turns it into "a scene wants to take over" in `Game.step()`, reached from
+   `Game.render()` — which never runs headlessly, so the acknowledgement was never raised, the pipeline
+   never saw the hand-off, `Actor.headlessStep()` had already stopped dead, and the drain ran out its
+   budget and reported `STALLED`. Fixed, and it explains why `bestDepth` had been 1 in every generation
+   of every run: the one action that would have moved the agent ended the episode. Three faults it was
+   hiding: `DEPTH_ADVANCE` could not fire at all, the environment drained where the game does not, and
+   `Actor.fixTime()` was missing from the pipeline. Gated by `transitioncheck`, 7 cases, mutation-tested.
+
+   `STALLED` is now `-deathPenalty`, through the same constant `DEATH` uses. That reverses
+   `PLAN-reward-signals.md` §3.2, and the reason it is defensible now when it was not then is recorded
+   there and in TODO.md 0.3.
+
+   Descending now works. **Climbing back up does not** — see 10, which was found on the way.
+
+10. A run that descends and then walks back up the stairs diverges from its recording, and the viewer
+    stops on screen with "Cannot read save file". Found while closing 9; `duelist-mid` is the only
+    recording in the corpus that descends, and it does this on its second floor change.
+
+    Both environments now agree on the symptom and disagree on the world:
+
+    ```
+    DIVERGED at step 161 - MOVE_SE/0 in WORLD: hero at (11, 9) pos 317, recording says (10, 8) pos 282
+    ```
+
+    `:desktop:viewcheck` and `:desktop:playbackcheck` report it identically, so it is not a viewer
+    artefact, and it is what is currently keeping `verifyall` red.
+
+    Two differences between `InterlevelScene.ascend()` and `LevelPipeline.handleTransition()` are known
+    and neither is confirmed as the cause:
+
+    - `ascend()` calls `Mob.holdAllies(Dungeon.level)` and `Dungeon.saveAll()`; the pipeline calls
+      neither. `Mob.holdAllies` still uses `Collections.shuffle`, which ignores the seeded generator
+      entirely and has been an open engine gap since `ENGINE-CHANGES.md` §7 recorded it. That is the
+      prime suspect and it has not been tested. It is an engine file.
+    - `ascend()` calls `Dungeon.loadLevel(GamesInProgress.curSlot)` when
+      `Dungeon.levelHasBeenGenerated(depth, branch)` is true, reading a `depth<n>.dat` a viewer run has
+      never written. `ReplayPlayer` now clears `Dungeon.generatedLevels` on the frame a transition is
+      pending, which is what the pipeline already does and why; that removed the error window and the
+      hang, and did **not** remove the divergence.
+
+    Next step is to make the two paths agree, in the same way 9 was closed: find the mechanism by
+    measurement rather than by reading, and put it behind a case that fails when it is reinstated.

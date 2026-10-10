@@ -4,7 +4,7 @@ seed=death-probe-11
 hero=WARRIOR
 challenges=0
 generation=0
-score=-95.07599997380748
+score=-96.57599997380748
 depth=1
 turns=38
 turn_limit=200
@@ -47,9 +47,9 @@ USE 0 SLOT 661 0.0 ThrowingStone:0,Waterskin:1 14 25.0 Food:1,ThrowingStone:1,Ve
 USE 5 TARGETING 661 -0.0020000000949949026  14 26.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 661 -0.0020000000949949026  14 26.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
 USE 0 SLOT 661 0.0 ThrowingStone:0,Waterskin:1 14 26.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 5 TARGETING 661 -0.10199999809265137  13 27.0 Food:1,VelvetPouch():1,Waterskin:1
+USE 5 TARGETING 661 -1.1019999980926514  13 27.0 Food:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 661 -0.0020000000949949026  13 27.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 661 -0.4020000100135803 Waterskin:1 9 30.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 661 -0.9020000100135803 Waterskin:1 9 30.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 661 -0.3020000159740448  6 31.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 661 -0.3020000159740448  3 32.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 661 -0.0020000000949949026  3 33.0 VelvetPouch():1,Waterskin:1

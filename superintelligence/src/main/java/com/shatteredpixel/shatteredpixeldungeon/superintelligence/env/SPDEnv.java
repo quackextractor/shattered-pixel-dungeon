@@ -316,7 +316,29 @@ if (mode == EnvMode.WORLD){
 
 			if (outcome == LevelPipeline.Outcome.TRANSITION){
 				accumulated += onFloorTransition();
-				continue;
+				//One turn is spent and the hand goes straight back, because that is what the game does.
+				//
+				//The game does not drain after a transition. InterlevelScene builds the floor and
+				//GameScene.create() puts the player back in control on the frame the new floor appears.
+				//Draining here instead meant the scheduler had to work the new floor's sleeping mobs up
+				//to the hero's stale clock before the hero could be picked again - and Dungeon.newLevel()
+				//starts that clock again from zero, so "stale" was 128 turns on a typical floor. Measured
+				//on duelist-mid: the trainer recorded engine time 129.0 on the descent step and the
+				//rendered viewer, faithfully replaying the same recording, reported 0.0 and called the
+				//trainer wrong.
+				//
+				//It is the fourth instance of the same class PLAN-viewer-fidelity.md §6 names: something
+				//only one side does, and the recording is a statement about a game the viewer does not
+				//play. The hero is also not re-ready here, deliberately: runToHeroReady gives the hero a
+				//scheduler step before testing readiness, which is what makes the recorded action actually
+				//happen rather than being skipped.
+				turnsThisFloor++;
+				turnsTotal++;
+				accumulated += reward.step( encoder.encode(), true );
+				checkFloorLimits();
+				mapper.refreshSlots();
+				refreshMasks();
+				break;
 			}
 			if (outcome == LevelPipeline.Outcome.HERO_DEAD){
 				accumulated += terminate( RewardModel.TerminateReason.DEATH );
@@ -372,16 +394,38 @@ if (mode == EnvMode.WORLD){
 		}
 
 		if (depth != lastDepth || branch != lastBranch){
+			if (depth > lastDepth){
+				//on the row that is being left, not the one being opened. DEPTH_ADVANCE is scored on
+				//the new floor's first turn, which is where reward.step sees the depth change, so it
+				//would otherwise mark the floor the hero has just arrived on as the one they cleared.
+				ledger.markFloorCleared();
+			}
 			lastDepth = depth;
 			lastBranch = branch;
 			turnsThisFloor = 0;
 			encoder.resetExplored();
 			mapper.refreshSlots();
+			//A new floor is a new context, and the guard tests "nothing at all has changed in a long
+			//while" against the last recorded position. Two floors can put the hero on the same cell
+			//index, so carrying the count across a transition could carry a stall that had nothing to
+			//do with this floor.
+			stallCount = 0;
+			lastStallPos = -1;
 			ledger.beginFloor( depth, branch );
 		}
 
-		reward.resetSnapshot();
-		encoder.encode();
+		//Deliberately no reward.resetSnapshot() here, which is where one used to be.
+		//
+		//Every field the snapshot holds is a property of the hero - health, gold, inventory,
+		//identification, curses, debuffs, hunger, kills - and none of them changes when the floor
+		//under the hero changes. Clearing it therefore threw away exactly the comparison that scores
+		//the transition: reward.step's first branch re-took the snapshot at the new depth, so
+		//`depth != prevDepth` was false on the very turn the depth had changed, and DEPTH_ADVANCE
+		//could never fire. The primary goal term was dead - and it was dead precisely because
+		//nothing ever descended, which is the fault this same commit fixes.
+		//
+		//Kept across the boundary on purpose. A snapshot spanning the floor change is also the honest
+		//one: it lets the first turn on a new floor pay for the descent that got there.
 		refreshMasks();
 		return ledger.flushTurn();
 	}
@@ -535,6 +579,22 @@ public float[] actionMask(){ return actionMask; }
 	public String seedText(){ return seedText; }
 	public int turnsTotal(){ return turnsTotal; }
 	public int depth(){ return Dungeon.depth; }
+
+	/**
+	 * The deepest floor this run has been on.
+	 *
+	 * <p>Not the same as {@link #depth()}, and the difference is not cosmetic. {@code depth()} is where
+	 * the hero is standing now, so a run that descends and then walks back up to die on floor 1 reports
+	 * 1 - which is what {@code duelist-mid} did, on a recording that reaches floor 2 and is the only
+	 * corpus file that does. Every report, chart and milestone in this project means "depth" as
+	 * <i>progress</i>, and {@code TODO.md} has spent several entries reasoning about a corpus where
+	 * "every recording is depth=1"; a header that can say 1 for a run that went down would keep saying it.
+	 *
+	 * <p>{@code Statistics.deepestFloor} is the game's own figure for this, updated by
+	 * {@code Dungeon.newLevel} and reset by {@code Dungeon.init}, so it is per-run and it is not a second
+	 * opinion this module had to form.
+	 */
+	public int deepestDepth(){ return com.shatteredpixel.shatteredpixeldungeon.Statistics.deepestFloor; }
 
 	/** Hero cell, for replay divergence checks. */
 	public int heroPosition(){ return Dungeon.hero.pos; }

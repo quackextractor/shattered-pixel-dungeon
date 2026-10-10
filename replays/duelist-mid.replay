@@ -4,22 +4,22 @@ seed=duelist-mid
 hero=DUELIST
 challenges=0
 generation=0
-score=68.63200019067153
-depth=1
-turns=134
+score=-60.643999844789505
+depth=2
+turns=272
 turn_limit=150
 max_slots=32
 allow_equipping=true
 termination=STALLED
-steps=158
+steps=297
 USE 0 WORLD 1295 -0.0020000000949949026  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1295 0.0 ThrowingSpike:1,Waterskin:2 20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1295 -0.0020000000949949026  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 OPEN_INVENTORY 0 WORLD 1295 -0.0020000000949949026  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 INVENTORY 1295 0.0 ThrowingSpike:1,Waterskin:2 20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1295 -0.0020000000949949026  20 2.0 Food:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1295 -1.0019999742507935  20 2.0 Food:1,VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1296 -0.0020000000949949026  20 3.0 Food:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1295 3.497999906539917  20 5.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1295 1.4980000257492065  20 5.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1296 -0.0020000000949949026  20 6.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 1295 -0.0020000000949949026  20 7.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1296 -0.0020000000949949026  20 8.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
@@ -45,91 +45,91 @@ USE 1 SLOT 1101 0.0 ThrowingSpike:1,Waterskin:2 13 25.0 Food:1,ThrowingSpike:1,V
 USE 2 TARGETING 1101 -0.20200000703334808  11 26.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1101 -0.0020000000949949026  11 26.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1101 0.0 ThrowingSpike:1,Waterskin:2 11 26.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 2 TARGETING 1101 -0.10199999809265137  10 27.0 Food:1,VelvetPouch():1,Waterskin:1
+USE 2 TARGETING 1101 -1.1019999980926514  10 27.0 Food:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1101 -0.0020000000949949026  10 27.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 1101 -0.0020000000949949026 Waterskin:2 10 30.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 1101 -0.5019999742507935 Waterskin:2 10 30.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 1101 0.49799999594688416  11 31.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.8480000495910645  11 33.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.8480000495910645  11 33.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  11 33.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 11 33.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1062 -0.0020000000949949026  11 34.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  11 34.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 11 34.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1062 -0.0020000000949949026  11 35.0 VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1062 -1.0019999742507935  11 35.0 VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 -0.0020000000949949026  11 36.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.497999906539917  11 38.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.4980000257492065  11 38.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  11 38.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 11 38.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1062 -0.0020000000949949026  11 39.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  11 39.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 11 39.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1062 -0.0020000000949949026  11 40.0 VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1062 -1.0019999742507935  11 40.0 VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 0.49799999594688416  12 41.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.497999906539917  12 43.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.4980000257492065  12 43.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  12 43.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 12 43.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1062 -0.0020000000949949026  12 44.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  12 44.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 12 44.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1062 -0.0020000000949949026  12 45.0 VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1062 -1.0019999742507935  12 45.0 VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 -0.0020000000949949026  12 46.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.497999906539917  12 48.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.4980000257492065  12 48.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  12 48.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 12 48.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1062 -0.0020000000949949026  12 49.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  12 49.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 12 49.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1062 -0.0020000000949949026  12 50.0 VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1062 -1.0019999742507935  12 50.0 VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 0.49799999594688416  13 51.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.497999906539917  13 53.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.4980000257492065  13 53.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  13 53.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 13 53.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1062 -0.0020000000949949026  13 54.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  13 54.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 13 54.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1062 -0.0020000000949949026  13 55.0 VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1062 -1.0019999742507935  13 55.0 VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 -0.0020000000949949026  13 56.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.497999906539917  13 58.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.4980000257492065  13 58.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  13 58.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 13 58.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1062 -0.0020000000949949026  13 59.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  13 59.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 13 59.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1062 -0.0020000000949949026  13 60.0 VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1062 -1.0019999742507935  13 60.0 VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 0.49799999594688416  14 61.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.497999906539917  14 63.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.4980000257492065  14 63.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  14 63.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 14 63.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1062 -0.0020000000949949026  14 64.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  14 64.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 14 64.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1062 -0.0020000000949949026  14 65.0 VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1062 -1.0019999742507935  14 65.0 VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 -0.0020000000949949026  14 66.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.497999906539917  14 68.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.4980000257492065  14 68.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  14 68.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 14 68.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1062 -0.0020000000949949026  14 69.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  14 69.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 14 69.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1062 -0.0020000000949949026  14 70.0 VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1062 -1.0019999742507935  14 70.0 VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 0.49799999594688416  15 71.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.497999906539917  15 73.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.4980000257492065  15 73.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  15 73.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 15 73.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1062 -0.0020000000949949026  15 74.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  15 74.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 15 74.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1062 -0.0020000000949949026  15 75.0 VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1062 -1.0019999742507935  15 75.0 VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 -0.0020000000949949026  15 76.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.497999906539917  15 78.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.4980000257492065  15 78.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  15 78.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 15 78.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 TARGETING 1062 -0.0020000000949949026  15 79.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 1062 -0.0020000000949949026  15 79.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 USE 1 SLOT 1062 0.0 ThrowingSpike:1,Waterskin:2 15 79.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 1062 -0.0020000000949949026  15 80.0 VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 1062 -1.0019999742507935  15 80.0 VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 0.49799999594688416  16 81.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 1062 3.497999906539917  16 83.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 1062 1.4980000257492065  16 83.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1063 -0.0020000000949949026  16 84.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1064 0.04800000041723251  16 85.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_E 0 WORLD 1065 0.2980000078678131  16 86.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
@@ -147,8 +147,8 @@ MOVE_N 0 WORLD 707 0.3479999899864197  17 97.0 ThrowingSpike:1,VelvetPouch():1,W
 MOVE_NW 0 WORLD 666 1.0480000972747803  17 98.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 666 -0.0020000000949949026  17 99.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 666 -0.0020000000949949026  17 100.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 626 3.997999906539917  18 102.0 PotionOfStrength:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 586 3.497999906539917  18 104.0 Food:1,PotionOfStrength:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 626 1.4980000257492065  18 102.0 PotionOfStrength:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 586 0.9980000257492065  18 104.0 Food:1,PotionOfStrength:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 587 -0.0020000000949949026  18 106.0 Food:1,PotionOfStrength:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_W 0 WORLD 586 -0.0020000000949949026  18 107.0 Food:1,PotionOfStrength:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_W 0 WORLD 585 -0.0020000000949949026  18 108.0 Food:1,PotionOfStrength:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
@@ -167,6 +167,145 @@ MOVE_N 0 WORLD 460 0.49799999594688416  20 121.0 Food:1,PotionOfStrength:1,Throw
 MOVE_N 0 WORLD 420 -0.0020000000949949026  20 122.0 Food:1,PotionOfStrength:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_N 0 WORLD 380 -0.0020000000949949026  20 123.0 Food:1,PotionOfStrength:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 MOVE_NW 0 WORLD 339 -0.0020000000949949026  20 124.0 Food:1,PotionOfStrength:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 298 3.497999906539917  20 126.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 298 0.9980000257492065  20 126.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 337 -0.0020000000949949026  20 128.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 338 0.0  20 129.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 88 12.248000144958496  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_E 0 WORLD 89 0.3479999899864197  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 282 4.498000144958496  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_SE 0 WORLD 282 -0.0020000000949949026  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_SE 0 WORLD 317 -0.0020000000949949026  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 282 -0.0020000000949949026  20 2.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_SE 0 WORLD 317 -0.0020000000949949026  20 3.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 317 -0.20200000703334808  18 4.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 317 -0.20200000703334808  16 5.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 317 -0.10199999809265137  15 6.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  15 6.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 317 0.0 ThrowingSpike:1,Waterskin:2 15 6.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 5 TARGETING 317 -0.10199999809265137  14 7.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  14 7.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 317 0.0 ThrowingSpike:1,Waterskin:2 14 7.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 5 TARGETING 317 -1.2020000219345093  12 8.0 Food:1,PotionOfStrength:1,Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  12 8.0 Food:1,PotionOfStrength:1,Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.7020000219345093 Waterskin:2 10 11.0 PotionOfStrength:1,Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  10 11.0 PotionOfStrength:1,Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 0.39800000190734863 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 317 -0.0020000000949949026  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 317 -0.0020000000949949026 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1

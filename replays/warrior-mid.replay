@@ -4,7 +4,7 @@ seed=warrior-mid
 hero=WARRIOR
 challenges=0
 generation=0
-score=10.600000185426325
+score=6.600000185426325
 depth=1
 turns=150
 turn_limit=150
@@ -55,9 +55,9 @@ USE 0 SLOT 265 0.0 ThrowingStone:0,Waterskin:1 15 34.0 Food:1,ThrowingStone:1,Ve
 USE 8 TARGETING 265 -0.20200000703334808  13 35.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 265 -0.0020000000949949026  13 35.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
 USE 0 SLOT 265 0.0 ThrowingStone:0,Waterskin:1 13 35.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 8 TARGETING 265 -0.0020000000949949026  13 36.0 Food:1,VelvetPouch():1,Waterskin:1
+USE 8 TARGETING 265 -1.0019999742507935  13 36.0 Food:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 265 -0.0020000000949949026  13 36.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 265 -0.3020000159740448 Waterskin:1 10 39.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 265 -0.8019999861717224 Waterskin:1 10 39.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 265 -0.0020000000949949026  10 40.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 265 -0.0020000000949949026  10 41.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 265 -0.0020000000949949026  10 42.0 VelvetPouch():1,Waterskin:1
@@ -72,7 +72,7 @@ INTERACT 0 WORLD 191 -0.10199999809265137  6 50.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 191 0.49799999594688416  7 51.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 191 -0.0020000000949949026  7 52.0 VelvetPouch():1,Waterskin:1
 MOVE_W 0 WORLD 190 0.14800000190734863  7 53.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 154 3.5980000495910645  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 154 1.0980000495910645  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
 USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1

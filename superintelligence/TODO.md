@@ -3,9 +3,169 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-10, after the five viewer/recording issues in
-[`issues.md`](issues.md) were worked through, and after the HUD overflow that followed from them and
-the moveable HUD anchor were found and fixed.
+Last updated: 2026-10-10, after `issues.md` "Training" 8 and 9 were worked through. 9 turned out to be
+five faults, not one, and the last two of them are **still open**.
+
+---
+
+## 0.1 `issues.md` "Training" 9 — descending ended the episode - FIXED, except for the ascent
+
+**The report:** *"the same duelist-mid recording shows him descending to a new floor, with full health
+too. But immediately as he descends, the recording ends as stalled."* It was, and the cause was the
+simplest thing in the project and the hardest to see, because nothing in it was broken.
+
+### The fault
+
+`Game.switchScene(...)` sets a flag and returns. A real game reaches `Game.step()` from
+`Game.render()`, and *that* is what turns the flag into "a scene wants to take over".
+`HeadlessGame.render()` is empty — that is what "headless" means here — so `HeadlessGame.step()` never
+ran, so the acknowledgement was never raised, so `LevelPipeline.runToHeroReady` never saw the
+hand-off. `Actor.headlessStep()` already honoured the *request*, so the scheduler stopped dead while
+the pipeline kept asking for an acknowledgement that could not arrive. The drain burned its 20,000-step
+budget, returned `STEP_LIMIT`, and `SPDEnv` maps that to `STALLED`.
+
+A hero at full health walks onto the stairs and the run is over, mid-sentence. **`duelist-mid` had
+`termination=STALLED` and its last step was `INTERACT` onto the exit at cell 338.** The rendered viewer
+does render, so it really did descend — which is what the report describes seeing.
+
+**Fixed** by `HeadlessGame.switchRequested()` reporting the request as well as the acknowledgement.
+Gated by **`transitioncheck`**, 7 cases, mutation-tested: reinstating the old one-liner fails all 7.
+
+### Two faults it was hiding, both of which were only reachable because nothing ever descended
+
+**`DEPTH_ADVANCE` could not fire.** `SPDEnv.onFloorTransition` called `reward.resetSnapshot()` *after*
+the depth had changed, so the next `reward.step` re-took its snapshot at the new depth and compared it
+against itself. The primary goal term — the one `research.md` says survives into the sparse phase — was
+dead, and it was dead *because* nothing ever descended.
+
+**The environment drained where the game does not.** `InterlevelScene` builds the floor and hands the
+player straight back; `SPDEnv` kept draining, which meant working the new floor's sleeping mobs up to
+the hero. `Dungeon.newLevel()` calls `Actor.clear()`, which zeroes the clock, so "the hero's clock" was
+the whole previous floor's length — 128 turns on `duelist-mid`. The trainer recorded `engine time
+129.0` where the viewer read `0.0`.
+
+### And the fifth "something only one side does"
+
+`InterlevelScene`'s descend thread opens with **`Actor.fixTime()`**, which pulls every actor's time
+back by the smallest of them before `Dungeon.newLevel()` zeroes the clock. Without it the hero arrived
+carrying the previous floor's time. Same signature, same fix route, same class as the quickslot
+bindings and the intro flag: `PLAN-viewer-fidelity.md` §6. `transitioncheck` case 7 is the clock.
+
+### Status
+
+`:superintelligence:gates` is green at 20, `playbackcheck` is green at 20, `:desktop:viewcheck` is
+**16 of 17** — and the one failure is not a regression but the far side of this same fault.
+
+### **OPEN: ascending after descending still diverges**
+
+`duelist-mid` descends to floor 2 at step 157 and climbs back to floor 1 at step 159. Both environments
+now agree on the symptom and disagree on the world:
+
+```
+DIVERGED at step 161 - MOVE_SE/0 in WORLD: hero at (11, 9) pos 317, recording says (10, 8) pos 282
+```
+
+`viewcheck` (rendered, muted) and `playbackcheck` (headless) report it identically, so it is not a
+viewer artefact. The `ascend` path is where `InterlevelScene` differs from `LevelPipeline`:
+
+- **`InterlevelScene.ascend()` calls `Mob.holdAllies(Dungeon.level)` and `Dungeon.saveAll()`;
+  `LevelPipeline.handleTransition()` calls neither.** `Mob.holdAllies` still uses
+  `Collections.shuffle` — unseeded, so process-history dependent — which `ENGINE-CHANGES.md` §7 has
+  listed as an open engine gap since it was found. That is the prime suspect and it has not been tested.
+- **`ascend()` calls `Dungeon.loadLevel(GamesInProgress.curSlot)` when
+  `Dungeon.levelHasBeenGenerated(depth, branch)`** is true, reading `depth<n>.dat` out of the platform
+  file root. A viewer run has written none, so a run that descends and climbs back up stopped with
+  `Cannot read save file` on screen and never finished — the first form of this failure, seen
+  interactively. `ReplayPlayer` now clears `Dungeon.generatedLevels` on the frame a transition is
+  pending, which is what `LevelPipeline` does and why; it removed the window and the hang, and did
+  **not** remove the divergence. The load branch is therefore not the whole of it.
+- `Mob.holdAllies` is the difference that would still be left, and it is an engine file.
+
+**This is the next thing to do.** `duelist-mid` is the corpus's only descending recording and it cannot
+be replayed until this is closed, so `viewcheck` is red until then.
+
+---
+
+## 0.2 `issues.md` "Training" 8 — picking an item up and putting it down - FIXED
+
+**The report:** *"I saw a hero pick up and drop an item in a recording, presumably cheating score. This
+has not yet been confirmed though."*
+
+Confirmed. `RewardModel` compared a **count** of carried items, one way: `items > prevItemCount` paid
+out, and a decrease paid nothing. `DROP` is an action the policy can take (`WORLD` → `SLOT` → `WORLD`),
+and picking the same pile up again is one more `INTERACT`, so `INTERACT, DROP, INTERACT, DROP` raised
+the score on every pickup while the world did not change. Three steps per cycle, no limit on cycles,
+and `research.md:57` asks for exploit mitigation for exactly this shape.
+
+Now a **net diff of what the inventory is worth**, in both directions, with a new `RewardTerm.ITEM_DROPPED`
+for the loss so the round trip is visible in the per-term report rather than showing up as a total that
+does not add up to its parts. Valuing rather than counting also makes the reward correct rather than
+merely non-exploitable: dropping a `WandOfFire` to make room for a `VelvetPouch` is a net gain and is
+scored as one, which a count cannot distinguish from throwing away the only thing you were carrying.
+
+Gated by a new `rewardcheck` case that puts a known item on the floor through `Level.drop`, has the hero
+walk onto it, and asserts the matching drop refunds exactly what the pickup paid. Mutation-tested:
+removing the `ITEM_DROPPED` branch fails it.
+
+**The recording named in the report no longer shows it.** `duelist-mid` was regenerated twice during
+this work and carries no `DROP` step at all now. The fault was in the reward function, not in that file,
+and the case is driven through the real environment rather than through a corpus file that a
+regeneration can change.
+
+---
+
+## 0.3 `issues.md` "Training" 9, second half — stalling should cost what dying costs - FIXED
+
+*"Also stalled should punish as much as death to restore balance between these two endings."*
+
+`RewardModel.terminate(STALLED)` is now `-config.deathPenalty`, through the same constant `DEATH` uses
+so the two cannot drift apart.
+
+This **reverses `PLAN-reward-signals.md` §3.2**, which set it to zero. The reversal is deliberate and
+is recorded rather than quietly applied: §3.2 was right that a cheap terminal is a degenerate strategy,
+and it argued for zero because "truncated, priced by turn cost alone" was an honest description of what
+a stall then was. That description stopped being true when the stall guard was found to fire on every
+descent — "the episode ended on a timeout" was a harness bug wearing an outcome's name, and pricing it
+at zero made the bug free. It cannot re-create the trap §3.2 closed either: stalling used to be cheaper
+than surviving to the turn cap and now costs a hundred times more.
+
+`rewardcheck`'s stall case was rewritten to assert the equality rather than the absence of a penalty,
+and its turn-cost half still asserts that idling is charged separately.
+
+**One gate assertion was itself wrong, and is fixed.** `checkStallingIsNotCheaperThanDying` tested
+`stall.score < death` and printed "cheaper", but a score is negative, so `-0.24 < -100` is false — the
+condition fires on a stall being *more* expensive than dying, and never fired on the -5.0 that the case
+was written to catch. It now tests `stall.score > death`, which fires on -5.24 and on -0.24 and passes
+on -100.24. **A gate that asserted its own name backwards for as long as it existed is worth
+recording**, because it is the same failure as `Graph.bar` widening an axis it did not measure.
+
+`STALLED` stays a **truncation** — the harness cut the episode off, not the game — which is
+`PLAN-reward-signals.md` §3.4's position and is unchanged. That leaves a residual tension worth naming:
+a -100 penalty that GAE bootstraps through is the same contradiction §2.4 identifies, which was fixed
+by setting it to zero. It is recorded rather than resolved, because resolving it means changing
+`isNaturalEnding` and with it every advantage a stall produces.
+
+---
+
+## 0.4 Two smaller faults found on the way, both recorded rather than claimed as fixes
+
+**A recording's `depth` header is the depth the hero died at, not the depth it reached.**
+`duelist-mid` reaches floor 2 and dies on floor 1, and reported `depth=1`. `Replay.depth` and the
+trainer's per-episode `depth` now carry `Statistics.deepestFloor` — the game's own figure, reset by
+`Dungeon.init`, so per-run. This matters beyond tidiness: `TODO.md` has spent several entries reasoning
+about "every recording is depth=1", and a header that can say 1 for a run that went down keeps saying it.
+The corpus now reads `depth=2` for `duelist-mid` and `warrior-death`, which descend.
+
+**`ViewCheck --one` was not muted.** The gate forks every child with `-Dspd.mute=1`, and the
+single-recording path inherited nothing, so re-running one recording to investigate a failure played it
+out loud on the developer's speakers with the window visible and left open. `playOne` now states the
+same defaults the forked children get, and only where they are unset, so an explicit
+`-Dspd.hidden=0` still wins. `ReplayLauncher.MUTE` is a `static final`, so it has to happen before that
+class loads rather than at the first call that needs it.
+
+**`replay-viewer.bat` takes its flags before the file.** `--mute --close --fast 40 --windowed --at X Y
+<replay>`. Given after the file they are silently ignored — the launcher prints `audio=on` and you
+believe you muted it. Noted because it cost a cycle here, not because it is worth a code change.
 
 ---
 

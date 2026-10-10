@@ -172,6 +172,20 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 	 *
 	 * <p>This is the entire driver. No scene, no window, no controller - which is only possible because
 	 * {@link ReplayPlayer} turned out to have no UI dependency, and which is the point.
+	 *
+	 * <p><b>It does stand in for the render loop, and only for one thing.</b> In a rendered game a level
+	 * transition is serviced by {@code Game.step()}, reached from {@code Game.render()}: it instantiates
+	 * {@code InterlevelScene}, which builds the next floor and hands back to the game scene. With no
+	 * window nothing calls {@code step()}, so the request sat pending forever and any recording that
+	 * descended could not be played - measured on {@code duelist-mid} and {@code warrior-death}, whose
+	 * final steps go down the stairs: the drain yielded, correctly, and then waited 900 frames for a
+	 * scene that was never going to arrive.
+	 *
+	 * <p>What runs instead is the trainer's own {@code LevelPipeline}, which is the one implementation of
+	 * "build the next floor" in this project. Using it here rather than writing a third means the harness
+	 * and the trainer cannot disagree about what a descent produces, and it is deliberately the harness
+	 * doing this and not {@link ReplayPlayer}: in the real viewer the game does it, and a player that
+	 * built floors itself would stop being a faithful playback of the real thing.
 	 */
 	private static Outcome play( Replay replay ){
 		env.reset( replay.seedText, heroClassOf( replay ) );
@@ -182,6 +196,7 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 
 		while (player.playing() && outcome.frames < FRAME_BUDGET){
 			player.update( 1f / 60f );
+			servicePendingSwitch();
 			outcome.frames++;
 		}
 
@@ -193,6 +208,18 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		outcome.ranOutOfFrames = player.playing();
 		outcome.heroAliveAtEnd = Dungeon.hero != null && Dungeon.hero.isAlive();
 		return outcome;
+	}
+
+	/** What {@code Game.step()} would have done, for a level transition and nothing else. */
+	private static void servicePendingSwitch(){
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline pipeline =
+				env.pipeline();
+		if (!pipeline.game().switchRequested()) return;
+
+		if (pipeline.handleTransition() ==
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline.Transition.FALL){
+			pipeline.handleFall();
+		}
 	}
 
 

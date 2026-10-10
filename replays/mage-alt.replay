@@ -4,7 +4,7 @@ seed=mage-alt
 hero=MAGE
 challenges=0
 generation=0
-score=11.300000125076622
+score=4.800000125076622
 depth=1
 turns=150
 turn_limit=150
@@ -13,7 +13,7 @@ allow_equipping=true
 termination=TURN_LIMIT
 steps=203
 USE 0 WORLD 366 -0.0020000000949949026  20 0.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 366 -0.0020000000949949026 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 366 -0.5019999742507935 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
 OPEN_INVENTORY 0 WORLD 366 -0.0020000000949949026  20 3.0 VelvetPouch():1,Waterskin:1
 CANCEL 0 INVENTORY 366 -0.0020000000949949026 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
 MOVE_W 0 WORLD 365 0.49799999594688416  20 4.0 VelvetPouch():1,Waterskin:1
@@ -45,12 +45,12 @@ MOVE_S 0 WORLD 393 -0.0020000000949949026  10 29.0 VelvetPouch():1,Waterskin:1
 MOVE_S 0 WORLD 430 -0.0020000000949949026  10 30.0 VelvetPouch():1,Waterskin:1
 MOVE_S 0 WORLD 467 -0.0020000000949949026  10 31.0 VelvetPouch():1,Waterskin:1
 MOVE_SW 0 WORLD 503 -0.0020000000949949026  10 32.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 502 2.997999906539917  10 34.0 PotionOfInvisibility:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 502 0.49799999594688416  10 34.0 PotionOfInvisibility:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 502 -0.0020000000949949026  10 34.0 PotionOfInvisibility:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 502 -0.0020000000949949026 Waterskin:1 10 35.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 538 3.997999906539917  11 37.0 Food:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 502 -0.5019999742507935 Waterskin:1 10 35.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 538 1.4980000257492065  11 37.0 Food:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 538 -0.0020000000949949026  11 37.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 538 -0.0020000000949949026 Waterskin:1 11 40.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 538 -0.5019999742507935 Waterskin:1 11 40.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 575 0.9980000257492065  11 42.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
 USE 0 WORLD 575 -0.0020000000949949026  11 42.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1
 USE 2 SLOT 575 0.0 Waterskin:1 11 42.0 Seed:1,VelvetPouch(Seed):1,Waterskin:1

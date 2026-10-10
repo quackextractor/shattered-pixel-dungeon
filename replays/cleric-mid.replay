@@ -4,7 +4,7 @@ seed=cleric-mid
 hero=CLERIC
 challenges=0
 generation=0
-score=17.752000075066462
+score=-88.24799992493354
 depth=1
 turns=49
 turn_limit=150
@@ -13,7 +13,7 @@ allow_equipping=true
 termination=STALLED
 steps=49
 USE 0 WORLD 1272 -0.0020000000949949026  20 0.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 1272 -0.0020000000949949026 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 1272 -0.5019999742507935 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
 OPEN_INVENTORY 0 WORLD 1272 -0.0020000000949949026  20 3.0 VelvetPouch():1,Waterskin:1
 CANCEL 0 INVENTORY 1272 -0.0020000000949949026 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 1235 -0.0020000000949949026  20 5.0 VelvetPouch():1,Waterskin:1
@@ -55,9 +55,9 @@ INTERACT 0 WORLD 427 -0.0020000000949949026  12 40.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 427 -0.0020000000949949026  12 41.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 427 -0.10199999809265137  11 42.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 427 -0.0020000000949949026  11 43.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 463 2.997999906539917  11 45.0 ScrollOfLullaby:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 463 0.49799999594688416  11 45.0 ScrollOfLullaby:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 463 -0.0020000000949949026  11 45.0 ScrollOfLullaby:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 463 -0.0020000000949949026 Waterskin:1 11 46.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 427 3.497999906539917  11 48.0 Food:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 463 -0.5019999742507935 Waterskin:1 11 46.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 427 0.9980000257492065  11 48.0 Food:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 427 -0.0020000000949949026  11 48.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 427 0.0 Waterskin:1 12 51.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 427 -100.0 Waterskin:1 12 51.0 VelvetPouch():1,Waterskin:1

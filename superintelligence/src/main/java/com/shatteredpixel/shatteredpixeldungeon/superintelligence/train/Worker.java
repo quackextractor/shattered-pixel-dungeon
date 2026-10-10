@@ -154,7 +154,7 @@ config.stallLimit = in.readInt();
 
 		work.stop();
 
-		recorder.end( env.ledger().total(), env.depth(), env.turnsTotal(), 0, env.endReason().name() );
+		recorder.end( env.ledger().total(), env.deepestDepth(), env.turnsTotal(), 0, env.endReason().name() );
 		Replay replay = recorder.replay();
 
 		out.writeInt( Protocol.MSG_EPISODE );
@@ -164,7 +164,7 @@ config.stallLimit = in.readInt();
 		//a disagreement here reads a plausible number rather than failing.
 		Episode summary = new Episode();
 		summary.score = env.ledger().total();
-		summary.depth = env.depth();
+		summary.depth = env.deepestDepth();
 		summary.turns = env.turnsTotal();
 		summary.endedNaturally = env.endedNaturally();
 		summary.reason = env.endReason().name();

@@ -4,7 +4,7 @@ seed=mage-mid
 hero=MAGE
 challenges=0
 generation=0
-score=23.250000027474016
+score=11.250000027474016
 depth=1
 turns=150
 turn_limit=150
@@ -13,7 +13,7 @@ allow_equipping=true
 termination=TURN_LIMIT
 steps=149
 USE 0 WORLD 481 -0.0020000000949949026  20 0.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 481 -0.0020000000949949026 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 481 -0.5019999742507935 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
 OPEN_INVENTORY 0 WORLD 481 -0.0020000000949949026  20 3.0 VelvetPouch():1,Waterskin:1
 CANCEL 0 INVENTORY 481 -0.0020000000949949026 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1
 MOVE_SW 0 WORLD 511 -0.0020000000949949026  20 4.0 VelvetPouch():1,Waterskin:1
@@ -46,9 +46,9 @@ INTERACT 0 WORLD 382 -0.20200000703334808  11 30.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 382 -0.3020000159740448  8 31.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 382 -0.0020000000949949026  8 32.0 VelvetPouch():1,Waterskin:1
 MOVE_W 0 WORLD 381 -0.0020000000949949026  8 33.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 382 3.497999906539917  8 35.0 Pasty:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 382 0.9980000257492065  8 35.0 Pasty:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 382 -0.0020000000949949026  8 35.0 Pasty:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 382 0.49799999594688416 Waterskin:1 9 38.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 382 -0.0020000000949949026 Waterskin:1 9 38.0 VelvetPouch():1,Waterskin:1
 MOVE_W 0 WORLD 381 -0.0020000000949949026  9 39.0 VelvetPouch():1,Waterskin:1
 MOVE_SW 0 WORLD 411 -0.0020000000949949026  9 40.0 VelvetPouch():1,Waterskin:1
 MOVE_SW 0 WORLD 441 -0.0020000000949949026  9 41.0 VelvetPouch():1,Waterskin:1
@@ -83,15 +83,15 @@ INTERACT 0 WORLD 691 -0.0020000000949949026  8 70.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 691 -0.0020000000949949026  8 71.0 VelvetPouch():1,Waterskin:1
 MOVE_SW 0 WORLD 721 -0.0020000000949949026  8 72.0 VelvetPouch():1,Waterskin:1
 INTERACT 0 WORLD 689 -0.0020000000949949026  8 74.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 719 3.497999906539917  9 76.0 ScrollOfTransmutation:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 719 0.9980000257492065  9 76.0 ScrollOfTransmutation:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 719 -0.0020000000949949026  9 76.0 ScrollOfTransmutation:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 719 -0.0020000000949949026 Waterskin:1 9 76.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 687 2.997999906539917  9 78.0 PotionOfStrength:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 719 -0.5019999742507935 Waterskin:1 9 76.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 687 0.49799999594688416  9 78.0 PotionOfStrength:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 687 -0.0020000000949949026  9 78.0 PotionOfStrength:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 687 0.9980000257492065 Waterskin:1 9 79.0 VelvetPouch():1,Waterskin:1
+USE 0 SLOT 687 0.49799999594688416 Waterskin:1 9 79.0 VelvetPouch():1,Waterskin:1
 MOVE_S 0 WORLD 718 -0.0020000000949949026  9 80.0 VelvetPouch():1,Waterskin:1
 MOVE_SE 0 WORLD 750 -0.0020000000949949026  9 81.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 782 3.497999906539917  9 83.0 Stylus:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 782 0.9980000257492065  9 83.0 Stylus:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 782 -0.0020000000949949026  9 83.0 Stylus:1,VelvetPouch():1,Waterskin:1
 USE 0 SLOT 782 -0.0020000000949949026 Waterskin:1 9 83.0 Stylus:1,VelvetPouch():1,Waterskin:1
 USE 0 WORLD 782 -0.0020000000949949026  9 83.0 Stylus:1,VelvetPouch():1,Waterskin:1

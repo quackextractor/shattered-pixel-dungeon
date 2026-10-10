@@ -12,8 +12,6 @@ import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 
-import java.util.ArrayList;
-
 /**
  * Computes reward by diffing observable game state across a turn.
  *
@@ -40,7 +38,7 @@ public class RewardModel {
 	// --- previous-turn snapshot ---
 
 	private int prevHp, prevMaxHp, prevLevel, prevGold, prevStrength, prevDepth, prevBranch;
-	private int prevItemCount;
+	private float prevItemValue;
 	private int prevIdentified;
 	private int prevCursedEquipped;
 	private int prevDebuffCount;
@@ -90,8 +88,11 @@ public class RewardModel {
 		int depth = Dungeon.depth;
 		if (depth != prevDepth || Dungeon.branch != prevBranch){
 			if (depth > prevDepth){
-				ledger.add( RewardTerm.DEPTH_ADVANCE, config.depthReward, true );
-				ledger.markFloorCleared();
+				//clearedByAdvancing is false: the floor this marks is the one the hero just left, which
+				//SPDEnv.markFloorCleared() sets on the row that is being closed. Passing true here would
+				//mark the floor the hero has just arrived on instead, and the per-floor report would say
+				//every floor was cleared.
+				ledger.add( RewardTerm.DEPTH_ADVANCE, config.depthReward, false );
 			} else {
 				//ascending is not progress toward the goal, and is not punished either: a
 				//player exploring upward to loot a vault floor is playing correctly
@@ -133,10 +134,26 @@ public class RewardModel {
 		}
 
 		//inventory
-		int items = countItems();
-		if (items > prevItemCount){
-			float value = pickupValue( items - prevItemCount );
-			ledger.add( RewardTerm.ITEM_PICKUP, value, false );
+		//
+		//A net diff of what the inventory is worth, in both directions.
+		//
+		//It was a count, compared one way: `items > prevItemCount` paid for the gain and nothing was
+		//charged for the loss. `DROP` is an action the policy can take in WORLD then SLOT then WORLD,
+		//and picking the same heap up again is one more INTERACT, so the loop is `INTERACT, DROP,
+		//INTERACT, DROP` - unbounded, three steps per cycle, and each pickup paid out again. Nothing in
+		//the reward function charged for the item leaving, so the score grew without the world changing.
+		//That is not a hypothetical strategy: research.md:57 asks for exploit mitigation precisely
+		//because "reinforcement learning agents are notoriously good at finding mechanical exploits",
+		//and issues.md 8 reports a recording in which the hero did exactly this.
+		//
+		//Valuing rather than counting is also what makes the reward correct rather than merely
+		//non-exploitable. Dropping a `WandOfFire` to make room for a `VelvetPouch` is a net gain and is
+		//scored as one; a count cannot tell it from throwing away the only thing you were carrying.
+		float carried = inventoryValue();
+		if (carried > prevItemValue){
+			ledger.add( RewardTerm.ITEM_PICKUP, carried - prevItemValue, false );
+		} else if (carried < prevItemValue){
+			ledger.add( RewardTerm.ITEM_DROPPED, carried - prevItemValue, false );
 		}
 
 		int identified = countIdentified();
@@ -189,25 +206,25 @@ public class RewardModel {
 				ledger.add( RewardTerm.DEATH, -config.deathPenalty, false );
 				break;
 			case STALLED:
-				//Zero, not -depthReward * 0.5.
+				//-deathPenalty, i.e. exactly what dying costs.
 				//
-				//A stall means the harness cut the episode off - a timeout guard fired - and at -5.0
-				//that was twenty times cheaper than dying and fifteen times cheaper than surviving to
-				//the turn cap. The cheapest available action, WAIT, was on a direct route to it:
-				//WAIT costs a turn, moves nothing and changes no HP, which is exactly what the stall
-				//guard tests. So a 20-generation run ended 100% of its episodes by stalling and never
-				//moved off floor 1, while every loss metric looked healthy.
+				//This reverses PLAN-reward-signals.md §3.2, which set it to zero, and the reversal is
+				//deliberate rather than a correction of that analysis: §3.2 was right that a cheap
+				//terminal is a degenerate strategy, and it argued for zero because "truncated, priced
+				//by turn cost alone" was the honest description of what a stall then was. That
+				//description stopped being true. The stall guard was firing on every descent, because
+				//the environment never saw the game ask for a level transition - see
+				//HeadlessGame.switchRequested - so "the episode ended on a timeout" was a harness bug
+				//dressed as an outcome, and pricing it at zero made the bug free.
 				//
-				//Zero rather than a small penalty, deliberately. Idling already costs turnCost per turn,
-				//which is the honest price of an action that does nothing and is already being charged.
-				//A small negative value would have been a guess about being *trapped*, a failure mode
-				//nobody has observed - every stall so far is one the agent walked into with WAIT. On a
-				//reward function that has already misled the agent once, a guessed penalty is how the
-				//next wrong preference gets baked in. See PLAN-reward-signals.md.
+				//Giving up and losing are now priced the same, which is the balance issues.md 9 asks
+				//for. It also cannot re-create the trap §3.2 closed: stalling used to be cheaper than
+				//surviving to the turn cap, and now it costs a hundred times more.
 				//
-				//Recorded as zero rather than skipped, so the term still appears in the per-term report
-				//and a future change to it is visible as a change rather than as silence.
-				ledger.add( RewardTerm.STALLED, 0, false );
+				//Recorded through the same door as DEATH rather than as a separate constant, so the two
+				//cannot drift apart: a config that doubles deathPenalty doubles this too, which is what
+				//makes "as much as death" a property rather than a coincidence.
+				ledger.add( RewardTerm.STALLED, -config.deathPenalty, false );
 				break;
 			case TURN_LIMIT:
 				ledger.add( RewardTerm.TURN_LIMIT, -config.turnCost * 100f, false );
@@ -261,7 +278,7 @@ public class RewardModel {
 		prevStrength = hero.STR();
 		prevDepth = Dungeon.depth;
 		prevBranch = Dungeon.branch;
-		prevItemCount = countItems();
+		prevItemValue = inventoryValue();
 		prevIdentified = countIdentified();
 		prevCursedEquipped = countCursedEquipped();
 		prevDebuffCount = countDebuffs();
@@ -285,10 +302,42 @@ public class RewardModel {
 
 	// --------------------------------------------------------------------------- counters
 
-	private int countItems(){
-		int n = 0;
-		for (Item item : Dungeon.hero.belongings) if (item != null) n++;
-		return n;
+	/**
+	 * What the hero is currently carrying, in the same units {@link RewardTerm#ITEM_PICKUP} pays in.
+	 *
+	 * <p>A single number rather than a count, because the count was what made the pickup term
+	 * one-sided. The sum is order-independent and recomputed from scratch every turn, so it cannot
+	 * drift out of step with the inventory the way an incrementally maintained total could.
+	 */
+	private float inventoryValue(){
+		float value = 0f;
+		for (Item item : Dungeon.hero.belongings){
+			if (item != null) value += itemValue( item );
+		}
+		return value;
+	}
+
+	/**
+	 * docs.md: "Gaining money and collecting items (based on tier and market value, such as
+	 * inventory-expanding items)".
+	 *
+	 * <p>Bags are worth disproportionately more because they raise the whole run's carrying capacity,
+	 * so they are weighted above their gold value. An equippable scales with how far it has been
+	 * upgraded, which is the part of its worth a count cannot see: a +3 wand and a fresh one occupy
+	 * the same slot.
+	 *
+	 * <p>Flat across turns by construction - it reads {@code level()} and {@code instanceof}, never a
+	 * roll - so scoring it draws no randomness, which {@code observecheck} gates for the encoders and
+	 * which this would otherwise quietly break.
+	 */
+	private static float itemValue( Item item ){
+		if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag){
+			return 3f;
+		}
+		if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem){
+			return 1f + 0.5f * ((com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem) item).level();
+		}
+		return 0.5f;
 	}
 
 	/**
@@ -347,35 +396,6 @@ public class RewardModel {
 			if (type.isInstance( buff )) return true;
 		}
 		return false;
-	}
-
-	/**
-	 * Value of newly gained items, weighted by tier.
-	 *
-	 * docs.md: "Gaining money and collecting items (based on tier and market value, such as
-	 * inventory-expanding items)". Bags are worth disproportionately more because they raise the
-	 * whole run's carrying capacity, so they are weighted above their gold value.
-	 */
-	private float pickupValue( int count ){
-		ArrayList<Item> items = new ArrayList<>();
-		for (Item item : Dungeon.hero.belongings){
-			if (item != null) items.add( item );
-		}
-		if (items.isEmpty()) return 0f;
-
-		int from = Math.max( 0, items.size() - count );
-		float value = 0f;
-		for (int i = from; i < items.size(); i++){
-			Item item = items.get( i );
-			if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag){
-				value += 3f;
-			} else if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem){
-				value += 1f + 0.5f * item.level();
-			} else {
-				value += 0.5f;
-			}
-		}
-		return value;
 	}
 
 	/** Enemies killed this run. */

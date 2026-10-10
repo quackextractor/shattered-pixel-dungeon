@@ -385,6 +385,33 @@ public class ViewCheck {
 	// --- child -------------------------------------------------------------
 
 	/**
+	 * States the properties a forked gate child is launched with, for the case where this JVM is the one
+	 * running the viewer.
+	 *
+	 * <p>{@code --one} used to inherit nothing, and the difference was audible: the gate forks every child
+	 * with {@code -Dspd.mute=1} - no audio device is guaranteed on a build machine, and an unhandled one
+	 * aborts the context rather than degrading - while an investigation run played the recording out loud
+	 * on the developer's speakers. It also left the window visible and open, which is not what anybody
+	 * asking to re-run one recording through the gate means.
+	 *
+	 * <p>Set only when unset, so an explicit {@code -Dspd.hidden=0} or {@code -Dspd.mute=0} on the
+	 * command line still wins. {@code ReplayLauncher.MUTE} is a {@code static final} read at class
+	 * initialisation, which is why this has to run before that class is touched rather than at the first
+	 * call that needs it.
+	 */
+	private static void applyChildDefaults(){
+		defaultProperty( "spd.mute", "1" );
+		defaultProperty( "spd.windowed", "1" );
+		defaultProperty( "spd.hidden", "1" );
+		defaultProperty( "spd.autoClose", "1" );
+		defaultProperty( "spd.fast", String.valueOf( GATE_SPEED ));
+	}
+
+	private static void defaultProperty( String key, String value ){
+		if (System.getProperty( key ) == null) System.setProperty( key, value );
+	}
+
+	/**
 	 * Plays one recording in the real viewer and exits with the verdict.
 	 *
 	 * <p>Almost all of this is {@link ReplayLauncher}'s bootstrap, called rather than copied: the seed
@@ -393,6 +420,8 @@ public class ViewCheck {
 	 * second copy to drift.
 	 */
 	private static void playOne( File file ) throws IOException {
+		applyChildDefaults();
+
 		if (!file.isFile()){
 			System.err.println( "[ERROR] no replay at " + file.getAbsolutePath() );
 			Runtime.getRuntime().halt( 1 );
