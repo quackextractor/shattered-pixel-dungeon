@@ -1,6 +1,6 @@
 # Shattered Pixel Dungeon - Superintelligence
 
-[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg)](CHANGELOG.md)
 [![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
 
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
