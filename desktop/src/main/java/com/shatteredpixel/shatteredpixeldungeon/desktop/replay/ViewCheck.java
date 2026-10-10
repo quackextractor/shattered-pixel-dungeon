@@ -193,9 +193,14 @@ public class ViewCheck {
 		double seconds = (System.nanoTime() - started) / 1e9;
 
 		if (failed.isEmpty()){
+			//The mode is reported even on a green. With 8 children now the default, "17 of 17" alone does
+			//not say which measurement it is, and the two modes agree on membership but not on step
+			//numbers - so a green is only fully interpretable alongside how it was run.
 			System.out.println( "[OK]     rendered playback: " + files.length
 					+ " recordings played clean in the real viewer (" + jobs
-					+ " at a time, " + String.format( Locale.ROOT, "%.1fs", seconds ) + ")" );
+					+ " at a time, " + String.format( Locale.ROOT, "%.1fs", seconds ) + ")"
+					+ (jobs > 1 ? " - which recordings played clean is reliable; failing steps would not be"
+						+ ", had anything failed" : "") );
 			return;
 		}
 
@@ -205,9 +210,15 @@ public class ViewCheck {
 
 		if (jobs > 1){
 			//Said out loud, because it is the difference between a result worth acting on and one that
-			//cannot be compared with the next run.
-			System.out.println( "        NOTE: run at " + jobs + " children at once, so the failing steps are"
-					+ " not reproducible. Re-run with VIEWCHECK_JOBS=1 before acting on them." );
+			//cannot be compared with the next run. It fires only on failure: the default is now 8, and
+			//printing this on every green would train people to ignore it.
+			//
+			//Which recordings failed is still trustworthy at any job count - that is a per-file answer.
+			//What is not reproducible is the step each one failed at, so that is what the re-run is for and
+			//what the message says to do about.
+			System.out.println( "        NOTE: which recordings diverged is reliable, but at " + jobs
+				+ " children at once the failing STEPS are not reproducible - playback is timing"
+				+ " sensitive. Re-run this recording with VIEWCHECK_JOBS=1 before acting on a step number." );
 		}
 
 		for (String name : sortedFailures( failed )) System.out.println( "        " + name );
@@ -224,35 +235,42 @@ public class ViewCheck {
 	/**
 	 * How many children to run at once.
 	 *
-	 * <p>One, by default, and the parallelism is opt-in rather than the other way round. What the default
-	 * one buys is a reproducible <i>failing step</i>: two sequential runs of this corpus report the same
-	 * fourteen recordings failing at the same fourteen steps, while two runs at ten children at once report
+	 * <p><b>Eight, by default.</b> Override with {@code VIEWCHECK_JOBS} or {@code -PviewcheckJobs}, and set
+	 * it to 1 to get reproducible failing <i>steps</i>: two sequential runs of this corpus report the same
+	 * fourteen recordings failing at the same fourteen steps, while runs at several children at once report
 	 * the same recordings but shuffle the steps between them. Playback is timing sensitive - that is the
 	 * whole subject of the issue this gate tracks - so anything that changes how fast a child renders
 	 * changes what the child finds.
 	 *
-	 * <p>What it does <i>not</i> buy is a trustworthy pass/fail. Whether a recording plays clean is a
-	 * per-file answer and holds at any job count, which is why {@link #supervise} prints its "not
-	 * reproducible" warning only on failure. Parallel runs are valid results; they are just not
-	 * step-addressable.
+	 * <p>What the default does <i>not</i> cost is a trustworthy pass/fail. Whether a recording plays clean
+	 * is a per-file answer and holds at any job count, which is why {@link #supervise} prints its "not
+	 * reproducible" warning only on failure. A parallel run is a valid green; it is just not step-addressable,
+	 * so {@link #supervise} names the one-job re-run that makes a failure investigable.
 	 *
-	 * <p><b>Parallel is much faster, and this comment used to say the opposite.</b> Measured on this
-	 * machine over the 17 committed recordings: <b>37.0s at 8 children against 219.7s sequential</b>,
-	 * roughly six times faster, with 17 of 17 clean at both. The text here previously read "the run is 90s
-	 * rather than 6 minutes", which described sequential as the fast mode and made the knob look worthless.
-	 * It also contradicted the progress-printer comment 70 lines up, which correctly said the corpus
-	 * "finished in seconds once parallelised". The default stays at one because a step number is worth more
-	 * than five minutes - not because concurrency is expensive or unreliable here.
+	 * <p><b>Why the default moved off one.</b> Measured on this machine over the 17 committed recordings:
+	 * <b>37.0s at 8 children against 219.7s sequential</b>, roughly six times faster, with 17 of 17 clean at
+	 * both. The default was 1, and the reasoning behind it - that a step number is worth more than five
+	 * minutes - survives, but it is a reason to re-run <i>after</i> a failure, not a reason to make every
+	 * run pay for the guarantee. A gate nobody runs is worth less than a fast gate whose failures say how to
+	 * investigate them, and this one already said that.
+	 *
+	 * <p>Two comments here previously disagreed about which mode was fast: this one read "the run is 90s
+	 * rather than 6 minutes" while the progress printer, 70 lines up, correctly said the corpus "finished in
+	 * seconds once parallelised". The measurement above is what settled it.
 	 */
 	private static int parallelism(){
+		//deliberately not final: a check may want to pin it without touching the caller's environment
+		int byDefault = 8;
+
 		String override = System.getProperty( "viewcheckJobs", System.getenv( "VIEWCHECK_JOBS" ) );
-		if (override == null || override.trim().isEmpty()) return 1;
+		if (override == null || override.trim().isEmpty()) return byDefault;
 
 		try {
 			return Math.max( 1, Integer.parseInt( override.trim() ));
 		} catch (NumberFormatException e){
-			System.err.println( "[viewcheck] VIEWCHECK_JOBS is not a number (" + override + "); using 1" );
-			return 1;
+			System.err.println( "[viewcheck] VIEWCHECK_JOBS is not a number (" + override
+					+ "); using " + byDefault );
+			return byDefault;
 		}
 	}
 

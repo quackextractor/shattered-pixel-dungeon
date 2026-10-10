@@ -191,7 +191,9 @@ scheduler tie-breaking.
 ### E-7. The corpus is deterministic
 
 Full corpus, twice, sequential: identical recordings and identical steps both runs. Parallelism at 10
-children shuffles steps, so `VIEWCHECK_JOBS` defaults to 1 and the gate warns when it is not.
+children shuffles steps, so `VIEWCHECK_JOBS` pins step-reproducibility rather than the gate's own
+default: the gate now runs 8 children at once (37.0s against 219.7s sequential, 17/17 clean at both) and
+warns when a failure's step number cannot be trusted. `VIEWCHECK_JOBS=1` is still what reproduces steps.
 
 ---
 

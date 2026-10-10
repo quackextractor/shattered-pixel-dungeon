@@ -1,10 +1,31 @@
 #!/bin/sh
 #
+# Pre-push gate: the rendered viewer.  NOT INSTALLED - kept for machines that want it.
+#
+# install-hooks.ps1 no longer copies this file into .git/hooks. It is still tracked because a repository
+# whose pushes are rare does not need a viewer gate on every push, and because the hook is the only place
+# that explains why viewcheck is not in pre-commit: it needs a real GL context, so it cannot run on a build
+# machine.
+#
+# To install it on a machine that always has a display:
+#     Copy-Item hooks/pre-push .git/hooks/pre-push          (PowerShell)
+#     cp hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+#
+# Or just run the gate, which is the same thing without a hook:
+#     gradlew :desktop:viewcheck
+#
+# It used to take ~220 seconds, which is what made it a push hook rather than a commit hook. It now
+# defaults to 8 concurrent children and takes ~36s for the same 17 recordings (ViewCheck.parallelism), so
+# that reason is much weaker than it was - but a reporting hook on every push is still not a check anyone
+# reads twice.
+#
+# ---------------------------------------------------------------------------------------------------
+#
 # Pre-push gate: the rendered viewer.
 #
 # Runs :desktop:viewcheck, which plays the committed corpus the way a person plays it - real GameScene,
 # real frame driver, real GL context - and is the only check that can see a fault in the render loop.
-# It lives here rather than in pre-commit for two reasons: it takes about 220 seconds, and it needs a real
+# It lives here rather than in pre-commit for two reasons: it took about 220 seconds, and it needs a real
 # GL context, so it is neither quick enough for a commit nor runnable everywhere a commit is.
 #
 # IT DOES NOT BLOCK THE PUSH, and that is deliberate rather than an oversight.
@@ -22,8 +43,9 @@
 #
 # Make it blocking, and read the failure list rather than the count: viewcheck forks one JVM per
 # recording and playback is timing-sensitive by its own nature, so the *membership* of a failing set is
-# more informative than how many failed. See TODO.md §0.7 for a divergence that was reported by hand,
-# never reproduced in ~50 automated attempts, and is a different shape from a stream or ordering fault.
+# more informative than how many failed. Set VIEWCHECK_JOBS=1 to make the failing steps reproducible
+# too - see TODO.md §0.7 for a divergence that was reported by hand, never reproduced in ~50 automated
+# attempts, and is a different shape from a stream or ordering fault.
 
 repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root" || exit 1

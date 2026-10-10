@@ -5,9 +5,9 @@
 .DESCRIPTION
     .git/hooks is not tracked by git, so a hook written there exists only on the machine that wrote it.
     This installs the tracked copies from hooks/ and makes them executable, which is what a fresh clone
-    needs before its first commit or push.
+    needs before its first commit.
 
-    Two hooks, split by cost and by what they can run:
+    One hook, not two. Only pre-commit is installed.
 
       pre-commit - two version badges, then every correctness gate passes, via `gradlew verifyall`. That
         is :superintelligence:gates plus :desktop:playbackcheck - the aggregate rather than the
@@ -22,12 +22,20 @@
         corrected and re-staged rather than refused, which is what this hook has always done for one
         badge. With no tags in the clone the game badge is skipped with a warning rather than guessed at.
 
-      pre-push - :desktop:viewcheck, which plays the corpus through the real rendered viewer. About 220
-        seconds and it needs a real GL context, which is why it is not in pre-commit. Reports, and does
-        NOT block - but not because it is red: the viewer fidelity issue is fixed and the gate is green
-        on all 17. It stays non-blocking because a hook that needs a display cannot run on a build
-        machine, and gets deleted by the first person it blocks. Its header says what to change if you
-        want it to block.
+    There used to be a pre-push hook as well, running :desktop:viewcheck. It is no longer installed.
+
+      It was a reporting hook, never blocking, and its own header had been arguing for its own removal
+      since the viewer fidelity issue it referenced was fixed: a hook that needs a GL context cannot run
+      on a build machine, and one that cannot run everywhere gets deleted by the first person it annoys.
+      What changed it was speed. viewcheck used to take ~220s, which is long enough to be worth skipping;
+      it now defaults to 8 concurrent children and takes ~36s for the same 17 recordings (see
+      ViewCheck.parallelism), so the argument that it was too slow to be worth running no longer holds -
+      and a hook that fires on every push of a repository whose pushes are rare is paying a real cost for
+      a number that is also available by running one command.
+
+      The script is still tracked at hooks/pre-push if you want it on a machine that always has a
+      display. Copy it to .git/hooks/ yourself, or run it by hand:
+          gradlew :desktop:viewcheck
 
     The pre-commit hook is not meant to be bypassed with --no-verify: a gate that can be skipped is a
     suggestion.
@@ -46,7 +54,18 @@ if (-not (Test-Path (Join-Path $repoRoot '.git'))) {
     exit 1
 }
 
-foreach ($name in @('pre-commit', 'pre-push')) {
+$installed = @('pre-commit')
+
+# A pre-push installed by an earlier run of this script is removed rather than left behind, so that
+# re-running the installer after this change actually takes effect. Only the copy under .git/hooks is
+# touched; the tracked script at hooks/pre-push stays.
+$stale = Join-Path $repoRoot '.git/hooks/pre-push'
+if (Test-Path $stale) {
+    Remove-Item $stale -Force
+    Write-Host "[OK]   removed $stale (the pre-push viewer gate is no longer installed)"
+}
+
+foreach ($name in $installed) {
     $source = Join-Path $repoRoot "hooks/$name"
     $target = Join-Path $repoRoot ".git/hooks/$name"
 
@@ -80,6 +99,7 @@ foreach ($name in @('pre-commit', 'pre-push')) {
 
 Write-Host "[INFO] pre-commit checks two version badges (game vs newest v* tag, module vs its own"
 Write-Host "[INFO] changelog) and runs 'gradlew verifyall'."
-Write-Host "[INFO] pre-push runs ':desktop:viewcheck' and reports; it needs a GL context, so it does"
-Write-Host "[INFO] not block the push."
-Write-Host "[INFO] remove them with: Remove-Item .git/hooks/pre-commit, .git/hooks/pre-push"
+Write-Host "[INFO] the rendered viewer gate is NOT installed; run it by hand with:"
+Write-Host "[INFO]     gradlew :desktop:viewcheck"
+Write-Host "[INFO] re-install it with: Copy-Item hooks/pre-push .git/hooks/pre-push"
+Write-Host "[INFO] remove the hook with: Remove-Item .git/hooks/pre-commit"

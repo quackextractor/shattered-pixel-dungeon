@@ -308,7 +308,8 @@ the ~147 of them the real game never makes are a second fault.
 
 ### E4 - verify
 
-Full corpus, twice, sequential (`VIEWCHECK_JOBS` defaults to 1, from `e0c986c27`).
+Full corpus, twice, sequential (`VIEWCHECK_JOBS=1`, which is what pins step-reproducibility; the gate's
+own default is now 8, since 37.0s at 8 children beats 219.7s sequential and membership is unaffected).
 
 Both membership **and** step numbers must match between runs.
 

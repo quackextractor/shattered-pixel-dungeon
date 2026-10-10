@@ -23,6 +23,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-10
+
+### Changed
+
+- **`viewcheck` now forks 8 children by default instead of 1.** Measured on the 17 committed recordings:
+  **37.0s at 8 children against 219.7s sequential**, roughly six times faster, with **17 of 17 clean at
+  both**. `VIEWCHECK_JOBS=N` and `-PviewcheckJobs=N` still override it, and `VIEWCHECK_JOBS=1` reproduces
+  failing *steps* exactly.
+
+  The change is about which guarantee is paid for by default, not about whether concurrency is trustworthy.
+  **Whether a recording plays clean is a per-file answer and holds at any job count** — the gate has always
+  printed its warning about non-reproducibility *only on failure*, and a green parallel run was always a
+  real green. What concurrency does cost is the *step* a failing recording fails at, since playback is
+  timing-sensitive. That is a reason to re-run after a failure, not a reason to make every run wait five
+  minutes for a guarantee it only needs once something breaks.
+
+  Both signals are now stated rather than left to be inferred. The `[OK]` line reports the job count and
+  notes that had anything failed, the step numbers would not have been reproducible; the failure note names
+  the one-job re-run and says explicitly that *which* recordings failed is still reliable.
+
+- **`ViewCheck.parallelism()` had two comments that disagreed about which mode was fast**, and the
+  measurement settled which was wrong. One read *"the run is 90s rather than 6 minutes"*, describing
+  sequential as the fast mode and making the knob look worthless; the progress printer 70 lines above
+  correctly said the corpus *"finished in seconds once parallelised"*. Parallel was always the fast one.
+
+### Fixed
+
+- **`-PviewcheckJobs` was silently ignored.** `ViewCheck.parallelism()` has always read a `viewcheckJobs`
+  system property, but `desktop/build.gradle` forwarded only `spdReplayDir`, `spdWorldTrace` and
+  `spdFixedDelta`, so the environment variable was the only route that worked and `-PviewcheckJobs=N` did
+  nothing while looking like it did. A flag that silently does nothing is worse than a missing one, because
+  the invocation reads as correct. Wired, with a comment recording that the default is a scheduling choice
+  and not a reliability one.
+
+- **The `pre-push` viewer gate is no longer installed.** `install-hooks.ps1` copied both hooks; it now
+  installs `pre-commit` only, and removes a `.git/hooks/pre-push` left by an earlier run so re-running the
+  installer actually takes effect.
+
+  The hook was never blocking — its own header had been arguing for its own removal since the viewer
+  fidelity issue it referenced was fixed, on the grounds that a hook needing a GL context cannot run on a
+  build machine and gets deleted by the first person it annoys. What changed the arithmetic is speed:
+  `viewcheck` used to take ~220s, long enough to be worth skipping, and now takes ~36s. That weakens the
+  "too slow to be worth running" argument but does not restore the case for firing a reporting hook on
+  every push of a repository whose pushes are rare, for a number that is one command away.
+
+  `hooks/pre-push` stays tracked and its header now says at the top that it is not installed, with the two
+  commands to install it on a machine that always has a display — or just to run the gate directly, which
+  is the same thing without a hook.
+
+### Documentation
+
+- `testing-guide.md`, `FINDINGS-viewer-fidelity.md` and `PLAN-viewer-fidelity.md` all stated that
+  `VIEWCHECK_JOBS` "defaults to 1". That was true and no longer is; each now says what the default is and,
+  more usefully, what `VIEWCHECK_JOBS=1` is actually *for* — pinning step-reproducibility, not enabling the
+  gate to run.
+
 ## [0.4.1] - 2026-10-10
 
 ### Documentation
