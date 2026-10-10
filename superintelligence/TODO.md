@@ -4,7 +4,8 @@ Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), wri
 code as it stands. "Verified" means it was run and observed, not merely written.
 
 Last updated: 2026-10-10, after the five viewer/recording issues in
-[`issues.md`](issues.md) were worked through.
+[`issues.md`](issues.md) were worked through, and after the HUD overflow that followed from them was
+found and fixed.
 
 ---
 
@@ -73,6 +74,36 @@ disarming the restart wait fails the rebuild case, flipping the y axis fails the
 reporting the net instead of the gain half fails the score case. The old death check was passing for the
 wrong reason and had to be rebuilt — it forced the recorded health to zero on the last step of a run
 whose hero was at full health, which was a lie the drain had been skipping the comparison for.
+
+---
+
+## 0.0.2 The HUD ran off the screen - FIXED
+
+**Reported as "the data doesn't line break, it goes off screen". The cause was that `BitmapText`
+cannot line break at all.** Its font is built from `BitmapText.Font.LATIN_FULL`, which has no newline
+glyph, and both `measure()` and `updateVertices()` feed every character straight through
+`font.get()`. A `\n` therefore has no glyph, no line advance and no break: it draws as a blank and the
+text keeps running to the right until it leaves the window. The HUD had built its rows with `\n` from
+the start, so it was never a new bug — but it was invisible while the HUD was short enough to fit most
+window sizes, and issue 4 above put a score line on it long enough to overflow any ordinary window.
+
+The corroborating evidence was all around it. No `BitmapText` anywhere in `core` is ever given a `\n`,
+because the game's own multi-line component — `RenderedTextBlock`, which the windows use — exists
+precisely because `BitmapText` will not wrap. The viewer's HUD was the sole exception, and had been
+since before any of these issues were filed.
+
+Now a pool of one-line gizmos, wrapped on spaces and measured against the real UI font through
+`BitmapText.measure()` rather than an assumed characters-per-line. Two details that are load-bearing:
+the pool *grows* rather than having a fixed size, because the same text needs more lines on a narrow
+window and a fixed pool would silently truncate the overflow — the failure being fixed; and a word too
+wide to break on spaces (a deep seed hash) is kept whole rather than dropped, since dropping it would
+silently hide the seed, which is the one value saying which recording is on screen.
+
+`wrapText` takes its width measurer as a parameter so it can be checked headlessly, where there is no
+font and every real measurement is zero. The nineteenth `playbackcheck` case asserts that no line comes
+out wider than the limit, that wrapping does not alter the content, and that an explicit `\n` still
+forces a break. Mutation-tested by disabling the width test, which fails it. `viewcheck` re-run over
+the whole corpus: 17 of 17 clean.
 
 ---
 

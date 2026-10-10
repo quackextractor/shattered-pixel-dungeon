@@ -36,6 +36,8 @@ import com.watabou.noosa.Game;
 import com.watabou.noosa.Scene;
 import com.watabou.utils.Signal;
 
+import java.util.ArrayList;
+
 /**
  * Drives a recording inside the running game and draws the HUD over it.
  *
@@ -56,8 +58,38 @@ public class ReplayController {
 
 	private final ReplayPlayer player;
 
-	private BitmapText hud;
-	private BitmapText help;
+	/**
+	 * The HUD as a pool of one-line {@link BitmapText} gizmos, not as one multi-line string.
+	 *
+	 * <p>{@link BitmapText} cannot wrap. Its font has no newline glyph - {@code LATIN_FULL} has no
+	 * {@code \n} - and both {@code measure()} and {@code updateVertices()} feed every character
+	 * straight through {@code font.get()}, so a {@code \n} contributes no line advance and no line
+	 * break. It renders as a blank glyph and the rest of the string keeps running right, off the
+	 * screen. The game never relies on this: its own multi-line component, {@code RenderedTextBlock},
+	 * exists precisely because {@code BitmapText} will not wrap, and no {@code BitmapText} anywhere
+	 * in core is given a {@code \n}.
+	 *
+	 * <p>The HUD has always built its text with {@code \n}, so this was broken before the run data
+	 * grew: every line but the first simply kept going to the right, and the info meant to sit on
+	 * its own row was only readable when the window happened to be wide enough. Adding the score
+	 * line made the string long enough to run off at any ordinary size.
+	 */
+	private final ArrayList<BitmapText> hudLines = new ArrayList<>();
+
+	/** Same wrapping, for the key-hint line. */
+	private final ArrayList<BitmapText> helpLines = new ArrayList<>();
+
+	/** Bounds measured text against, rebuilt when the UI camera changes. */
+	private float maxTextWidth;
+
+	/**
+	 * Camera {@link #maxTextWidth} was measured against.
+	 *
+	 * <p>Held by identity rather than by a boolean "measured" flag. A flag cannot tell "measured
+	 * once" from "measured for a window that has since been resized", and the UI camera is re-created
+	 * whenever the zoom changes, so a resized window would keep wrapping to the width it had before.
+	 */
+	private com.watabou.noosa.Camera textWidthCamera;
 
 private Signal.Listener<KeyEvent> viewerKeys;
 
@@ -150,7 +182,7 @@ public static void pump(){
 		//machine rather than of the recording.
 		controller.player.update( FrameDelta.current( Game.elapsed ));
 
-if (controller.hud == null || controller.hudScene != Game.scene()){
+if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 			//Not just "has a HUD been built". A restart replaces the scene, and the old scene's gizmos
 			//are discarded with it, so a HUD built against the outgoing scene silently vanishes - and
 			//because the field was still set, nothing ever rebuilt it. Comparing against the live
@@ -258,8 +290,9 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 		InterlevelScene.autoContinue = true;
 
 		//the HUD belongs to the scene being replaced; the scene comparison in pump() rebuilds it
-		hud = null;
-		help = null;
+		hudLines.clear();
+		helpLines.clear();
+		textWidthCamera = null;
 		hudScene = null;
 		dismissed = null;
 
@@ -310,19 +343,107 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 	}
 
 	private void buildHud(){
-		hud = new BitmapText( PixelScene.pixelFont );
-		hud.visible = true;
-		//without this the text inherits the scene's camera, which follows the hero, so the HUD
-		//scrolls around the map and sits wherever the camera happens to be. Every other overlay in
-		//the game assigns the UI camera explicitly for exactly this reason.
-		hud.camera = PixelScene.uiCamera;
-		Game.scene().addToFront( hud );
+		//no destroy() call: the gizmos these lists held belonged to the scene being replaced, and that
+		//scene discards its own gizmos. Destroying them again would touch a scene no longer on screen.
+		hudLines.clear();
+		helpLines.clear();
 
-		help = new BitmapText( PixelScene.pixelFont );
-		help.visible = true;
-		help.text( "SPACE pause  +/- speed  [ ] coarser/finer  R restart  ESC quit" );
-		help.camera = PixelScene.uiCamera;
-		Game.scene().addToFront( help );
+		hudLines.add( lineGizmo() );
+		helpLines.add( lineGizmo() );
+
+		//the width text is bounded by belongs to the UI camera, which is re-created whenever the zoom
+		//changes, so the cached bound is dropped with the gizmos it was measured for
+		textWidthCamera = null;
+	}
+
+	/**
+	 * Creates one empty HUD line gizmo.
+	 *
+	 * <p>The UI camera is assigned explicitly because without it the text inherits the scene's
+	 * camera, which follows the hero - so the HUD scrolls around the map and sits wherever the
+	 * camera happens to be. Every other overlay in the game assigns the UI camera for the same reason.
+	 */
+	private BitmapText lineGizmo(){
+		BitmapText text = new BitmapText( PixelScene.pixelFont );
+		text.visible = true;
+		text.camera = PixelScene.uiCamera;
+		Game.scene().addToFront( text );
+		return text;
+	}
+
+	/**
+	 * Splits text into lines that each fit within {@code maxWidth}, wrapping on spaces.
+	 *
+	 * <p>{@code \n} in the input is an explicit break and is honoured as one. That is what makes this
+	 * work at all: {@link BitmapText} has no newline glyph and no wrapping, so a newline handed
+	 * straight to it is drawn as a blank and the line keeps running off the screen. Splitting here
+	 * and drawing each piece as its own gizmo is the only way this class can show more than one line.
+	 *
+	 * <p>A word wider than the whole line - a deep seed hash on a narrow window - cannot be broken on
+	 * spaces, so it is emitted whole rather than dropped. Dropping it would silently hide the seed,
+	 * which is the one value identifying which recording is on screen.
+	 *
+	 * <p>{@code widthOf} is a parameter rather than a call to {@link PixelScene#pixelFont} so that
+	 * this is testable headlessly, where there is no font at all and every measurement is zero.
+	 */
+	static ArrayList<String> wrapText( String text, float maxWidth,
+									   java.util.function.ToDoubleFunction<String> widthOf ){
+		ArrayList<String> lines = new ArrayList<>();
+		if (text == null || text.isEmpty()) return lines;
+
+		for (String paragraph : text.split( "\n", -1 )){
+			StringBuilder line = new StringBuilder();
+			for (String word : paragraph.split( " " )){
+				String candidate = line.length() == 0 ? word : line + " " + word;
+				if (line.length() > 0 && widthOf.applyAsDouble( candidate ) > maxWidth){
+					lines.add( line.toString() );
+					line = new StringBuilder( word );
+				} else {
+					if (line.length() > 0) line.append( ' ' );
+					line.append( word );
+				}
+			}
+			lines.add( line.toString() );
+		}
+		return lines;
+	}
+
+	/** {@link #wrapText} measured against the real UI font. */
+	private static ArrayList<String> wrapText( String text, float maxWidth ){
+		BitmapText probe = new BitmapText( PixelScene.pixelFont );
+		return wrapText( text, maxWidth, candidate -> {
+			probe.text( candidate );
+			probe.measure();
+			return probe.width;
+		} );
+	}
+
+	/**
+	 * Draws wrapped lines bottom-up, so the block hangs off the bottom edge and grows upward.
+	 *
+	 * <p>Grows the pool as needed rather than fixing a count, because how many lines the HUD needs
+	 * depends on the window: the same text is one line on a wide monitor and four on a narrow one.
+	 * A fixed pool silently truncated the overflow, which is the failure being fixed here.
+	 */
+	private void drawBlock( ArrayList<BitmapText> pool, ArrayList<String> lines,
+						   float x, float bottomY ){
+		while (pool.size() < lines.size()){
+			pool.add( lineGizmo() );
+		}
+		for (int i = 0; i < pool.size(); i++){
+			BitmapText gizmo = pool.get( i );
+			if (i >= lines.size()){
+				gizmo.visible = false;
+				gizmo.text( "" );
+				continue;
+			}
+			gizmo.visible = true;
+			gizmo.text( lines.get( i ) );
+			gizmo.measure();
+			gizmo.x = x;
+			gizmo.y = bottomY - gizmo.height;
+			bottomY = gizmo.y - 1;
+		}
 	}
 
 /**
@@ -438,10 +559,22 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 	}
 
 	private void layout(){
-		if (hud == null || PixelScene.uiCamera == null) return;
+		if (hudLines.isEmpty() || PixelScene.uiCamera == null || PixelScene.pixelFont == null) return;
 
 		float x = 4;
 		float y = PixelScene.uiCamera.height - 4;
+
+		//Text is bounded by the camera, so leave a small margin rather than letting the right edge
+		//of the last glyph sit exactly on the screen edge where it is half-clipped.
+		//
+		//Tracked by camera identity rather than by a dirty flag, because PixelScene builds a new
+		//uiCamera whenever the UI zoom changes - so a resized or maximised window gets a different
+		//camera object with a different width, and caching the width against anything but that
+		//camera would keep wrapping to the old window's width.
+		if (textWidthCamera != PixelScene.uiCamera){
+			maxTextWidth = PixelScene.uiCamera.width - x - 4;
+			textWidthCamera = PixelScene.uiCamera;
+		}
 
 		ReplayPlayback playback = player.playback();
 
@@ -451,7 +584,7 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 			playback.gridWidth( Dungeon.level.width() );
 		}
 
-		hud.text( playback.status()
+		ArrayList<String> wrapped = wrapText( playback.status()
 				+ "\nseed " + playback.replay().seedText
 				+ "   hero " + playback.replay().heroClass
 				//"actions", not "turns": Replay.turns is SPDEnv.turnsTotal(), a count of decisions the
@@ -474,16 +607,24 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 				+ "   (final " + String.format( "%.2f", playback.replay().score ) + ")"
 				+ "\nspeed " + String.format( "%.1f", player.speed() ) + "x"
 				+ "   " + ( player.playing() ? "playing" : "paused" )
-				+ ( player.haltReason().isEmpty() ? "" : "   " + player.haltReason() ) );
-		hud.measure();
-		hud.x = x;
-		hud.y = y - hud.height;
+				+ ( player.haltReason().isEmpty() ? "" : "   " + player.haltReason() ),
+				maxTextWidth );
 
-		if (help != null){
-			help.measure();
-			help.x = x;
-			help.y = hud.y - help.height - 2;
+		drawBlock( hudLines, wrapped, x, y );
+
+		drawBlock( helpLines, wrapText(
+				"SPACE pause  +/- speed  [ ] coarser/finer  R restart  ESC quit", maxTextWidth ),
+				x, y - hudHeight( wrapped ) - 2 );
+	}
+
+	/** Total drawn height of a wrapped block, for stacking one block above another. */
+	private float hudHeight( ArrayList<String> lines ){
+		float lineHeight = PixelScene.pixelFont.baseLine;
+		float total = 0;
+		for (int i = 0; i < lines.size(); i++){
+			total += lineHeight + (i > 0 ? 1 : 0 );
 		}
+		return total;
 	}
 
 /** Releases cell input and stops driving. Called when the viewer quits. */

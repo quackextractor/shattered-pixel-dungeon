@@ -47,6 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     printed the raw index. They are now reported as `(x, y)` with the raw index kept for comparison
     against a trace. x grows to the right and y grows downward, which is the engine's own order.
 
+- **The viewer HUD ran off the right edge of the screen.** `BitmapText` cannot wrap, and cannot even
+  break a line: its font has no newline glyph, so the `\n` the HUD has always used between its rows
+  drew as a blank and every row kept running right until it left the window. Only the first row was
+  readable, and the rest was not merely ugly but off-screen. It went unnoticed because the HUD was
+  short enough to fit at most window sizes - adding the per-step score line above made the string
+  longer than any ordinary window. The HUD is now a pool of one-line gizmos laid out against the UI
+  camera, wrapped on spaces and measured with the real font, so a narrower window wraps instead of
+  clipping. Worth noting what was never in doubt: no `BitmapText` anywhere in the game is given a
+  `\n`, because the game's own multi-line component exists precisely because this one will not wrap.
+  This one had been the exception.
+
 - **The viewer and the trainer diverged on `cleric-mid`, and nothing had noticed.** Draining the last
   recorded step (above) made the viewer compare a step it had never compared before, and that
   recording immediately failed - seven turns and eight health away from what it says. The cause was a
@@ -72,6 +83,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   coordinates. Mutation-tested: restoring the old drain ordering fails the death case, disarming the
   restart wait fails the rebuild case, flipping the y axis fails the coordinate case, and reporting the
   net instead of the gain half fails the score case.
+
+- **One more check in `playbackcheck`** (18 -> 19), covering the HUD wrap. It measures with a fixed
+  per-character width rather than the real font, because it runs headlessly where there is no font and
+  every real measurement is zero - a check that could only pass is worse than no check. It asserts
+  three separate properties: no line comes out wider than the limit, wrapping does not alter the
+  content, and an explicit `\n` still forces a break. Mutation-tested by disabling the width test,
+  which fails it.
 
 - **`gradle :superintelligence:viewdiff`** (`:superintelligence`): reads a headless `worldtrace` snapshot
   and a rendered `-Dspd.worldTrace` one, and reports the first step and **field** that differ, plus the

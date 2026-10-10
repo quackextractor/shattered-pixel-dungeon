@@ -63,7 +63,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 18;
+	private static final int CHECKS = 19;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -121,6 +121,7 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		check( () -> checkCoordinatesDecodeAPosition() );
 		check( () -> checkPositionsAreReportedAsCoordinates( good ) );
 		check( () -> checkADivergenceMessageNamesCoordinates() );
+		check( () -> checkHudTextWrapsInsteadOfRunningOffScreen() );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
@@ -956,6 +957,68 @@ private static void checkADivergenceMessageNamesCoordinates(){
 }
 
 // --------------------------------------------------------------------------- helpers
+
+	/**
+	 * The HUD must wrap, not run off the screen.
+	 *
+	 * <p>{@link com.watabou.noosa.BitmapText} cannot wrap: its font has no newline glyph, so the
+	 * {@code \n} the HUD has always used renders as a blank and the text keeps going right. That was
+	 * survivable while the HUD was short and stopped being survivable once the score line made the
+	 * string longer than an ordinary window.
+	 *
+	 * <p>Width is measured with a fixed per-character width here rather than the real font, because
+	 * this runs headlessly where there is no font and every real measurement is zero - a check that
+	 * could only pass is worse than no check. The property under test is the wrapping algorithm, not
+	 * the pixel font: no line comes out wider than it was allowed to be.
+	 */
+	private static void checkHudTextWrapsInsteadOfRunningOffScreen(){
+		final float charW = 6f;
+		final float maxWidth = 200f;
+		java.util.function.ToDoubleFunction<String> widthOf = s -> s.length() * charW;
+
+		String hud = "step 40/97 pos 4,7\nseed ABCD-1234 hero WARRIOR\n"
+				+ "recorded depth 3   actions 40/200   engine time 41.2\n"
+				+ "score 12.34   last step +0.125   +18.5 / -6.2   (final 11.02)\n"
+				+ "speed 1.0x   playing";
+
+		ArrayList<String> lines = ReplayController.wrapText( hud, maxWidth, widthOf );
+
+		if (lines.isEmpty()){
+			fail( "wrapping the HUD produced no lines at all" );
+			return;
+		}
+
+		for (String line : lines){
+			if (widthOf.applyAsDouble( line ) > maxWidth){
+				fail( "HUD line is wider than the screen it must fit in: '" + line + "' is "
+						+ widthOf.applyAsDouble( line ) + " against a limit of " + maxWidth );
+			}
+		}
+
+		//the break must be real, not just a truncation: every word of the original has to survive
+		String joined = String.join( " ", lines ).replaceAll( "\\s+", " " ).trim();
+		String original = hud.replaceAll( "\\s+", " " ).trim();
+		if (!joined.equals( original )){
+			fail( "wrapping the HUD changed its content.\n         wrapped:   " + joined
+					+ "\n         original: " + original );
+		}
+
+		//an explicit \n must still force a break, which is the whole reason wrapText splits on it
+		ArrayList<String> breaks = ReplayController.wrapText( "aaa\nbbb", maxWidth, widthOf );
+		if (breaks.size() != 2){
+			fail( "an explicit newline did not force a line break; got " + breaks.size()
+					+ " lines from 2, so multi-line HUD text would be joined back together" );
+		}
+
+		//a word too wide to break on spaces is kept whole rather than dropped - dropping it would
+		//silently hide the seed, the one value that says which recording is on screen
+		ArrayList<String> wide = ReplayController.wrapText( "hi SUPERLONGSINGLETOKEN1234567890", maxWidth, widthOf );
+		StringBuilder rebuilt = new StringBuilder();
+		for (String line : wide) rebuilt.append( line ).append( ' ' );
+		if (!rebuilt.toString().trim().equals( "hi SUPERLONGSINGLETOKEN1234567890" )){
+			fail( "a word wider than the line was dropped instead of kept whole: got '" + rebuilt + "'" );
+		}
+	}
 
 	private static Replay.Step stepAt( Replay replay, int at ){
 		if ( at >= replay.steps.size() ){
