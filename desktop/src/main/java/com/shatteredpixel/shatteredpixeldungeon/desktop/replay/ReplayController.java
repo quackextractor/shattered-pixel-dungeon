@@ -157,9 +157,25 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 			//scene heals that automatically, whenever the scene is replaced for any reason.
 			controller.buildHud();
 			controller.hudScene = Game.scene();
-			controller.bindKeys();
-			log( "HUD built and viewer keys bound" );
-		} else if (!controller.pumpLogged){
+			log( "HUD built" );
+		}
+
+		//Separated from the HUD on purpose, and run on every frame rather than on a rebuild.
+		//
+		//InterlevelScene calls KeyEvent.clearListeners() on its way out, which removes every key listener
+		//including this one. Rebinding therefore has to happen on scene change - but it was tied to the
+		//HUD rebuild, so anything that stopped that rebuild from running (buildHud throwing, a scene whose
+		//camera is not ready) left the viewer with no controls at all, while playback carried on perfectly
+		//because it is driven by the frame hook rather than by keys. That is what makes it look like only
+		//the controls broke.
+		//
+		//Doing it every frame also closes the window between clearListeners() and the next scene change.
+		//In that window SPACE had no viewer listener, and the game's own SPDAction.WAIT_OR_PICKUP binding
+		//was live and unopposed: pressing pause waited the hero instead, which spent a turn no recorded
+		//step asked for and diverged the replay on the very next comparison.
+		controller.bindKeys();
+
+		if (!controller.pumpLogged){
 			controller.pumpLogged = true;
 			log( "pump running, waiting for uiCamera (now "
 					+ (PixelScene.uiCamera == null ? "still null" : "available") + ")" );
@@ -249,6 +265,13 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 
 		//Otherwise the second run's halt is silent. A restart re-arms the one-shot report, because a
 		//fresh playback that stops again is a new event and the reason is a different one.
+		//
+		//Reported before the switch rather than after it. Game.switchScene only sets a flag; the scene
+		//is rebuilt at the top of the next frame, which means the outgoing GameScene.update() still
+		//runs once more with a null hero - and pump()'s finished() branch printed the *previous* run's
+		//halt on it. That is why pressing R on a finished recording appeared to do nothing: the HUD was
+		//immediately overwritten with the old run's "finished" line, while the player underneath had
+		//already rewound.
 		stoppedLogged = false;
 
 		Game.switchScene( InterlevelScene.class );
@@ -316,27 +339,34 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 	 * recording. That needs {@link KeyBindings#addOverride}, which is consulted ahead of the player's
 	 * bindings - unlike {@code addHardBinding}, which is checked last and so can only ever affect a
 	 * key the player has not bound at all.
+	 *
+	 * <p>Called every frame, so it must be cheap and idempotent. The listener is created once and
+	 * kept; only its registration is refreshed, because {@link #uninstall} nulls it and a scene change
+	 * can drop it behind the viewer's back. Re-adding an existing listener is a no-op in
+	 * {@code Signal.add}, so this costs a handful of map operations a frame.
 	 */
 	private void bindKeys(){
-		//InterlevelScene calls KeyEvent.clearListeners() on its way out, to drop its own continue
-		//button listener - and that clears every listener, this one included. A restart therefore
-		//leaves the viewer with no controls at all: playback carries on perfectly, because it is
-		//driven by the frame hook rather than by keys, which is what makes it look like only the
-		//controls broke. So the listener is re-registered on every scene rebuild, and the previous
-		//one is removed first rather than stacking a duplicate.
-		if (viewerKeys != null){
-			KeyEvent.removeKeyListener( viewerKeys );
+		if (viewerKeys == null){
+			viewerKeys = newViewerKeyListener();
+			log( "listener registered for SPACE/R/+/-/[/]/ESC" );
+		} else {
+			//A no-op when already registered, and the repair when KeyEvent.clearListeners() has dropped
+			//it - which InterlevelScene does every time it hands off to the game scene, so on any restart.
+			KeyEvent.addKeyListener( viewerKeys );
 		}
 
-		int[] keys = {
-				Input.Keys.SPACE, Input.Keys.R, Input.Keys.PLUS, Input.Keys.EQUALS,
-				Input.Keys.MINUS, Input.Keys.LEFT_BRACKET, Input.Keys.RIGHT_BRACKET };
-
-		for (int key : keys){
+		for (int key : VIEWER_KEYS){
 			KeyBindings.addOverride( key, GameAction.NONE );
 		}
+	}
 
-		viewerKeys = new Signal.Listener<KeyEvent>() {
+	/** The keys the viewer claims, and the reason each is listed is in {@link #bindKeys()}. */
+	private static final int[] VIEWER_KEYS = {
+			Input.Keys.SPACE, Input.Keys.R, Input.Keys.PLUS, Input.Keys.EQUALS,
+			Input.Keys.MINUS, Input.Keys.LEFT_BRACKET, Input.Keys.RIGHT_BRACKET };
+
+	private Signal.Listener<KeyEvent> newViewerKeyListener(){
+		return new Signal.Listener<KeyEvent>() {
 			@Override
 			public boolean onSignal( KeyEvent event ){
 				if (!event.pressed) return false;
@@ -384,8 +414,6 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 				}
 			}
 		};
-		KeyEvent.addKeyListener( viewerKeys );
-		log( "listener registered for SPACE/R/+/-/[/]/ESC" );
 	}
 
 	/**
@@ -415,12 +443,35 @@ if (controller.hud == null || controller.hudScene != Game.scene()){
 		float x = 4;
 		float y = PixelScene.uiCamera.height - 4;
 
-		hud.text( player.playback().status()
-				+ "\nseed " + player.playback().replay().seedText
-				+ "   hero " + player.playback().replay().heroClass
-				+ "\nrecorded score " + String.format( "%.2f", player.playback().replay().score )
-				+ "   depth " + player.playback().replay().depth
-				+ "   turns " + player.playback().replay().turns
+		ReplayPlayback playback = player.playback();
+
+		//The level width, read from the live level and handed to the playback so a cell can be printed
+		//as coordinates. Null before floor 1 exists, and coordinates() falls back to the raw index.
+		if (Dungeon.level != null){
+			playback.gridWidth( Dungeon.level.width() );
+		}
+
+		hud.text( playback.status()
+				+ "\nseed " + playback.replay().seedText
+				+ "   hero " + playback.replay().heroClass
+				//"actions", not "turns": Replay.turns is SPDEnv.turnsTotal(), a count of decisions the
+				//agent made. The engine's own clock is Actor.now(), shown separately below, and the two are
+				//not interchangeable - a turn is a duration and can be fractional, so a heavy weapon costs
+				//two and haste less than one. Calling the decision count "turns" invited exactly the
+				//reading that made the turn limit look like it counted something else.
+				+ "\nrecorded depth " + playback.replay().depth
+				+ "   actions " + playback.replay().turns
+				+ "/" + playback.replay().turnLimitPerFloor
+				+ "   engine time " + String.format( "%.1f", com.shatteredpixel.shatteredpixeldungeon.actors.Actor.now() )
+				//Live score, not just the run's total. The total is on the recording and cannot say
+				//which action lost a hundred points; the per-step delta and the gained/lost split can,
+				//and the split is what tells a run that climbed to 40 from one that reached 40 and gave
+				//most of it back.
+				+ "\nscore " + String.format( "%.2f", playback.score() )
+				+ "   last step " + String.format( "%+.3f", playback.stepReward() )
+				+ "   +" + String.format( "%.1f", playback.gained() )
+				+ " / " + String.format( "%.1f", playback.lost() )
+				+ "   (final " + String.format( "%.2f", playback.replay().score ) + ")"
 				+ "\nspeed " + String.format( "%.1f", player.speed() ) + "x"
 				+ "   " + ( player.playing() ? "playing" : "paused" )
 				+ ( player.haltReason().isEmpty() ? "" : "   " + player.haltReason() ) );

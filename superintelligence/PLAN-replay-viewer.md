@@ -478,6 +478,7 @@ Still untested:
   `huntress-mid`, `warrior-long`), each carrying `termination=DEATH` and a final step worth `-100.0`.
   `PlaybackCheck.checkADeathRunPlaysItsLastStep` asserts the cursor reaches the end; what it cannot see
   is whether the hero actually acts and dies on screen, which needs `viewcheck` and a display.
+  **Both are now asserted** — see §14.
 - **Visual fidelity.** The controls have been driven by a human; nobody has checked that the sprites
   and animation actually look right.
 - **`PlatformSupport.getFont` throws "No cap character found in font."** The viewer logs hundreds of
@@ -523,3 +524,44 @@ selector, so nothing was left to re-prompt.
 
 
 
+
+## 14. The five viewer issues - all closed
+
+Worked from [`issues.md`](issues.md) "Viewer / recordings". Recorded here because the two that matter
+most were reported as symptoms and were caused somewhere else entirely, and because one of them turned
+out to have been hiding a third.
+
+**`R` after a finished recording did nothing.** A restart nulls the hero and re-enters the interlevel
+scene, and the frame driver runs throughout the rebuild — so the first frame after the keypress found a
+null hero, and a null hero is what ends a run everywhere else in `ReplayPlayer`. It finished the
+recording before the new level existed, so the HUD reported a finished replay over a rewound cursor.
+Playback now waits for the rebuilt level instead. Measured: disarming that wait fails
+`checkRestartKeepsPlaybackArmedAcrossARebuild` with the original message, "run ended - hero is dead".
+
+**SPACE then waited the hero.** Separate fault, about window rather than state. `InterlevelScene` calls
+`KeyEvent.clearListeners()` on every handoff, and the overrides were only re-asserted when the HUD was
+rebuilt, so in the gap SPACE meant `WAIT_OR_PICKUP` again — a turn nobody recorded, spent.
+
+**A death recording stopped one step short.** The "recording ends here" test sat at the top of the
+drain, so it fired on the frame the final action was *injected*, before the hero performed it. All three
+death recordings in the corpus stopped with the hero standing.
+
+**Fixing that found a third fault.** Draining the last step meant comparing it for the first time, and
+`cleric-mid` failed at once: seven turns and eight health from what it says. `ReplayPlayer`'s drain had
+none of the trainer's resting-stall backstop, so it sat out a rest `LevelPipeline.runToHeroReady` had
+already given up on. `Hero.act()` handles a resting hero with no action by spending `TIME_TO_REST` and
+calling `next()` without becoming ready, so the drain waited for the rest to end by itself. The
+backstop is ported now, counting as a field rather than a loop variable — the viewer yields the frame,
+so a per-call counter never reached the threshold.
+
+**Turns were actions.** `Replay.turns` is `SPDEnv.turnsTotal()`, a count of decisions; the engine's
+clock is `Actor.now()`, fractional. Both are now labelled, and the engine time is shown next to them.
+
+**Score and positions.** The HUD reports the running score, the last step's delta and gained/lost
+separately — a net figure cannot tell a run that climbed from one that gave it back — and positions as
+`(x, y)` with the raw index kept for comparison against a trace.
+
+The general lesson, and the reason `playbackcheck` now plays the committed corpus: **a step that is not
+exercised is a step that is not checked**, and a viewer reporting "clean" over an unexamined step is
+reporting on less than it appears to. Every case there built its own fixture, and a freshly recorded run
+does not end on a rest.

@@ -53,6 +53,16 @@ public class ReplayPlayback {
 	/** What disagreed, naming the quantity. Empty until it does. */
 	private String reason = "";
 
+	/**
+	 * Level width, for rendering a cell as coordinates.
+	 *
+	 * <p>Set by the viewer from the live level rather than stored per step, because it is a property of
+	 * the dungeon rather than of the recording: every floor is the same size, and a recording does not
+	 * say. Zero until set, and {@link #coordinates} falls back to the raw index in that case rather than
+	 * dividing by a width it does not have.
+	 */
+	private int gridWidth = 0;
+
 	private int expectedPos = -1;
 
 	/** True once every recorded step has been applied, or the run ended. */
@@ -64,6 +74,17 @@ public class ReplayPlayback {
 
 	public Replay replay(){
 		return replay;
+	}
+
+	/**
+	 * The level width to decode cell indices with.
+	 *
+	 * <p>Called by the viewer once a level exists. Zero, the default, prints the raw index - which is
+	 * what every report did before coordinates existed, so the fallback is a working answer rather than
+	 * a broken one.
+	 */
+	public void gridWidth( int width ){
+		this.gridWidth = width;
 	}
 
 	public int total(){
@@ -154,7 +175,10 @@ public class ReplayPlayback {
 		if (expected >= 0 && heroPos != expected){
 			divergedAt = cursor;
 			actualAt = heroPos;
-			reason = "hero at " + heroPos + ", recording says " + expected;
+			//Both cells as coordinates, and both raw. A single 3-digit index says nothing about where
+			//on the floor the hero is, and the reader of a failed replay is looking at a tile map.
+			reason = "hero at " + coordinates( heroPos, gridWidth )
+					+ ", recording says " + coordinates( expected, gridWidth );
 			return false;
 		}
 		return true;
@@ -204,6 +228,95 @@ public class ReplayPlayback {
 		return cursor < replay.steps.size() ? replay.steps.get( cursor ) : null;
 	}
 
+	// --------------------------------------------------------------------------- score
+
+	/**
+	 * Running score through the step played so far, from the rewards the recording carries.
+	 *
+	 * <p>Read from the recording rather than recomputed from the live world, because a replay's job is
+	 * to report what the recording says happened. The viewer had only the run's final total on screen,
+	 * which cannot answer the question someone watching a recording actually has - which action cost
+	 * 100 points - and cannot distinguish a run that climbed steadily to 40 from one that reached 40 and
+	 * gave most of it back.
+	 *
+	 * <p>Up to and including the settled step, so it is the score as of the step on screen rather than
+	 * one the viewer has not reached.
+	 */
+	public double score(){
+		double total = 0;
+		for (int i = 0; i <= cursor && i < replay.steps.size(); i++){
+			total += replay.steps.get( i ).reward;
+		}
+		return total;
+	}
+
+	/**
+	 * Reward the step just played, which is the delta rather than the running total.
+	 *
+	 * <p>{@link Replay.Step#reward} is the reward for that step, not a cumulative one - it is the value
+	 * {@code ReplayRecorder.afterStep} is handed, which is what one {@code env.step} returned. Presenting
+	 * it as the running score would have made every step look like the whole run so far.
+	 */
+	public double stepReward(){
+		Replay.Step step = currentStep();
+		if (step == null && cursor > 0) step = replay.steps.get( cursor - 1 );
+		return step == null ? 0 : step.reward;
+	}
+
+	/**
+	 * Total reward gained, summing only the positive steps.
+	 *
+	 * <p>The recording's own sum is a net figure: a run that gained 90 and lost 50 scores 40, and the
+	 * two halves carry different information about a policy - one says the reward function is being
+	 * collected, the other says the agent is being punished. A net number cannot tell them apart, which
+	 * is why the ledger has a per-term table and the viewer had nothing at all.
+	 *
+	 * @see #lost()
+	 */
+	public double gained(){
+		double total = 0;
+		for (int i = 0; i <= cursor && i < replay.steps.size(); i++){
+			double r = replay.steps.get( i ).reward;
+			if (r > 0) total += r;
+		}
+		return total;
+	}
+
+	/** Total reward lost, summing only the negative steps. Negative, or zero before any loss. */
+	public double lost(){
+		double total = 0;
+		for (int i = 0; i <= cursor && i < replay.steps.size(); i++){
+			double r = replay.steps.get( i ).reward;
+			if (r < 0) total += r;
+		}
+		return total;
+	}
+
+	// --------------------------------------------------------------------------- coordinates
+
+	/**
+	 * A hero cell as {@code x, y}, which is what a person reading a tile map needs.
+	 *
+	 * <p>{@code heroPos} is {@code y * width + x} - the engine's own packing, and correct for indexing
+	 * but unreadable: 687 tells you nothing, and comparing two of them means doing the division in your
+	 * head. Every divergence report in this project printed the raw index, so "hero at 687, recording
+	 * says 655" was the whole of what a failed recording said about where the hero was.
+	 *
+	 * <p>x grows to the right and y grows downward, which is the engine's own order and therefore the
+	 * one that matches the tile map and every trace in the project. y is <em>not</em> flipped to put the
+	 * origin at the bottom left: that would be prettier on its own and would disagree with
+	 * {@code Level} and with every recorded {@code heroPos}.
+	 *
+	 * <p>Returns the raw index too, because a divergence report is often being compared against a trace
+	 * or a replay file, and silently changing the coordinate system would break that.
+	 *
+	 * @param width the level's width, or a non-positive value when there is no level to ask
+	 */
+	public String coordinates( int pos, int width ){
+		if (pos < 0 || width <= 0) return "pos " + pos;
+		return "(" + ( pos % width ) + ", " + ( pos / width ) + ") pos " + pos;
+	}
+
 	/** Where the hero actually was when playback diverged, or -1. */
 	public int actualPos(){
 		return actualAt;
@@ -236,3 +349,7 @@ public class ReplayPlayback {
 		return "step " + ( cursor + 1 ) + " / " + total();
 	}
 }
+
+
+
+

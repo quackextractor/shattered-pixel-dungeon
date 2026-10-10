@@ -21,6 +21,7 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -62,7 +63,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 10;
+	private static final int CHECKS = 18;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -112,6 +113,14 @@ public class PlaybackCheck {
 		check( () -> checkNonDefaultConfigRoundTrips() );
 		check( () -> checkDeclaredTerminationEndsPlayback( good ) );
 		check( () -> checkADeathRunPlaysItsLastStep( good ) );
+		check( () -> checkRestartDoesNotEndTheRun( good ) );
+		check( () -> checkRestartKeepsPlaybackArmedAcrossARebuild( good ) );
+check( () -> checkADeathRunActuallyActsOnItsLastStep() );
+		check( () -> checkTheCommittedCorpusPlaysClean() );
+		check( () -> checkScoreTracksGainAndLossSeparately( good ) );
+		check( () -> checkCoordinatesDecodeAPosition() );
+		check( () -> checkPositionsAreReportedAsCoordinates( good ) );
+		check( () -> checkADivergenceMessageNamesCoordinates() );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
@@ -151,6 +160,9 @@ public class PlaybackCheck {
 		int cursor;
 		int frames;
 		boolean ranOutOfFrames;
+
+		/** Whether the hero was still standing when playback ended. See the death check. */
+		boolean heroAliveAtEnd;
 	}
 
 	/**
@@ -177,8 +189,10 @@ public class PlaybackCheck {
 		outcome.haltReason = player.haltReason();
 		outcome.cursor = playback.cursor();
 		outcome.ranOutOfFrames = player.playing();
+		outcome.heroAliveAtEnd = Dungeon.hero != null && Dungeon.hero.isAlive();
 		return outcome;
 	}
+
 
 	private static EnvConfig ReplayIOConfig( Replay replay ){
 		return com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.configFor( replay );
@@ -499,11 +513,12 @@ private static void checkDeclaredTerminationEndsPlayback( Replay good ){
  * about death rather than about an early halt.
  */
 private static void checkADeathRunPlaysItsLastStep( Replay good ){
-	//hero dies on the final recorded step, and the recording says so
-	Replay dying = recordAShortRun();
-	int last = dying.length() - 1;
-	dying.steps.get( last ).heroHp = 0;
-	dying.termination = "DEATH";
+	Replay dying = corpusRecordingEndingIn( "DEATH" );
+	if ( dying == null ){
+		//Already reported by checkADeathRunActuallyActsOnItsLastStep, which reports the missing case
+		//with the same wording. Reported once rather than twice for one absent file.
+		return;
+	}
 
 	Outcome outcome = play( dying );
 
@@ -538,6 +553,408 @@ private static void checkADeathRunPlaysItsLastStep( Replay good ){
 	}
 }
 
+/**
+ * Every committed recording must play clean through {@link ReplayPlayer}.
+ *
+ * <p>Added because of {@code issues.md} 2. Draining the last recorded step made the viewer compare a
+ * step it had never compared before, and {@code cleric-mid} immediately failed: it diverged at its
+ * final step, seven turns and eight health later than the recording says. The cause was a real gap in
+ * this class - the drain had none of the trainer's resting-stall backstop, so it sat out a rest the
+ * trainer had already given up on - and nothing here could see it, because every other case builds its
+ * own fixture and a freshly recorded run does not end on a rest.
+ *
+ * <p>So the fixture is the corpus: real recordings, recorded by the trainer, covering the terminations
+ * a self-recorded run reaches only by luck. {@link #viewcheck} plays the same files through the real
+ * viewer, and this is its headless half - the difference being that this one can run where there is no
+ * display, and so can be a gate.
+ *
+ * <p>Reports every failure rather than the first, because "which recordings and which steps" is the
+ * whole question when a drain stops matching the trainer.
+ */
+private static void checkTheCommittedCorpusPlaysClean(){
+	File corpus = corpusDir();
+	File[] files = corpus.listFiles( ( dir, name ) -> name.endsWith( ".replay" ) );
+	if ( files == null || files.length == 0 ){
+		fail( "no recordings at " + corpus.getAbsolutePath()
+				+ ", so the committed corpus could not be played. This check is about the real ones." );
+		return;
+	}
+
+	java.util.Arrays.sort( files, java.util.Comparator.comparing( File::getName ));
+
+	int played = 0;
+	for (File file : files){
+		Replay recording;
+		try {
+			recording = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.read( file );
+		} catch (java.io.IOException e){
+			fail( file.getName() + " could not be read: " + e.getMessage() );
+			continue;
+		}
+
+		Outcome outcome = play( recording );
+		played++;
+
+		if (outcome.ranOutOfFrames){
+			fail( file.getName() + " did not finish; it stopped at step " + outcome.cursor
+					+ " of " + recording.length() );
+			continue;
+		}
+		if (outcome.diverged){
+			fail( file.getName() + " diverged at step " + outcome.divergedAt + ": " + outcome.haltReason );
+			continue;
+		}
+		if (outcome.cursor != recording.length()){
+			fail( file.getName() + " played " + outcome.cursor + " of " + recording.length()
+					+ " steps: " + outcome.haltReason );
+		}
+	}
+
+	if (played == 0 && failures.isEmpty()){
+		fail( "the corpus was readable but nothing was played; the check asserted nothing" );
+	}
+}
+
+/**
+ * The first recording in the committed corpus declaring a given termination reason.
+ *
+ * <p>Used instead of a locally built one because a real death cannot be synthesised honestly. The
+ * previous fixture set the recorded health to zero on the last step of a run whose hero was alive at
+ * full health, which made the recording a lie: once the drain resolved that step - which is the fix
+ * {@code issues.md} 2 asks for - the hero's real health no longer matched the recorded zero and the
+ * comparison correctly reported a divergence. The check was passing for the wrong reason, because the
+ * step it exercised was never actually compared.
+ *
+ * @return null when no such recording exists; the caller reports that once
+ */
+private static Replay corpusRecordingEndingIn( String termination ){
+	File corpus = corpusDir();
+	if ( !corpus.isDirectory() ) return null;
+
+	File[] files = corpus.listFiles( ( dir, name ) -> name.endsWith( ".replay" ) );
+	if ( files == null ) return null;
+
+	java.util.Arrays.sort( files, java.util.Comparator.comparing( File::getName ));
+	for (File file : files){
+		Replay candidate;
+		try {
+			candidate = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.read( file );
+		} catch (java.io.IOException e){
+			continue;
+		}
+		if ( termination.equals( candidate.termination ) && candidate.steps.size() > 4){
+			return candidate;
+		}
+	}
+	return null;
+}
+
+/**
+ * A restart must leave playback running, not finished.
+ *
+ * <p>{@code issues.md} 1: pressing {@code R} after a recording finished left the HUD reading
+ * "finished" over a rewound cursor, so the key appeared to do nothing. The cause is the ordering
+ * inside {@code restart()}: the cursor is rewound, but the outgoing scene's next frame runs the drain
+ * against a hero that has already been nulled, and a null hero is what ends a run everywhere else in
+ * this class.
+ *
+ * <p>Asserted on the player rather than through {@link ReplayController}, because the controller needs
+ * a live scene to install and drive - which is exactly why this needed a headless driver at all.
+ */
+private static void checkRestartDoesNotEndTheRun( Replay good ){
+		env.reset( good.seedText, heroClassOf( good ) );
+		ReplayPlayer player = new ReplayPlayer( good, ReplayIOConfig( good ) );
+		player.speed( 16f );
+
+		//play a few steps so the cursor is genuinely partway through, which is the state R is pressed in
+		for (int i = 0; i < 5; i++) player.update( 1f / 60f );
+
+		player.restart();
+
+		if ( !player.playing() ){
+			fail( "restart() left playback stopped; pressing R on a finished recording reported it as "
+					+ "still finished, so the key did nothing" );
+		}
+		if ( player.haltReason() != null && !player.haltReason().isEmpty() ){
+			fail( "restart() left a halt reason behind: \"" + player.haltReason()
+					+ "\". A restarted run reports its own ending, not the previous one's." );
+		}
+		if ( player.playback().finished() ){
+			fail( "restart() left the playback marked finished; the HUD would read 'finished' over a "
+					+ "cursor rewound to 0" );
+		}
+		if ( player.playback().cursor() != 0 ){
+			fail( "restart() left the cursor at " + player.playback().cursor() + " rather than 0" );
+		}
+}
+
+/**
+ * The window between a restart and the level it is waiting for must not end the run.
+ *
+ * <p>The other half of {@code issues.md} 1, and the part that actually caused it. A restart nulls
+ * {@code Dungeon.hero} and re-enters the interlevel scene, which takes at least a fade to build floor 1;
+ * the frame driver runs throughout. Without an explicit wait, the first frame of that gap read the null
+ * hero as a finished run.
+ *
+ * <p>Driven rather than reasoned about: {@link Dungeon#hero} is a static, so it can be nulled here to
+ * reproduce the gap exactly as the restart leaves it, and then restored by a fresh reset - which is
+ * what the interlevel scene does.
+ */
+private static void checkRestartKeepsPlaybackArmedAcrossARebuild( Replay good ){
+		env.reset( good.seedText, heroClassOf( good ) );
+		ReplayPlayer player = new ReplayPlayer( good, ReplayIOConfig( good ) );
+		player.speed( 16f );
+
+		player.restart();
+
+		//the gap: no level, no hero, playback must wait rather than declare the run over
+		Dungeon.hero = null;
+		for (int i = 0; i < 10; i++) player.update( 1f / 60f );
+
+		if ( !player.playing() ){
+			fail( "playback ended while the level was still being rebuilt: \"" + player.haltReason()
+					+ "\". A restart nulls the hero before the scene switch, so a null hero there means "
+					+ "'not yet', not 'over'." );
+		}
+		if ( player.playback().finished() ){
+			fail( "the recording was marked finished during the rebuild window after a restart" );
+		}
+
+		//and once the hero is back, playback resumes of its own accord
+		env.reset( good.seedText, heroClassOf( good ) );
+		for (int i = 0; i < 60 && player.playback().cursor() == 0; i++) player.update( 1f / 60f );
+
+		if ( player.playback().cursor() == 0 ){
+			fail( "playback did not resume after the rebuilt level arrived; a restart leaves the viewer "
+					+ "stuck on step 1" );
+		}
+}
+
+/**
+ * A death recording's last step must be <em>performed</em>, not merely applied.
+ *
+ * <p>{@code issues.md} 2: the viewer finished just before the hero died. The cursor check in
+ * {@link #checkADeathRunPlaysItsLastStep} cannot see that - {@code applyNextStep} injects the recorded
+ * action, so the cursor reaches the end whether or not the hero ever acts on it. What distinguishes them
+ * is the world: whether the hero is standing at the end.
+ *
+ * <p>Run against a real recording rather than a synthetic one. The committed corpus contains runs that
+ * end in death - the trainer produced them, so the last step is one that killed the hero - and playing
+ * one exercises the exact path a person watching a recording hits. A fixture that forced the hero's
+ * health down to force a death would be testing the fixture: editing live state behind the player's back
+ * makes every later comparison fail on the edit rather than on the behaviour under test.
+ *
+ * <p>Skipped, loudly, when no death recording is available. A gate that quietly passes because its case
+ * could not be built is worse than one that fails.
+ */
+private static void checkADeathRunActuallyActsOnItsLastStep(){
+	Replay death = corpusRecordingEndingIn( "DEATH" );
+	if ( death == null ){
+		File corpus = corpusDir();
+		fail( "no recording in " + corpus.getAbsolutePath() + " declares termination=DEATH, so the case "
+				+ "this check exists for could not be built. A gate that cannot reach its own case is not "
+				+ "a passing gate." );
+		return;
+	}
+
+	Outcome outcome = play( death );
+
+	if ( outcome.ranOutOfFrames ){
+		fail( "the death recording " + death.seedText + " hung instead of finishing" );
+		return;
+	}
+	if ( outcome.cursor != death.length() ){
+		fail( "the death recording " + death.seedText + " played " + outcome.cursor + " of "
+				+ death.length() + " steps: " + outcome.haltReason );
+		return;
+	}
+	if ( outcome.diverged ){
+		fail( "the death recording " + death.seedText + " diverged: " + outcome.haltReason );
+		return;
+	}
+	if ( outcome.heroAliveAtEnd ){
+		fail( "the death recording " + death.seedText + " ended with the hero still standing. Its last "
+				+ "recorded step was applied and then skipped before the hero acted, which is what 'the "
+				+ "viewer finishes just before the hero dies' looks like on screen." );
+	}
+}
+
+/** The committed corpus, or a path the build points elsewhere. Gradle resolves a relative one against the module. */
+private static File corpusDir(){
+	String configured = System.getProperty( "spd.replayDir" );
+	if ( configured != null && !configured.trim().isEmpty()){
+		return new File( configured.trim() );
+	}
+	return new File( "../replays" );
+}
+
+/**
+ * The score the viewer shows must separate gain from loss.
+ *
+ * <p>{@code issues.md} 4: the recording carried a per-step reward and the viewer showed only the run's
+ * total, so nothing on screen could say which action cost 100 points. The fix computes all four figures
+ * from the recording, and this asserts they are the four different numbers a reward function produces -
+ * a check that only compared them against themselves would pass on an implementation returning zero.
+ */
+private static void checkScoreTracksGainAndLossSeparately( Replay good ){
+	ReplayPlayback playback = new ReplayPlayback( good );
+
+		double expectedGain = 0, expectedLoss = 0, expectedTotal = 0;
+		for (int i = 0; i <= playback.cursor() && i < good.length(); i++){
+			double r = good.steps.get( i ).reward;
+			expectedTotal += r;
+			if ( r > 0 ) expectedGain += r;
+			else if ( r < 0 ) expectedLoss += r;
+		}
+
+		if ( Math.abs( playback.score() - expectedTotal ) > 1e-6 ){
+			fail( "score() reported " + playback.score() + " where the recording sums to " + expectedTotal );
+		}
+		if ( Math.abs( playback.gained() - expectedGain ) > 1e-6 ){
+			fail( "gained() reported " + playback.gained() + " where the positive steps sum to "
+					+ expectedGain );
+		}
+		if ( Math.abs( playback.lost() - expectedLoss ) > 1e-6 ){
+			fail( "lost() reported " + playback.lost() + " where the negative steps sum to " + expectedLoss );
+		}
+
+		//The split has to be a real split. A run whose steps are all negative gains nothing, and one
+		//whose steps are all positive loses nothing - an implementation that returned the net for both
+		//would pass the arithmetic above on a mixed run and fail these.
+		Replay descending = recordAShortRun();
+		for (Replay.Step step : descending.steps){
+			step.reward = -Math.abs( step.reward ) - 1;
+		}
+		ReplayPlayback down = new ReplayPlayback( descending );
+		down.advance();
+		if ( down.gained() != 0 ){
+			fail( "gained() reported " + down.gained() + " on a run whose every step lost reward; a gain "
+					+ "figure that cannot be zero is not a gain figure" );
+		}
+		if ( down.lost() >= 0 ){
+			fail( "lost() reported " + down.lost() + " on a run whose every step lost reward; loss is "
+					+ "reported as a negative number" );
+		}
+
+		//and the per-step delta is the step, not the running total
+		Replay one = recordAShortRun();
+		one.steps.get( 0 ).reward = 0.25;
+		ReplayPlayback first = new ReplayPlayback( one );
+		if ( Math.abs( first.stepReward() - 0.25 ) > 1e-9 ){
+			fail( "stepReward() reported " + first.stepReward() + " for a first step whose reward is 0.25" );
+		}
+		first.advance();
+		if ( Math.abs( first.score() - 0.25 ) > 1e-9 ){
+			fail( "score() reported " + first.score() + " after one step worth 0.25" );
+		}
+}
+
+/**
+ * A cell index has to decode to the coordinates a person is looking at.
+ *
+ * <p>{@code issues.md} 5: positions were reported as a single number. The packing is
+ * {@code y * width + x}, so the decode is fixed by the engine, and this pins both the arithmetic and the
+ * direction - y downward, matching the tile map, rather than the bottom-left origin that is prettier and
+ * would disagree with every trace in the project.
+ */
+private static void checkCoordinatesDecodeAPosition(){
+	ReplayPlayback playback = new ReplayPlayback( new Replay() );
+
+		//32 is the width every standard floor is built at.
+		playback.gridWidth( 32 );
+
+		String topLeft = playback.coordinates( 0, 32 );
+		String topRight = playback.coordinates( 31, 32 );
+		String belowTopLeft = playback.coordinates( 32, 32 );
+
+		if ( !topLeft.startsWith( "(0, 0)" ) ){
+			fail( "cell 0 decoded as " + topLeft + " rather than (0, 0)" );
+		}
+		if ( !topRight.startsWith( "(31, 0)" ) ){
+			fail( "cell 31 decoded as " + topRight + " rather than (31, 0) - x must grow to the right" );
+		}
+		if ( !belowTopLeft.startsWith( "(0, 1)" ) ){
+			fail( "cell 32 decoded as " + belowTopLeft + " rather than (0, 1) - y must grow downward, "
+					+ "which is the engine's own order and the one the tile map uses" );
+		}
+
+		//the raw index is kept, because a divergence report is often compared against a trace or a
+		//recording file and silently dropping it would break that comparison
+		if ( !topRight.contains( "31" ) || topRight.endsWith( "(31, 0)" ) ){
+			fail( "the coordinate rendering dropped the raw cell index: " + topRight
+					+ ". Reports are compared against traces by index." );
+		}
+
+		//and with no width it degrades to the index rather than dividing by nothing
+		if ( !playback.coordinates( 687, 0 ).equals( "pos 687" ) ){
+			fail( "with no known width a cell should render as its raw index; got "
+					+ playback.coordinates( 687, 0 ) );
+		}
+		if ( !playback.coordinates( -1, 32 ).equals( "pos -1" ) ){
+			fail( "a negative cell should render as its raw index; got " + playback.coordinates( -1, 32 ) );
+		}
+}
+
+/**
+ * A position divergence has to name coordinates, not a bare index.
+ *
+ * <p>The arithmetic behind {@link #coordinates} is covered above; what this covers is that a failure
+ * report actually uses it, which is the part that was missing when every divergence said "hero at 687".
+ * Altering a recorded position and requiring the message to carry the decoded form.
+ */
+private static void checkPositionsAreReportedAsCoordinates( Replay good ){
+		Replay tampered = recordAShortRun();
+		Replay.Step step = stepAt( tampered, 30 );
+		step.heroPos = step.heroPos + 1;
+
+		Outcome outcome = play( tampered );
+
+		if ( !outcome.diverged ){
+			fail( "altering a recorded position went undetected, so the coordinate reporting could not "
+					+ "be exercised" );
+			return;
+		}
+		if ( outcome.haltReason == null || !outcome.haltReason.contains( "hero at" ) ){
+			fail( "the divergence was reported as: " + outcome.haltReason
+					+ " - which does not name the position at all" );
+			return;
+		}
+		if ( !outcome.haltReason.matches( ".*hero at \\(\\d+, \\d+\\).*" ) ){
+			fail( "the divergence reported a bare index rather than coordinates: " + outcome.haltReason
+					+ ". A cell number tells a reader nothing about where on the floor the hero is." );
+		}
+}
+
+/**
+ * Both halves of a position divergence must be readable.
+ *
+ * <p>One is enough to locate the step; the other is what says the recording and the viewer disagree
+ * about which of two cells, which is the whole question. A message that decoded only the live position
+ * would read as a well-specified error and answer nothing.
+ */
+private static void checkADivergenceMessageNamesCoordinates(){
+	Replay tampered = recordAShortRun();
+	Replay.Step step = stepAt( tampered, 30 );
+	step.heroPos = step.heroPos + 1;
+
+	Outcome outcome = play( tampered );
+
+	if ( !outcome.diverged ){
+		fail( "altering a recorded position went undetected" );
+		return;
+	}
+
+	int matches = 0;
+	java.util.regex.Matcher m =
+			java.util.regex.Pattern.compile( "\\(\\d+, \\d+\\)" ).matcher( outcome.haltReason );
+	while (m.find()) matches++;
+
+	if ( matches < 2 ){
+		fail( "the divergence message named coordinates " + matches + " time(s) where the live and "
+				+ "recorded positions are both needed: " + outcome.haltReason );
+	}
+}
+
 // --------------------------------------------------------------------------- helpers
 
 	private static Replay.Step stepAt( Replay replay, int at ){
@@ -569,3 +986,4 @@ private static void checkADeathRunPlaysItsLastStep( Replay good ){
 		failures.add( message );
 	}
 }
+

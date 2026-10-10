@@ -105,10 +105,51 @@ public class ReplayPlayer {
 	/** Set once a step has been applied and the engine has not yet settled for the next. */
 	private boolean awaitingSettle = false;
 
+	/**
+	 * Scheduler steps taken while the current step's drain has been waiting on a resting hero.
+	 *
+	 * <p>A field because the drain yields the frame, and the trainer's equivalent counter - the loop
+	 * variable in {@code LevelPipeline.runToHeroReady} - spans the whole drain. Reset when a step is
+	 * applied, so the count is per step rather than per run.
+	 */
+	private int drainSteps = 0;
+
 	private int settledPosition = -1;
 
 	/** Why playback stopped, for the HUD. Empty while playing. */
 	private String haltReason = "";
+
+	/**
+	 * Whether the viewer is rebuilding the level, so there is legitimately no hero.
+	 *
+	 * <p>A restart nulls {@code Dungeon.hero} and re-enters the interlevel scene, which takes at least
+	 * a fade to build floor 1. Throughout that window {@link #update(float)} still runs - it is the
+	 * frame driver - and a null hero used to be read as the end of the run: the drain called
+	 * {@code playback.finish()} and halted with "run ended - hero is dead", on the very first frame
+	 * after {@code R}. Pressing R on a finished recording therefore appeared to do nothing at all,
+	 * because the HUD was overwritten with a fresh "finished" before anything could play.
+	 *
+	 * <p>A flag rather than a null check, because a null hero is also what a viewer that has quit to
+	 * the title screen sees, and that one really is the end. The caller states which.
+	 */
+	private boolean rebuilding = false;
+
+	/**
+	 * Declares that the level is being rebuilt and playback should wait for a hero.
+	 *
+	 * <p>Already armed by {@link #restart()}; exposed for a caller that rebuilds the level without
+	 * restarting playback. Cleared by the first {@link #update(float)} that finds a hero, so a rebuild
+	 * that never completes - because the player quit to the title - does not leave playback suspended
+	 * forever; the normal hero-is-gone path halts instead, which is the honest report there.
+	 */
+	public void awaitingRebuild(){
+		rebuilding = true;
+	}
+
+	/** True while the viewer is between a restart and the level that restart is waiting for. */
+	public boolean rebuilding(){
+		return rebuilding;
+	}
 
 	/**
 	 * Set once playback has diverged from the recording.
@@ -216,19 +257,18 @@ public class ReplayPlayer {
 	/**
 	 * True when this is the last recorded step and the recording declares why the run ended.
 	 *
-	 * <p>Absent in versions 1 and 2 of the format, which leave the reason unknown and are played to
-	 * their last step as before.
+	 * <p>Consulted from the drain rather than from {@link #update(float)}, which is what makes the last
+	 * step of a death recording play: the step is applied, the scheduler runs until the hero has
+	 * actually performed it, and only then is the recording declared complete. Asking earlier - before
+	 * the hero acted - ended playback with the recorded action injected and never performed, which is
+	 * the visible symptom of a death that never happens on screen.
+	 *
+	 * <p>Absent in versions 1 and 2 of the format, which leave the reason unknown. Such a recording is
+	 * played to its last step and then ends as an ordinary completion.
 	 */
 	private boolean recordingEndsHere(){
 		if (playback.cursor() != playback.total() - 1) return false;
-		String reason = recordingTermination();
-		//DEATH is included, and it used to be excluded on the claim that the hero-alive check covered
-		//it. It does not: that check is an observation, and it fires on the last step of a death run
-		//before this function was ever consulted, so excluding DEATH handed the final step to the
-		//observation and stopped playback one step early. A death run still ends here like any other,
-		//and saying so is more useful than saying the hero is dead - the recording knows why, and the
-		//step it declares finished is one the trainer applied.
-		return !reason.isEmpty();
+		return !recordingTermination().isEmpty();
 	}
 
 	private String recordingTermination(){
@@ -306,6 +346,19 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 	 */
 	public void update( float elapsed ){
 		if (!playing) return;
+
+		//Cleared the moment a hero exists again, so this is a wait rather than a latch. The rebuild
+		//window is a gap in the level, not a state the viewer stays in.
+		if (rebuilding){
+			if (Dungeon.hero != null){
+				rebuilding = false;
+			} else {
+				//No hero, so no step can be applied and nothing to compare against. Still counted as a
+				//frame, or the frame report for a restarted run would describe only its tail.
+				frameBoundary( false, elapsed, null );
+				return;
+			}
+		}
 
 		sinceStep += elapsed;
 
@@ -656,26 +709,17 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 			//Checked before the hero-alive test below, which is the ordering that used to cost a step.
 			//
-			//On the last recorded step of a DEATH run the hero is already dead by the time playback
-			//arrives here, so the hero-alive check fired first, called playback.finish() and halted
-			//"hero is dead" - and this branch was never reached. The result was a recording that played
-			//N-1 of N steps and then stopped, on a file the headless verifier called clean, because
-			//ReplayIO.verify drives the env rather than this loop and never had the bug. Three of the
-			//seventeen corpus files ended in death; all three stopped one step short.
+			//What this left was worse than a wrong message. The check sat at the TOP of the loop, before
+			//any scheduler step, so it also fired on the frame the last step was *applied*: the recorded
+			//action went in, and playback ended before the hero ever performed it. Three of the seventeen
+			//corpus files end in death and all three stopped with the hero still standing, one step short
+			//of the death the recording describes - and the step was never compared either, so a recording
+			//whose world had already diverged on that step still reported itself clean.
 			//
-			//A viewer that stops one step early is not reporting the recording faithfully, and "the
-			//recording is complete but the hero is dead" is a different message from "the recording ends
-			//here", so the recorded reason is the one worth printing. DEATH is excluded from
-			//recordingEndsHere() only because a run can die without the recording saying so; when it
-			//does say so, this branch is what should handle it.
-			if (recordingEndsHere()){
-				playback.advance();
-				playback.finish();
-				halt("run ended - the recording ends here as " + recordingTermination());
-				return Drain.STALLED;
-			}
-
+			//Reaching here at all now means the drain has run and the hero has stopped being able to act,
+			//so the recording is over rather than stalled - which is what it says.
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()){
+				if (recordingEndsHere()) return endWhereRecordingEnds();
 				playback.finish();
 				halt( "run ended - hero is dead" );
 				return Drain.STALLED;
@@ -712,6 +756,11 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			//there is no settled state to compare against. Draining it instead made the viewer wait 400
 			//turns for a hero that would never be ready and then report "stalled", which is false: the
 			//recording was complete, not truncated.
+			//
+			//That reasoning was about a drain that could never finish, and it is still true of the case it
+			//described - but it was applied to the top of the loop, where it also caught the case the hero
+			//*could* act. The distinction that matters is whether progress is still possible, which is what
+			//the blocked counter below measures, not which step of the recording this is.
 
 			Actor before = Actor.currentActor();
 			countSchedulerCall( before );
@@ -721,8 +770,53 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 				return Drain.READY;
 			}
 
+			//A resting hero with no action is the one genuine one-way door in this loop, and the
+			//trainer has a backstop for it that this loop was missing.
+			//
+			//Hero.act() handles a resting hero with a null action by spending TIME_TO_REST and calling
+			//next(). It never reaches ready(), so the hero is never ready for input again and the drain
+			//waits forever. The game escapes that by having a player choose another action, and
+			//ActionMapper clears resting when it is given one - which is why headless runs do not
+			//normally stall on it. LevelPipeline.runToHeroReady carries the backstop for the case where
+			//nothing clears it, and this loop did not, which made the viewer wait out the rest and then
+			//report the step the trainer had already ended.
+			//
+			//Measured on cleric-mid, whose recorded termination is STALLED for exactly this reason: the
+			//trainer gave up at engine time 51 with the hero on 12 HP, and the viewer sat out the rest
+			//until 58 with the hero on 20 - a different world, seven turns later, reported as a
+			//divergence. Nothing else caught it because this branch was only reachable on the last
+			//recorded step, which until now was skipped rather than drained.
+			//
+			//counted here rather than in the condition, because the trainer counts every scheduler
+			//step of its drain and not only the ones where the hero is resting - measured on
+			//cleric-mid, where counting only the resting steps left the count at 1 and the
+			//hero sat out a rest the trainer had already given up on.
+			drainSteps++;
+
+			//The condition is the trainer's verbatim: not asking for more, past the same iteration
+			//count, and resting. Relaxing any part of it would end a run the trainer let run.
+			//
+			//The count is a field rather than the loop variable, and that is the other half of the fix.
+			//This drain yields the frame after three blocked iterations, so a local counter restarts
+			//every few steps and never reaches the threshold. The trainer counts every iteration of
+			//one drain and never yields, so the two only agree if this counts the same way.
+			if (!wantsMore && drainSteps > RESTING_STALL_STEPS && Dungeon.hero.resting){
+				if (recordingEndsHere()) return endWhereRecordingEnds();
+				playback.finish();
+				halt( "run ended - the hero is resting and nothing is resolving it" );
+				return Drain.STALLED;
+			}
+
 			//No time spent and the hero still on the action it was given: nothing this loop does can
 			//change that, so the next frame is where progress has to come from.
+			//
+			//Yielding here rather than ending, and that is load-bearing on the last step of a death
+			//recording. A hero mid-swing has not yet dealt its damage: Char.actAttack plays the animation
+			//and returns without calling next(), so the hit lands in the animation callback, driven by the
+			//render loop this method is yielding to. Ending the recording at this point is what truncates a
+			//death - the cursor reaches the end and the hero is still standing, which is the exact symptom
+			//issues.md 2 describes. Measured on huntress-mid: the hero sat at 2 HP, the last step's hit never
+			//resolved, and playback reported the recording complete.
 			if (wantsMore && Actor.now() == lastNow && Dungeon.hero.curAction == lastAction){
 				if (++blocked >= BLOCKED_STEPS){
 					pendingFrames++;
@@ -736,7 +830,34 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			lastAction = Dungeon.hero.curAction;
 		}
 
+		//The drain spent its whole budget without the hero becoming ready. If the recording ends here
+		//then that is the recording finishing, not a viewer stall, and the recorded reason says which.
+		if (recordingEndsHere()) return endWhereRecordingEnds();
+
 		halt( "stalled - hero did not become ready within " + MAX_ACTOR_STEPS + " turns" );
+		return Drain.STALLED;
+	}
+
+	/**
+	 * Ends playback because the recording is complete, naming the reason it recorded.
+	 *
+	 * <p>Advances past the last step first, unless something already has. It has been applied by
+	 * {@link #applyNextStep()}, so leaving the cursor on it would report a recording as unplayed when
+	 * every step of it was. The guard is because the cursor is not always on the last step when this is
+	 * reached: a step that settles normally advances the cursor past the end, and the <i>next</i> drain -
+	 * of a hero that a turn limit has left permanently unable to become ready - finds
+	 * {@link #recordingEndsHere()} still true and would advance a second time. Measured on the
+	 * TURN_LIMIT fixture: 61 of 60 steps played.
+	 *
+	 * <p>The recorded reason rather than an observation, because the recording knows why the run ended
+	 * and the viewer cannot: a hero that is dead and a hero that ran out of turns both leave a hero
+	 * that will never be ready again, and only one of them is a death.
+	 */
+	private Drain endWhereRecordingEnds(){
+		if (!playback.finished()) playback.advance();
+		playback.finish();
+		String reason = recordingTermination();
+		halt( "run ended - the recording ends here as " + ( reason.isEmpty() ? "the last step" : reason ) );
 		return Drain.STALLED;
 	}
 
@@ -748,6 +869,15 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 	 * because a single such step is ambiguous: the first step of a turn routinely costs nothing.
 	 */
 	private static final int BLOCKED_STEPS = 3;
+
+	/**
+	 * Scheduler iterations a resting hero is given before the drain calls it a stall.
+	 *
+	 * <p>The trainer's figure, from {@code LevelPipeline.runToHeroReady}. Matching it rather than
+	 * choosing a new one is the point: the viewer is checking that it followed the recording, so the
+	 * two drains have to give up at the same moment or one of them is not checking anything.
+	 */
+	private static final int RESTING_STALL_STEPS = 8;
 
 	/** Outcome of one drain. */
 	private enum Drain {
@@ -798,7 +928,15 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			//open with playback stopped, waiting for a keypress that a batch run has no way to send - so
 			//a run that had finished successfully looked identical to one that had hung. This is what made
 			//"no divergence reported" indistinguishable from "still going".
-			halt( "replay finished - all " + playback.total() + " steps played" );
+			//
+			//The recorded reason leads where there is one. A recording that declares why it ended knows
+			//something the viewer cannot observe - a hero left standing at a turn limit and a hero left
+			//standing at the end of the dungeon are the same sight from here - and reporting a plain
+			//completion throws that away at the exact moment it is the only thing left to report.
+			String reason = recordingTermination();
+			halt( reason.isEmpty()
+					? "replay finished - all " + playback.total() + " steps played"
+					: "run ended - the recording ends here as " + reason );
 			return;
 		}
 
@@ -811,6 +949,11 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		}
 
 		EnvMode mode = modeOf( step.mode );
+
+		//Per step, so the resting-stall count measures this step's drain rather than the run's. The
+		//trainer's equivalent is the loop variable of a single runToHeroReady call, which starts at the
+		//step and runs to the next decision point.
+		drainSteps = 0;
 
 		//armed here, not at construction: see rngTraceArmed. Everything above this line is setup the
 		//headless run does not do, and none of it belongs in the trace.
@@ -928,6 +1071,24 @@ awaitingSettle = true;
 	 */
 	private void settle(){
 		if (Dungeon.hero == null) return;
+
+		//The level width is a property of the dungeon rather than of the recording, so it is read from the
+		//live level here rather than stored per step - and read on every settle so a divergence report can
+		//name coordinates even on the first step, rather than only once the HUD has been laid out.
+		if (Dungeon.level != null) playback.gridWidth( Dungeon.level.width() );
+
+		//Nothing to settle once every step is accounted for.
+		//
+		//settle() is reached from two places and both can arrive here with the cursor already past the
+		//end. The final step's drain returns READY, settle advances to total, and the *next* frame's
+		//drain - of a hero that a turn limit has left permanently unable to become ready - finds the
+		//recording complete, ends it, and hands control back for a settle that has no step to compare.
+		//Measured on the TURN_LIMIT fixture: 61 of 60 steps played, the extra one from a comparison
+		//against nothing.
+		if (playback.finished()){
+			awaitingSettle = false;
+			return;
+		}
 
 		if (Dungeon.hero.isAlive()){
 			settledPosition = Dungeon.hero.pos;
@@ -1051,6 +1212,7 @@ awaitingSettle = true;
 		awaitingSettle = false;
 		haltReason = "";
 		diverged = false;
+		rebuilding = true;
 		playback.rewind();
 	}
 

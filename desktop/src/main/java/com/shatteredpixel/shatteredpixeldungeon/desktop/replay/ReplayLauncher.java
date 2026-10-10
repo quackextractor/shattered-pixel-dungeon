@@ -127,13 +127,31 @@ public class ReplayLauncher {
 		new Lwjgl3Application( game, config );
 	}
 
-	private static void describe( Replay replay ){
+private static void describe( Replay replay ){
 		System.out.println( "replay   " + file.getAbsolutePath() );
 		System.out.println( "  seed   " + ( replay.seedText.isEmpty() ? "<random>" : replay.seedText ) );
 		System.out.println( "  hero   " + replay.heroClass );
 		System.out.println( "  steps  " + replay.steps.size() );
+
+		//"actions", not "turns" - see the note in ReplayController.layout. Replay.turns is a count of
+		//the agent's decisions, and the engine's own turn clock is Actor.now(), which is fractional and
+		//is not the same quantity. Printing one under the other's name is what made the turn limit read
+		//as a budget of game turns.
+		System.out.println( "  depth  " + replay.depth
+				+ "   actions " + replay.turns + "/" + replay.turnLimitPerFloor
+				+ ( replay.termination.isEmpty() ? "" : "   ends " + replay.termination ) );
+
+		//Score split into its two halves, which the recording already carries per step. A single net
+		//number cannot distinguish a run that gained steadily from one that gained a great deal and gave
+		//most of it back, and watching that happen is the point of watching a recording.
+		double gained = 0, lost = 0;
+		for (Replay.Step step : replay.steps){
+			if (step.reward > 0) gained += step.reward;
+			else lost += step.reward;
+		}
 		System.out.println( "  score  " + String.format( "%.2f", replay.score )
-				+ "   depth " + replay.depth + "   turns " + replay.turns );
+				+ "   gained " + String.format( "%.2f", gained )
+				+ "   lost " + String.format( "%.2f", lost ) );
 		System.out.println( "  keys   SPACE pause  +/- speed  [ ] coarser/finer  R restart  ESC quit" );
 		System.out.println();
 	}

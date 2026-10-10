@@ -168,6 +168,11 @@ Nineteen gates, one invocation, ~22 seconds:
 Plus `playbackcheck` in `:desktop`, which drives the rendered viewer with no window and no scene, and
 `viewcheck`, which plays the whole corpus through the real viewer and needs a display.
 
+`playbackcheck` also plays **the committed corpus** headlessly, which is the headless half of
+`viewcheck` and the only one of the two that can be a gate. That half was added because every other
+case there builds its own fixture, and a freshly recorded run does not end on a rest - which is how a
+real viewer-versus-trainer divergence went unnoticed (see below).
+
 Every gate is mutation-tested: each one has had the thing it guards deleted, and the gate has been
 required to fail. A check that cannot fail is not a check, and several of these exist only because the
 property they protect had already been broken.
@@ -202,6 +207,30 @@ identical position at all 1500 steps, while the hero was starving in the real ga
 Divergence is a hard error, not a warning. The moment a replay stops reproducing, every locked-seed
 comparison in the trainer becomes meaningless, and a run that looks fine is worth less than one that
 stops loudly.
+
+### The last recorded step is a step like any other
+
+A recording ends where the trainer terminated, and the final step is one the trainer *applied* - so it
+is applied, drained and compared here too. It used not to be: the test for "the recording ends here"
+sat at the top of the drain, so it fired on the frame the final action was injected and playback
+stopped before the hero performed it. Three of the seventeen committed recordings end in death, and all
+three of them stopped with the hero still standing.
+
+Two things follow from doing it properly, and both were found only by doing it:
+
+- **A step that was never compared could have been diverging all along.** Draining the last step made
+  the viewer compare it for the first time, and `cleric-mid` failed immediately. `ReplayPlayer`'s drain
+  had none of the trainer's resting-stall backstop, so it sat out a rest that
+  `LevelPipeline.runToHeroReady` had already given up on: `Hero.act()` handles a resting hero with no
+  action by spending time and calling `next()` without ever becoming ready. The viewer waited out the
+  rest and reported the world seven turns and eight health later than the recording. The backstop is
+  ported, and counting scheduler steps the way the trainer's does - as a field, not a loop variable,
+  because the viewer yields the frame and a local counter never reached the threshold.
+- **`playbackcheck` now plays the committed corpus**, because no locally built fixture ends on a rest.
+
+The general lesson is the one this gate was written for: a step that is not exercised is a step that
+is not checked, and a viewer that reports "clean" over an unexamined step is reporting on less than it
+appears to.
 
 ### What determinism is guaranteed, and what is not
 

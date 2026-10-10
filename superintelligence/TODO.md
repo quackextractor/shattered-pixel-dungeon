@@ -3,19 +3,85 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-09, after the static-reset protocol, the externalised configuration, the
-replay-parity sweep that found a fourth instance of process-spanning game state, the viewer
-divergence being found and fixed, and a documentation sweep that re-checked every stale claim in this
-file and its companions against the source.
+Last updated: 2026-10-10, after the five viewer/recording issues in
+[`issues.md`](issues.md) were worked through.
 
 ---
 
-## 0.0 The viewer and the trainer ran on different randomness - FIXED
+## 0.0.1 The viewer issues, 1-5 - FIXED
+
+Worked from [`issues.md`](issues.md) "Viewer / recordings". Each is recorded with its cause, because
+every one of them reads as a symptom and none of them is where the fault was.
+
+**1. `R` after a finished recording leaves it finished, and SPACE then waits the hero.** Two faults,
+one behind the other, and neither is where it looks. A restart nulls `Dungeon.hero` and re-enters the
+interlevel scene, which takes at least a fade to build floor 1 — and the frame driver runs throughout,
+because it is `GameScene`'s update hook. So the first frame after `R` found a null hero, and a null hero
+is what ends a run everywhere else in that class: the drain called `playback.finish()` and halted
+"run ended - hero is dead" before the rebuilt level existed. The HUD reported a finished replay over a
+cursor that had just been rewound, which is why pressing `R` appeared to do nothing at all. Playback
+now waits for the rebuilt level rather than reading a missing hero as an ending.
+
+The SPACE half is separate and was about window rather than state. `InterlevelScene` calls
+`KeyEvent.clearListeners()` every time it hands off to the game scene, and the viewer's key overrides
+were only re-asserted when the HUD was rebuilt — so in the gap the game's own `SPDAction.WAIT_OR_PICKUP`
+binding on SPACE was live and unopposed, and a pause keypress waited the hero. That spends a turn no
+recorded step asked for, so the next comparison diverges. The overrides are now re-asserted every frame
+while the viewer is installed, and the listener is kept rather than rebuilt.
+
+**2. A death recording's last step did not play.** The test for "the recording ends here" sat at the
+*top* of the drain loop, so it fired on the frame the final action was injected — the action went in,
+and playback ended before the hero ever performed it. Three of the seventeen committed recordings end in
+death and all three stopped with the hero still standing, one step short of the death they describe.
+The check is now made after the drain has run and the hero has acted.
+
+**And that exposed a third fault, which is the more interesting one.** Draining the last step meant
+comparing it for the first time, and `cleric-mid` failed immediately — seven turns and eight health
+away from what its recording says. `ReplayPlayer`'s drain had none of the trainer's resting-stall
+backstop, so it sat out a rest `LevelPipeline.runToHeroReady` had already given up on: `Hero.act()`
+handles a resting hero with no action by spending `TIME_TO_REST` and calling `next()` without ever
+becoming ready, so the drain simply waited until the rest ended on its own. The recording's
+`termination=STALLED` is that backstop firing. The viewer now carries it too, counting scheduler steps
+the way the trainer's does — as a field, not a loop variable, because the viewer yields the frame after
+three blocked iterations and a local counter never reached the threshold.
+
+It went unseen for as long as it did because the only step it affects is the last one, and the last one
+was skipped rather than drained. `playbackcheck` now plays the committed corpus for exactly this
+reason: every other case there builds its own fixture, and a freshly recorded run does not end on a rest.
+
+**3. "Turns" is actions, not engine turns.** The HUD and the launch banner both said `turns N`,
+where `Replay.turns` is `SPDEnv.turnsTotal()` — a count of decisions, not of game turns. The
+engine's own clock is `Actor.now()`, which is fractional (a heavy weapon costs two, haste less than
+one), so the two are not interchangeable and a recording's `turns` is not the hero's turn count.
+Both are now labelled for what they are: `actions N` for the decision count and `engine time T`
+for `Actor.now()`.
+
+**4. Score was a single number with no per-step history.** `Replay.Step.reward` was recorded and
+never displayed; the viewer showed only the run's final total, so a live view could not say which
+action lost 100 points or when the score started falling. The HUD now shows the running score, the
+per-step delta and a running gain/loss split, and `ReplayPlayback` computes it from the recording so
+the same numbers appear in a headless check.
+
+**5. Positions were one number.** `heroPos` is `y * width + x`, and the viewer printed it raw. Both
+the HUD and the divergence message now print `(x, y)` with `x` to the right and `y` downward —
+engine order, so it matches the tile map — and the raw index is kept alongside for anyone comparing
+against a trace.
+
+Gated by new cases in `playbackcheck` (10 -> 18 checks) and by `viewcheck` over the whole corpus.
+Every one of the new checks is mutation-tested: restoring the old drain ordering fails the death case,
+disarming the restart wait fails the rebuild case, flipping the y axis fails the coordinate case, and
+reporting the net instead of the gain half fails the score case. The old death check was passing for the
+wrong reason and had to be rebuilt — it forced the recorded health to zero on the last step of a run
+whose hero was at full health, which was a lie the drain had been skipping the comparison for.
+
+---
+
+## 0.0.0 The viewer and the trainer ran on different randomness - FIXED
 
 **Found and fixed.** 14 of 17 committed recordings diverged in the rendered viewer while verifying
 exactly headlessly. The cause was not the scheduler and not the step gate, both of which had been
-proposed and measured and refuted. Four presentation draws were spending the gameplay RNG stream, and
-only the rendered game makes them:
+proposed and measured and refuted. Four presentation draws were spending the gameplay RNG stream,
+and only the rendered game makes them:
 
 - `CharSprite.link` — a random sprite facing, drawn once per actor. `HeadlessSprite` overrides `link()`
   and never reaches it, so the trainer never drew and the viewer always did: 12 values.
@@ -67,7 +133,7 @@ Two things are worth recording about the fix rather than the fault:
 
 - **Every other gate was structurally blind to it.** Each either plays one episode per process or never
   lets the hero die. `resetcheck` proves a reset is a function of its arguments, which is about the
-  environment; this was about the recording, and about game state that is supposed to persist.
+environment; this was about the recording, and about game state that is supposed to persist.
 - **The first attempt at the fix was wrong in a way every other test passed straight through.** Clearing
   the remains *after* `startRun` looks correct - it is where the other three statics are cleared - but
   remains are read during level generation, so the new floor was already carrying the previous hero's
@@ -173,13 +239,13 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | # | Task | Size | Notes |
 | --- | --- | --- | --- |
 | 1.1 | ~~Call `PPO.collect()` in `Worker.runEpisode`~~ | done | Superseded. `EpisodeCollector` replaced the collection half of `PPO` entirely; see `PLAN-data-flow.md` step 2 and §5 below. |
-| 1.2 | ~~Run one generation end to end and check the losses are sane~~ | done | `policy` and `value` are non-zero, and advantages arrive with a real spread. Reported per generation. |
+| 1.2 | ~~Run one generation end to end and check the losses are sane~~ | done | `policy` and `value=` are non-zero, and advantages arrive with a real spread. Reported per generation. |
 | 1.3 | ~~Save and load the trained weights~~ | done | `Checkpoint` writes weights, Adam moments and the optimiser step count; `--save` / `--resume` / `--checkpoint-every`. A resumed run continues both the generation and the adam-step numbering. `checkpointcheck` refuses foreign, truncated, trailing-byte and wrong-config files. `PLAN-data-flow.md` step 4b. |
 | 1.7 | ~~Instrument the loop so a run can be judged~~ | done | `clip=` now reports the real ratio-clip fraction, and `MetricsHistory` writes `metrics.csv` per generation plus an end-of-run trend. `PLAN-data-flow.md` step 3b. |
-| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from esearch.md:40. **Still blocked, and the blocker is unchanged: 1.8.** Four harness faults have been fixed and none of them was this. estDepth is 1 in every generation of every run and all recordings are depth=1. An earlier entry here claimed depth 2 had appeared; that came from a trend line reading depth 1.0..2.0, where the 2.0 was an artefact of Graph.bar widening a flat series' axis rather than a measurement. graphcheck now gates it. |
+| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from research.md:40. **Still blocked, and the blocker is unchanged: 1.8.** Four harness faults have been fixed and none of them was this. bestDepth is 1 in every generation of every run and all recordings are depth=1. An earlier entry here claimed depth 2 had appeared; that came from a trend line reading depth 1.0..2.0, where the 2.0 was an artefact of Graph.bar widening a flat series' axis rather than a measurement. graphcheck now gates it. |
 | 1.8 | **Make surviving worth more than stalling** | M | **The next real blocker, re-scoped.** This was written when the agent stalled 100% of the time because it *chose* to. It did not: `REST` was a one-way door (`PLAN-reward-signals.md` §7), and every episode that used it was trapped by the harness. Fixed. Episodes now run the full 1500 turns with zero stalls. **The question is therefore still "what does surviving look like", but it is now a question that can be asked** — the agent genuinely survives 1500 turns and genuinely does not progress. `depthReward` is +10 against `turnCost` of 0.002, so descending pays 5,000 turns of idling, and `KILL` / `GOLD_GAIN` / `ITEM_PICKUP` still never fire. Nothing should be tuned in the same commit as the fault fixes, or §9's measurement stops meaning anything. |
 | 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. Still blocked on 1.4. |
-| 1.9 | ~~Five harness faults that made the agent unable to have a correct episode~~ | done | Every one found by driving paths a weak policy almost never reaches, and every one hidden behind the one before it. REST was a one-way door (36/36 episodes stalled, idle guard fired zero times); headless had no texture and every TextureFilm dereferenced the null, killing workers on hunger damage; every death blew the stack, so DEATH - the ending the reward function is built around - was unreachable; a eset did not clear the static pending cell listener, so 4 of 10 recordings diverged when verified in sequence and all 10 verified clean alone; and OPEN_INVENTORY fell through to INTERACT's cell handling, so opening the inventory also acted on a neighbouring cell - which reached training. All fixed and gated: PLAN-reward-signals.md sections 7-8 and 10, with esetcheck, graphcheck and a new modecheck case. |
+| 1.9 | ~~Five harness faults that made the agent unable to have a correct episode~~ | done | Every one found by driving paths a weak policy almost never reaches, and every one hidden behind the one before it. REST was a one-way door (36/36 episodes stalled, idle guard fired zero times); headless had no texture and every TextureFilm dereferenced the null, killing workers on hunger damage; every death blew the stack, so DEATH - the ending the reward function is built around - was unreachable; a reset did not clear the static pending cell listener, so 4 of 10 recordings diverged when verified in sequence and all 10 verified clean alone; and OPEN_INVENTORY fell through to INTERACT's cell handling, so opening the inventory also acted on a neighbouring cell - which reached training. All fixed and gated: PLAN-reward-signals.md sections 7-8 and 10, with resetcheck, graphcheck and a new modecheck case. |
 | 1.6 | ~~Parallelise the update across minibatches~~ | done | --update-threads N. Measured 8.98 -> 2.73 ms/sample at 1 -> 4 threads (3.29x), 2.59 at 8 (3.47x). parallelcheck is a gate and mutation-tested. Required three fixes first, of which the dCell gradient leak was the real blocker. PLAN-data-flow.md step 4. |
 
 **Ordering was wrong and has been corrected.** 1.6 was originally next. It is still required — the
@@ -225,8 +291,8 @@ same run or a worse-looking one:
 
 Two more things the format needed that were not obvious in advance:
 
-- **Atomic writes.** A checkpoint half-written by a power cut is *newer* than the last good one, so it
-  is exactly the file a resume would pick up. Writing to a sibling temp file and renaming means the
+- **Atomic writes.** A checkpoint half-written by a power cut is *newer* than the last good one, so it is
+  exactly the file a resume would pick up. Writing to a sibling temp file and renaming means the
   file at the target path is always a complete previous checkpoint or a complete new one.
 - **Refusing, loudly, in four cases.** A foreign file, a truncated one, one with trailing bytes, and one
   from a different `EnvConfig`. The last names the field — "trained with gridWidth=32, this run has
@@ -415,10 +481,11 @@ source.
 
 **3.2 is DONE.** Desktop replay viewer built: `gradle :desktop:replay --args="--file <replay>"`.
 Recorded actions go through `ActionMapper` to `Hero.handle`, the same call the cell selector makes,
-so action resolution is identical to a human playing. HUD shows step, seed, score, depth, turns,
-speed and divergence. Needed two engine hooks: `Game.lockCellInput` and `Game.setSceneClass`.
-Enters via `InterlevelScene` because its transition to `GameScene` is hardcoded, so a subclass would
-never be entered. See `PLAN-replay-viewer.md`.
+so action resolution is identical to a human playing. HUD shows step, seed, depth, actions, engine
+time, live score with its per-step delta and gained/lost split, and divergence. Needed two engine
+hooks: `Game.lockCellInput` and `Game.setSceneClass`. Enters via `InterlevelScene` because its
+transition to `GameScene` is hardcoded, so a subclass would never be entered. See
+`PLAN-replay-viewer.md`.
 
 **And it now plays the corpus back faithfully**: `gradle :desktop:viewcheck` is green, 17 of 17, stable
 across repeated runs. That took finding the fault below, which was not a viewer fault at all.
@@ -441,7 +508,7 @@ category rollup, eg. all combat terms together) is not implemented.
 observation buffers in my own code, which measurably reduced allocation, but the game loop itself is
 unaudited. This is the most likely thing to fail at high worker counts - see 4.2.
 
-4.2: `Trainer` spawns worker JVMs over a binary stdin/stdout protocol. The path is now exercised at
+4.2 in detail: `Trainer` spawns worker JVMs over a binary stdin/stdout protocol. The path is now exercised at
 two workers for two generations - handshake, params push, episode frames, weight push, replay write -
 after the trainer was split into `Trainer` / `WorkerPool` / `Protocol` / `TrainOptions` / `Episode`.
 What remains untested is `WorkerPool`'s parallel weight push under a real 20-worker pool, and whether
@@ -466,8 +533,8 @@ Small things that are wrong but not blocking.
   but it would also start fading dense rewards by depth 3 — i.e. change the reward function — with no
   evidence that the dense terms help at all. The agent has never left floor 1, so the fade has never
   had a regime to act on. **Decide after 1.7**, when a run can be judged, and 1.4, when there are
-  depths to fade across. Until then a wrong fade is worse than no fade, because it silently distorts
-  the first real runs.
+  depths to fade across. Until then a wrong fade is worse than no fade, because it silently distorts the
+  first real runs.
 - `PPO.approximateKL` takes `t`, `logits` and `mask` parameters it does not use.
 - Some engine states end a rollout as `STALLED` early. Seed `HERO` terminates after 2 turns, where
   most seeds run the full budget - an encounter reaching a state the action space cannot answer.
@@ -525,7 +592,7 @@ cannot distinguish alchemy from a floor pickup. If those rewards matter, D2 must
 **Now:** the LSTM is present and trained, but gradients are truncated at length one.
 
 *Reason:* an exact through-time gradient needs every timestep's pre-activation state retained until
-the update. At this sequence length that is gigabytes per worker.
+the update. At that sequence length this is gigabytes per worker.
 *Cost:* the trunk, heads and critic get exact gradients; the LSTM gets exact gradients within a step
 and none across steps. Whether this is enough to actually remember a dropped potion three rooms back
 is an open empirical question, and it is the single assumption most likely to make the memory layer

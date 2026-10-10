@@ -7,7 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-10-10
+
+### Fixed
+
+- **The viewer, five faults from `superintelligence/issues.md` "Viewer / recordings".** Each was
+  reported as a symptom; none was where the fault was, and two of them had been hiding a third.
+
+  - **`R` after a finished recording left it finished, and SPACE then waited the hero.** A restart
+    nulls `Dungeon.hero` and re-enters the interlevel scene, and the frame driver runs throughout the
+    rebuild - so the drain read the null hero as the end of the run, finished the recording on the
+    first frame after the keypress and left the HUD reporting a completed replay over a rewound
+    cursor. Separately, the viewer's key overrides were re-asserted only when the HUD was rebuilt, and
+    `InterlevelScene` calls `KeyEvent.clearListeners()` every time it hands off to the game scene; in
+    the gap the game's own SPACE binding (`WAIT_OR_PICKUP`) was live and unopposed, so a pause
+    keypress waited the hero, spending a turn no recorded step asked for and diverging the replay.
+    Playback now waits for the rebuilt level rather than reading a missing hero as an ending, and the
+    key bindings are re-asserted every frame while the viewer is installed.
+
+  - **A death recording did not play its last step.** The test for "the recording ends here" sat at
+    the top of the drain, so it fired on the frame the final action was *applied* - the action went in
+    and playback ended before the hero performed it. Three of the seventeen committed recordings end
+    in death and all three stopped with the hero still standing. The check is now made after the
+    drain has run and the hero has acted, so the recorded death actually happens on screen.
+
+  - **"Turns" was a count of actions.** `Replay.turns` is `SPDEnv.turnsTotal()`, a count of the
+    agent's decisions, while the engine's own clock is `Actor.now()` - a duration, and a fractional
+    one, since a heavy weapon costs two turns and haste less than one. Calling the decision count
+    "turns" invited exactly the reading that made the turn limit look like a budget of game turns.
+    Both are now labelled for what they are, and the engine clock is shown alongside them.
+
+  - **The viewer had no per-step score.** The recording carried a reward per step and the viewer showed
+    only the run's final total, so nothing on screen could say which action cost a hundred points. The
+    HUD now reports the running score, the last step's delta, and the gained and lost totals
+    separately - a net figure cannot distinguish a run that climbed steadily from one that reached its
+    high point and gave most of it back.
+
+  - **Positions were a single number.** `heroPos` is `y * width + x`, and every divergence report
+    printed the raw index. They are now reported as `(x, y)` with the raw index kept for comparison
+    against a trace. x grows to the right and y grows downward, which is the engine's own order.
+
+- **The viewer and the trainer diverged on `cleric-mid`, and nothing had noticed.** Draining the last
+  recorded step (above) made the viewer compare a step it had never compared before, and that
+  recording immediately failed - seven turns and eight health away from what it says. The cause was a
+  real gap: `ReplayPlayer`'s drain had none of the trainer's resting-stall backstop, so it sat out a
+  rest that `LevelPipeline.runToHeroReady` had already given up on. `Hero.act()` handles a resting
+  hero with no action by spending time and calling `next()` without ever becoming ready, so the viewer
+  waited out the rest and reported the world the trainer had stopped before. The backstop is now
+  ported, counting scheduler steps the way the trainer's does - as a field rather than a loop
+  variable, because the viewer yields the frame and a local counter never reached the threshold.
+
+  It was invisible for as long as it was because the step it affects was the last one, and the last one
+  was skipped rather than drained.
+
 ### Added
+
+- **The committed corpus is now a playback gate.** `playbackcheck` plays every recording in
+  `replays/` and fails on any divergence, which is the headless half of `viewcheck` and can run where
+  there is no display. It exists because every other case in that gate builds its own fixture, and a
+  freshly recorded run does not end on a rest - which is how the divergence above survived.
+
+- **Seven new checks in `playbackcheck`** (10 -> 18), covering the restart window, a death recording
+  playing its final step, the gained/lost split being a real split, and positions decoding as
+  coordinates. Mutation-tested: restoring the old drain ordering fails the death case, disarming the
+  restart wait fails the rebuild case, flipping the y axis fails the coordinate case, and reporting the
+  net instead of the gain half fails the score case.
 
 - **`gradle :superintelligence:viewdiff`** (`:superintelligence`): reads a headless `worldtrace` snapshot
   and a rendered `-Dspd.worldTrace` one, and reports the first step and **field** that differ, plus the

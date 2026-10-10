@@ -80,6 +80,11 @@ tasks.register('replaycp') {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.PlaybackCheck'
     jvmArgs '-Djava.awt.headless=true', '--enable-native-access=ALL-UNNAMED'
+
+    //The committed corpus, so the death-recording case plays a real one rather than a fixture built to
+    //die on demand. A JavaExec runs with the *module* directory as its working directory, so a relative
+    //path would resolve against desktop\ and find nothing - the same trap documented on viewcheck.
+    systemProperty 'spd.replayDir', project.findProperty('spdReplayDir') ?: "${rootProject.projectDir}/replays"
  }
 
 //Plays the committed corpus through the real rendered viewer and fails on any divergence.
