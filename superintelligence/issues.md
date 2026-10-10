@@ -12,20 +12,54 @@
 
 # Env
 
-6. I am unsure if the env.gid dimensions are accurate. I read online that the max is 32x32. This number might've changed but a code sweep might be in order.
+> **Found while closing 6, and left open rather than silently absorbed into it.** `env.grid_height`
+> is documented in `superintelligence.properties` and read by `EnvConfigBinder.java:233`, but the
+> encoder is the only thing that uses it. `ObservationEncoder.java:57` allocates
+> `spatialCount * gridWidth * gridHeight`; `Network.java:93,129`, `Conv2D`, `TransitionCodec.java:47`,
+> `PPO.java:156`, `EpisodeCollector.java:138`, `GradientCheck`, `ParallelFixtures` and `GaeCheck` all
+> use `gridWidth * gridWidth`, and `Conv2D` is square by construction. Setting `env.grid_height=64`
+> at the shipped `grid_width=48` therefore allocates a 48x64 encoder feeding a network that expects
+> 48x48, and the mismatch surfaces as a shape error far from the key that caused it. Harmless at
+> 48x48, which is why nothing has reported it.
+>
+> None of `env.max_slots`, `env.grid_width` or `env.grid_height` has a range check either — `EnvConfig`
+> has no `validate()` and `PpoHyperparameters.validate()` covers only `rl.*` — so `env.grid_width=0`
+> is accepted by the binder and fails later as a negative array or a degenerate convolution.
 
-"Each standard dungeon floor in Shattered Pixel Dungeon is hardcoded to a grid size of 32x32 tiles.   
+6. I am unsure if the env.gid dimensions are accurate. I read online that the max is 32x32. This number might've changed but a code sweep might be in order. (closed)
 
-While the absolute boundaries of the floor remain locked at 32x32, the playable layout is procedurally generated within that space, leaving some of the grid as unused wall space. The rooms that generate within this grid fall into three primary size categories:   
+    The quoted text is wrong about this codebase on the part that matters. Regular floors are not 32x32
+    and are not hardcoded at all: `RegularPainter.java:113` ends level generation with
+    `level.setSize(rightMost + 1, bottomMost + 1)`, where `rightMost`/`bottomMost` are the extent of the
+    rooms that just generated plus padding. The floor is exactly as big as its own layout. What *is*
+    fixed-size is the hand-built boss and end floors, and those are the 32s the quote is probably
+    remembering: `HallsBossLevel` and `PrisonBossLevel` are 32x32, `CavesBossLevel` 33x42,
+    `CityBossLevel` 15x48, `LastLevel` 16x64, `DeadEndLevel` 7x7.
 
-    Normal rooms: Ranging from 2x2 to 8x8 tiles.
+    Measured rather than read off: 1040 floors over 40 seeds at depths 1-26.
 
-    Large rooms: Ranging from 8x8 to 12x12 tiles.
+    ```
+    max width   = 67      max height  = 81      max single side = 81
+    samples with a side > 48 : 419 / 1040
+    samples with a side > 64 :  17 / 1040
+    samples with a side > 96 :   0 / 1040
+    ```
 
-    Giant rooms: Ranging from 12x12 to 16x16 tiles.
-"
+    **So 48 does under-cover 40% of floors by extent — and that does not make the agent unprepared
+    for them.** This is the part the report's framing misses. The agent never sees the whole floor.
+    `ObservationEncoder.buildSpatial` samples a hero-centred window and slides it:
+    `originX = hero.pos % width - MARGIN`, `spanX = gridWidth + MARGIN * 2`, so on a 67-wide floor
+    `stepX = 52/48 = 1.083` and the window subsamples at ~92% scale. The hero is always in the middle
+    of a fixed-size window, the window always covers his 8-tile view radius several times over, and the
+    per-pixel clamp at `ObservationEncoder.java:126-132` means no floor shape can read it out of
+    bounds. A floor being 81 tall is not a floor the encoder cannot represent; it is a floor it
+    represents as a 48-cell window rather than as a map, which is the design and was never in question.
 
-8. The inventory slots / inventory system seems wrong. 
+    What is actually wrong is narrower, and is left open rather than folded into this closure:
+    `EnvConfig.java:16` says 48 "covers the widest floors", and the measurement above says it does not.
+    `env.grid_height` is also a documented key that nothing implements — see the note under §Env.
+
+7. The inventory slots / inventory system seems wrong. 
 
 "
 What is the max inventory space available with all of the expansions?
@@ -137,3 +171,5 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
     the frame after it — a headless driver stops calling `update` the moment playback stops, so a
     next-frame cleanup would pass every rendered run and never run in a gate. Gated by `playbackcheck`
     case 21, mutation-tested, and the case states that it cannot reach the real-backend branch.
+
+13. Duelist-mid ends with stalled without really being stalled? What's causing this? It didn't seem like the hero was idling for this many actions. Investigate. Worst case: Remove stalled and regen the recording? thx.
