@@ -34,13 +34,18 @@ scored by a configurable reward function, with the best run per seed recorded an
 
 ## Status, honestly
 
-**Nothing has been trained.** The machinery is correct - the network's gradients check against central
-differences, the environment is reproducible across processes, recordings replay exactly - but no run
-has lasted long enough to learn anything. The agent has never left floor 1. The milestone is beating the
-first boss at depth 5 (`research.md`).
+**Nothing has won a run, and nothing has reached floor 5.** The machinery is correct - the network's
+gradients check against central differences, the environment is reproducible across processes,
+recordings replay exactly, and every one of the twenty gates is green - and the reward function now
+asks for the right thing. Measured, over twelve generations: **deaths fell 100% to 19%, mean turns rose
+377 to 1335**, and `bestDepth 2` has been observed once. **Depth does not trend yet.**
 
-Read `TODO.md` for what stands between here and there. The two things that matter are a reward
-function that asks for survival rather than tolerating it, and a run long enough to judge.
+That last sentence is the one that matters. The three reward defects that kept depth at 1 were real and
+are fixed, and the run that shows survival improving is the first evidence in this project that a
+change to the objective moved behaviour in the direction it was supposed to. It is not evidence that the
+ratio is right. A 40-generation run is the measurement that would settle it, and it is `TODO.md` 1.4.
+
+The milestone is beating the first boss at depth 5 (`research.md:40`).
 
 ## Versioning
 
@@ -177,7 +182,44 @@ Two rules the layer holds to, both of which exist because the alternative is sil
 
 `superintelligence.properties` ships with every key documented against its reason, and `configcheck`
 asserts it agrees with the compiled defaults in both directions - so a key cannot drift away from the
-code that reads it unnoticed.
+code that reads it unnoticed. `.env.example` at the repository root is the environment-variable half of
+the same thing, with each `SPD_*` name spelled out and the reward keys annotated for what they buy; `.env`
+itself is git-ignored, and a run with neither file uses the compiled defaults.
+
+### The reward, and the one ratio that decides it
+
+Reward is measured by diffing observable state across a turn rather than by hooking the item tree
+(see `superintelligence/TODO.md` §D2 for why, and what that costs). Two numbers carry most of the
+objective:
+
+| Key | Default | What it decides |
+| --- | --- | --- |
+| `reward.depth_reward` | `25.0` | What one floor deeper is worth |
+| `reward.explore_reward` | `0.01` | What a newly-seen tile is worth |
+| `reward.stall_penalty` | `150.0` | What giving up costs. **Worse than dying** |
+| `reward.death_penalty` | `100.0` | What dying costs |
+| `reward.turn_limit_penalty` | `25.0` | What running out of a floor costs |
+| `reward.kill_reward` | `3.0` | Per mob killed, from `Statistics.enemiesSlain` |
+| `reward.sneak_attack_reward` | `6.0` | Per surprise attack, from `Statistics.sneakAttacks` |
+| `reward.no_progress_penalty` | `0.05` | A step that advanced no engine time |
+
+**`depth_reward` against `explore_reward` is the objective.** A regular floor holds several hundred
+walkable tiles (`TODO.md` §0.8 measured 419 of 1040 sampled floors exceeding 48 on at least one side,
+up to 81), so exploration is a large number by the time a floor is finished. At the ratio this project
+shipped for most of its life - 10 against 0.05 - mapping a floor without ever taking the stairs paid
+*more* than descending, and every run learned to wander. Which is what `bestDepth` being 1 in every
+generation of every run had been measuring.
+
+The terminal outcomes are ordered, and the order is the property rather than the values: giving up is
+worse than dying, dying is worse than running out of a floor, and running out of a floor is worse than
+clearing one. `rewardcheck` asserts the ordering, not the constants, so it survives them being retuned.
+
+**The surprise attack is the largest combat payout on purpose.** A kill is paid for damage dealt, which
+depends on the weapon and on rolls. A surprise attack is paid for arriving unseen - `Mob.surprisedBy`
+skips the defender's defence skill outright, so the same hit lands for far more - and it is the only
+combat outcome that costs the hero nothing. Paying the kill alone teaches trading blows with whatever is
+in reach, and trading blows is what the recorded deaths look like: the hero does not lose a fight, he
+runs out of room.
 
 ## Gates
 
@@ -346,8 +388,12 @@ Guaranteed, and gated:
   sequence length is gigabytes per worker.
 - **`Mob` and `Char` do not override `hashCode`.** Nothing found iterates them through a hash collection
   during play, but that is an invariant a future change could break.
-- **Six reward terms have no emission site**, and one (`KILL`) has the plumbing but no trigger. The
-  cause is structural and is written up in `TODO.md` §D2.
+- **Five reward terms have no emission site.** The cause is structural and is written up in `TODO.md`
+  §D2: a state diff cannot see "an item was created in the alchemist", because the alchemy pot is a
+  terrain tile and the result is one item delta indistinguishable from a pickup. `KILL` was the odd one
+  out — it had its plumbing (`Statistics.enemiesSlain` was snapshotted, `RewardLedger.countKill()` was
+  written) and no call site, which is worse than absent: the ledger showed a term that could never move.
+  It is wired now, along with `SNEAK_ATTACK` from `Statistics.sneakAttacks`.
 
 ## Changes to the game
 

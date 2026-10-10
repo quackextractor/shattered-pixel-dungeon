@@ -15,6 +15,11 @@ release/
 # Local configuration file (sdk path, etc)
 local.properties
 
+# Real environment overrides for the :superintelligence module. .env.example is the tracked template;
+# a run with no .env uses the compiled defaults, which are exactly the values in
+# superintelligence/superintelligence.properties.
+.env
+
 #intellij project files
 *.iml
 *.idea

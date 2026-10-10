@@ -458,7 +458,14 @@ public class ConfigCheck {
 			case "reward.max_hp_reward":      return String.valueOf( config.maxHpReward );
 			case "reward.gold_reward":        return String.valueOf( config.goldReward );
 			case "reward.damage_penalty":     return String.valueOf( config.damagePenalty );
+			case "reward.kill_reward":       return String.valueOf( config.killReward );
+			case "reward.sneak_attack_reward":
+				return String.valueOf( config.sneakAttackReward );
+			case "reward.no_progress_penalty":
+				return String.valueOf( config.noProgressPenalty );
 			case "reward.death_penalty":      return String.valueOf( config.deathPenalty );
+			case "reward.stall_penalty":      return String.valueOf( config.stallPenalty );
+			case "reward.turn_limit_penalty": return String.valueOf( config.turnLimitPenalty );
 			case "reward.victory_reward":     return String.valueOf( config.victoryReward );
 			case "reward.curriculum_progress": return String.valueOf( config.curriculumProgress );
 
@@ -547,7 +554,12 @@ public class ConfigCheck {
 			case "reward.max_hp_reward":      return "1.5";
 			case "reward.gold_reward":        return "0.5";
 			case "reward.damage_penalty":     return "0.5";
+			case "reward.kill_reward":       return "1.5";
+			case "reward.sneak_attack_reward": return "2.5";
+			case "reward.no_progress_penalty": return "0.75";
 			case "reward.death_penalty":      return "250.0";
+			case "reward.stall_penalty":      return "350.0";
+			case "reward.turn_limit_penalty": return "75.0";
 			case "reward.victory_reward":     return "2000.0";
 			case "reward.curriculum_progress": return "0.5";
 			case "rl.learning_rate":          return "0.007";

@@ -2,6 +2,8 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
@@ -52,7 +54,7 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 9;
+	private static final int CHECKS = 13;
 
 	/** How many heaps to try before calling a floor that offers none a failure. */
 	private static final int MAX_HEAP_TRIES = 12;
@@ -65,12 +67,16 @@ public class RewardCheck {
 		checkStallingIsNotCheaperThanDying( config );
 		checkNoOpActionsAreNotRefusals( config );
 		checkStallIsNotANaturalEnding( config );
-		checkStallCostsAsMuchAsDying( config );
-		checkDeathRemainsMostExpensive( config );
+		checkStallCostsMoreThanDying( config );
+		checkTerminalsAreOrdered( config );
+		checkDepthBeatsAPerFloorTurnLimit( config );
+		checkExplorationCannotOutbuyADescent( config );
 		checkStallPathRecordsOnce( config );
 		checkRestIsNotAOneWayDoor( config );
 		checkTheHeroCanDie( config );
 		checkPickingUpAndDroppingIsNotProfitable( config );
+		checkKillingIsWorthDoing( config );
+		checkFreeStepsCostSomething( config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reward signals: " + CHECKS + " checks passed" );
@@ -197,38 +203,43 @@ public class RewardCheck {
 	}
 
 	/**
-	 * {@code STALLED} must cost exactly what dying costs, and turn cost must still be charged.
+	 * {@code STALLED} must cost <em>more</em> than dying, and turn cost must still be charged.
 	 *
 	 * <p>The pair matters. The reward used to be zero, on the argument that a stall is a harness
 	 * timeout rather than an outcome and so should be "priced by turn cost alone" - and a zero stall
 	 * reward with no turn cost is just as broken, since it means idling is free.
 	 *
-	 * <p><b>It is {@code -deathPenalty} now, and that reverses {@code PLAN-reward-signals.md} §3.2.</b>
-	 * The change is requested in {@code issues.md} 9 - giving up should cost what losing costs - and
-	 * the reason the earlier value was defensible has since stopped being true. §3.2 was written when
-	 * the only observed stalls were ones the agent walked into; the stall guard was then found to fire
-	 * on <i>every descent</i>, because the environment never saw the game ask for a level transition
-	 * ({@code HeadlessGame.switchRequested}, gated by {@code transitioncheck}). "The episode ended on
-	 * a timeout" was a harness bug wearing an outcome's name, and pricing it at zero made the bug free.
+* <p><b>It is worse than dying now, by its own configurable constant.</b> It was
+	 * {@code -deathPenalty}, which balanced the price and lost the distinction: to a learner the two
+	 * were one number with two labels, and the lesson that survives is that quitting is survivable.
+	 * Dying moved the run forward and closed a floor. A stall is a run that stopped, on a hero who is
+	 * alive and has not been asked to do anything difficult. See {@code issues.md} 13 for what
+	 * stopping actually looks like — {@code duelist-mid} spending 120 consecutive steps alternating
+	 * equip and unequip at zero engine time.
 	 *
-	 * <p>It cannot re-create the trap §3.2 closed either: stalling used to be cheaper than surviving
-	 * to the turn cap, and now it costs a hundred times more than it.
-	 *
-	 * <p>Asserted as an equality against the config rather than a literal, so "as much as death" is a
-	 * property that survives both constants being retuned.
+	 * <p>Asserted as an ordering against the config rather than against a literal, so "worse than
+	 * dying" is a property that survives both constants being retuned.
 	 */
-	private static void checkStallCostsAsMuchAsDying( EnvConfig config ){
+	private static void checkStallCostsMoreThanDying( EnvConfig config ){
 		Outcome stall = playWaits( config, config.stallLimit + 8 );
 		if (stall.endReason != RewardModel.TerminateReason.STALLED) return;  // reported already
 
 		double terminal = stall.termTotal( RewardTerm.STALLED );
-		double expected = -config.deathPenalty;
+		double expected = -config.stallPenalty;
 
 		if (Math.abs( terminal - expected ) > 1e-4 ){
 			fail( "STALLED carries a terminal reward of " + terminal + ", expected " + expected
-					+ " - the same as dying. It was -5.0, twenty times cheaper than dying and the agent"
-					+ " converged on it; it was then zero, which made the stall guard firing on every"
-					+ " descent free." );
+					+ " - more than dying's " + (-config.deathPenalty) + ". It was -5.0, twenty times"
+					+ " cheaper than dying and the agent converged on it; then zero, which made the"
+					+ " stall guard firing on every descent free; then -deathPenalty, which made giving"
+					+ " up and losing the same decision." );
+			return;
+		}
+
+		if (!( -config.stallPenalty < -config.deathPenalty )){
+			fail( "stalling costs " + (-config.stallPenalty) + " and dying costs "
+					+ (-config.deathPenalty) + ". Giving up has to be the worse outcome, or 'stop' stays"
+					+ " on the menu: an agent that can walk away from a run it is losing will." );
 			return;
 		}
 
@@ -248,8 +259,403 @@ public class RewardCheck {
 			return;
 		}
 
-		System.out.println( "  STALLED costs " + fmt( terminal ) + ", the same as dying, plus "
-				+ fmt( turnCost ) + " in turn cost for " + stall.turns + " turns" );
+		System.out.println( "  STALLED costs " + fmt( terminal ) + ", worse than dying's "
+				+ fmt( -config.deathPenalty ) + ", plus " + fmt( turnCost ) + " in turn cost for "
+				+ stall.turns + " turns" );
+	}
+
+	/**
+	 * The terminal outcomes have to be ordered, or the agent will take the cheapest one.
+	 *
+	 * <p>As an ordering rather than as three comparisons to zero, because the ordering is the property:
+	 * giving up worse than dying, dying worse than running out of budget, running out of budget worse
+	 * than a floor that turned over. Any inversion among them is a strategy, and the whole history of
+	 * this function is strategies being found by an agent that was correct to find them.
+	 */
+	private static void checkTerminalsAreOrdered( EnvConfig config ){
+		double stall = -config.stallPenalty;
+		double death = -config.deathPenalty;
+		double limit = -config.turnLimitPenalty;
+		double cleared = config.depthReward;
+
+		if (!( stall < death && death < limit && limit < cleared )){
+			fail( "terminal outcomes are not ordered as stall (" + stall + ") < death (" + death
+					+ ") < turn limit (" + limit + ") < a cleared floor (" + cleared + "). The agent"
+					+ " will take the cheapest one, and every run so far has taken one nobody intended." );
+			return;
+		}
+
+		System.out.println( "  terminals ordered: stall " + fmt( stall ) + " < death " + fmt( death )
+				+ " < turn limit " + fmt( limit ) + " < a cleared floor " + fmt( cleared ) );
+	}
+
+	/**
+	 * Descending has to beat idling out the floor's turn budget.
+	 *
+	 * <p>This is the comparison {@code TURN_LIMIT} at {@code -turnCost * 100} lost by two orders of
+	 * magnitude: a fifth of a point against a +10 descent, on a floor where exploration pays per tile.
+	 * A hero could spend 1500 turns mapping a floor, bank the exploration, and be charged almost
+	 * nothing for never reaching the stairs — so idling out the clock was a strategy rather than a
+	 * failure, and the runs that did it were not misbehaving, they were optimising.
+	 */
+	private static void checkDepthBeatsAPerFloorTurnLimit( EnvConfig config ){
+		double perFloor = config.turnCost * config.turnLimitPerFloor;
+
+		double descend = config.depthReward - perFloor;
+		double idleOut = -config.turnLimitPenalty - perFloor;
+
+		if (!( descend > idleOut )){
+			fail( "descending within the floor budget nets " + fmt( descend ) + " and idling it out nets "
+					+ fmt( idleOut ) + ", so the agent is better off never reaching the stairs."
+					+ " TURN_LIMIT was turn_cost*100, a fifth of a point against a +10 descent." );
+			return;
+		}
+
+		System.out.println( "  descending nets " + fmt( descend ) + " against " + fmt( idleOut )
+				+ " for idling out the floor" );
+	}
+
+	/**
+	 * Exploration must not outbuy a descent.
+	 *
+	 * <p>A regular floor holds several hundred walkable tiles — {@code TODO.md} 0.8 measured 419 of
+	 * 1040 sampled floors exceeding 48 on at least one side, up to 81 — so {@code exploreReward} per
+	 * tile is a large number by the time a floor is finished. At the shipped 0.05 it was larger than
+	 * the depth reward, which is the reason {@code bestDepth} has been 1 in every generation of every
+	 * run while the score climbed: the policy was being paid to wander, and wandering is what it
+	 * learned.
+	 *
+	 * <p>Measured against a deliberately small floor rather than the measured maximum, so the property
+	 * holds with room to spare instead of on a number that happens to be true today.
+	 */
+	private static void checkExplorationCannotOutbuyADescent( EnvConfig config ){
+		final int TILES = 120;
+
+		double exploration = config.exploreReward * TILES;
+		double descend = config.depthReward;
+
+		if (exploration >= descend ){
+			fail( "mapping " + TILES + " tiles pays " + fmt( exploration ) + " in exploration against a "
+					+ fmt( descend ) + " descent, so a hero that explores the floor and never takes the"
+					+ " stairs is paid more for less. This is the default behaviour every run has"
+					+ " shown: bestDepth 1 in every generation, score climbing on exploration." );
+			return;
+		}
+
+		System.out.println( "  mapping " + TILES + " tiles pays " + fmt( exploration )
+				+ " against a " + fmt( descend ) + " descent" );
+	}
+
+/**
+	 * Killing must pay, and a surprise attack must pay more.
+	 *
+	 * <p>{@code KILL} was declared, counted by {@code RewardLedger.countKill()} and never emitted, so
+	 * fighting was worth exactly nothing while being hit cost something. Under that price the cheapest
+	 * way past a corridor is to walk down it, and the deaths in the corpus have that shape: the hero
+	 * does not lose a fight, he runs out of room.
+	 *
+	 * <p>Driven through the real environment rather than compared against a literal, so it survives the
+	 * constants being retuned in any order, and against a real mob from {@code Level.createMob()} rather
+	 * than one built to be convenient.
+	 *
+	 * <p><b>A hunt on the level's own mobs was tried first and could not reach the code.</b> A driver
+	 * that walked the hero at whatever was visible fought for 900 turns, took 99 damage and killed
+	 * nothing. The level is rooms joined by doors, so an enemy the hero can see but cannot reach is an
+	 * ordinary situation and the driver could not tell it from one it could reach. A gate that cannot
+	 * reach the emission site it guards is not a gate, so the mob is placed instead - through
+	 * {@code createMob}, {@code LevelPipeline.spriteFor} and {@code level.mobs}, which is exactly what
+	 * {@code SummoningTrap} does and what {@code GameScene.add} would have done in the game.
+	 *
+	 * <p>Placing it adjacent also gives the surprise case something to be true of: a mob the level has
+	 * just produced has not seen the hero, which is the condition {@code Mob.surprisedBy} tests.
+	 */
+	private static void checkKillingIsWorthDoing( EnvConfig config ){
+		final boolean[] placed = { false };
+		final int[] lastMobHp = { -1 };
+
+		Outcome o = play( config, 200, "KILLCHECK", turn -> {
+			SPDEnv env = turn.env;
+			if (env.mode() != EnvMode.WORLD){
+				env.step( Action.CANCEL, 0 );
+				return;
+			}
+
+			//Top the hero up between steps.
+			//
+			//Not so the fight is easier to win - it is a real mob, really attacked, and Statistics
+			//increments for real - but so the case does not depend on whether this seed's floor 1 is
+			//survivable. That is a property of the game's balance, and a gate that failed on it would
+			//start failing the moment the hero got better at surviving, which is the direction this
+			//whole module is trying to move. Same reasoning, and the same technique, as
+			// checkTheHeroCanDie applying lethal damage rather than waiting for the mob cluster.
+			if (Dungeon.hero != null && Dungeon.hero.isAlive() && Dungeon.hero.HP < 12){
+				Dungeon.hero.HP = Dungeon.hero.HT;
+			}
+
+			if (!placed[ 0 ] && placeMobBesideHero( env )) placed[ 0 ] = true;
+
+			Mob target = adjacentEnemy();
+			if (target == null){
+				env.step( Action.SEARCH, 0 );
+				return;
+			}
+			lastMobHp[ 0 ] = target.HP;
+			env.step( directionToTarget( env, target ), 0 );
+		} );
+
+		int kills = o.ledger == null ? 0 : o.ledger.notes( RewardTerm.KILL );
+
+		if (!placed[ 0 ]){
+			fail( "no free cell beside the hero, so no mob could be placed and neither the KILL nor the"
+					+ " SNEAK_ATTACK emission site was reached. A case that cannot reach the code it"
+					+ " guards is not a check." );
+			return;
+		}
+
+		if (kills == 0 ){
+			fail( "a level-appropriate mob was placed beside the hero and fought for " + o.turns
+					+ " turns with no kill recorded. The hero's melee went through Hero.handle exactly as"
+					+ " it does for a player, so either Statistics.enemiesSlain is not moving or"
+					+ " Mob.destroy is not reached headlessly - and KILL is diffed from that counter, so"
+					+ " a KILL that never fires is a term worth nothing. Mob left at hp " + lastMobHp[ 0 ]
+					+ ", damage taken " + o.termTotal( RewardTerm.DAMAGE_TAKEN ) );
+			return;
+		}
+
+		if (o.termTotal( RewardTerm.KILL ) <= 0 ){
+			fail( "a mob was killed and KILL paid " + o.termTotal( RewardTerm.KILL ) + ". The term and"
+					+ " RewardLedger.countKill() both existed and neither was ever called, so fighting"
+					+ " was worth nothing while being hit cost something." );
+			return;
+		}
+
+		//Damage has to be priced against dying rather than picked, or the gradient disappears.
+		//
+		//A floor-1 hero has 20 HP. damagePenalty * 20 is what losing a full health bar costs, and it
+		//has to be within an order of magnitude of deathPenalty - otherwise a run that dies every
+		//episode returns the same terminal every time and the only term that varies is a twentieth of
+		//it. At the old 0.25 that was 5 against 100, and two 12- and 22-generation runs ended 100%
+		//dead with no movement on any axis.
+		//
+		//It also has to leave room for killReward: killing a rat has to be worth the health it costs,
+		//and a rat is about 8 HP, so the trade is close enough that a surprise attack is the right way
+		//to take it - which is precisely what the ordering below is for.
+		final int HP = 20;
+		double wholeHealthBar = config.damagePenalty * HP;
+
+		if (!( wholeHealthBar > config.deathPenalty / 10f )){
+			fail( "losing a " + HP + " HP health bar costs " + wholeHealthBar + " against a death penalty"
+					+ " of " + config.deathPenalty + ". Below about a tenth, an agent that dies every"
+					+ " episode gets the same terminal reward every episode and the only signal that"
+					+ " varies is a fraction of it - so there is no gradient to learn from at all."
+					+ " Measured: two runs at 0.25/HP both sat at 100% deaths." );
+			return;
+		}
+
+		if (!( config.damagePenalty * 8 < config.killReward * 4 )){
+			fail( "killing a mob worth about 8 HP costs " + ( config.damagePenalty * 8 )
+					+ " in damage against " + config.killReward + " paid, so the agent would rather walk"
+					+ " past than fight - which is the state KILL being dead for in the first place." );
+			return;
+		}
+
+		//A surprise attack is the one combat outcome that costs the hero nothing, because
+		//Mob.surprisedBy skips the defender's defence skill outright. It is therefore paid above the
+		//kill, and the ordering is the property: it pays for arriving unseen rather than for trading
+		//blows with whatever happens to be in reach.
+		if (!( config.sneakAttackReward > config.killReward )){
+			fail( "a surprise attack pays " + config.sneakAttackReward + " and a kill pays "
+					+ config.killReward + ". The surprise is the one that costs no health -"
+					+ " Mob.surprisedBy skips the defender's defence - so paying it less than the kill"
+					+ " teaches trading blows instead." );
+			return;
+		}
+
+		//The emission site itself, not just the price. Statistics.sneakAttacks is what makes the term
+		//more than a second name for KILL, and it is read rather than re-derived.
+		int sneaks = o.ledger == null ? 0 : o.ledger.notes( RewardTerm.SNEAK_ATTACK );
+		if (sneaks == 0 ){
+			fail( "the fight killed " + kills + " mob(s) and recorded no SNEAK_ATTACK, on a mob the"
+					+ " level had just produced and therefore had not seen the hero. The term is meant"
+					+ " to pay for arriving unseen - Mob.surprisedBy skips the defender's defence - and a"
+					+ " counter that never moves is not a reward." );
+			return;
+		}
+
+		if (o.termTotal( RewardTerm.SNEAK_ATTACK ) <= 0 ){
+			fail( "SNEAK_ATTACK was recorded " + sneaks + " time(s) and paid "
+					+ o.termTotal( RewardTerm.SNEAK_ATTACK ) + "." );
+			return;
+		}
+
+		System.out.println( "  killing pays " + fmt( config.killReward ) + " and a surprise attack "
+				+ fmt( config.sneakAttackReward ) + "; " + kills + " kill(s) and " + sneaks
+				+ " surprise(s) recorded" );
+	}
+
+	/**
+	 * Puts one level-appropriate mob on a free cell beside the hero, by the same three steps
+	 * {@code SummoningTrap} uses.
+	 *
+	 * @return false when every neighbour is occupied, so the caller reports that rather than quietly
+	 *         asserting nothing
+	 */
+	private static boolean placeMobBesideHero( SPDEnv env ){
+		if (Dungeon.level == null || Dungeon.hero == null) return false;
+
+		Hero hero = Dungeon.hero;
+		int w = Dungeon.level.width();
+
+		int[] offsets = { -w, w, -1, 1, -w - 1, -w + 1, w - 1, w + 1 };
+
+		for (int off : offsets){
+			int cell = hero.pos + off;
+			if (cell < 0 || cell >= Dungeon.level.length()) continue;
+			if (!Dungeon.level.insideMap( cell )) continue;
+			if (!Dungeon.level.passable[ cell ]) continue;
+			//never wrap a row: a naive +/-1 puts a mob on the far side of a thin floor
+			if (Math.abs( cell % w - hero.pos % w ) > 1) continue;
+			if (Actor.findChar( cell ) != null) continue;
+			if (Dungeon.level.heaps.get( cell ) != null) continue;
+
+			Mob mob = Dungeon.level.createMob();
+			if (mob == null) continue;
+			//a large mob does not fit, and the engine's own summoning code discards one for that
+			if (Char.hasProp( mob, Char.Property.LARGE ) && !Dungeon.level.openSpace[ cell ]) continue;
+			if (mob.state != mob.PASSIVE) mob.state = mob.WANDERING;
+			mob.pos = cell;
+
+			//GameScene.add is what does this in the game and never runs headlessly. All three calls
+			//matter: the sprite because Char paths dereference it, level.mobs because Mob.destroy
+			//removes itself from there, and Actor.add because Actor.findChar - which is what
+			//ActionMapper.moveLegal and Hero.handle both use to decide whether a cell holds a mob -
+			//searches Actor.chars and nothing else. Without it the hero walks into the mob and
+			//nothing happens, which is what the first version of this fixture did.
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline.spriteFor( mob );
+			Actor.add( mob );
+			Dungeon.level.mobs.add( mob );
+
+			Dungeon.observe();
+			return true;
+		}
+		return false;
+	}
+
+	/** The hostile mob beside the hero right now, or null. */
+	private static Mob adjacentEnemy(){
+		Hero hero = Dungeon.hero;
+		if (hero == null || Dungeon.level == null) return null;
+
+		int w = Dungeon.level.width();
+		int[] offsets = { -w, w, -1, 1, -w - 1, -w + 1, w - 1, w + 1 };
+
+		for (int off : offsets){
+			int cell = hero.pos + off;
+			if (cell < 0 || cell >= Dungeon.level.length()) continue;
+			Char ch = Actor.findChar( cell );
+			if (ch instanceof Mob && ((Mob) ch).isAlive()
+					&& ((Mob) ch).alignment == Char.Alignment.ENEMY){
+				return (Mob) ch;
+			}
+		}
+		return null;
+	}
+
+	/** A legal action that walks the hero into the given mob. */
+	private static Action directionToTarget( SPDEnv env, Mob mob ){
+		Hero hero = Dungeon.hero;
+		int w = Dungeon.level.width();
+
+		int dx = Integer.signum( mob.pos % w - hero.pos % w );
+		int dy = Integer.signum( mob.pos / w - hero.pos / w );
+
+		Action[] order = { Action.MOVE_N, Action.MOVE_E, Action.MOVE_S, Action.MOVE_W,
+				Action.MOVE_NE, Action.MOVE_SE, Action.MOVE_SW, Action.MOVE_NW };
+
+		for (Action a : order){
+			if (a.dx == dx && a.dy == dy && a.index < env.actionMask().length
+					&& env.actionMask()[ a.index ] != 0f ){
+				return a;
+			}
+		}
+		//not adjacent, or the cell is blocked: step toward it by whatever the mask offers
+		for (Action a : order){
+			if (a.index < env.actionMask().length && env.actionMask()[ a.index ] != 0f ) return a;
+		}
+		return Action.SEARCH;
+	}
+
+	/**
+	 * A step the game resolved for free must be charged, and must cost materially more than a real one.
+	 *
+	 * <p>{@code issues.md} 13: {@code duelist-mid} ends {@code STALLED} without looking idle, because
+	 * 120 consecutive {@code USE} steps alternate equip and unequip on one {@code Rapier} at
+	 * {@code dEng = 0.0}. The stall guard is right that this is a stall, but until it fires those steps
+	 * cost a hundredth of a turn each, so a genuinely free infinite action is nearly free.
+	 *
+	 * <p>Priced here rather than prevented in the guard, because the guard decides when an episode
+	 * ends and moving that boundary would invalidate every recording in the corpus.
+	 *
+	 * <p><b>Two halves, because the first version only had one and it was the weak half.</b> Asserting
+	 * that {@code noProgressPenalty > turnCost * 10} is a statement about a number, and mutating the
+	 * emission site away entirely leaves it passing - the case was guarding the constant rather than the
+	 * behaviour. The second half drives the real loop through the real environment and requires the term
+	 * to have been charged on the step that spent nothing. Same failure as {@code checkStallPathRecordsOnce}
+	 * on {@code STALLED} at zero: removing the evidence removes the regression test for it.
+	 */
+	private static void checkFreeStepsCostSomething( EnvConfig config ){
+		if (!( config.noProgressPenalty > config.turnCost * 10f )){
+			fail( "a step that advances no engine time costs " + config.noProgressPenalty
+					+ " against " + config.turnCost + " for a real one, so a free action is cheaper than"
+					+ " acting. duelist-mid alternated equip and unequip for 120 steps at that price." );
+			return;
+		}
+
+		Outcome o = play( config, 60, "FREESTEPCHECK", turn -> {
+			SPDEnv env = turn.env;
+			if (env.mode() != EnvMode.WORLD){
+				env.step( Action.CANCEL, 0 );
+				return;
+			}
+			//equip, unequip, equip, unequip: the free action, on the hero's own weapon
+			env.step( Action.USE, 0 );
+			if (env.mode() == EnvMode.SLOT) env.step( Action.USE, equippableSlot( env ) );
+		} );
+
+		int charged = o.ledger == null ? 0 : o.ledger.notes( RewardTerm.NO_PROGRESS );
+		if (charged == 0 ){
+			fail( "the driver equipped and unequipped the hero's weapon for " + o.turns + " steps and"
+					+ " NO_PROGRESS was never charged. Those steps advance no engine time -"
+					+ " WndUseItem.onClick calls item.execute and returns - so a free action is free again."
+					+ " This is the same shape as STALLED at zero: removing the evidence removes the"
+					+ " regression test for it." );
+			return;
+		}
+
+		if (o.termTotal( RewardTerm.NO_PROGRESS ) >= 0 ){
+			fail( "NO_PROGRESS was recorded " + charged + " time(s) and paid "
+					+ o.termTotal( RewardTerm.NO_PROGRESS ) + ", so a free step is not being charged." );
+			return;
+		}
+
+		System.out.println( "  a free step costs " + config.noProgressPenalty + " against "
+				+ config.turnCost + " for a real one; " + charged + " free step(s) charged" );
+	}
+
+	/** A slot holding an equippable the hero is not already wearing, or 0. */
+	private static int equippableSlot( SPDEnv env ){
+		Hero hero = Dungeon.hero;
+		if (hero == null) return 0;
+
+		List< Item > slots = env.mapper().slots();
+		for (int i = 0; i < slots.size(); i++){
+			Item item = slots.get( i );
+			if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem
+					&& !item.isEquipped( hero )){
+				return i;
+			}
+		}
+		return 0;
 	}
 
 	/**
@@ -279,24 +685,6 @@ public class RewardCheck {
 		}
 
 		System.out.println( "  the reachable stall path records STALLED exactly once" );
-	}
-
-	/**
-	 * Dying must remain the most expensive way to end.
-	 *
-	 * <p>The ordering that made the whole thing possible: {@code STALLED} at -5.0 sat below
-	 * {@code TURN_LIMIT} and far below {@code DEATH} at -100. Asserted as an ordering so it cannot
-	 * invert silently as any one of the three is retuned.
-	 */
-	private static void checkDeathRemainsMostExpensive( EnvConfig config ){
-		double death = -config.deathPenalty;
-		double turnLimit = -config.turnCost * config.turnLimitTotal;
-
-		if (!( death < turnLimit )){
-			fail( "dying costs " + death + " and surviving to the turn cap costs " + turnLimit
-					+ ". Dying must be the worse outcome, or the agent will learn to keep going past the"
-					+ " point where it should have quit." );
-		}
 	}
 
 	// --------------------------------------------------------------------------- playing

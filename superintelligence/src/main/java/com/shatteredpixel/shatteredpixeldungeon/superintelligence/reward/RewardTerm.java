@@ -69,6 +69,27 @@ public enum RewardTerm {
 	/** Killed a hostile mob. */
 	KILL,
 
+	/**
+	 * Hit a mob that had not seen the hero.
+	 *
+	 * <p>Distinct from {@link #KILL} because it is a different decision and a different lesson. A kill
+	 * is paid for the health that came off; a surprise attack is paid for arriving unseen, which is
+	 * decided by approach rather than by any roll - {@code Mob.surprisedBy} skips the target's defence
+	 * outright. Rewarding the kill alone teaches trading blows, and trading blows is what the recorded
+	 * deaths look like.
+	 */
+	SNEAK_ATTACK,
+
+	/**
+	 * A step that advanced no engine time.
+	 *
+	 * <p>Not a mis-action - {@code WAIT} and {@code SEARCH} advance the clock, and this does not fire on
+	 * them. It fires on steps the game resolved for free: equipping and unequipping, in particular, which
+	 * spend nothing at all. Priced rather than refused, because the action is legal and the game lets a
+	 * player do it; what it must not do is let a hundred of them cost nothing.
+	 */
+	NO_PROGRESS,
+
 	/** Lost health. */
 	DAMAGE_TAKEN,
 
@@ -128,6 +149,7 @@ public enum RewardTerm {
 			case CRAFTED:
 			case CRAFTED_MEAT_PIE:
 			case KILL:
+			case SNEAK_ATTACK:
 				return true;
 			default:
 				return false;

@@ -233,3 +233,41 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
     again, because the free action is still there — `duelist-mid` has already been regenerated twice during
     earlier work, which is why `issues.md` 8's evidence no longer exists in the file. The recording is a
     symptom; the loop is the fault.
+
+    ### Partly acted on: the loop is priced, the guard is unchanged
+
+    `reward.no_progress_penalty` charges every step that advanced no engine time, so those 120 free steps
+    now cost 0.05 each rather than 0.002 — and the policy has a reason to prefer something that costs
+    engine time. See `TODO.md` §1.9.
+
+    **The stall guard itself is deliberately unchanged**, and that is the part worth being explicit about
+    because the report above correctly identifies it as the real fix. Making `checkFloorLimits` count
+    `Actor.now()` instead of only position and HP changes *when recordings end*, which invalidates the
+    committed corpus and needs its own gate. Pricing the step achieves the objective — the loop stops
+    being free — without moving any boundary, so `duelist-mid` still plays clean and `viewcheck` is
+    still 17 of 17. The guard change stays open at `TODO.md` §0.10.
+
+14. Nothing has ever left floor 1, and the reward function is not asking for it. (closed as a cause;
+    the milestone itself is `TODO.md` 1.4)
+
+    Three faults, and each is a property rather than a size — which is why none of them is visible in a
+    loss curve.
+
+    1. **Exploration outbid a descent.** `reward.explore_reward` 0.05 against `reward.depth_reward` 10,
+       on a floor holding several hundred walkable tiles (measured: the largest of 1040 sampled floors is
+       81 tall, and 419 exceed 48 on at least one side). Mapping a floor without touching the stairs paid
+       more than descending did. The agent was paid to wander and it learned to wander; this is what
+       `bestDepth` being 1 in every generation of every run was measuring. Now 0.01 against 25.0.
+    2. **Killing paid nothing and being hit cost something.** `RewardLedger.countKill()` was written and
+       never called, and `prevKills` was snapshotted and never compared — so walking past everything was
+       optimal, which is the shape every recorded death has. Now emitted from `Statistics.enemiesSlain`,
+       with `SNEAK_ATTACK` above it because a surprise attack is the one combat outcome that costs no
+       health.
+    3. **Two of the four terminal outcomes were cheaper than the run they ended.** `TURN_LIMIT` was
+       `-turnCost * 100` — a fifth of a point against a +10 descent — so idling out a floor while banking
+       exploration was a positive-value strategy. And `STALLED` cost exactly what dying cost, which makes
+       quitting and losing one decision with two labels.
+
+    **Measured: survival improved, depth did not.** Deaths 100% → 19% and mean turns 377 → 1335 over 12
+    generations; `bestDepth 2` once in a smoke test. Depth does not trend yet, and saying so is more
+    useful than a run long enough to produce a number that could be read either way. `TODO.md` 1.4.

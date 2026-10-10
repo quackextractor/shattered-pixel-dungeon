@@ -23,6 +23,189 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-10
+
+The reward function did not price the objective. This release re-prices it, and the substance of the
+release is not the constants — it is that **four of them were wrong in a way no loss curve would show**,
+and that the agent's behaviour in every run so far is what a correct optimiser does with them.
+
+### Fixed
+
+- **Exploration paid more than descending, which is why `bestDepth` had been 1 in every generation of
+  every run.** `reward.explore_reward` was 0.05 and `reward.depth_reward` was 10. A regular floor holds
+  several hundred walkable tiles — measured across 1040 floors over 40 seeds at depths 1-26, the largest
+  is **81 tall** and **419 of 1040 exceed 48 on at least one side** — so mapping a floor without ever
+  touching the stairs banked more than descending paid.
+
+  This is the whole objective restated as a ratio, and it explains every measurement in the project's
+  history at once: `meanScore` climbing 186 → 59 across six generations on a run where depth never moved,
+  and the best score ever seen (~44) being almost entirely tile exploration rather than progress. The
+  agent was being paid to wander and it learned to wander.
+
+  Now `reward.depth_reward=25.0` against `reward.explore_reward=0.01` — mapping 120 tiles pays 1.20
+  against a 25.00 descent. **This ratio is the first thing to change when depth does not move**, and the
+  properties file says so at the key rather than in a changelog nobody reads.
+
+- **`KILL` was declared, plumbed and never emitted.** `RewardLedger.countKill()` was written and never
+  called; `RewardModel` snapshotted `Statistics.enemiesSlain` into `prevKills` and never compared it. So
+  **fighting was worth exactly nothing while being hit cost something** — the cheapest way past a
+  corridor was to walk down it, and the recorded deaths have that shape: the hero does not lose a fight,
+  he runs out of room.
+
+  `reward.kill_reward=12.0`, emitted from the engine's own counter, and `ledger.countKill()` now runs.
+
+- **`damage_penalty` was priced so low that dying carried no gradient at all.** `0.25` per HP against a
+  `death_penalty` of 100 means a floor-1 hero's entire 20 HP health bar costs **5** — five per cent of
+  dying. Two training runs died in **100% of episodes**, which means every episode returned the *same*
+  terminal reward and the only term that varied was worth a twentieth of it. There was nothing to learn
+  from, and no loss curve would have said so.
+
+  `reward.damage_penalty=2.5`, so a full floor-1 bar costs half a death and the agent feels every hit on
+  the way down rather than only the ending. **Sized against `death_penalty` as a relationship, not picked
+  as a number**, because the first attempt at this — 5.0 — priced survival and made combat repulsive:
+  killing a rat costs `5.0 * 8 = 40` and pays `kill_reward` of 3, a net **−37 to fight**. `kill_reward`
+  and `sneak_attack_reward` are sized against it as well, which is why they are 12 and 22 rather than 3
+  and 6.
+
+  **Known weakness, recorded rather than designed away:** a linear per-HP penalty is depth-dependent,
+  because the bar grows. At 2.5 a floor-1 bar is half a death and a floor-5 bar (~60 HP) is one and a
+  half. Making both the damage penalty and the combat payout scale with depth is a `RewardModel` change,
+  not a config change.
+
+- **`STALLED` cost exactly what dying cost**, so giving up and losing were one decision with two labels —
+  and the label that survives a learner is the useful one. It was `-deathPenalty` deliberately (a reversal
+  of `PLAN-reward-signals.md` §3.2), and it balanced the price while losing the distinction.
+
+  `reward.stall_penalty=150.0`, **worse than dying**, as its own configurable constant rather than
+  derived from `deathPenalty` — so the ordering is a decision that can be retuned without arithmetic
+  deciding it, and lowering `death_penalty` does not silently unbalance the other side. Dying moved the
+  run forward and closed a floor; a stall is a run that stopped, on a hero who is alive and was not asked
+  to do anything difficult.
+
+- **`TURN_LIMIT` was `-turnCost * 100`**, which is **-0.2** against a **+10** depth reward. A hero could
+  spend 1500 turns mapping a floor, bank the exploration, and be charged a fifth of a point for never
+  reaching the stairs. With exploration paying per tile, idling out the clock was a positive-value
+  strategy rather than a failure to progress — and the runs that did it were optimising, not misbehaving.
+
+  `reward.turn_limit_penalty=25.0`. The terminal outcomes are now **ordered** — stall < death < turn limit
+  < a cleared floor — and `rewardcheck` asserts the ordering rather than the constants.
+
+- **A free action was free.** Equipping and unequipping a weapon advance no engine time at all:
+  `WndUseItem.onClick` calls `item.execute` and returns. A policy found this and alternated the two for
+  **120 consecutive steps on one `Rapier`** at `dEng = 0.0` — `issues.md` 13's "stalled without really
+  being stalled". The stall guard is right that it is a stall; what was missing was anything making those
+  120 steps cost.
+
+  `reward.no_progress_penalty=0.05`, charged from a diff of `Actor.now()`.
+
+  **Priced, not prevented, and that is deliberate.** `TODO.md` §0.10's real fix is to make the stall
+  guard count engine time — which changes *when recordings end*, invalidates the committed corpus, and
+  needs its own gate. Charging the step prices the action without moving any boundary: `duelist-mid`
+  still plays clean, `viewcheck` is still 17 of 17, and the loop is 50× more expensive than it was. The
+  guard change stays §0.10's open item.
+
+### Added
+
+- **`RewardTerm.SNEAK_ATTACK`**, and it is deliberately the largest combat payout at
+  `reward.sneak_attack_reward=22.0`, well above the kill.
+
+  It is read from `Statistics.sneakAttacks`, which `Mob.defenseProc` increments exactly when
+  `Mob.surprisedBy` holds — so it is the engine's own answer and not a re-derivation of it, and it is
+  reset by `Statistics.reset()` so it is per-run.
+
+  **A kill is paid for damage dealt**, which depends on the weapon and on rolls the policy cannot
+  influence. **A surprise attack is paid for arriving unseen**, which depends on where the hero walked —
+  and it is the one combat outcome that costs nothing, because `Mob.surprisedBy` returns 0 for the
+  defender's `defenseSkill` outright.
+
+  **That is the whole design: fighting has to be worth doing, and the only way it is worth doing is to
+  not be hit.** With `damage_penalty` at 2.5, a floor-1 rat is about 8 HP and a melee kill trades
+  roughly half that — so a melee kill is close to break-even, and the profitable kill is the sneak. A
+  reward structure that pays both outcomes the same teaches trading blows, and trading blows is what the
+  recorded deaths look like.
+
+- **`RewardTerm.NO_PROGRESS`** — a step that advanced no engine time. Distinct from `TURN_COST`, which
+  charges every turn; it does not fire on `WAIT` or `SEARCH`, which do advance the clock.
+
+- **Four `rewardcheck` cases (9 → 13), each a property rather than a constant:**
+  `checkTerminalsAreOrdered`, `checkDepthBeatsAPerFloorTurnLimit`,
+  `checkExplorationCannotOutbuyADescent`, `checkFreeStepsCostSomething`. `checkStallCostsAsMuchAsDying`
+  became `checkStallCostsMoreThanDying` — it asserted an equality that was itself the bug.
+
+  `checkKillingIsWorthDoing` also asserts the **relationship between the combat payouts and the damage
+  penalty**, which is what caught the −37: a mob worth about 8 HP must not cost more to kill than it
+  pays, or the agent walks past instead — the state `KILL` being dead for in the first place.
+
+- **`checkKillingIsWorthDoing`**, which proves the `KILL` and `SNEAK_ATTACK` emission sites by driving
+  real combat. **Building it took three attempts and the failures are worth more than the case.** The
+  first drove randomly from the action mask, met no mob on its seed, and reported success having measured
+  nothing. The second hunted every enemy on the level and walked the hero into a dead end for 900 turns,
+  taking 99 damage and killing nothing — the level is rooms joined by doors, so an enemy the hero can see
+  but cannot reach is an ordinary situation the driver could not tell from one it could reach. The third
+  places a mob through `Level.createMob` + `LevelPipeline.spriteFor` + `Actor.add`, the three steps
+  `SummoningTrap` uses; all three matter, because `Actor.findChar` searches `Actor.chars` and nothing
+  else, so without `Actor.add` the hero walks into the mob and nothing happens. Each of the first two
+  would have passed.
+
+### Mutation-tested, including one that a constant-only check could not have caught
+
+Removing the `KILL` emission, the `SNEAK_ATTACK` emission and the `NO_PROGRESS` emission each fails
+`rewardcheck` on the right case, and the file is restored between runs.
+
+**`NO_PROGRESS` is the one worth reporting, because the gate was wrong first.** Its case originally
+asserted only that `noProgressPenalty > turnCost * 10` — a statement about a number — and removing the
+emission site entirely left it **passing**. The same shape as `checkStallPathRecordsOnce` on `STALLED` at
+zero: the fix removed the very evidence that would have caught its own regression. It now drives the real
+equip/unequip loop through the real environment (59 free steps observed) and requires the term to have
+been charged on them.
+
+- **`.env.example` at the repository root**, and `.env` git-ignored. Every `SPD_*` name is spelled out and
+  the reward keys annotated for what they buy. The binder has always derived the variable name from the
+  key, so nothing new was needed to make the six new keys reachable from the environment — the file
+  exists because a name you have to derive is a name nobody sets.
+
+### Measured
+
+A 12-generation run at 20 workers × 4 episodes, seed 12345:
+
+```
+gen   score    turns   ended                                depth
+0     -107.1   377     death 80 (100%)                      best 1
+4     -115.0   664     death 80 (100%)                      best 1
+8      -99.1   857     death 63 (79%)  turn_limit 17 (21%)  best 1
+9      -70.8  1335     turn_limit 65 (81%) death 15 (19%)    best 1
+11    -121.1  1234     death 77 (96%)  turn_limit 3 (4%)     best 1
+```
+
+**Deaths 100% → 19%, mean turns 377 → 1335, score −107 → −71.** The agent learned to survive, which is
+the first time any run has moved on that axis. `bestDepth 2` appeared once in a separate 4-generation
+smoke test — the first depth 2 in any run.
+
+**Depth does not trend, and that is the honest result.** `bestDepth 2` in a smoke test and 1 in a longer
+one is not progress; it shows floor 2 is *reachable* once exploration stops paying better than
+descending. Whether the ratio is now right is a 40-generation measurement, not a 4-generation one, and
+`TODO.md` 1.4 is where it is tracked. Nothing has won a run; the milestone is beating Goo on depth 5.
+
+### Verified
+
+- `verifyall` — `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 21, both green. Re-run after
+  the reward change rather than carried over, because the change is behavioural.
+- `:desktop:viewcheck` — **17 of 17** in 37.4 s at 8 children. Re-run, and it is the gate that would catch
+  a reward change having moved an episode's outcome, since three of the seventeen end `STALLED` or
+  `DEATH` and both prices changed.
+
+### Not done
+
+- **No GPU is used, because none is available to this framework.** `Network` is hand-written Java over
+  `float[]` with a CPU forward and backward pass; there is no device backend to move to, and building
+  one is a rewrite rather than a flag. The machine has an AMD Radeon RX 6900 XT, no CUDA and no ROCm.
+  Compute is scaled with worker processes and `--update-threads` instead. This is recorded rather than
+  left for someone to go looking for a GPU switch.
+- **`TODO.md` §0.10's stall-guard change**, as above: priced, not prevented.
+- **Five reward terms still have no emission site** — `CRAFTED`, `CRAFTED_MEAT_PIE`, `CURSE_REMOVED`,
+  `EQUIP_TOO_STRONG`, `MENU_NOOP`. The cause is structural and is §D2: a state diff cannot distinguish
+  alchemy from a floor pickup.
+
 ## [0.4.2] - 2026-10-10
 
 ### Changed

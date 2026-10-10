@@ -71,7 +71,30 @@
 | **`rngtrace <file.replay>`** | Emits per-step draw counts and order-sensitive fingerprints (`baseFingerprint`). | Step-by-step fingerprint alignment between headless and rendered runs. |
 | **`collectcheck` (`:superintelligence`)** | Verifies that live recordings captured by `EpisodeCollector` replay cleanly. | 100% reproduction of recorded step positions and scores. |
 | **`modecheck` & `restartcheck`** | Verifies action modes (`WORLD`, `SLOT`, `TARGETING`, `MENU`, `INVENTORY`) and floor re-initialisation. | Zero mode traps; floor 1 regenerates identically after 400+ turns. |
+| **`rewardcheck` (`:superintelligence`)** | Drives the real environment and asserts the reward **prices the objective**, as properties rather than as constants. 13 cases. | Terminal outcomes are **ordered** (stall < death < turn limit < a cleared floor); stalling costs *more* than dying; descending beats idling out the floor's turn budget; mapping 120 tiles pays less than a descent; a step that advanced no engine time costs more than a real one; killing and surprise-attacking both pay, the surprise more. |
 | **Multi-JVM Byte-Diff Sweep** | Runs identical seed/hero rollouts across separate JVMs. | Generated `.replay` files are **byte-identical** across fresh JVMs. |
+
+### The reward gate, and what "property rather than constant" means there
+
+`rewardcheck` is the only gate whose subject is an objective rather than a mechanism, and that changes
+what a case in it is allowed to assert. A gate that compares `stall == -100` is asserting that a number
+has not moved; a gate that asserts `stall < death < turn_limit < depth_reward` is asserting that the
+agent has no reason to pick any of the three cheap endings, and it survives every one of them being
+retuned. Four of its thirteen cases are of the second kind, and one of them — the ordering — is the one
+that would have caught every defect in `issues.md` 14.
+
+**Two cases exist because the first version of them could not fail.** `checkStallingIsNotCheaperThanDying`
+originally tested `stall.score < death` and printed "cheaper"; a score is negative, so `-0.24 < -100` is
+false and the condition fired on a stall being *more* expensive than dying. It never fired on the -5.0 it
+was written to catch. And `checkKillingIsWorthDoing` took three attempts: a random walk from the action
+mask met no mob on its seed and reported success; a hunt over the whole level walked the hero into a
+dead end for 900 turns and killed nothing, because the level is rooms joined by doors and an enemy the
+hero can see but cannot reach is an ordinary situation. Only the third version places a mob deliberately,
+through the three steps `SummoningTrap` uses.
+
+The general form, and it is the same one `observecheck` and `graphcheck` were built for: **a check that
+cannot reach the code it guards is not a check.** Where reaching it requires a fixture, build the fixture
+from the engine's own path — and assert that it was built, rather than skipping when it could not be.
 
 The sweep in `paritycheck` is the one that reaches the fault `resetcheck` cannot. `resetcheck` proves
 that two runs of one seed produce the same trajectory, which is a statement about the environment.

@@ -3,7 +3,14 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-10, after `issues.md` "Training" 13 was investigated — the stall is real but the
+Last updated: 2026-10-10, after the reward function was re-priced around what the objective actually is
+(§1.8, closed below, and §1.9). The short version: **exploration was outbidding a descent**, which is why
+`bestDepth` had been 1 in every generation of every run; killing a mob paid nothing while being hit cost
+something; and the four terminal outcomes were priced so that two of them were cheaper than the run they
+ended. `STALLED` is now worse than dying, `TURN_LIMIT` is worse than a death's worth of nothing, and
+`SNEAK_ATTACK` is the largest combat payout because it is the only one that costs no health.
+
+Last updated before that: after `issues.md` "Training" 13 was investigated — the stall is real but the
 hero was looping rather than idling, and the recommended remedy of removing the stall would hide the
 fault rather than fix it (§0.10). Two defects found alongside it are recorded in §0.8: `env.grid_height`
 is documented and bound but only the encoder implements it, and none of the three geometry keys has a
@@ -297,7 +304,186 @@ hero carries more than the window.
 
 ---
 
-## 0.10 `duelist-mid` ends `STALLED` after a zero-cost equip loop - INVESTIGATED, not fixed
+## 1.9 Giving up is priced below dying, which prices it as an option - FIXED
+
+`issues.md` 9 asked for stall and death to be balanced; `TODO.md` 1.8 asked what surviving is worth.
+Both were answered by the same arithmetic error, and it was not that the constants were the wrong size.
+
+### What was actually true
+
+`STALLED` was `-deathPenalty`, the *same* number as dying. That had been deliberate — it reversed
+`PLAN-reward-signals.md` §3.2 and was recorded as a decision — and it balanced the price while losing
+the distinction. To a learner, two outcomes that cost the same are one outcome with two labels, and the
+label that survives is the useful one: **quitting is survivable.** issues.md 13 had already recorded
+what quitting looks like in practice — `duelist-mid` spending 120 consecutive steps alternating equip and
+unequip on one `Rapier` at `dEng = 0.0` — and the guard was right that it is a stall. What was missing
+was anything making those 120 steps cost.
+
+`TURN_LIMIT` was `-turnCost * 100`, which is **-0.2** against a **+10** depth reward. A hero could spend
+1500 turns mapping a floor, bank the exploration reward for it, and be charged a fifth of a point for
+never reaching the stairs. With exploration paying per tile (§1.8), idling out the clock was a
+*positive-value strategy*, not a failure to progress — and the runs that did it were not misbehaving,
+they were optimising.
+
+### What changed
+
+| Key | Was | Now | Why |
+| --- | --- | --- | --- |
+| `reward.stall_penalty` | `-deathPenalty` (100) | **150** | Worse than dying. Dying moved the run forward and closed a floor; a stall is a run that stopped on an alive hero who was asked to do nothing difficult |
+| `reward.turn_limit_penalty` | `-turnCost * 100` (0.2) | **25** | Idling out a floor must cost more than the exploration it banked, or it is not a failure |
+| `reward.no_progress_penalty` | *did not exist* | **0.05** | A step that advanced no engine time. Equipping costs nothing in the real game too — `WndUseItem.onClick` calls `item.execute` and returns — so a free infinite action has to cost something |
+
+The ordering is now **stall (-150) < death (-100) < turn limit (-25) < a cleared floor (+25)**, and
+`rewardcheck` asserts the ordering rather than the constants, so retuning any one of them cannot
+silently invert it.
+
+### Priced, not prevented, and that is the part worth being explicit about
+
+The `no_progress_penalty` term reads `Actor.now()` and charges a step that did not advance it. It does
+**not** tighten the stall guard to count engine time, which is what §0.10 says is the real fix.
+
+Moving the guard would change *when recordings end*, which invalidates the committed corpus and needs
+its own gate. Charging the step prices the action without moving any boundary — so `duelist-mid` still
+plays clean, `viewcheck` is still 17 of 17, and the loop is 50× more expensive than it was. The guard
+change remains §0.10's open item; what is closed here is that the loop is no longer free while it is
+open.
+
+### Gated
+
+`rewardcheck`, 9 → 13 cases. Four are new and each is a property rather than a constant:
+`checkTerminalsAreOrdered`, `checkDepthBeatsAPerFloorTurnLimit`, `checkStallCostsMoreThanDying` (which
+replaces an equality assertion), and `checkFreeStepsCostSomething`.
+
+---
+
+## 1.8 Exploration outbid a descent, which is the reason `bestDepth` was 1 - FIXED
+
+### The arithmetic, which is the whole of it
+
+A regular floor holds several hundred walkable tiles. §0.8 measured 1040 floors over 40 seeds: 419
+exceed 48 on at least one side, the largest is **81 tall**, and only 17 exceed 64. At the shipped
+`explore_reward` of **0.05**, mapping a floor without ever touching the stairs paid **more than the
++10** that descending paid.
+
+That is the objective, restated as a ratio: the agent was being paid to wander, and wandering is what
+it learned. Every measurement in this project's history is consistent with it — `meanScore` climbing
+186 → 59 across six generations on a run where `bestDepth` never moved off 1, and the best score ever
+seen (~44) being almost entirely tile exploration rather than progress.
+
+`depth_reward` is now **25** and `explore_reward` **0.01**: mapping 120 tiles pays 1.20 against a 25.00
+descent. `rewardcheck` asserts that a *small* floor's exploration is worth less than a descent, so the
+property holds with room to spare rather than on a number that happens to be true at the current floor
+sizes.
+
+**This is the number to change first when depth does not move**, and the properties file says so at the
+key rather than in a changelog nobody reads.
+
+### `damage_penalty` was so low that dying carried no gradient at all
+
+The one that is not about *what* the reward pays for but about whether it can be learned from at all.
+
+`reward.damage_penalty` was **0.25 per HP** against a `death_penalty` of **100**. A floor-1 hero has
+20 HP, so losing an entire health bar cost **5** — five per cent of dying. Two training runs died in
+**100% of episodes**, and at that rate every episode returned the *same* terminal reward, with the only
+term that varying worth a twentieth of it. There was no gradient. Nothing in the loss curves said so:
+`policy=0.0002`, `valueLoss` moving, entropy steady — a healthy-looking run over an objective that
+could not be learned.
+
+Now **2.5**, so a full floor-1 bar costs half a death and the agent feels every hit on the way down
+rather than only the ending.
+
+**Sized as a relationship, not picked as a number**, and the first attempt proved why. At **5.0** a
+full health bar cost exactly one death — which fixes the gradient and immediately breaks something else:
+killing a rat (8 HP) cost `5.0 × 8 = 40` and paid `kill_reward` of 3, a net **−37 to fight**. So the
+sequence matters and both halves had to land together:
+
+| | damage/HP | a full bar costs | kill | sneak | a melee rat kill nets |
+| --- | --- | --- | --- | --- | --- |
+| shipped for most of the project | 0.25 | 5 (5% of a death) | 3 | 6 | about +5, for no reason |
+| first attempt | 5.0 | 100 (one death) | 3 | 6 | **−37** |
+| now | 2.5 | 50 (half a death) | 12 | 22 | about −2, and a **sneak kill nets +34** |
+
+The last column is the one that matters, and it is why the melee kill is left close to break-even rather
+than positive: **the profitable kill is the one that costs no health.** A reward structure that pays a
+traded fight and a free kill about the same teaches trading blows, and trading blows is what the recorded
+deaths look like.
+
+**Known weakness, recorded rather than designed away.** A linear per-HP penalty is depth-dependent by
+construction, because the bar grows: at 2.5 a floor-1 bar is half a death and a floor-5 bar (~60 HP) is
+one and a half. Making the damage penalty and the combat payouts both scale with depth is a
+`RewardModel` change, not a config change, and is not done.
+
+`checkKillingIsWorthDoing` asserts both halves of the relationship — that a full health bar is a
+meaningful fraction of a death, and that a mob worth ~8 HP does not cost more to kill than it pays. The
+second assertion is what caught the −37.
+
+### `KILL` was declared, plumbed and never emitted
+
+`RewardLedger.countKill()` was written and never called. `RewardModel` snapshotted
+`Statistics.enemiesSlain` into `prevKills` and never compared it. So **fighting was worth exactly
+nothing while being hit cost something** — the cheapest way past a corridor was to walk down it, and
+the recorded deaths have that shape: the hero does not lose a fight, he runs out of room.
+
+`reward.kill_reward` = 12.0, emitted from the engine's own counter. Gated by `checkKillingIsWorthDoing`.
+
+### `SNEAK_ATTACK`, which is the largest combat payout on purpose
+
+New term, read from `Statistics.sneakAttacks` — which `Mob.defenseProc` increments exactly when
+`Mob.surprisedBy` holds, so it is the engine's own answer and not a re-derivation of it.
+
+`reward.sneak_attack_reward` = 22.0, well above the kill. A kill is paid for damage dealt, which depends on
+the weapon and on rolls the policy cannot influence. **A surprise attack is paid for arriving unseen**,
+which is a function of where the hero walked — and it is the one combat outcome that costs nothing,
+because `Mob.surprisedBy` skips the defender's `defenseSkill` outright. Paying the kill alone teaches
+trading blows with whatever is in reach.
+
+**Building the gate for this took three attempts, and the failures are the useful part.** The first
+drove randomly from the action mask and met no mob on its seed — it reported success having measured
+nothing. The second hunted every enemy on the level and walked the hero into a dead end for 900 turns,
+taking 99 damage and killing nothing: the level is rooms joined by doors, so an enemy the hero can see
+but cannot reach is an ordinary situation and the driver could not tell it from one it could reach. The
+third places a mob through `Level.createMob` + `LevelPipeline.spriteFor` + `Actor.add` — the three steps
+`SummoningTrap` uses, and all three matter, because `Actor.findChar` searches `Actor.chars` and nothing
+else, so without `Actor.add` the hero walks into the mob and nothing happens.
+
+A gate that cannot reach the emission site it guards is not a gate. Each failure was one that would
+have passed, and saying so is more useful than shipping the version that happened to work.
+
+### Measured
+
+Four generations, 20 workers, 2 episodes each — a smoke test, not a training run:
+
+```
+gen   score    depth        turns   ended
+0     -107.6   mean 1.0     443     death 40 (100%)
+1     -111.5   mean 1.0     751     death 40 (100%)
+2     -109.8   mean 1.0 best 2       death 40 (100%)     <- first depth 2 in any run
+3     -104.2   mean 1.0     829     death 32 (80%) turn_limit 8 (20%)
+```
+
+Then 12 generations, 20 workers, 4 episodes each:
+
+```
+gen   score    turns   ended                          depth
+4     -115.0   664     death 80 (100%)               best 1
+5     -119.2   902     death 78 (98%)  turn_limit 2   best 1
+7     -111.5   702     death 74 (93%)  turn_limit 6   best 1
+8      -99.1   857     death 63 (79%)  turn_limit 17  best 1
+9      -70.8  1335     turn_limit 65 (81%) death 15   best 1
+11    -121.1  1234     death 77 (96%)  turn_limit 3   best 1
+```
+
+**Deaths 100% → 19%, mean turns 377 → 1335, score −107 → −71.** The agent learned to survive, which is
+the first time any run has moved on that axis.
+
+**Depth still does not trend, and that is the honest result.** `bestDepth 2` in a smoke test and 1 in a
+longer one is not progress; what it shows is that floor 2 is *reachable* once exploration stops paying
+better than descending. Whether the ratio is now right is a 40-generation measurement, not a 4-generation
+one, and §1.4 is where it is tracked.
+
+---
+
+## 0.10 `duelist-mid` ends `STALLED` after a zero-cost equip loop - INVESTIGATED; loop priced, guard unchanged
 
 `issues.md` "Training" 13 asks why the recording stalls when the hero does not look idle, and offers
 "remove stalled and regen the recording" as a worst case. The question is right; the remedy would not work,
@@ -933,8 +1119,8 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | 1.2 | ~~Run one generation end to end and check the losses are sane~~ | done | `policy` and `value=` are non-zero, and advantages arrive with a real spread. Reported per generation. |
 | 1.3 | ~~Save and load the trained weights~~ | done | `Checkpoint` writes weights, Adam moments and the optimiser step count; `--save` / `--resume` / `--checkpoint-every`. A resumed run continues both the generation and the adam-step numbering. `checkpointcheck` refuses foreign, truncated, trailing-byte and wrong-config files. `PLAN-data-flow.md` step 4b. |
 | 1.7 | ~~Instrument the loop so a run can be judged~~ | done | `clip=` now reports the real ratio-clip fraction, and `MetricsHistory` writes `metrics.csv` per generation plus an end-of-run trend. `PLAN-data-flow.md` step 3b. |
-| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from research.md:40. **Still blocked, and the blocker is unchanged: 1.8.** Four harness faults have been fixed and none of them was this. bestDepth is 1 in every generation of every run and all recordings are depth=1. An earlier entry here claimed depth 2 had appeared; that came from a trend line reading depth 1.0..2.0, where the 2.0 was an artefact of Graph.bar widening a flat series' axis rather than a measurement. graphcheck now gates it. |
-| 1.8 | **Make surviving worth more than stalling** | M | **The next real blocker, re-scoped.** This was written when the agent stalled 100% of the time because it *chose* to. It did not: `REST` was a one-way door (`PLAN-reward-signals.md` §7), and every episode that used it was trapped by the harness. Fixed. Episodes now run the full 1500 turns with zero stalls. **The question is therefore still "what does surviving look like", but it is now a question that can be asked** — the agent genuinely survives 1500 turns and genuinely does not progress. `depthReward` is +10 against `turnCost` of 0.002, so descending pays 5,000 turns of idling, and `KILL` / `GOLD_GAIN` / `ITEM_PICKUP` still never fire. Nothing should be tuned in the same commit as the fault fixes, or §9's measurement stops meaning anything. |
+| 1.4 | Train long enough to see depth move off 1 | L | The actual milestone from research.md:40. **Partly unblocked.** The reward priced the objective wrongly in three separate ways and all three are fixed (§1.8, §1.9); `bestDepth 2` has now been observed, and a 12-generation run moved deaths 100% → 19% and mean turns 377 → 1335. **Depth still does not trend.** A 40-generation run is the honest next measurement, and the thing to watch is whether `bestDepth` moves once survival stops being the binding constraint. `graphcheck` gates the axis, so a `2.0` in a trend is a measurement this time. |
+| 1.8 | ~~Make surviving worth more than stalling~~ | done | **Closed — see §1.8.** The question was asked and answered, and the answer was that the reward was not pricing the objective at all: exploration outbid a descent, killing paid nothing, and two of the four terminal outcomes were cheaper than the run they ended. |
 | 1.5 | Verify the seed gate: 1 locked seed until Goo (depth 5), then 10, then 100, then random | M | `SeedPool` and `Trainer.advanceSchedule` are written; the gate has never had real depths to act on. Still blocked on 1.4. |
 | 1.9 | ~~Five harness faults that made the agent unable to have a correct episode~~ | done | Every one found by driving paths a weak policy almost never reaches, and every one hidden behind the one before it. REST was a one-way door (36/36 episodes stalled, idle guard fired zero times); headless had no texture and every TextureFilm dereferenced the null, killing workers on hunger damage; every death blew the stack, so DEATH - the ending the reward function is built around - was unreachable; a reset did not clear the static pending cell listener, so 4 of 10 recordings diverged when verified in sequence and all 10 verified clean alone; and OPEN_INVENTORY fell through to INTERACT's cell handling, so opening the inventory also acted on a neighbouring cell - which reached training. All fixed and gated: PLAN-reward-signals.md sections 7-8 and 10, with resetcheck, graphcheck and a new modecheck case. |
 | 1.6 | ~~Parallelise the update across minibatches~~ | done | --update-threads N. Measured 8.98 -> 2.73 ms/sample at 1 -> 4 threads (3.29x), 2.59 at 8 (3.47x). parallelcheck is a gate and mutation-tested. Required three fixes first, of which the dCell gradient leak was the real blocker. PLAN-data-flow.md step 4. |

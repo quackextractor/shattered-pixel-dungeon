@@ -83,7 +83,12 @@ public class EnvConfigBinder {
 			"reward.max_hp_reward",
 			"reward.gold_reward",
 			"reward.damage_penalty",
+			"reward.kill_reward",
+			"reward.sneak_attack_reward",
+			"reward.no_progress_penalty",
 			"reward.death_penalty",
+			"reward.stall_penalty",
+			"reward.turn_limit_penalty",
 			"reward.victory_reward",
 			"reward.curriculum_progress",
 
@@ -251,7 +256,15 @@ public class EnvConfigBinder {
 			case "reward.max_hp_reward":     config.maxHpReward = decimal( key, value, origin ); break;
 			case "reward.gold_reward":       config.goldReward = decimal( key, value, origin ); break;
 			case "reward.damage_penalty":    config.damagePenalty = decimal( key, value, origin ); break;
+			case "reward.kill_reward":       config.killReward = decimal( key, value, origin ); break;
+			case "reward.sneak_attack_reward":
+				config.sneakAttackReward = decimal( key, value, origin ); break;
+			case "reward.no_progress_penalty":
+				config.noProgressPenalty = decimal( key, value, origin ); break;
 			case "reward.death_penalty":     config.deathPenalty = decimal( key, value, origin ); break;
+			case "reward.stall_penalty":     config.stallPenalty = decimal( key, value, origin ); break;
+			case "reward.turn_limit_penalty":
+				config.turnLimitPenalty = decimal( key, value, origin ); break;
 			case "reward.victory_reward":    config.victoryReward = decimal( key, value, origin ); break;
 			case "reward.curriculum_progress":
 				config.curriculumProgress = decimal( key, value, origin ); break;

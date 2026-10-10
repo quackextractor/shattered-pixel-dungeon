@@ -1,16 +1,18 @@
 # Reward signals - the stall strategy
 
-> **Read §7 before §1.** Sections 1-6 diagnose the stall as a reward-arithmetic
-> problem reached by waiting. That diagnosis was wrong, and §7 is the correction:
-> `REST` was a one-way door, and the agent was trapped by the harness rather than
-> choosing to idle. §8 records two further faults that the stall was hiding.
-> The earlier sections are kept unmodified rather than rewritten, because how the
-> wrong answer looked reasonable is part of what §7 is about.
+> **Read §11 before §1.** Sections 1-10 are the history of this file, and the last of them is the
+> correction that matters: the stall was never the problem. **The reward function was not pricing the
+> objective at all**, and three separate defects in it are what kept `bestDepth` at 1 in every
+> generation of every run. §11 states what they were, what they cost, and what changed.
+>
+> §7 and §8 are kept rather than rewritten because how each wrong answer looked reasonable is part of
+> what §11 is about. §1-6 are kept for the same reason and are now largely historical: `STALLED` is no
+> longer zero, and "the agent learned to stall" turned out to be the harness trapping it.
 
 Why the agent learned to stop moving instead of play, and what to do about it.
 
 Written 2026-10-07, after the first 20-generation training run on the corrected
-update. Cross-references: `TODO.md` section 2, `PLAN-data-flow.md` for the
+update. Cross-references: `TODO.md` section 0, `PLAN-data-flow.md` for the
 worker data flow.
 
 ---
@@ -511,9 +513,109 @@ one cell at an early step. Both are individually reasonable; they are simply two
 implementations of one rule.
 
 The fix is to have one implementation, which in practice means the viewer should
-drive the trainer's `SPDEnv` rather than the live game. That is a redesign of
-the viewer rather than a patch, and it is not done. What is done is that the
+drive the trainer's `SPDEnv` rather than the live game. That is a redesign of the
+viewer rather than a patch, and it is not done. What is done is that the
 divergence message now names the action, the mode and both positions, so the
 disagreement is diagnosable rather than just reported.
+
+## 11. The stall was never the problem; the reward was not pricing the objective
+
+Sections 7 through 10 fixed five harness faults. All five were real and all five mattered, and fixing
+them is what made it possible to ask the question below at all: until episodes could run to their turn
+budget rather than ending at turn 10, there was no data on what the reward function was actually paying
+for.
+
+**What the question was.** `TODO.md` 1.4 and 1.8 together: depth never moved off 1, and nothing in the
+reward function asked for it. Three defects, each a property rather than a size, and each invisible in a
+loss curve.
+
+### 11.1 Exploration outbid a descent
+
+`explore_reward` was 0.05 and `depth_reward` was 10. A regular floor holds several hundred walkable
+tiles — measured across 1040 floors over 40 seeds at depths 1-26, the largest is **81 tall** and **419
+of 1040 exceed 48 on at least one side** (`TODO.md` §0.8) — so mapping a floor without ever touching
+the stairs banked **more than descending paid**.
+
+This is the objective restated as a ratio, and it explains the entire measurement history in one line:
+`meanScore` climbing 186 → 59 across six generations while `bestDepth` never moved, and the best score
+ever seen (~44) being almost entirely tile exploration. §1's table of "meanScore converges on exactly
+-5.0" was measuring a terminal reward; §9's "meanScore falling from 186 to 59" was measuring
+**exploration**, and reading it as the critic "fitting a longer episode" was reading a tax receipt as a
+diagnosis.
+
+Now `depth_reward=25.0` against `explore_reward=0.01`.
+
+### 11.2 Killing paid nothing and being hit cost something
+
+`RewardLedger.countKill()` was written and never called; `prevKills` was snapshotted from
+`Statistics.enemiesSlain` and never compared. The cheapest way past a corridor was to walk down it.
+
+**This is why the recorded deaths look the way they do.** `huntress-mid` ends with the hero at cell 265
+losing 8 → 5 → 3 → 2 → 0 HP in eight consecutive `INTERACT` steps on one tile — not losing a fight, being
+unable to leave. A reward function that pays nothing for winning one and something for losing one
+produces exactly that walk.
+
+Now `kill_reward=12.0`, plus `sneak_attack_reward=22.0` from `Statistics.sneakAttacks`. The surprise is
+above the kill because it is **the one combat outcome that costs no health** — `Mob.surprisedBy` returns
+0 for the defender's `defenseSkill` outright — and because it is decided by *approach* rather than by a
+roll, which is the only part of a fight the policy can actually control.
+
+### 11.3 Two of the four terminal outcomes were cheaper than the run they ended
+
+`TURN_LIMIT` was `-turnCost * 100` = **-0.2**, against a +10 descent. Idling out a 1500-turn floor while
+banking exploration was a **positive-value strategy**, and §6 read the resulting `TURN_LIMIT` column as
+"the agent survived". It had survived, and it had been paid to.
+
+`STALLED` was `-deathPenalty`. §3.2 set it to zero and that was wrong; §0.3 made it equal to death and
+`issues.md` 9 asked for exactly that, and it was wrong differently — **two outcomes that cost the same
+are one outcome with two labels**, and the useful label is the one that survives. Quitting stayed
+affordable.
+
+Now: **stall 150 > death 100 > turn limit 25**, and a cleared floor pays +25. `rewardcheck` asserts the
+ordering rather than the constants.
+
+### 11.4 What was measured, and what was not
+
+A 12-generation run, 20 workers × 4 episodes, seed 12345:
+
+| gen | score | mean turns | endings | bestDepth |
+| --- | --- | --- | --- | --- |
+| 0 | -107.1 | 377 | death 80 (100%) | 1 |
+| 4 | -115.0 | 664 | death 80 (100%) | 1 |
+| 7 | -111.5 | 702 | death 74 (93%), turn_limit 6 | 1 |
+| 8 | -99.1 | 857 | death 63 (79%), turn_limit 17 | 1 |
+| 9 | **-70.8** | **1335** | turn_limit 65 (81%), death 15 | 1 |
+| 11 | -121.1 | 1234 | death 77 (96%), turn_limit 3 | 1 |
+
+**Deaths 100% → 19%, mean turns 377 → 1335.** The agent learned to survive, which is the first movement
+on that axis any run in this project has produced. `bestDepth 2` appeared once, in a separate
+4-generation smoke test.
+
+**Depth does not trend, and that is the result.** One smoke-test episode reaching floor 2 says floor 2
+is *reachable* once exploration stops outbidding it; it does not say the ratio is right. Generation 9's
+turn_limit spike and generation 11's snap back to 96% deaths are the shape of an untrained policy, and
+reading a trend into either would repeat exactly the mistake §7's correction block records — a `2.0`
+that was `Graph.bar` widening a flat axis.
+
+### 11.5 The stall guard is priced, not fixed, and the difference is deliberate
+
+`issues.md` 13's equip/unequip loop is charged 0.05 a step now (`reward.no_progress_penalty`, from a
+diff of `Actor.now()`), which is 25× a turn. §0.10's actual fix — making `checkFloorLimits` count engine
+time — is **not** done, because it changes when recordings end and would invalidate the committed corpus
+behind a gate that cannot see the change is coming. Pricing the step achieves the objective without
+moving any boundary: `duelist-mid` still plays clean and `viewcheck` is still 17 of 17.
+
+### 11.6 The gate, and one thing it got wrong first
+
+`rewardcheck` is 13 cases; four are new and assert **properties** rather than constants — that the
+terminal outcomes are ordered, that descending beats idling out the floor, that a small floor's
+exploration is worth less than a descent, that a free step costs more than a real one.
+
+All three new emission sites are mutation-tested. Two of the three cases needed rebuilding before they
+could fail at all, and one of them — the `NO_PROGRESS` case — **passed with its emission site deleted**,
+because it only asserted that a constant was larger than another constant. It now drives the real loop
+(59 free steps observed) and requires the charge. The same shape as `checkStallPathRecordsOnce` on
+`STALLED` at zero: **removing the evidence removes the regression test for it**, and it happened twice
+in this file's history before it happened a third time here.
 
 

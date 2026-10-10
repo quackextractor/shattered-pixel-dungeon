@@ -1,6 +1,8 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.Statistics;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Belongings;
@@ -43,7 +45,9 @@ public class RewardModel {
 	private int prevCursedEquipped;
 	private int prevDebuffCount;
 	private int prevKills;
+	private int prevSneaks;
 	private float prevHunger;
+	private float prevEngineTime;
 
 	private boolean snapshotValid = false;
 
@@ -167,6 +171,38 @@ public class RewardModel {
 			ledger.add( RewardTerm.CURED_DEBUFF, 1.5f * (prevDebuffCount - debuffs), false );
 		}
 
+		//combat
+		//
+		//Both counters are the game's own. Statistics.enemiesSlain and Statistics.sneakAttacks are
+		//maintained by Mob.destroy and Mob.defenseProc respectively, so reading them measures what the
+		//engine decided happened rather than re-deriving it from a diff of the world.
+		//
+		//KILL was declared, plumbed through RewardLedger.countKill() and never emitted. Fighting was
+		//therefore worth nothing while being hit cost something, and the cheapest way to clear a floor
+		//was to walk past everything on it. The recorded deaths bear this out: the hero does not die in
+		//a fight, he dies having been unable to leave.
+		int kills = kills();
+		if (kills > prevKills){
+			int n = kills - prevKills;
+			ledger.add( RewardTerm.KILL, config.killReward * n, false );
+			ledger.countKill();
+		}
+
+		//Separate from KILL because it pays for a different decision. A kill is paid for damage dealt,
+		//which is a function of the weapon and of rolls the policy cannot influence. A surprise attack
+		//is paid for arriving unseen, which is a function of where the hero walked - and it is also the
+		//only combat outcome that costs the hero nothing: Mob.surprisedBy skips the defender's defence
+		//skill outright, so the same hit lands for far more.
+		//
+		//Paying the kill alone teaches trading blows with whatever is in reach. Paying this teaches
+		//attacking from outside the mob's field of view, which is how a hero stays at full health while
+		//still making progress - the difference between reaching floor 5 and dying on floor 1.
+		int sneaks = sneaks();
+		if (sneaks > prevSneaks){
+			ledger.add( RewardTerm.SNEAK_ATTACK,
+					config.sneakAttackReward * (sneaks - prevSneaks), false );
+		}
+
 		//equipment legality
 		int cursedEquipped = countCursedEquipped();
 		if (cursedEquipped > prevCursedEquipped){
@@ -189,6 +225,25 @@ public class RewardModel {
 		ledger.add( RewardTerm.TURN_COST, -config.turnCost, false );
 		if (tookAction) ledger.countTurn();
 
+		// A step the game resolved for free.
+		//
+		// Actor.now() is the engine's own clock and it does not move for every action: equipping and
+		// unequipping a weapon spends nothing at all, because WndUseItem.onClick calls item.execute and
+		// returns without touching the hero's turn. A policy that found this could alternate the two
+		// indefinitely - measured on duelist-mid, 120 consecutive USE steps at dEng=0.0 - and each one
+		//cost a hundredth of a turn.
+		//
+		//Charged rather than refused, because the action is legal and a player may do it; what must not
+		//happen is a hundred of them costing nothing. Charged from the diff and not from the stall
+		//guard on purpose: the guard decides when an episode ends, and changing that would invalidate
+		//every recording in the corpus. This prices the step without moving any boundary.
+		//
+		//Skipped on a floor change, where the clock legitimately restarts from zero - Dungeon.newLevel
+		//calls Actor.clear() - and would otherwise read as a step that went backwards in time.
+		if (depth == prevDepth && Actor.now() <= prevEngineTime ){
+			ledger.add( RewardTerm.NO_PROGRESS, -config.noProgressPenalty, false );
+		}
+
 		double reward = ledger.flushTurn();
 		snapshot();
 		return reward;
@@ -206,28 +261,35 @@ public class RewardModel {
 				ledger.add( RewardTerm.DEATH, -config.deathPenalty, false );
 				break;
 			case STALLED:
-				//-deathPenalty, i.e. exactly what dying costs.
+				//Worse than dying, deliberately and by an amount that is configurable rather than
+				//implied. issues.md 9 asked for the two to be balanced against each other; charging
+				//them equally balanced the price and lost the distinction, because to a learner the
+				//two are the same number with two labels. Dying at least moved the run forward and
+				//closed a floor. A stall is a run that stopped, on a hero who is alive, has not been
+				//asked to do anything difficult and has not been asked to die either.
 				//
-				//This reverses PLAN-reward-signals.md §3.2, which set it to zero, and the reversal is
-				//deliberate rather than a correction of that analysis: §3.2 was right that a cheap
-				//terminal is a degenerate strategy, and it argued for zero because "truncated, priced
-				//by turn cost alone" was the honest description of what a stall then was. That
-				//description stopped being true. The stall guard was firing on every descent, because
-				//the environment never saw the game ask for a level transition - see
-				//HeadlessGame.switchRequested - so "the episode ended on a timeout" was a harness bug
-				//dressed as an outcome, and pricing it at zero made the bug free.
+				//The outcome that has to be unattractive is the one where the agent decides the run is
+				//no longer worth playing. Quitting has to be worse than every alternative including
+				//losing, or "stop" stays on the menu. issues.md 13 recorded what stopping currently
+				//looks like - duelist-mid spending 120 steps alternating equip and unequip, which the
+				//stall guard caught on position and health - and the guard is right that it is a stall;
+				//what was missing was anything making the 120 steps cost.
 				//
-				//Giving up and losing are now priced the same, which is the balance issues.md 9 asks
-				//for. It also cannot re-create the trap §3.2 closed: stalling used to be cheaper than
-				//surviving to the turn cap, and now it costs a hundred times more.
-				//
-				//Recorded through the same door as DEATH rather than as a separate constant, so the two
-				//cannot drift apart: a config that doubles deathPenalty doubles this too, which is what
-				//makes "as much as death" a property rather than a coincidence.
-				ledger.add( RewardTerm.STALLED, -config.deathPenalty, false );
+				//Recorded as its own constant rather than derived from deathPenalty, so the ordering
+				//stall < death is a decision that can be retuned without arithmetic deciding it, and so
+				//a config that lowers deathPenalty does not silently unbalance the other side.
+				ledger.add( RewardTerm.STALLED, -config.stallPenalty, false );
 				break;
 			case TURN_LIMIT:
-				ledger.add( RewardTerm.TURN_LIMIT, -config.turnCost * 100f, false );
+				//Running out of the floor's turn budget.
+				//
+				//Was -turnCost * 100, which is -0.2, against a depth reward that pays +10. A hero
+				//could therefore spend 1500 turns mapping a floor, bank the exploration reward for it,
+				//and be charged a fifth of a point - and since exploration pays per tile, idling out
+				//the clock was a positive-value strategy rather than a failure to progress. The
+				//penalty is now an explicit constant, and large enough that reaching the stairs beats
+				//outwaiting them.
+				ledger.add( RewardTerm.TURN_LIMIT, -config.turnLimitPenalty, false );
 				break;
 			default:
 				break;
@@ -284,6 +346,8 @@ public class RewardModel {
 		prevDebuffCount = countDebuffs();
 		prevHunger = hungerLevel( hero );
 		prevKills = kills();
+		prevSneaks = sneaks();
+		prevEngineTime = Actor.now();
 		snapshotValid = true;
 	}
 
@@ -400,7 +464,19 @@ public class RewardModel {
 
 	/** Enemies killed this run. */
 	private int kills(){
-		return com.shatteredpixel.shatteredpixeldungeon.Statistics.enemiesSlain;
+		return Statistics.enemiesSlain;
+	}
+
+	/**
+	 * Surprise attacks landed this run.
+	 *
+	 * <p>{@code Statistics.sneakAttacks} is incremented by {@code Mob.defenseProc} on exactly the
+	 * condition {@code Mob.surprisedBy} reports - the hero hitting a mob that has not seen him - so it is
+	 * the engine's own answer and not a re-derivation of it. It is reset by {@code Statistics.reset()},
+	 * which {@code Dungeon.init} calls, so it is per-run and survives no floor boundary.
+	 */
+	private int sneaks(){
+		return Statistics.sneakAttacks;
 	}
 
 	private float hungerLevel( Hero hero ){

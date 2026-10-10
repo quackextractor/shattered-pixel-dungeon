@@ -1,12 +1,14 @@
 # Shattered Pixel Dungeon - Superintelligence
 
-[![Version](https://img.shields.io/badge/version-0.4.2-blue.svg)](CHANGELOG.md)
+| Badge | Version |
+| --- | --- |
+| [![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](CHANGELOG.md) | 0.5.0 |
 [![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
 
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
 described in [`docs.md`](docs.md) and [`research.md`](research.md).
 
-**Two versions, two subjects.** The `version-` badge is this module's - `0.4.2` - and its history is in
+**Two versions, two subjects.** The `version-` badge is this module's - `0.5.0` - and its history is in
 [`CHANGELOG.md`](CHANGELOG.md). The `game-` badge is Shattered Pixel Dungeon's - `4.0.2` - which is
 upstream's and moves only when this fork merges upstream. Neither moves because of anything recorded in
 the other's changelog, and the module's series starts at **0** specifically so the two cannot be read as
@@ -97,6 +99,40 @@ The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is n
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
 (`TODO.md` 1.4). See [`PLAN-data-flow.md`](PLAN-data-flow.md), whose steps are all resolved.
 
+**The reward now prices the objective, and the price of giving up is above the price of dying.** Three
+things were wrong with it, and each was a property rather than a size:
+
+- **Exploration outbid a descent.** A regular floor holds several hundred walkable tiles — measured
+  across 1040 floors, the largest is 81 tall and 419 exceed 48 on one side — so at the old 0.05 a hero
+  that mapped a floor without ever touching the stairs earned *more* than descending did. That is the
+  objective restated as a ratio, and it is why `bestDepth` had been 1 in every generation of every run.
+  Now `reward.depth_reward=25.0` against `reward.explore_reward=0.01`.
+- **Killing paid nothing and being hit cost something.** `KILL` was declared, `RewardLedger.countKill()`
+  was written and never called, and `prevKills` was snapshotted and never compared. Walking past
+  everything was optimal, which is the shape every recorded death has: the hero does not lose a fight,
+  he runs out of room. Now emitted from `Statistics.enemiesSlain`.
+- **`STALLED` cost exactly what dying cost**, so quitting and losing were one decision with two labels —
+  and the useful label is the one that survives. It is now worse than dying (150 against 100). Separately,
+  `TURN_LIMIT` was `-turnCost * 100`, a fifth of a point against a +10 descent, so idling out a floor was
+  a *positive-value strategy*. And a step that advances no engine time — equipping and unequipping cost
+  nothing in the real game too — is now charged, which is the `duelist-mid` loop at a price.
+
+**Surprise attacks are the largest combat payout**, read from `Statistics.sneakAttacks`, which
+`Mob.defenseProc` increments exactly when `Mob.surprisedBy` holds. A kill is paid for damage dealt, which
+depends on the weapon and on rolls. A surprise attack is paid for *arriving unseen*, and it is the one
+combat outcome that costs no health at all: `Mob.surprisedBy` skips the defender's `defenseSkill`
+outright. Paying the kill alone teaches trading blows with whatever is in reach.
+
+`rewardcheck` grew from 9 cases to 13, and the new ones assert **properties** — that the four terminal
+outcomes are ordered, that descending beats idling out the floor, that exploration cannot outbuy a
+descent, that a free step costs more than a real one — rather than comparing constants.
+
+**Measured, and honestly: survival improved and depth did not.** A 12-generation run moved deaths
+100% → 19% and mean turns 377 → 1335, and `bestDepth 2` appeared once in a smoke test. Depth does not
+trend yet; a 40-generation run is the measurement that would settle it. See [`TODO.md`](TODO.md) §1.8.
+
+**Nothing has won a run.** The milestone from `research.md:40` is beating Goo on depth 5.
+
 The network does run, and its gradients are correct. `gradle :superintelligence:gradcheck`
 finite-difference checks the analytic gradients against central differences on 112 sampled parameters
 across all seven layers, and fails the build on a mismatch. It was worth adding: the backward pass
@@ -147,9 +183,11 @@ something.
 | Diagnostics dashboard (colour-coded floors, graphs) | Console only; live, with a per-generation history behind it |
 | Per-generation metrics history (CSV, end-of-run trend) | Done - `metrics.csv` per generation, `diag.Graph` at end of run |
 | PPO clip fraction (`clip=`) | Fixed - was reporting `P(\|N(0,1)\|>0.2)`=0.8415; now the real ratio-clip fraction, measured 0.047-0.737 |
-| Reward model, per-term ledger, curriculum fade | Partial - 6 terms have no emission site; `KILL` has the plumbing but no emission; curriculum is written but `observe()` is never called, so shaping is a constant 1f |
+| Reward model, per-term ledger, curriculum fade | Partial - 5 terms have no emission site (crafting, curse removal, equip rejection, menu no-op); `KILL` and `SNEAK_ATTACK` are now emitted from the engine's own counters; curriculum is written and `observe()` is called on every floor change, so shaping fades from depth 3 to 10 |
 | Episodes can be had at all | Done - `REST` was a one-way door (0 idle-guard stalls, 36 pipeline stalls), headless had no texture and every `TextureFilm` dereferenced it on hunger damage, and every death blew the stack so `DEATH` was unreachable. `rewardcheck` cases 7 and 8. |
-| Terminal rewards are honest | Done - `STALLED` was -5.0 against death's -100, so ending an episode beat losing and the agent learned to. Now zero, priced by turn cost. `rewardcheck` is a gate |
+| Terminal rewards are honest | Done, and ordered - `STALLED` was -5.0 (ending an episode beat losing and the agent learned to), then `-deathPenalty` (quitting and losing became one decision with two labels). Now stall -150 < death -100 < turn limit -25 < a cleared floor +25, asserted as an ordering rather than as constants. `rewardcheck` is a gate, 13 cases |
+| **Killing pays; approaching pays more** | Done - `KILL` was declared and never emitted, so fighting was worth nothing while being hit cost something. `reward.kill_reward` 12.0, and `reward.sneak_attack_reward` **22.0** above it, read from `Statistics.sneakAttacks` - the one combat outcome that costs no health, because `Mob.surprisedBy` skips the defender's defence outright |
+| **A free action is not free** | Done - equipping and unequipping advance no engine time at all, and a policy alternated them for 120 consecutive steps on one `Rapier`. `reward.no_progress_penalty` 0.05, **priced rather than prevented**, so the stall guard still ends recordings where it did and the corpus stays valid |
 | Actions report what happened | Done - `WAIT`/`REST`/`SEARCH` were recorded as `INVALID_ACTION`, and the term carried no weight, so nothing observed it |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
 | Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included. `checkpointcheck` is a gate |

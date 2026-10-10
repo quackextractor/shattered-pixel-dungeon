@@ -90,11 +90,20 @@ public class EnvConfig {
 	/** Constant per-turn penalty, in reward per turn. Speeds the agent up. */
 	public float turnCost = 0.002f;
 
-	/** Per-floor-advance reward, the primary goal. Survives the sparse phase. */
-	public float depthReward = 10f;
+	/**
+	 * Per-floor-advance reward, the primary goal. Survives the sparse phase.
+	 *
+	 * <p>Deliberately the largest single-turn-or-later payout in the function. A regular floor holds
+	 * several hundred walkable tiles, so at {@code exploreReward} per tile a hero that maps a floor
+	 * without ever taking the stairs collects more than descending pays - which is precisely the
+	 * behaviour every run so far has shown, and why {@code bestDepth} has been 1 throughout. The
+	 * ratio between this and {@code exploreReward} <em>is</em> the objective, and it is the number to
+	 * change first when depth does not move.
+	 */
+	public float depthReward = 25f;
 
 	/** Reward for exploring a never-before-seen tile, faded out by the curriculum. */
-	public float exploreReward = 0.05f;
+	public float exploreReward = 0.01f;
 
 	/** Reward per point of maximum HP gained. */
 	public float maxHpReward = 0.5f;
@@ -102,11 +111,101 @@ public class EnvConfig {
 	/** Reward per point of gold gained, scaled by the item's tier. */
 	public float goldReward = 0.05f;
 
-	/** Penalty per point of health lost. */
-	public float damagePenalty = 0.1f;
+/**
+	 * Penalty per point of health lost.
+	 *
+	 * <p><b>Sized against {@link #deathPenalty} rather than picked.</b> A floor-1 hero has 20 HP, and
+	 * {@code damagePenalty * 20} is what losing a full health bar costs. At 0.25 that was 5 against a
+	 * death penalty of 100 — five per cent — and a run that died 100% of its episodes had <i>no gradient
+	 * at all</i>: every episode returned the same terminal, and the only signal that varied was a term
+	 * worth a twentieth of it. The policy could not have learned from that, and two runs confirmed it.
+	 *
+	 * <p>At 2.5 a full floor-1 health bar costs half a death, so the agent feels every hit on the way
+	 * down rather than only the ending — which is what makes the terminal informative, since dying is
+	 * then the limit of a signal already present for most of the episode rather than a cliff the policy
+	 * sees once.
+	 *
+	 * <p><b>Why not more.</b> A linear per-HP penalty is depth-dependent by construction, because the
+	 * hero's bar grows: at 5.0 a floor-1 bar costs one death and a floor-5 bar (~60 HP) costs three. That
+	 * is a real weakness of this number and it is recorded rather than designed away — making both
+	 * sides scale with depth is the fix and is a `RewardModel` change, not a config change.
+	 *
+	 * <p>The relationship, not the number, is the property: {@code damagePenalty * heroMaxHP} should be
+	 * within an order of magnitude of {@code deathPenalty}, and {@code killReward} should cover the
+	 * damage a fight costs. Halving one without the others unbalances it again, which is what happened
+	 * the first time this was raised: at 5.0 with {@code killReward} still 3.0, killing a rat cost 40 and
+	 * paid 3, and fighting became a net -37.
+	 */
+	public float damagePenalty = 2.5f;
+
+	/**
+	 * Reward for killing a hostile mob.
+	 *
+	 * <p>{@code RewardTerm.KILL} and {@code RewardLedger.countKill()} have existed since the term was
+	 * declared and neither was ever called, so fighting something was worth exactly nothing while
+	 * taking a hit cost something. A policy under that price learns to walk past everything, which is
+	 * the shape every death in the corpus has: the hero does not die in a fight, he dies having run
+	 * out of room. See {@code TODO.md} 2.2.
+	 *
+	 * <p>Sized against {@link #damagePenalty}: a floor-1 rat is about 8 HP and a melee kill trades
+	 * roughly half that, so a melee kill is close to break-even and the profitable kill is the one that
+	 * costs nothing — which is what {@link #sneakAttackReward} is for.
+	 */
+	public float killReward = 12f;
+
+	/**
+	 * Extra reward for a surprise attack.
+	 *
+	 * <p>Read from {@code Statistics.sneakAttacks`, the game's own counter, incremented in
+	 * {@code Mob.defenseProc} when the hero hits a mob that has not seen him. It is worth paying well
+	 * above the kill because it is the one combat outcome decided by <i>approach</i> rather than by
+	 * damage rolls: {@code Mob.surprisedBy} skips the mob's defence skill entirely, so the same hit
+	 * takes far more off the same health pool, and — unlike a melee kill — <b>it costs the hero
+	 * nothing</b>.
+	 *
+	 * <p>That is the whole design. Fighting has to be worth doing, and the only way it is worth doing is
+	 * to not be hit; a reward structure that pays the same for both outcomes teaches trading blows.
+	 */
+	public float sneakAttackReward = 22f;
+
+	/**
+	 * Penalty for a step that advanced no engine time at all.
+	 *
+	 * <p>A step is not a turn, and the difference is load-bearing. Equipping and unequipping a weapon
+	 * costs zero - {@code WndUseItem.onClick} calls {@code item.execute} and returns without spending
+	 * anything - so {@code USE} on an equippable is a free action in the real game and the policy found
+	 * it, alternating for 120 steps on one {@code Rapier}. The stall guard eventually catches it on
+	 * position and health, which it should, but a hundred and twenty free steps in between are paid at
+	 * the ordinary turn rate and so cost almost nothing.
+	 *
+	 * <p>Charging here rather than tightening the guard is deliberate: it prices the action honestly
+	 * without changing when any recording ends, so the corpus stays valid. See {@code TODO.md} 0.10.
+	 */
+	public float noProgressPenalty = 0.05f;
 
 	/** Terminal penalty for dying. Large: dying should dominate any accumulated micro-reward. */
 	public float deathPenalty = 100f;
+
+	/**
+	 * Terminal penalty for giving up.
+	 *
+	 * <p>Deliberately worse than {@link #deathPenalty}. Dying at least moved the run forward and
+	 * cleared the floor; a stall is a run that decided to stop, on a hero that is alive and has not
+	 * been asked to do anything difficult. Charging the two the same made them indistinguishable to
+	 * the learner, and the lesson that survives is that quitting is survivable.
+	 */
+	public float stallPenalty = 150f;
+
+	/**
+	 * Terminal penalty for running out of a floor's turn budget.
+	 *
+	 * <p>Was {@code -turnCost * 100}, which is -0.2 against a +10 depth reward: a hero could map an
+	 * entire floor for 1500 turns, bank the exploration, and be charged a fifth of a point for it.
+	 * With exploration paying per tile, idling out the clock <i>was</i> the strategy. At these numbers
+	 * the two outcomes are ordered the way they are meant to be - stall, then turn limit, then death,
+	 * then victory.
+	 */
+	public float turnLimitPenalty = 25f;
 
 	/** Terminal reward for reaching and clearing the final floor. */
 	public float victoryReward = 1000f;
@@ -136,7 +235,12 @@ public class EnvConfig {
 		c.maxHpReward = maxHpReward;
 		c.goldReward = goldReward;
 		c.damagePenalty = damagePenalty;
+		c.killReward = killReward;
+		c.sneakAttackReward = sneakAttackReward;
+		c.noProgressPenalty = noProgressPenalty;
 		c.deathPenalty = deathPenalty;
+		c.stallPenalty = stallPenalty;
+		c.turnLimitPenalty = turnLimitPenalty;
 		c.victoryReward = victoryReward;
 		c.persistSaves = persistSaves;
 		return c;
