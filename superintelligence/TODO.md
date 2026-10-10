@@ -4,9 +4,82 @@ Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), wri
 code as it stands. "Verified" means it was run and observed, not merely written.
 
 Last updated: 2026-10-10, after `issues.md` "Training" 10 — the ascent that follows the descent — was
-worked through. `verifyall` is green: `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 20,
-and `:desktop:viewcheck` **17 of 17**, which is the state it was in before the corpus grew a descending
-recording and has not been in since.
+worked through, and after a follow-up report of a rare viewer divergence that has not been reproduced in
+roughly fifty attempts. `verifyall` is green: `:superintelligence:gates` at 20, `:desktop:playbackcheck`
+at 21, and `:desktop:viewcheck` **17 of 17**, which is the state it was in before the corpus grew a
+descending recording and has not been in since.
+
+---
+
+## 0.6 Watching a recording left a dead hero's belongings in the player's game - FIXED
+
+Reported while reviewing the issue-10 work: the viewer creates `bones.dat`. It does, and it is worse than
+untidy.
+
+A recording that ends in death kills the hero for real. `Bones.leave()` then writes `bones.dat` into the
+process's file root exactly as it would for a playthrough, and **that file is read during level
+generation** — so the next run a player starts opens on a heap of belongings belonging to a hero who only
+ever existed inside a recording. Three recordings in the corpus end in death, so this is the normal case
+rather than an edge. Measured: `duelist-mid` played in the viewer left a `bones.dat` in
+`%APPDATA%\.shatteredpixel\Shattered Pixel Dungeon` — the player's own profile, not anything scratch.
+
+Two faults, either sufficient on its own:
+
+1. **`Bones.clear()` is in-memory only**, and says so itself: *"Any `bones.dat` on disk is untouched, so a
+   caller that also needs to forget a remains file written by an earlier process must remove that
+   separately."* That caller was `RunState`.
+2. **`RunState` removed the file only when `Gdx.files instanceof HeadlessFiles`** — true under the
+   trainer, false under the viewer, which runs on the real backend. So the one caller running against a
+   real file root deleted nothing, silently, without reporting that it had not.
+
+The obvious replacement — `Gdx.files.local(...)` — is wrong in both directions, which is worth recording
+because it looks right. `ReplayLauncher` calls `FileUtils.setDefaultFileProperties`, so `Bones` writes
+through `FileUtils`, which resolves to `External` on a normal launch and `Absolute` under
+`-Dspd.fileRoot`. The delete now goes through `FileUtils.getFileHandle`, the same resolver the write uses.
+
+The viewer half is a separate fault with its own subtlety. The cleanup belongs where playback *ends*, and
+the only place that is `halt()` — not the frame after it, because a headless driver stops calling `update`
+the moment playback stops, and a quit never reaches another frame at all. A cleanup on the next frame
+would have passed every rendered run and never once run in a gate.
+
+Gated by `playbackcheck` case 21: play a committed death recording, assert no remains file survives.
+Mutation-tested; removing the `halt()` call fails it. The case states what it does **not** cover — it runs
+on the headless backend, so it exercises the branch that already worked and cannot reach the branch that
+was broken. The viewer-side half is guarded; the backend half has no headless oracle, which is worth
+saying rather than papering over with a case that appears to cover it.
+
+---
+
+## 0.7 A rare viewer divergence, reported and **not** reproduced
+
+`duelist-mid` played by hand at speed 1 in a fullscreen window halted at step 25 with
+
+```
+DIVERGED at step 25 - INTERACT/0 in WORLD: engine time is 21.0, recording says 22.0
+```
+
+Position and health matched; the clock was one turn short. The reporter could not reproduce it on a
+re-run, and neither could this investigation, in roughly fifty attempts: hidden at speeds 1, 2, 4, 8, 16
+and 40; visible and windowed; audio on; and **20 concurrent visible children at once**, which was the
+shape most likely to make frame time irregular and came back 20 of 20 clean with near-identical frame
+counts (2589–2644). That last one is the useful negative result — 20 windows did not make frame timing
+irregular enough to matter on this machine, so load is not a lever for hunting it.
+
+Leading hypothesis, **unmeasured**: a recorded action pending across a frame boundary, while another
+actor's attack animation resolves in `GameScene.super.update()`, where `Mob.onAttackComplete` lands the
+hit and `Hero.damage` calls `Hero.interrupt()` — discarding the pending action. That accounts for the
+signature exactly: a turn that is spent by nobody, with position and health unchanged. The trainer cannot
+reach it, because `HeadlessSprite.attack` resolves synchronously inside one `headlessStep`, so the hero's
+action is never exposed across a frame boundary there.
+
+Recorded as open rather than fixed, because fixing it needs a measurement nobody has yet, and because the
+two things that would make it reachable are already written down elsewhere and are still open:
+`FINDINGS-viewer-fidelity.md` O-2 (the animation clock cannot be pinned from the viewer — `Game.elapsed`
+is derived in `Game.update` before any game code runs) and `ViewCheck.parallelism()` (*"playback is
+timing sensitive — anything that changes how fast a child renders changes what the child finds"*). Note
+what follows from that: **`viewcheck` forks every child hidden at speed 40, so the gate has never run
+the timing path a human run takes**, and a green `viewcheck` is not evidence that a slow, visible
+playback agrees.
 
 ---
 

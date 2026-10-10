@@ -96,21 +96,35 @@ public class RunState {
 	private static final String BONES_FILE = "bones.dat";
 
 	/**
-	 * Forgets any remains a previous run in this process left behind.
+	 * Forgets any remains a previous run left behind.
 	 *
 	 * <p>Both halves, or neither works: {@code Bones.clear()} drops what this process has cached, and the
 	 * file is dropped because {@code Bones.get} reads it on its first call after a clear. A run that died
 	 * in this process writes the file as it dies, so a statics-only fix would be undone by the next run's
 	 * own death.
 	 *
-	 * <p>The file's path is resolved by {@link HeadlessServices.HeadlessFiles#deleteSave}, not assembled
-	 * here. With saving disabled - which is how every rollout and every check runs - saves are redirected
-	 * into a sink directory, so the obvious {@code root/bones.dat} is not where the file is and deleting it
-	 * reports success having removed nothing.
+	 * <p><b>The two backends keep it in different places, and reading only one of them was the bug.</b>
+	 * With saving disabled - how every rollout and every check runs - saves are redirected into a sink
+	 * directory, so the obvious {@code root/bones.dat} is not where the file is and deleting that path
+	 * reports success having removed nothing. Under the desktop viewer there is no sink, and the path is
+	 * not {@code Gdx.files.local} either: {@code ReplayLauncher} calls
+	 * {@code FileUtils.setDefaultFileProperties}, so {@code Bones} writes through {@code FileUtils}, which
+	 * resolves to {@code External} on a normal Windows launch and to {@code Absolute} whenever
+	 * {@code -Dspd.fileRoot} is set. The delete used to be guarded on {@code instanceof HeadlessFiles},
+	 * which meant the one caller running against a real file root silently deleted nothing - and deleting
+	 * {@code Gdx.files.local} instead would have been wrong for the same reason, which is why it goes
+	 * through {@code FileUtils.getFileHandle}, the same resolver {@code Bones} writes with.
 	 *
-	 * <p>The delete is best-effort and silent. It removes a file in a scratch directory this module owns,
-	 * and a failure there has no bearing on the run - which is worth saying rather than logging, because a
-	 * warning nobody can act on is noise and this file is not one.
+	 * <p>Measured by the file, not by a claim: playing {@code duelist-mid} in the viewer left a
+	 * {@code bones.dat} in {@code %APPDATA%/.shatteredpixel/Shattered Pixel Dungeon} belonging to a hero
+	 * who had died inside a recording. Three recordings in the corpus end in death, and the file is read
+	 * during level generation, so the player's next real run would open on a heap of a scripted policy's
+	 * belongings.
+	 *
+	 * <p>The delete is best-effort and silent. Under the trainer it removes a file in a scratch directory
+	 * this module owns; under the viewer it removes one the viewer itself wrote. A failure in either has
+	 * no bearing on the run - which is worth saying rather than logging, because a warning nobody can act
+	 * on is noise and this file is not one.
 	 */
 	private static void forgetPreviousRemains(){
 		Bones.clear();
@@ -118,9 +132,26 @@ public class RunState {
 		try {
 			if (Gdx.files instanceof HeadlessServices.HeadlessFiles){
 				((HeadlessServices.HeadlessFiles) Gdx.files).deleteSave( BONES_FILE );
+			} else {
+				com.badlogic.gdx.files.FileHandle remains =
+						com.watabou.utils.FileUtils.getFileHandle( BONES_FILE );
+				if (remains != null && remains.exists()) remains.delete();
 			}
 		} catch (RuntimeException ignored){
 			//see above: a scratch file this module created, and nothing downstream depends on it
 		}
+	}
+
+	/**
+	 * Forgets a dead hero's remains, statics and file, wherever this process keeps them.
+	 *
+	 * <p>Separate from {@link #clearRunStatics()} because the viewer needs it at the <i>end</i> of a
+	 * session as well as at the start, and the other three statics are not its business. A recording that
+	 * ends in death kills the hero for real, the game writes {@code bones.dat} into the player's profile
+	 * as it does, and nothing else in the viewer ever removes it - so watching a recording left debris in
+	 * the player's game.
+	 */
+	public static void clearRemains(){
+		forgetPreviousRemains();
 	}
 }

@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.2] - 2026-10-10
+
+### Fixed
+
+- **Watching a recording left a dead hero's belongings in the player's own game.** A recording that ends
+  in death kills the hero for real, and `Bones.leave()` writes `bones.dat` into the process's file root
+  exactly as it would for a playthrough. Three recordings in the corpus end in death, and that file is
+  read during level generation - so the next run a player started opened on a heap belonging to a hero who
+  had only ever existed inside a recording. Measured: playing `duelist-mid` in the viewer left a
+  `bones.dat` in `%APPDATA%\.shatteredpixel\Shattered Pixel Dungeon`, the player's own profile.
+
+  Two things were wrong and either alone would have left it there. `Bones.clear()` resets in-memory
+  state only, and says so in its own comment; the file has to be removed separately. `RunState` did
+  remove it separately, but guarded the delete on `instanceof HeadlessFiles` - and the viewer is not on
+  the headless backend, so the guard was false and it deleted nothing without saying that it had not. The
+  delete now resolves through `FileUtils.getFileHandle`, the same resolver `Bones` writes with, because
+  the game's root is `External` on a normal launch and `Absolute` whenever `-Dspd.fileRoot` is set - so
+  `Gdx.files.local`, the obvious guess, is wrong for both.
+
+  `ReplayPlayer` also clears it when playback ends, in `halt()`: every path that stops playback reaches
+  there, whereas a headless driver stops calling `update` the moment playback stops and a quit never
+  reaches another frame, so a cleanup on the next frame would pass every rendered run and never run in a
+  gate at all. `RunState` clears it when a player is constructed too, so entering the viewer also clears
+  what a previous session left.
+
+### Added
+
+- **One more check in `playbackcheck`** (20 -> 21), covering exactly that: play a committed death
+  recording to completion and assert no remains file survives. Mutation-tested - removing the cleanup from
+  `halt()` leaves `bones.dat` present and fails it. The case states plainly what it does *not* cover: it
+  runs on the headless backend, so it exercises the branch that already worked and cannot reach the
+  real-backend branch that was broken. The viewer-side half is guarded; the backend half has no headless
+  oracle, and claiming otherwise would be worse than saying so.
+
 ## [4.3.1] - 2026-10-10
 
 ### Fixed

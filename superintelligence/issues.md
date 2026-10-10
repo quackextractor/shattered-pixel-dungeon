@@ -113,3 +113,27 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
     second asserts the ascent is serviced at all, which no gate had ever exercised — every one of the
     other seven descends. Both are mutation-tested: removing the landing act fails the first with "the
     agent's first action on depth 1 moved nobody", and refusing to service an ascent fails the second.
+
+11. `duelist-mid` played by hand at speed 1 in a fullscreen window halted at step 25 with `engine time is
+    21.0, recording says 22.0` — one turn short, position and health identical. Not reproduced: not on a
+    re-run, and not in ~50 attempts including 20 concurrent visible children. Recorded as open in
+    `TODO.md` §0.7 with the hypothesis and with what a green `viewcheck` does not cover. (open)
+
+12. The viewer creates `bones.dat` in the player's own profile. (closed)
+
+    A recording that ends in death kills the hero for real, so `Bones.leave()` writes the remains file
+    exactly as it would for a playthrough — and that file is read during level generation, so the next
+    real run opens on a heap belonging to a hero who only existed inside a recording. Three of the
+    seventeen recordings end in death, so this is the normal case.
+
+    `Bones.clear()` is in-memory only and says so; the caller that removed the file,
+    `RunState.forgetPreviousRemains`, guarded its delete on `instanceof HeadlessFiles`, which is false
+    under the viewer — so it deleted nothing, silently. The delete now resolves through
+    `FileUtils.getFileHandle`, the same resolver `Bones` writes with, because the game's root is
+    `External` on a normal launch and `Absolute` under `-Dspd.fileRoot`, so `Gdx.files.local` is wrong
+    for both.
+
+    The viewer half is separate: the cleanup has to be where playback *ends*, which is `halt()` and not
+    the frame after it — a headless driver stops calling `update` the moment playback stops, so a
+    next-frame cleanup would pass every rendered run and never run in a gate. Gated by `playbackcheck`
+    case 21, mutation-tested, and the case states that it cannot reach the real-backend branch.

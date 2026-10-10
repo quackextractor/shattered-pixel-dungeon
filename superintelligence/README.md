@@ -130,9 +130,9 @@ something.
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process |
-| Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 17 committed recordings, and stable across repeated runs. The four engine fixes this required are committed, with the record in `ENGINE-CHANGES.md` |
+| Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 17 committed recordings. The four engine fixes that required are committed, with the record in `ENGINE-CHANGES.md`. **Note the limit**: every child is forked hidden at speed 40, so the gate has never run the timing path a human run takes - see `TODO.md` §0.7 |
 | Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate |
-| A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation |
+| A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation - and the viewer does the same at both ends of a playback, so watching a recording no longer leaves `bones.dat` in the player's profile |
 | Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
 | Update cost measurement | Measured - `updatecost`, 11.3 ms/sample, projects across sample rates |
 | Diagnostics dashboard (colour-coded floors, graphs) | Console only; live, with a per-generation history behind it |

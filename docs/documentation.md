@@ -284,7 +284,8 @@ Guaranteed, and gated:
   [`../superintelligence/ENGINE-CHANGES.md`](../superintelligence/ENGINE-CHANGES.md) records every
   change made to the game to get there.
 - A new run inherits nothing from the previous one - not an armed aim, not an open dialog, not a dead
-  hero's remains.
+  hero's remains - and watching a recording leaves no remains file behind for the player's next real run
+  to pick up. `transitioncheck` and `playbackcheck` gate both halves.
 - A floor change is handed back the way the game hands it back. The hero takes the one act the game
   gives him on arrival, in both directions, so the agent's first action on a new floor is not spent
   being interrupted by whatever noticed him. `transitioncheck` gates it in both directions.

@@ -63,7 +63,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 20;
+	private static final int CHECKS = 21;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -123,6 +123,7 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		check( () -> checkADivergenceMessageNamesCoordinates() );
 		check( () -> checkHudTextWrapsInsteadOfRunningOffScreen() );
 		check( () -> checkTheHudAnchorIsMovableAndDefaultsTopLeft() );
+		check( () -> checkPlaybackLeavesNoRemainsBehind() );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
@@ -679,7 +680,70 @@ private static Replay corpusRecordingEndingIn( String termination ){
 }
 
 /**
- * A restart must leave playback running, not finished.
+	 * Watching a recording must not leave a dead hero's belongings in the player's game.
+	 *
+	 * <p>A recording that ends in death kills the hero for real. {@code Bones.leave()} then writes
+	 * {@code bones.dat} into the process's file root exactly as it would for a playthrough, and that file
+	 * is read during level generation - so the next run a player starts opens on a heap of a scripted
+	 * policy's belongings. Three recordings in the corpus end in death, so this is not a hypothetical.
+	 *
+	 * <p>Measured before this case existed: {@code duelist-mid} played in the desktop viewer left a
+	 * {@code bones.dat} in {@code %APPDATA%\.shatteredpixel\Shattered Pixel Dungeon} - the player's own
+	 * profile, not anything scratch. Two things were wrong, and either alone would have left it there.
+	 * {@code Bones.clear()} only resets in-memory state, and says so in its own comment: the file has to
+	 * be removed separately. {@code RunState} did remove it separately, but guarded the delete on
+	 * {@code instanceof HeadlessFiles}. The viewer is not on the headless backend, so the guard was false
+	 * and it deleted nothing - without saying that it had not.
+	 *
+	 * <p>Mutation-tested by removing the cleanup from {@code halt()}, which leaves the file present.
+	 *
+	 * <p><b>What this case does not cover, stated rather than implied.</b> It runs on the headless
+	 * backend, so it exercises the branch that already worked and cannot reach the real-backend branch
+	 * that was broken. What it guards is the viewer-side half - that playback cleans up after itself. The
+	 * backend half has no headless oracle, and saying so is better than a case that appears to cover it.
+	 */
+	private static void checkPlaybackLeavesNoRemainsBehind(){
+		Replay death = corpusRecordingEndingIn( "DEATH" );
+		if ( death == null ){
+			fail( "no recording in the committed corpus declares termination=DEATH, so there is no run"
+					+ " whose death could leave remains behind. A case that cannot reach its own case is"
+					+ " not a check." );
+			return;
+		}
+
+		File remains = new File( new File( new File( System.getProperty( "java.io.tmpdir" ),
+				"spd-playbackcheck" ), ".nosave" ), "bones.dat" );
+
+		//Cleared first, and its absence asserted. A file left over from an earlier run of this gate would
+		//make the assertion below pass for a reason that has nothing to do with the code under test.
+		if ( remains.exists() && !remains.delete() ){
+			fail( "stale remains at " + remains.getAbsolutePath() + " could not be removed before the run,"
+					+ " so this case would have measured whatever the previous run left." );
+			return;
+		}
+
+		Outcome outcome = play( death );
+
+		if ( outcome.ranOutOfFrames ){
+			fail( death.seedText + " did not finish within " + FRAME_BUDGET + " frames, so its death"
+					+ " never happened and this case measured nothing." );
+			return;
+		}
+
+		if ( remains.exists() ){
+			fail( "playing " + death.seedText + " left " + remains.getAbsolutePath() + " behind. A"
+					+ " recording that ends in death kills the hero for real and Bones.leave() writes the"
+					+ " remains file as it would for a playthrough; that file is read during level"
+					+ " generation, so the next run a player starts opens on a heap belonging to a hero who"
+					+ " only ever existed inside a recording." );
+			return;
+		}
+
+		System.out.println( "  playback of a death recording leaves no remains file behind" );
+	}
+
+	/**
+	 * A restart must leave playback running, not finished.
  *
  * <p>{@code issues.md} 1: pressing {@code R} after a recording finished left the HUD reading
  * "finished" over a rewound cursor, so the key appeared to do nothing. The cause is the ordering

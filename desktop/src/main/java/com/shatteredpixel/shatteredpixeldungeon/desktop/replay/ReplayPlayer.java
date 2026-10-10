@@ -181,6 +181,14 @@ public class ReplayPlayer {
 		//and diverging at step 0. See RunState.
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.RunState.clearRunStatics();
 
+		//The same file again, on purpose, and it is not redundant with the line above. That call also
+		//drops the armed aim, the open dialog and the pending item - all of which the viewer wants
+		//cleared - but its remains half used to be guarded on the headless file backend, which the viewer
+		//is not running, so against a real Gdx.files it silently removed nothing. A bones.dat left in the
+		//player's profile by a previous session is read during level generation, so the first floor of
+		//this recording would carry a heap that is not in it.
+		remainsCleared = false;
+
 		String tracePath = System.getProperty( "spd.rngTrace" );
 		if (tracePath != null && !tracePath.trim().isEmpty()){
 			rngTracePath = tracePath;
@@ -235,6 +243,15 @@ public class ReplayPlayer {
 	 */
 	private final com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot worldSnapshot;
 	private final String worldTracePath;
+
+	/**
+	 * Whether this player has already removed the remains its own session left.
+	 *
+	 * <p>A field rather than something done in {@code halt()}, because the cleanup has to survive every
+	 * path that ends playback and none of them owns it: halting, finishing, diverging and quitting are four
+	 * different exits, and "playback is no longer playing" is the one state all four share.
+	 */
+	private boolean remainsCleared = true;
 
 	private void flushRngTrace(){
 		if (rngTrace == null) return;
@@ -1219,6 +1236,7 @@ awaitingSettle = true;
 			System.err.println( "[replay] halted: " + reason );
 			System.err.println( "[replay] " + frameReport() );
 			System.err.println( "[replay] " + schedulerReport() );
+			forgetRemains();
 		flushRngTrace();
 		flushWorldSnapshot();
 		flushDrawSites( ".all" );
@@ -1228,6 +1246,30 @@ awaitingSettle = true;
 				closeWhenReportingSettles();
 			}
 		}
+	}
+
+	/**
+	 * Removes the remains this session's own death left behind.
+	 *
+	 * <p>A recording that ends in death kills the hero for real, the game writes {@code bones.dat} into
+	 * the player's own profile exactly as it would for a playthrough, and nothing else in the viewer ever
+	 * removes it. Three recordings in the corpus end in death, and the file is read during level
+	 * generation, so leaving it behind means the player's next real run opens on a heap of a scripted
+	 * policy's belongings. Measured: {@code duelist-mid} in the viewer left one in
+	 * {@code %APPDATA%\.shatteredpixel\Shattered Pixel Dungeon}.
+	 *
+	 * <p>Called from {@link #halt()}, which is the one place that stops playback - a headless driver
+	 * stops calling {@code update} the moment playback stops, and a quit never reaches another frame, so
+	 * a cleanup on the next frame would pass every rendered run and never run in a gate at all.
+	 *
+	 * <p>{@code RunState} clears the same file when a player is constructed, so entering the viewer also
+	 * clears what a previous session left. This run's own death is written after that point, which is
+	 * why it cannot be the same call.
+	 */
+	private void forgetRemains(){
+		if (remainsCleared) return;
+		remainsCleared = true;
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.RunState.clearRemains();
 	}
 
 	/**
