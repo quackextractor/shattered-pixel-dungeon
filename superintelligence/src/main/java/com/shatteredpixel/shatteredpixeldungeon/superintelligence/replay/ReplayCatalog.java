@@ -569,11 +569,12 @@ public class ReplayCatalog {
 					if (!note.isEmpty() && !plain) note = Ansi.wrap( note, Ansi.DIM );
 
 					out.append( String.format( Locale.US,
-							"     %2d  %-22s %9s  %5s  %7s   %s%n",
+							"     %2d  %-22s %9s  %5s  %9s  %7s   %s%n",
 							shown,
 							entry.label(),
 							formatScore( entry ),
 							formatDepth( entry ),
+							formatRecordedAt( entry ),
 							String.format( Locale.US, "%,d", entry.turns ),
 							note ) );
 				}
@@ -688,8 +689,37 @@ public class ReplayCatalog {
 	/** Column headings, aligned to {@link #render}'s row format so the columns read as columns. */
 	private static String columnHeadings(){
 		return String.format( Locale.US,
-				"  %-4s %-22s %9s  %5s  %7s",
-				"#", "recording", "score", "depth", "turns" );
+				"  %-4s %-22s %9s  %5s  %9s  %7s",
+				"#", "recording", "score", "depth", "recorded", "turns" );
+	}
+
+	/**
+	 * When the file was written, as {@code MM-dd HH:mm}.
+	 *
+	 * <p>The filesystem's own modification time, and the answer is "when this file last changed", which
+	 * for a recording written once is when the run produced it.
+	 *
+	 * <p>Asked for because the list alone cannot answer "which of these is new": every recording carries a
+	 * generation number, and a run pointed at the same seed twice writes over the first, so a file's age
+	 * was the only thing that distinguished a fresh training run's output from yesterday's. Width is fixed
+	 * rather than formatted per locale, because the listing pads everything else to a column and one
+	 * variable-width cell would break every row below it.
+	 *
+	 * <p><b>No space inside the value.</b> {@code 10-11 17:10} is two cells to anything that splits on
+	 * whitespace, which makes the column ambiguous to read and impossible to assert on - the check that
+	 * guards it had to treat the date and the time as separate fields. So {@code 10-11T17:10}, which is
+	 * both one cell and still readable, and is what the default {@code java.time} ISO form prints anyway.
+	 */
+	private static String formatRecordedAt( Entry entry ){
+		if (entry.error != null) return "-";
+		long modified = entry.file.lastModified();
+		if (modified <= 0) return "-";
+
+		java.time.LocalDateTime at = java.time.LocalDateTime.ofInstant(
+				java.time.Instant.ofEpochMilli( modified ),
+				java.time.ZoneId.systemDefault() );
+		return String.format( Locale.US, "%02d-%02dT%02d:%02d",
+				at.getMonthValue(), at.getDayOfMonth(), at.getHour(), at.getMinute() );
 	}
 
 	private static String dashed(){

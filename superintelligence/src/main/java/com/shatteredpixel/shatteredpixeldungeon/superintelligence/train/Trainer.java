@@ -49,6 +49,14 @@ public class Trainer {
 	private final SeedPool seeds;
 	private final File workDir;
 
+	/**
+	 * Where this run's recordings go, when {@code --replay-dir} says so.
+	 *
+	 * <p>Null means {@code <--out>/replays}, which is where they went for the whole of this project's
+	 * history and why a training run's output was nowhere the catalogue looks.
+	 */
+	private final File replayDirOverride;
+
 	private final PPO ppo;
 
 	/**
@@ -161,19 +169,24 @@ public class Trainer {
 	private static final int SEED_POOL_SIZE = 100;
 
 	public Trainer( EnvConfig config, long seed, File workDir ){
-		this( config, new PpoHyperparameters(), seed, workDir );
+		this( config, new PpoHyperparameters(), seed, workDir,
+				new File( replayDirDefault(), "trainer-replays" ) );
 	}
 
 	/**
 	 * With the learning hyperparameters supplied up front, so a run cannot start with one set of values
 	 * and apply another mid-flight.
+	 *
+	 * @param replayDir where recordings go, or null for {@code <workDir>/replays}
 	 */
-	public Trainer( EnvConfig config, PpoHyperparameters hyper, long seed, File workDir ){
+	public Trainer( EnvConfig config, PpoHyperparameters hyper, long seed, File workDir,
+			File replayDir ){
 		this.config = config;
 		this.rng = new Random( seed );
 		this.rngSeed = seed;
 		this.seeds = new SeedPool( rng );
 		this.workDir = workDir;
+		this.replayDirOverride = replayDir;
 		this.ppo = new PPO( config, rng );
 		this.pool = new TrainerWorkers( config, ppo );
 		learning( hyper );
@@ -342,7 +355,8 @@ public class Trainer {
 		HeadlessServices.install( options.workDir );
 		HeadlessServices.disableSaving( true );
 
-		Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir );
+		Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
+					options.replayDir );
 
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
@@ -765,27 +779,27 @@ public class Trainer {
 	}
 
 	private void saveBestReplays(){
-		File dir = new File( workDir, "replays" );
+		File dir = replayDir();
 		int saved = 0;
 
-		//Record where these landed before writing any of them. --out is wherever the run was pointed,
-		//so without this the recordings are written into a directory nothing knows to look in: the
-		//viewer and the catalog searched a fixed pair of paths and found 5 of the 147 recordings on
-		//this machine, missing the rest without a word. One line here is the whole difference between
-		//a recording that can be watched and one that cannot be found again.
-		//
-		//mkdirs first: ReplayIndex only records a directory that exists, and on a fresh --out nothing
-		//has created this one yet - ReplayIO.write would have been the first to. Recording before the
-		//directory existed silently recorded nothing, which is the bug being fixed, one level down.
+		//Record where these landed before writing any of them. A recording in a directory nothing knows
+		//to look in is not a recording: the viewer and the catalog searched a fixed pair of paths and
+		//found 5 of the 147 on this machine, missing the rest without a word.
 		dir.mkdirs();
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIndex.record( dir );
 
 		for (Map.Entry<String, Replay> entry : bestPerSeed.entrySet()){
 			Replay replay = entry.getValue();
 			replay.generation = epoch;
+
+			//**Never overwrite.** One file per seed per run, and a second run of the same seed wrote
+			//straight over the first - so a directory that was meant to accumulate training history
+			//held only the newest run, and the earlier recordings were gone with nothing saying so. The
+			//cost is filenames like `MFS-CDV-GCN-r2.dat`: an unreadable suffix on a file nobody types by
+			//hand, against silently losing the recording a run was pointed at.
+			File file = uniqueFile( dir, entry.getKey() );
 			try {
-				ReplayIO.write( replay, new File( dir, entry.getKey().isEmpty()
-						? "random.dat" : entry.getKey() + ".dat" ) );
+				ReplayIO.write( replay, file );
 				saved++;
 			} catch (IOException e){
 				System.err.println( "[WARN] could not save replay for seed "
@@ -796,6 +810,55 @@ public class Trainer {
 		System.out.println();
 		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "   wrote " + saved
 				+ " best-per-seed replays to " + dir.getPath() );
+	}
+
+	/**
+	 * Where a run's recordings go.
+	 *
+	 * <p>{@code <--out>/replays} unless told otherwise. {@code --out} is the run's working directory -
+	 * checkpoints, metrics and the weight file all live under it - and a recording written into it is
+	 * then somewhere the catalogue does not read, which is how 142 of 147 recordings on this machine were
+	 * invisible. {@code --replay-dir} says where the recordings specifically go, and defaults to the
+	 * repository's {@code trainer-replays}, which is a directory the catalogue already reads.
+	 */
+	/**
+	 * The module directory, found by walking up from here.
+	 *
+	 * <p>Used as the parent of the default replay destination, so a training run writes where the
+	 * catalogue reads without being told. Resolved by walking rather than by a relative path because the
+	 * working directory is the module's for a gradle task and the repository root for a direct launch, and
+	 * the two disagree.
+	 */
+	static File replayDirDefault(){
+		File here = new File( "." ).getAbsoluteFile();
+		for (int i = 0; i < 6 && here != null; i++){
+			if (new File( here, "superintelligence.properties" ).isFile()) return here;
+			here = here.getParentFile();
+		}
+		//not found: the caller's own working directory, which is where a relative path would have gone
+		return new File( "." ).getAbsoluteFile();
+	}
+
+	private File replayDir(){
+		if (replayDirOverride != null) return replayDirOverride;
+		return new File( workDir, "replays" );
+	}
+
+	/**
+	 * A free filename for {@code seed}, never one that already exists.
+	 *
+	 * <p>Appended {@code -r2}, {@code -r3} and so on. The empty seed - a random-seed episode, which
+	 * {@code SeedPool} releases 10% of the time - writes {@code random} and gets the same treatment.
+	 */
+	private static File uniqueFile( File dir, String seed ){
+		String stem = seed.isEmpty() ? "random" : seed;
+		File file = new File( dir, stem + ".dat" );
+		int run = 2;
+		while (file.exists() && run < 10000){
+			file = new File( dir, stem + "-r" + run + ".dat" );
+			run++;
+		}
+		return file;
 	}
 
 	/**

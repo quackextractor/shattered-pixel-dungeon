@@ -89,6 +89,16 @@ public class TrainOptions {
 	 */
 	public java.nio.file.Path configFile;
 	public File workDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-train" );
+
+	/**
+	 * Where a run writes its recordings, or null for the default.
+	 *
+	 * <p>Separate from {@link #workDir} on purpose. The working directory holds checkpoints, metrics
+	 * and weights, none of which belong in the repository, so it is a scratch directory and defaults
+	 * to a temp path. Recordings are the opposite: they are the point of a run and the thing a person
+	 * watches, so they belong where the catalogue already reads them.
+	 */
+	public File replayDir = new File( Trainer.replayDirDefault(), "trainer-replays" );
 	public long stallSeconds = 180;
 
 	/**
@@ -197,7 +207,8 @@ public class TrainOptions {
 				case "--seed":        o.seed = Long.parseLong( args[ ++i ] ); break;
 				case "--java-home":   o.javaHome = args[ ++i ]; break;
 				case "--classpath":   o.classpath = args[ ++i ]; break;
-				case "--out":         o.workDir = new File( args[ ++i ] ); break;
+					case "--out":         o.workDir = new File( args[ ++i ] ); break;
+			case "--replay-dir":   o.replayDir = new File( args[ ++i ] ); break;
 				case "--stall-seconds":
 					//how long a worker may be silent before the run is failed as a protocol desync.
 					//A blocked pipe costs no CPU, so without this a stall is indistinguishable from a

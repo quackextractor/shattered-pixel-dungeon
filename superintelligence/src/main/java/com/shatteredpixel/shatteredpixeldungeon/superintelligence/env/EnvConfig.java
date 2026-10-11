@@ -100,13 +100,13 @@ public class EnvConfig {
 	 * ratio between this and {@code exploreReward} <em>is</em> the objective, and it is the number to
 	 * change first when depth does not move.
 	 */
-	public float depthReward = 2500f;
+	public float depthReward = 1800f;
 
 	/** Reward for exploring a never-before-seen tile, faded out by the curriculum. */
-	public float exploreReward = 1f;
+	public float exploreReward = 0.01f;
 
 	/** Reward per point of maximum HP gained. */
-	public float maxHpReward = 50f;
+	public float maxHpReward = 0.5f;
 
 	/**
 	 * Reward for spending a talent point.
@@ -128,9 +128,9 @@ public class EnvConfig {
 	 * {@code TalentsPane} -> {@code WndHero} — and none of that exists headlessly. The emission site is
 	 * wired and gated; the action that reaches it is {@code TODO.md} 1.10.
 	 */
-	public float talentReward = 8000f;
+	public float talentReward = 7000f;
 	/** Reward per point of gold gained, scaled by the item's tier. */
-	public float goldReward = 5f;
+	public float goldReward = 0.05f;
 
 /**
 	 * Penalty per point of health lost.
@@ -157,7 +157,7 @@ public class EnvConfig {
 	 * the first time this was raised: at 5.0 with {@code killReward} still 3.0, killing a rat cost 40 and
 	 * paid 3, and fighting became a net -37.
 	 */
-	public float damagePenalty = 250f;
+	public float damagePenalty = 50f;
 
 	/**
 	 * Reward for killing a hostile mob.
@@ -172,7 +172,7 @@ public class EnvConfig {
 	 * roughly half that, so a melee kill is close to break-even and the profitable kill is the one that
 	 * costs nothing — which is what {@link #sneakAttackReward} is for.
 	 */
-	public float killReward = 1200f;
+	public float killReward = 500f;
 
 	/**
 	 * Extra reward for a surprise attack.
@@ -187,7 +187,7 @@ public class EnvConfig {
 	 * <p>That is the whole design. Fighting has to be worth doing, and the only way it is worth doing is
 	 * to not be hit; a reward structure that pays the same for both outcomes teaches trading blows.
 	 */
-	public float sneakAttackReward = 2200f;
+	public float sneakAttackReward = 900f;
 
 	/**
 	 * Penalty for a step that advanced no engine time at all.
@@ -215,7 +215,7 @@ public class EnvConfig {
 	 * been asked to do anything difficult. Charging the two the same made them indistinguishable to
 	 * the learner, and the lesson that survives is that quitting is survivable.
 	 */
-	public float stallPenalty = 3000f;
+	public float stallPenalty = 2500f;
 
 	/**
 	 * Terminal penalty for running out of a floor's turn budget.
@@ -226,10 +226,10 @@ public class EnvConfig {
 	 * the two outcomes are ordered the way they are meant to be - stall, then turn limit, then death,
 	 * then victory.
 	 */
-	public float turnLimitPenalty = 1500f;
+	public float turnLimitPenalty = 1600f;
 
 	/** Terminal reward for reaching and clearing the final floor. */
-	public float victoryReward = 100000f;
+	public float victoryReward = 1000f;
 
 	/** Set false to have every write to Gdx.files redirected into a scratch directory. */
 	public boolean persistSaves = false;

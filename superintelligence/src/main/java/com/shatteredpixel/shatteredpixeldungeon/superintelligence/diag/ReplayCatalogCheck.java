@@ -257,6 +257,31 @@ private static void checkDepthIsAReadableColumn(){
 		return;
 	}
 
+	//and a recorded-at column, because "which of these is new" is a question the listing otherwise
+	//cannot answer: every recording carries a generation, and a run pointed at the same seed twice
+	//overwrites, so age was the only thing distinguishing this run's output from an earlier one's.
+	if (!listing.contains( "recorded" )){
+		fail( "the listing has no 'recorded' heading, so a fresh training run's output cannot be told"
+				+ " from yesterday's" );
+		return;
+	}
+	//A cell lookup rather than a pattern over the line. `String.matches` anchors the whole string, and a
+	//row ends in trailing padding, so a pattern with anything after the timestamp never matched a row
+	//that had one - which is how this assertion first reported a timestamp it was printing.
+	String deepRow = rowFor( listing, "DEEP" );
+	if (deepRow.split( "\\s+" ).length < 6 ){
+		fail( "the recording row has fewer cells than the listing has columns: \"" + deepRow
+				+ "\". A column that silently loses its cell is worse than no column." );
+		return;
+	}
+	String[] deepCells = deepRow.trim().split( "\\s+" );
+	if ( !deepCells[ 4 ].matches( "\\d\\d-\\d\\dT\\d\\d:\\d\\d" ) ){
+		fail( "the recorded-at cell is \"" + deepCells[ 4 ] + "\" where a MM-ddTHH:mm timestamp"
+				+ " belongs: \"" + deepRow + "\". No space inside it, or it is two cells and the column"
+				+ " cannot be read or asserted on as one." );
+		return;
+	}
+
 	//and every row's depth must sit at the same offset, so the column scans. Compared as the position
 	//of the depth *cell* rather than the first "d1"/"d3" in the line: a seed like SHALLOW contains a
 	//"d" before the depth column ever does, and matching on the letter rather than the cell reported a
