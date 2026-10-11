@@ -303,8 +303,9 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > a guard written to let an unrecorded field pass cannot distinguish *not applicable* from *lost*, and
 > it cannot be the only thing standing between a recording and a viewer.
 
-> **Scope, measured rather than assumed: trainer output only, and all 9 of it.** The committed corpus is
-> 17 recordings, all complete —
+> **Scope, measured rather than assumed: trainer output only, and all 9 of it.** The committed corpus in
+> `replays\` is 17 recordings, and all 17 reproduce — confirmed by hand across the corpus, and by
+> `viewcheck`, which plays every one of them clean through the real viewer (17/17). They are complete:
 > `USE 0 SLOT 1272 -0.502 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1` carries quickslots, hp, turn
 > and inventory — because `replay-viewer --record` goes `rollout --save` → `ReplayRecorder` and never
 > crosses the worker pipe. `Worker.writeReplay` sent four of the nine step fields `Replay.Step` declares,
@@ -350,6 +351,28 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > (documented at `ReplayRecorder.java:64-65`, because an equip in that step rebinds a slot) while
 > `afterStep()` captures inventory *after* it; whether playback compares the two at the same instant is
 > the open question, and `DROP` in `SLOT` is exactly the shape that would expose a mismatch.
+>
+> **The corpus cannot witness this, and that is why 17/17 proves nothing about it.** The corpus contains
+> **no `DROP` action at all** — not in `SLOT`, not in `INVENTORY`, not in any mode. Measured: 17
+> recordings, 310 SLOT-mode steps, and the entire SLOT-mode vocabulary is `USE/SLOT = 310`.
+> `DROP` appears zero times.
+>
+> That is the whole distinction between `USE/SLOT` and `DROP/SLOT`. Both resolve a slot index to an
+> item, but `USE` leaves the inventory alone and `DROP` mutates it, which is the only case where the
+> recorder's before/after split can disagree with the instant playback compares at. So `viewcheck`
+> passing is consistent with this being broken for the same reason the quickslots fault survived a
+> hundred green runs: **the check passes because the thing it would catch is absent, not because
+> anything was caught.** Any gate meant to close this has to record a `DROP` in `SLOT`, and today
+> nothing does.
+>
+> **What is established, and what is not.** Verified: all nine pre-fix trainer recordings carry zero
+> bindings and stop at their first slot-bearing step; `MSU-OTL-OAT` reaches 18 steps and diverges on
+> `DROP/1` in SLOT. *Not* established: that `DROP/SLOT` is inherently broken. It is one recording, one
+> step, one divergence. Drop-resolution may be genuinely non-deterministic, or the outcome may depend
+> on which item happened to be bound to slot 1. The "recorder captures before, playback compares
+> after" reading is a hypothesis drawn from the code, not a measurement, and more post-fix trainer runs
+> are needed before this is written up as a defect — specifically, whether it lands on `DROP` again and
+> whether it is always inventory.
 >
 > Consequence for the milestone: no recording the trainer has produced is watchable end to end yet,
 > which means the viewer cannot yet be used to diagnose training behaviour the way the corpus is used
