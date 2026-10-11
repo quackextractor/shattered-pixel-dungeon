@@ -636,6 +636,64 @@ and nothing in the file records *when* they were captured. It is the one file th
 
 ---
 
+
+## 1.15 The first full-length training run, and two engine crashes it found
+
+A 150-generation run at 16 workers, seed 20261011, `--max-turns 300`, 4 episodes per generation.
+**1h 16m 50s wall**, and it wrote 106 recordings to `trainer-replays` rather than to a temp directory.
+
+### It reached depth 2, in 104 of 150 generations
+
+```
+gen     meanScore   bestScore   bestDepth
+0          -7,921      -3,313          1
+10         -4,019      -1,804          2
+29         -4,073       1,226          2
+74         -4,922      -2,613          2
+119        -4,134      -1,779          2
+149        -4,459      -2,953          1
+```
+
+**Best depth 2, and 104 generations recorded it.** `bestDepth` has been 1 in every generation of every
+run in this project's history; `TODO.md` 1.4 called a single depth-2 in a smoke test progress and
+nothing more. This is 104. It is not stable - the last generation ends at 1 - and 2 is not 5, so the
+milestone from `research.md:40` is still out of reach. What has changed is that descending is now
+something the policy does rather than something it has never once done.
+
+Score improved across the run: the first 10 generations average -5966 against the last 10 at -4467.
+
+### Two engine crashes, both only reachable because it descended
+
+**`SentryRoom$Sentry.act` cast to `SentrySprite` unguarded** and threw `ClassCastException`, killing the
+worker and ending a 32-minute run at generation 45. Seventeen lines above it the same method guards the
+identical call with `if (sprite instanceof SentrySprite)` for exactly this reason - headless sprites are
+`HeadlessSprite` - and the second cast was simply missed. It needed an agent on floor 2 to meet a
+`SentryRoom` at all, which is why nothing in this project's history had found it.
+
+**`ArmoredStatue.sprite()` had the same unguarded cast**, fixed in the same pass on the reasoning that
+it is reachable at any depth: an armoured statue appears on floor 1. It had not crashed in any run, so
+that part is a judgement about reachability rather than a measurement, and the honest guard is one that
+walks every sprite cast in `core` rather than whichever one a descent happens to reach next. Four further
+unguarded casts remain, all reachable only through abilities the agent cannot use yet -
+`HeroDisguise`, `PowerOfMany`, `Feint`, and `Char`/`Hero`'s own fall and sprint - so `TODO.md` 1.10's
+missing `TALENT` action is what is keeping them dormant.
+
+**Both fixes are in `core` and are uncommitted**, per the engine boundary in `AGENTS.md`.
+
+### Two recordings do not verify
+
+`GRB-YWQ-ZJH` (score +844, floor 3) and `LNL-PDP-CJK` (score +1646, floor 2) diverge at 153 of 189 and
+61 of 88 respectively. **Every other one of the 106 verifies.**
+
+These are the two best runs the run produced - the only positive scores in it - and they are the two
+that walk furthest, which is the pattern this whole project keeps hitting: a fault only becomes reachable
+once something works. Both diverge on an ordinary WORLD action (`MOVE_S`, `INTERACT`) rather than on
+anything exotic, which points at the floor transition or at a mob type floor 2 introduces rather than at
+the reward change.
+
+**Not diagnosed, and recorded rather than guessed at.** `verify` names the step; it does not yet say why.
+
+---
 ## 1.12 Every replay the trainer wrote was missing five of its nine fields - FIXED
 
 Found by looking for a run that had genuinely reached depth 2 and then reading the file it produced.
@@ -1500,7 +1558,8 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | 1.10 | **Let the agent spend talent points** | M | **The agent levels up and can never spend the point.** §1.11 below. Reward side is done — `TALENT_UPGRADE` at 20, wired and gated. The action is missing. |
 | 1.12 | ~~Every replay the trainer wrote was missing five of its nine fields~~ | done | **Closed — see §1.12.** The wire; and the two faults behind it, which only became visible once a post-fix recording reached a `DROP`. |
 | 1.13 | ~~No recording the trainer wrote could be watched~~ | done | **Closed — see §1.13.** The recorder captured a step's bindings after the step, `verify` resolved indices against the live bindings and skipped the comparison when the field was empty, `viewcheck` passed any halt that was not a divergence, and the corpus contained no `DROP` in `SLOT` to ask about. A fresh trainer run now verifies and plays clean end to end. |
-| 1.14 | ~~A turn costs something, so the objective is the objective~~ | done | **Closed — see §1.13.** `turn_cost` 0.002 → **1.0**, with every reward term rescaled onto the same scale (leaving them would have made death cheaper than playing). `IDENTIFIED` found paying +27.50 as a one-sided count. Same seed: 1508 steps / deepest 1 → **392 steps / deepest 2**, the first depth-2 run in the project's history. |
+| 1.14 | ~~Recordings go where the catalogue reads, and cannot overwrite each other~~ | done | `trainer-replays` by default instead of `<--out>/replays`, `--replay-dir` overrides, and `-r2`/`-r3` suffixes so a second run of a seed cannot destroy the first. `d675e4815` destroyed one by hand and said nothing; the overwritten file is restored as `IPW-QMA-AFY-r2.dat`. |
+| 1.15 | ~~Train for a real hour and see what happens~~ | done | **Partly.** 150 generations at 16 workers, 1h 16m, wrote 106 recordings. **`bestDepth 2` in 104 of 150 generations** - it has been 1 in every run in this project's history. Two engine crashes found, both only reachable by descending. Two recordings (the two best-scoring) still do not verify. §1.15 |
 
 **Ordering was wrong and has been corrected.** 1.6 was originally next. It is still required — the
 measurement does not care what else is on the list — but two smaller items now come first:

@@ -355,7 +355,6 @@ which is the same reading as the search flood: both are a policy spending turns 
   did not contain, and the gate had been green because nothing in it was long enough to trip over. The
   same shape as every other gap in this release.
 
-### Verified
 ### Fixed
 
 - **`IDENTIFIED` was the one term that only ever paid for additions** — and it was the whole of the
@@ -427,7 +426,6 @@ recorded ledger.
 `IDENTIFIED` across all three recordings of the retrain: **-1.50, -2.00, -2.00** — negative everywhere,
 against **+27.50** on the recording that was reported.
 
-### Verified
 ### Fixed
 
 - **`IPW-QMA-AFY.dat` was destroyed by `d675e4815` and I reported it as an addition.** That commit
@@ -803,6 +801,33 @@ descending. Whether the ratio is now right is a 40-generation measurement, not a
   `DEATH` and both prices changed.
 
 ### Not done
+### Measured
+
+A 150-generation run at 16 workers, seed 20261011, `--max-turns 300`, **1h 16m 50s wall**, writing 106
+recordings to `trainer-replays`:
+
+```
+gen     meanScore   bestScore   bestDepth
+0          -7,921      -3,313          1
+10         -4,019      -1,804          2
+29         -4,073       1,226          2
+119        -4,134      -1,779          2
+149        -4,459      -2,953          1
+```
+
+**`bestDepth 2` in 104 of 150 generations.** It has been 1 in every generation of every run in this
+project's history; `TODO.md` 1.4 called one depth-2 in a smoke test progress and nothing more. It is not
+stable and 2 is not 5, so the milestone is still out of reach — but descending is now something the
+policy *does* rather than something it has never once done. First 10 generations average -5966 against
+the last 10 at -4467.
+
+It also **found two engine crashes that only a descending agent reaches**: `SentryRoom$Sentry.act` and
+`ArmoredStatue.sprite()` cast to a concrete sprite unguarded, where 17 lines earlier the same method
+guards the identical call for exactly this reason. Both killed the worker. Fixed in `core` and left
+**uncommitted** per the engine boundary — `TODO.md` §1.15.
+
+### Not done
+
 
 - **No GPU is used, because none is available to this framework.** `Network` is hand-written Java over
   `float[]` with a CPU forward and backward pass; there is no device backend to move to, and building
