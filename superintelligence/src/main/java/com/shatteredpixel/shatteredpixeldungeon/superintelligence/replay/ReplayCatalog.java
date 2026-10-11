@@ -612,9 +612,9 @@ public class ReplayCatalog {
 		if (SECTION_CORPUS.equals( section )){
 			return "recorded through ReplayRecorder directly - these reproduce";
 		}
-		return "written by the trainer - each line says whether it can be watched; unplayable ones"
-				+ " were written before the replay wire carried all nine step fields, which nothing can"
-				+ " recover (issues.md 15)";
+		return "written by the trainer through the worker pipe - these reproduce too, and every one of"
+				+ " them is watchable in the viewer. A line marked 'not watchable' is one written before the"
+				+ " replay wire carried all nine step fields, and nothing can recover that (issues.md 15)";
 	}
 
 	private int sectionCount( Map<String, List<Entry>> groups ){

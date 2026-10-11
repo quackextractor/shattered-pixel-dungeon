@@ -391,3 +391,40 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > not** — the one file the listing overstates, because nothing in a recording says *when* its bindings
 > were captured. `verify` and `viewcheck` catch it; correcting the listing would need a version bump on
 > the format, which is more than the problem warrants for a file kept as history.
+
+> **All ten are gone from `trainer-replays/`, and that was the right call.** The directory's job is
+> "recordings you can watch", and keeping unrecoverable files in it meant the picker offered **9 dead ends
+> out of 10** — every one of them ending in a halt with nothing on screen to explain it beyond the line
+> I had added. That is a worse outcome than losing the evidence, because the evidence was already written
+> down and in git history. What replaced them is what the fixed trainer actually produces:
+>
+> ```
+> IPW-QMA-AFY   1,508 steps   termination=TURN_LIMIT
+> MFS-CDV-GCN     235 steps   termination=DEATH
+> NKV-DZY-TYG   1,100 steps   termination=DEATH
+> TPB-MLL-WYJ     534 steps   termination=DEATH
+> ZQN-FGD-BPS     701 steps   termination=DEATH
+> ```
+>
+> All five verify and play clean, and **every recording in `trainer-replays/` is now watchable** —
+> which is the property the section header claims and, until now, did not have.
+>
+> The removed files, for the record (all in git history at `5356a8abb` and `5356a8abb^`):
+>
+> | recording | steps | what was wrong with it |
+> | --- | --- | --- |
+> | `GFW-GHG-BTT` | 1,260 | four-field wire |
+> | `BMS-WQQ-LQH` | 655 | four-field wire |
+> | `BMG-HZS-GGF` | 1,005 | four-field wire |
+> | `XIM-LFA-MNY` | 986 | four-field wire |
+> | `NNN-NYP-PNH` | 389 | four-field wire |
+> | `QVT-MFY-JTM` | 1,458 | four-field wire |
+> | `JLD-WRQ-GXJ` | 70 | four-field wire |
+> | `MDC-JVK-QVB` | 1,373 | four-field wire |
+> | `ZFW-GJP-VQC` | 1,205 | four-field wire |
+> | `MSU-OTL-OAT` | 660 | bindings captured after the step |
+>
+> **And `viewcheck`'s own child budget was wrong while that was being found.** 120 s, against a
+> full-length 1508-step recording that takes ~4 minutes at gate speed. The gate reported *"the viewer
+> never stopped"* for runs that had stopped having applied **every** step — a false failure whose message
+> names the opposite of what happened. Now 300 s, with the measurement recorded.

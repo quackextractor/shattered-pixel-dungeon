@@ -32,9 +32,10 @@ real training runs were verified and played in the real viewer end to end:
 APR-SLJ-DXM.dat, 1514 steps   [OK] verify reproduced 1514   [OK] viewcheck played clean
 ```
 
-`trainer-replays/` carries one of them. The other ten still there are **not** watchable and nothing can
-make them so — they were written before the wire carried the field, so the data was never recorded — and
-the catalog now says so per recording rather than for the section as a whole. See `issues.md` 15 and
+`trainer-replays/` now holds five recordings the fixed trainer wrote, all watchable. The nine unwatchable
+ones that were there before were written before the wire carried the field — nothing can recover data
+that was never written — and keeping them turned the picker into nine dead ends out of ten; they are
+listed by seed and step count in `issues.md` 15 and remain in git history. See `issues.md` 15 and
 [`CHANGELOG.md`](CHANGELOG.md) 0.7.0.
 
 ## Read this first
@@ -194,7 +195,7 @@ something.
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified, **with a known limit** - `env.max_slots=32` against an engine ceiling of 96, so a full inventory is silently truncated. `TODO.md` §0.8 |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process. `verify` also resolves a recorded slot index against its recorded quickslot bindings, so it and the viewer cannot disagree about a recording and both be right |
-| **A recording the trainer writes is watchable** | **Verified end to end, twice** - the trainer pinned a step's bindings *after* the step, so a `DROP` named a different item on playback; `verify` skipped the comparison when the field was empty and reported nine unplayable recordings as `[OK]`; `viewcheck` scored a pass for any halt that was not a divergence. All three fixed. `APR-SLJ-DXM` (1514 steps, 49 `DROP`s, `trainer-replays/`) verifies and plays clean in the real viewer, so the trainer section is no longer 10 of 10 unplayable, and the catalog labels each recording rather than the whole section |
+| **A recording the trainer writes is watchable** | **Verified end to end, repeatedly** - the trainer pinned a step's bindings *after* the step, so a `DROP` named a different item on playback; `verify` skipped the comparison when the field was empty and reported nine unplayable recordings as `[OK]`; `viewcheck` scored a pass for any halt that was not a divergence. All fixed. **`trainer-replays/` was regenerated**: it had been 9 dead ends out of 10, because every file in it predated the wire fix. It now holds five recordings from the fixed trainer, all of which verify and play clean - so *every* recording in both directories is watchable |
 | Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 19 committed recordings, and the gate now requires every step to have played rather than merely "did not diverge". **A recording whose death lands on its final step** used to report N-1 of N - `issues.md` 2's symptom, one path from the one its fix closed - and no gate reached it, because every death recording in the corpus was dead *by* its last step rather than *on* it. `duelist-death-last.replay` is the file that does. **Note the limit**: every child is forked hidden at speed 40, so the gate has never run the timing path a human run takes - see `TODO.md` §0.7 |
 | Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate |
 | A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation - and the viewer does the same at both ends of a playback, so watching a recording no longer leaves `bones.dat` in the player's profile |

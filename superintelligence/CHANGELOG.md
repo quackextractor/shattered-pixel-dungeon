@@ -319,28 +319,52 @@ VFV-BJS-GCF   ITEM_PICKUP +49.50   ITEM_DROPPED -54.50   net  -5.00
 agent drops items because it has nothing better to do with the turn, not because dropping is profitable,
 which is the same reading as the search flood: both are a policy spending turns it has no reason to spend.
 
+### Changed
+
+- **`trainer-replays/` now contains only recordings that can be watched.** It held ten files, **nine of
+  them unwatchable** — every one written before the replay wire carried all nine step fields, so the
+  quickslot bindings a slot index needs were never written and nothing can recover them. The catalog's
+  per-file label said so, which turned the picker into **nine dead ends out of ten**, each ending in a
+  halt with nothing on screen beyond a warning line.
+
+  That is a worse outcome than losing the evidence, because the evidence was already written down and is
+  in git history. The directory's job is "recordings you can watch", and it was not doing it. Replaced
+  with what the fixed trainer actually produces, all of which verify and play clean:
+
+  ```
+  IPW-QMA-AFY   1,508 steps   TURN_LIMIT
+  MFS-CDV-GCN     235 steps   DEATH
+  NKV-DZY-TYG   1,100 steps   DEATH
+  TPB-MLL-WYJ     534 steps   DEATH
+  ZQN-FGD-BPS     701 steps   DEATH
+  ```
+
+  `APR-SLJ-DXM` was already there and watchable. The tenth, `MSU-OTL-OAT`, is gone too — it carries
+  bindings but captured them after the step, so it does not reproduce, and it was the one file the
+  catalog listed as watchable wrongly. The full list, with step counts and the fault in each, is in
+  `issues.md` 15.
+
+### Fixed
+
+- **`viewcheck`'s child timeout was shorter than a full-length recording takes to play.** 120 s against a
+  1508-step recording that measures at ~4 minutes at gate speed, so the gate reported *"the viewer never
+  stopped"* for runs that had stopped having applied **every** step — 1508 of 1508, 1100 of 1100. A false
+  failure whose message names the opposite of what happened. Now 300 s.
+
+  Found while regenerating the trainer recordings: the corpus grew a full-length run that the old corpus
+  did not contain, and the gate had been green because nothing in it was long enough to trip over. The
+  same shape as every other gap in this release.
+
 ### Verified
 
 - `verifyall` - `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 23, both green.
-- `:desktop:viewcheck` - **19 of 19**, 42.5 s at 8 children, with `duelist-death-last.replay` added.
+- `:desktop:viewcheck` - **19 of 19** on the corpus, 42.8 s at 8 children, with `duelist-death-last.replay` added.
+- **All five recordings in `trainer-replays/` verify and play clean** — 5 of 5 in the real viewer,
+  46.7 s at 4 children, against the 300 s child budget rather than 120 s.
 - Four fresh trainer recordings from the retrain, before the fix, all verify and play clean. Two of them
   timed out at 120 s under 4-way concurrency and both played clean at 1 child - the timing sensitivity
   `viewcheck` documents, reproduced as documented.
 
-### Not done
-
-- **The nine pre-fix recordings stay unplayable.** The data was never written; only a new run records
-  it. They are kept in `trainer-replays/` as evidence of what the wire dropped, and `verify` and
-  `viewcheck` now both *say so* about them instead of reporting success - which is the part that can
-  still be fixed.
-
-- **`MSU-OTL-OAT` is listed as watchable and is not.** It carries bindings, so the header scan passes it,
-  and nothing in the file records *when* they were captured. That is the question the listing cannot
-  answer, and it is the one recording whose watchability the listing overstates. `verify` and
-  `viewcheck` catch it correctly, and every future recording is fixed; correcting the listing would need a
-  version bump on the format, which is more than the problem warrants for a file kept as history.
-
-## [Unreleased]
 
 ### Changed
 

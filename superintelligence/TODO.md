@@ -497,13 +497,19 @@ slot-bearing of which **49 are `DROP`**, every step carrying health, engine time
 and played clean in the real viewer. And the catalog now labels each recording from the four-field
 signature rather than the section as a whole, because `ReplayIO.readHeader` can reach the answer without
 parsing every step - and because a blanket sentence is a claim about eleven files, ten of which it got
-right and one of which it condemns wrongly.
+right and one of which it condemned wrongly.
 
-**`MSU-OTL-OAT` is the one file the listing gets wrong**, and it is worth naming rather than leaving:
-it carries bindings, so the header scan passes it, and nothing in the file records *when* they were
-captured - which is precisely the fault. Correcting that needs a version bump on the format, which is
-more than the problem warrants for a file kept as history. `verify` and `viewcheck` catch it, and every
-future recording is fixed.
+**All ten are now gone from the directory**, replaced by five recordings the fixed trainer wrote, so
+that every recording in `trainer-replays/` is watchable. A picker offering nine dead ends out of ten is
+worse than no picker: the label made it honest and honest is not the same as useful.
+
+**`MSU-OTL-OAT` was the one file the listing got wrong**, and it is worth naming rather than leaving:
+it carries bindings, so the header scan passed it, and nothing in the file records *when* they were
+captured - which is precisely the fault. It is gone from `trainer-replays/` now, so the listing has no
+overstatement left to make; but the underlying question is real and **a recording still cannot say when
+its bindings were captured**, so a future one written by a regressed recorder would be labelled
+watchable and would not be. `verify` and `viewcheck` catch it, because both apply the recorded bindings
+rather than trusting the field. Closing it in the listing would need a version bump on the format.
 
 ### The search flood, which was a price rather than a preference
 
@@ -590,9 +596,13 @@ built from one of them **passes when the fix is reverted**, which it did when tr
 
 ### Still open
 
-**The nine pre-fix recordings stay unplayable.** The data was never written and only a new run records
-it. What changed is that `verify`, `viewcheck` and the catalog now *say so* about them instead of
-reporting success, which is the half of the fault that was still fixable.
+**Nothing is unplayable any more.** The nine recordings written before the wire fix carried no
+quickslot bindings and nothing could recover them, and they sat in `trainer-replays/` offering nine
+dead ends out of ten in the picker. They have been **replaced** with five recordings the fixed trainer
+wrote, all of which verify and play clean; their seeds and step counts are in `issues.md` 15 and the
+files are in git history at `5356a8abb`. A directory of unwatchable evidence is worse than no
+directory, because a reader cannot tell which is which without a label, and the label is the thing that
+made the picker honest rather than the thing that should have to be read.
 
 **`MSU-OTL-OAT` is listed as watchable and is not.** It carries bindings, so the header scan passes it
 and nothing in the file records *when* they were captured. It is the one file the listing overstates;

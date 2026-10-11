@@ -45,6 +45,13 @@
 
   3.7 seconds for a 1499-step recording is the tell: a gate that stops early and reports success is worse than one that reports nothing, because the next reader believes the file was watched. The gate now requires `cursor >= total()` **and** no divergence, and names the shortfall in the failure line.
 
+  **And its child budget must exceed a full-length recording.** It was 120 s, against a 1508-step trainer
+  recording that takes ~4 minutes at gate speed, so the gate reported *"the viewer never stopped"* for
+  runs that had stopped having applied every step - 1508 of 1508, 1100 of 1100. A false failure whose
+  message names the opposite of what happened, now 300 s. Found only because `trainer-replays` gained a
+  full-length run the corpus did not contain; **the gate had been green because nothing in it was long
+  enough to trip over.**
+
 ---
 
 #### **4. Cross-JVM Determinism & Worker Path Parity**

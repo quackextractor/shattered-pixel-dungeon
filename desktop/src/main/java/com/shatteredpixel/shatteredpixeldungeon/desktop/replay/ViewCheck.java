@@ -83,8 +83,20 @@ public class ViewCheck {
 	/** Playback speed for the gate. Pacing only; the path taken is the same at 1x. */
 	private static final float GATE_SPEED = 40f;
 
-	/** Ceiling on a single playback, so a stuck viewer fails instead of hanging the gate. */
-	private static final long CHILD_TIMEOUT_MS = 120_000;
+	/**
+	 * Ceiling on a single playback, so a stuck viewer fails instead of hanging the gate.
+	 *
+	 * <p>Five minutes, up from 120s. A full-length trainer recording is ~1500 steps and the gate plays at
+	 * speed 40, which measures at ~5150 frames for 1508 steps — over four minutes on a loaded machine.
+	 * At 120s the budget expired and the gate reported <em>"the viewer never stopped"</em> for a run that
+	 * had stopped, having applied every step: a false failure whose message names the opposite of what
+	 * happened.
+	 *
+	 * <p>Cost is bounded rather than proportional to the corpus, because children run in parallel: what
+	 * this buys is that the gate waits for the slowest single recording rather than reporting it wrong.
+	 * A genuinely stuck viewer still fails, just later.
+	 */
+	private static final long CHILD_TIMEOUT_MS = 300_000;
 
 	public static void main( String[] args ) throws Exception {
 		List< String > parsed = new ArrayList<>( Arrays.asList( args ));
