@@ -319,13 +319,25 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > on which item happened to be bound to slot 1 — is refuted.** It is neither. `EpisodeCollector.Listener`
 > now has `onDecision` before the step and `onStep` after it.
 >
-> **3. An empty binding set is a state, not a missing field.** Asked per step, the two cannot be told
+> **3. An empty binding set is a state, not a missing field — and getting *that* wrong was a second false
+> positive, caught by `rolloutcheck` failing intermittently.** Asked per step, the two cannot be told
 > apart; asked that way it refused a real recording. A fresh trainer run carries 211 SLOT and INVENTORY
-> steps, one of them with bindings and 210 without, because the policy dropped the only bound item — the
-> Waterskin — at step 0. `Replay.recordsQuickslots()` answers it for the whole recording instead:
-> bindings present somewhere and absent at this moment means nothing was bound at this moment; none
-> anywhere means the field never existed. Both halves are gated, because the first version refused the
-> second.
+> steps, one with bindings and 210 without, because the policy dropped the Waterskin at step 0. Then the
+> whole-recording version was wrong too: "no bindings anywhere" is equally true of a run in which the
+> hero had **nothing bound at every slot step**, which resolves from backpack order and plays. It failed
+> only on the runs where a random episode happened to carry nothing, which is why it read as a flake.
+>
+> **The discriminator is the signature of the broken wire, not the absence of one field.** That wire sent
+> four of nine step fields and left the rest at their sentinels, so health, turn **and** inventory are
+> absent too, on every step. Nine trainer recordings carry `heroHp = -1, turn = -1.0, inventory = ""`
+> throughout. A recording with real health and real engine time was written by a wire that carried
+> everything, so an empty binding on it means the hero had none. Presence of evidence rather than absence
+> of it — the lesson this entry already exists to record, reached a second time in the same change.
+>
+> Two other fixtures made the mistake from the other direction and were caught the same way: the
+> `playbackcheck` "no resolvable slots" fixture blanked only bindings, so it became healthy and stopped
+> being unwatchable; and `replaycheck`'s `write()` helper wrote every field at its sentinel, so a
+> "healthy" fixture carried the four-field signature.
 >
 > **4. `viewcheck` passed anything that did not diverge.** A player that halts for any other reason — an
 > unresolvable slot index, a stall, a refusal — leaves `diverged()` false. That same fresh recording was
@@ -342,20 +354,40 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > Mutation-tested by removing the `ThrowingSpike` entry from its `DROP` step, which fails `viewcheck`
 > with `DIVERGED at step 2 - DROP/1 in SLOT`.
 >
-> **Measured end to end, on a real training run** — 2 generations, 2 workers, 2 episodes,
+> **Measured end to end, on real training runs** — 2 generations, 2 workers, 2 episodes,
 > `--max-turns 120`:
 >
 > ```
-> trainer wrote      SGD-CKH-JUO.dat, 1499 steps
-> verify             [OK] replay reproduced in 1499 steps, 457 ms
-> viewcheck          [OK] rendered playback: 1 recordings played clean (45.6s)
+> SGD-CKH-JUO.dat, 1499 steps   [OK] verify reproduced 1499   [OK] viewcheck played clean
+> APR-SLJ-DXM.dat, 1514 steps   [OK] verify reproduced 1514   [OK] viewcheck played clean
+>                               245 slot-bearing steps, of which 49 are DROP
 > ```
 >
-> `verifyall` green at 20 gates plus `playbackcheck` at 21; `viewcheck` **18 of 18**, 36.5 s at 8
-> children.
+> `APR-SLJ-DXM` is checked into `trainer-replays/`. Before that the section was **10 of 10 unplayable**
+> — every file in it predates the fix, so picking anything ended in a halt — and the evidence was sitting
+> in a temp directory a reboot empties.
+>
+> **The catalog now says per recording whether it can be watched, rather than once for the section.** It
+> read *"NOT known to play end to end"*, which was the only thing between a reader and a playback that
+> halts at step 1, and which became wrong the moment a fixed recording existed. The label comes from the
+> body via `ReplayIO.readHeader`, so it costs no parsing, and `replaycheck` asserts the cheap scan and
+> the full parse agree in both directions.
+>
+> ```
+> GFW-GHG-BTT               -116.2  d1   1,260   not watchable, gen 3
+> APR-SLJ-DXM                -80.6  d1   1,500   gen 1
+> ```
+>
+> `verifyall` green at 20 gates plus `playbackcheck` at 22 — and **five consecutive runs**, because four
+> of the faults above were intermittent by construction and one green would not have been evidence of
+> anything. `viewcheck` **18 of 18**, 36.2 s at 8 children.
 >
 > **What is not recoverable, and what is.** The nine pre-fix recordings carry no bindings and never
 > will: the data was never written and only a new run records it, so regenerating the wire cannot help.
-> They stay in `trainer-replays/` as evidence of what the wire dropped — not as fixtures, and nothing
-> should be trying to make them pass. What changed is that both tools now *say so* about them instead of
-> reporting success, which is the half of this report that was still fixable.
+> Measured across all ten, nine carry `hp=-1 turn=-1.0 inventory=""` on **every** step — the four-field
+> wire bug, where the writer never sent them. They stay in `trainer-replays/` as evidence of what it
+> dropped, not as fixtures. The tenth, `MSU-OTL-OAT`, carries real fields but was written by the old
+> `onStep` listener, so its bindings were captured after the step and it is **listed as watchable and is
+> not** — the one file the listing overstates, because nothing in a recording says *when* its bindings
+> were captured. `verify` and `viewcheck` catch it; correcting the listing would need a version bump on
+> the format, which is more than the problem warrants for a file kept as history.

@@ -444,11 +444,33 @@ With the recorder fixed, a fresh 2-generation run wrote a recording that `verify
 13: 211 SLOT and INVENTORY steps, one carrying bindings and 210 empty. The policy had dropped the
 Waterskin at step 0 - the only thing bound - so nothing was bound for the rest of the run.
 
-**An empty binding set is a state, not a missing field.** The refusal rule I had written asked per step,
-which cannot tell the two apart, and it was refusing a recording that plays perfectly. `Replay` now
-answers it for the whole recording - `recordsQuickslots()` - because bindings present somewhere and
-absent at this moment means nothing was bound at this moment, while none anywhere means the field never
-existed. Both halves are gated, and the second is the one that would otherwise have been left out.
+**An empty binding set is a state, not a missing field.** The refusal rule I had written asked whether
+any step carries bindings, which cannot tell that from *the field was lost*, and it refused a recording
+that plays perfectly: 211 SLOT and INVENTORY steps, one carrying bindings and 210 empty, because the
+policy dropped the Waterskin at step 0 - the only thing bound - so nothing was bound for the rest of the
+run.
+
+**And that first rule was itself a false positive, caught by `rolloutcheck` failing intermittently.**
+The question has to be of the *other* fields the same wire carried. That wire sent four of nine step
+fields and left the rest at their sentinels, so health, turn **and** inventory are absent too, on every
+step - nine trainer recordings carry `heroHp = -1, turn = -1.0, inventory = ""` throughout.
+`Replay.wireDroppedStepFields()` is the discriminator: a recording with real health and real engine time
+was written by a wire that carried everything, so an empty binding on it means the hero had none.
+
+It failed only on the runs where a random episode happened to carry nothing, which is exactly why it
+looked like a flake and not a bug - and it was found by a gate this change did not touch, failing for a
+reason it did not expect. **Presence of evidence rather than absence of it, the second time in one
+change that a sentinel-driven rule had to become a signature.**
+
+Two other fixtures made the same mistake from the other direction. `PlaybackCheck`'s "no resolvable
+slots" fixture blanked only the bindings, so it became a healthy recording and stopped being unwatchable.
+`ReplayCatalogCheck`'s `write()` helper wrote every step field at its sentinel, so a fixture meant to
+stand for a healthy recording carried the four-field signature. Both fixed; the playback case is now
+**stronger**, asserting the player refused *at* the first slot-bearing step, which a string-match on the
+halt reason could not tell from playing the run and mentioning it afterwards, and its converse
+("nothing bound still plays") is a new case. And `ReplayIO.readHeader`'s new body scan compared against
+a nine-field step and found none, because an empty inventory is a *trailing* field and `String.split`
+discards trailing empty strings - so a step with no inventory is eight fields.
 
 ### And the gate that was green because it could not ask
 
@@ -463,24 +485,60 @@ only drops by accident. `duelist-drop.replay` and `gradle :superintelligence:dro
 directory both viewer gates already read, and the command **verifies the recording before writing it**,
 so a fixture that no longer plays cannot be committed in place of one that does.
 
+### And then the part that was still missing: nothing in `trainer-replays` worked
+
+Closing the wire is not the same as showing it. Every one of the ten recordings in `trainer-replays/`
+predated the fix, so **picking anything from that section of the catalog ended in a halt** - and the
+section blurb said so only once, for all ten, which is a sentence that becomes wrong the moment a fixed
+recording exists, because it condemns a file that plays.
+
+Two things followed. `APR-SLJ-DXM` is checked in beside the files it explains - 1514 steps, 245
+slot-bearing of which **49 are `DROP`**, every step carrying health, engine time and inventory, verified
+and played clean in the real viewer. And the catalog now labels each recording from the four-field
+signature rather than the section as a whole, because `ReplayIO.readHeader` can reach the answer without
+parsing every step - and because a blanket sentence is a claim about eleven files, ten of which it got
+right and one of which it condemns wrongly.
+
+**`MSU-OTL-OAT` is the one file the listing gets wrong**, and it is worth naming rather than leaving:
+it carries bindings, so the header scan passes it, and nothing in the file records *when* they were
+captured - which is precisely the fault. Correcting that needs a version bump on the format, which is
+more than the problem warrants for a file kept as history. `verify` and `viewcheck` catch it, and every
+future recording is fixed.
+
 ### Verified
 
 - `verifyall` - `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 21, both green.
-- `:desktop:viewcheck` - **18 of 18**, 36.5 s at 8 children. Re-run rather than carried over, because the
+- `:desktop:viewcheck` - **18 of 18**, 36.2 s at 8 children. Re-run rather than carried over, because the
   gate's verdict changed and a recording joined the corpus.
-- **End to end, on a real trainer run** - 2 generations, 2 workers, 2 episodes, `--max-turns 120`:
-  `SGD-CKH-JUO.dat`, 1499 steps, `verify` reproduced all 1499, `viewcheck` played all 1499 in the real
-  viewer. That is `issues.md` 15's headline claim, closed.
-- Mutation-tested four ways, each reverted after: moving `onDecision` after `env.step` fails
+- **End to end, on real trainer runs** - 2 generations, 2 workers, 2 episodes, `--max-turns 120`:
+
+  ```
+  SGD-CKH-JUO.dat, 1499 steps   [OK] verify reproduced 1499   [OK] viewcheck played clean
+  APR-SLJ-DXM.dat, 1514 steps   [OK] verify reproduced 1514   [OK] viewcheck played clean
+                                245 slot-bearing steps, of which 49 are DROP
+  ```
+
+  That is `issues.md` 15's headline claim, closed. `APR-SLJ-DXM` is checked into `trainer-replays/`, so
+  the evidence outlives the temp directory a reboot empties — and so the trainer section of the catalog
+  is not 10 of 10 unplayable.
+- Mutation-tested five ways, each reverted after: moving `onDecision` after `env.step` fails
   `collectcheck`; removing `Quickslots.prepare` from `verify` fails `collectcheck` and `verifycheck`;
   restoring `Dungeon.quickslot.reset()` in `restore` fails `slotcheck`; blanking the fixture's `DROP`
-  bindings fails `viewcheck` with `DIVERGED at step 2 - DROP/1 in SLOT`.
+  bindings fails `viewcheck` with `DIVERGED at step 2 - DROP/1 in SLOT`; dropping the catalog's
+  per-recording watchability label fails `replaycheck`.
+- **`verifyall` five consecutive times.** Four of the defects above were intermittent by construction -
+  each depends on what a given random episode happens to be carrying - so one green run would not have
+  been evidence of anything.
 
 ### Still open
 
 **The nine pre-fix recordings stay unplayable.** The data was never written and only a new run records
-it. What changed is that `verify` and `viewcheck` now *say so* about them instead of reporting success,
-which is the half of the fault that was still fixable.
+it. What changed is that `verify`, `viewcheck` and the catalog now *say so* about them instead of
+reporting success, which is the half of the fault that was still fixable.
+
+**`MSU-OTL-OAT` is listed as watchable and is not.** It carries bindings, so the header scan passes it
+and nothing in the file records *when* they were captured. It is the one file the listing overstates;
+`verify` and `viewcheck` catch it, and fixing the listing would need a version bump on the format.
 
 ---
 

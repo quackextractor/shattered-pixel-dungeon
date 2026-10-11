@@ -20,21 +20,22 @@ seed recorded and re-verified.
 
 **A recording the trainer writes can now be watched, and that is a measured claim rather than a plan.**
 It was false, and `verify` said otherwise: the trainer pinned a step's quickslot bindings *after* the
-step, so a `DROP` - the one action that unbinds its own item - named a different item on playback than
+step, so a `DROP` — the one action that unbinds its own item — named a different item on playback than
 it did on the recording; `ReplayIO.verify` resolved recorded slot indices against the live bindings
 rather than the recorded ones and skipped the comparison entirely when the field was empty, which is
 why nine unplayable recordings each reported `[OK]`; and `viewcheck`'s verdict was "did not diverge",
 so a player that halted for any other reason scored a pass. All four are fixed, the corpus now contains
-a `DROP` in `SLOT` (`duelist-drop.replay`, the thing 17 recordings and 310 SLOT steps did not), and a
-fresh 2-generation run was verified and played in the real viewer end to end:
+a `DROP` in `SLOT` (`duelist-drop.replay`, the thing 17 recordings and 310 SLOT steps did not), and two
+real training runs were verified and played in the real viewer end to end:
 
 ```
-trainer wrote      SGD-CKH-JUO.dat, 1499 steps
-verify             [OK] replay reproduced in 1499 steps, 457 ms
-viewcheck          [OK] rendered playback: 1 recordings played clean (45.6s)
+APR-SLJ-DXM.dat, 1514 steps   [OK] verify reproduced 1514   [OK] viewcheck played clean
 ```
 
-See `issues.md` 15 and [`CHANGELOG.md`](CHANGELOG.md) 0.7.0.
+`trainer-replays/` carries one of them. The other ten still there are **not** watchable and nothing can
+make them so — they were written before the wire carried the field, so the data was never recorded — and
+the catalog now says so per recording rather than for the section as a whole. See `issues.md` 15 and
+[`CHANGELOG.md`](CHANGELOG.md) 0.7.0.
 
 ## Read this first
 
@@ -193,7 +194,7 @@ something.
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified, **with a known limit** - `env.max_slots=32` against an engine ceiling of 96, so a full inventory is silently truncated. `TODO.md` §0.8 |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process. `verify` also resolves a recorded slot index against its recorded quickslot bindings, so it and the viewer cannot disagree about a recording and both be right |
-| **A recording the trainer writes is watchable** | **Verified end to end** - the trainer pinned a step's bindings *after* the step, so a `DROP` named a different item on playback; `verify` skipped the comparison when the field was empty and reported nine unplayable recordings as `[OK]`; `viewcheck` scored a pass for any halt that was not a divergence. All three fixed, and a fresh 2-generation run verified and played clean. `duelist-drop.replay` added because the corpus contained **no `DROP` at all** - 310 SLOT steps, all `USE/SLOT` |
+| **A recording the trainer writes is watchable** | **Verified end to end, twice** - the trainer pinned a step's bindings *after* the step, so a `DROP` named a different item on playback; `verify` skipped the comparison when the field was empty and reported nine unplayable recordings as `[OK]`; `viewcheck` scored a pass for any halt that was not a divergence. All three fixed. `APR-SLJ-DXM` (1514 steps, 49 `DROP`s, `trainer-replays/`) verifies and plays clean in the real viewer, so the trainer section is no longer 10 of 10 unplayable, and the catalog labels each recording rather than the whole section |
 | Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 18 committed recordings, and the gate now requires every step to have played rather than merely "did not diverge". The four engine fixes that required are committed, with the record in `ENGINE-CHANGES.md`. **Note the limit**: every child is forked hidden at speed 40, so the gate has never run the timing path a human run takes - see `TODO.md` §0.7 |
 | Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate |
 | A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation - and the viewer does the same at both ends of a playback, so watching a recording no longer leaves `bones.dat` in the player's profile |

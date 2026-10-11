@@ -126,11 +126,50 @@ every gate passed. Four faults, in the order they had to be found.
 
 - **`replay` package: `DropFixture`, the recording the command writes.**
 
+- **`Replay.wireDroppedStepFields()` and `Replay.recordsQuickslots()`** — the second is a diagnostic and
+  the first decides. See the fixed section above for why the discriminator is a signature.
+
+### Fixed
+
+- **The refusal rule added above was itself a false positive, and `rolloutcheck` found it by failing
+  intermittently.** It first discriminated on *"no step in this recording carries quickslots"*, which
+  reads as *the field was lost* — and is equally true of a run in which the hero had **nothing bound at
+  every slot step**, which resolves from backpack order and plays perfectly. Refusing those refuses a
+  working recording, and it fails only on the runs where a random episode happens to carry nothing,
+  which is exactly why it looked like a flake and not a bug.
+
+  **The discriminator is the signature of the broken wire, not the absence of one field.** That wire sent
+  four of nine step fields and left the rest at their sentinels — so health, engine time and inventory
+  are absent too, on every step. Nine trainer recordings carry `heroHp = -1, turn = -1.0, inventory = ""`
+  throughout; a recording with real health and real engine time was written by a wire that carried
+  everything, so an empty binding on it means the hero had none.
+
+  Presence of evidence rather than absence of it, which is the lesson this issue exists to record — and
+  the second time in one change that a sentinel-driven rule had to be replaced by a signature. It was
+  found by a gate this change did not touch, failing for a reason it did not expect, which is the
+  argument for running the whole suite rather than the gates that cover the change.
+
+- **`PlaybackCheck`'s "a recording with no resolvable slots" fixture stopped being unwatchable**, for the
+  same reason in the same change: it blanked only the bindings, which is now correctly a healthy
+  recording. Fixed at the fixture and **strengthened** — it now also asserts the player refused *at* the
+  first slot-bearing step rather than playing the run and mentioning it afterwards, which the old
+  string-match on the halt reason could not tell apart. Its converse, "nothing bound still plays", is a
+  new case (21 → 22).
+- **`ReplayCatalogCheck`'s `write()` helper wrote every step field at its sentinel**, so a fixture meant
+  to stand for a healthy recording carried the four-field signature. It now gives health, turn and
+  inventory real values, and the two watchability cases are written against the signature — one for a
+  recording the broken wire wrote, one for a healthy recording with nothing bound.
+- **`ReplayIO.readHeader`'s new body scan compared against a nine-field step and found none.** An empty
+  inventory is a *trailing* field and `String.split` discards trailing empty strings, so a step with no
+  inventory is eight fields — and requiring nine skipped precisely the recordings being looked for.
+
 ### Verified
 
-- `verifyall` — `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 21, both green.
-- `:desktop:viewcheck` — **18 of 18**, 36.5 s at 8 children. Re-run rather than carried over: the gate's
-  verdict changed, and a new recording joined the corpus.
+- `verifyall` — `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 22, both green, and
+  **five consecutive runs** rather than one. The four defects above were intermittent by construction —
+  each depends on what a given random episode happens to be carrying — so a single green would not have
+  been evidence of anything.
+- `:desktop:viewcheck` — **18 of 18**, 36.2 s at 8 children.
 - **End to end, on a fresh trainer run** — 2 generations, 2 workers, 2 episodes, `--max-turns 120`:
 
   ```
@@ -142,12 +181,62 @@ every gate passed. Four faults, in the order they had to be found.
   `issues.md` 15's headline claim, closed: **a recording written by the trainer can now be played in the
   viewer, end to end.**
 
+### Added
+
+- **`APR-SLJ-DXM` in `trainer-replays` — a trainer recording that is watchable.** Closing the wire is not
+  the same as showing it, and until now the trainer section of the catalog was **10 of 10 unplayable**:
+  every file in it predates the fix, so picking anything from that section ended in a halt. This one is
+  written by the fixed path, and it is the evidence the fix works.
+
+  ```
+  trainer wrote      APR-SLJ-DXM.dat, 1514 steps, gen 1
+  slot-bearing       245 steps, of which 49 are DROP
+  every step         carries health, engine time and inventory
+  verify             [OK] replay reproduced in 1514 steps, 500 ms
+  viewcheck          [OK] rendered playback: 1 recordings played clean (43.1s)
+  ```
+
+  Evidence in `%TEMP%` is evidence a reboot deletes, so it is checked in beside the files it explains.
+
+### Changed
+
+- **The catalog says per recording whether it can be watched, instead of one blanket warning for the
+  whole section.** The section blurb read *"NOT known to play end to end"* — which was the only thing
+  standing between a reader and a playback that halts at step 1, and which became wrong the moment a
+  fixed recording existed, because it condemned a file that plays.
+
+  ```
+  GFW-GHG-BTT               -116.2  d1   1,260   not watchable, gen 3
+  APR-SLJ-DXM                -80.6  d1   1,500   gen 1
+  ```
+
+  Read from the body by `ReplayIO.readHeader` rather than assumed, because the catalog reads headers
+  precisely so it need not parse every step of every recording — and the discriminator is the
+  **four-field signature**, not the absence of bindings, for the reason in the fixed section above.
+  `ReplayCatalogCheck` asserts the cheap scan and the full parse agree in **both** directions, because
+  a scan that always answers one way passes a single-sided check.
+
+  Deliberately without a `[WARN]` prefix, unlike every other note in the listing. Nine of the eleven
+  recordings in that section are in this state and none will be fixed, so a prefix would make the
+  exception the signal — a reader would come to expect the two clean lines to be the faulty ones.
+
+  **`MSU-OTL-OAT` is the one file the listing gets wrong.** It carries bindings, so the signature does
+  not match, and nothing in a recording says *when* those bindings were captured — which is precisely the
+  fault. `verify` and `viewcheck` catch it; correcting the listing would need a version bump on the
+  format, which is more than the problem warrants for a file kept as history.
+
 ### Not done
 
 - **The nine pre-fix recordings stay unplayable.** The data was never written; only a new run records
   it. They are kept in `trainer-replays/` as evidence of what the wire dropped, and `verify` and
-  `viewcheck` now both *say so* about them instead of reporting success — which is the part that can
+  `viewcheck` now both *say so* about them instead of reporting success - which is the part that can
   still be fixed.
+
+- **`MSU-OTL-OAT` is listed as watchable and is not.** It carries bindings, so the header scan passes it,
+  and nothing in the file records *when* they were captured. That is the question the listing cannot
+  answer, and it is the one recording whose watchability the listing overstates. `verify` and
+  `viewcheck` catch it correctly, and every future recording is fixed; correcting the listing would need a
+  version bump on the format, which is more than the problem warrants for a file kept as history.
 
 ## [Unreleased]
 

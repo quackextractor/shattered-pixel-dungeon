@@ -262,7 +262,7 @@ Twenty gates, one invocation, ~22 seconds:
 | `parallelcheck` | A parallel update that differs from the serial one |
 | `rewardcheck` | Ending an episode being cheaper than dying |
 | `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
-| `replaycheck` | A catalog that misgroups, misranks or misresolves |
+| `replaycheck` | A catalog that misgroups, misranks or misresolves, **or** mislabels what it did |
 | `rolloutcheck` | A recording with no usable seed |
 | `modecheck` | An action mode the environment cannot reach |
 | `restartcheck` | A restart that does not rebuild the same first floor |
@@ -299,6 +299,20 @@ corpus contained no `DROP` in `SLOT` at all: 310 SLOT-mode steps, every one `USE
 
 which **verifies the recording before writing it**. Both `viewcheck` and `playbackcheck` read that
 directory already, so the fix cost one file rather than a second corpus.
+
+Closing the wire is not the same as showing it, though, and the next thing this turned up was that
+`trainer-replays/` was **10 of 10 unplayable** - every file in it predates the fix, so picking anything
+from that section of the catalog ended in a halt. `APR-SLJ-DXM` is now checked in beside them (1514
+steps, 245 slot-bearing of which 49 are `DROP`), and the catalog labels each recording rather than the
+section:
+
+```
+GFW-GHG-BTT               -116.2  d1   1,260   not watchable, gen 3
+APR-SLJ-DXM                -80.6  d1   1,500   gen 1
+```
+
+The nine cannot be repaired: they carry `hp=-1 turn=-1.0 inventory=""` on every step, so the data was
+never written and only a new run records it. They are kept as evidence of what the wire dropped.
 
 Three of them are worth singling out, because they reach faults the others structurally cannot:
 
@@ -356,11 +370,17 @@ fault survived. See the gates section.
 
 Two consequences that are easy to get backwards:
 
-- **An empty binding set is a state, not a missing field.** A hero who drops the only item bound to a
-  quickslot has none left, and every later slot step records nothing while resolving perfectly from
-  backpack order. `Replay.recordsQuickslots()` asks the question of the recording rather than of the
-  step, because a recording with bindings somewhere and none at this moment is playable, and one with
-  none anywhere predates the field and is not.
+- **An empty binding set is a state, not a missing field** — and the discriminator has to be a
+  *signature*, not an absence. A hero who drops the only item bound to a quickslot has none left, and
+  every later slot step records nothing while resolving perfectly from backpack order. Asking "does any
+  step carry bindings?" cannot tell that from *the field was lost*, and refusing those refuses working
+  recordings — which arrived as an intermittent gate failure, since it only fires on runs where a random
+  episode happened to carry nothing.
+
+  So the question is asked of the fields the *same* wire carried: the broken one sent four of nine step
+  fields and left the rest at their sentinels, so health, engine time and inventory are absent together,
+  on every step. Nine trainer recordings carry `hp = -1 turn = -1.0 inventory = ""` throughout, and that
+  is what identifies them. `Replay.wireDroppedStepFields()` is the whole of it.
 - **Bindings on equipped items are the game's to keep.** `capture` walks the backpack, so a quickslot
   bound to something equipped is in no recording and cannot be restored. Four of the five hero classes
   bind their starting weapon that way, and wiping it was harmless only until the hero unequipped it —

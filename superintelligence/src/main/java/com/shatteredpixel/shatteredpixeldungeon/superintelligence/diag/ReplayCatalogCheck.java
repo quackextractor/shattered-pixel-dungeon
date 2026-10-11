@@ -35,7 +35,7 @@ public class ReplayCatalogCheck {
 
 	private static final List< String > failures = new ArrayList<>();
 
-	private static final int CHECKS = 12;
+	private static final int CHECKS = 13;
 
 	private static File workDir;
 
@@ -58,6 +58,7 @@ public class ReplayCatalogCheck {
 			checkLookupByFilenameWithExtension();
 			checkLookupIsCaseInsensitiveAndAcceptsAPath();
 			checkHeaderOnlyReadMatchesAFullRead();
+			checkHeaderOnlyReadAgreesOnWatchability();
 			checkDeduplicatesTheSameSeed();
 			checkAmbiguousSeedIsRefusedNotGuessed();
 			checkIndexedDirectoriesAreDiscovered();
@@ -169,10 +170,51 @@ public class ReplayCatalogCheck {
 			fail( "the rendered listing does not print both section headings" );
 			return;
 		}
-		if (!listing.contains( "NOT known to play end to end" )){
-			fail( "the training section does not say that its recordings are not known to play end to"
-					+ " end, so selecting one still ends in a halt with nothing on screen explaining it" );
+
+		//The claim the training section has to make, per recording rather than for the whole section.
+		//It used to be a blanket "NOT known to play end to end", which was the only thing standing
+		//between a reader and a playback that halts at step 1 - and it was also wrong the moment a
+		//trainer recording was written by the fixed wire, because it condemned a file that plays. So
+		//the requirement is the stronger one: a recording written by the broken wire must say so on its
+		//own line, and one carrying real health and engine time must not be condemned.
+		File healthy = write( trainer, "TRAINER-HEALTHY", "MAGE", -30.0, 1, 100, 1, 1 );
+		Replay healthyReplay = ReplayIOReadQuietly( healthy );
+		healthyReplay.steps.get( 0 ).mode = "SLOT";
+		healthyReplay.steps.get( 0 ).quickslots = "";
+		writeBack( healthy, healthyReplay );
+
+		File dropped = write( trainer, "TRAINER-DROPPED", "MAGE", -35.0, 1, 100, 1, 1 );
+		Replay droppedReplay = ReplayIOReadQuietly( dropped );
+		for (Replay.Step step : droppedReplay.steps){
+			step.quickslots = "";
+			step.heroHp = -1;
+			step.turn = -1f;
+			step.inventory = "";
 		}
+		writeBack( dropped, droppedReplay );
+
+		ReplayCatalog relisted = new ReplayCatalog().scan( List.of( corpus, trainer ));
+		String rows = relisted.render( true );
+
+		if (!rowFor( rows, "TRAINER-DROPPED" ).contains( "not watchable" )){
+			fail( "a training recording written by the four-field wire is listed without saying so, so"
+					+ " selecting it still ends in a halt with nothing on screen explaining it" );
+			return;
+		}
+		if (rowFor( rows, "TRAINER-HEALTHY" ).contains( "not watchable" )){
+			fail( "a training recording that carries health and engine time is listed as unwatchable;"
+					+ " that sentence is now per file, so it is no longer merely harmless - it tells a"
+					+ " reader not to watch the recordings the fixed wire produced" );
+			return;
+		}
+	}
+
+	/** The printed line one recording appears on, or "" when it does not appear at all. */
+	private static String rowFor( String listing, String label ){
+		for (String line : listing.split( "\n" )){
+			if (line.contains( label )) return line;
+		}
+		return "";
 	}
 
 	private static List<ReplayCatalog.Entry> flatten( Map<String, List<ReplayCatalog.Entry>> groups ){
@@ -458,12 +500,91 @@ public class ReplayCatalogCheck {
 				return;
 			}
 
-			fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedText
+fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedText
 					+ " score " + header.score + "/" + full.score
 					+ " depth " + header.depth + "/" + full.depth
 					+ " turns " + header.turns + "/" + full.turns );
 		} catch (IOException e){
 			fail( "reading the fixture threw: " + e.getMessage() );
+		}
+	}
+
+	/**
+	 * The header-only read must reach the same verdict as a full read, in both directions.
+	 *
+	 * <p>The catalog reads headers so it can list a directory without parsing every step of every
+	 * recording, and it labels each one by whether it can be watched. That verdict comes from the body,
+	 * so {@link ReplayIO#readHeader} has to reach it without building a {@link Replay.Step} per line -
+	 * and the check here is that the cheap scan and the real parse do not drift.
+	 *
+	 * <p>Both directions, and the negative fixture is the instructive one: a recording that carries no
+	 * quickslots but <em>does</em> carry health, turn and inventory is <b>watchable</b>. It is a run in
+	 * which the hero had nothing bound, which resolves from backpack order. Refusing it is a false
+	 * positive that only showed up because {@code rolloutcheck} failed intermittently - which is the
+	 * usual way a false positive of this shape arrives, and the reason this fixture is built from the
+	 * signature rather than from the absence.
+	 */
+	private static void checkHeaderOnlyReadAgreesOnWatchability(){
+		File dir = dir( "watchable" );
+
+		//a healthy recording whose hero has nothing bound: must be watchable
+		File unbound = write( dir, "UNBOUND", "DUELIST", -1.0, 1, 3 );
+		Replay unboundReplay = ReplayIOReadQuietly( unbound );
+		unboundReplay.steps.get( 0 ).mode = "SLOT";
+		unboundReplay.steps.get( 0 ).quickslots = "";
+		writeBack( unbound, unboundReplay );
+
+		//the four-field wire: health, turn and inventory all at their sentinels, on every step
+		File dropped = write( dir, "DROPPED", "DUELIST", -2.0, 1, 3 );
+		Replay droppedReplay = ReplayIOReadQuietly( dropped );
+		for (Replay.Step step : droppedReplay.steps){
+			step.quickslots = "";
+			step.heroHp = -1;
+			step.turn = -1f;
+			step.inventory = "";
+		}
+		writeBack( dropped, droppedReplay );
+
+		try {
+			if (ReplayIO.readHeader( unbound ).wireDroppedStepFields()){
+				fail( "readHeader calls a recording with real health and engine time unwatchable. A hero"
+						+ " with nothing bound is a state, not a gap - and refusing one is a false positive"
+						+ " that only appears on the runs where the hero happens to carry nothing." );
+				return;
+			}
+			if (!ReplayIO.readHeader( dropped ).wireDroppedStepFields()){
+				fail( "readHeader does not recognise a recording whose health, turn and inventory are all"
+						+ " at their sentinels. That is the four-field wire, and it is the signature the nine"
+						+ " unplayable trainer recordings carry." );
+				return;
+			}
+
+			//and the full read must agree with the cheap one, which is the drift this guards
+			if (ReplayIO.read( unbound ).wireDroppedStepFields()
+					!= ReplayIO.readHeader( unbound ).wireDroppedStepFields()
+					|| ReplayIO.read( dropped ).wireDroppedStepFields()
+					!= ReplayIO.readHeader( dropped ).wireDroppedStepFields()){
+				fail( "the header-only scan and the full parse disagree about watchability" );
+			}
+		} catch (IOException e){
+			fail( "reading the watchability fixtures threw: " + e.getMessage() );
+		}
+	}
+
+	private static Replay ReplayIOReadQuietly( File file ){
+		try {
+			return ReplayIO.read( file );
+		} catch (IOException e){
+			fail( "could not read the fixture just written: " + e.getMessage() );
+			return new Replay();
+		}
+	}
+
+	private static void writeBack( File file, Replay replay ){
+		try {
+			ReplayIO.write( replay, file );
+		} catch (IOException e){
+			fail( "could not write back the fixture: " + e.getMessage() );
 		}
 	}
 
@@ -602,6 +723,14 @@ public class ReplayCatalogCheck {
 	 * @param actual   steps written, so a caller can produce a truncated file
 	 * @return the file written
 	 */
+/**
+	 * One recording written by hand, with every step field present.
+	 *
+	 * <p>Every field, deliberately. The default {@code Step} sentinel for health, engine time and
+	 * inventory is "not recorded", and a file written with those three at their sentinels carries the
+	 * exact signature of the four-field wire - so a fixture meant to stand for a <em>healthy</em>
+	 * recording has to give it real values, or the thing it is not testing is what fails.
+	 */
 	private static File write( File dir, String seed, String hero, double score,
 			int depth, int turns, int declared, int actual ){
 
@@ -615,10 +744,13 @@ public class ReplayCatalogCheck {
 				"score=" + score,
 				"depth=" + depth,
 				"turns=" + turns,
-				"turn_limit=1500",
+				"turn_limit=" + turns,
+				"max_slots=32",
+				"allow_equipping=true",
+				"termination=OTHER",
 				"steps=" + declared ));
 
-		for (int i = 0; i < actual; i++) lines.add( "WAIT 0 WORLD 100 0.0" );
+		for (int i = 0; i < actual; i++) lines.add( "WAIT 0 WORLD 100 0.0  20 " + i + ".0 Food:1" );
 
 		File file = new File( dir, seed + ".replay" );
 		try {

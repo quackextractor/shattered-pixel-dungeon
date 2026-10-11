@@ -114,16 +114,17 @@ public class Quickslots {
 	 * <p><b>An empty binding set is a state, not a missing field.</b> A hero who drops the one item bound
 	 * to a quickslot has none left, and every later slot step legitimately records nothing - measured on a
 	 * fresh trainer run: 211 SLOT and INVENTORY steps, one of them carrying bindings, the rest empty
-	 * because the policy had dropped the Waterskin at step 0. Refusing those would refuse a recording
-	 * that plays perfectly.
+	 * because the policy had dropped the Waterskin at step 0.
 	 *
-	 * <p>So the question is asked of the whole recording rather than of the step. {@link
-	 * Replay#recordsQuickslots()} answers it: a recording with no bindings anywhere never had the field,
-	 * and one with bindings somewhere and an empty step simply had nothing bound at that moment.
+	 * <p>So the question is not asked of the bindings at all, because answering it from them cannot work:
+	 * "none recorded" is equally true of a run in which the hero had nothing bound at every slot step,
+	 * which resolves perfectly from backpack order. It is asked of the *other* fields the same wire
+	 * carried - health, engine time, inventory - whose absence is a signature nothing else produces. See
+	 * {@link Replay#wireDroppedStepFields()}.
 	 *
 	 * @return {@code null} when the step's bindings are in force, or a message naming what is wrong
 	 */
-	public static String prepare( Replay.Step step, int stepIndex, boolean recordingHasBindings ){
+	public static String prepare( Replay.Step step, int stepIndex, boolean wireDroppedFields ){
 		String mode = step.mode == null ? "" : step.mode;
 		if (!mode.equals( EnvMode.SLOT.name() ) && !mode.equals( EnvMode.INVENTORY.name() )){
 			//Left alone rather than cleared. Only a SLOT or INVENTORY step resolves a slot index, and
@@ -134,15 +135,16 @@ public class Quickslots {
 		}
 
 		if (step.quickslots == null || step.quickslots.isEmpty()){
-			if (recordingHasBindings){
+			if (!wireDroppedFields){
 				//Nothing was bound at this moment, which is a state rather than a gap: the index resolves
 				//from backpack order alone.
 				restore( null );
 				return null;
 			}
 			return "step " + stepIndex + " names slot " + step.slot
-					+ " but records no quickslot bindings; no step in this recording carries them, so it"
-					+ " was made before they were stored and the index cannot be resolved";
+					+ " but records no quickslot bindings, and neither does this recording carry health,"
+					+ " engine time or inventory. Its writer sent four of the nine step fields, so the index"
+					+ " cannot be resolved and the data was never recorded";
 		}
 		if (!applicable( step.quickslots )){
 			return "step " + stepIndex + " records quickslots [" + step.quickslots

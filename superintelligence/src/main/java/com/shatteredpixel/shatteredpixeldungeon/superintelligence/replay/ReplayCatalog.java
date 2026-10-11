@@ -48,6 +48,20 @@ public class ReplayCatalog {
 		/** Steps actually present, or -1 when the body was complete. */
 		public final int truncatedAt;
 
+		/**
+		 * Whether this recording can be watched at all.
+		 *
+		 * <p>Read from the body rather than assumed, so the catalog can say per file what is true rather
+		 * than applying one blanket warning to a section - and a blanket warning becomes <em>wrong</em> the
+		 * moment a fixed recording joins the ones it condemns.
+		 *
+		 * <p>The discriminator is the signature of the broken wire, not the absence of quickslots: the
+		 * nine pre-fix trainer recordings carry {@code hp = -1, turn = -1.0, inventory = ""} on every
+		 * step, and that is what identifies them. A recording with real health and real engine time had a
+		 * wire that carried everything, so it plays.
+		 */
+		public final boolean watchable;
+
 		/** Set when the file could not be read at all, so a broken file is listed rather than lost. */
 		public final String error;
 
@@ -62,6 +76,7 @@ public class ReplayCatalog {
 			this.generation = replay.generation;
 			this.turnLimit = replay.turnLimitPerFloor;
 			this.truncatedAt = replay.truncatedAt;
+			this.watchable = !replay.wireDroppedStepFields();
 			this.error = null;
 		}
 
@@ -76,6 +91,7 @@ public class ReplayCatalog {
 			this.generation = -1;
 			this.turnLimit = 0;
 			this.truncatedAt = -1;
+			this.watchable = false;
 			this.error = error;
 		}
 
@@ -596,7 +612,9 @@ public class ReplayCatalog {
 		if (SECTION_CORPUS.equals( section )){
 			return "recorded through ReplayRecorder directly - these reproduce";
 		}
-		return "written by the trainer - NOT known to play end to end, see issues.md 15";
+		return "written by the trainer - each line says whether it can be watched; unplayable ones"
+				+ " were written before the replay wire carried all nine step fields, which nothing can"
+				+ " recover (issues.md 15)";
 	}
 
 	private int sectionCount( Map<String, List<Entry>> groups ){
@@ -616,8 +634,21 @@ public class ReplayCatalog {
 		}
 
 		if (entry.truncatedAt >= 0) return "[WARN] truncated at " + entry.truncatedAt + " of " + entry.steps;
-		if (entry.generation > 0) return "gen " + entry.generation;
-		return "";
+
+		//Whether it can be watched at all, which is the only question a reader of this section has. The nine
+		//trainer recordings written before the wire was fixed sent four of nine step fields and left the
+		//rest at their sentinels, so a slot index in them resolves against nothing. The catalog used to
+		//say only "NOT known to play end to end" for the whole section, which left a reader unable to
+		//tell the one watchable file from the nine dead ones - and became wrong the moment a fixed
+		//recording joined them.
+		//
+		//Deliberately without a [WARN] prefix, unlike every other note here. Nine of eleven recordings in
+		//a section are in this state and none of them is going to be fixed, so a prefix would make the
+		//exception the signal: a reader would come to expect the two clean lines to be the faulty ones.
+		String watchable = entry.watchable ? "" : "not watchable ";
+
+		if (entry.generation > 0) return watchable + "gen " + entry.generation;
+		return entry.watchable ? "" : watchable.trim();
 	}
 
 	/** Every file recorded under the same seed as {@code entry}. */

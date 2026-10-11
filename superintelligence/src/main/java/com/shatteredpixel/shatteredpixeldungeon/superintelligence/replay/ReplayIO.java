@@ -149,8 +149,63 @@ public class ReplayIO {
 		int available = Math.max( 0, lines.size() - headerEnd( lines ) );
 		replay.truncatedAt = available < replay.declaredSteps ? available : -1;
 		replay.steps.clear();
+		replay.quickslotsRecorded = bodyCarriesBindings( lines, headerEnd( lines ) );
+		replay.stepFieldsDropped = bodyDropsStepFields( lines, headerEnd( lines ) );
 
 		return replay;
+	}
+
+	/**
+	 * Whether any recorded step names a slot <em>and</em> carries its bindings.
+	 *
+	 * <p>Scans the raw lines rather than building {@link Replay.Step} objects, because
+	 * {@link #readHeader} exists precisely to avoid parsing every step of every recording in order to
+	 * print six numbers. A step line is whitespace separated with the bindings in field six, so this is
+	 * one split per step and nothing else - cheap enough for a catalog listing thousands of steps across
+	 * a directory.
+	 *
+	 * <p>Skips a step whose mode is not SLOT or INVENTORY, because a WORLD step records no bindings by
+	 * design and counting one would answer a question nobody asked.
+	 *
+	 * <p>The same trailing-empty-field caveat as below applies: a step with no bindings is five fields,
+	 * so the emptiness test is explicit rather than a bounds check.
+	 */
+	private static boolean bodyCarriesBindings( java.util.List<String> lines, int from ){
+		for (int i = from; i < lines.size(); i++){
+			String[] parts = lines.get( i ).split( " " );
+			if (parts.length < 6) continue;
+			if (!parts[ 2 ].equals( "SLOT" ) && !parts[ 2 ].equals( "INVENTORY" )) continue;
+			if (!parts[ 5 ].isEmpty()) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Whether every recorded step carries the <i>not recorded</i> sentinels of all three of health,
+	 * engine time and inventory - the signature of the four-field wire.
+	 *
+	 * <p>The check that identifies a recording nobody can watch, and it is a signature rather than an
+	 * absence because absence cannot be read: "no quickslots recorded" is equally true of a run in which
+	 * the hero had nothing bound at every slot step, which plays perfectly. See
+	 * {@link Replay#wireDroppedStepFields()}.
+	 * <p>The signature is health {@code -1}, turn {@code -1.0} and an empty inventory, which is three
+	 * fields after the action. An empty inventory is a <em>trailing</em> field and {@code String.split}
+	 * discards trailing empty strings, so a step with no inventory is eight fields rather than nine -
+	 * and requiring nine would skip precisely the recordings being looked for. Hence the explicit
+	 * length test below rather than a bounds check that quietly assumes the field is present.
+	 */
+	private static boolean bodyDropsStepFields( java.util.List<String> lines, int from ){
+		boolean sawStep = false;
+		for (int i = from; i < lines.size(); i++){
+			String[] parts = lines.get( i ).split( " " );
+			if (parts.length < 8) continue;
+			sawStep = true;
+			String inventory = parts.length > 8 ? parts[ 8 ] : "";
+			if (!parts[ 6 ].equals( "-1" ) || !parts[ 7 ].equals( "-1.0" ) || !inventory.isEmpty()){
+				return false;
+			}
+		}
+		return sawStep;
 	}
 
 	/** Index of the first step line, i.e. one past the end of the {@code key=value} header. */
@@ -321,9 +376,9 @@ public class ReplayIO {
 		if (observer != null) observer.onReset();
 
 		int cumulative = 0;
-		//once per recording, because it is a property of the recording rather than of a step: an empty
-		//binding set on one step is a state, and no bindings anywhere is a gap in the format
-		boolean recordsBindings = replay.recordsQuickslots();
+		//once per recording, because it is a property of the recording rather than of a step: the answer
+		//is carried by the fields the same wire would have dropped, not by the bindings
+		boolean wireDroppedFields = replay.wireDroppedStepFields();
 
 		for (int i = 0; i < replay.steps.size(); i++){
 			if (!env.running()) break;
@@ -343,7 +398,7 @@ public class ReplayIO {
 			//TODO.md 1.12 and issues.md 15 both name: every comparison below is guarded by its own
 			//"not recorded" sentinel, which cannot tell a field that does not apply from one that was
 			//lost in transit. So it is stopped here, named, and the file is not called verified.
-			String unwatchable = Quickslots.prepare( step, i, recordsBindings );
+			String unwatchable = Quickslots.prepare( step, i, wireDroppedFields );
 			if (unwatchable != null){
 				result.unwatchableAt = i;
 				result.unwatchable = unwatchable;

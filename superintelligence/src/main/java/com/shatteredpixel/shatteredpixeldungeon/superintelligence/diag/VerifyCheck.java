@@ -148,12 +148,16 @@ public class VerifyCheck {
 	 * <i>lost</i>, so something has to assert that the sentinel is absent. This is that something, and it
 	 * is the same shape as {@code TODO.md} 1.12's warning about the sentinel itself.
 	 *
-	 * <p>The bindings are blanked on <em>every</em> slot-bearing step rather than one, and that is the
-	 * shape the question needs. An empty binding set on a single step is a legitimate state - a hero who
-	 * drops the one item bound to a quickslot has none left - and only a recording with no bindings
-	 * anywhere is one made before the field existed. Measured on a fresh trainer run: 211 SLOT and
-	 * INVENTORY steps, one carrying bindings and the rest empty because the policy dropped the Waterskin
-	 * at step 0. Refusing those would have refused a recording that plays perfectly.
+	 * <p><b>The bindings are blanked <em>together with</em> health, turn and inventory</b>, and that is
+	 * the shape the question needs. An empty binding set on its own is not evidence of anything: it is
+	 * equally true of a run in which the hero had nothing bound at every slot step, which resolves
+	 * perfectly from backpack order. What identifies a recording nobody can play is the whole signature
+	 * of the four-field wire — bindings, health, engine time and inventory all absent together.
+	 *
+	 * <p>Getting that wrong was not hypothetical. The first version of this case refused any recording
+	 * with no bindings anywhere, which refused working runs, and `rolloutcheck` caught it by failing
+	 * intermittently — because it depends on what a random episode happened to be carrying. The converse
+	 * case below is what pins it now.
 	 */
 	private static void checkARecordingThatCannotResolveItsSlotsIsNotVerified( Replay source ){
 		String where = "a recording that cannot resolve its slots is refused";
@@ -166,14 +170,20 @@ public class VerifyCheck {
 		}
 
 		Replay copy = copyOf( source );
+		//all five fields, on every step, because that is what the wire did: it sent four of nine and
+		//left the rest at their sentinels throughout. Blanking only the slot steps would leave real
+		//health elsewhere, which is the signature of a *healthy* recording and would not be refused.
 		for (Replay.Step step : copy.steps){
-			if (step.mode.equals( "SLOT" ) || step.mode.equals( "INVENTORY" )) step.quickslots = "";
+			step.quickslots = "";
+			step.heroHp = -1;
+			step.turn = -1f;
+			step.inventory = "";
 		}
 
 		ReplayIO.Verification result = verify( copy );
 
 		if ( result.passed() ){
-			fail( where, "a recording with no bindings on any step still verified: "
+			fail( where, "a recording carrying none of the five dropped step fields still verified: "
 					+ ( result.diverged ? "diverged at " + result.divergedAt
 							: "reproduced in " + result.stepsVerified + " steps with no complaint" )
 					+ ". A step naming a slot index cannot be played without the bindings that index was"
@@ -188,20 +198,21 @@ public class VerifyCheck {
 			return;
 		}
 
-		System.out.println( "  a recording with no bindings anywhere is refused at step " + index
-				+ " instead of verifying: " + result.unwatchable );
+		System.out.println( "  a recording carrying none of the dropped step fields is refused at step "
+				+ index + " instead of verifying: " + result.unwatchable );
 	}
 
 	/**
 	 * A hero carrying nothing bound is a state, not a gap.
 	 *
-	 * <p>The converse of the case above, and the one that was wrong first. Blank a single slot-bearing
-	 * step's bindings and refuse it, and every recording that drops its only bound item becomes
-	 * unplayable - which is a false positive about a real state rather than a detection.
+	 * <p>The converse of the case above, and the one that was wrong first. Blank the bindings and refuse
+	 * the recording, and every run that drops its only bound item becomes unplayable — which is a false
+	 * positive about a real state rather than a detection.
 	 *
-	 * <p>So the question is asked of the recording rather than of the step: bindings present somewhere and
-	 * absent at this moment means nothing was bound at this moment. This builds that shape by blanking
-	 * every slot step <em>after</em> the first one, and requires the run to verify.
+	 * <p>The discriminator is not the bindings but the fields the same wire would have dropped alongside
+	 * them. This builds a recording whose every slot step has no bindings while keeping real health and
+	 * real engine time, which is a run in which the hero simply carried nothing bound, and requires it to
+	 * verify.
 	 */
 	private static void checkAHeroWithNothingBoundIsNotRefused( Replay source ){
 		String where = "an empty binding set is a state, not a missing field";
@@ -222,24 +233,25 @@ public class VerifyCheck {
 			blanked++;
 		}
 		if (blanked == 0){
-			fail( where, "only " + ( source.steps.size() - 1 ) + " slot-bearing step(s) carried bindings, so"
-					+ " nothing could be blanked without emptying the whole recording" );
+			fail( where, "only " + first + " slot-bearing step(s) carried bindings, so nothing could be"
+					+ " blanked without emptying the whole recording" );
 			return;
 		}
 
+		//the whole point: health and engine time stay real, so the wire clearly carried everything
 		ReplayIO.Verification result = verify( copy );
 		if (!result.passed()){
-			fail( where, blanked + " slot steps were given no bindings while the first kept its own, and"
-					+ " the recording was "
+			fail( where, blanked + " slot steps were given no bindings while the first kept its own and"
+					+ " every step kept real health and engine time, and the recording was "
 					+ ( result.diverged ? "diverged at step " + result.divergedAt + ": " + result.divergence
 							: "refused at step " + result.unwatchableAt + ": " + result.unwatchable )
-					+ ". Nothing is bound once the hero drops his last bound item, and the index still"
+					+ ". Nothing bound once the hero drops his last bound item, and the index still"
 					+ " resolves from backpack order." );
 			return;
 		}
 
-		System.out.println( "  " + blanked + " slot steps with no bindings in force still verify, while"
-				+ " the first keeps the binding that proves the field is there" );
+		System.out.println( "  " + blanked + " slot steps with nothing bound still verify, while health"
+				+ " and engine time stay real - the hero carried nothing, which is a state" );
 	}
 
 	/**

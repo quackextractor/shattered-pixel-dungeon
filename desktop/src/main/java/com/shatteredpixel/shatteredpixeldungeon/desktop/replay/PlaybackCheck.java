@@ -63,7 +63,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 21;
+	private static final int CHECKS = 22;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -110,6 +110,7 @@ public class PlaybackCheck {
 		check( () -> checkAlteredInventoryIsCaught( good, 30 ) );
 		check( () -> checkAlteredQuickslotsAreCaught( good ) );
 		check( () -> checkAStalledPlayerFailsInsteadOfHanging() );
+		check( () -> checkARecordingWithNothingBoundStillPlays() );
 		check( () -> checkNonDefaultConfigRoundTrips() );
 		check( () -> checkDeclaredTerminationEndsPlayback( good ) );
 		check( () -> checkADeathRunPlaysItsLastStep( good ) );
@@ -377,9 +378,17 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 	 * one that played it correctly: no divergence, no error, just a replay that quietly does not replay.
 	 */
 	private static void checkAStalledPlayerFailsInsteadOfHanging(){
+		//The four-field wire, not merely missing bindings. A recording with no bindings but real health,
+		//turn and inventory is a run in which the hero had nothing bound at every slot step, which
+		//resolves from backpack order and plays - so blanking only the bindings stopped making this
+		//fixture unwatchable, and it began failing the moment that distinction was drawn. Same trap as
+		//the first version of `verifycheck`'s converse case, reached from the other direction.
 		Replay broken = recordAShortRun();
 		for (Replay.Step step : broken.steps){
 			step.quickslots = "";
+			step.heroHp = -1;
+			step.turn = -1f;
+			step.inventory = "";
 		}
 
 		Outcome outcome = play( broken );
@@ -389,7 +398,68 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		} else if ( !outcome.haltReason.contains( "quickslot" ) && !outcome.haltReason.contains( "slot" ) ){
 			fail( "a recording with no resolvable slot bindings halted with an unexplained reason: "
 					+ outcome.haltReason );
+		} else {
+			//and it must have stopped at the first step that *needed* them, not played the run and then
+			//complained: a fixture that played 120 steps and reported the reason afterwards would satisfy
+			//the string test above while proving nothing about refusing. Compared against the first
+			//slot-bearing step rather than a constant, because steps before it are WORLD steps that resolve
+			//no index and are supposed to play.
+			int firstSlotStep = -1;
+			for (int i = 0; i < broken.steps.size(); i++){
+				if (broken.steps.get( i ).mode.equals( "SLOT" )
+						|| broken.steps.get( i ).mode.equals( "INVENTORY" )){
+					firstSlotStep = i;
+					break;
+				}
+			}
+			if (firstSlotStep >= 0 && outcome.cursor > firstSlotStep + 1){
+				fail( "a recording whose bindings were never written played " + outcome.cursor
+						+ " steps before halting, rather than refusing at step " + firstSlotStep
+						+ ", the first that needed them: \"" + outcome.haltReason + "\"" );
+			}
 		}
+	}
+
+	/**
+	 * A recording with no bindings but real health, turn and inventory must still play.
+	 *
+	 * <p>The converse of the case above, and the one that was wrong first. A hero who has dropped his
+	 * last bound item has none, and a slot index still resolves from backpack order - so a viewer that
+	 * refuses such a recording refuses a working one. This is the same false positive that made
+	 * {@code rolloutcheck} fail intermittently, caught here at the player's own level.
+	 */
+	private static void checkARecordingWithNothingBoundStillPlays(){
+		Replay unbound = recordAShortRun();
+		int blanked = 0;
+		for (Replay.Step step : unbound.steps){
+			if (!step.mode.equals( "SLOT" ) && !step.mode.equals( "INVENTORY" )) continue;
+			if (step.quickslots.isEmpty()) continue;
+			step.quickslots = "";
+			blanked++;
+		}
+		if (blanked == 0){
+			fail( "no slot step carried bindings, so the 'nothing bound is a state' case could not run."
+					+ " A gate that cannot reach its own case is not a check." );
+			return;
+		}
+
+		Outcome outcome = play( unbound );
+
+		if ( outcome.ranOutOfFrames ){
+			fail( "a recording whose slot steps have no bindings hung instead of playing" );
+			return;
+		}
+		if ( outcome.diverged || outcome.cursor < unbound.length() ){
+			fail( blanked + " slot steps were given no bindings while health and engine time stayed"
+					+ " real, and playback " + ( outcome.diverged ? "diverged at " + outcome.divergedAt
+							: "played " + outcome.cursor + " of " + unbound.length() )
+					+ ": " + outcome.haltReason + ". A hero carrying nothing bound is a state, not a"
+					+ " missing field, and the index resolves from backpack order." );
+			return;
+		}
+
+		System.out.println( "  " + blanked + " slot steps with nothing bound play all " + unbound.length()
+				+ " steps - nothing bound is a state, not a missing field" );
 	}
 
 	/**

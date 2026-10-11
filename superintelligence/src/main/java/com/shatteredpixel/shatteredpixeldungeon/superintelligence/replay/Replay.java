@@ -168,20 +168,51 @@ public class Replay {
 	}
 
 	/**
+	 * Whether the recording was written by a wire that dropped step fields.
+	 *
+	 * <p><b>This, not the absence of quickslots, is what says a recording cannot be watched.</b>
+	 *
+	 * <p>The obvious discriminator is wrong, and it took a flaky `rolloutcheck` to show it. "No step
+	 * carries bindings" reads as "the field was lost" — and it is equally true of a run in which the hero
+	 * genuinely had nothing bound at every slot step, which resolves perfectly from backpack order and
+	 * plays. Refusing those refuses a working recording, and it fails intermittently because it depends
+	 * on what a given random episode happened to be carrying.
+	 *
+	 * <p>The evidence is on the same frame. The broken wire sent four of nine step fields and left the
+	 * other five at their *not recorded* sentinels — so health, engine time and inventory are absent too,
+	 * on every step. Nine trainer recordings carry {@code heroHp = -1, turn = -1.0, inventory = ""}
+	 * throughout, and that signature is what identifies them; a recording with real health and real engine
+	 * time was written by a wire that carried everything, so an empty binding on it means the hero had
+	 * none.
+	 *
+	 * <p>Presence of evidence rather than absence of it, which is the lesson {@code issues.md} 15 exists
+	 * to record.
+	 */
+	public boolean wireDroppedStepFields(){
+		if (steps.isEmpty()) return stepFieldsDropped;
+		for (Step step : steps){
+			if (step.heroHp >= 0 || step.turn >= 0 || !step.inventory.isEmpty()) return false;
+		}
+		return true;
+	}
+
+	/**
+	 * The same answer, for a recording read header-only.
+	 *
+	 * <p>True by default, because only a body scan can establish otherwise.
+	 * {@link ReplayIO#readHeader} sets it.
+	 */
+	public boolean stepFieldsDropped = false;
+
+	/**
 	 * Whether any step that names a slot carries the quickslot bindings it was chosen against.
 	 *
-	 * <p>The question cannot be asked of one step, because an empty binding set is a legitimate state: a
-	 * hero who drops the one item bound to a quickslot has none left, and every later slot step then
-	 * records nothing while still resolving perfectly from backpack order. Measured on a fresh trainer
-	 * run - 211 SLOT and INVENTORY steps, one carrying bindings, the rest empty because the policy had
-	 * dropped the Waterskin at step 0. Refusing those would refuse a recording that plays.
-	 *
-	 * <p>Asked of the whole recording it answers the question that actually matters. A recording with
-	 * bindings somewhere has the field and simply had nothing bound at that moment; one with none
-	 * anywhere never had it, which is what the nine pre-fix trainer recordings are - and their slot
-	 * indices cannot be resolved at all.
+	 * <p>Diagnostic rather than a gate: it says the hero had nothing bound at that moment, which is a
+	 * state and not a fault. What decides whether a recording can be watched is
+	 * {@link #wireDroppedStepFields()}.
 	 */
 	public boolean recordsQuickslots(){
+		if (steps.isEmpty()) return quickslotsRecorded;
 		for (Step step : steps){
 			if (!EnvMode.SLOT.name().equals( step.mode ) && !EnvMode.INVENTORY.name().equals( step.mode )){
 				continue;
@@ -190,6 +221,9 @@ public class Replay {
 		}
 		return false;
 	}
+
+	/** The same answer, for a recording read header-only. See {@link #stepFieldsDropped}. */
+	public boolean quickslotsRecorded = true;
 
 	/** Total score, kept in sync with the last recorded reward. */
 /**

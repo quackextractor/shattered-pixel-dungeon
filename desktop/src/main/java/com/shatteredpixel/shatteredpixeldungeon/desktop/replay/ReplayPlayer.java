@@ -1057,7 +1057,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		//did, and why a file could verify [OK] here and halt at step 18. It restores the bindings for
 		//non-slot steps too, so a WORLD step is never applied against the previous step's leftovers.
 		String unresolvable = Quickslots.prepare( step, playback.cursor(),
-				playback.replay().recordsQuickslots() );
+				playback.replay().wireDroppedStepFields() );
 		if (unresolvable != null){
 			halt( unresolvable );
 			return;
