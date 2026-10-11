@@ -98,10 +98,19 @@ public class ArmoredStatue extends Statue {
 	@Override
 	public CharSprite sprite() {
 		CharSprite sprite = super.sprite();
-		if (armor != null) {
-			((StatueSprite) sprite).setArmor(armor.tier);
-		} else {
-			((StatueSprite) sprite).setArmor(3);
+		//The tier is a visual, and under the headless trainer the sprite is a HeadlessSprite, so this
+		//cast threw ClassCastException and killed the worker. Guarded rather than emulated, for the same
+		//reason SentryRoom's is: an armoured statue appears on any floor, so this was reachable long
+		//before anything descended.
+		//
+		//Not observed crashing - fixed on the reachability argument rather than on a measurement, which
+		//is the weaker of the two and worth saying so. TODO.md 1.15.
+		if (sprite instanceof StatueSprite){
+			if (armor != null){
+				((StatueSprite) sprite).setArmor(armor.tier);
+			} else {
+				((StatueSprite) sprite).setArmor(3);
+			}
 		}
 		return sprite;
 	}
