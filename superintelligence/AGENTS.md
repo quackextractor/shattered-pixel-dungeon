@@ -33,6 +33,7 @@ Edit this file, not `instructions.md`. `STATUS.md` records which of these have a
 - Conventional Commits 1.0.0.
 - Never `--no-verify` past `hooks/pre-commit` or `hooks/pre-push`.
 - After three failed attempts on a build, test, or audit step, stop. Report each attempt with the exact error and your diagnosis. Never disable a failing test to force a pass.
+- **Describe the change, not the author.** A commit message states what changed, why, and what was measured — nothing about who or what made it. No `Co-Authored-By:`, no `Generated with`, no tool name, no model name, no `noreply@` address, no "this commit was written by". Those are trailers nobody in this repository's history uses, and adding one attributes work to something that is not a party to the project's conventions. Conventional Commits is a spec for the change; a trailer naming a tool is not part of it.
 
 ## Engine boundary
 
