@@ -82,6 +82,17 @@ public class ReplayCatalog {
 		/** How many files carry this seed. More than one means the name alone does not identify it. */
 		public int copies = 1;
 
+		/**
+		 * Position of the directory this file was found in, which is what decides its section.
+		 *
+		 * <p>Not a path and not a name, because the section a recording belongs to is a statement about
+		 * how it was <em>found</em> - the reference set passed first, or anything after it. Matching on
+		 * directory names instead would have made a recording change section when someone renamed a
+		 * folder, and would have had no answer at all for the index and temp directories that training
+		 * runs write to, which are named after whatever {@code --out} happened to be.
+		 */
+		public int sourceIndex;
+
 		public boolean damaged(){
 			return error != null || truncatedAt >= 0;
 		}
@@ -97,6 +108,12 @@ public class ReplayCatalog {
 	/** Hero classes in the order they should be listed, with anything unrecognised after them. */
 	private static final List<String> CLASS_ORDER = java.util.Arrays.asList(
 			"WARRIOR", "MAGE", "HUNTRESS", "ROGUE", "DUELIST" );
+
+	/** The reference set: the first {@code --dir}, which is {@code test-replays} in practice. */
+	public static final String SECTION_CORPUS = "TEST CORPUS";
+
+	/** Everything a training run wrote, whether into the repository or a temp directory. */
+	public static final String SECTION_TRAINER = "TRAINER OUTPUT";
 
 	private final List<Entry> entries = new ArrayList<>();
 
@@ -202,7 +219,8 @@ public class ReplayCatalog {
 		Map<String, Entry> bySeed = new LinkedHashMap<>();
 		Map<String, List<Entry>> all = new LinkedHashMap<>();
 
-		for (File dir : directories){
+		for (int dirIndex = 0; dirIndex < directories.size(); dirIndex++){
+			File dir = directories.get( dirIndex );
 			if (dir == null || !dir.isDirectory()) continue;
 
 			File[] files = dir.listFiles();
@@ -227,6 +245,8 @@ public class ReplayCatalog {
 					//exactly the one worth knowing about
 					entry = new Entry( file, e.getMessage() );
 				}
+
+				entry.sourceIndex = dirIndex;
 
 				String key = entry.seed == null || entry.seed.isEmpty() ? file.getName() : entry.seed;
 				if (!bySeed.containsKey( key )) bySeed.put( key, entry );
@@ -273,7 +293,19 @@ public class ReplayCatalog {
 			groups.computeIfAbsent( hero, k -> new ArrayList<>() ).add( entry );
 		}
 
-		Comparator<Entry> rank = Comparator
+		groups.values().forEach( list -> list.sort( rankOrder() ));
+		return groups;
+	}
+
+	/**
+	 * Best first, and a damaged file last regardless of the score it claims.
+	 *
+	 * <p>Shared by {@link #grouped} and {@link #sections} so the two views cannot rank the same two
+	 * recordings differently - which would mean the number beside a recording in the sectioned listing
+	 * and the position it holds in the hero-class view disagree, for no visible reason.
+	 */
+	private static Comparator<Entry> rankOrder(){
+		return Comparator
 				//a damaged file has NaN score, and every comparison against NaN is false - which would
 				//leave it wherever it happened to be rather than at the bottom, so they sort explicitly
 				.comparing( ( Entry e ) -> e.error != null )
@@ -283,9 +315,6 @@ public class ReplayCatalog {
 				.thenComparingDouble( e -> e.error != null ? Double.MAX_VALUE : -e.score )
 				.thenComparingInt( e -> -e.depth )
 				.thenComparing( e -> e.label() );
-
-		groups.values().forEach( list -> list.sort( rank ) );
-		return groups;
 	}
 
 	/**
@@ -342,12 +371,57 @@ public class ReplayCatalog {
 	public List<Entry> inListingOrder(){
 		List<Entry> ordered = new ArrayList<>();
 
-		for (List<Entry> group : grouped().values()){
-			if (group.isEmpty()) continue;
-			ordered.addAll( group );
+		for (Map<String, List<Entry>> group : sections().values()){
+			for (List<Entry> hero : group.values()){
+				ordered.addAll( hero );
+			}
 		}
 
 		return ordered;
+	}
+
+	/**
+	 * The listing's two sections, each holding its hero-class groups.
+	 *
+	 * <p><b>Provenance is the outermost axis, and it is there because the two halves are not
+	 * interchangeable.</b> The reference corpus is built by {@code replay-viewer --record} through
+	 * {@code ReplayRecorder} directly and reproduces end to end; what the trainer wrote crossed a
+	 * worker pipe and, for every recording made before {@code train.ReplayCodec}, stopped at its first
+	 * slot-bearing step because the quickslot bindings never arrived. Those files look identical in a
+	 * ranking that interleaves them by hero class - the only tell is a filename in {@code XXX-XXX-XXX}
+	 * form among descriptive ones, and the viewer gives no reason why selecting one halts after a
+	 * frame.
+	 *
+	 * <p>So the corpus comes first and says so, and the training output comes second and says what is
+	 * wrong with it. Both are still numbered in one sequence: two listings with two sets of numbers
+	 * would make the word "number" mean two different recordings depending on which was on screen.
+	 *
+	 * <p>The split is the first {@code --dir} against everything after it, which is the same precedence
+	 * {@link #scan} already applies when a seed appears in two directories. That falls out of the
+	 * existing rule rather than adding a second notion of which directory is the reference one, and it
+	 * has an answer for the index and temp directories, whose names follow whatever {@code --out} was.
+	 */
+	public Map<String, Map<String, List<Entry>>> sections(){
+		Map<String, Map<String, List<Entry>>> sections = new LinkedHashMap<>();
+		sections.put( SECTION_CORPUS, new LinkedHashMap<>() );
+		sections.put( SECTION_TRAINER, new LinkedHashMap<>() );
+
+		for (String hero : CLASS_ORDER){
+			sections.get( SECTION_CORPUS ).put( hero, new ArrayList<>() );
+			sections.get( SECTION_TRAINER ).put( hero, new ArrayList<>() );
+		}
+
+		for (Entry entry : entries){
+			String section = entry.sourceIndex == 0 ? SECTION_CORPUS : SECTION_TRAINER;
+			String hero = entry.heroClass == null ? "?" : entry.heroClass.toUpperCase();
+			sections.get( section ).computeIfAbsent( hero, k -> new ArrayList<>() ).add( entry );
+		}
+
+		for (Map<String, List<Entry>> group : sections.values()){
+			group.values().forEach( list -> list.sort( rankOrder() ));
+		}
+
+		return sections;
 	}
 
 	/** The nth listing entry, 1-based, or null when there is no such entry. */
@@ -443,39 +517,57 @@ public class ReplayCatalog {
 	 * @param plain no colour codes, for a pipe or a log
 	 */
 	public String render( boolean plain ){
-		Map<String, List<Entry>> groups = grouped();
+		Map<String, Map<String, List<Entry>>> sections = sections();
 		StringBuilder out = new StringBuilder();
 
 		int shown = 0;
-		for (Map.Entry<String, List<Entry>> group : groups.entrySet()){
-			if (group.getValue().isEmpty()) continue;
+		for (Map.Entry<String, Map<String, List<Entry>>> section : sections.entrySet()){
+			int inSection = sectionCount( section.getValue() );
+			if (inSection == 0) continue;
 
-			out.append( "\n  " ).append( group.getKey() ).append( "\n" );
+			//The provenance line is the reason the section exists. A heading that just said "trainer
+			//output" would leave a person to discover the difference by picking a file and watching it
+			//halt after one frame.
+			//
+			//Plain drops the colour and keeps the words. Removing the warning for the benefit of plain
+			//output is backwards: a piped listing is read by a script or a log file, which is where a
+			//note about a recording not playing is most likely to be wanted and least likely to be
+			//discovered.
+			String blurb = "  " + sectionBlurb( section.getKey() );
+			if (!plain) blurb = Ansi.wrap( blurb, Ansi.DIM );
+
+			out.append( "\n  " ).append( section.getKey() ).append( " " ).append( blurb ).append( "\n" );
 			out.append( "  " ).append( dashed() ).append( "\n" );
 
-			for (Entry entry : group.getValue()){
-				shown++;
-				//The note is dimmed rather than colour-coded: a warning here is about the file, not
-				//about the score, and mixing the two in one column makes both harder to read.
-				String note = note( entry );
-				if (!note.isEmpty() && !plain) note = Ansi.wrap( note, Ansi.DIM );
+			for (Map.Entry<String, List<Entry>> group : section.getValue().entrySet()){
+				if (group.getValue().isEmpty()) continue;
 
-				out.append( String.format( Locale.US,
-						"   %2d  %-22s %9s  d%-3d %7s   %s%n",
-						shown,
-						entry.label(),
-						formatScore( entry ),
-						entry.depth,
-						String.format( Locale.US, "%,d", entry.turns ),
-						note ) );
+				out.append( "\n    " ).append( group.getKey() ).append( "\n" );
+
+				for (Entry entry : group.getValue()){
+					shown++;
+					//The note is dimmed rather than colour-coded: a warning here is about the file, not
+					//about the score, and mixing the two in one column makes both harder to read.
+					String note = note( entry );
+					if (!note.isEmpty() && !plain) note = Ansi.wrap( note, Ansi.DIM );
+
+					out.append( String.format( Locale.US,
+							"     %2d  %-22s %9s  d%-3d %7s   %s%n",
+							shown,
+							entry.label(),
+							formatScore( entry ),
+							entry.depth,
+							String.format( Locale.US, "%,d", entry.turns ),
+							note ) );
+				}
 			}
 		}
 
 		if (shown == 0) return "  no recordings found\n";
 
 		out.append( "\n" ).append( shown ).append( " recording" ).append( shown == 1 ? "" : "s" )
-				.append( " in " ).append( groupCount( groups )).append( " hero classes"
-				).append( ", ranked by score\n" );
+				.append( ", ranked by score within each section"
+				).append( ", numbered 1 to " ).append( shown ).append( "\n" );
 
 		//the copies have to be locatable, or refusing to resolve the name is a dead end
 		List<Entry> shared = new ArrayList<>();
@@ -499,9 +591,17 @@ public class ReplayCatalog {
 		return out.toString();
 	}
 
-	private int groupCount( Map<String, List<Entry>> groups ){
+	/** One line saying what a section is and what to expect from it. */
+	private static String sectionBlurb( String section ){
+		if (SECTION_CORPUS.equals( section )){
+			return "recorded through ReplayRecorder directly - these reproduce";
+		}
+		return "written by the trainer - NOT known to play end to end, see issues.md 15";
+	}
+
+	private int sectionCount( Map<String, List<Entry>> groups ){
 		int n = 0;
-		for (List<Entry> list : groups.values()) if (!list.isEmpty()) n++;
+		for (List<Entry> list : groups.values()) n += list.size();
 		return n;
 	}
 

@@ -35,7 +35,7 @@ public class ReplayCatalogCheck {
 
 	private static final List< String > failures = new ArrayList<>();
 
-	private static final int CHECKS = 11;
+	private static final int CHECKS = 12;
 
 	private static File workDir;
 
@@ -61,6 +61,7 @@ public class ReplayCatalogCheck {
 			checkDeduplicatesTheSameSeed();
 			checkAmbiguousSeedIsRefusedNotGuessed();
 			checkIndexedDirectoriesAreDiscovered();
+			checkSectionsSplitByProvenance();
 		} finally {
 			deleteTree( workDir );
 		}
@@ -73,6 +74,111 @@ public class ReplayCatalogCheck {
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}
+	}
+
+	// --------------------------------------------------------------------------- sections
+
+	/**
+	 * The listing separates the reference corpus from what the trainer wrote, and the numbers still
+	 * mean what the listing says they mean.
+	 *
+	 * <p>The separation is the assertion: the corpus is recorded through {@code ReplayRecorder}
+	 * directly and reproduces end to end, while the trainer's recordings crossed a worker pipe that was
+	 * dropping five of nine step fields, so they stop at their first slot-bearing step. Interleaved in
+	 * one hero-class ranking they are distinguishable only by filename, and picking one halts the
+	 * viewer after a frame with nothing on screen saying why.
+	 *
+	 * <p>The numbering is the other half and the reason this is a check rather than a formatting
+	 * change. Two sections, one sequence: a person reads a number and types it back, so every number
+	 * printed has to resolve to the recording printed beside it. That holds across the section
+	 * boundary, which is exactly where it would break first if {@link ReplayCatalog#inListingOrder}
+	 * and {@link ReplayCatalog#render} were two traversals rather than one - and it would still look
+	 * right in every section above the boundary.
+	 */
+	private static void checkSectionsSplitByProvenance(){
+		File corpus = dir( "sections-corpus" );
+		File trainer = dir( "sections-trainer" );
+
+		write( corpus, "CORPUS-ONE", "WARRIOR", 10.0, 1, 100, 1, 1 );
+		write( corpus, "CORPUS-TWO", "MAGE", 5.0, 1, 100, 1, 1 );
+		write( trainer, "TRAINER-ONE", "WARRIOR", -40.0, 2, 300, 1, 1 );
+		write( trainer, "TRAINER-TWO", "CLERIC", -90.0, 1, 500, 1, 1 );
+
+		ReplayCatalog catalog = new ReplayCatalog().scan( List.of( corpus, trainer ));
+
+		Map<String, Map<String, List<ReplayCatalog.Entry>>> sections = catalog.sections();
+		if (sections == null || !sections.containsKey( ReplayCatalog.SECTION_CORPUS )
+				|| !sections.containsKey( ReplayCatalog.SECTION_TRAINER )){
+			fail( "the listing does not split into a corpus section and a training section, so a trainer"
+					+ " recording is indistinguishable from a fixture that reproduces." );
+			return;
+		}
+
+		//provenance follows directory order, not the score: the corpus files score better than the
+		//trainer ones here, and a ranking-driven split would have got this right by accident
+		List<ReplayCatalog.Entry> inCorpus = flatten( sections.get( ReplayCatalog.SECTION_CORPUS ));
+		List<ReplayCatalog.Entry> inTrainer = flatten( sections.get( ReplayCatalog.SECTION_TRAINER ));
+
+		if (inCorpus.size() != 2 || inTrainer.size() != 2 ){
+			fail( "expected 2 recordings in each section and found " + inCorpus.size() + " and "
+					+ inTrainer.size() );
+			return;
+		}
+
+		boolean corpusNamed = false, trainerNamed = false;
+		for (ReplayCatalog.Entry entry : inCorpus) corpusNamed |= entry.label().startsWith( "CORPUS" );
+		for (ReplayCatalog.Entry entry : inTrainer) trainerNamed |= entry.label().startsWith( "TRAINER" );
+		if (!corpusNamed || !trainerNamed){
+			fail( "the first --dir populates " + ReplayCatalog.SECTION_CORPUS + " and the second"
+					+ " populates " + ReplayCatalog.SECTION_TRAINER + ", so a section does not describe"
+					+ " where its recordings came from" );
+			return;
+		}
+
+		//one sequence across both sections, and every number resolves to the recording printed beside it
+		String listing = catalog.render( true );
+		List<ReplayCatalog.Entry> ordered = catalog.inListingOrder();
+		if (ordered.size() != 4){
+			fail( "the listing has " + ordered.size() + " entries, so the numbering cannot span"
+					+ " both sections" );
+			return;
+		}
+
+		for (int i = 0; i < ordered.size(); i++){
+			ReplayCatalog.Entry byIndex = catalog.byNumber( i + 1 );
+			if (byIndex == null || !byIndex.file.equals( ordered.get( i ).file )){
+				fail( "number " + ( i + 1 ) + " does not resolve to the recording listed at that"
+						+ " position, so a number read off the screen plays a different file" );
+				return;
+			}
+
+			//and the number is actually printed beside that recording, not merely implied by position.
+			//A literal newline rather than %n, because render() appends its own "\n" before the row and
+			//%n would be the platform separator, which is not the same thing on every machine.
+			if (!listing.contains( String.format( "\n     %2d  %s", i + 1, ordered.get( i ).label() ))){
+				fail( "the listing does not print number " + ( i + 1 ) + " beside "
+						+ ordered.get( i ).label() + ", so the two views of the order have drifted" );
+				return;
+			}
+		}
+
+		//the sections are labeled, and the training one says what is wrong with it - a heading reading
+		//only "trainer output" leaves a person to discover the difference by watching a playback halt
+		if (!listing.contains( ReplayCatalog.SECTION_CORPUS )
+				|| !listing.contains( ReplayCatalog.SECTION_TRAINER )){
+			fail( "the rendered listing does not print both section headings" );
+			return;
+		}
+		if (!listing.contains( "NOT known to play end to end" )){
+			fail( "the training section does not say that its recordings are not known to play end to"
+					+ " end, so selecting one still ends in a halt with nothing on screen explaining it" );
+		}
+	}
+
+	private static List<ReplayCatalog.Entry> flatten( Map<String, List<ReplayCatalog.Entry>> groups ){
+		List<ReplayCatalog.Entry> all = new ArrayList<>();
+		for (List<ReplayCatalog.Entry> list : groups.values()) all.addAll( list );
+		return all;
 	}
 
 	// --------------------------------------------------------------------------- ordering

@@ -25,6 +25,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The catalog separates the corpus from the training output.** Provenance is now the outermost axis
+  of the listing: a `TEST CORPUS` section, then `TRAINER OUTPUT`, each keeping the hero-class grouping
+  and score ranking it had. Numbering stays one sequence, 1 to 27, so the word "number" still means
+  exactly one recording.
+
+  The split falls out of the precedence `scan` already applied for duplicate seeds — the first `--dir`
+  is the reference set, everything after it is training output — rather than a second notion of which
+  directory is the corpus. That matters because the directories a training run writes to are named
+  after whatever `--out` happened to be, so matching on directory names would have had no answer for
+  most of them.
+
+  Each section carries a line saying what it is, and the training one says its recordings are *not
+  known to play end to end*. Without it the only tell was a `XXX-XXX-XXX` filename among descriptive
+  ones, and selecting one halted the viewer after a single frame with nothing on screen explaining
+  why. The line is kept in `--plain` output too, which only strips colour — a piped listing is read by
+  a script or a log file, which is where such a note is most wanted and least likely to be noticed.
+
+  Gated by `checkSectionsSplitByProvenance`, which also asserts that every printed number resolves to
+  the recording printed beside it *across the section boundary* — the place the two traversals would
+  diverge first, and where everything above it would still look correct. Mutation-tested by pointing
+  `inListingOrder` back at the hero-only grouping, which fails it at number 2.
+
 - **Recordings moved into the module and split by provenance.** The checked-in corpus went from
   `replays/` to `superintelligence/test-replays/`, and the recordings the trainer actually wrote went
   from volatile `%TEMP%` directories into `superintelligence/trainer-replays/`.
