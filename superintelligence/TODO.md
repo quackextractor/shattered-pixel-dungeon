@@ -381,6 +381,47 @@ mode column and therefore the committed corpus.
 
 ---
 
+## 1.12 Every replay the trainer wrote was missing five of its nine fields - FIXED
+
+Found by looking for a run that had genuinely reached depth 2 and then reading the file it produced.
+The depth was real; the file could not have detected a starving hero or a one-turn drift.
+
+`Worker.writeReplay` and `TrainerWorkers.readReplay` were two hand-written methods on opposite sides of
+a process pipe, and the writer sent `action`, `slot`, `mode` and `heroPos` where the reader declares
+nine fields. `reward`, `quickslots`, `heroHp`, `turn` and `inventory` were dropped and kept the
+sentinels `Replay.Step` declares for *not recorded*.
+
+**It could not have failed louder, and that is the lesson.** `ReplayIO.verify` guards each comparison
+with its own sentinel, so a recording with no health, no engine time and no inventory verifies on
+position alone and prints `[OK]`. Every gate was green. `collectcheck` was green. The corpus is
+regenerated and green. The bug was only findable by reading a recorded file and noticing that the
+columns health and turn were added to record were the ones nothing ever wrote.
+
+Two things follow, and the second is the one worth keeping.
+
+**A sentinel guard defeats itself as a detector.** Its job is to let an *unrecorded* field pass, and
+it does that perfectly — including for a field that is unrecorded because it was dropped. The guard
+cannot distinguish "not applicable" from "lost in transit", so it must not be the only thing checking
+a recording. Anything with a sentinel needs a positive assertion that the sentinel is absent, or the
+sentinel is a way of not noticing.
+
+**A format asserted in two places is not a format.** Writer and reader agreed, which is why nothing
+crashed: the pipe was internally consistent and wrong. Both sides now go through `train.ReplayCodec`,
+versioned, refusing an unknown version rather than desynchronising quietly.
+
+The gate round-trips a populated replay through the codec and requires every field back, and
+separately drives a real `ReplayRecorder` episode - because the original fault was an inline field
+list, and a codec unit test cannot see someone writing the next one.
+
+The recorder half deliberately does **not** assert "most steps carry an inventory". A real run came
+back with 347 of 660 steps empty, and every one traced to the untrained policy dropping things on the
+floor - a hero carrying nothing is a legitimate state, so that assertion would have been a flaky gate
+firing on correct behaviour. It asserts instead that step 0 is non-empty (every class starts with a
+VelvetPouch) and that the value changes at least once, which distinguishes *dropped* from *never
+written*.
+
+---
+
 ## 1.9 Giving up is priced below dying, which prices it as an option - FIXED
 
 `issues.md` 9 asked for stall and death to be balanced; `TODO.md` 1.8 asked what surviving is worth.

@@ -199,18 +199,33 @@ config.stallLimit = in.readInt();
 		record.release();
 	}
 
+	/**
+	 * Ships a recorded episode to the trainer.
+	 *
+	 * <p><b>All nine step fields, and the header fields that decide what a recorded index means.</b> This
+	 * used to send four — action, slot, mode and hero position — and the trainer rebuilt the rest from
+	 * nothing. So every replay the trainer has ever written carried {@code heroHp = -1},
+	 * {@code turn = -1.0} and an empty inventory, which are the readers' sentinels for *not recorded*.
+	 *
+	 * <p>That is invisible rather than broken, and it is worth being precise about why.
+	 * {@code ReplayIO.verify} guards every comparison with its own sentinel — {@code if (step.heroHp >=
+	 * 0 && …)}, {@code if (!step.inventory.isEmpty() && …)} — so a recording that carries no health and
+	 * no engine time verifies on **position alone** and reports {@code [OK]}. Measured on a run that
+	 * really had reached depth 2: 655 steps, no divergence, and a recording that could not have detected
+	 * a starving hero or a one-turn drift. {@code ReplayRecorder} carries a comment saying exactly that
+	 * failure is why health and turn are recorded at all — *"both of those played back cleanly while
+	 * being wrong"* — and this path threw them away on the way to disk.
+	 *
+	 * <p>The viewer is affected the same way: no per-step score, no health divergence, no turn drift.
+	 *
+	 * <p>Written as a private static pair of methods rather than inline at the call site so that the
+	 * encoder and the decoder are one change and cannot drift the way they did. They are still a third
+	 * implementation of "write a replay" alongside {@code ReplayIO.write} and the text format, which is
+	 * the duplication {@code PLAN-replay-parity.md} warns about; the version byte below is what makes
+	 * that survivable.
+	 */
 	private void writeReplay( Replay replay ) throws IOException {
-		out.writeUTF( replay.seedText );
-		out.writeUTF( replay.heroClass );
-		out.writeDouble( replay.score );
-		out.writeInt( replay.depth );
-		out.writeInt( replay.turns );
-		for (Replay.Step step : replay.steps){
-			out.writeUTF( step.action );
-			out.writeInt( step.slot );
-			out.writeUTF( step.mode );
-			out.writeInt( step.heroPos );
-		}
+		ReplayCodec.write( out, replay );
 	}
 
 	// --------------------------------------------------------------------------- weights

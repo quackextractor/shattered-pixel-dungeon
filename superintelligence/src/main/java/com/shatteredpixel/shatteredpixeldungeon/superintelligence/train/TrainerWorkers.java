@@ -209,7 +209,7 @@ public class TrainerWorkers {
 			//the worker sends the step count always but the body only when a replay was requested,
 			//so the body must only be read in that case. Reading it unconditionally deadlocked the
 			//trainer against a worker that was already waiting for its next command.
-			if (job.wantReplay) episode.replay = readReplay( in, steps );
+			if (job.wantReplay) episode.replay = ReplayCodec.read( in, steps );
 
 			//the sampled transitions, decoded into this thread's own list and merged on the trainer
 			//thread once every worker has joined. Nothing shared is touched from here.
@@ -223,25 +223,6 @@ public class TrainerWorkers {
 		}
 
 		return episodes;
-	}
-
-	private Replay readReplay( DataInputStream in, int steps ) throws IOException {
-		Replay replay = new Replay();
-		replay.seedText = in.readUTF();
-		replay.heroClass = in.readUTF();
-		replay.score = in.readDouble();
-		replay.depth = in.readInt();
-		replay.turns = in.readInt();
-
-		for (int i = 0; i < steps; i++){
-			Replay.Step step = new Replay.Step();
-			step.action = in.readUTF();
-			step.slot = in.readInt();
-			step.mode = in.readUTF();
-			step.heroPos = in.readInt();
-			replay.steps.add( step );
-		}
-		return replay;
 	}
 
 	// --------------------------------------------------------------------------- policy push

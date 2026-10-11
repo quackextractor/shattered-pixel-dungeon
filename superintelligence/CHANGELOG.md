@@ -23,6 +23,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Replays crossing the worker pipe were carrying four of nine step fields.** `Worker.writeReplay` and
+  `TrainerWorkers.readReplay` were two hand-written methods on opposite sides of a pipe, and the writer
+  sent `action`, `slot`, `mode` and `heroPos` where the reader has nine fields. `reward`, `quickslots`,
+  `heroHp`, `turn` and `inventory` were dropped on the floor and kept the sentinels `Replay.Step`
+  declares for *not recorded*.
+
+  This did not crash and it did not diverge — which is why it survived. `ReplayIO.verify` guards every
+  comparison with its own sentinel, so a recording carrying no health, no engine time and no inventory
+  verified on position alone and reported success. Health and turn were added to the recording
+  specifically to catch a starving hero and a one-turn drift, and both were silently absent from
+  everything the trainer wrote.
+
+  Both sides now go through `train.ReplayCodec`, one versioned wire format, `VERSION=2`, rejecting
+  anything else rather than desynchronising quietly. `collectcheck` gained a case that round-trips a
+  populated replay through it and requires every field back, and separately drives a real
+  `ReplayRecorder` episode — because the fault was an inline field list, and a codec unit test cannot
+  see someone writing the next one.
+
 ## [0.6.0] - 2026-10-10
 
 ### Added
