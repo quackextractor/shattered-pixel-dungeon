@@ -271,3 +271,64 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
     **Measured: survival improved, depth did not.** Deaths 100% → 19% and mean turns 377 → 1335 over 12
     generations; `bestDepth 2` once in a smoke test. Depth does not trend yet, and saying so is more
     useful than a run long enough to produce a number that could be read either way. `TODO.md` 1.4.
+
+15. Recordings written by the trainer cannot be played in the viewer at all, and `verify` reports them
+    as perfect.
+
+    Asked whether the depth 2 run could be watched now that the replay wire was fixed. It cannot:
+
+    ```
+    [replay] installed, driving BMS-WQQ-LQH (655 steps)
+    [replay] halted: step 1 names slot 3 but records no quickslot bindings; it was recorded
+    before bindings were stored, so the index cannot be resolved
+    [replay] 1 frames, 1 applied a step, 0 did not
+    ```
+
+    Two separate faults, found in that order, and the first one is the reason the second was invisible.
+
+> **`verify` and the viewer disagree about the same file.** Run minutes apart, on the same recording:
+>
+> ```
+> verify:      [OK]  replay reproduced in 655 steps, 494 ms
+> viewer:      halted at step 1, 1 frame played
+> ```
+>
+> `ReplayIO.verify` guards each comparison with the sentinel that field declares for *not recorded*,
+> and empty quickslots is such a sentinel, so it skips the check. The viewer treats missing bindings as
+> fatal the moment a step names a slot index, because there is nothing to resolve the index against.
+>
+> **A passing `verify` is therefore not evidence that a recording is watchable**, and `verifyall` never
+> asserted it — the gate covers recordings the corpus built through `ReplayRecorder` directly, which
+> have always had their bindings. This is the same sentinel weakness as `TODO.md` 1.12, one level up:
+> a guard written to let an unrecorded field pass cannot distinguish *not applicable* from *lost*, and
+> it cannot be the only thing standing between a recording and a viewer.
+
+> **Scope: trainer output only.** The committed corpus is 17 recordings, all complete —
+> `USE 0 SLOT 1272 -0.502 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1` carries quickslots, hp, turn
+> and inventory — because `replay-viewer --record` goes `rollout --save` → `ReplayRecorder` and never
+> crosses the worker pipe. The 655-step file reads `hp=-1 turn=-1.0`, empty inventory, empty quickslots
+> on every step: `Worker.writeReplay` sent four of the nine step fields `Replay.Step` declares, so
+> `quickslots` was among the five dropped. Fixed in `018abbd65`, where both sides now go through
+> `train.ReplayCodec`. The 655-step recording is not recoverable by regeneration of the wire; the data
+> was never recorded, and only a new run records it.
+
+> **And the fix exposed a third fault rather than closing this one.** A fresh post-fix 660-step
+> trainer recording now clears the bindings problem — 18 steps in, where the old one stopped at 1 — and
+> then diverges:
+>
+> ```
+> [replay] halted: DIVERGED at step 18 - DROP/1 in SLOT: inventory is
+> [ThrowingSpike:1,VelvetPouch():1,Waterskin:1], recording says [Food:1,VelvetPouch():1,Waterskin:1]
+> ```
+>
+> Not a near-miss; different items. This was never a passing check either — the inventory comparison
+> was being skipped against an empty sentinel, so trainer recordings have been making an unverifiable
+> claim about inventory throughout. `ReplayRecorder.record()` captures quickslots *before* the step
+> (documented at `ReplayRecorder.java:64-65`, because an equip in that step rebinds a slot) while
+> `afterStep()` captures inventory *after* it; whether playback compares the two at the same instant is
+> the open question, and `DROP` in `SLOT` is exactly the shape that would expose a mismatch.
+>
+> Consequence for the milestone: no recording the trainer has produced is watchable end to end yet,
+> which means the viewer cannot yet be used to diagnose training behaviour the way the corpus is used
+> to diagnose recorded behaviour. `TODO.md` 1.12 covers the wire; this is the two things that were
+> hidden behind it.
