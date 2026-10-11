@@ -35,7 +35,7 @@ public class ReplayCatalogCheck {
 
 	private static final List< String > failures = new ArrayList<>();
 
-	private static final int CHECKS = 13;
+	private static final int CHECKS = 14;
 
 	private static File workDir;
 
@@ -63,6 +63,7 @@ public class ReplayCatalogCheck {
 			checkAmbiguousSeedIsRefusedNotGuessed();
 			checkIndexedDirectoriesAreDiscovered();
 			checkSectionsSplitByProvenance();
+		checkDepthIsAReadableColumn();
 		} finally {
 			deleteTree( workDir );
 		}
@@ -216,6 +217,77 @@ public class ReplayCatalogCheck {
 		}
 		return "";
 	}
+
+	/**
+ * Depth has to be a column a reader can scan, not a value in another column's padding.
+ *
+ * <p>It was printed - inline as {@code d2}, inside the turns column's whitespace - and nobody could use
+ * it. The listing ranks by score, so the run that actually made progress sat mid-block with its one
+ * interesting fact rendered as a footnote. The report of the first depth-2 run in the project's history
+ * was "I cannot see which recording got there", which is the cost of a value without a heading.
+ *
+ * <p>Asserts the heading exists and that a recording's own depth appears on its own row, so the column
+ * cannot go back to being invisible without this failing.
+ */
+private static void checkDepthIsAReadableColumn(){
+	File dir = dir( "depth-column" );
+	write( dir, "SHALLOW", "WARRIOR", 1.0, 1, 40 );
+	write( dir, "DEEP", "DUELIST", -2.0, 3, 40 );
+
+	ReplayCatalog catalog = new ReplayCatalog().scan( List.of( dir ));
+	String listing = catalog.render( true );
+
+	if (!listing.contains( "depth" )){
+		fail( "the listing has no 'depth' heading, so the deepest floor a run reached is a value with"
+				+ " nowhere to sit. It was printed inline before and read as a footnote." );
+		return;
+	}
+
+	if (!rowFor( listing, "DEEP" ).contains( "d3" )){
+		fail( "the recording that reached floor 3 does not show d3 on its own row: \""
+				+ rowFor( listing, "DEEP" ) + "\"" );
+		return;
+	}
+
+	//and it must not be the score column's, which is what made it unreadable before
+	String header = listing.contains( "depth" ) ? listing : "";
+	if (!header.contains( "turns" )){
+		fail( "the listing has a depth heading but no turns heading, so the two columns cannot be told"
+				+ " apart" );
+		return;
+	}
+
+	//and every row's depth must sit at the same offset, so the column scans. Compared as the position
+	//of the depth *cell* rather than the first "d1"/"d3" in the line: a seed like SHALLOW contains a
+	//"d" before the depth column ever does, and matching on the letter rather than the cell reported a
+	//misalignment that was not there.
+	String shallow = rowFor( listing, "SHALLOW" );
+	String deep = rowFor( listing, "DEEP" );
+	int shallowAt = depthColumnIn( shallow );
+	int deepAt = depthColumnIn( deep );
+	if (shallowAt < 0 || deepAt < 0){
+		fail( "could not locate the depth cell in both rows: [\"" + shallow + "\"] [\"" + deep + "\"]" );
+		return;
+	}
+	if (shallowAt != deepAt){
+		fail( "the depth cell sits at column " + shallowAt + " on one row and " + deepAt
+				+ " on another, so the column does not line up: [\"" + shallow + "\"] vs [\"" + deep + "\"]" );
+	}
+}
+
+/**
+ * Where a row's depth cell starts, or -1 when the row has no depth to find.
+ *
+ * <p>Searches for the depth cell rather than the letter "d", so a recording whose seed contains a "d"
+ * does not report a column position from the middle of its own name.
+ */
+private static int depthColumnIn( String row ){
+	String[] cells = row.trim().split( "\\s+" );
+	//number, label, score, then the depth cell - the fields before it are the ones that cannot be it
+	if (cells.length < 4) return -1;
+	String cell = cells[ 3 ];
+	return cell.matches( "d\\d+" ) ? row.indexOf( cell ) : -1;
+}
 
 	private static List<ReplayCatalog.Entry> flatten( Map<String, List<ReplayCatalog.Entry>> groups ){
 		List<ReplayCatalog.Entry> all = new ArrayList<>();

@@ -13,6 +13,8 @@ Edit this file, not `instructions.md`. `STATUS.md` records which of these have a
 
 - Run `./gradlew test` after every code change.
 - New logic needs unit tests; new external interfaces need integration tests.
+- **Do not run `verifyall` before committing.** `hooks/pre-commit` runs it and refuses the commit if it fails, so running it first duplicates the same ~30s twice and changes nothing. Same for `viewcheck`: it is not in the hook, so run it when the change touches the viewer, the replay format, or anything a recording records — not before every commit.
+- Run the *individual* gate you changed, though, and watch it fail when you break what it guards. A green gate you have not seen go red is a gate you have not tested.
 
 ## Structure
 

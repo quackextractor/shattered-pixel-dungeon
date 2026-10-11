@@ -151,7 +151,7 @@ rem it rather than below.
 call :catalog || exit /b 1
 echo.
 set "CHOICE="
-set /p "CHOICE=Play which? Enter its number, or q to quit: "
+set /p "CHOICE=Play which? Enter its number, r to refresh the list, or q to quit: "
 
 rem No test for end of input here. set /p returns errorlevel 1 for a blank line *and*
 rem for exhausted input, so an errorlevel check cannot tell Enter from EOF, and
@@ -164,6 +164,15 @@ rem q before the digit test, because the digit test rejects it. Only q and quit,
 rem so a mistyped number is still refused rather than read as a request to leave.
 if /i "%CHOICE%"=="q"    goto :menuquit
 if /i "%CHOICE%"=="quit" goto :menuquit
+
+rem r reprints the catalog, which is what a person wants after a training run has
+rem written new recordings into it. The listing is built once at :menu and cached
+rem for the numbers, so refreshing has to re-enter the build rather than merely
+rem reprint - see :catalog, which is where the numbering is computed and would
+rem otherwise still point at the old files. Checked before the digit test, because
+rem that test would reject it as non-numeric.
+if /i "%CHOICE%"=="r"       goto :menurefresh
+if /i "%CHOICE%"=="refresh" goto :menurefresh
 
 rem Empty input reprints instead of exiting. It used to print "Nothing selected."
 rem and exit, which was right for a one-shot prompt and wrong here: inside a loop
@@ -197,6 +206,22 @@ goto :play
 
 :menuquit
 exit /b 0
+
+rem --- refresh ---------------------------------------------------------------
+
+rem Rebuilds the listing and re-prompts, and says so rather than reprinting the
+rem list silently. A refresh that printed the same bytes would be
+rem indistinguishable from a keypress that did nothing - and the viewer already
+rem comments that "[replay] lines report each keypress, which is the quickest way
+rem to tell the key did nothing apart from the key did something invisible".
+rem This is the menu's version of the same courtesy.
+rem
+rem :menu rebuilds anyway, because :catalog re-runs the java query rather than
+rem caching it - which is what makes the numbers trustworthy after a directory
+rem has changed on disk. This label exists only to print the line.
+:menurefresh
+echo Refreshed.
+goto :menu
 
 rem Resolves a number from the listing onto a file. The java side owns the order
 rem and answers the query, rather than this file keeping a second copy of the

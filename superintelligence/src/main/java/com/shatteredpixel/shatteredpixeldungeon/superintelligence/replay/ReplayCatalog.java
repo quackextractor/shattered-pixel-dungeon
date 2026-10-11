@@ -554,6 +554,7 @@ public class ReplayCatalog {
 
 			out.append( "\n  " ).append( section.getKey() ).append( " " ).append( blurb ).append( "\n" );
 			out.append( "  " ).append( dashed() ).append( "\n" );
+			out.append( "  " ).append( columnHeadings() ).append( "\n" );
 
 			for (Map.Entry<String, List<Entry>> group : section.getValue().entrySet()){
 				if (group.getValue().isEmpty()) continue;
@@ -568,11 +569,11 @@ public class ReplayCatalog {
 					if (!note.isEmpty() && !plain) note = Ansi.wrap( note, Ansi.DIM );
 
 					out.append( String.format( Locale.US,
-							"     %2d  %-22s %9s  d%-3d %7s   %s%n",
+							"     %2d  %-22s %9s  %5s  %7s   %s%n",
 							shown,
 							entry.label(),
 							formatScore( entry ),
-							entry.depth,
+							formatDepth( entry ),
 							String.format( Locale.US, "%,d", entry.turns ),
 							note ) );
 				}
@@ -665,6 +666,30 @@ public class ReplayCatalog {
 	private static String formatScore( Entry entry ){
 		if (entry.error != null) return "-";
 		return String.format( "%,.1f", entry.score );
+	}
+
+	/**
+	 * Deepest floor reached, as a column rather than a bare {@code d2}.
+	 *
+	 * <p>It was already printed, inline and unlabelled, and it was the one column nobody could use: the
+	 * listing ranks by score, so the run that actually made progress - the first to reach depth 2 in this
+	 * project's history - sat in the middle of a score-ordered block with a {@code d2} that read as a
+	 * footnote. A column with a heading is a column; a value in the middle of another column's padding is
+	 * not.
+	 *
+	 * <p>{@code deepest}, not where the hero died. `Replay.depth` is `Statistics.deepestFloor`, so a run
+	 * that went down and came back up reports the floor it reached rather than the one it left from.
+	 */
+	private static String formatDepth( Entry entry ){
+		if (entry.error != null) return "-";
+		return "d" + entry.depth;
+	}
+
+	/** Column headings, aligned to {@link #render}'s row format so the columns read as columns. */
+	private static String columnHeadings(){
+		return String.format( Locale.US,
+				"  %-4s %-22s %9s  %5s  %7s",
+				"#", "recording", "score", "depth", "turns" );
 	}
 
 	private static String dashed(){
