@@ -1126,7 +1126,12 @@ public class RewardCheck {
 		final double[] refunded = { 0 };
 		final int[] slotUsed = { -1 };
 
-		play( config, 200, "EXPLOITCHECK", turn -> {
+		//IDENTIFIED moved by the whole round trip, read off the ledger the episode itself produced.
+		//Reading either half alone can look innocent - the pickup pays, the drop refunds nothing - so it
+		//is the *net* that has to be zero, and that is what the assertion below asks.
+		final double[] identification = { 0 };
+
+		Outcome o = play( config, 200, "EXPLOITCHECK", turn -> {
 			SPDEnv env = turn.env;
 			EnvMode mode = env.mode();
 
@@ -1139,6 +1144,13 @@ public class RewardCheck {
 					}
 					tries[0]++;
 					grabbed[ 0 ] = new Potion();
+					//**identified**, because that is the version the exploit cycles. An unidentified
+					// potion contributes 0 to `countIdentified` both while carried and after dropped,
+					//so the round trip moves the count by nothing and the case proves nothing - which
+					//is how the one-sided term survived a gate that ran this same loop. A player who
+					//drinks one knows what it is; a dropped one stays known, so picking it back up is
+					//paying again for knowledge the hero never lost.
+					grabbed[ 0 ].identify();
 					if (!takeItemFromTheFloor( env, grabbed[ 0 ] )) return;
 					if (!carries( grabbed[ 0 ] )){
 						//Hero.handle refuses to collect with enemies in sight, and refuses anything
@@ -1205,8 +1217,26 @@ public class RewardCheck {
 			return;
 		}
 
+		//**And no other term may pay for the same round trip.** This is the half that was missing, and
+		// it is where the actual profit was. `ITEM_PICKUP`/`ITEM_DROPPED` have cancelled correctly since
+		// issues.md 8 was fixed, so this case passed - while `IDENTIFIED` paid +0.5 for carrying an
+		// already-identified item and refunded nothing when it was dropped, and the hero banked +27.50
+		// over a run whose inventory churn was itself net negative. A gate that only inspects the term it
+		// was written for cannot see a second term paying for the same event.
+		double identifiedNow = o.ledger == null ? 0 : o.ledger.termTotal( RewardTerm.IDENTIFIED );
+		identification[ 0 ] = identifiedNow;
+		if (Math.abs( identification[ 0 ] ) > 1e-4 ){
+			fail( "the pickup/drop round trip also moved IDENTIFIED by " + identification[ 0 ]
+					+ ", so it was not free even though ITEM_PICKUP and ITEM_DROPPED cancelled. IDENTIFIED"
+					+ " compared a count one way and refunded nothing on a decrease, which makes"
+					+ " DROP-then-INTERACT a repeatable +0.5 on the same heap. Measured on a trainer run:"
+					+ " IDENTIFIED +27.50 against an inventory round trip that was net -5.00." );
+			return;
+		}
+
 		System.out.println( "  a pickup and its matching drop cancel: " + fmt( paid[ 0 ] ) + " paid,"
-				+ " " + fmt( refunded[ 0 ] ) + " refunded, net " + fmt( paid[ 0 ] + refunded[ 0 ] ) );
+				+ " " + fmt( refunded[ 0 ] ) + " refunded, net " + fmt( paid[ 0 ] + refunded[ 0 ] )
+				+ ", and no other term pays for the round trip" );
 	}
 
 	/**

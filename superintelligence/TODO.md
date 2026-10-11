@@ -541,20 +541,46 @@ Measured after, same seed, 6 generations at 8 workers: `SEARCH` went from 189 st
 **39 / 78**, and the after-run's four recordings are different ones with a shortest of 182 steps
 against 615 before.
 
-### The report's other claim: drops are charged, and the round trip loses
+### The report's other claim: drops are charged — by a different term than the one named
 
-Measured across four runs, before the fix:
+`ITEM_PICKUP +65.50` against `ITEM_DROPPED -70.50` is a **net -5.00**. That pair has refunded
+correctly since `issues.md` 8, and the round trip was never the profit.
+
+The profit was **`IDENTIFIED +27.50`**: it paid +0.5 for carrying an already-identified item and
+refunded **nothing** when it was dropped, so `DROP`-then-`INTERACT` banked +0.5 on the same heap
+forever. A count compared one way — the same shape, and nearly the same fix, as the `ITEM_PICKUP`
+count `issues.md` 8 found — and it survived because `rewardcheck`'s pickup/drop case only inspected
+the two terms it was written for. A gate that looks at one term cannot see a second one paying for the
+same event.
+
+Now a signed diff, and the case asserts that **no other term** pays for the round trip. Its fixture
+also drops an **identified** potion, because an unidentified one contributes 0 to `countIdentified`
+either way and the loop proves nothing — which is why the mutation passed the first time it was tried.
+Mutation-tested: restoring the one-sided comparison fails it with `moved IDENTIFIED by 0.5`.
+
+### And the turn cost, which was small enough that nothing else mattered
+
+`reward.turn_cost` was **0.002**. A floor's whole 1500-turn budget cost **-3.00** against a **+25**
+descent, so idling a floor was nearly free. That is the root the search flood and the inventory churn
+were both growing out of.
+
+Now **1.0**, with every other term rescaled onto the same footing. Leaving them alone would have
+inverted three of `rewardcheck`'s properties rather than fixed one: death at -100 would have been
+*cheaper* than playing 100 turns, and a free action at -0.05 would have been 20x cheaper than a real
+one. **Two of the new numbers were set by the gate rather than chosen** — `turn_limit_penalty` and
+`talent_reward` both failed on the first attempt at this scale and were moved until the ordering and
+the opportunity-cost properties held.
+
+Same seed, 6 generations at 8 workers:
 
 ```
-BTK-WZR-QFW   ITEM_PICKUP +41.50   ITEM_DROPPED -46.50   net  -5.00
-NAK-NKP-BFQ   ITEM_PICKUP +73.00   ITEM_DROPPED -77.00   net  -4.00
-TJM-LKN-JZB   ITEM_PICKUP +71.00   ITEM_DROPPED -76.00   net  -5.00
-VFV-BJS-GCF   ITEM_PICKUP +49.50   ITEM_DROPPED -54.50   net  -5.00
+                        steps   SEARCH   zero-progress   deepest
+  before (0.002)         1508      66      587 (39%)       1
+  after  (1.0)            392      63      133 (34%)       2
 ```
 
-So `issues.md` 8's fix holds and the agent is not farming drops for score. Both behaviours - dropping
-and searching - are one thing seen twice: **a policy spending turns it has no reason to spend**, which
-is what an untrained policy looks like and what 1.4 is for.
+**The first depth-2 run in this project's history, on a seed that had never produced one**, and the run
+that got there took 392 steps rather than timing out a 1508-step floor. `DEPTH_ADVANCE +2500.00`.
 
 ### And a fault the retrain found that had nothing to do with either
 
@@ -1474,6 +1500,7 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | 1.10 | **Let the agent spend talent points** | M | **The agent levels up and can never spend the point.** §1.11 below. Reward side is done — `TALENT_UPGRADE` at 20, wired and gated. The action is missing. |
 | 1.12 | ~~Every replay the trainer wrote was missing five of its nine fields~~ | done | **Closed — see §1.12.** The wire; and the two faults behind it, which only became visible once a post-fix recording reached a `DROP`. |
 | 1.13 | ~~No recording the trainer wrote could be watched~~ | done | **Closed — see §1.13.** The recorder captured a step's bindings after the step, `verify` resolved indices against the live bindings and skipped the comparison when the field was empty, `viewcheck` passed any halt that was not a divergence, and the corpus contained no `DROP` in `SLOT` to ask about. A fresh trainer run now verifies and plays clean end to end. |
+| 1.14 | ~~A turn costs something, so the objective is the objective~~ | done | **Closed — see §1.13.** `turn_cost` 0.002 → **1.0**, with every reward term rescaled onto the same scale (leaving them would have made death cheaper than playing). `IDENTIFIED` found paying +27.50 as a one-sided count. Same seed: 1508 steps / deepest 1 → **392 steps / deepest 2**, the first depth-2 run in the project's history. |
 
 **Ordering was wrong and has been corrected.** 1.6 was originally next. It is still required — the
 measurement does not care what else is on the list — but two smaller items now come first:

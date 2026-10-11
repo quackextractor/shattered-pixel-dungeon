@@ -182,8 +182,19 @@ public class RewardModel {
 			ledger.add( RewardTerm.ITEM_DROPPED, carried - prevItemValue, false );
 		}
 
+		//Identification, and **this was the one term that was one-sided**: it paid on an increase and refunded
+		//nothing on a decrease. A count, compared one way, so picking up an already-identified item paid
+		//and dropping it cost nothing - and `DROP` then `INTERACT` is two steps the policy can repeat on
+		//the same heap forever. Measured on a trainer run: `IDENTIFIED +27.50` against a pickup/drop
+		//round trip that was itself **net -5.00**, so the identification payout was the entire profit and
+		//the drop was not being charged for it at all.
+		//
+		//Same shape as the bug `ITEM_PICKUP` had before it became a two-sided value diff, and the same
+		//fix: a plain signed diff, so a decrease refunds. Identified items the hero no longer carries
+		//have stopped being worth knowing, and a reward term that only ever pays for additions is one the
+		//agent can farm by adding.
 		int identified = countIdentified();
-		if (identified > prevIdentified){
+		if (identified != prevIdentified){
 			ledger.add( RewardTerm.IDENTIFIED, 0.5f * (identified - prevIdentified), false );
 		}
 

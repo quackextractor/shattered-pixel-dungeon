@@ -356,6 +356,79 @@ which is the same reading as the search flood: both are a policy spending turns 
   same shape as every other gap in this release.
 
 ### Verified
+### Fixed
+
+- **`IDENTIFIED` was the one term that only ever paid for additions** — and it was the whole of the
+  reported profit. `ITEM_PICKUP +65.50` against `ITEM_DROPPED -70.50` is a **net -5.00**: that pair has
+  refunded correctly since `issues.md` 8 was fixed. `IDENTIFIED` paid +0.5 for carrying an
+  already-identified item and refunded **nothing** when it was dropped, so `DROP` then `INTERACT` was a
+  repeatable +0.5 on the same heap. Measured on the reported recording:
+
+  ```
+  IPW-QMA-AFY    ITEM_PICKUP +65.50   ITEM_DROPPED -70.50   net  -5.00
+                 IDENTIFIED +27.50    <- paid on increase only, no counterpart anywhere
+  ```
+
+  Now a plain signed diff, so a decrease refunds — the same shape, and the same fix, as the `ITEM_PICKUP`
+  count that `issues.md` 8 found. The hero does still churn inventory; it just cannot bank anything by it.
+
+  **`rewardcheck`'s pickup/drop case now checks that no *other* term pays for the round trip.** It only
+  inspected `ITEM_PICKUP`/`ITEM_DROPPED` before, which is why it passed through a second one-sided term
+  on the same event — a gate that only looks at the term it was written for cannot see a second term
+  paying for the same thing. And its fixture drops a **identified** potion, because an unidentified one
+  contributes 0 to `countIdentified` either way and the loop proves nothing. Mutation-tested: restoring
+  the one-sided comparison fails it with `moved IDENTIFIED by 0.5`.
+
+### Changed
+
+- **`reward.turn_cost` is 1.0**, was 0.002. At 0.002 a floor's entire 1500-turn budget cost **-3.00**
+  against a **+25** descent, so idling a floor was nearly free and nothing else in the reward function
+  was doing any work — which is why a policy could spend half a run's engine time on a search that finds
+  nothing.
+
+  At 1.0 a floor's budget is **-1500**, so **every other reward term is rescaled onto the same scale**:
+  leaving them where they were would have inverted three of `rewardcheck`'s properties — death at -100
+  would have been *cheaper* than playing 100 turns, and a free action at -0.05 would have been 20x
+  cheaper than a real one.
+
+  | | was | now | |
+  | --- | --- | --- | --- |
+  | `turn_cost` | 0.002 | **1.0** | per engine turn, floored at one |
+  | `depth_reward` | 25 | 2500 | beats the 1500 turns a floor costs |
+  | `death_penalty` | 100 | 2000 | worse than a whole floor of play |
+  | `stall_penalty` | 150 | 3000 | still worse than dying |
+  | `turn_limit_penalty` | 25 | 1500 | between death and a cleared floor |
+  | `talent_reward` | 20 | 8000 | clears 4x a floor's turns, as the gate requires |
+  | `kill_reward` | 12 | 1200 | a melee rat kill still nets positive |
+  | `sneak_attack_reward` | 22 | 2200 | still the largest combat payout |
+  | `damage_penalty` | 2.5 | 250 | a full floor-1 bar is half a death |
+  | `no_progress_penalty` | 0.05 | 20 | a free step is 20x a real turn |
+  | `explore_reward` | 0.01 | 1.0 | 120 tiles is 120 against a 2500 descent |
+  | `victory_reward` | 1000 | 100000 | |
+
+  The ordering the gate asserts still holds: **stall -3000 < death -2000 < turn limit -1500 < a cleared
+  floor +2500.** Two of these numbers were set by the gate rather than chosen — `turn_limit_penalty` and
+  `talent_reward` both failed on the first attempt at this scale and were moved until the properties held.
+
+### Measured
+
+Same seed, 6 generations at 8 workers, before and after:
+
+```
+                          steps   SEARCH   zero-progress   deepest
+  before (turn_cost 0.002)  1508      66      587 (39%)       1
+  after  (turn_cost 1.0)     392      63      133 (34%)       2
+```
+
+**The first depth-2 run in this project's history, on a seed that had never produced one**, and the run
+that reached it took 392 steps instead of timing out a 1508-step floor. `DEPTH_ADVANCE +2500.00` in the
+recorded ledger.
+
+`IDENTIFIED` across all three recordings of the retrain: **-1.50, -2.00, -2.00** — negative everywhere,
+against **+27.50** on the recording that was reported.
+
+### Verified
+
 
 - `verifyall` - `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 23, both green.
 - `:desktop:viewcheck` - **19 of 19** on the corpus, 42.8 s at 8 children, with `duelist-death-last.replay` added.
