@@ -303,18 +303,41 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > a guard written to let an unrecorded field pass cannot distinguish *not applicable* from *lost*, and
 > it cannot be the only thing standing between a recording and a viewer.
 
-> **Scope: trainer output only.** The committed corpus is 17 recordings, all complete —
+> **Scope, measured rather than assumed: trainer output only, and all 9 of it.** The committed corpus is
+> 17 recordings, all complete —
 > `USE 0 SLOT 1272 -0.502 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1` carries quickslots, hp, turn
 > and inventory — because `replay-viewer --record` goes `rollout --save` → `ReplayRecorder` and never
-> crosses the worker pipe. The 655-step file reads `hp=-1 turn=-1.0`, empty inventory, empty quickslots
-> on every step: `Worker.writeReplay` sent four of the nine step fields `Replay.Step` declares, so
-> `quickslots` was among the five dropped. Fixed in `018abbd65`, where both sides now go through
-> `train.ReplayCodec`. The 655-step recording is not recoverable by regeneration of the wire; the data
-> was never recorded, and only a new run records it.
+> crosses the worker pipe. `Worker.writeReplay` sent four of the nine step fields `Replay.Step` declares,
+> so `quickslots` was among the five dropped, for every step of every recording, unconditionally.
+> Fixed in `018abbd65`, where both sides go through `train.ReplayCodec`.
+>
+> Every trainer recording on this machine, and where each one stops. Not recoverable by regenerating
+> the wire — the data was never recorded, and only a new run records it:
+>
+> | recording | steps | first slot-bearing step | quickslot bindings |
+> | --- | --- | --- | --- |
+> | `BMG-HZS-GGF` | 1005 | 1 | 0 |
+> | `BMS-WQQ-LQH` | 655 | 1 | 0 |
+> | `GFW-GHG-BTT` | 1260 | 5 | 0 |
+> | `JLD-WRQ-GXJ` | 70 | 10 | 0 |
+> | `MDC-JVK-QVB` | 1373 | 10 | 0 |
+> | `NNN-NYP-PNH` | 389 | 1 | 0 |
+> | `QVT-MFY-JTM` | 1458 | 10 | 0 |
+> | `XIM-LFA-MNY` | 986 | 2 | 0 |
+> | `ZFW-GJP-VQC` | 1205 | 10 | 0 |
+>
+> `%TEMP%\spd-run1\replays\`, all nine written before the fix. A recording with no slot-bearing step
+> would be unaffected, but none of these is one — so all nine stop inside the first ten steps, and
+> "halts at step 1" is a property of `BMS-WQQ-LQH` and `BMG-HZS-GGF` specifically, not of the fault.
+> The fault halts a recording at its **first** slot-bearing step.
+>
+> **These are `%TEMP%` paths and will not survive a reboot.** Copy any that are worth keeping into
+> `replays/` before the machine is restarted; they are the only evidence of what the trainer was
+> actually writing, and the corpus cannot reproduce them because it never went through the wire.
 
-> **And the fix exposed a third fault rather than closing this one.** A fresh post-fix 660-step
-> trainer recording now clears the bindings problem — 18 steps in, where the old one stopped at 1 — and
-> then diverges:
+> **And the fix exposed a third fault rather than closing this one.** The one post-fix recording,
+> `MSU-OTL-OAT` (660 steps, `%TEMP%\spd-wire\replays\`), clears the bindings problem — 18 steps in,
+> where the old ones stopped at 1 or 2 — and then diverges:
 >
 > ```
 > [replay] halted: DIVERGED at step 18 - DROP/1 in SLOT: inventory is
