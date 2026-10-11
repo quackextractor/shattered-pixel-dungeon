@@ -225,6 +225,108 @@ every gate passed. Four faults, in the order they had to be found.
   fault. `verify` and `viewcheck` catch it; correcting the listing would need a version bump on the
   format, which is more than the problem warrants for a file kept as history.
 
+### Fixed
+
+- **`TURN_COST` was charged per _step_, and a step is not a turn — so a search was half price.**
+  `Hero.search` calls `spendAndNext(TIME_TO_SEARCH)` where `TIME_TO_SEARCH` is **2**, so a search buys two
+  turns of the engine clock - in which other actors act, the hero can be hit, and opportunities pass -
+  for the price of one. It is charged now by what the engine's own clock says was consumed.
+
+  Measured on a trainer run (`BTK-WZR-QFW`, 940 steps), reward per engine turn actually spent:
+
+  ```
+  SEARCH   189 steps  387 turns   -0.11 per turn
+  MOVE_E    63 steps   73 turns   +0.10 per turn
+  INTERACT  22 steps   44 turns   +0.69 per turn
+  ```
+
+  **189 of 940 steps - a fifth of the episode - took half the run's engine time at half price**, and
+  searching reliably finds nothing after the first sweep of a floor: `Dungeon.level.discover` runs inside
+  the success branch of `Hero.search`, so a second sweep of a room is worth exactly nothing, forever.
+  That is the "keeps searching the area like crazy" in the report, and it was a subsidy rather than a
+  preference.
+
+  **The floor at one turn is load-bearing, and scaling without it is a worse bug than the one this
+  fixes.** `WAIT` and `REST` cost the episode a decision without advancing `Actor.now()` at all, so
+  charging purely by the clock made idling free - 121 stalls charged 0.004 in total. That is the
+  degenerate strategy `checkStallingIsNotCheaperThanDying` exists to forbid, reached from the other
+  direction, and it was caught by that case rather than by review.
+
+- **A recording whose death lands on its final step reported N-1 of N steps.** `ReplayPlayer.settle()`
+  found a dead hero where it expected to compare one and called `playback.finish()` without
+  `advance()`, leaving the cursor on the step it had just applied: the recording was complete and the
+  player said it had not played it. That is `issues.md` 2's symptom, one path away from the one its fix
+  closed - that fix moved the "recording ends here" test into the drain, and this is the branch the
+  drain cannot reach because the drain has already returned by the time `settle()` runs.
+
+  Found by the retrain, not by a gate: a trainer recording whose death landed on step 1229 of 1230
+  reported 1229 played, deterministically, **with the reward change stashed**, so it predates it.
+
+  **And the corpus had no recording that reached the branch**, which is the part worth keeping. Three
+  committed recordings declare `termination=DEATH` and record zero health on their last step, but all
+  three are dead *by* that step rather than *on* it - `huntress-mid` is on 2 HP at step 57 of 59,
+  `warrior-death` on 2 HP at 42 of 43 - so the drain's own dead-hero check handles them first. A case
+  built from one of them asserts the step count without ever entering the code it was written for, and
+  **passes when the fix is reverted**, which it did when that was tried.
+
+### Added
+
+- **Two `rewardcheck` cases and one `playbackcheck` case**, each mutation-tested.
+
+  | Gate | Case | Fails when |
+  | --- | --- | --- |
+  | `rewardcheck` | `a multi-turn action pays for every turn` | `TURN_COST` reverts to a flat per-step charge |
+  | `rewardcheck` | `searching is not cheaper than acting` | a search costs less than a single-turn action |
+  | `playbackcheck` | `a death on the final step still plays it` | `settle()`'s dead-hero branch stops advancing |
+
+  Both reward cases sample the engine clock **inside the driver**: read after the run it is not that
+  run's spend, because the stall guard and the mode machinery move the clock between the last step and
+  the read. And `fmt` prints two decimal places, which renders every per-turn figure as `0.00` - a case
+  whose whole claim is "these two prices differ" was printing them identically. `fine()` added.
+
+- **`duelist-death-last.replay` in `test-replays`**, a trainer recording with the hero at 1 HP on step
+  1228 and dead on 1229. It is the only file that reaches the branch above, and it is in the corpus
+  rather than built by the gate because a hand-built one cannot: killing a hero in the *recording* world
+  leaves the hero in the *playback* world alive, since `play()` resets it from the seed.
+
+### Measured, after the fix
+
+Two 6-generation runs at 8 workers on the same seed, the only difference being `TURN_COST`:
+
+```
+                SEARCH steps   SEARCH turns   zero-progress steps
+  before          189 / 940        387             432  (46%)
+  after            39 / 182          78              60  (33%)
+```
+
+Same seed, and the after-run produced **different four recordings** - `RXT-NTZ-YKD` is 182 steps where
+the before-run's shortest was 615 - so the policy is finishing its turns rather than spending them.
+`zero-progress` is the honest headline: **33-48% of every step before, 33-38% after.** The fix prices
+the wasted turn; it does not make the policy stop needing one, and `TODO.md` 1.4 is where that is
+tracked.
+
+**On the report's other claim, which the recording does not support.** The suggestion is that drops are
+not charged. They are, and the round trip loses money in every run measured, before the fix:
+
+```
+BTK-WZR-QFW   ITEM_PICKUP +41.50   ITEM_DROPPED -46.50   net  -5.00
+NAK-NKP-BFQ   ITEM_PICKUP +73.00   ITEM_DROPPED -77.00   net  -4.00
+TJM-LKN-JZB   ITEM_PICKUP +71.00   ITEM_DROPPED -76.00   net  -5.00
+VFV-BJS-GCF   ITEM_PICKUP +49.50   ITEM_DROPPED -54.50   net  -5.00
+```
+
+`issues.md` 8's fix - a net diff of what the inventory is *worth*, in both directions - is working. The
+agent drops items because it has nothing better to do with the turn, not because dropping is profitable,
+which is the same reading as the search flood: both are a policy spending turns it has no reason to spend.
+
+### Verified
+
+- `verifyall` - `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 23, both green.
+- `:desktop:viewcheck` - **19 of 19**, 42.5 s at 8 children, with `duelist-death-last.replay` added.
+- Four fresh trainer recordings from the retrain, before the fix, all verify and play clean. Two of them
+  timed out at 120 s under 4-way concurrency and both played clean at 1 child - the timing sensitivity
+  `viewcheck` documents, reproduced as documented.
+
 ### Not done
 
 - **The nine pre-fix recordings stay unplayable.** The data was never written; only a new run records

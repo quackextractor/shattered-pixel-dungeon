@@ -260,7 +260,7 @@ Twenty gates, one invocation, ~22 seconds:
 | `checkpointcheck` | A policy that does not survive disk, or a bad checkpoint that loads |
 | `statecheck` | A sampled observation that does not replay to its rollout's value |
 | `parallelcheck` | A parallel update that differs from the serial one |
-| `rewardcheck` | Ending an episode being cheaper than dying |
+| `rewardcheck` | Ending an episode being cheaper than dying, **or** an action that consumes several engine turns being charged for one |
 | `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
 | `replaycheck` | A catalog that misgroups, misranks or misresolves, **or** mislabels what it did |
 | `rolloutcheck` | A recording with no usable seed |

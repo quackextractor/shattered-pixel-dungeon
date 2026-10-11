@@ -63,7 +63,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 22;
+	private static final int CHECKS = 23;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -117,6 +117,7 @@ public class PlaybackCheck {
 		check( () -> checkRestartDoesNotEndTheRun( good ) );
 		check( () -> checkRestartKeepsPlaybackArmedAcrossARebuild( good ) );
 check( () -> checkADeathRunActuallyActsOnItsLastStep() );
+		check( () -> checkADeathOnTheLastStepStillPlaysIt() );
 		check( () -> checkTheCommittedCorpusPlaysClean() );
 		check( () -> checkScoreTracksGainAndLossSeparately( good ) );
 		check( () -> checkCoordinatesDecodeAPosition() );
@@ -941,6 +942,126 @@ private static void checkADeathRunActuallyActsOnItsLastStep(){
 				+ "viewer finishes just before the hero dies' looks like on screen." );
 	}
 }
+
+/**
+	 * A death on the <em>final</em> recorded step must still play that step.
+	 *
+	 * <p>The other two death cases build a recording whose death is not the last step, or whose last
+	 * step happens to settle before the hero dies. This one is the shape neither reaches: the hero dies
+	 * <em>during</em> the last recorded step, so the recording's own outcome and the death are the same
+	 * event, and {@code settle()} finds a dead hero where it expected to compare one.
+	 *
+	 * <p>It reported N-1 of N. {@code settle()}'s dead-hero branch called {@code playback.finish()}
+ * without {@code advance()}, so the cursor stayed on the step it had just applied - the recording was
+	 * complete and the player said it had not played it. That is {@code issues.md} 2's symptom exactly,
+	 * one path away from the one its fix closed: that fix moved the "recording ends here" test into the
+	 * drain, and this branch is the one the drain cannot reach because the drain has already returned by
+	 * the time {@code settle()} runs.
+	 *
+	 * <p><b>Producing one by hand was tried and abandoned</b>, and the reason is worth keeping. Killing
+	 * a hero in the <em>recording</em> world leaves the hero in the <em>playback</em> world alive,
+	 * because {@code play()} resets it from the seed. Whether that one also dies is a property of the
+	 * game rather than of the branch, so the hand-built fixture asserted the step count without ever
+	 * entering the code it was written for - a check that passes when the fix is reverted, which is the
+	 * failure this project keeps having. {@code duelist-death-last.replay} is a trainer recording that
+	 * does reach it: 1 HP at step 1228 of 1230, dead at 1229.
+	 *
+	 * <p>Found by the retrain, not by a gate - a trainer recording whose death landed on step 1229 of
+	 * 1230 reported 1229 played, deterministically, and {@code verify} reproduced all 1230 headlessly.
+	 *
+	 * <p><b>The death is produced, not waited for.</b> A real run does not conveniently die on its final
+	 * step, and searching for one that does is a search whose result depends on the hero's balance -
+	 * a gate that starts failing when the game gets easier, which is backwards. So the run is played to
+	 * within a step of the end and the hero is finished off through the engine's own death path, exactly
+	 * as {@code rewardcheck}'s {@code checkTheHeroCanDie} does and for the same reason: whether a random
+	 * walk dies on floor 1 is a property of the game's balance, not of the code under test.
+	 *
+	 * <p>Editing the recorded health instead does not work, and the reason is worth keeping: the live
+	 * hero would still be standing, so the divergence check fires at step N-1 and the branch is never
+	 * reached. The fixture has to be a world in which the hero is <em>actually</em> dead on the last
+	 * step, or it tests the comparison rather than the branch.
+	 */
+private static void checkADeathOnTheLastStepStillPlaysIt(){
+		//A real corpus recording, not a fixture, and one with a specific property: the hero must be
+		//**alive on the penultimate step**. Three committed recordings declare termination=DEATH and
+		//record zero health on their last step, but all three are dead *by* that step rather than *on*
+		//it - huntress-mid is on 2 HP at step 57 of 59, warrior-death on 2 HP at 42 of 43 - so the drain's
+		//own dead-hero check sees them first and the branch under test is never entered. That is not a
+		//detail of the fixture, it is why mutating the fix left every death case green.
+		Replay run = corpusRecordingDyingOnItsFinalStep();
+		if (run == null){
+			fail( "no committed recording has the hero alive on the penultimate step and dead on the"
+					+ " last, so the case could not be built. A case that cannot reach its own case is"
+					+ " not a check." );
+			return;
+		}
+
+		Outcome outcome = play( run );
+
+		if (outcome.ranOutOfFrames){
+			fail( "a recording whose death lands on its last step hung instead of finishing" );
+			return;
+		}
+		if (outcome.cursor != run.length()){
+			fail( "a recording whose death lands on its last step played " + outcome.cursor + " of "
+					+ run.length() + " steps: \"" + outcome.haltReason + "\". The step was applied and"
+					+ " the hero died on it, so it is played - the same rule issues.md 2 fixed, on the"
+					+ " one path its fix could not reach." );
+			return;
+		}
+		if (outcome.haltReason == null || !outcome.haltReason.contains( "DEATH" )){
+			fail( "a recording whose death lands on its last step played all " + run.length()
+					+ " steps but halted with \"" + outcome.haltReason + "\" rather than ending as the"
+					+ " recording says. The cursor reached the end, but not through the branch under"
+					+ " test - so this case did not exercise it." );
+			return;
+		}
+
+		System.out.println( "  a death on the final step still plays all " + run.length()
+				+ " steps, reporting: " + outcome.haltReason );
+	}
+
+/**
+	 * The first committed recording with the hero <em>alive</em> on the penultimate step and dead on the
+	 * last one.
+	 *
+	 * <p>Both conditions, and the second is the one that matters: three committed recordings declare
+	 * {@code termination=DEATH} and record zero health on their last step, and every one of them is dead
+	 * <em>by</em> that step rather than <em>on</em> it. The drain's own dead-hero check handles those
+	 * first, so a case built from one of them asserts the step count without entering the branch it is
+	 * written for - and passes when the fix is reverted.
+	 *
+	 * <p>The header is checked as well as the last step, because a recording can declare a death it never
+	 * reaches, and that would be a fixture that does not reach the case either.
+	 *
+	 * @return null when no such recording exists; the caller reports that once
+	 */
+private static Replay corpusRecordingDyingOnItsFinalStep(){
+		File corpus = corpusDir();
+		if ( !corpus.isDirectory() ) return null;
+
+		File[] files = corpus.listFiles( ( dir, name ) -> name.endsWith( ".replay" ) );
+		if ( files == null ) return null;
+
+		java.util.Arrays.sort( files, java.util.Comparator.comparing( File::getName ));
+		for (File file : files){
+			Replay candidate;
+			try {
+				candidate = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO
+						.read( file );
+			} catch (java.io.IOException e){
+				continue;
+			}
+			int n = candidate.steps.size();
+			if (n < 2) continue;
+			if (!"DEATH".equals( candidate.termination )) continue;
+			if (candidate.steps.get( n - 1 ).heroHp != 0 ) continue;
+			//alive going in, which is the whole condition
+			if (candidate.steps.get( n - 2 ).heroHp <= 0 ) continue;
+			return candidate;
+		}
+		return null;
+	}
 
 /** The committed corpus, or a path the build points elsewhere. Gradle resolves a relative one against the module. */
 private static File corpusDir(){

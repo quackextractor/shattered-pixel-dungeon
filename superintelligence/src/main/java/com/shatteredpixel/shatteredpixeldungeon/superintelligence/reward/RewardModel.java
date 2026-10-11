@@ -244,7 +244,32 @@ public class RewardModel {
 		}
 
 		//efficiency
-		ledger.add( RewardTerm.TURN_COST, -config.turnCost, false );
+		//
+		//**Scaled by what the engine's clock says the step consumed, floored at one turn.** It was a flat
+		//charge per step, and a step is not a turn: `Actor.now()` is a duration and several actions cost
+		//more than one of it. `Hero.search` calls `spendAndNext(TIME_TO_SEARCH)` where `TIME_TO_SEARCH`
+		//is 2, so a search bought two turns of the clock - real time in which other actors act, the hero
+		//can be hit, and opportunities pass - for the price of one.
+		//
+		//Measured on a trainer run (`BTK-WZR-QFW`, 940 steps), reward per engine turn actually consumed:
+		//
+		//     SEARCH   189 steps  387 turns   -0.11 per turn
+		//     MOVE_E    63 steps   73 turns   +0.10 per turn
+		//
+		//so 189 of 940 steps - a fifth of the episode - consumed **half the run's engine time** at half
+		//price, and the agent searched the same floor over and over. Halving the cost of a step is a
+		//discount; halving the cost of the two turns it actually consumes is a subsidy for the action
+		//that most reliably finds nothing.
+		//
+		//**The floor at one turn is load-bearing, and scaling without it is a worse bug than the one this
+		//fixes.** `WAIT` and `REST` cost the episode a decision without advancing `Actor.now()` at all,
+		//so charging purely by the clock made idling free: 121 stalls charged 0.004 in total, which is
+		//the degenerate strategy `checkStallingIsNotCheaperThanDying` exists to forbid, reached from the
+		//other direction. A step that consumes the clock pays for every turn it consumed; a step that
+		//consumes none still pays for one. A multi-turn action can no longer be bought at a discount,
+		//and a no-clock action cannot be free.
+		float turnsCharged = Math.max( 1f, engineTurnsSpent( depth ) );
+		ledger.add( RewardTerm.TURN_COST, -config.turnCost * turnsCharged, false );
 		if (tookAction) ledger.countTurn();
 
 		// A step the game resolved for free.
@@ -269,6 +294,21 @@ public class RewardModel {
 		double reward = ledger.flushTurn();
 		snapshot();
 		return reward;
+	}
+
+	/**
+	 * How many engine turns this step consumed, read from the engine's own clock.
+	 *
+	 * <p>Zero on a floor change, where the clock legitimately restarts from zero because
+	 * {@code Dungeon.newLevel} calls {@code Actor.clear()} - and a negative difference is a clock going
+	 * backwards, not a turn. Both report 0, so that {@link RewardTerm#NO_PROGRESS} - which asks the same
+	 * question and distinguishes "did not advance" from "went backwards" - stays the single place that
+	 * decides what a free step means.
+	 */
+	private float engineTurnsSpent( int depthAtStepStart ){
+		if (depthAtStepStart != prevDepth) return 0f;
+		float spent = Actor.now() - prevEngineTime;
+		return spent > 0f ? spent : 0f;
 	}
 
 	/** Records terminal reward. */

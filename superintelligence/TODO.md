@@ -505,6 +505,64 @@ captured - which is precisely the fault. Correcting that needs a version bump on
 more than the problem warrants for a file kept as history. `verify` and `viewcheck` catch it, and every
 future recording is fixed.
 
+### The search flood, which was a price rather than a preference
+
+Reported from a trainer recording: the bot "keeps searching the area like crazy". True, and the
+cause is arithmetic rather than taste.
+
+**`TURN_COST` was charged per _step_, and a step is not a turn.** `Actor.now()` is a duration and
+`Hero.search` calls `spendAndNext(TIME_TO_SEARCH)` where `TIME_TO_SEARCH` is **2** - a search buys two
+turns of the engine clock, in which other actors act and the hero can be hit, for the price of one. And
+a search is the action that most reliably finds nothing: `Dungeon.level.discover` runs inside the
+*success* branch of `Hero.search`, so the second sweep of a room is worth exactly nothing, forever.
+
+Measured on `BTK-WZR-QFW`, reward per engine turn actually consumed:
+
+```
+SEARCH   189 steps  387 turns   -0.11 per turn
+MOVE_E    63 steps   73 turns   +0.10 per turn
+```
+
+189 of 940 steps - a fifth of the episode - took **half the run's engine time at half price**. Now
+charged by what the clock says was spent, floored at one turn.
+
+**The floor is not a fudge, and dropping it would have been worse than the bug.** `WAIT` and `REST`
+cost the episode a decision without advancing `Actor.now()` at all, so charging purely by the clock
+made idling free - 121 stalls charged 0.004 - which is the degenerate strategy
+`checkStallingIsNotCheaperThanDying` exists to forbid. That case caught it, not review.
+
+Measured after, same seed, 6 generations at 8 workers: `SEARCH` went from 189 steps / 387 turns to
+**39 / 78**, and the after-run's four recordings are different ones with a shortest of 182 steps
+against 615 before.
+
+### The report's other claim: drops are charged, and the round trip loses
+
+Measured across four runs, before the fix:
+
+```
+BTK-WZR-QFW   ITEM_PICKUP +41.50   ITEM_DROPPED -46.50   net  -5.00
+NAK-NKP-BFQ   ITEM_PICKUP +73.00   ITEM_DROPPED -77.00   net  -4.00
+TJM-LKN-JZB   ITEM_PICKUP +71.00   ITEM_DROPPED -76.00   net  -5.00
+VFV-BJS-GCF   ITEM_PICKUP +49.50   ITEM_DROPPED -54.50   net  -5.00
+```
+
+So `issues.md` 8's fix holds and the agent is not farming drops for score. Both behaviours - dropping
+and searching - are one thing seen twice: **a policy spending turns it has no reason to spend**, which
+is what an untrained policy looks like and what 1.4 is for.
+
+### And a fault the retrain found that had nothing to do with either
+
+`ReplayPlayer.settle()` reported **N-1 of N steps** on a recording whose death lands on its final
+step: it found a dead hero where it expected to compare one and called `finish()` without `advance()`.
+`issues.md` 2's symptom, one path from the one its fix closed. Confirmed pre-existing by stashing the
+reward change.
+
+**The corpus had no recording that reached it**, which is the finding rather than a fixture detail.
+Three recordings declare `termination=DEATH` with `hp=0` on their last step, and all three are dead
+*by* that step (`huntress-mid` is on 2 HP at 57 of 59), so the drain handles them first - and a case
+built from one of them **passes when the fix is reverted**, which it did when tried. `duelist-death-last`
+(1 HP at 1228 of 1230, dead at 1229) is the file that reaches it.
+
 ### Verified
 
 - `verifyall` - `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 21, both green.

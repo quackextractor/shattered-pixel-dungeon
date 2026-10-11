@@ -54,7 +54,7 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 14;
+	private static final int CHECKS = 16;
 
 	/** How many heaps to try before calling a floor that offers none a failure. */
 	private static final int MAX_HEAP_TRIES = 12;
@@ -77,6 +77,8 @@ public class RewardCheck {
 		checkPickingUpAndDroppingIsNotProfitable( config );
 		checkKillingIsWorthDoing( config );
 		checkFreeStepsCostSomething( config );
+		checkAMultiTurnActionPaysForEveryTurn( config );
+		checkSearchingIsNotCheaperThanActing( config );
 		checkSpendingATalentIsWorthALot( config );
 
 		if (failures.isEmpty()){
@@ -641,6 +643,135 @@ public class RewardCheck {
 
 		System.out.println( "  a free step costs " + config.noProgressPenalty + " against "
 				+ config.turnCost + " for a real one; " + charged + " free step(s) charged" );
+	}
+
+	/**
+	 * An action that costs several engine turns must be charged for all of them.
+	 *
+	 * <p>{@code TURN_COST} was a flat charge per <em>step</em>, and a step is not a turn. {@code Hero.search}
+	 * calls {@code spendAndNext(TIME_TO_SEARCH)} where {@code TIME_TO_SEARCH} is 2, so a search buys two
+	 * turns of the engine clock - in which other actors act and the hero can be hit - for the price of
+	 * one.
+	 *
+	 * <p>Measured on a trainer run, reward per engine turn actually consumed:
+	 *
+	 * <pre>
+	 *   SEARCH   189 steps  387 turns  -0.11 per turn
+	 *   MOVE_E    63 steps   73 turns  +0.10 per turn
+	 * </pre>
+	 *
+	 * 189 of 940 steps - a fifth of the episode - took <b>half the run's engine time</b> at half price, and
+	 * searching reliably finds nothing after the first sweep of a floor, so the agent flooded the one
+	 * action that most reliably wastes time.
+	 *
+	 * <p>Driven rather than asserted as a constant, because the claim is about what the engine's clock
+	 * says. The clock is sampled <em>inside</em> the driver: read after the run it is not this run's
+	 * spend, because the stall guard and the mode machinery move it between the last step and the read.
+	 */
+	private static void checkAMultiTurnActionPaysForEveryTurn( EnvConfig config ){
+		final float[] spent = new float[ 1 ];
+		final int[] steps = new int[ 1 ];
+
+		Outcome o = play( config, 40, "MULTITURNCHECK", turn -> {
+			if (turn.env.mode() != EnvMode.WORLD ){
+				turn.env.step( Action.CANCEL, 0 );
+				return;
+			}
+			float before = Actor.now();
+			turn.env.step( Action.SEARCH, 0 );
+			float after = Actor.now();
+			if (after > before) spent[ 0 ] += after - before;
+			steps[ 0 ]++;
+		} );
+
+		double charged = -o.termTotal( RewardTerm.TURN_COST );
+
+		if (spent[ 0 ] <= 0f || steps[ 0 ] == 0 ){
+			fail( steps[ 0 ] + " SEARCH step(s) consumed " + fmt( spent[ 0 ] ) + " engine turns in"
+					+ " total, so this case measured nothing. Hero.search calls"
+					+ " spendAndNext(TIME_TO_SEARCH) and the clock must move." );
+			return;
+		}
+
+		//the point: an action spending n turns must cost more than n steps' worth, so a multi-turn
+		//action cannot come out cheaper per turn than a single-turn one
+		double flat = config.turnCost * steps[ 0 ];
+		if (charged < flat * 1.5 ){
+			fail( "SEARCH consumed " + fmt( spent[ 0 ] ) + " engine turns over " + steps[ 0 ]
+					+ " step(s) and was charged " + fmt( charged ) + ", against " + fmt( flat )
+					+ " for one turn each. TURN_COST is charged per step, so an action costing more than"
+					+ " one turn is cheaper per turn than one costing exactly one - which is why 189"
+					+ " searches took half of a 940-step run's engine time." );
+			return;
+		}
+
+		double perTurn = charged / spent[ 0 ];
+		if (Math.abs( perTurn - config.turnCost ) > config.turnCost * 0.5 ){
+			fail( "SEARCH cost " + fmt( perTurn ) + " per engine turn against a configured "
+					+ config.turnCost + ". The charge is scaled by the engine clock now, so this should be"
+					+ " the configured price whatever the action costs." );
+			return;
+		}
+
+		System.out.println( "  " + steps[ 0 ] + " searches over " + fmt( spent[ 0 ] ) + " engine turns"
+				+ " cost " + fmt( charged ) + " - " + fine( perTurn ) + " per turn, against "
+				+ fine( config.turnCost ) + " for a single-turn action" );
+	}
+
+	/**
+	 * Searching a floor that has already been searched must not be worth doing.
+	 *
+	 * <p>The companion to the case above, and the one that says what the agent should prefer instead.
+	 * {@code Hero.search} reveals a tile only when it <em>finds</em> something -
+	 * {@code Dungeon.level.discover} runs inside the success branch - so the second sweep of a room is
+	 * worth exactly nothing, forever.
+	 *
+	 * <p>So the property is that a search costs at least what the engine time it consumes, measured from
+	 * the same driver as the case above rather than compared against a constant, because the constant
+	 * would pass whatever the clock did.
+	 */
+	private static void checkSearchingIsNotCheaperThanActing( EnvConfig config ){
+		final float[] spent = new float[ 1 ];
+		final int[] steps = new int[ 1 ];
+
+		Outcome o = play( config, 40, "SEARCHCOSTCHECK", turn -> {
+			if (turn.env.mode() != EnvMode.WORLD ){
+				turn.env.step( Action.CANCEL, 0 );
+				return;
+			}
+			float before = Actor.now();
+			turn.env.step( Action.SEARCH, 0 );
+			float after = Actor.now();
+			if (after > before) spent[ 0 ] += after - before;
+			steps[ 0 ]++;
+		} );
+
+		if (steps[ 0 ] == 0 || spent[ 0 ] <= 0f ){
+			fail( steps[ 0 ] + " search(es) consumed " + spent[ 0 ] + " engine turns, so this case"
+					+ " measured nothing." );
+			return;
+		}
+
+		double perSearch = -o.termTotal( RewardTerm.TURN_COST ) / steps[ 0 ];
+		double singleTurn = config.turnCost;
+
+		if (perSearch < singleTurn ){
+			fail( "a search costs " + fmt( perSearch ) + " where it consumes " + fmt( spent[ 0 ] )
+					+ " of engine time over " + steps[ 0 ] + " search(es), so it is cheaper than a"
+					+ " single-turn action despite costing twice the time. A policy that finds this"
+					+ " searches instead of exploring." );
+			return;
+		}
+
+		//and it must never pay the agent to spend time
+		if (o.termTotal( RewardTerm.TURN_COST ) > 0 ){
+			fail( "TURN_COST paid " + o.termTotal( RewardTerm.TURN_COST ) + " over " + steps[ 0 ]
+					+ " searches; a positive turn cost pays the agent to spend time." );
+			return;
+		}
+
+		System.out.println( "  a search costs " + fine( perSearch ) + " for the engine time it consumes,"
+				+ " against " + fine( singleTurn ) + " for a single-turn action" );
 	}
 
 	/** A slot holding an equippable the hero is not already wearing, or 0. */
@@ -1252,6 +1383,18 @@ public class RewardCheck {
 
 	private static String fmt( double v ){
 		return String.format( java.util.Locale.ROOT, "%.2f", v );
+	}
+
+	/**
+	 * Enough places to see a turn cost.
+	 *
+	 * <p>{@link #fmt} is two decimal places, which is right for scores and useless for a per-turn price:
+	 * a turn costs 0.002, so every per-turn figure in this file printed as 0.00 and a case whose whole
+	 * claim is "these two prices differ" was printing them identically. Three places separates them and
+	 * is still one order below anything else the file reports.
+	 */
+	private static String fine( double v ){
+		return String.format( java.util.Locale.ROOT, "%.4f", v );
 	}
 
 	private static void fail( String message ){

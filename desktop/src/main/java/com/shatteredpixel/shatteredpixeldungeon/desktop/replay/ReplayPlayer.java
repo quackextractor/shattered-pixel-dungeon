@@ -1176,8 +1176,20 @@ awaitingSettle = true;
 			if (worldSnapshot != null) worldSnapshot.sample( "step", playback.cursor() );
 			playback.advance();
 		} else {
-			playback.finish();
-			halt( "run ended" );
+			//The hero died **during** this step, so the step was applied and the recording's own
+			//outcome is why. `finish()` alone left the cursor on it, and the recording then reported
+			//N-1 of N steps - which is `issues.md` 2's symptom, one path away from the one its fix
+			//closed. That fix moved the "recording ends here" test into the drain; this is the branch
+			//that test cannot reach, because the drain has already returned by the time settle runs.
+			//
+			//Measured on a trainer recording whose death lands on the final step: 1229 of 1230 steps,
+			//deterministically, with the reward change stashed - so it predates it. `verify` reproduces
+			//all 1230 headlessly, because the headless pipeline ends the episode rather than the
+			//player's settle.
+			//
+			//Advanced before finishing, and by the same path `endWhereRecordingEnds()` uses, so a run
+			//that ended this way and one that ended in the drain report identically.
+			endWhereRecordingEnds();
 		}
 
 		awaitingSettle = false;
