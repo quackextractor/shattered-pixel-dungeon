@@ -42,8 +42,15 @@ rem ---------------------------------------------------------------------------
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-set "REPLAYDIR=%CD%\replays"
-set "TRAINDIR=%TEMP%\spd-train\replays"
+set "TESTREPLAYDIR=%CD%\superintelligence\test-replays"
+set "TRAINERREPLAYDIR=%CD%\superintelligence\trainer-replays"
+rem Both are passed to every catalog query as two --dir flags, not queried in turn. ReplayCatalog merges
+rem them into one ranked listing and dedupes by seed, so a single numbering spans both - which is the
+rem only way "play which?" stays one question. Querying them separately would give two listings with
+rem two sets of numbers, and a number would mean different recordings depending on which was asked.
+rem TESTREPLAYDIR first: on a duplicate seed the deliberate reference corpus should win over a
+rem trainer run, for the reason ReplayCatalog.scan documents.
+set "CATDIRS=--dir "%TESTREPLAYDIR%" --dir "%TRAINERREPLAYDIR%""
 set "GRADLE=%CD%\gradlew.bat"
 
 rem Options for unattended playback.
@@ -209,7 +216,7 @@ rem No --no-daemon: this runs on every selection, and paying a fresh JVM plus a
 rem gradle startup for it made the menu feel broken. The daemon is started once and
 rem then reused for the listing, the lookup and every later playback's return to the
 rem menu, which is the whole point of being able to come back here.
-call "%GRADLE%" --offline -q :superintelligence:replays --args="--select %TARGET% --dir "%REPLAYDIR%"" > "%SELECTFILE%" 2>nul
+call "%GRADLE%" --offline -q :superintelligence:replays --args="--select %TARGET% %CATDIRS%" > "%SELECTFILE%" 2>nul
 if errorlevel 1 (
     echo No recording numbered %TARGET%.
     del "%SELECTFILE%" >nul 2>&1
@@ -233,23 +240,26 @@ exit /b 0
 
 rem --- record ----------------------------------------------------------------
 
+rem --record writes into the test corpus, not the trainer directory. It records through the scripted
+rem policy, which is the same path the committed fixtures were built by and the only one that is
+rem known to produce a recording the viewer can play end to end.
 :record
 if "%~2"=="" (
     echo Usage: replay-viewer --record ^<seed^>
     exit /b 1
 )
-if not exist "%REPLAYDIR%" mkdir "%REPLAYDIR%"
+if not exist "%TESTREPLAYDIR%" mkdir "%TESTREPLAYDIR%"
 echo Recording seed "%~2" with the scripted policy. Deterministic, so the same
 echo seed always produces the same recording.
 echo.
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:run --args="rollout --seed %~2 --max-turns 1500 --no-color --save %REPLAYDIR%/%~2.replay"
+call "%GRADLE%" --offline --no-daemon -q :superintelligence:run --args="rollout --seed %~2 --max-turns 1500 --no-color --save %TESTREPLAYDIR%/%~2.replay"
 if errorlevel 1 (
     echo.
     echo Recording failed.
     exit /b 1
 )
 echo.
-echo Saved %REPLAYDIR%\%~2.replay
+echo Saved %TESTREPLAYDIR%\%~2.replay
 echo Play it with:  replay-viewer %~2.replay
 exit /b 0
 
@@ -326,12 +336,13 @@ rem --- shared ----------------------------------------------------------------
 
 rem Prints the catalog.
 rem
-rem The corpus directory is named explicitly, and that is the whole reason this line is not just
+rem The corpus directories are named explicitly, and that is the whole reason this line is not just
 rem ":superintelligence:replays". ReplayCatalog falls back to a relative "replays", which resolves
 rem against the working directory - and gradle runs a JavaExec task from the *module* directory, not
-rem the one this file lives in. So `replays` meant superintelligence\replays, which does not exist, and
-rem the committed corpus was invisible: --list showed only whatever a training run happened to have
-rem left in the temp directory. Naming it is the difference between the viewer working and not.
+rem the one this file lives in. Naming them is the difference between the viewer working and not.
+rem
+rem Both directories, as two --dir flags, so the listing is one ranked set rather than two. ReplayCatalog
+rem merges and dedupes them by seed.
 rem
 rem No --no-daemon, and this is the one that matters most. The catalog is reprinted on
 rem every return to the menu, so a fresh JVM and a fresh gradle startup per print made
@@ -339,7 +350,7 @@ rem coming back from a playback look like a hang: the window had closed, and not
 rem happened for several seconds. Paying for a daemon once and reusing it is what makes
 rem the menu worth returning to.
 :catargs
-call "%GRADLE%" --offline -q :superintelligence:replays --args="--dir "%REPLAYDIR%""
+call "%GRADLE%" --offline -q :superintelligence:replays --args="%CATDIRS%"
 exit /b %errorlevel%
 
 :catalog
@@ -366,7 +377,7 @@ set "FILE=%~1"
 if exist "%FILE%" goto :absolute
 
 set "RESOLVEFILE=%TEMP%\spd-replay-resolve.txt"
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--resolve %~1 --dir "%REPLAYDIR%"" > "%RESOLVEFILE%" 2>nul
+call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--resolve %~1 %CATDIRS%" > "%RESOLVEFILE%" 2>nul
 
 rem The java side answers with either a path or a sentence, and always exits 0 so gradle
 rem does not wrap a refusal in its own FAILURE block. A sentence is not a path, so the

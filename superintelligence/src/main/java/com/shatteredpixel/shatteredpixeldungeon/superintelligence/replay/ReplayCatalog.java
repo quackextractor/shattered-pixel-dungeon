@@ -127,16 +127,58 @@ public class ReplayCatalog {
 	 *
 	 * <p>The default temp directory is last rather than omitted, so a run made before the index
 	 * existed is still findable.
+	 *
+	 * <p><b>The checked-in directories are located by walking up to the repository root, not by
+	 * relative path.</b> They used to be {@code new File( "replays" )}, which resolves against the
+	 * working directory - and the gradle {@code run} task uses the <em>module</em> directory as its
+	 * working directory, so that silently meant {@code superintelligence/replays}, which does not exist.
+	 * The whole corpus was invisible to a default {@code --list}. The batch file worked around this by
+	 * passing an absolute {@code --dir}; this was the same mistake one layer down, and the two
+	 * directories now live inside the module, so a relative guess would have looked correct and kept
+	 * resolving to nothing.
 	 */
 	private static List<File> defaultDirectories(){
 		//deduplicated by path. The index and the built-in default overlap by design - a run that used
 		//the default directory records it - and scanning a directory twice makes every file in it look
 		//like a duplicate of itself, which then reads as "recorded 2 times" for every seed.
 		LinkedHashSet<File> dirs = new LinkedHashSet<>();
-		dirs.add( new File( "replays" ).getAbsoluteFile() );
+
+		File repo = repositoryRoot();
+		if (repo != null){
+			dirs.add( new File( repo, "superintelligence/test-replays" ).getAbsoluteFile() );
+			dirs.add( new File( repo, "superintelligence/trainer-replays" ).getAbsoluteFile() );
+		}
+
 		dirs.addAll( ReplayIndex.read() );
 		dirs.add( new File( System.getProperty( "java.io.tmpdir" ), "spd-train/replays" ).getAbsoluteFile() );
 		return new ArrayList<>( dirs );
+	}
+
+	/**
+	 * The repository root, found by walking up from the working directory until {@code settings.gradle}
+	 * appears, or {@code null} when the run started somewhere that is not inside the repository.
+	 *
+	 * <p>Walking up rather than looking one directory down from the module, because the two are only
+	 * the same shape by accident: a jar run from a checkout has the module at {@code x/superintelligence}
+	 * and one level down is the root, but a run from {@code x/superintelligence} itself needs two. The
+	 * marker file is what settles it either way.
+	 *
+	 * <p>{@code null} is a supported answer rather than a failure. The catalog is reachable from
+	 * anywhere - a user's temp directory, a packaged jar - and a missing root there costs the two
+	 * checked-in directories and nothing else, because {@link ReplayIndex} still supplies whatever
+	 * training runs have recorded.
+	 */
+	private static File repositoryRoot(){
+		File dir = new File( System.getProperty( "user.dir" ) ).getAbsoluteFile();
+
+		//bounded, because a pathologically deep working directory should not spin. 12 levels covers
+		//a checkout nested a few directories deep with room to spare.
+		for (int depth = 0; depth < 12 && dir != null; depth++){
+			if (new File( dir, "settings.gradle" ).isFile()) return dir;
+			dir = dir.getParentFile();
+		}
+
+		return null;
 	}
 
 	/**

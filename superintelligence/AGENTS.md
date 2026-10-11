@@ -47,7 +47,7 @@ In practice: uncommitted engine edits are the normal way to test a hypothesis �
 - **Smoke runs stay short.** Bound every test training run with `--max-turns` and an external timeout. A run proving a wiring change does not need to finish an episode.
 - **Tune rewards, don't stall.** Every knob lives in `superintelligence/superintelligence.properties`, overridable via `.env` as `SPD_*`. If a value you need is not exposed, expose it — properties file, `.env`, or a CLI flag. Modify the trainer when that is what it takes. Do not ask for input and do not wait to be told. That is the job.
 - **Do not waste clock.** Never re-run a gate because formatting looks off, and never re-run a passing test to be sure. One run, one verdict.
-- **Read the replays.** `testing-guide.md` names the tools; the recordings in `replays/` are small enough to read in full. Start with the highest- and lowest-scoring ones and read all of them — the worst run is usually where the bug is.
+- **Read the replays.** `testing-guide.md` names the tools; the recordings in `superintelligence/test-replays/` and `superintelligence/trainer-replays/` are small enough to read in full. Start with the highest- and lowest-scoring ones and read all of them — the worst run is usually where the bug is. The first directory is the checked-in corpus, which reproduces end to end; the second is what the trainer actually wrote, which does not yet — see `issues.md` 15.
 - **The goal is the game.** Make the AI good enough to win, or at least descend several floors. Those are the two things that matter most; everything else is subordinate.
 
 ## Workflow

@@ -84,7 +84,7 @@ tasks.register('replaycp') {
     //The committed corpus, so the death-recording case plays a real one rather than a fixture built to
     //die on demand. A JavaExec runs with the *module* directory as its working directory, so a relative
     //path would resolve against desktop\ and find nothing - the same trap documented on viewcheck.
-    systemProperty 'spd.replayDir', project.findProperty('spdReplayDir') ?: "${rootProject.projectDir}/replays"
+    systemProperty 'spd.replayDir', project.findProperty('spdReplayDir') ?: "${rootProject.projectDir}/superintelligence/test-replays"
  }
 
 //Plays the committed corpus through the real rendered viewer and fails on any divergence.
@@ -94,8 +94,9 @@ tasks.register('replaycp') {
 //  the fault it exists for is invisible to every gate that does not drive the real frame loop:
 //  playbackcheck calls ReplayPlayer.update directly, so it passes recordings the viewer diverges on.
 //
-//  The corpus directory is passed absolute from the repository root. A gradle JavaExec runs with the
-//  *module* directory as its working directory, so a relative "replays" resolves against desktop\ and
+//  The corpus moved to superintelligence/test-replays, and this points at the new location. A gradle
+//  JavaExec runs with the
+//  *module* directory as its working directory, so a relative path resolves against desktop\ and
 //  finds nothing - the same trap documented in replay-viewer.bat.
 tasks.register('viewcheck', JavaExec) {
     group = 'verification'
@@ -103,7 +104,7 @@ tasks.register('viewcheck', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ViewCheck'
     workingDir = rootProject.projectDir
-    systemProperty 'spd.replayDir', project.findProperty('spdReplayDir') ?: "${rootProject.projectDir}/replays"
+    systemProperty 'spd.replayDir', project.findProperty('spdReplayDir') ?: "${rootProject.projectDir}/superintelligence/test-replays"
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 
     //Passed on to each forked child by ViewCheck, so the gate's own verdict is unchanged but a run can be

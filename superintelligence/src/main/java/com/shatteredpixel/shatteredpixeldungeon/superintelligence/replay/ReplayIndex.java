@@ -17,6 +17,10 @@ import java.util.List;
  * directories: the repository's {@code replays/} and {@code %TEMP%/spd-train/replays}. So a run with
  * {@code --out} anywhere else wrote recordings that nothing could find.
  *
+ * <p>That first directory has since moved to {@code superintelligence/test-replays}, alongside
+ * {@code superintelligence/trainer-replays}, and the catalog locates both by walking up to the
+ * repository root. This index is still what finds the runs that were pointed somewhere else.
+ *
  * <p>Measured here: 147 recordings existed across 16 directories. 142 of them - 97% - were invisible
  * to the viewer, which could only see the 5 checked-in fixtures and the 10 in the default temp
  * directory. The recordings were not lost and nothing reported an error; they were simply in a place

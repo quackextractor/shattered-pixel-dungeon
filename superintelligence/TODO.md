@@ -325,7 +325,7 @@ There is no `Action` that reaches any of it.
 `Talent.tierLevelThresholds` is `{0, 2, 7, 13, 21, 31}`, and `Hero.talentPointsAvailable(1)` is
 `1 + lvl - 2 - spent`. **At level 2 the hero has a point.** That is two rats on floor 1 — inside the
 first floor, in the range the agent already operates in. Every talent point the hero has ever earned,
-in every run and every recording in `replays/`, has been discarded.
+in every run and every recording in `test-replays/`, has been discarded.
 
 ### And it is the largest combat lever in the game
 

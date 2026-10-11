@@ -1,5 +1,5 @@
 param(
-    [string]$Dir = "replays",
+    [string]$Dir = "superintelligence/test-replays",
     # Per-FLOOR turn caps, not per-run: a run that descends keeps playing until it dies or runs out
     # of floors, so a small cap can still yield thousands of steps. These are sized for a corpus that
     # is worth watching and still rebuilds in seconds.

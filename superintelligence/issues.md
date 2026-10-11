@@ -304,7 +304,7 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > it cannot be the only thing standing between a recording and a viewer.
 
 > **Scope, measured rather than assumed: trainer output only, and all 9 of it.** The committed corpus in
-> `replays\` is 17 recordings, and all 17 reproduce — confirmed by hand across the corpus, and by
+> `superintelligence/test-replays\` is 17 recordings, and all 17 reproduce — confirmed by hand across the corpus, and by
 > `viewcheck`, which plays every one of them clean through the real viewer (17/17). They are complete:
 > `USE 0 SLOT 1272 -0.502 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1` carries quickslots, hp, turn
 > and inventory — because `replay-viewer --record` goes `rollout --save` → `ReplayRecorder` and never
@@ -332,13 +332,17 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > "halts at step 1" is a property of `BMS-WQQ-LQH` and `BMG-HZS-GGF` specifically, not of the fault.
 > The fault halts a recording at its **first** slot-bearing step.
 >
-> **These are `%TEMP%` paths and will not survive a reboot.** Copy any that are worth keeping into
-> `replays/` before the machine is restarted; they are the only evidence of what the trainer was
-> actually writing, and the corpus cannot reproduce them because it never went through the wire.
+> **These came from `%TEMP%` and have been rescued.** All ten were copied out of
+> `%TEMP%\spd-run1\replays\` and `%TEMP%\spd-wire\replays\` into
+> `superintelligence\trainer-replays\` before they could be lost to a reboot; they were the only
+> evidence of what the trainer was actually writing, and the corpus cannot reproduce them because it
+> never went through the wire. They are checked in now, so this is history rather than a warning —
+> but note that they are evidence, not fixtures. Nine of the ten are unplayable by construction, and
+> nothing should be trying to make them pass.
 
 > **And the fix exposed a third fault rather than closing this one.** The one post-fix recording,
-> `MSU-OTL-OAT` (660 steps, `%TEMP%\spd-wire\replays\`), clears the bindings problem — 18 steps in,
-> where the old ones stopped at 1 or 2 — and then diverges:
+> `MSU-OTL-OAT` (660 steps, now in `superintelligence\trainer-replays\`), clears the bindings problem —
+> 18 steps in, where the old ones stopped at 1 or 2 — and then diverges:
 >
 > ```
 > [replay] halted: DIVERGED at step 18 - DROP/1 in SLOT: inventory is

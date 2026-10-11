@@ -23,6 +23,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Recordings moved into the module and split by provenance.** The checked-in corpus went from
+  `replays/` to `superintelligence/test-replays/`, and the recordings the trainer actually wrote went
+  from volatile `%TEMP%` directories into `superintelligence/trainer-replays/`.
+
+  The split is by *what produced them*, not by age. `test-replays` is 17 recordings built by
+  `replay-viewer --record` through `ReplayRecorder` directly, all of which reproduce end to end —
+  `viewcheck` plays every one clean. `trainer-replays` is the ten that crossed the worker pipe, and
+  nine of them are unplayable by construction (`issues.md` 15); they are checked in as **evidence, not
+  fixtures**, and nothing should be trying to make them pass. Having both under one catalog is the
+  point — a ranked listing spanning 27 recordings where the broken ones are visible and selectable
+  rather than sitting in a temp directory that a reboot erases.
+
+  `ReplayCatalog` locates both by walking up to the repository root rather than guessing a relative
+  `replays`, which resolved against the gradle *module* directory and found nothing. `replay-viewer.bat`
+  passes both as two `--dir` flags — merged into one ranking by the catalog, rather than two listings
+  with two sets of numbers.
+
 ### Fixed
 
 - **Replays crossing the worker pipe were carrying four of nine step fields.** `Worker.writeReplay` and
