@@ -336,7 +336,13 @@ public class WorldSnapshot {
 		//explored-and-empty - so terrain, FOV and passability outside this set are implied rather than
 		//enumerated. A terrain difference on a plain cell is therefore missed, which the fingerprint in
 		// the trailing cells record covers instead.
-		boolean plain = heap == null && trap == null && plant == null
+		//A pit is invisible in `tier`. Level stores chasms in `pit[]`, a flag array entirely separate
+		//from `map[]`, so a pit cell reads as an ordinary Floor and a plain floor and a *pit floor* are
+		//identical to anything reading the terrain. `pit` also joins the elision test below, because a
+		//pit cell is exactly the "plain" shape - walked, empty, passable - and so was being dropped
+		//from the record of the one thing that can put the hero a floor down without touching stairs.
+		boolean pit = level.pit[ cell ];
+		boolean plain = heap == null && trap == null && plant == null && !pit
 				&& level.getTransition( cell ) == null
 				&& level.visited[cell] && !level.heroFOV[cell] && !level.passable[cell];
 		if (plain) return null;
@@ -351,6 +357,7 @@ public class WorldSnapshot {
 		sb.append( "\texpl=" ).append( flag( level.visited, cell ) );
 		sb.append( "\tpass=" ).append( flag( level.passable, cell ) );
 		sb.append( "\tlos=" ).append( flag( level.losBlocking, cell ) );
+		if (pit) sb.append( "\tpit=1" );
 
 		if (level.getTransition( cell ) != null ){
 			sb.append( "\ttrans=" ).append( level.getTransition( cell ).getClass().getSimpleName() );
