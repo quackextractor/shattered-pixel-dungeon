@@ -93,6 +93,7 @@ public class Main {
 			case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": ReplayCatalogCheck.main( rest ); break;
+		case "dropfixture": dropfixture( rest ); break;
 		case "train":    Trainer( rest );   break;
 			case "help":     usage();          break;
 			default:
@@ -122,6 +123,7 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "  valuescale                report the critic's targets against what it can reach" );
 		System.out.println( "  replays [--dir d]...     list recordings, grouped by hero class and ranked" );
 		System.out.println( "  replaycheck               fail if the replay catalog misgroups or misranks" );
+		System.out.println( "  dropfixture --save <f>    record the DROP-in-SLOT fixture the viewer gates play" );
 		System.out.println( "  train [options]          run the PPO trainer across worker JVMs" );
 		System.out.println();
 		System.out.println( "options:" );
@@ -211,6 +213,79 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 	}
 
 	// --------------------------------------------------------------------------- configuration
+
+	/**
+	 * Records the {@code DROP}-in-{@code SLOT} fixture the viewer gates play, and verifies it.
+	 *
+	 * <p>A command rather than a checked-in file nobody can reproduce. The fixture exists because the
+	 * committed corpus contains no {@code DROP} at all - 310 SLOT-mode steps, every one of them
+	 * {@code USE/SLOT} - and {@code DROP} is the one action that unbinds its own item, so it is the step
+	 * where the instant a recording captures the quickslot bindings decides what a slot index means on
+	 * playback. {@code viewcheck} was green on all seventeen recordings because the thing it would have
+	 * caught was absent, not because anything was caught.
+	 *
+	 * <p>Verified before it is written, so a fixture that cannot be played never reaches the corpus: a
+	 * file the viewer cannot play is the fault, and checking one in would replace a hole with a lie.
+	 */
+	private static void dropfixture( String[] args ){
+		Options options = Options.parse( args );
+		boot( options );
+
+		if (options.saveTo == null){
+			System.err.println( "[ERROR] dropfixture needs --save <file>; it writes the recording rather"
+					+ " than reporting one" );
+			System.exit( 1 );
+			return;
+		}
+
+		EnvConfig config = configFor( options );
+
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay replay;
+		try {
+			replay = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.DropFixture
+					.recordAndWrite( config, options.saveTo );
+		} catch (IllegalStateException e){
+			System.err.println( "[ERROR] " + e.getMessage() );
+			System.exit( 1 );
+			return;
+		} catch (java.io.IOException e){
+			System.err.println( "[ERROR] cannot write the fixture to " + options.saveTo.getPath()
+					+ " (" + e.getClass().getSimpleName() + ")" );
+			System.exit( 1 );
+			return;
+		}
+
+		int drops = 0;
+		for (Replay.Step step : replay.steps){
+			if (step.action.equals( "DROP" ) && step.mode.equals( "SLOT" )) drops++;
+		}
+		if (drops == 0){
+			System.err.println( "[ERROR] the fixture recorded no DROP in SLOT, so it is a recording that"
+					+ " would pass every viewer gate while covering nothing. Refusing to write it." );
+			System.exit( 1 );
+			return;
+		}
+
+		SPDEnv env = new SPDEnv(
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO
+						.configFor( replay ), HeadlessGame.install() );
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.Verification result =
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO
+						.verify( replay, env );
+
+		if (!result.passed()){
+			System.err.println( "[ERROR] the fixture does not reproduce, so it is not a fixture:"
+					+ ( result.diverged ? " diverged at step " + result.divergedAt + " - "
+						+ result.divergence : " refused at step " + result.unwatchableAt + " - "
+						+ result.unwatchable ) );
+			System.exit( 1 );
+			return;
+		}
+
+		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "     wrote " + replay.length()
+				+ " steps, " + drops + " DROP in SLOT, to " + options.saveTo.getPath()
+				+ "; reproduced in " + result.stepsVerified + " steps" );
+	}
 
 	/**
 	 * The environment settings for a command: the external file if one was named, then the flags.
@@ -406,6 +481,18 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 					+ " slot " + replay.steps.get( result.divergedAt ).slot
 					+ " mode " + replay.steps.get( result.divergedAt ).mode );
 			System.exit( 2 );
+		} else if (result.unwatchableAt >= 0){
+			//Reported as its own failure and not folded into the divergence, because it is not the same
+			//thing and the distinction is the point: the run below reproduced, which is why this went
+			//unnoticed for so long, and the file still cannot be watched. Nine recordings the trainer
+			//wrote were in this state and every one of them printed [OK].
+			System.err.println( "[ERROR] replay reproduced in " + result.stepsVerified
+					+ " steps but is not watchable:" );
+			System.err.println( "        " + result.unwatchable );
+			System.err.println( "        A recording whose slot index cannot be resolved against its own"
+					+ " bindings verifies on whatever else it carries. Reproducing is not the same claim"
+					+ " as being playable, and this file only ever made the first one." );
+			System.exit( 3 );
 		} else {
 			System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "     replay reproduced in "
 					+ result.stepsVerified + " steps, " + elapsedMs + " ms" );

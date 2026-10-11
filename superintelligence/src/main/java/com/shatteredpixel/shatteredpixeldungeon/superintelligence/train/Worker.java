@@ -138,14 +138,29 @@ config.stallLimit = in.readInt();
 		//reproduce, since verify would reset onto a fresh draw.
 		collector.listener( new EpisodeCollector.Listener() {
 			@Override public void onEpisodeStart( String seedText, String hero ){
-				//the config too, so the header says how wide the slot head was - a recorded slot
-				//index means nothing without it
+				//the config too, so the header says how wide the slot head was - a recorded
+				//slot index means nothing without it
 				recorder.begin( seedText, hero, 0, config.turnLimitPerFloor, config );
 			}
 
-			@Override public void onStep( EnvMode mode, Action action, int secondary,
-					int heroPosition, float reward ){
+			/**
+			 * The recorder is told here, before the step.
+			 *
+			 * <p>{@code ReplayRecorder.record} pins the quickslot bindings at the moment the slot index is
+			 * chosen, and said so in its own comment - an equip or unequip in this very step rebinds a
+			 * slot, so the binding captured afterwards describes a different world. It was called from
+			 * {@code onStep} instead, which is after the step by definition, so every trainer recording
+			 * carried the bindings its own step produced rather than the ones its index was chosen
+			 * against. A {@code DROP} is the action that unbinds its own item, so that is the step where
+			 * it showed: on {@code MSU-OTL-OAT}, {@code DROP/1} in {@code SLOT} dropped a ThrowingSpike
+			 * headlessly and a Food in the viewer, because the ThrowingSpike's binding to quickslot 1
+			 * was gone from the recording before the viewer ever read it.
+			 */
+			@Override public void onDecision( EnvMode mode, Action action, int secondary ){
 				recorder.record( action, secondary, mode );
+			}
+
+			@Override public void onStep( int heroPosition, float reward ){
 				recorder.afterStep( heroPosition, reward );
 			}
 		} );

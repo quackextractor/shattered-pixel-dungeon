@@ -233,6 +233,31 @@ public class ReplayIO {
 
 		/** What disagreed, naming the quantity. Empty when the run reproduced. */
 		public String divergence = "";
+
+		/**
+		 * The step whose slot index this recording cannot resolve at all, or -1.
+		 *
+		 * <p>Distinct from {@link #diverged}, and it is the field that was missing. Every comparison in
+		 * this class is guarded by a sentinel that says <i>not recorded</i>, which is exactly what a
+		 * recording that was never watchable looks like from the inside - so an unwatchable file verified
+		 * on whatever fields it did carry and printed {@code [OK]}. Nine recordings the trainer wrote
+		 * were in that state and every one of them reported success.
+		 */
+		public int unwatchableAt = -1;
+
+		/** Why the recording cannot be watched. Empty when it can. */
+		public String unwatchable = "";
+
+		/**
+		 * True when the run reproduced <em>and</em> the recording can be watched.
+		 *
+		 * <p>Deliberately one verdict rather than two, because a caller printing {@code [OK]} is making
+		 * a claim about the file, and a file that reproduces on position alone while being unplayable in
+		 * the viewer is not a verified recording.
+		 */
+		public boolean passed(){
+			return !diverged && unwatchableAt < 0;
+		}
 	}
 
 	/**
@@ -296,11 +321,35 @@ public class ReplayIO {
 		if (observer != null) observer.onReset();
 
 		int cumulative = 0;
+		//once per recording, because it is a property of the recording rather than of a step: an empty
+		//binding set on one step is a state, and no bindings anywhere is a gap in the format
+		boolean recordsBindings = replay.recordsQuickslots();
+
 		for (int i = 0; i < replay.steps.size(); i++){
 			if (!env.running()) break;
 
 			Replay.Step step = replay.steps.get( i );
 			Action action = Action.valueOf( step.action );
+
+			//The recorded quickslot bindings go back in force before the step, exactly as the viewer
+			//does it. Without this line a recorded slot index is resolved against whatever bindings
+			//this process happens to have, so the verifier is checking a different resolution path from
+			//the one a person watching the recording takes - and it says so either way. On
+			//MSU-OTL-OAT that was the whole disagreement: `DROP/1` in SLOT, a ThrowingSpike in the
+			//trainer and a Food in the viewer, on a file this method reported as reproduced in 660 steps.
+			//
+			//A step whose bindings cannot be resolved is not a divergence to work around. It is a
+			//recording that cannot be watched, and reporting it as reproduced is the sentinel weakness
+			//TODO.md 1.12 and issues.md 15 both name: every comparison below is guarded by its own
+			//"not recorded" sentinel, which cannot tell a field that does not apply from one that was
+			//lost in transit. So it is stopped here, named, and the file is not called verified.
+			String unwatchable = Quickslots.prepare( step, i, recordsBindings );
+			if (unwatchable != null){
+				result.unwatchableAt = i;
+				result.unwatchable = unwatchable;
+				result.stepsVerified++;
+				break;
+			}
 
 			cumulative += env.step( action, step.slot );
 			result.stepsVerified++;

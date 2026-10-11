@@ -2,13 +2,13 @@
 
 | Badge | Version |
 | --- | --- |
-| [![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](CHANGELOG.md) | 0.6.0 |
-[![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
+| [![Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](CHANGELOG.md) | 0.7.0 |
+| [![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
 
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
 described in [`docs.md`](docs.md) and [`research.md`](research.md).
 
-**Two versions, two subjects.** The `version-` badge is this module's - `0.6.0` - and its history is in
+**Two versions, two subjects.** The `version-` badge is this module's - `0.7.0` - and its history is in
 [`CHANGELOG.md`](CHANGELOG.md). The `game-` badge is Shattered Pixel Dungeon's - `4.0.2` - which is
 upstream's and moves only when this fork merges upstream. Neither moves because of anything recorded in
 the other's changelog, and the module's series starts at **0** specifically so the two cannot be read as
@@ -17,6 +17,24 @@ one line. This module is pre-1.0: a `0.x.y` minor bump may still change behaviou
 The game runs as a pure simulation - no window, no renderer, no audio - so runs can be rolled out
 thousands of turns per second, each scored by a configurable reward function, with the best run per
 seed recorded and re-verified.
+
+**A recording the trainer writes can now be watched, and that is a measured claim rather than a plan.**
+It was false, and `verify` said otherwise: the trainer pinned a step's quickslot bindings *after* the
+step, so a `DROP` - the one action that unbinds its own item - named a different item on playback than
+it did on the recording; `ReplayIO.verify` resolved recorded slot indices against the live bindings
+rather than the recorded ones and skipped the comparison entirely when the field was empty, which is
+why nine unplayable recordings each reported `[OK]`; and `viewcheck`'s verdict was "did not diverge",
+so a player that halted for any other reason scored a pass. All four are fixed, the corpus now contains
+a `DROP` in `SLOT` (`duelist-drop.replay`, the thing 17 recordings and 310 SLOT steps did not), and a
+fresh 2-generation run was verified and played in the real viewer end to end:
+
+```
+trainer wrote      SGD-CKH-JUO.dat, 1499 steps
+verify             [OK] replay reproduced in 1499 steps, 457 ms
+viewcheck          [OK] rendered playback: 1 recordings played clean (45.6s)
+```
+
+See `issues.md` 15 and [`CHANGELOG.md`](CHANGELOG.md) 0.7.0.
 
 ## Read this first
 
@@ -174,8 +192,9 @@ something.
 | Level pipeline, floor transitions, chasm falls | Verified - descending and ascending, in both directions, with the hero's landing act. `transitioncheck` is a gate, 9 cases |
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified, **with a known limit** - `env.max_slots=32` against an engine ceiling of 96, so a full inventory is silently truncated. `TODO.md` §0.8 |
-| Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process |
-| Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 17 committed recordings. The four engine fixes that required are committed, with the record in `ENGINE-CHANGES.md`. **Note the limit**: every child is forked hidden at speed 40, so the gate has never run the timing path a human run takes - see `TODO.md` §0.7 |
+| Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process. `verify` also resolves a recorded slot index against its recorded quickslot bindings, so it and the viewer cannot disagree about a recording and both be right |
+| **A recording the trainer writes is watchable** | **Verified end to end** - the trainer pinned a step's bindings *after* the step, so a `DROP` named a different item on playback; `verify` skipped the comparison when the field was empty and reported nine unplayable recordings as `[OK]`; `viewcheck` scored a pass for any halt that was not a divergence. All three fixed, and a fresh 2-generation run verified and played clean. `duelist-drop.replay` added because the corpus contained **no `DROP` at all** - 310 SLOT steps, all `USE/SLOT` |
+| Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 18 committed recordings, and the gate now requires every step to have played rather than merely "did not diverge". The four engine fixes that required are committed, with the record in `ENGINE-CHANGES.md`. **Note the limit**: every child is forked hidden at speed 40, so the gate has never run the timing path a human run takes - see `TODO.md` §0.7 |
 | Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate |
 | A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation - and the viewer does the same at both ends of a playback, so watching a recording no longer leaves `bones.dat` in the player's profile |
 | Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
@@ -230,6 +249,10 @@ something.
 # every correctness gate, one invocation, ~22 seconds
 ./gradlew :superintelligence:gates
 
+# regenerate the DROP-in-SLOT fixture the viewer gates play. It verifies before writing, so a
+# fixture that no longer plays cannot be committed in place of one that does.
+./gradlew :superintelligence:dropfixture --args="dropfixture --save test-replays/duelist-drop.replay"
+
 # train
 
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"
@@ -244,7 +267,12 @@ where process-spanning game state such as a dead hero's remains becomes visible 
 32 recordings were caught not reproducing. A third, `transitioncheck`, covers the path that was
 unreachable until descending worked: a hero's first action on a new floor used to be eaten by a mob
 waking up, and every recording in the corpus that descended described a run that could not happen.
-Full table in
+
+**A gate that passes because the thing it would catch is absent is the same failure as a gate that
+cannot fail**, and the corpus was one for a long time: 17 recordings, 310 SLOT-mode steps, and not one
+`DROP` in any of them. `collectcheck` and `verifycheck` now cover the wiring that made that matter -
+whether a rebinding step is recorded against the world it was chosen in, and whether a recording whose
+bindings cannot be resolved is refused rather than verified. Full table in
 [`testing-guide.md`](testing-guide.md).
 
 `probeClasspath` prints the runtime classpath, which is what the trainer uses to launch workers.
@@ -310,7 +338,7 @@ survives disk exactly, Adam moments included, and that bad checkpoints are refus
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and worker bootstrap |
 | `rl` | `Network` (CNN + LSTM + heads), `PPO` (the learner), `ShardedUpdate` (the parallel minibatch and its gradient reduction), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector` (plays an episode, computes its advantages), `EpisodeRecord` (one episode's scalars + sampled observations) |
 | `train` | `Trainer` (generation loop), `TrainerWorkers` (everything crossing a worker pipe), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `PpoHyperparameters`, `Checkpoint` (save/resume), `MetricsHistory` (per-generation CSV + end-of-run trend), `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
-| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `ReplayCatalog`, `RngTrace`, `WorldSnapshot`, `WorldDiff` |
+| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `Quickslots` (the one place a recorded slot index is resolved against its bindings), `DropFixture` (the DROP-in-SLOT recording the viewer gates play), `ReplayCatalog`, `RngTrace`, `WorldSnapshot`, `WorldDiff` |
 | `diag` | `RunReport`, `Graph`, `Ansi`, and the checks: `GradientCheck`, `ModeCoverageCheck`, `RestartCheck`, `GaeCheck`, `UpdateCostCheck`, `ConfigCheck`, `ParityCheck` |
 
 ## Configuration

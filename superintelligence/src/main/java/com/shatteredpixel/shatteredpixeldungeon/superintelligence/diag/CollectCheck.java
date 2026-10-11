@@ -1,5 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -68,6 +70,12 @@ public class CollectCheck {
 
 		checks++;
 		checkWorkerWireCarriesEveryStepField( config );
+
+		checks++;
+		checkDropRecordsTheBindingsItsSlotIndexWasChosenAgainst( config );
+
+		checks++;
+		checkTheCollectorAnnouncesADecisionBeforeItIsApplied( config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     collection: " + checks + " checks passed" );
@@ -209,9 +217,16 @@ public class CollectCheck {
 
 			//The worker's own listener shape, so an ordering difference between here and Worker.java
 			//shows up as a failure rather than as a check that quietly tests something else.
-			@Override public void onStep( EnvMode mode, Action action, int secondary,
-					int heroPosition, float reward ){
+			//
+			//Two callbacks, and the split is the point rather than the shape: record() pins the
+			//quickslot bindings at the instant the slot index is chosen, and afterStep() fills in what
+			//the step produced. Both used to be called from onStep, which is after the step by
+			//definition - so this file asserted the same bug it was written to catch.
+			@Override public void onDecision( EnvMode mode, Action action, int secondary ){
 				recorder.record( action, secondary, mode );
+			}
+
+			@Override public void onStep( int heroPosition, float reward ){
 				recorder.afterStep( heroPosition, reward );
 			}
 		} );
@@ -381,13 +396,22 @@ public class CollectCheck {
 
 		Trace trace = new Trace();
 		collector.listener( new EpisodeCollector.Listener() {
+			private EnvMode mode;
+			private String action;
+			private int secondary;
+
 			@Override public void onEpisodeStart( String seedText, String hero ){
 				trace.seedText = seedText;
 			}
 
-			@Override public void onStep( EnvMode mode, Action action, int secondary,
-					int heroPosition, float reward ){
-				trace.steps.add( new Step( action.name(), secondary, mode.name(),
+			@Override public void onDecision( EnvMode chosenMode, Action chosenAction, int chosen ){
+				mode = chosenMode;
+				action = chosenAction.name();
+				secondary = chosen;
+			}
+
+			@Override public void onStep( int heroPosition, float reward ){
+				trace.steps.add( new Step( action, secondary, mode.name(),
 						heroPosition, reward ));
 			}
 		} );
@@ -424,18 +448,298 @@ public class CollectCheck {
 
 	// --------------------------------------------------------------------------- helpers
 
+	/**
+	 * A {@code DROP} must be recorded against the quickslot bindings its slot index was chosen with.
+	 *
+	 * <p><b>This is the case the corpus could not contain.</b> Measured on the 17 committed recordings:
+	 * 310 SLOT-mode steps, and the entire SLOT vocabulary is {@code USE/SLOT}. {@code DROP} appears zero
+	 * times, because {@code ScriptedPolicy} never chooses it. And {@code DROP} is the one action that
+	 * unbinds its own item, so it is the step where the instant a recording pins the bindings stops
+	 * being a detail.
+	 *
+	 * <p>The fault was that {@code Worker}'s listener called {@code ReplayRecorder.record} from
+	 * {@code onStep}, which is after the step by definition, so a trainer recording carried the bindings
+	 * its own {@code DROP} produced rather than the ones the index was chosen against. The dropped item
+	 * left the backpack, stopped being reachable, and its binding vanished from the capture. On
+	 * {@code MSU-OTL-OAT} that is step 17: {@code DROP/1} in {@code SLOT} dropped a ThrowingSpike in the
+	 * trainer and a Food in the viewer, because the ThrowingSpike's binding to quickslot 1 was already
+	 * gone from the file before the viewer read it.
+	 *
+	 * <p>Driven deliberately rather than waited for, for the reason
+	 * {@code checkKillingIsWorthDoing} gives: an untrained policy may never drop anything on a given
+	 * seed, and a case that then passes having measured nothing is worse than no case. The positive
+	 * control is the capture taken <em>after</em> the step - if it still named the dropped item, the two
+	 * instants would be indistinguishable and this could not fail.
+	 */
+	private static void checkDropRecordsTheBindingsItsSlotIndexWasChosenAgainst( EnvConfig config ){
+		String where = "a DROP records the bindings its slot index was chosen against";
+
+		//DUELIST, because it is the only class whose starting bindings span both halves of the question:
+		//the Rapier is equipped and bound to quickslot 0 - which no slot index can name - and the
+		//ThrowingSpike is carried and bound to quickslot 1 - which one can.
+		Recorded run = recordADrop( config, false );
+		if ( run == null ) return;
+		if ( run.dropAt < 0 ){
+			fail( where, "the fixture did not reach a DROP in SLOT, so the case measured nothing" );
+			return;
+		}
+
+		String recorded = run.replay.steps.get( run.dropAt ).quickslots;
+		if ( !recorded.contains( run.droppedItem + ":" + run.droppedSlot )){
+			fail( where, "step " + run.dropAt + " dropped " + run.droppedItem + " from slot "
+					+ run.droppedSlot + " but records bindings [" + recorded + "], which do not name it."
+					+ " A binding captured after the step is gone from the file the moment the item"
+					+ " leaves the backpack, and playback then resolves the same index to something else." );
+			return;
+		}
+
+		//The positive control: after the step the same item is no longer reachable, so the two instants
+		//really are distinguishable and the assertion above could have failed.
+		if ( run.captureAfter.equals( recorded )){
+			fail( where, "the bindings captured after the step are identical to the ones captured before"
+					+ " it (" + recorded + "), so this case cannot tell the two instants apart and would"
+					+ " pass with the recording bug present" );
+			return;
+		}
+
+		//And the recording, played back, has to reproduce. This is what the viewer does.
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.Verification result =
+				verifyRecording( config, run.replay );
+		if ( !result.passed() ){
+			fail( where, "a recording whose DROP was captured before the step did not verify: "
+					+ ( result.diverged ? "diverged at step " + result.divergedAt + " - "
+						+ result.divergence : result.unwatchable ) );
+			return;
+		}
+
+		//The converse, and the reason `ReplayIO.verify` changed: the same run recorded a moment late has
+		//to be caught. It used not to be - it verified on position and reported success, which is how a
+		//file the viewer halts on at step 18 was reported as reproduced in 660 steps.
+		Recorded late = recordADrop( config, true );
+		if ( late == null || late.dropAt < 0 ){
+			fail( where, "the late-capture fixture did not reach a DROP, so the converse could not be run" );
+			return;
+		}
+
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.Verification caught =
+				verifyRecording( config, late.replay );
+		if ( caught.passed() ){
+			fail( where, "the same run with its bindings captured after the step still verified:"
+					+ " replay reproduced in " + caught.stepsVerified + " steps. Verification resolves a"
+					+ " slot index against whatever bindings the process happens to hold rather than the"
+					+ " recorded ones, so a recording that cannot be watched reports itself perfect." );
+			return;
+		}
+
+		System.out.println( "  a DROP in SLOT records the bindings its index was chosen against;"
+				+ " the same run captured late is caught at step " + caught.divergedAt );
+	}
+
+	/** A short run whose only slot step is a {@code DROP}, recorded through {@link ReplayRecorder}. */
+	private static class Recorded {
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay replay;
+		String droppedItem = "";
+		String captureAfter = "";
+		int droppedSlot = -1;
+		int dropAt = -1;
+	}
+
+	/**
+	 * Records {@code USE} then {@code DROP} on a chosen slot, with the recorder called either side of
+	 * the step so both recordings can be compared.
+	 *
+	 * @param captureAfterStep true to reproduce the bug: report the step to the recorder only once it
+	 *                          has been applied, which is what {@code Worker}'s listener used to do
+	 */
+	private static Recorded recordADrop( EnvConfig config, boolean captureAfterStep ){
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		env.reset( "DROP-IN-SLOT", HeroClass.DUELIST );
+
+		Recorded out = new Recorded();
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder recorder =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder();
+		recorder.begin( env.seedText(), HeroClass.DUELIST.name(), 0, config.turnLimitPerFloor, config );
+		out.replay = recorder.replay();
+
+		//the first slot holding a bound, unequipped item: the one whose resolution the bindings decide
+		int slot = -1;
+		env.mapper().refreshSlots();
+		for (int i = 0; i < env.mapper().slots().size(); i++){
+			com.shatteredpixel.shatteredpixeldungeon.items.Item item = env.mapper().slot( i );
+			if (item == null) continue;
+			int bound = com.shatteredpixel.shatteredpixeldungeon.Dungeon.quickslot.getSlot( item );
+			if (bound >= 0 && !item.isEquipped( Dungeon.hero )){ slot = i; break; }
+		}
+		if ( slot < 0 ) return out;
+
+		com.shatteredpixel.shatteredpixeldungeon.items.Item chosen = env.mapper().slot( slot );
+		out.droppedItem = chosen.getClass().getSimpleName();
+		out.droppedSlot = com.shatteredpixel.shatteredpixeldungeon.Dungeon.quickslot.getSlot( chosen );
+
+		//step one: enter SLOT. A use spends the step and the environment waits for the slot index.
+		recorder.record( Action.USE, 0, EnvMode.WORLD );
+		env.step( Action.USE, 0 );
+		recorder.afterStep( env.heroPosition(), 0f );
+
+		//step two: the drop, which is the step under test
+		out.dropAt = recorder.replay().length();
+		if ( captureAfterStep ){
+			env.step( Action.DROP, slot );
+			out.captureAfter = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay
+					.Quickslots.capture();
+			recorder.record( Action.DROP, slot, EnvMode.SLOT );
+			recorder.afterStep( env.heroPosition(), 0f );
+		} else {
+			recorder.record( Action.DROP, slot, EnvMode.SLOT );
+			env.step( Action.DROP, slot );
+			recorder.afterStep( env.heroPosition(), 0f );
+			out.captureAfter = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay
+					.Quickslots.capture();
+		}
+
+		//enough steps for the recording to be a run rather than a fragment
+		int[] nothing = new int[ 1 ];
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy policy =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy(
+						env.mapper(), 3 );
+		while (env.running() && recorder.replay().length() < 24){
+			Action action = policy.choose( env, nothing );
+			recorder.record( action, nothing[ 0 ], env.mode() );
+			env.step( action, nothing[ 0 ] );
+			recorder.afterStep( env.heroPosition(), 0f );
+		}
+
+		recorder.end( 0, env.deepestDepth(), env.turnsTotal(), 0, env.endReason().name() );
+		return out;
+	}
+
+	/**
+	 * The collector must hand the recorder a step's bindings before the step, not after it.
+	 *
+	 * <p>The case above drives the environment directly, so it covers {@link ReplayRecorder} and the
+	 * order the two calls are made in - but not the wiring that made the call late.
+	 * {@code EpisodeCollector.Listener} is that wiring, and it was the half that was wrong: the recorder
+	 * was told from {@code onStep}, which the collector defines as after the step. So this drives a real
+	 * collector episode and asserts the same property on whatever drop it happens to make.
+	 *
+	 * <p><b>Asserted on the clock rather than on a binding.</b> The two obvious alternatives both fail,
+	 * and the way they fail is the useful part. Asking {@link Dungeon#quickslot} from inside the
+	 * listener quietly depends on the wiring under test: called after the step, the item has already
+	 * left the backpack and reads as unbound, so the mutant reports that it could not find a fixture
+	 * rather than that it is wrong. Comparing a capture taken at the decision against one taken after
+	 * the step fails the same way - both land on the same instant, so they agree. The engine clock does
+	 * not: {@link Actor#now()} only moves inside {@code env.step}, so a decision announced before the
+	 * step is announced on the clock the previous step left behind, and one announced after it is
+	 * announced on the clock the step produced.
+	 *
+	 * <p>The seed is searched rather than hard-coded, and failing to find one is reported rather than
+	 * skipped. A gate that cannot reach its own case is not a passing gate.
+	 */
+	private static void checkTheCollectorAnnouncesADecisionBeforeItIsApplied( EnvConfig config ){
+		String where = "the collector announces a decision before the step is applied";
+
+		EnvConfig shortRun = new EnvConfig();
+		shortRun.turnLimitPerFloor = 120;
+
+		for (int attempt = 0; attempt < ATTEMPTS; attempt++){
+			Network network = new Network( shortRun, new Random( 1000L + attempt ));
+			SPDEnv env = new SPDEnv( shortRun, HeadlessGame.install() );
+			EpisodeCollector collector = new EpisodeCollector( shortRun, network,
+					new Random( 7L + attempt ), new Random( 99L ), 0.99f, 0.95f, 0.05f );
+
+			final com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder
+					recorder = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay
+					.ReplayRecorder();
+
+			final List< Float > clockAtDecision = new ArrayList<>();
+			final List< Float > clockAtStep = new ArrayList<>();
+
+			collector.listener( new EpisodeCollector.Listener() {
+				@Override public void onEpisodeStart( String seedText, String hero ){
+					recorder.begin( seedText, hero, 0, shortRun.turnLimitPerFloor, shortRun );
+				}
+
+				@Override public void onDecision( EnvMode mode, Action action, int secondary ){
+					recorder.record( action, secondary, mode );
+					clockAtDecision.add( Actor.now() );
+				}
+
+				@Override public void onStep( int heroPosition, float reward ){
+					clockAtStep.add( Actor.now() );
+					recorder.afterStep( heroPosition, reward );
+				}
+			} );
+
+			//short: the game caps custom seed text at 20 characters and silently discards anything
+			//longer, which LevelPipeline refuses rather than running on a different seed
+			collector.run( env, "COLLECT-DEC-" + attempt, HeroClass.DUELIST );
+			collector.listener( null );
+			recorder.end( 0, env.deepestDepth(), env.turnsTotal(), 0, env.endReason().name() );
+
+			for (int i = 0; i < clockAtDecision.size() && i < clockAtStep.size(); i++){
+				if (clockAtStep.get( i ) <= clockAtDecision.get( i )) continue;
+
+				//and the recorder was told, on the clock the step was chosen on rather than the one it
+				//produced, which is the whole of ReplayRecorder's contract
+				String bindings = recorder.replay().steps.get( i ).quickslots;
+				System.out.println( "  the collector announces a decision on engine time "
+						+ clockAtDecision.get( i ) + " which the step advances to "
+						+ clockAtStep.get( i ) + " (attempt " + attempt + ", step " + i
+						+ ", bindings [" + bindings + "])" );
+				return;
+			}
+		}
+
+		fail( where + ": across " + ATTEMPTS + " collector episodes no decision was ever announced on"
+				+ " an earlier engine clock than the step that followed it, so this case reached nothing."
+				+ " A gate that cannot build its fixture is a gate that cannot fail." );
+	}
+
+	/** How many collector episodes to try before reporting that the fixture could not be built. */
+	private static final int ATTEMPTS = 12;
+
+
+
+	/** Writes a recording out and reads it back, so verification sees the file rather than the object. */
+	private static com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.Verification
+	verifyRecording( EnvConfig config,
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay replay ){
+		try {
+			File file = File.createTempFile( "collectcheck-drop", ".replay" );
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.write( replay, file );
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay read =
+					com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.read( file );
+			file.delete();
+			SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+			return com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO
+					.verify( read, env );
+		} catch (java.io.IOException e){
+			failures.add( "a DROP fixture could not be written: " + e.getMessage() );
+			return new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.Verification();
+		}
+	}
+
 	/** Collects an episode and records every step, exactly as `Worker.runEpisode` does. */
 	private static Trace record( SPDEnv env, EpisodeCollector collector ){
 		Trace trace = new Trace();
 
 		collector.listener( new EpisodeCollector.Listener() {
+			private EnvMode mode;
+			private String action;
+			private int secondary;
+
 			@Override public void onEpisodeStart( String seedText, String hero ){
 				trace.seedText = seedText;
 			}
 
-			@Override public void onStep( EnvMode mode, Action action, int secondary,
-					int heroPosition, float reward ){
-				trace.steps.add( new Step( action.name(), secondary, mode.name(),
+			@Override public void onDecision( EnvMode chosenMode, Action chosenAction, int chosen ){
+				mode = chosenMode;
+				action = chosenAction.name();
+				secondary = chosen;
+			}
+
+			@Override public void onStep( int heroPosition, float reward ){
+				trace.steps.add( new Step( action, secondary, mode.name(),
 						heroPosition, reward ));
 			}
 		} );
@@ -527,5 +831,10 @@ public class CollectCheck {
 
 	private static void fail( String message ){
 		failures.add( message );
+	}
+
+	/** Prefixed, so a failure names the property it broke rather than only the symptom. */
+	private static void fail( String where, String what ){
+		failures.add( where + ": " + what );
 	}
 }

@@ -41,7 +41,7 @@ import java.util.List;
  */
 public class SlotCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 6;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -51,8 +51,13 @@ public class SlotCheck {
 
 		EnvConfig config = new EnvConfig();
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
-		env.reset( "SLOTCHECK-A", HeroClass.WARRIOR );
+		//DUELIST, whose starting Rapier is equipped and bound to quickslot 0 - the one binding a slot
+		//index can never name, and the one `restore` used to wipe
+		env.reset( "SLOTCHECK-A", HeroClass.DUELIST );
 
+		//First, because it is the only case that needs the bindings a fresh run starts with: the ones
+		//below deliberately wipe them to test what happens to a capture afterwards.
+		restoreLeavesAloneABindingNoSlotIndexCanName();
 		capturedBindingsResolveTheSameSlotsAfterRestore();
 		restoreClearsBindingsTheRecordingDidNotMention();
 		captureIsStableWhileNothingChanges();
@@ -173,6 +178,82 @@ public class SlotCheck {
 	}
 
 	// --------------------------------------------------------------------------- helpers
+
+	/**
+	 * A binding on an equipped item is the game's to keep, not the recording's to overwrite.
+	 *
+	 * <p>{@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots#capture}
+	 * walks the backpack, because that is the set {@code ActionMapper.refreshSlots} walks - so a quickslot
+	 * bound to something <em>equipped</em> is not in the recording and cannot be. Four of the five hero
+	 * classes bind their starting weapon that way: a DUELIST's {@code Rapier}, a MAGE's
+	 * {@code MagesStaff}, a ROGUE's cloak, a CLERIC's tome.
+	 *
+	 * <p>{@code restore} used to clear every binding, which quietly wiped those as well. It stayed
+	 * harmless for exactly as long as the hero never took the item off: unequip it and it lands in the
+	 * backpack <em>still bound</em> in the trainer's world and unbound in the viewer's, and from that
+	 * moment every slot index names a different item. So the rule is that restore clears the bindings a
+	 * slot index can name and leaves the rest alone.
+	 *
+	 * <p><b>An earlier version of this case asserted the wrong thing and the measurement said so.</b> It
+	 * wiped the whole quickslot and required the slots to resolve identically, reasoning that an
+	 * equipped item's binding cannot matter because {@code refreshSlots} never reads it. It does matter,
+	 * indirectly: a bound item is placed in its slot before the unbound ones fill from the front, so
+	 * which item lands where depends on every binding, including ones on items no index can name.
+	 *
+	 * <p>   slots with bindings  [Food ThrowingSpike Waterskin VelvetPouch]
+	 * <p>   slots without        [ThrowingSpike Food Waterskin VelvetPouch]
+	 *
+	 * <p>So the property is asserted directly instead: restoring a capture that names nothing must still
+	 * leave an equipped item's binding alone while clearing a carried item's.
+	 */
+	private static void restoreLeavesAloneABindingNoSlotIndexCanName(){
+		String where = "restore leaves alone a binding no slot index can name";
+
+		Item equipped = Dungeon.hero.belongings.weapon();
+		if (equipped == null || Dungeon.quickslot.getSlot( equipped ) < 0){
+			fail( where, "the hero carries no equipped weapon bound to a quickslot, so there is no"
+					+ " unaddressable binding to test against. A case that cannot reach its own case is"
+					+ " not a check." );
+			return;
+		}
+
+		Item carried = firstItem();
+		if (carried == null){
+			fail( where, "the hero carries nothing in the backpack, so there is no addressable binding"
+					+ " to test the other half of the rule against" );
+			return;
+		}
+		Dungeon.quickslot.setSlot( 4, carried );
+		int equippedSlot = Dungeon.quickslot.getSlot( equipped );
+		int carriedSlot = Dungeon.quickslot.getSlot( carried );
+
+		//a capture that names nothing, which is what an old recording carries on its WORLD steps
+		Quickslots.restore( "" );
+
+		if (Dungeon.quickslot.getSlot( carried ) != -1){
+			fail( where, "restoring a capture that named no bindings left the carried "
+					+ carried.getClass().getSimpleName() + " bound to quickslot "
+					+ Dungeon.quickslot.getSlot( carried ) + ". A stale binding takes the slot the"
+					+ " recording meant for something else." );
+			return;
+		}
+
+		if (Dungeon.quickslot.getSlot( equipped ) != equippedSlot){
+			fail( where, "restoring a capture that named no bindings changed the equipped "
+					+ equipped.getClass().getSimpleName() + " from quickslot " + equippedSlot + " to "
+					+ Dungeon.quickslot.getSlot( equipped ) + ". Nothing in a recording describes it -"
+					+ " capture walks the backpack - so wiping it is a loss with no way to repair it,"
+					+ " and unequipping the item afterwards would make every slot index name something"
+					+ " else." );
+			return;
+		}
+
+		//put the world back the way it was, since the cases below build their own state anyway
+		Dungeon.quickslot.setSlot( carriedSlot, carried );
+
+		System.out.println( "  restore leaves the equipped " + equipped.getClass().getSimpleName()
+				+ "'s binding to quickslot " + equippedSlot + " alone while clearing a carried one" );
+	}
 
 	/**
 	 * Bindings must survive being written to a replay file and read back.

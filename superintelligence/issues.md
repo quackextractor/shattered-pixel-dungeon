@@ -273,9 +273,9 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
     useful than a run long enough to produce a number that could be read either way. `TODO.md` 1.4.
 
 15. Recordings written by the trainer cannot be played in the viewer at all, and `verify` reports them
-    as perfect.
+    as perfect. (closed)
 
-    Asked whether the depth 2 run could be watched now that the replay wire was fixed. It cannot:
+    Asked whether the depth 2 run could be watched now that the replay wire was fixed. It could not:
 
     ```
     [replay] installed, driving BMS-WQQ-LQH (655 steps)
@@ -284,101 +284,78 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
     [replay] 1 frames, 1 applied a step, 0 did not
     ```
 
-    Two separate faults, found in that order, and the first one is the reason the second was invisible.
+    Four faults, found in the order they had to be found, and the second is why the first was invisible.
+    `TODO.md` §1.13 has the full record and `CHANGELOG.md` 0.7.0 has it as a release. The measurements:
 
-> **`verify` and the viewer disagree about the same file.** Run minutes apart, on the same recording:
+> **1. `verify` was not checking what the viewer checks.** It never applied the recorded bindings at all
+> — it re-executed each slot index against whatever bindings the process happened to hold — and every
+> comparison it does make is guarded by a sentinel meaning *not recorded*, which an empty quickslots
+> field satisfies. So a recording the viewer refused to play at step 1 verified on position alone:
 >
 > ```
-> verify:      [OK]  replay reproduced in 655 steps, 494 ms
-> viewer:      halted at step 1, 1 frame played
+> before    verify:      [OK]  replay reproduced in 660 steps, 494 ms
+>           viewer:      halted at step 18, 1 frame played
+> after     verify:      diverged at step 17 - DROP/1 in SLOT
+>           viewer:      halted at step 18 - the same step
 > ```
 >
-> `ReplayIO.verify` guards each comparison with the sentinel that field declares for *not recorded*,
-> and empty quickslots is such a sentinel, so it skips the check. The viewer treats missing bindings as
-> fatal the moment a step names a slot index, because there is nothing to resolve the index against.
+> `Verification` now carries `unwatchableAt` and `passed()` beside `diverged`, and both paths go through
+> one `Quickslots.prepare`, so the verifier and the thing it verifies cannot drift apart again.
 >
-> **A passing `verify` is therefore not evidence that a recording is watchable**, and `verifyall` never
-> asserted it — the gate covers recordings the corpus built through `ReplayRecorder` directly, which
-> have always had their bindings. This is the same sentinel weakness as `TODO.md` 1.12, one level up:
-> a guard written to let an unrecorded field pass cannot distinguish *not applicable* from *lost*, and
-> it cannot be the only thing standing between a recording and a viewer.
-
-> **Scope, measured rather than assumed: trainer output only, and all 9 of it.** The committed corpus in
-> `superintelligence/test-replays\` is 17 recordings, and all 17 reproduce — confirmed by hand across the corpus, and by
-> `viewcheck`, which plays every one of them clean through the real viewer (17/17). They are complete:
-> `USE 0 SLOT 1272 -0.502 Waterskin:1 20 3.0 VelvetPouch():1,Waterskin:1` carries quickslots, hp, turn
-> and inventory — because `replay-viewer --record` goes `rollout --save` → `ReplayRecorder` and never
-> crosses the worker pipe. `Worker.writeReplay` sent four of the nine step fields `Replay.Step` declares,
-> so `quickslots` was among the five dropped, for every step of every recording, unconditionally.
-> Fixed in `018abbd65`, where both sides go through `train.ReplayCodec`.
->
-> Every trainer recording on this machine, and where each one stops. Not recoverable by regenerating
-> the wire — the data was never recorded, and only a new run records it:
->
-> | recording | steps | first slot-bearing step | quickslot bindings |
-> | --- | --- | --- | --- |
-> | `BMG-HZS-GGF` | 1005 | 1 | 0 |
-> | `BMS-WQQ-LQH` | 655 | 1 | 0 |
-> | `GFW-GHG-BTT` | 1260 | 5 | 0 |
-> | `JLD-WRQ-GXJ` | 70 | 10 | 0 |
-> | `MDC-JVK-QVB` | 1373 | 10 | 0 |
-> | `NNN-NYP-PNH` | 389 | 1 | 0 |
-> | `QVT-MFY-JTM` | 1458 | 10 | 0 |
-> | `XIM-LFA-MNY` | 986 | 2 | 0 |
-> | `ZFW-GJP-VQC` | 1205 | 10 | 0 |
->
-> `%TEMP%\spd-run1\replays\`, all nine written before the fix. A recording with no slot-bearing step
-> would be unaffected, but none of these is one — so all nine stop inside the first ten steps, and
-> "halts at step 1" is a property of `BMS-WQQ-LQH` and `BMG-HZS-GGF` specifically, not of the fault.
-> The fault halts a recording at its **first** slot-bearing step.
->
-> **These came from `%TEMP%` and have been rescued.** All ten were copied out of
-> `%TEMP%\spd-run1\replays\` and `%TEMP%\spd-wire\replays\` into
-> `superintelligence\trainer-replays\` before they could be lost to a reboot; they were the only
-> evidence of what the trainer was actually writing, and the corpus cannot reproduce them because it
-> never went through the wire. They are checked in now, so this is history rather than a warning —
-> but note that they are evidence, not fixtures. Nine of the ten are unplayable by construction, and
-> nothing should be trying to make them pass.
-
-> **And the fix exposed a third fault rather than closing this one.** The one post-fix recording,
-> `MSU-OTL-OAT` (660 steps, now in `superintelligence\trainer-replays\`), clears the bindings problem —
-> 18 steps in, where the old ones stopped at 1 or 2 — and then diverges:
+> **2. The trainer recorded a step's bindings _after_ the step.** `ReplayRecorder.record` captures them
+> because that is the instant the slot index is chosen, and says so in its own comment; `Worker`'s
+> listener called it from `EpisodeCollector.Listener.onStep`, which is after the step by definition, and
+> one callback could not express "before and after". `DROP` is where it shows because it is the one
+> action that unbinds its own item — the item leaves the backpack, stops being reachable from the
+> iterator the capture walks, and its binding is gone from the file before anyone reads it. Measured,
+> on the same file, same step, same index:
 >
 > ```
-> [replay] halted: DIVERGED at step 18 - DROP/1 in SLOT: inventory is
-> [ThrowingSpike:1,VelvetPouch():1,Waterskin:1], recording says [Food:1,VelvetPouch():1,Waterskin:1]
+> trainer   slot 1 -> ThrowingSpike   qs = ThrowingSpike->1 Food->-1 Waterskin->2 VelvetPouch->-1
+> viewer    slot 1 -> Food            qs = ThrowingSpike->-1 Food->-1 Waterskin->2 VelvetPouch->-1
 > ```
 >
-> Not a near-miss; different items. This was never a passing check either — the inventory comparison
-> was being skipped against an empty sentinel, so trainer recordings have been making an unverifiable
-> claim about inventory throughout. `ReplayRecorder.record()` captures quickslots *before* the step
-> (documented at `ReplayRecorder.java:64-65`, because an equip in that step rebinds a slot) while
-> `afterStep()` captures inventory *after* it; whether playback compares the two at the same instant is
-> the open question, and `DROP` in `SLOT` is exactly the shape that would expose a mismatch.
+> **The hypothesis recorded below this entry — that drop resolution may be non-deterministic, or depend
+> on which item happened to be bound to slot 1 — is refuted.** It is neither. `EpisodeCollector.Listener`
+> now has `onDecision` before the step and `onStep` after it.
 >
-> **The corpus cannot witness this, and that is why 17/17 proves nothing about it.** The corpus contains
-> **no `DROP` action at all** — not in `SLOT`, not in `INVENTORY`, not in any mode. Measured: 17
-> recordings, 310 SLOT-mode steps, and the entire SLOT-mode vocabulary is `USE/SLOT = 310`.
-> `DROP` appears zero times.
+> **3. An empty binding set is a state, not a missing field.** Asked per step, the two cannot be told
+> apart; asked that way it refused a real recording. A fresh trainer run carries 211 SLOT and INVENTORY
+> steps, one of them with bindings and 210 without, because the policy dropped the only bound item — the
+> Waterskin — at step 0. `Replay.recordsQuickslots()` answers it for the whole recording instead:
+> bindings present somewhere and absent at this moment means nothing was bound at this moment; none
+> anywhere means the field never existed. Both halves are gated, because the first version refused the
+> second.
 >
-> That is the whole distinction between `USE/SLOT` and `DROP/SLOT`. Both resolve a slot index to an
-> item, but `USE` leaves the inventory alone and `DROP` mutates it, which is the only case where the
-> recorder's before/after split can disagree with the instant playback compares at. So `viewcheck`
-> passing is consistent with this being broken for the same reason the quickslots fault survived a
-> hundred green runs: **the check passes because the thing it would catch is absent, not because
-> anything was caught.** Any gate meant to close this has to record a `DROP` in `SLOT`, and today
-> nothing does.
+> **4. `viewcheck` passed anything that did not diverge.** A player that halts for any other reason — an
+> unresolvable slot index, a stall, a refusal — leaves `diverged()` false. That same fresh recording was
+> reported `[OK] rendered playback: 1 recordings played clean` after **3.7 seconds**, having played
+> almost none of 1499. The gate now requires the cursor to reach the end.
 >
-> **What is established, and what is not.** Verified: all nine pre-fix trainer recordings carry zero
-> bindings and stop at their first slot-bearing step; `MSU-OTL-OAT` reaches 18 steps and diverges on
-> `DROP/1` in SLOT. *Not* established: that `DROP/SLOT` is inherently broken. It is one recording, one
-> step, one divergence. Drop-resolution may be genuinely non-deterministic, or the outcome may depend
-> on which item happened to be bound to slot 1. The "recorder captures before, playback compares
-> after" reading is a hypothesis drawn from the code, not a measurement, and more post-fix trainer runs
-> are needed before this is written up as a defect — specifically, whether it lands on `DROP` again and
-> whether it is always inventory.
+> **And the corpus could not ask any of it.** 17 recordings, 310 SLOT-mode steps, and the entire SLOT
+> vocabulary was `USE/SLOT`: `ScriptedPolicy` never chooses `DROP`, and an untrained policy only drops
+> by accident. `viewcheck` was green on all seventeen *because the thing it would have caught was
+> absent*, which is the shape this file already warned about in `TODO.md` 1.12 and which now has a
+> measured instance. `duelist-drop.replay` and `gradle :superintelligence:dropfixture` fix that in a
+> directory both viewer gates already read, and the command **verifies the recording before writing
+> it**, so a fixture that no longer plays cannot be committed in place of one that does.
+> Mutation-tested by removing the `ThrowingSpike` entry from its `DROP` step, which fails `viewcheck`
+> with `DIVERGED at step 2 - DROP/1 in SLOT`.
 >
-> Consequence for the milestone: no recording the trainer has produced is watchable end to end yet,
-> which means the viewer cannot yet be used to diagnose training behaviour the way the corpus is used
-> to diagnose recorded behaviour. `TODO.md` 1.12 covers the wire; this is the two things that were
-> hidden behind it.
+> **Measured end to end, on a real training run** — 2 generations, 2 workers, 2 episodes,
+> `--max-turns 120`:
+>
+> ```
+> trainer wrote      SGD-CKH-JUO.dat, 1499 steps
+> verify             [OK] replay reproduced in 1499 steps, 457 ms
+> viewcheck          [OK] rendered playback: 1 recordings played clean (45.6s)
+> ```
+>
+> `verifyall` green at 20 gates plus `playbackcheck` at 21; `viewcheck` **18 of 18**, 36.5 s at 8
+> children.
+>
+> **What is not recoverable, and what is.** The nine pre-fix recordings carry no bindings and never
+> will: the data was never written and only a new run records it, so regenerating the wire cannot help.
+> They stay in `trainer-replays/` as evidence of what the wire dropped — not as fixtures, and nothing
+> should be trying to make them pass. What changed is that both tools now *say so* about them instead of
+> reporting success, which is the half of this report that was still fixable.

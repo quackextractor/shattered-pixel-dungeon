@@ -162,7 +162,9 @@ cliTask('transitioncheck', 'Fails if descending ends the episode, or is worth no
 
 cliTask('gaecheck', 'Fails if the two advantage implementations disagree, or sampling misbehaves.')
 
-cliTask('replays', 'Lists recordings, grouped by hero class and ranked by score.')
+  cliTask('replays', 'Lists recordings, grouped by hero class and ranked by score.')
+
+  cliTask('dropfixture', 'Records the DROP-in-SLOT fixture the viewer gates play, and verifies it.')
 
 cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misresolves a name.')
 

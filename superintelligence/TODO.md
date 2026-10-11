@@ -3,7 +3,18 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-10, after the reward function was re-priced around what the objective actually is
+Last updated: 2026-10-11, after `issues.md` "Training" 15 was closed. **A recording the trainer writes
+can now be played in the viewer, and `verify` says so instead of saying `[OK]`.** Four faults, found in
+the order they had to be found: the trainer pinned a step's quickslot bindings *after* the step, so a
+`DROP` — the one action that unbinds its own item — named a different item on playback than it did on
+the recording; `ReplayIO.verify` resolved recorded slot indices against the live bindings rather than the
+recorded ones and skipped the comparison entirely when the field was empty, which is why nine unplayable
+recordings each reported success; `viewcheck`'s verdict was "did not diverge", so a player that halted
+for any other reason scored a pass; and `Quickslots.restore` wiped bindings on equipped items, which no
+slot index can name and which no recording can describe. §1.13 has the whole thing.
+
+Last updated before that: 2026-10-10, after the reward function was re-priced around what the objective
+actually is
 (§1.8, closed below, and §1.9). The short version: **exploration was outbidding a descent**, which is why
 `bestDepth` had been 1 in every generation of every run; killing a mob paid nothing while being hit cost
 something; and the four terminal outcomes were priced so that two of them were cheaper than the run they
@@ -378,6 +389,98 @@ N mean" ambiguity is the one `slotcheck` exists to close, so it should be gated 
 
 `modecheck` will have to cover `TALENT`, and `EnvMode` gains a value, which touches the replay format's
 mode column and therefore the committed corpus.
+
+---
+
+## 1.13 No recording the trainer wrote could be watched, and `verify` said they were perfect - FIXED
+
+`issues.md` "Training" 15. The report had two halves - recordings the viewer could not play, and a
+`verify` that called them perfect - and the second was hiding the first.
+
+### What `verify` was actually asserting
+
+Nine recordings the trainer had written carried zero quickslot bindings and stopped at their first
+slot-bearing step; `verify` printed `[OK]` on every one. `ReplayIO.verify` guards each comparison with
+the sentinel its field declares for *not recorded*, and an empty quickslots field is one, so the check
+was skipped rather than failed. That is the sentinel weakness `TODO.md` 1.12 names, one level up: a
+guard written to let an unrecorded field pass cannot tell *not applicable* from *lost*, and cannot be
+the only thing between a recording and a viewer.
+
+So `Verification` now carries `unwatchableAt` and `passed()` beside `diverged`, and `verify` exits 3
+with the reason rather than 0. **And that exposed the second half of the same fault**, which is the one
+that mattered: `verify` never applied the recorded bindings at all. It re-executed a slot index against
+whatever bindings the process happened to hold, so it and the viewer were resolving a recorded index two
+different ways and both were reporting themselves right. They now go through one `Quickslots.prepare`.
+
+### The fault behind the fault, found by making `verify` stricter
+
+`MSU-OTL-OAT` was the one post-fix trainer recording, and it reached 18 steps before diverging on a
+`DROP`. The recorded hypothesis - drop resolution may be non-deterministic, or it may depend on which
+item happened to be bound - was wrong, and the measurement took one diagnostic:
+
+```
+trainer   slot 1 -> ThrowingSpike   qs = ThrowingSpike->1 Food->-1 Waterskin->2 VelvetPouch->-1
+viewer    slot 1 -> Food            qs = ThrowingSpike->-1 Food->-1 Waterskin->2 VelvetPouch->-1
+```
+
+Same seed, same step, same index. The trainer's live state at that step is correct and always was; what
+was wrong is that **`Worker`'s listener called `ReplayRecorder.record` from
+`EpisodeCollector.Listener.onStep`, which is after the step by definition**, and `record` is where the
+bindings are captured. `ReplayRecorder.record` documents that it is called before `SPDEnv.step` - an
+equip or unequip in the step rebinds a slot, so afterwards describes a different world - and the
+listener could not report the difference, because there was only one callback and it was late.
+
+`DROP` is where it shows because it is the one action that unbinds its own item: the item leaves the
+backpack, stops being reachable from the iterator `capture()` walks, and its binding is gone from the
+file before anyone reads it. Every other slot action leaves the bindings where they were, which is why
+310 `USE/SLOT` steps in the corpus never showed it.
+
+`EpisodeCollector.Listener` now has `onDecision` before the step and `onStep` after it. One callback
+could not express "before and after", which is the fault in one sentence.
+
+### The fourth fault, which only a real training run showed
+
+With the recorder fixed, a fresh 2-generation run wrote a recording that `verify` **refused** at step
+13: 211 SLOT and INVENTORY steps, one carrying bindings and 210 empty. The policy had dropped the
+Waterskin at step 0 - the only thing bound - so nothing was bound for the rest of the run.
+
+**An empty binding set is a state, not a missing field.** The refusal rule I had written asked per step,
+which cannot tell the two apart, and it was refusing a recording that plays perfectly. `Replay` now
+answers it for the whole recording - `recordsQuickslots()` - because bindings present somewhere and
+absent at this moment means nothing was bound at this moment, while none anywhere means the field never
+existed. Both halves are gated, and the second is the one that would otherwise have been left out.
+
+### And the gate that was green because it could not ask
+
+`viewcheck`'s verdict was `!playback.diverged()`. That recording - the one refused at step 13 - was
+reported `[OK] rendered playback: 1 recordings played clean` after **3.7 seconds**, having played almost
+none of 1499 steps. A gate that stops early and reports success is worse than one that reports nothing,
+because the next reader believes the file was watched.
+
+And under it all: the corpus could not express the question. 17 recordings, 310 SLOT-mode steps, and the
+entire SLOT vocabulary was `USE/SLOT` - `ScriptedPolicy` never chooses `DROP`, and an untrained policy
+only drops by accident. `duelist-drop.replay` and `gradle :superintelligence:dropfixture` fix that in a
+directory both viewer gates already read, and the command **verifies the recording before writing it**,
+so a fixture that no longer plays cannot be committed in place of one that does.
+
+### Verified
+
+- `verifyall` - `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 21, both green.
+- `:desktop:viewcheck` - **18 of 18**, 36.5 s at 8 children. Re-run rather than carried over, because the
+  gate's verdict changed and a recording joined the corpus.
+- **End to end, on a real trainer run** - 2 generations, 2 workers, 2 episodes, `--max-turns 120`:
+  `SGD-CKH-JUO.dat`, 1499 steps, `verify` reproduced all 1499, `viewcheck` played all 1499 in the real
+  viewer. That is `issues.md` 15's headline claim, closed.
+- Mutation-tested four ways, each reverted after: moving `onDecision` after `env.step` fails
+  `collectcheck`; removing `Quickslots.prepare` from `verify` fails `collectcheck` and `verifycheck`;
+  restoring `Dungeon.quickslot.reset()` in `restore` fails `slotcheck`; blanking the fixture's `DROP`
+  bindings fails `viewcheck` with `DIVERGED at step 2 - DROP/1 in SLOT`.
+
+### Still open
+
+**The nine pre-fix recordings stay unplayable.** The data was never written and only a new run records
+it. What changed is that `verify` and `viewcheck` now *say so* about them instead of reporting success,
+which is the half of the fault that was still fixable.
 
 ---
 
@@ -1243,6 +1346,8 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | 1.9 | ~~Five harness faults that made the agent unable to have a correct episode~~ | done | Every one found by driving paths a weak policy almost never reaches, and every one hidden behind the one before it. REST was a one-way door (36/36 episodes stalled, idle guard fired zero times); headless had no texture and every TextureFilm dereferenced the null, killing workers on hunger damage; every death blew the stack, so DEATH - the ending the reward function is built around - was unreachable; a reset did not clear the static pending cell listener, so 4 of 10 recordings diverged when verified in sequence and all 10 verified clean alone; and OPEN_INVENTORY fell through to INTERACT's cell handling, so opening the inventory also acted on a neighbouring cell - which reached training. All fixed and gated: PLAN-reward-signals.md sections 7-8 and 10, with resetcheck, graphcheck and a new modecheck case. |
 | 1.6 | ~~Parallelise the update across minibatches~~ | done | --update-threads N. Measured 8.98 -> 2.73 ms/sample at 1 -> 4 threads (3.29x), 2.59 at 8 (3.47x). parallelcheck is a gate and mutation-tested. Required three fixes first, of which the dCell gradient leak was the real blocker. PLAN-data-flow.md step 4. |
 | 1.10 | **Let the agent spend talent points** | M | **The agent levels up and can never spend the point.** §1.11 below. Reward side is done — `TALENT_UPGRADE` at 20, wired and gated. The action is missing. |
+| 1.12 | ~~Every replay the trainer wrote was missing five of its nine fields~~ | done | **Closed — see §1.12.** The wire; and the two faults behind it, which only became visible once a post-fix recording reached a `DROP`. |
+| 1.13 | ~~No recording the trainer wrote could be watched~~ | done | **Closed — see §1.13.** The recorder captured a step's bindings after the step, `verify` resolved indices against the live bindings and skipped the comparison when the field was empty, `viewcheck` passed any halt that was not a divergence, and the corpus contained no `DROP` in `SLOT` to ask about. A fresh trainer run now verifies and plays clean end to end. |
 
 **Ordering was wrong and has been corrected.** 1.6 was originally next. It is still required — the
 measurement does not care what else is on the list — but two smaller items now come first:

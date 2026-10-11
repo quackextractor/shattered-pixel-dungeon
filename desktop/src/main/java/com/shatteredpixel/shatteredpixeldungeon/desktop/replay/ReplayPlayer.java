@@ -1051,20 +1051,16 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		//later INTERACT resolved against a different inventory.
 		//
 		//Restored per step, not once: equipping or unequipping rebinds a slot mid-run.
-		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY){
-			if (step.quickslots == null || step.quickslots.isEmpty()){
-				halt( "step " + playback.cursor() + " names slot " + step.slot
-						+ " but records no quickslot bindings; it was recorded before bindings were stored,"
-						+ " so the index cannot be resolved" );
-				return;
-			}
-			if (!Quickslots.applicable( step.quickslots )){
-				halt( "step " + playback.cursor() + " records quickslots [" + step.quickslots
-						+ "] that do not match what the hero is carrying; cannot resolve slot "
-						+ step.slot );
-				return;
-			}
-			Quickslots.restore( step.quickslots );
+		//
+		//Quickslots.prepare is the shared entry point, and sharing it is what stops this method and
+		//ReplayIO.verify from resolving the same index two different ways - which is exactly what they
+		//did, and why a file could verify [OK] here and halt at step 18. It restores the bindings for
+		//non-slot steps too, so a WORLD step is never applied against the previous step's leftovers.
+		String unresolvable = Quickslots.prepare( step, playback.cursor(),
+				playback.replay().recordsQuickslots() );
+		if (unresolvable != null){
+			halt( unresolvable );
+			return;
 		}
 
 		//The trainer's per-step preamble, in the same order as SPDEnv.step:199-208. Without it the

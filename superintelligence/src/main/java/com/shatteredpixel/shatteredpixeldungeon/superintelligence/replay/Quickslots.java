@@ -2,6 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 
 /**
  * Captures and restores {@link Dungeon#quickslot} bindings.
@@ -44,10 +45,19 @@ public class Quickslots {
 	}
 
 	/**
-	 * Replaces the hero's quickslot bindings with those captured in {@code encoded}.
+	 * Replaces the bindings that decide what a slot index names with those captured in {@code encoded}.
 	 *
-	 * <p>Clears first, so an item that was bound in the live game but not in the recording stops
-	 * claiming a slot. Leaving a stale binding in place is what made slot 0 resolve differently.
+	 * <p><b>Only those.</b> {@code Dungeon.quickslot} also holds bindings on items the slot head cannot
+	 * address - a duelist's starting {@code Rapier} is bound to quickslot 0 and is equipped, so
+	 * {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper#refreshSlots}
+	 * never sees it and no index can name it. Wiping those as well is a small loss that stays small only
+	 * while the hero never takes that item off: unequip it and it lands in the backpack still bound in
+	 * the trainer's world, unbound in the viewer's, and every later slot index names a different item.
+	 * A binding the recording cannot describe is the game's to keep.
+	 *
+	 * <p>Everything else is cleared first, so an item that was bound in the live game but not in the
+	 * recording stops claiming a slot. Leaving a stale binding in place is what made slot 0 resolve
+	 * differently.
 	 *
 	 * <p>Items the recording does not mention are left unbound, and an unparsable entry is skipped
 	 * rather than aborting playback: a partial restore is a wrong slot, but throwing here would lose the
@@ -56,10 +66,14 @@ public class Quickslots {
 	public static void restore( String encoded ){
 		if (Dungeon.hero == null) return;
 
-		Dungeon.quickslot.reset();
+		for (int slot = 0; slot < Dungeon.quickslot.SIZE; slot++){
+			Item bound = Dungeon.quickslot.getItem( slot );
+			if (bound != null && namesASlot( bound )) Dungeon.quickslot.clearSlot( slot );
+		}
+
 		if (encoded == null || encoded.isEmpty()) return;
 
-		for (String pair : encoded.split( String.valueOf( PAIR ) )){
+		for (String pair : encoded.split( String.valueOf( PAIR ))){
 			int link = pair.lastIndexOf( LINK );
 			if (link <= 0 || link == pair.length() - 1) continue;
 
@@ -78,6 +92,65 @@ public class Quickslots {
 				}
 			}
 		}
+	}
+
+	/** True when a recorded slot index could name this item at all: it is reachable from the backpack. */
+	private static boolean namesASlot( Item item ){
+		for (Item carried : Dungeon.hero.belongings.backpack){
+			if (carried == item ) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Puts the bindings a step's slot index was chosen against back in force, or says why it cannot.
+	 *
+	 * <p><b>The one place playback resolves a step's slot index against its bindings.</b> The viewer and
+	 * the headless verifier both call this, and that is the point: they resolve a recorded index the same
+	 * way or one of them is not checking the other. They used not to - the viewer restored the bindings and
+	 * {@code ReplayIO.verify} did not - which is why a recording could verify
+	 * {@code [OK] replay reproduced in 660 steps} and halt the viewer at step 18 of the same 660.
+	 *
+	 * <p><b>An empty binding set is a state, not a missing field.</b> A hero who drops the one item bound
+	 * to a quickslot has none left, and every later slot step legitimately records nothing - measured on a
+	 * fresh trainer run: 211 SLOT and INVENTORY steps, one of them carrying bindings, the rest empty
+	 * because the policy had dropped the Waterskin at step 0. Refusing those would refuse a recording
+	 * that plays perfectly.
+	 *
+	 * <p>So the question is asked of the whole recording rather than of the step. {@link
+	 * Replay#recordsQuickslots()} answers it: a recording with no bindings anywhere never had the field,
+	 * and one with bindings somewhere and an empty step simply had nothing bound at that moment.
+	 *
+	 * @return {@code null} when the step's bindings are in force, or a message naming what is wrong
+	 */
+	public static String prepare( Replay.Step step, int stepIndex, boolean recordingHasBindings ){
+		String mode = step.mode == null ? "" : step.mode;
+		if (!mode.equals( EnvMode.SLOT.name() ) && !mode.equals( EnvMode.INVENTORY.name() )){
+			//Left alone rather than cleared. Only a SLOT or INVENTORY step resolves a slot index, and
+			//the trainer's bindings evolve with the game between two such steps - equipping one rebinds,
+			//dropping unbinds. Clearing here would put the viewer behind the trainer from its very first
+			//WORLD step, and the bindings it would be clearing are the ones `HeroClass.initHero` set.
+			return null;
+		}
+
+		if (step.quickslots == null || step.quickslots.isEmpty()){
+			if (recordingHasBindings){
+				//Nothing was bound at this moment, which is a state rather than a gap: the index resolves
+				//from backpack order alone.
+				restore( null );
+				return null;
+			}
+			return "step " + stepIndex + " names slot " + step.slot
+					+ " but records no quickslot bindings; no step in this recording carries them, so it"
+					+ " was made before they were stored and the index cannot be resolved";
+		}
+		if (!applicable( step.quickslots )){
+			return "step " + stepIndex + " records quickslots [" + step.quickslots
+					+ "] that do not match what the hero is carrying; cannot resolve slot " + step.slot;
+		}
+
+		restore( step.quickslots );
+		return null;
 	}
 
 	/**

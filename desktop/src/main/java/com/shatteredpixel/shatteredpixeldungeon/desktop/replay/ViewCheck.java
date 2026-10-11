@@ -530,7 +530,16 @@ public class ViewCheck {
 			}
 
 			ReplayPlayback playback = player.playback();
-			boolean clean = !playback.diverged();
+			//Played *out*, not merely "did not diverge". The verdict used to be `!playback.diverged()`,
+			//which is the same shape of claim ReplayIO.verify used to make with its sentinels: a player
+			//that halted for any other reason - a slot index it could not resolve, a stall, a refusal -
+			//leaves diverged() false, and the gate reported a recording that did not play as clean.
+			//Measured: a trainer recording whose bindings could not be resolved at step 13 was reported
+			//"[OK] rendered playback: 1 recordings played clean" after 3.3 seconds, having played almost
+			//none of a 1500-step run.
+			boolean playedEveryStep = playback.cursor() >= playback.total()
+					&& !playback.diverged();
+			boolean clean = playedEveryStep;
 
 			//The frame accounting is printed on every line, pass or fail. It is the one number that says
 			//how much of the render loop was spent not applying a recorded step, which is the whole
@@ -543,8 +552,11 @@ public class ViewCheck {
 						+ "  (" + playback.cursor() + "/" + playback.total() + " steps;  "
 						+ player.frameReport() + ")" );
 			} else {
-				System.out.println( "[viewcheck] FAIL  " + file.getName()
-						+ "  " + player.haltReason()
+				String why = playback.diverged()
+						? player.haltReason()
+						: "played " + playback.cursor() + " of " + playback.total() + " steps - "
+								+ player.haltReason();
+				System.out.println( "[viewcheck] FAIL  " + file.getName() + "  " + why
 						+ "   [" + player.frameReport() + "]" );
 			}
 			System.out.flush();

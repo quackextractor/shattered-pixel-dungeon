@@ -1,5 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
+
 /**
  * A recorded run: the seed plus the exact sequence of decisions that produced it.
  *
@@ -163,6 +165,30 @@ public class Replay {
 
 	public int length(){
 		return steps.size();
+	}
+
+	/**
+	 * Whether any step that names a slot carries the quickslot bindings it was chosen against.
+	 *
+	 * <p>The question cannot be asked of one step, because an empty binding set is a legitimate state: a
+	 * hero who drops the one item bound to a quickslot has none left, and every later slot step then
+	 * records nothing while still resolving perfectly from backpack order. Measured on a fresh trainer
+	 * run - 211 SLOT and INVENTORY steps, one carrying bindings, the rest empty because the policy had
+	 * dropped the Waterskin at step 0. Refusing those would refuse a recording that plays.
+	 *
+	 * <p>Asked of the whole recording it answers the question that actually matters. A recording with
+	 * bindings somewhere has the field and simply had nothing bound at that moment; one with none
+	 * anywhere never had it, which is what the nine pre-fix trainer recordings are - and their slot
+	 * indices cannot be resolved at all.
+	 */
+	public boolean recordsQuickslots(){
+		for (Step step : steps){
+			if (!EnvMode.SLOT.name().equals( step.mode ) && !EnvMode.INVENTORY.name().equals( step.mode )){
+				continue;
+			}
+			if (step.quickslots != null && !step.quickslots.isEmpty()) return true;
+		}
+		return false;
 	}
 
 	/** Total score, kept in sync with the last recorded reward. */

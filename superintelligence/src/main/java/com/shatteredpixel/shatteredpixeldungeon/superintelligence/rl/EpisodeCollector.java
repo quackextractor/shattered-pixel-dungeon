@@ -89,12 +89,36 @@ public class EpisodeCollector {
 		void onEpisodeStart( String seedText, String heroClass );
 
 		/**
+		 * One decision, taken but <em>not</em> yet applied.
+		 *
+		 * <p>Separate from {@link #onStep} because a decision is made against the world as it stands and
+		 * a step's consequences belong to the world after it. A replay records both, and which side of
+		 * the step each field is captured on is not a detail: {@code ReplayRecorder} pins the quickslot
+		 * bindings <i>here</i>, because an equip or unequip in this very step rebinds a slot and the
+		 * binding recorded afterwards describes a different world.
+		 *
+		 * <p>That was not hypothetical and it was not the recorder's fault.
+		 * {@code ReplayRecorder.record} documents that it is called before {@code SPDEnv.step}, and the
+		 * worker called it from {@code onStep} anyway - which the listener could not report, because
+		 * {@code onStep} is by definition after. Every trainer recording therefore carried the bindings
+		 * the step <i>produced</i> rather than the ones its slot index was chosen against, and a
+		 * {@code DROP} is the one action that unbinds its own item, so that step in particular named a
+		 * different item on playback.
+		 *
+		 * @param mode      the mode the decision is being made under
+		 * @param secondary the slot index, option index or aim offset, resolved against this world
+		 */
+		void onDecision( EnvMode mode, Action action, int secondary );
+
+		/**
 		 * One completed step.
 		 *
-		 * @param mode        the mode the decision was made under, not the one it left behind
+		 * <p>Afterwards, and only afterwards: the position is where the hero ended up, and the reward is
+		 * what the step earned. Both are properties of the world the step produced.
+		 *
 		 * @param heroPosition where the hero ended up, after the step
 		 */
-		void onStep( EnvMode mode, Action action, int secondary, int heroPosition, float reward );
+		void onStep( int heroPosition, float reward );
 	}
 
 	private Listener listener;
@@ -207,13 +231,18 @@ public class EpisodeCollector {
 				if (!record.isRetained( dropped )) dropped.release();
 			}
 
-			Action action = Action.fromIndex( actionIndex );
-			int secondary = (liveHead == Policy.HEAD_TARGET) ? targetIndex : slotIndex;
+		Action action = Action.fromIndex( actionIndex );
+		int secondary = (liveHead == Policy.HEAD_TARGET) ? targetIndex : slotIndex;
 
-			//The mode is the one the decision was made under, so it has to be read before the step.
-			EnvMode mode = env.mode();
+		//The mode is the one the decision was made under, so it has to be read before the step.
+		EnvMode mode = env.mode();
 
-			float reward = (float) env.step( action, secondary );
+		//Before the step, and for the same reason. The recorder pins the quickslot bindings here,
+		//because a slot index means nothing without them and the bindings an equip or unequip in this
+		//step produces are not the ones the index was chosen against.
+		if ( listener != null ) listener.onDecision( mode, action, secondary );
+
+		float reward = (float) env.step( action, secondary );
 
 			//The position is where the hero ended up, so it has to be read after. Reading it before
 			//records where the hero started, which is off by one step and makes every replay recorded
@@ -222,7 +251,7 @@ public class EpisodeCollector {
 			//catch, on every trainer-written recording.
 			int heroPosition = env.heroPosition();
 
-			if (listener != null) listener.onStep( mode, action, secondary, heroPosition, reward );
+			if (listener != null) listener.onStep( heroPosition, reward );
 
 			record.add( reward, network.value(), isTerminal, liveHead, actionIndex, slotIndex,
 					logProbability );

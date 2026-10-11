@@ -23,6 +23,134 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-11
+
+Closes `issues.md` 15. Recordings written by the trainer could not be watched at all, `verify` reported
+them as perfect, and the one post-fix recording that got further diverged in the viewer on a `DROP` that
+every gate passed. Four faults, in the order they had to be found.
+
+### Fixed
+
+- **The trainer recorded a step's quickslot bindings _after_ the step, so a `DROP` named a different item
+  on playback than it did on the recording.** `ReplayRecorder.record` documents that it is called before
+  `SPDEnv.step` — a slot index is chosen against the bindings in force at that moment, and an equip or
+  unequip in the step itself rebinds a slot — and `Worker`'s listener called it from
+  `EpisodeCollector.Listener.onStep`, which is after the step by definition.
+
+  `DROP` is the one action that unbinds its own item, so that is where it showed. On `MSU-OTL-OAT`,
+  measured with the recorder's own diagnostic on both sides:
+
+  ```
+  trainer   slot 1 -> ThrowingSpike   qs = ThrowingSpike->1 Food->-1 Waterskin->2 VelvetPouch->-1
+  viewer    slot 1 -> Food            qs = ThrowingSpike->-1 Food->-1 Waterskin->2 VelvetPouch->-1
+  ```
+
+  Same seed, same step, same index. The ThrowingSpike's binding to quickslot 1 was already gone from the
+  file before the viewer read it, so `refreshSlots` filled slot 1 with the next unbound item instead.
+  The viewer halted at step 18 with `inventory is [ThrowingSpike:1,…], recording says [Food:1,…]`.
+
+  `EpisodeCollector.Listener` now has **two** callbacks: `onDecision`, before the step, carrying the
+  mode, action and secondary index the choice was made under, and `onStep`, after it, carrying the
+  resulting position and reward. One callback could not express "before and after", which is the whole
+  fault.
+
+- **`verify` resolved a recorded slot index against whatever bindings the process happened to hold
+  rather than the recorded ones, so the two environments could disagree about a recording and both be
+  right about themselves.** It now applies the recorded bindings per step through the same
+  `Quickslots.prepare` the viewer uses — one implementation, so the verifier and the thing it verifies
+  cannot drift the way they had.
+
+  **This is the half of `issues.md` 15 that says a passing `verify` is not evidence a recording is
+  watchable.** Every comparison in `ReplayIO.verify` is guarded by a sentinel meaning *not recorded*,
+  and an empty quickslots field is one, so a recording whose bindings were never written verified on
+  whatever else it carried. Nine of the ten recordings the trainer had written were in that state and
+  every one printed `[OK]`. Measured on `MSU-OTL-OAT`, the same file and minutes apart:
+
+  ```
+  before    verify:      [OK]  replay reproduced in 660 steps, 494 ms
+            viewer:      halted at step 18, 1 frame played
+  after     verify:      diverged at step 17 - DROP/1 in SLOT
+            viewer:      halted at step 18 - the same step
+  ```
+
+- **`verify` reported a recording that cannot be watched as verified.** `Verification` carries
+  `unwatchableAt` and `passed()` beside `diverged`, and the `verify` command exits 3 with the reason.
+  Reproducing a recording and being able to play it are different claims, and the file was only ever
+  making the first one.
+
+- **`viewcheck` reported a recording that did not play as clean.** Its verdict was
+  `!playback.diverged()`, so a player that halted for any other reason — an unresolvable slot index, a
+  stall, a refusal — scored a pass. Measured: a fresh trainer recording whose bindings could not be
+  resolved at step 13 was reported `[OK] rendered playback: 1 recordings played clean` after 3.7 s,
+  having played almost none of a 1499-step run. The gate now requires the cursor to reach the end.
+
+- **`Quickslots.restore` wiped bindings a slot index can never name.** It cleared the whole quickslot,
+  including bindings on **equipped** items — and four of the five hero classes bind their starting weapon
+  that way. That is harmless until the hero takes the item off: unequip it and it lands in the backpack
+  still bound in the trainer's world and unbound in the viewer's, and from that moment every slot index
+  names a different item. Restore now clears the bindings a slot index can name and leaves the rest
+  alone, because a recording cannot describe them.
+
+### Added
+
+- **`duelist-drop.replay` in `test-replays`, and `gradle :superintelligence:dropfixture` to regenerate
+  it.** The committed corpus contained **no `DROP` at all** — 310 SLOT-mode steps across 17 recordings,
+  every one of them `USE/SLOT`, because `ScriptedPolicy` never chooses `DROP` — so `viewcheck` was green
+  on all seventeen for the reason `issues.md` 15 names: *the check passes because the thing it would catch
+  is absent, not because anything was caught*.
+
+  The fixture is a DUELIST run, because it is the class whose starting bindings straddle both halves of
+  the question: the `Rapier` is equipped and bound to quickslot 0, which no index can name, and the
+  `ThrowingSpike` is carried and bound to quickslot 1, which one can. The command **verifies the
+  recording before writing it**, so a fixture that no longer plays cannot be committed in place of one
+  that does.
+
+  Mutation-tested by removing the `ThrowingSpike` entry from the fixture's `DROP` step, which fails
+  `viewcheck` with the same signature `MSU-OTL-OAT` produced: `DIVERGED at step 2 - DROP/1 in SLOT`.
+
+- **Four gate cases**, each of which fails when its fix is reverted.
+
+  | Gate | Case | Fails when |
+  | --- | --- | --- |
+  | `collectcheck` | `a DROP records the bindings its slot index was chosen against` | the recorder is told after the step |
+  | `collectcheck` | `the collector announces a decision before the step is applied` | `EpisodeCollector` moves `onDecision` after `env.step` |
+  | `verifycheck` | `a recording with no bindings anywhere is refused` | `verify` skips the check again |
+  | `verifycheck` | `an empty binding set is a state, not a missing field` | an unbound hero is refused |
+  | `slotcheck` | `restore leaves alone a binding no slot index can name` | `restore` clears the whole quickslot |
+
+  The second `collectcheck` case asserts on the engine clock rather than on a binding, and the reason is
+  worth recording. Asking `Dungeon.quickslot` from inside the listener — the obvious way to decide which
+  drop qualifies — depends on the very wiring under test: called after the step, the item has already
+  left the backpack and reads as unbound, so the mutant reports that it could not find a fixture rather
+  than that it is wrong. `Actor.now()` only moves inside `env.step`, so it does not have that problem.
+
+- **`replay` package: `DropFixture`, the recording the command writes.**
+
+### Verified
+
+- `verifyall` — `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 21, both green.
+- `:desktop:viewcheck` — **18 of 18**, 36.5 s at 8 children. Re-run rather than carried over: the gate's
+  verdict changed, and a new recording joined the corpus.
+- **End to end, on a fresh trainer run** — 2 generations, 2 workers, 2 episodes, `--max-turns 120`:
+
+  ```
+  trainer wrote      SGD-CKH-JUO.dat, 1499 steps
+  verify             [OK] replay reproduced in 1499 steps, 457 ms
+  viewcheck          [OK] rendered playback: 1 recordings played clean (45.6s)
+  ```
+
+  `issues.md` 15's headline claim, closed: **a recording written by the trainer can now be played in the
+  viewer, end to end.**
+
+### Not done
+
+- **The nine pre-fix recordings stay unplayable.** The data was never written; only a new run records
+  it. They are kept in `trainer-replays/` as evidence of what the wire dropped, and `verify` and
+  `viewcheck` now both *say so* about them instead of reporting success — which is the part that can
+  still be fixed.
+
+## [Unreleased]
+
 ### Changed
 
 - **The catalog separates the corpus from the training output.** Provenance is now the outermost axis
