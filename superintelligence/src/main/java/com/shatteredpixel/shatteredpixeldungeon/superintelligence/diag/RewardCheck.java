@@ -54,7 +54,7 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 16;
+	private static final int CHECKS = 17;
 
 	/** How many heaps to try before calling a floor that offers none a failure. */
 	private static final int MAX_HEAP_TRIES = 12;
@@ -66,6 +66,7 @@ public class RewardCheck {
 
 		checkStallingIsNotCheaperThanDying( config );
 		checkNoOpActionsAreNotRefusals( config );
+		checkAnItemActionInWorldIsARefusal( config );
 		checkStallIsNotANaturalEnding( config );
 		checkStallCostsMoreThanDying( config );
 		checkTerminalsAreOrdered( config );
@@ -164,6 +165,44 @@ public class RewardCheck {
 		}
 
 		System.out.println( "  WAIT, REST and SEARCH are accepted and never noted INVALID_ACTION" );
+	}
+
+	/**
+	 * Choosing an item action in WORLD is a refusal, because nothing was chosen.
+	 *
+	 * <p>The exact converse of {@link #checkNoOpActionsAreNotRefusals}, and the boundary between the
+	 * two matters. {@code WAIT}, {@code REST} and {@code SEARCH} do what they are asked in WORLD and
+	 * are accepted. {@code USE} and {@code DROP} in WORLD do <b>nothing</b>: they clear a stale
+	 * pending item and the real choice happens on the next step, in SLOT or INVENTORY. Returning
+	 * {@code true} claimed the environment had performed an action it had not, and nothing else checks
+	 * - the mode moves either way, so the run looks completely normal and the only trace is a recording
+	 * whose step says {@code DROP} and whose inventory never changed. Three of those in an 88-step
+	 * trainer recording.
+	 *
+	 * <p>The mask never offers {@code USE} or {@code DROP} in WORLD, so this is only reachable by
+	 * replaying a step - which is exactly what a recording is.
+	 */
+	private static void checkAnItemActionInWorldIsARefusal( EnvConfig config ){
+		for (Action action : new Action[]{ Action.USE, Action.DROP }){
+			Outcome o = playInWorld( config, action, 20 );
+
+			if (o.worldTurns <= 0 ){
+				fail( action + " in WORLD never produced a WORLD turn (start mode " + o.startMode
+						+ ", ended " + o.endReason + "), so the refusal count was measured over nothing"
+						+ " and the case passed vacuously." );
+				return;
+			}
+
+			if (o.refusals == 0 ){
+				fail( action + " in WORLD was never reported as INVALID_ACTION over " + o.worldTurns
+						+ " turns, so it is being reported as an action the environment performed."
+						+ " It performed none: the item is chosen on the next step, in SLOT or INVENTORY." );
+				return;
+			}
+		}
+
+		System.out.println( "  USE and DROP in WORLD are refusals - nothing was chosen, and the item"
+				+ " comes on the next step" );
 	}
 
 	/**

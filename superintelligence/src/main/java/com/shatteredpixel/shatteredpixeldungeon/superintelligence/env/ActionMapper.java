@@ -246,8 +246,22 @@ public class ActionMapper {
 
 			case USE:
 			case DROP:
+				//**False, not true.** This step used or dropped nothing: it cleared any stale pending
+				//item and nothing more, and the actual choice happens on the next step, in SLOT or
+				//INVENTORY. `SPDEnv` moves the mode itself, so returning true here claimed the
+				//environment had performed an action it had not.
+				//
+				//The claim is what matters, because it is read as `INVALID_ACTION` and nothing checks
+				//anything else. An agent that learned USE and DROP were free in WORLD would keep
+				//choosing them there: the mode moved either way, so the run looked normal, and the only
+				//trace was a recording with `DROP ... WORLD` on a step whose inventory never changed -
+				//three of them in an 88-step trainer recording.
+				//
+				//Distinct from WAIT/REST/SEARCH above, which do exactly what they are asked and are
+				//correctly true. Choosing USE in WORLD is choosing an action the mode does not offer;
+				//the mask never puts it there, so this only happens when a recorded step is replayed.
 				SlotAction.clearPendingUseItem();
-				return true;
+				return false;
 
 			case OPEN_INVENTORY:
 				//Nothing to do here. SPDEnv owns the mode change; this only has to not fall through.
