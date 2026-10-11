@@ -811,15 +811,25 @@ public class RewardCheck {
 	 * say the choice does not matter.
 	 */
 	private static void checkSpendingATalentIsWorthALot( EnvConfig config ){
-		//The opportunity it has to beat is another turn of the same floor - and, eventually, a whole
-		//floor's worth of them. Spending a point must clear that by a wide margin or the agent simply
-		//keeps playing.
-		double wholeFloorOfTurns = config.turnCost * config.turnLimitPerFloor;
-		if (!( config.talentReward > wholeFloorOfTurns * 4f )){
-			fail( "a talent point pays " + config.talentReward + " against " + wholeFloorOfTurns
-					+ " for a whole floor's worth of turns. A term that does not clear the price of its"
-					+ " opportunity is a term the agent has no reason to act on, and the opportunity"
-					+ " here is every remaining turn of the floor it is standing on." );
+		//**And a talent point must not outbid a descent.** This replaces an assertion that it must, and the
+		//replacement is worth stating plainly because weakening a gate to pass is normally the wrong move.
+		//
+		//The old requirement was `talentReward > 4 * a whole floor's turns`, on the reasoning that
+		//spending a point has to beat "every remaining turn of the floor". At `turn_cost = 1.0` and 1500
+		//turns a floor that is **6000**, which put a talent point at 4.7 floors against depth's 1.2 -
+		//so levelling was the best thing the agent could do and descending was not. The gate was
+		//enforcing an inversion of the objective rather than protecting it.
+		//
+		//A talent point is worth what it is worth *relative to the objective*, and the objective is depth.
+		//Its real opportunity cost is the turns spent levelling instead, which is `LEVEL_UP`, and that is
+		//asserted below. The claim worth making here is the one the directive implies: depth must be the
+		//largest thing on the board, so an incidental term cannot be worth more than going deeper.
+		if (!( config.depthReward > config.talentReward )){
+			fail( "a talent point pays " + config.talentReward + " against " + config.depthReward
+					+ " for a descent. Depth is the objective, so it must outbid every incidental term -"
+					+ " otherwise the agent levelling is the best strategy on the board and descending is"
+					+ " not. This gate once required the opposite, which is how a talent point reached 4.7"
+					+ " floors while a descent was worth 1.2." );
 			return;
 		}
 
@@ -883,16 +893,9 @@ public class RewardCheck {
 			return;
 		}
 
-		//And against a floor, because that is the opportunity it has to beat.
-		if (!( config.talentReward >= config.depthReward * 0.5f )){
-			fail( "a talent point pays " + config.talentReward + " against a whole floor's "
-					+ config.depthReward + ". It has to be close to a floor to be worth an action,"
-					+ " because the alternative on offer is another turn of the same floor." );
-			return;
-		}
-
 		System.out.println( "  a talent point pays " + fmt( config.talentReward ) + " against "
-				+ fmt( levelUp ) + " for a level and " + fmt( config.depthReward ) + " for a floor; "
+				+ fmt( levelUp ) + " for a level and " + fmt( config.depthReward )
+				+ " for a descent - worth levelling for, and less than going deeper; "
 				+ notes + " point(s) recorded" );
 	}
 

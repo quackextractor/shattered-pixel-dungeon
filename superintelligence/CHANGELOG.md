@@ -428,6 +428,84 @@ recorded ledger.
 against **+27.50** on the recording that was reported.
 
 ### Verified
+### Fixed
+
+- **`IPW-QMA-AFY.dat` was destroyed by `d675e4815` and I reported it as an addition.** That commit
+  replaced a 1500-step, depth-1 recording with a different run of the same seed and said nothing, and the
+  commit message read *"the d2 run is checked in"* — which is true and hides that an older one went. Both
+  exist now; the earlier one is `IPW-QMA-AFY-r2.dat` (1508 steps, depth 1), and the newer is
+  `IPW-QMA-AFY.dat` (392 steps, depth 2).
+
+  This is the same fault `Trainer.saveBestReplays` had, committed three commits after fixing it, and by
+  hand. The trainer's own fix — `-r2`, `-r3` suffixes so a second run of a seed cannot overwrite the first
+  — only covers the trainer. **Nothing stops a person copying a file over another**, and the check that
+  exists for this directory only reads it. Restored from `44f12a89e`, where it is intact.
+
+### Changed
+
+- **The reward scale is anchored on depth, because `talent_reward` had outbid it.** At `turn_cost = 1.0`
+  a floor is 1500 turns and so 1500 points, which makes every other number readable as a fraction of a
+  descent. Measured before this change:
+
+  ```
+  depth_reward      1800   =  1.20 floors   <- the objective
+  talent_reward     7000   =  4.67 floors   <- levelling was the best strategy on the board
+  victory_reward    1000   =  0.67 floors   <- winning the game paid less than one floor
+  ```
+
+  **A talent point worth 4.7 floors against a descent worth 1.2 is an inversion of the objective, and
+  nothing crashed while it was in place.** Repriced:
+
+  | | was | now | worth |
+  | --- | --- | --- | --- |
+  | `depth_reward` | 1800 | **1800** | 1.20 floors — the objective |
+  | `talent_reward` | 7000 | **400** | 0.27 floors |
+  | `kill_reward` | 150 | **150** | 0.10 floors |
+  | `sneak_attack_reward` | 300 | **300** | 0.20 floors |
+  | `damage_penalty` | 50 | **50** | 0.53 floors for a full bar |
+  | `victory_reward` | 1000 | **60000** | 40 floors — 26 descents and change |
+
+  The gap between idling a floor and descending at turn 500 is now **4800 points wide** (−3500 against
+  +1300). At `talent_reward = 7000` it was *negative*: descending a floor was worth less than one talent
+  point, and the cheapest play was to level rather than to descend.
+
+  **`rewardcheck`'s talent assertion was the source of it and has been replaced.** It demanded
+  `talentReward > 4 × a whole floor's turns` on the reasoning that spending a point has to beat "every
+  remaining turn of the floor" — which at `turn_cost = 1.0` is 6000, and which contradicted the
+  objective. It also required a talent point to be within half a descent. Both are gone; what replaces
+  them asserts the directive instead: **`depth_reward > talent_reward`**, with the reasoning stated in
+  the failure message. Weakening a gate to pass is normally the wrong move, and this is a case of
+  strengthening it — the old assertions were protecting a property that was producing the bug.
+  Mutation-tested: `talent_reward = 9000` fails it with the message naming the inversion.
+
+- **Where a run's recordings go, and that they cannot overwrite each other.** `trainer-replays` by
+  default; `<--out>/replays` is what it did before, which is `%TEMP%` unless `--out` says otherwise, so
+  **the trainer had never written anywhere the catalogue reads** — which is why the last two runs' output
+  reached `trainer-replays` only because I copied it there by hand, and why `IPW-QMA-AFY` looked like the
+  only new file. `--replay-dir` overrides it. Recordings get `-r2`, `-r3` rather than overwriting.
+
+- **`recorded-at` column**, `MM-ddTHH:mm` from the file's modification time, so *"which of these is
+  new"* has an answer — a generation number cannot, because every run writes `gen 5`. No space inside the
+  value: `10-11 17:10` is two cells to anything splitting on whitespace. It is also what proves the
+  above, since it showed four files at 15:19 and one at 16:28.
+
+### Not done
+
+- **There is no single source of truth for the reward numbers, and there was never meant to be.**
+  `EnvConfig` holds the compiled defaults, `superintelligence.properties` holds the documented values,
+  `EnvConfigBinder` resolves them in a four-level cascade (defaults → file → `SPD_*` env → flags), and
+  `configcheck` asserts the two agree in both directions. That is a deliberate design: a run with no
+  file and no environment must behave identically to a documented default, and that is only checkable
+  if the default exists in code.
+
+  **My error was hand-editing both files** rather than changing one and letting the gate say which was
+  wrong — and the gate did, mid-commit, refusing the commit with `reward.depth_reward: file says 2500.0,
+  code uses 1800.0`. Worth noting for anyone reading the history: `rewardcheck` itself reads
+  `new EnvConfig()`, not the file, so a mutation applied only to the properties file does **not** move
+  it — I lost a cycle to that while checking this.
+
+### Verified
+
 
 
 - `verifyall` - `:superintelligence:gates` at 20, `:desktop:playbackcheck` at 23, both green.
