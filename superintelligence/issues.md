@@ -636,9 +636,17 @@ guards, both the game's own preconditions: the hero has to be on the level being
 `FeatherBuff`, since an elixir of feather fall is the one state in which `Chasm.heroLand` returns
 early and a hero is *meant* to be standing on a chasm.
 
-`Level.drop`'s `pressCell` carries the same guard and is still not pressed, so a thrown or dropped item
-still never triggers a trap headlessly. That one has no supervisor-side equivalent — `drop` is called
-from inside the item tree — so it is recorded at `ENGINE-CHANGES.md` §7 rather than fixed here.
+`Level.drop`'s `pressCell` carried the same guard and **had to be fixed in `:core`**. A thrown or
+dropped item pressed nothing, so a stone landed on a trap and did nothing to it — measured, an armed
+`WornDartTrap` still armed after a `Food` was dropped on it on four seeds out of four. `drop` is called
+from inside the item tree, so there was no supervisor-side equivalent — pressing the cell would mean
+intercepting every call site.
+
+**Neither is fixed.** A change here needs a decision, and the obvious one is a trap of its own — see
+`ENGINE-CHANGES.md` §7 for the three options. What *is* settled is that the guard is load-bearing in the
+real game and cannot simply have its scene half dropped: the scene test separates gameplay drops from
+scene drops, and `AlchemyScene` and `InterlevelScene.resurrect` both drop onto cells that must not be
+pressed.
 
 ### What is gated, and what it refuses
 
@@ -651,6 +659,9 @@ from inside the item tree — so it is recorded at `ENGINE-CHANGES.md` §7 rathe
 | a fall leaves no hand-off behind | `InterlevelScene.mode = null` is dropped from `clearSwitchRequest` |
 | walking into a chasm does not take the process down | the null guard is dropped from `Image` |
 | the same fall twice is the same fall | the fall does not happen at all — so the case refuses to compare a fall with itself |
+
+`presscheck` is a separate gate for the last divergence and is **not** in `gates`; it is expected-red.
+See the closed entry above and `ENGINE-CHANGES.md` §7.
 | levitation ending over a chasm drops the hero | the pipeline's standing-on-a-chasm check is removed, leaving the hero on the chasm cell at full health |
 
 and `gradle :superintelligence:dialogcheck`, three more, for the question rather than the fall:

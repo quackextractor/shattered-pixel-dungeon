@@ -130,7 +130,10 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   game's own `hide()` closes it, so the agent asks, answers, and ends up a floor down — for 13 steps and
   -15.00, against a descent at +1800.00. And a levitation expiring over a chasm now drops the hero, which the
   game's `Levitation.detach` does not do without a renderer. `issues.md` 16; `fallcheck` and
-  `dialogcheck` gate it, 6 and 3 cases.
+  `dialogcheck` gate it, 6 and 3 cases. One divergence on this path is **still open**: a thrown item
+  does not trigger the trap it lands on, because `Level.drop` presses the cell only behind a scene
+  test no headless run can satisfy. `presscheck` is the gate for it, out of `gates` and expected-red
+  until the fix is decided; `ENGINE-CHANGES.md` section 7 has why the obvious engine change is wrong.
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**

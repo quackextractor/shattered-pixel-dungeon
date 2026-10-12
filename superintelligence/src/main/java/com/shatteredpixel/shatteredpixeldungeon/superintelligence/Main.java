@@ -23,6 +23,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateChec
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.TransitionCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.FallCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.DialogCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.PressCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ValueScale;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.WeightsDiff;
@@ -93,6 +94,7 @@ public class Main {
 		case "transitioncheck": TransitionCheck.main( rest ); break;
 		case "fallcheck": FallCheck.main( rest ); break;
 		case "dialogcheck": DialogCheck.main( rest ); break;
+		case "presscheck": PressCheck.main( rest ); break;
 		case "rolloutcheck": RolloutCheck.main( rest ); break;
 			case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
@@ -125,6 +127,7 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "  transitioncheck           fail if descending ends the episode, or is worth nothing" );
 		System.out.println( "  fallcheck                fail if a chasm fall is dropped, or inherits an earlier episode" );
 		System.out.println( "  dialogcheck              fail if an answer cannot reach a dialog the game opened" );
+		System.out.println( "  presscheck              fail if a dropped item does not press the cell it landed on" );
 		System.out.println( "  replayprobe               report how far a shuffled replay drifts" );
 		System.out.println( "  valuescale                report the critic's targets against what it can reach" );
 		System.out.println( "  replays [--dir d]...     list recordings, grouped by hero class and ranked" );

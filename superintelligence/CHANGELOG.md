@@ -144,6 +144,32 @@ records, which is the same class of change as re-pricing `STALLED`.
   the world for one more turn with a modal question already up, and could spend it walking away from the
   chasm it had just asked about. A rendered game blocks cell input the instant the window appears.
 
+- **A hero left standing on a chasm falls, and the agent was the only party that could make that
+  happen.** `Levitation.detach()` clears `flying` and presses the cell the hero is on; the press goes
+  through `Level.occupyCell`'s pit branch to `Chasm.heroFall`. That detach asks for a `GameScene`, so
+  headlessly the only thing that ever presses an *occupied* cell never ran — and walking off the chasm did
+  not reach it either, because the pit branch is behind `if (!ch.flying)` and is only entered when a
+  character moves *into* a cell. Measured: hero standing on the chasm at 391 with `flying` false and 20
+  health, depth 1, and stayed there for the rest of the episode — a state the game cannot produce.
+
+  Fixed in the pipeline rather than in `:core`. The call is the game's, so the landing cell, the damage
+  and the fall flag all stay the game's; what is added is the *decision* the game would have made inside
+  a renderer, which is the same kind of thing `handleTransition` already does when it reads
+  `InterlevelScene.mode`. It runs at the top of `LevelPipeline.runToHeroReady`'s drain — after the late
+  sprites, before the scheduler step — because the buff ends *inside* `Actor.headlessStep()` and the
+  following iteration is the one where the hero is grounded on a chasm with the drain still running.
+  Checking only after a step misses it: the hero becomes ready on that same step and the loop returns.
+
+  Both guards are the game's own preconditions, not new rules: the hero has to be on the level being
+  pressed, and he has to be off a `FeatherBuff` — an elixir of feather fall is the one state in which
+  `Chasm.heroLand` returns early and a hero is *meant* to be standing on a chasm.
+
+- **A thrown or dropped item never triggers what it landed on.** `Level.drop` presses the landing cell
+  so an item can set off a trap, open a door or fill a well, but it does so only behind
+  `ShatteredPixelDungeon.scene() instanceof GameScene`. Headlessly that is false, so **every thrown stone
+  lands on a trap and does nothing to it.** Measured on four seeds: a `Food` dropped on an armed
+  `WornDartTrap` left it armed in all four.
+
 ### Added
 
 - **`gradle :superintelligence:fallcheck`**, a gate, six cases. It drives a real fall through
@@ -181,30 +207,37 @@ records, which is the same class of change as re-pricing `STALLED`.
 
 ### Not done
 
-- **A hero left standing on a chasm falls, and the agent was the only thing that could make that
-  happen.** `Levitation.detach()` clears `flying` and presses the cell the hero is on; the press goes
-  through `Level.occupyCell`'s pit branch to `Chasm.heroFall`. That detach asks for a `GameScene`, so
-  headlessly the only thing that ever presses an *occupied* cell never ran — and walking off the chasm
-  did not reach it either, because the pit branch is behind `if (!ch.flying)` and is only entered when a
-  character moves *into* a cell. Measured: hero standing on the chasm at 391 with `flying` false and 20
-  health, depth 1, and stayed there for the rest of the episode — a state the game cannot produce.
-
-  Fixed in the pipeline rather than in `:core`. The call is the game's, so the landing cell, the damage
-  and the fall flag all stay the game's; what is added is the *decision* the game would have made inside
-  a renderer, which is the same kind of thing `handleTransition` already does when it reads
-  `InterlevelScene.mode`. It runs at the top of `LevelPipeline.runToHeroReady`'s drain — after the late
-  sprites, before the scheduler step — because the buff ends *inside* `Actor.headlessStep()` and the
-  following iteration is the one where the hero is grounded on a chasm with the drain still running.
-  Checking only after a step misses it: the hero becomes ready on that same step and the loop returns.
-
-  Both guards are the game's own preconditions, not new rules: the hero has to be on the level being
-  pressed, and he has to be off a `FeatherBuff` — an elixir of feather fall is the one state in which
-  `Chasm.heroLand` returns early and a hero is *meant* to be standing on a chasm.
-
 - **`Mob.holdAllies` is still not called from `handleFall`.** `InterlevelScene.fall` opens with it and it
   still uses `Collections.shuffle` (`ENGINE-CHANGES.md` §7 has it open), so copying it would put an
   unseeded draw into every fall in the trainer and undo reproducibility for the sake of a behaviour no
   policy in this project can reach. When the shuffle is seeded this gets the call with it.
+
+- **The thrown-item divergence has no supervisor-side fix, and the obvious engine change was wrong.**
+  `Level.drop` is called from a dozen places in the item tree, none of them ours, so pressing the cell
+  from the environment would mean intercepting every call site. That leaves a change to `Level.drop`'s
+  guard — and the guard is **load-bearing in the real game**, which is the part worth recording.
+
+  I changed it to `Dungeon.level != null` and described it as behaviour-preserving. It is not. The scene
+  test is what separates *gameplay* drops from *scene* drops, and there are scene drops that are not
+  gameplay drops:
+
+  | call site | scene | cell |
+  | --- | --- | --- |
+  | `AlchemyScene:761,864,1003` | `AlchemyScene` | `Dungeon.hero.pos` — the cell the hero is standing on |
+  | `InterlevelScene:815` | `InterlevelScene` | `invPos` — the cell the hero died on, during resurrect |
+
+  Under the old guard neither pressed. Under my change both do: crafting while standing in tall grass
+  tramples it (`Level.java:1282`), and resurrect presses the death cell — which the code immediately
+  above it deliberately avoids for the respawn cell, choosing a position with no trap or plant on it.
+  `InterlevelScene:783,787` are the same resurrection path and are guarded only incidentally.
+
+  **Reverted.** The gate stays, out of `gates` and expected-red, because the divergence is real and the
+  fix needs a decision rather than a plausible-looking edit. `ENGINE-CHANGES.md` §7 has the three
+  options and what each costs.
+
+- **`Levitation.detach()` still does not re-press the cell itself**, and still asks for a `GameScene` to
+  do it. The outcome is now right — see the fixed entry above — but the guard is in the game rather than
+  in the environment, and that is a `:core` change this work did not make.
 
 - **`Levitation.detach()` still does not re-press the cell itself.** The game guards that call on a
   `GameScene` (`Levitation.java:58`) and still does; the pipeline now makes the same decision the guard
@@ -228,14 +261,7 @@ records, which is the same class of change as re-pricing `STALLED`.
 - All seven committed trainer recordings still reproduce, and a fresh two-generation trainer run writes
   two more that verify.
 
-## [0.8.0] - 2026-10-12
-
-Closes `issues.md` 16. **A chasm fall was never serviced at all**, and nothing in the project had found
-out, because nothing in the project had ever put a hero into a chasm. Pre-1.0, and this is a minor
-rather than a patch for the reason `0.3.0` was: a fall now changes what a run does and what a recording
-records, which is the same class of change as re-pricing `STALLED`.
-
-### Fixed
+## [0.7.0] - 2026-10-11
 
 - **The trainer recorded a step's quickslot bindings _after_ the step, so a `DROP` named a different item
   on playback than it did on the recording.** `ReplayRecorder.record` documents that it is called before

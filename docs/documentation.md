@@ -263,7 +263,7 @@ twenty-two gates, one invocation, ~22 seconds:
 | `rewardcheck` | Ending an episode being cheaper than dying, **or** an action that consumes several engine turns being charged for one |
 | `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
 | `fallcheck` | A chasm fall the environment drops, a free landing, or a fall that leaves a hand-off behind for the next episode |
-| `dialogcheck` | An answer that cannot reach a dialog the game opened, a dialog taken away when the game declined it, or one reported a turn late |
+| dialogcheck | An answer that cannot reach a dialog the game opened, a dialog taken away when the game declined it, or one reported a turn late |
 | `replaycheck` | A catalog that misgroups, misranks or misresolves, **or** mislabels what it did |
 | `rolloutcheck` | A recording with no usable seed |
 | `modecheck` | An action mode the environment cannot reach |
@@ -279,6 +279,13 @@ twenty-two gates, one invocation, ~22 seconds:
 
 Plus `playbackcheck` in `:desktop`, which drives the rendered viewer with no window and no scene, and
 `viewcheck`, which plays the whole corpus through the real viewer and needs a display.
+
+One gate is deliberately **not** in that list: `presscheck`, run by hand with
+`gradle :superintelligence:presscheck`. It asserts a divergence that is still open — a thrown item does
+not trigger the trap it lands on, because `Level.drop` presses the cell only behind a
+`scene() instanceof GameScene` test that no headless run can satisfy. The fix is an engine change this
+project may make but not commit, so the gate is expected-red until the owner decides; `ENGINE-CHANGES.md`
+§7 has why the obvious one is wrong.
 
 `playbackcheck` also plays **the committed corpus** headlessly, which is the headless half of
 `viewcheck` and the only one of the two that can be a gate. That half was added because every other
