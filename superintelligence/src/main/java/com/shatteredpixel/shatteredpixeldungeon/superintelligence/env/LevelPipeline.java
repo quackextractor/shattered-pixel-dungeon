@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.env;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.GamesInProgress;
 import com.shatteredpixel.shatteredpixeldungeon.SPDSettings;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
@@ -308,18 +309,23 @@ public class LevelPipeline {
 		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.Mode mode =
 				com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.mode;
 
-		if (transition == null){
-			clearSwitchRequest();
-			return Transition.NONE;
-		}
-
-		//Chasm falls are not driven by a LevelTransition; the hero's cell is resolved by
-		//Level.fallCell() after the depth has been bumped.
 		if (mode == com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.Mode.FALL){
 			clearSwitchRequest();
 			return Transition.FALL;
 		}
 
+		if (transition == null){
+			clearSwitchRequest();
+			return Transition.NONE;
+		}
+
+		//Chasm falls are not driven by a LevelTransition, so this test has to come before the null
+		//check above. Chasm.heroFall writes InterlevelScene.mode and nothing else, so on a fall
+		//curTransition is null by construction and the null test used to fire first: the fall was
+		//reported as "not a level transition", the switch request was cleared, and the hero was left
+		//standing on the pit he had just been dropped into. Transition.FALL and handleFall() were
+		//unreachable, which is the same thing as saying the chasm was a wall the hero stood on rather
+		//than a floor down.
 		Transition result = (transition.type == LevelTransition.Type.REGULAR_EXIT
 				|| transition.type == LevelTransition.Type.BRANCH_EXIT)
 				? Transition.DESCEND
@@ -351,16 +357,37 @@ public class LevelPipeline {
 	/**
 	 * Services a Chasm fall: one floor down, placed on a survivable cell.
 	 * Mirrors {@code InterlevelScene.fall()}.
+	 *
+	 * <p><b>One thing is deliberately not mirrored.</b> {@code InterlevelScene.fall()} opens with
+	 * {@code Mob.holdAllies(Dungeon.level)}, which parks the floor's allies for a summon to pick up on
+	 * the far side. That method still uses {@code Collections.shuffle}, so it draws from an unseeded
+	 * generator - {@code ENGINE-CHANGES.md} §7 has it open. Copying it here would make every fall in the
+	 * trainer consume an unseeded value and put reproducibility back exactly where it was, for the sake
+	 * of a behaviour no policy in this project can reach. When the shuffle is seeded, this gets the
+	 * call with it.
 	 */
 	public void handleFall(){
 		fixTimeBeforeSwitching();
 
+		//The game's landing, which the headless path was skipping. Chasm.Falling is a buff whose act()
+		//is Chasm.heroLand(): cripple, bleeding, fall damage, and - the part that matters for the world -
+		//Dungeon.level.occupyCell(hero) on the floor he arrived on. Without it a fall was free and a
+		//landing cell that was itself a pit never noticed.
+		Buff.affect( Dungeon.hero, com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm.Falling.class );
+
+		//The game increments the depth and leaves the branch alone; forcing branch 0 here sent a hero
+		//who fell on a branch floor somewhere the game would never have sent him.
 		Dungeon.depth++;
-		Dungeon.branch = 0;
 		Dungeon.generatedLevels.clear();
 
 		Level level = Dungeon.newLevel();
-		Dungeon.switchLevel( level, level.fallCell( true ) );
+
+		//InterlevelScene.fall() passes Chasm.heroFall's own flag. It is false for an ordinary chasm and
+		//true only for a WeakFloorRoom, and it is the difference between landing anywhere survivable and
+		//landing inside the destination floor's PitRoom - a different cell and a different number of
+		//draws, from a hardcoded literal that happened to agree with the game on most floors.
+		Dungeon.switchLevel( level, level.fallCell(
+				com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.fallIntoPit ));
 
 		attachSprites();
 		PathFinder.setMapSize( level.width(), level.height() );
@@ -396,6 +423,13 @@ public class LevelPipeline {
 	public void clearSwitchRequest(){
 		game.clearSwitchRequest();
 		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.curTransition = null;
+		//The third field of the same hand-off, and the one that decides how it is serviced. A real game
+		//gets a fresh InterlevelScene per descent and therefore a fresh mode; nothing headless does, so
+		//a mode left behind by one run is read by the next. handleTransition tests it before the null
+		//check above - which it has to, because a chasm fall never writes curTransition - so a stale
+		//FALL turns the next ordinary descent into a fall, and a stale DESCEND turns the next fall into
+		//something handleTransition answers with a null transition.
+		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.mode = null;
 	}
 
 	/** Convenience for diagnostics: the seed the current run is locked to. */

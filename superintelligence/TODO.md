@@ -3,11 +3,22 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-11, after `issues.md` "Training" 15 was closed. **A recording the trainer writes
+Last updated: 2026-10-12, after `issues.md` "Training" 16 was closed. **A chasm fall was being dropped
+entirely**, and nothing in the project had ever found out, because nothing in the project had ever put a
+hero into one. A fall is the only floor transition that carries no `LevelTransition` — `Chasm.heroFall`
+writes `InterlevelScene.mode` and asks for a scene switch, and nothing else — and
+`LevelPipeline.handleTransition` tested `curTransition == null` before it tested the mode, which is true
+on every fall by construction. So it answered "not a level transition", cleared the switch request, and
+`Transition.FALL` and `handleFall()` were unreachable code. Walking a hero *at* a chasm threw a
+`NullPointerException` out of `Chasm.heroJump` and out of the worker with it. Both are fixed and gated by
+`fallcheck` (5 cases, mutation-tested); §0.11 has the remaining gap on that path, which is that the
+game's own "jump?" prompt still cannot be answered headlessly.
+
+Last updated before that: 2026-10-11, after `issues.md` "Training" 15 was closed. **A recording the trainer writes
 can now be played in the viewer, and `verify` says so instead of saying `[OK]`.** Four faults, found in
 the order they had to be found: the trainer pinned a step's quickslot bindings *after* the step, so a
-`DROP` — the one action that unbinds its own item — named a different item on playback than it did on
-the recording; `ReplayIO.verify` resolved recorded slot indices against the live bindings rather than the
+`DROP` — the one action that unbinds its own item — named a different item on playback than it did on the
+recording; `ReplayIO.verify` resolved recorded slot indices against the live bindings rather than the
 recorded ones and skipped the comparison entirely when the field was empty, which is why nine unplayable
 recordings each reported success; `viewcheck`'s verdict was "did not diverge", so a player that halted
 for any other reason scored a pass; and `Quickslots.restore` wiped bindings on equipped items, which no
@@ -33,6 +44,45 @@ moved out of the repository root and into this directory, and the module's serie
 is re-measured by it; `verifyall` was re-run afterwards and is green, and `:desktop:viewcheck` was re-run
 and is 17 of 17. The entry before that — `issues.md` "Env" 6 and 7 investigated, 6 closed on measurement
 — is at §0.8.
+
+---
+
+## 0.11 The "jump?" prompt the environment cannot answer - RECORDED, not fixed
+
+Found while closing `issues.md` 16, and the remaining half of that path.
+
+A hero who walks toward a chasm makes the game ask. `Hero.getCloser` finds the next cell is a pit and
+calls `Chasm.heroJump`, which raises a `WndOptions` - "you are about to jump into a chasm, are you
+sure" - through `Game.runOnRenderThread`, which the headless backend runs inline, which parks the window
+in `GameScene`'s headless slot, which is what `WindowBridge.open()` reads. So the environment *does*
+get the game's own question, and the agent is put into `MENU` with two options, and answering it is an
+ordinary `MENU` step.
+
+**The answer is then discarded, by the game's own code.** `Chasm`'s dialog overrides `onSelect` with
+
+```java
+if (index == 0 && elapsed > 0.2f){ ... jumpConfirmed = true; hero.resume(); }
+```
+
+where `elapsed` accumulates `Game.elapsed` in the window's `update()`. Nothing headless ever calls
+`Window.update()` - `PixelScene.update()` is what calls it, and there is no `PixelScene` - so `elapsed`
+stays at zero, the option does not fire, and the hero does not jump. Measured: the window opens, option
+0 is pressed, `WindowBridge` reports the dialog answered and clears it, and the hero is still standing
+where he was with `Chasm.jumpConfirmed` false.
+
+**Why it is not fixed here.** It is deterministic on both sides of a replay, so it is a fidelity gap
+rather than a divergence, and closing it is a decision rather than a repair: the guard exists so a
+player cannot click through the prompt before reading it, and a headless caller has no reading time. The
+three answers are (a) pump the window once per environment step, which is the viewer's shape but takes
+13 steps to cross the guard; (b) let `WindowBridge` press the option past the guard, which is the
+agent's decision made explicit but invents a rule the game does not have; (c) treat a chasm as
+impassable, which is what happens today and is the one thing a dungeon crawler cannot afford.
+
+The consequence to weigh is on (c): **the agent can never walk into a chasm.** Falls happen only when
+the engine drops the hero onto a pit cell - `Level.occupyCell`, reached by a Displacing Dart, a
+teleport, `Preparation`'s rest, `HeroicLeap` - and `Levitation.detach()` does not re-check the cell
+headlessly because the game guards that call on a `GameScene`. So chasms are currently walls the hero
+cannot choose to cross, and no floor behind one is reachable by walking.
 
 ---
 

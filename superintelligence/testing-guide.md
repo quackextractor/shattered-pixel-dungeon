@@ -99,9 +99,10 @@
 
 | Test Command / Task | Subsystem Verified | Success Criterion |
 | :--- | :--- | :--- |
-| **`./gradlew :superintelligence:gates`** | Master aggregator running all 20 automated gate checks across all modules. | **All 20 gates pass cleanly** in ~22 seconds. |
+| **`./gradlew :superintelligence:gates`** | Master aggregator running all 21 automated gate checks across all modules. | **All 21 gates pass cleanly** in ~22 seconds. |
 | **`./gradlew :superintelligence:run --args="verify <file.replay>"`** | Headless re-execution of a recorded replay through `ActionMapper` & `LevelPipeline`, resolving each recorded slot index against its recorded quickslot bindings - the same `Quickslots.prepare` the viewer calls. | Replays trajectory to completion, matching recorded position, HP, turns, and inventory. Exits 3 rather than 0 on a recording whose slot indices cannot be resolved at all. |
 | **`transitioncheck` (`:superintelligence`)** | Drives real descents **and** an ascent through `Level.activateTransition`, and asserts the hero's first action on the new floor is not swallowed by the act where the floor's mobs notice him. 9 cases, mutation-tested. | Depth changes in both directions, the episode continues, the engine clock restarts with the floor, and the agent's first action there moves the hero. |
+| **`fallcheck` (`:superintelligence`)** | Drives a real chasm fall through `Level.occupyCell` - the transition that carries **no** `LevelTransition`, so `curTransition` is null on it by construction. 5 cases, each mutation-tested. | The fall lands the hero a floor down, alive, on a restarted clock, and the landing costs health the way `InterlevelScene.fall()` costs it; the hand-off leaves `InterlevelScene.mode` and `curTransition` clear, so the next episode's ordinary descent is a descent; walking toward a chasm asks the game's own question instead of throwing; and the same fall twice in one process, with other runs in between, lands on the same cell of the same floor. |
 | **`paritycheck` (`:superintelligence`)** | Records a sweep of seeds x hero classes in one process, then verifies each recording twice - once immediately, once after the whole sweep has run in between. | Every recording replays exactly, both times. |
 | **`playbackcheck` (`:desktop`)** | Drives `ReplayPlayer` logic headlessly without UI or display server. Covers the player's own logic only, and plays the committed corpus. | Faithful replays pass; altered steps (HP, position, turn, quickslots) fail at exact step; playing a death recording leaves no `bones.dat` behind; every committed recording plays **every step**; a recording whose bindings were never written is refused *at* the first step that needed them, not after playing; and a death landing on the **final** recorded step still plays that step, which the corpus could not reach until `duelist-death-last.replay` was added. 23 cases. |
 | **`viewcheck` (`:desktop`)** | Plays the **whole committed corpus through the real viewer** - real `GameScene`, real frame driver, real GL context, window hidden. Needs a display, so it is outside `gates`. | Every committed recording plays **every step** in the viewer - not merely "did not diverge", which is what a halt for any other reason used to score. **Green**: 19 of 19, and stable across repeated runs. |
@@ -179,3 +180,50 @@ captured changes what a slot index means, had never been recorded by anything.
 The generalisation, and it is the same sentence three times now: **a green is a claim about what was
 checked.** Three of them here were claims about a corpus that could not express the question. The fix
 that works is not a subtler assertion; it is making the corpus able to ask.
+
+---
+
+### The chasm, and a green that meant nothing had ever fallen
+
+`issues.md` 16 is the fourth counter-example and the sharpest one, because nothing here was a corpus
+problem at all: **no recording, no gate and no policy had ever put a hero into a chasm, so the code that
+services a fall had never run.**
+
+A fall is the only floor transition that carries no `LevelTransition`. `Chasm.heroFall` writes
+`InterlevelScene.mode = FALL`, asks for a scene switch, and writes nothing else - no `curTransition`,
+no destination, no landing cell. `LevelPipeline.handleTransition` tested `curTransition == null`
+*before* it tested the mode, which is true on every fall by construction, so it answered
+`Transition.NONE`, cleared the switch request and dropped the fall. `Transition.FALL` and
+`LevelPipeline.handleFall()` were unreachable code.
+
+Measured, before the fix, by putting the hero on a chasm cell and stepping:
+
+```
+depth 1 -> 1, switch request cleared, hero still standing on the pit
+```
+
+and by walking a hero at one:
+
+```
+NullPointerException: cannot invoke "SmartTexture.uvRect" because "this.texture" is null
+  at Chasm$1.call(Chasm.java:64)          <- new Image(Dungeon.level.tilesTex(), ...)
+  at Hero.getCloser(Hero.java:1885)
+  at Actor.headlessStep(Actor.java:328)
+  at Worker.serve(...)                    <- nothing between these two catches it
+```
+
+`fallcheck` now drives both, and each of its five cases was reverted-and-refused in turn:
+
+| Reverted | Case that refuses it |
+| --- | --- |
+| the `mode == FALL` test moved back behind the null test | `a fall is a floor` (and two others, since nothing else is true once the fall does not happen) |
+| `Buff.affect(hero, Chasm.Falling.class)` removed from `handleFall` | `landing hurts` |
+| `InterlevelScene.mode = null` removed from `clearSwitchRequest` | `a fall leaves no hand-off behind` |
+| the null guard removed from `Image`'s five-argument constructor | `walking into a chasm does not take the process down` |
+
+**What is still not right, and is recorded rather than guessed:** the game's "jump?" prompt cannot be
+*answered* headlessly. `Chasm`'s dialog requires `elapsed > 0.2f` on a clock only a rendered frame loop
+advances, so the environment is offered the game's own question, presses its button, and the game's own
+code declines - the hero does not jump and stays put. That is deterministic on both sides of a replay,
+so it is a fidelity gap rather than a divergence, and closing it means deciding how much rendered time a
+headless answer is worth. `TODO.md` §0.11 has it with the measurement.

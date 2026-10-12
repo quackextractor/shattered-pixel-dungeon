@@ -48,6 +48,14 @@ import com.badlogic.gdx.Gdx;
  * gate could see it, because every one of them either plays a single episode per process or never lets
  * the hero die.
  *
+ * <p><b>Two more, and they are the chasm.</b> {@code InterlevelScene.fallIntoPit} and
+ * {@code Chasm.jumpConfirmed} are process-scoped the same way, and the second decides whether stepping
+ * toward a pit opens the game's "jump?" prompt or drops the hero a floor with no prompt at all. Both are
+ * written during an episode and read by whatever runs next. {@code InterlevelScene.mode} is a third, and
+ * is cleared by the pipeline's own {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline#clearSwitchRequest}
+ * rather than here: it and {@code curTransition} are one pending hand-off rather than one run's
+ * history, so they are dropped together when the hand-off is acknowledged.
+ *
  * <p><b>Deliberately not here: {@code Actor.clear()} and the RNG reseed.</b> Both are reached through
  * {@code Dungeon.init()}, which {@link LevelPipeline#startRun} calls: {@code Actor.clear()} empties the
  * actor registry and {@code Random.reseedBase(seed)} reseeds the gameplay generator, reseeding
@@ -81,6 +89,18 @@ public class RunState {
 		//The item an agent chose to use or drop, waiting for a slot or an aim. Read by
 		//ActionMapper.resolveTarget as the fallback when no listener is armed.
 		SlotAction.clearPendingUseItem();
+
+		//Whether the player has already confirmed a jump across a chasm. Chasm.heroFall clears it and
+		//the "jump?" dialog sets it, so a hero that confirmed a jump and then ran out of turns - or
+		//died, or was interrupted - leaves it true for whatever runs next in this process. That is the
+		//fifth instance of this class's fault and it is the one issues.md 16 filed: the next run's first
+		//step toward a pit falls with no dialog at all, in a world its recording describes as asking.
+		com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm.jumpConfirmed = false;
+
+		//Which kind of fall Chasm.heroFall just performed, read by InterlevelScene.fall() to decide
+		//where to land. Written on every fall so it is never stale in the ordinary way, but a process
+		//that ends an episode between the write and the read leaves it set for the next run.
+		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.fallIntoPit = false;
 
 		forgetPreviousRemains();
 	}

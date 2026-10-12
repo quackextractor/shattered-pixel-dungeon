@@ -36,7 +36,7 @@ scored by a configurable reward function, with the best run per seed recorded an
 
 **Nothing has won a run, and nothing has reached floor 5.** The machinery is correct - the network's
 gradients check against central differences, the environment is reproducible across processes,
-recordings replay exactly, and every one of the twenty gates is green - and the reward function now
+recordings replay exactly, and every one of the twenty-one gates is green - and the reward function now
 asks for the right thing. Measured, over twelve generations: **deaths fell 100% to 19%, mean turns rose
 377 to 1335**, and `bestDepth 2` has been observed once. **Depth does not trend yet.**
 
@@ -246,7 +246,7 @@ from `KILL`'s "declared, plumbed and never emitted". `TODO.md` 1.10 is the missi
 
 ## Gates
 
-Twenty gates, one invocation, ~22 seconds:
+Twenty-one gates, one invocation, ~22 seconds:
 
 ```sh
 ./gradlew :superintelligence:gates
@@ -262,6 +262,7 @@ Twenty gates, one invocation, ~22 seconds:
 | `parallelcheck` | A parallel update that differs from the serial one |
 | `rewardcheck` | Ending an episode being cheaper than dying, **or** an action that consumes several engine turns being charged for one |
 | `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
+| `fallcheck` | A chasm fall the environment drops, a free landing, or a fall that leaves a hand-off behind for the next episode |
 | `replaycheck` | A catalog that misgroups, misranks or misresolves, **or** mislabels what it did |
 | `rolloutcheck` | A recording with no usable seed |
 | `modecheck` | An action mode the environment cannot reach |
@@ -339,6 +340,16 @@ Three of them are worth singling out, because they reach faults the others struc
   where something is in range to interrupt - so the fixture is searched for at run time rather than
   hard-coded, and failing to find one is a reported failure. The gate also drives the ascent, which is
   the one direction no other gate exercised.
+- **`fallcheck`** covers the floor change that carries no `LevelTransition`. A chasm fall is a
+  different shape from a stair transition and nothing reached it: `Chasm.heroFall` writes
+  `InterlevelScene.mode` and asks for a scene switch, and `LevelPipeline.handleTransition` tested
+  `curTransition == null` first - which is true on *every* fall, because a fall is the one transition
+  that has none. So it answered "not a level transition", cleared the switch request and dropped the
+  fall, and `Transition.FALL` and `handleFall()` were unreachable. The gate drives a real fall through
+  `Level.occupyCell`, asserts the landing is a floor with a living hero on a restarted clock and a
+  health bill, and asserts the hand-off leaves nothing behind for the next episode - which matters
+  because `InterlevelScene.mode` is a process static that a real game resets by building a fresh
+  `InterlevelScene` for every descent, and nothing headless does.
 
 ## Replay and determinism
 

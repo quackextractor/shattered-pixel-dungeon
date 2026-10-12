@@ -63,7 +63,13 @@ public class Image extends Visual {
 	
 	public Image( Object tx, int left, int top, int width, int height ) {
 		this( tx );
-		frame( texture.uvRect( left,  top,  left + width, top + height ) );
+		//A null texture means there was no renderer to load one. frame(RectF) has tolerated that since
+		//the renderer bypass landed, but the frame rectangle is derived from the texture, so every
+		//caller that has to ask the texture for one has to tolerate it too - or a headless run dies on
+		//a line of game logic that merely wanted an icon. Chasm.heroJump builds its "jump?" prompt out
+		//of one of these, and without the guard every hero that walked toward a chasm took the process
+		//down with it.
+		if (texture != null) frame( texture.uvRect( left,  top,  left + width, top + height ) );
 	}
 	
 	public void texture( Object tx ) {
@@ -91,6 +97,8 @@ public class Image extends Visual {
 	}
 	
 	public void frame( int left, int top, int width, int height ) {
+		//same guard as the constructor above, for the same reason: the rect comes off the texture.
+		if (texture == null){ frame( new RectF( 0, 0, 1, 1 ) ); return; }
 		frame( texture.uvRect( left, top, left + width, top + height ) );
 	}
 	

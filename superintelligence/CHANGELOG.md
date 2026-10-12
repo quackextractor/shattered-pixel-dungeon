@@ -23,6 +23,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-12
+
+Closes `issues.md` 16. **A chasm fall was never serviced at all**, and nothing in the project had found
+out, because nothing in the project had ever put a hero into a chasm. Pre-1.0, and this is a minor
+rather than a patch for the reason `0.3.0` was: a fall now changes what a run does and what a recording
+records, which is the same class of change as re-pricing `STALLED`.
+
+### Fixed
+
+- **A chasm fall was never serviced.** It is the only floor transition that carries no
+  `LevelTransition`: `Chasm.heroFall` writes `InterlevelScene.mode = FALL`, asks for a scene switch and
+  writes nothing else — no `curTransition`, no destination, no landing cell.
+  `LevelPipeline.handleTransition` read `curTransition == null` *before* it read the mode, and on a fall
+  `curTransition` is null by construction, so the first test fired every time. It answered "not a level
+  transition", cleared the switch request, and dropped the fall; `Transition.FALL` and
+  `LevelPipeline.handleFall()` were unreachable code.
+
+  Measured, by putting the hero on a chasm cell through `Level.occupyCell` and taking one step, on three
+  seeds:
+
+  ```
+  depth 1 -> 1, switch request acknowledged, hero still standing on the pit
+  ```
+
+  Nothing in the project had ever found out, because nothing in the project had ever put a hero into a
+  chasm — `issues.md` 16, closed. `transitioncheck`'s nine cases are all stair transitions, which do
+  carry a `LevelTransition`.
+
+- **`InterlevelScene.mode` is a process static and nothing headless ever reset it.** A real game gets a
+  fresh `InterlevelScene` for every descent, which is where its mode comes from. Now that the mode is
+  read first it is load-bearing, so a `Mode.FALL` left in the process by an earlier episode is read by
+  the next episode's first ordinary descent and that descent is serviced as a fall — one floor down, on a
+  `fallCell`, instead of the floor's own entrance. `clearSwitchRequest` already dropped `curTransition`
+  because it acknowledges the hand-off; `mode` is the third field of the same hand-off and is dropped
+  with it.
+
+- **The landing ignored `InterlevelScene.fallIntoPit`.** `handleFall` passed a literal `true`, which is
+  the `WeakFloorRoom` case, so on a destination floor with a `PitRoom` the trainer put the hero inside it
+  and the game would not — a different cell and a different number of draws. The two agree on every floor
+  without a `PitRoom`, which is why changing this looked like it changed nothing.
+
+- **The landing cost nothing.** `InterlevelScene.fall` opens with
+  `Buff.affect(hero, Chasm.Falling.class)`, whose act is `Chasm.heroLand` — fall damage, cripple,
+  bleeding, and a press of the landing cell. The headless path skipped all of it, so a fall was free and
+  strictly better than the stairs, which is the objective the reward function is trying to make the
+  agent prefer.
+
+- **Walking a hero *at* a chasm threw `NullPointerException` and took the worker with it.**
+  `Chasm.heroJump` builds its "jump?" prompt out of
+  `new Image(Dungeon.level.tilesTex(), 176, 16, 16, 16)`. `tilesTex` names a texture, `TextureCache`
+  returns nothing for it with no renderer, and `Image`'s five-argument constructor derived its frame
+  rectangle from the texture without the guard `frame(RectF)` had carried since the bypass landed:
+
+  ```
+  NullPointerException: cannot invoke "SmartTexture.uvRect(...)" because "this.texture" is null
+    at Chasm$1.call(Chasm.java:64)
+    at Hero.getCloser(Hero.java:1885)
+    at Actor.headlessStep(Actor.java:328)
+    at Worker.serve(...)          <- nothing between these two catches it
+  ```
+
+  The guard is one null check in `:SPD-classes` and is behaviour-preserving with a renderer present, so
+  it is in `ENGINE-CHANGES.md` §2 with the rest of that category.
+
+- **`Chasm.jumpConfirmed` and `InterlevelScene.fallIntoPit` joined `RunState`'s list** of process-scoped
+  statics a run must not inherit. `jumpConfirmed` is set by the "jump?" dialog and cleared by
+  `Chasm.heroFall`, so a hero that confirmed a jump and then ran out of turns, died, or was interrupted
+  left it true for the next run — and true means the next run's first step toward a pit drops him a
+  floor with no prompt at all.
+
+- **`LevelPipeline.handleFall` no longer forces `Dungeon.branch = 0`.** The game increments the depth
+  and leaves the branch alone.
+
+### Added
+
+- **`gradle :superintelligence:fallcheck`**, a gate, five cases. It drives a real fall through
+  `Level.occupyCell` — the call `Char.move` makes and the one `Chasm.heroLand` makes — so it tests the
+  fall rather than a method the gate called.
+
+  | case | fails when |
+  | --- | --- |
+  | a fall is a floor | the `mode == FALL` test goes back behind the null test |
+  | landing hurts | `Chasm.Falling` is dropped from `handleFall` |
+  | a fall leaves no hand-off behind | `InterlevelScene.mode = null` is dropped from `clearSwitchRequest` |
+  | walking into a chasm does not take the process down | the null guard is dropped from `Image` |
+  | the same fall twice is the same fall | the fall does not happen, so the case refuses to compare a fall with itself |
+
+  Each was reverted and the gate re-run; the first was refused by three cases and the rest by one each.
+  The last is `issues.md` 16's question asked directly — the same seed and the same fall twice in one
+  process, with other runs churned in between, landing on the same cell of the same floor with the same
+  health, clock and `SpecialRoom.runSpecials`.
+
+### Not done
+
+- **`Mob.holdAllies` is still not called from `handleFall`.** `InterlevelScene.fall` opens with it and it
+  still uses `Collections.shuffle` (`ENGINE-CHANGES.md` §7 has it open), so copying it would put an
+  unseeded draw into every fall in the trainer and undo reproducibility for the sake of a behaviour no
+  policy in this project can reach. When the shuffle is seeded this gets the call with it.
+
+- **The game's "jump?" prompt still cannot be answered headlessly.** `Chasm`'s dialog requires
+  `elapsed > 0.2f` on a clock only a rendered frame loop advances, so the environment is offered the
+  game's own question, presses its button, and the game's own code declines — the hero does not jump. A
+  fall therefore only happens where the engine drops him onto a pit cell. Deterministic on both sides of
+  a replay, so it is a fidelity gap rather than a divergence; recorded at `TODO.md` §0.11 with the
+  measurement and the three ways to close it.
+
+### Verified
+
+- `verifyall` — `:superintelligence:gates` at 21 (with `fallcheck`), `:desktop:playbackcheck`, both green.
+- `:desktop:viewcheck` — **19 of 19**, 139.7 s at 8 children. Re-run rather than carried over, because
+  the change touches `SPD-classes` and the floor pipeline.
+- `fallcheck` mutation-tested four ways, each reverted after: reordering the `mode == FALL` test (3 of 5
+  cases fail), removing `Buff.affect(Chasm.Falling.class)` (1), removing
+  `InterlevelScene.mode = null` from `clearSwitchRequest` (1), reverting the `Image` guard (1, with the
+  `NullPointerException`).
+
 ## [0.7.0] - 2026-10-11
 
 Closes `issues.md` 15. Recordings written by the trainer could not be watched at all, `verify` reported

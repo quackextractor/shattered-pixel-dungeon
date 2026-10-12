@@ -47,6 +47,7 @@ survive that. Each of these is a guard, not a stub: with a renderer present ever
 | --- | --- |
 | `GameScene` | `show`, `selectCell`, `checkKeyHold`, `resetKeyHold` handle a null scene or cell selector, and stash pending dialogs and aiming requests for a headless caller |
 | `Button.press()`, `WndOptions.optionCount/optionSelectable/selectOption` | let a caller drive a dialog with no UI |
+| `Image` | the five-argument constructor and `frame(int,int,int,int)` tolerate a null texture. `frame(RectF)` had carried the guard since the bypass landed and the two callers that derive the frame rectangle *from* the texture had not, which is how one hero stepping at a chasm killed a worker: `Chasm.heroJump` builds its "jump?" prompt out of `new Image(Dungeon.level.tilesTex(), ...)` and there is no renderer to load that texture |
 | `CharSprite.sprint/updateArmor/read/fall` | presentation hooks moved up from `HeroSprite` and `MobSprite`, so game logic stops depending on the concrete sprite type |
 | `Item.throwAt()` | the sprite-free half of `Item.cast` |
 | `Chrome.get()`, `ShadowBox`, `NinePatch`, `TextureCache`, `PlatformSupport` | tolerate a null GL context |
@@ -190,6 +191,8 @@ reading exactly like a simulation that consumes no randomness at all.
   not show up in the recorded corpus — nothing reachable by the scripted policy calls `holdAllies` — so
   `paritycheck` cannot see it. `observecheck` does not look for it either, since it gates draw *paths*,
   not call sites that bypass them.
+  `LevelPipeline.handleFall` also does not call it, for the same reason: `InterlevelScene.fall()` opens
+  with `Mob.holdAllies`, and copying that would put an unseeded draw into every fall in the trainer.
 - **`observecheck` enumerates the draw paths that exist** - 17 of them, in `ObserveCheck.java:224-241`. An eighteenth added later does not appear in
   its list, so the gate protects what it knows about rather than what is added next.
 - **`Mob` and `Char` do not override `hashCode`.** Nothing found iterates them through a hash

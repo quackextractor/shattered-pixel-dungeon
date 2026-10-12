@@ -432,7 +432,8 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 ---
 
 16. Two trainer recordings diverge on a chasm fall, and floor 2 is generated differently — **OPEN**,
-    measured, cause not yet identified.
+    measured, cause not yet identified. **[CLOSED below — the chasm fall was never serviced at all, and
+    the two recordings cannot be re-run because the trainer section was regenerated.]**
 
     Found while reading the recordings of a 150-generation run. Two of the 106 fail `verify`, and they
     are the two best-scoring ones:
@@ -509,15 +510,93 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
     One counter issued by the trainer rather than per worker is the last thing standing between this
     instrument and a clean failing pair. That is where to pick it up.
 
-    ### Also wrong along the way, and worth recording because it cost time
+### Also wrong along the way, and worth recording because it cost time
 
-    I read `tier=Floor` in the world trace as "not a chasm". **It is not evidence of anything**:
-    `Level` stores chasms in `pit[]`, a flag array entirely separate from `map[]` (`Level.java:878`),
-    so a pit cell renders as an ordinary Floor. Worse, a pit cell is exactly the "plain cell" shape the
-    trace's elision filter drops — walked, empty, passable, no heap or trap or transition — so the one
-    feature that can put the hero a floor down was **absent from the record entirely**. `pit[]` is now
-    recorded and pit cells are exempted from elision; without that, "the two floors differ" was an
-    assumption rather than a measurement.
+I read `tier=Floor` in the world trace as "not a chasm". **It is not evidence of anything**:
+`Level` stores chasms in `pit[]`, a flag array entirely separate from `map[]` (`Level.java:878`),
+so a pit cell renders as an ordinary Floor. Worse, a pit cell is exactly the "plain cell" shape the
+trace's elision filter drops — walked, empty, passable, no heap or trap or transition — so the one
+feature that can put the hero a floor down was **absent from the record entirely**. `pit[]` is now
+recorded and pit cells are exempted from elision; without that, "the two floors differ" was an
+assumption rather than a measurement.
 
-    I also counted 8522 "chasm cells" in a replay trace, which was records across steps rather than
-    distinct cells, and read it as the floor having plenty of chasms. It does not mean that.
+I also counted 8522 "chasm cells" in a replay trace, which was records across steps rather than
+distinct cells, and read it as the floor having plenty of chasms. It does not mean that.
+
+---
+
+## 16. Two trainer recordings diverge on a chasm fall, and floor 2 is generated differently - **CLOSED**
+
+`GRB-YWQ-ZJH` and `LNL-PDP-CJK` are gone: the trainer section was regenerated and neither file was
+ever committed, so the pair this was filed against cannot be re-run. What could be measured was, and
+what it says is that the report above was investigating the wrong half of a larger fault.
+
+**The chasm fall was never serviced at all.** A fall is the only floor transition that carries no
+`LevelTransition`. `Chasm.heroFall` writes `InterlevelScene.mode = FALL`, calls
+`Game.switchScene`, and writes nothing else — no `curTransition`, no destination, no landing cell.
+`LevelPipeline.handleTransition` read `curTransition == null` **before** it read the mode:
+
+```java
+if (transition == null){ clearSwitchRequest(); return Transition.NONE; }
+if (mode == Mode.FALL)          { clearSwitchRequest(); return Transition.FALL; }
+```
+
+On a fall `curTransition` is null *by construction*, so the first test fired every time.
+`Transition.FALL` and `LevelPipeline.handleFall()` were unreachable code. Measured, by putting the hero
+on a chasm cell through `Level.occupyCell` and stepping, on three seeds:
+
+```
+depth 1 -> 1, switch request acknowledged, hero still standing on the pit
+```
+
+So the two recordings could not have diverged *on a chasm fall* in the way the trace above describes —
+a fall did not happen on either side. What they could have hit is the second half of the same fault,
+which is real and is the shape the report measured and could not attribute:
+
+**`InterlevelScene.mode` is a process static, and nothing headless ever resets it.** A real game gets a
+fresh `InterlevelScene` for every descent, which is where its mode comes from. `LevelPipeline` now reads
+the mode *first*, which makes it load-bearing — so a `Mode.FALL` left in the process by any earlier
+episode is read by the next episode's first ordinary descent, and that descent is serviced as a fall: one
+floor down, on a `fallCell`, instead of the floor's own entrance. That is precisely "the divergence is
+not seed-determined — it needs a worker that has already run other episodes", on the one field that
+decides how a transition is serviced.
+
+**Three more things on the same path, found while fixing it and none of them in the table above.**
+
+| | what it was |
+| --- | --- |
+| the landing | `handleFall` called `level.fallCell(true)` and ignored `InterlevelScene.fallIntoPit`, hardcoding the `WeakFloorRoom` case. They agree on a floor with no `PitRoom`, which is why changing it looked like it changed nothing; where the destination floor has one, the trainer landed the hero inside it and the game would not — a different cell and a different number of draws. |
+| the landing effect | `InterlevelScene.fall` opens with `Buff.affect(hero, Chasm.Falling.class)`, whose act is `Chasm.heroLand` — fall damage, cripple, bleeding, and a press of the landing cell. The headless path skipped all of it, so **a fall was free**, and strictly better than the stairs. |
+| the approach | walking a hero *at* a chasm threw `NullPointerException` out of `Chasm.heroJump`, from `new Image(Dungeon.level.tilesTex(), ...)`: `tilesTex` names a texture, `TextureCache` returns nothing for it with no renderer, and `Image`'s five-argument constructor derived its frame rectangle from the texture without the guard `frame(RectF)` had carried since the bypass landed. It is thrown from inside `Actor.headlessStep` and nothing between there and `Worker.serve` catches it, so it ends a worker's episode. |
+
+`Image`'s guard is the one change in `:SPD-classes`, and it is the same category as the rest of
+`ENGINE-CHANGES.md` §2: behaviour-preserving when a renderer is present, and the class that a gate in
+this project cannot reach without a display.
+
+**`Mob.holdAllies` is deliberately still not called.** `InterlevelScene.fall` opens with it, and it
+still uses `Collections.shuffle` (`ENGINE-CHANGES.md` §7 has it open), so copying it would put an
+unseeded draw into every fall and undo reproducibility for the sake of a behaviour no policy in this
+project can reach.
+
+### What is gated, and what it refuses
+
+`gradle :superintelligence:fallcheck`, five cases, each reverted and refused in turn:
+
+| case | fails when |
+| --- | --- |
+| a fall is a floor | the `mode == FALL` test goes back behind the null test |
+| landing hurts | `Chasm.Falling` is dropped from `handleFall` |
+| a fall leaves no hand-off behind | `InterlevelScene.mode = null` is dropped from `clearSwitchRequest` |
+| walking into a chasm does not take the process down | the null guard is dropped from `Image` |
+| the same fall twice is the same fall | the fall does not happen at all — so the case refuses to compare a fall with itself |
+
+The fifth case is `issues.md` 16's question asked directly: the same seed, the same fall, twice in one
+process with other runs churned in between, landing on the same cell of the same floor with the same
+health, clock and `SpecialRoom.runSpecials`. It is the measurement the control above was reaching for
+and could not get, because it needed a fixture that drives a fall.
+
+**Still open, and it is a fidelity gap rather than a divergence:** the game's own "jump?" prompt cannot
+be answered headlessly, because `Chasm`'s dialog requires `elapsed > 0.2f` on a clock only a rendered
+frame loop advances. So the agent can never *choose* to walk into a chasm; falls happen only where the
+engine drops him onto a pit cell. Deterministic on both sides of a replay, and recorded at `TODO.md`
+§0.11 with the three ways to close it.
