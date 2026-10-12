@@ -49,6 +49,9 @@ public class Trainer {
 	private final SeedPool seeds;
 	private final File workDir;
 
+	/** Where {@code --trace-world} asks the workers to write their recording-side trace. */
+	private final String traceWorldPath;
+
 	/**
 	 * Where this run's recordings go, when {@code --replay-dir} says so.
 	 *
@@ -170,7 +173,7 @@ public class Trainer {
 
 	public Trainer( EnvConfig config, long seed, File workDir ){
 		this( config, new PpoHyperparameters(), seed, workDir,
-				new File( replayDirDefault(), "trainer-replays" ) );
+				new File( replayDirDefault(), "trainer-replays" ), null );
 	}
 
 	/**
@@ -178,14 +181,16 @@ public class Trainer {
 	 * and apply another mid-flight.
 	 *
 	 * @param replayDir where recordings go, or null for {@code <workDir>/replays}
+	 * @param traceWorldPath where workers write a recording-side world trace, or null for none
 	 */
 	public Trainer( EnvConfig config, PpoHyperparameters hyper, long seed, File workDir,
-			File replayDir ){
+			File replayDir, String traceWorldPath ){
 		this.config = config;
 		this.rng = new Random( seed );
 		this.rngSeed = seed;
 		this.seeds = new SeedPool( rng );
 		this.workDir = workDir;
+		this.traceWorldPath = traceWorldPath;
 		this.replayDirOverride = replayDir;
 		this.ppo = new PPO( config, rng );
 		this.pool = new TrainerWorkers( config, ppo );
@@ -355,8 +360,8 @@ public class Trainer {
 		HeadlessServices.install( options.workDir );
 		HeadlessServices.disableSaving( true );
 
-		Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
-					options.replayDir );
+Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
+				options.replayDir, options.traceWorld );
 
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
@@ -366,7 +371,7 @@ public class Trainer {
 			trainer.updateThreads( options.updateThreads );
 			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,
 					options.maxSamplesPerGeneration );
-			trainer.history( new MetricsHistory( options.metricsCsv ) );
+			trainer.history( new MetricsHistory( options.metricsCsv ));
 			trainer.checkpointing( options.save, options.checkpointEvery );
 
 			//before the pool exists: a bad checkpoint should cost a second, not a gigabyte of workers
@@ -413,6 +418,21 @@ public class Trainer {
 		//it would have drifted the first time either side was tuned.
 		out.writeFloat( ppo.gamma );
 		out.writeFloat( ppo.lambda );
+
+
+		//A diagnostic, and the only thing that travels a *path* to a worker rather than a value.
+		//Each worker writes the same filename, so this is one trace of whichever episode the worker
+		//happened to be running - which is all the question needs, because the question is whether
+		//the recording path and the replay path agree, not which worker recorded.
+		//
+		//After gamma and lambda, matching where Worker reads it. Putting it anywhere else desynchronises
+		//the frame, and the failure is a worker that dies on the next readFloat with a
+		//UTFDataFormatException naming no field - which is how it was found.
+		out.writeUTF( traceWorldPath == null ? "" : traceWorldPath );
+		//A diagnostic, and the only thing that travels a *path* to a worker rather than a value.
+		//Each worker writes the same filename, so this is one trace of whichever episode the worker
+		//happened to be running - which is all the question needs, because the question is whether the
+		//recording path and the replay path agree, not which worker recorded.
 		out.writeFloat( (float) sampleRate() );
 		out.writeInt( (int) maxSampledPerEpisode() );
 

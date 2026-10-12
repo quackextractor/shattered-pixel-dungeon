@@ -91,12 +91,16 @@ private EnvConfig config;
 		config.victoryReward = in.readFloat();
 config.stallLimit = in.readInt();
 
+		//The mirror of Trainer.writeParams. Empty when no trace was asked for.
+
 		//The advantages are computed here, so these have to come from the trainer rather than from
 		//this side's defaults. Previously gamma and lambda were PPO fields that both sides happened
 		//to agree on - identical defaults, which is coincidence rather than configuration, and it
 		//would drift the first time either side was tuned.
 		float gamma = in.readFloat();
 		float lambda = in.readFloat();
+
+		String traceWorld = in.readUTF();
 		float sampleRate = in.readFloat();
 		int maxSampledPerEpisode = in.readInt();
 
@@ -112,7 +116,7 @@ config.stallLimit = in.readInt();
 		//no two sample rates could be compared
 		collector = new EpisodeCollector( config, network, policyRng, new Random( policyRng.nextLong() ),
 				gamma, lambda, sampleRate, maxSampledPerEpisode );
-
+		if (traceWorld != null && !traceWorld.isEmpty()) collector.trace( traceWorld );
 		readWeights( in, network );
 
 		out.writeInt( Protocol.MSG_PARAMS );

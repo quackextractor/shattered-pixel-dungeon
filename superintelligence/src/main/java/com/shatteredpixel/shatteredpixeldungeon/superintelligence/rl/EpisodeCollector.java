@@ -123,6 +123,19 @@ public class EpisodeCollector {
 
 	private Listener listener;
 
+	/**
+	 * Optional world trace for this episode, written as the run happens.
+	 *
+	 * <p>Null unless something asked for one, so an ordinary training run pays nothing. Set by
+	 * {@link #trace(String)} from a diagnostic, and the point is to have the *recording* side of a
+	 * comparison: {@code worldtrace} can only describe what replaying produces, so a run and its
+	 * replay can be told apart but never compared directly.
+	 */
+	private com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot trace;
+
+	/** Where {@link #trace} writes it. Null with {@link #trace} null, i.e. off. */
+	private String tracePath;
+
 	private final EpisodeRecord record = new EpisodeRecord();
 
 	/**
@@ -244,6 +257,13 @@ public class EpisodeCollector {
 
 		float reward = (float) env.step( action, secondary );
 
+		//A recording-side world trace, off by default, so a run can be compared against its own replay
+		//rather than only against the verdict. Two trainer recordings diverge at a step where the recorded
+		//and replayed floors agree cell for cell, and the only thing that can differ is what level
+		//generation read - the special-room pools among it. A trace emitted only by `worldtrace` can
+		//only ever describe the replay side, which is half the comparison.
+		if (trace != null) trace.sample( "step", record.stepCount() );
+
 			//The position is where the hero ended up, so it has to be read after. Reading it before
 			//records where the hero started, which is off by one step and makes every replay recorded
 			//here diverge at step 0 while still playing — the recorded path looks plausible and is
@@ -273,6 +293,10 @@ public class EpisodeCollector {
 
 		record.computeAdvantages( gamma, lambda );
 		network.resetState();
+
+		//written here rather than in trace(), because the trace is only complete once the episode has
+		//run - and because a diagnostic that silently produced an empty file would be worse than none
+		flushTrace();
 
 		return record;
 	}
@@ -344,5 +368,35 @@ public class EpisodeCollector {
 	/** Told about every step, for a replay recorder. Null, which is the default, costs one branch. */
 	public void listener( Listener listener ){
 		this.listener = listener;
+	}
+
+	/**
+	 * Collects a world trace of this episode and writes it to {@code path} when the run ends.
+	 *
+	 * <p>Diagnostic, and it exists for one comparison nothing else could make. {@code worldtrace} traces
+	 * what <em>replaying</em> a recording produces; this traces what <em>making</em> it produced. Two
+	 * trainer recordings diverge at a step where the recorded and replayed floors agree cell for cell,
+	 * so the difference has to be in something level generation read - the special-room pools among it -
+	 * and that can only be settled by putting both sides of the comparison on disk.
+	 *
+	 * <p>Null unless asked for, so an ordinary training run pays one branch per step. The trace is keyed by
+	 * step index exactly as {@code WorldSnapshot} keys it, so the two files line up row for row.
+	 */
+	public void trace( String path ){
+		tracePath = (path == null || path.trim().isEmpty()) ? null : path;
+		if (tracePath == null) trace = null;
+		else trace = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot();
+	}
+
+	/** Writes the collected trace, if {@link #trace(String)} asked for one. */
+	private void flushTrace(){
+		if (trace == null || tracePath == null) return;
+		try {
+			trace.writeTo( java.nio.file.Paths.get( tracePath ));
+		} catch (java.io.IOException e){
+			System.err.println( "[WARN] could not write the world trace to " + tracePath + ": "
+					+ e.getMessage() );
+		}
+		trace = null;
 	}
 }

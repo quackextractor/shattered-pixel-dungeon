@@ -33,6 +33,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
+import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.SpecialRoom;
 import com.shatteredpixel.shatteredpixeldungeon.levels.traps.Trap;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Plant;
 
@@ -97,6 +98,28 @@ public class WorldSnapshot {
 	}
 
 	/**
+	 * Records the special-room pools, which decide which room every floor of a run gets.
+	 *
+	 * <p>Diagnostic, and added for a specific open question rather than for general coverage:
+	 * `SpecialRoom.runSpecials` is a run-level static that `useType` reorders as rooms are placed, so
+	 * <em>floor 2's room set depends on what floor 1 actually placed</em>. Two trainer recordings
+	 * diverge on a chasm that only exists if a `WeakFloorRoom` was placed on the floor before, and the
+	 * floors agree cell for cell up to that point - so the pools are where the difference has to be, and
+	 * nothing recorded them.
+	 *
+	 * <p>Ordered, because the order <em>is</em> the state: `createRoom` picks by index into it. Two
+	 * snapshots with the same rooms in a different order describe different runs.
+	 *
+	 * @param run    the run-level pool, mutated as rooms are placed
+	 * @param floor  the per-floor clone, which is what placement reads
+	 */
+	public WorldSnapshot specials( List< String > run, List< String > floor ){
+		lines.add( "specials\trun=" + String.join( ",", run )
+				+ "\tfloor=" + String.join( ",", floor ) );
+		return this;
+	}
+
+	/**
 	 * Records the world as it stands.
 	 *
 	 * @param kind  {@code step} or {@code frame}
@@ -108,8 +131,32 @@ public class WorldSnapshot {
 		String prefix = kind + "\t" + label + "\t";
 		lines.add( prefix + hero() );
 		lines.add( prefix + roster() );
+		lines.add( prefix + specialRooms() );
 		if (cells) sampleCells( prefix, label );
 		return this;
+	}
+
+	/**
+	 * The special-room pools as they stand, read from the run-level static rather than passed in.
+	 *
+	 * <p>Read here rather than sampled by the caller so that every existing caller - the headless
+	 * worldtrace and the rendered viewer's per-frame trace alike - records it without having to know the
+	 * question exists. That the pools are named at all is the point: see {@link #specials}.
+	 */
+	private String specialRooms(){
+		return "specials\trun=" + poolNames( SpecialRoom.runSpecials )
+				+ "\tfloor=" + poolNames( SpecialRoom.floorSpecials );
+	}
+
+	private static String poolNames( List< ? > pool ){
+		if (pool == null || pool.isEmpty()) return "-";
+		StringBuilder sb = new StringBuilder();
+		for (Object room : pool){
+			if (sb.length() > 0) sb.append( ',' );
+			sb.append( room instanceof Class ? ((Class<?>) room).getSimpleName()
+					: String.valueOf( room ) );
+		}
+		return sb.toString();
 	}
 
 	/**

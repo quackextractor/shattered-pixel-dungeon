@@ -109,6 +109,7 @@ public class TrainOptions {
 	 * without knowing where the trainer was launched from.
 	 */
 	public File metricsCsv;
+	public String traceWorld = null;
 
 	/**
 	 * Where the policy is written, or {@code null} to write nothing.
@@ -225,6 +226,11 @@ public class TrainOptions {
 				case "--max-samples":
 					o.maxSamplesPerGeneration = Integer.parseInt( args[ ++i ] ); break;
 				case "--metrics":     o.metricsCsv = new File( args[ ++i ] ); o.metricsGiven = true; break;
+				case "--trace-world":
+					//A world trace of the *recording* path, so it can be diffed against `worldtrace` of the
+					//same recording. Off by default; there is exactly one question it can answer that
+					//nothing else can.
+					o.traceWorld = args[ ++i ]; break;
 				case "--save":        o.save = new File( args[ ++i ] ); o.saveGiven = true; break;
 				case "--resume":      o.resume = new File( args[ ++i ] ); break;
 				case "--checkpoint-every":
