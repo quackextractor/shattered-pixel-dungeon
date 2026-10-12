@@ -406,10 +406,29 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > ZQN-FGD-BPS     701 steps   termination=DEATH
 > ```
 >
-> All five verify and play clean, and **every recording in `trainer-replays/` is now watchable** —
-> which is the property the section header claims and, until now, did not have.
+> All five verify and play clean, and at the time **every recording in `trainer-replays/` was
+> watchable** — which is the property the section header claims and, until now, did not have.
 >
-> The removed files, for the record (all in git history at `5356a8abb` and `5356a8abb^`):
+> ### Nine of them are back, and the call below is reversed
+>
+> **Reverted, 0.9.0, and this is a decision not an accident.** The trainer had written **185 recordings
+> into temp directories** across earlier runs — `%TEMP%/opencode/spd-*/replays` and a dozen siblings,
+> reachable only through `ReplayIndex`, which is append-only and had accumulated 241 directory entries of
+> which **220 no longer existed**. Nine of the nine four-field-wire recordings were in that pile. They are
+> now in `trainer-replays/`, and the section header's claim is false again: 9 of 185 are marked
+> `not watchable` and the viewer halts on them at step 1.
+>
+> What changed my mind is that the argument above holds only while the choice is binary. Keeping them
+> meant the picker was offering 9 dead ends out of 10; **deleting them meant the recordings this project
+> has actually produced were in a temp directory, which a reboot empties, and the index that pointed at
+> them was 91% dead paths.** A third option existed and was not taken: keep the files, mark them, and say
+> so — which is what the listing has always done per file. Evidence that only survives in a temp directory
+> is evidence with a timer on it, and nine files the viewer cannot play is a label rather than a trap.
+>
+> The five fixed-trainer recordings are still there and still verify. The directory now holds **185 files**,
+> of which 170 seeds are unique.
+>
+> The removed files, for the record (restored in 0.9.0; in git history at `5356a8abb` and `5356a8abb^`):
 >
 > | recording | steps | what was wrong with it |
 > | --- | --- | --- |

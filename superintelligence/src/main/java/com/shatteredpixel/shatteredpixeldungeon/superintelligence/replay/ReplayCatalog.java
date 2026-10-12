@@ -11,6 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * What is on disk, grouped by hero class and ranked by score.
@@ -171,20 +172,42 @@ public class ReplayCatalog {
 	 * resolving to nothing.
 	 */
 	private static List<File> defaultDirectories(){
-		//deduplicated by path. The index and the built-in default overlap by design - a run that used
-		//the default directory records it - and scanning a directory twice makes every file in it look
-		//like a duplicate of itself, which then reads as "recorded 2 times" for every seed.
+		//deduplicated by canonical path. The index and the built-in default overlap by design - a run
+		//that used the default directory records it - and scanning a directory twice makes every file in
+		//it look like a duplicate of itself, which then reads as "recorded 2 times" for every seed.
+		//
+		//Canonical, not absolute, because the two spellings of the same directory are not always the same
+		//string: the index holds `superintelligence/./trainer-replays` as the trainer wrote it and the
+		//built-in default holds `superintelligence/trainer-replays`, and a File set compares paths. So the
+		//dedup was here and did nothing, and every one of the 185 trainer recordings was listed twice.
 		LinkedHashSet<File> dirs = new LinkedHashSet<>();
 
 		File repo = repositoryRoot();
 		if (repo != null){
-			dirs.add( new File( repo, "superintelligence/test-replays" ).getAbsoluteFile() );
-			dirs.add( new File( repo, "superintelligence/trainer-replays" ).getAbsoluteFile() );
+			dirs.add( canonical( new File( repo, "superintelligence/test-replays" )));
+			dirs.add( canonical( new File( repo, "superintelligence/trainer-replays" )));
 		}
 
-		dirs.addAll( ReplayIndex.read() );
-		dirs.add( new File( System.getProperty( "java.io.tmpdir" ), "spd-train/replays" ).getAbsoluteFile() );
+		for (File dir : ReplayIndex.read()) dirs.add( canonical( dir ));
+
+		dirs.add( canonical( new File( System.getProperty( "java.io.tmpdir" ), "spd-train/replays" )));
 		return new ArrayList<>( dirs );
+	}
+
+	/**
+	 * The directory's real path, with {@code .} and {@code ..} resolved away.
+	 *
+	 * <p>Falls back to the absolute path, which is what every caller already had. Canonicalisation
+	 * touches the filesystem and can fail on a path nothing can reach, and a catalog that lists a
+	 * directory twice is a much smaller problem than one that throws while being built.
+	 */
+	static File canonical( File dir ){
+		if (dir == null) return null;
+		try {
+			return dir.getCanonicalFile();
+		} catch (IOException e){
+			return dir.getAbsoluteFile();
+		}
 	}
 
 	/**
@@ -235,11 +258,21 @@ public class ReplayCatalog {
 		Map<String, Entry> bySeed = new LinkedHashMap<>();
 		Map<String, List<Entry>> all = new LinkedHashMap<>();
 
+		//A directory is scanned once per *canonical* path, not once per spelling. The same directory
+		//arrives under more than one - the index holds whatever the trainer wrote, the built-in default
+		//holds the tidied form - and scanning it twice lists every file in it twice, which then reads
+		//as "recorded 2 times" for every seed. The first spelling wins, so sourceIndex still says which
+		//section a file came from.
+		Set<String> seen = new LinkedHashSet<>();
+
 		for (int dirIndex = 0; dirIndex < directories.size(); dirIndex++){
 			File dir = directories.get( dirIndex );
 			if (dir == null || !dir.isDirectory()) continue;
 
-			File[] files = dir.listFiles();
+			File canonical = canonical( dir );
+			if (!seen.add( canonical.getPath() )) continue;
+
+			File[] files = canonical.listFiles();
 			if (files == null) continue;
 
 			//sorted so two runs over the same directory list the same way
@@ -352,7 +385,7 @@ public class ReplayCatalog {
 		//a full path was given
 		File asPath = new File( name.trim() );
 		if (asPath.isFile()){
-			for (Entry entry : entries){
+			for (Entry entry : allEntries){
 				if (entry.file.getAbsolutePath().equalsIgnoreCase( asPath.getAbsolutePath() )){
 					matches.add( entry );
 					return matches;
@@ -364,7 +397,9 @@ public class ReplayCatalog {
 		int dot = stem.lastIndexOf( '.' );
 		if (dot > 0) stem = stem.substring( 0, dot );
 
-		for (Entry entry : entries){
+		//Every file, not one row per seed - the same blind spot byName had. This method exists to say
+		//"three files are called that", and a deduplicated list can never say it for a shared seed.
+		for (Entry entry : allEntries){
 			boolean hit = entry.file.getName().equalsIgnoreCase( needle )
 					|| entry.label().equalsIgnoreCase( stem )
 					|| ( entry.seed != null && entry.seed.equalsIgnoreCase( stem ) );
@@ -455,6 +490,12 @@ public class ReplayCatalog {
 	 *
 	 * <p>The filename is tried before the seed, because two directories can hold different recordings
 	 * under one seed name and the exact file the person saw is the one they meant.
+	 *
+	 * <p><b>The filename is searched across every file, not across {@link #entries}.</b> {@code entries}
+	 * is deduplicated to one per seed, which is right for a listing and wrong here: {@code IPW-QMA-AFY-r3.dat}
+	 * is a file and a perfectly unambiguous name for it, and the only reason it was not found is that it
+	 * shares a seed with three other files and so is not in the deduplicated list. The listing told the
+	 * reader to type the file name; typing it answered "no such recording".
 	 */
 	public Entry byName( String name ){
 		String wanted = name == null ? "" : name.trim();
@@ -469,13 +510,13 @@ public class ReplayCatalog {
 		String lower = wanted.toLowerCase();
 
 		//an exact filename is unambiguous even when the seed is not: the person named a file
-		for (Entry entry : entries){
+		for (Entry entry : allEntries){
 			if (entry.file.getName().toLowerCase().equals( lower )) return entry;
 		}
 
 		if (!lower.endsWith( ".dat" ) && !lower.endsWith( ".replay" )){
 			for (String ext : new String[]{ ".dat", ".replay" }){
-				for (Entry entry : entries){
+				for (Entry entry : allEntries){
 					if (entry.file.getName().toLowerCase().equals( lower + ext )) return entry;
 				}
 			}
@@ -587,26 +628,43 @@ public class ReplayCatalog {
 				.append( ", ranked by score within each section"
 				).append( ", numbered 1 to " ).append( shown ).append( "\n" );
 
-		//the copies have to be locatable, or refusing to resolve the name is a dead end
+//The copies have to be locatable, or refusing to resolve the name is a dead end.
+		//
+		//By file name, not by absolute path. A filename is what a person has in front of them - it is the
+		//second column of the listing above - and byName already resolves one exactly, so a full path was
+		//never necessary; the instruction only said so. It was also unreadable: 26 absolute paths, each
+		//about a hundred characters of shared parent directory, printed after a ranked list and dwarfing
+		//it. The parent is reduced to its directory name, which is the only part two copies can differ in.
 		List<Entry> shared = new ArrayList<>();
 		for (Entry entry : entries){
 			if (entry.copies > 1) shared.add( entry );
 		}
 		if (!shared.isEmpty()){
-			out.append( "\n  " ).append( shared.size() ).append( " seed"
-					).append( shared.size() == 1 ? " is" : "s are" )
-					.append( " recorded more than once; pass a full path to pick one:\n" );
+			out.append( "\n  " ).append( shared.size() ).append( " seed" )
+					.append( shared.size() == 1 ? " is" : "s are" )
+					.append( " recorded more than once. Type the file name to pick one:\n\n" );
 
 			for (Entry entry : shared){
+				boolean first = true;
 				for (Entry copy : copiesFor( entry )){
-					out.append( "    " ).append( copy.file.getAbsolutePath() )
-							.append( "   (" ).append( copy.steps ).append( " steps, score " )
-							.append( String.format( Locale.ROOT, "%.1f", copy.score ) ).append( ")\n" );
+					out.append( String.format( Locale.ROOT, "    %-18s %-30s %-16s %6d  %9.1f",
+							first ? entry.label() : "",
+							copy.file.getName(),
+							parentName( copy ),
+							copy.steps,
+							copy.score ) ).append( "\n" );
+					first = false;
 				}
 			}
 		}
 
 		return out.toString();
+	}
+
+	/** The directory a file sits in, by name - the part of the path two copies of one seed can differ in. */
+	private static String parentName( Entry entry ){
+		File parent = entry.file.getParentFile();
+		return parent == null ? "" : parent.getName();
 	}
 
 	/** One line saying what a section is and what to expect from it. */
@@ -799,11 +857,14 @@ public class ReplayCatalog {
 			if (!many.isEmpty()){
 				StringBuilder message = new StringBuilder();
 				message.append( resolve ).append( " is recorded " ).append( many.size() )
-						.append( " times; pass a full path to pick one:" ).append( System.lineSeparator() );
+						.append( " times; pass a file name to pick one:" ).append( System.lineSeparator() );
 				for (Entry entry : many){
-					message.append( "  " ).append( entry.file.getAbsolutePath() )
-							.append( "  (" ).append( entry.steps ).append( " steps, score " )
-							.append( String.format( Locale.ROOT, "%.1f", entry.score ) ).append( ")" )
+					//a file name, which is what --resolve takes next. The absolute path is printed too,
+					//because it is the one thing this output is unambiguous about and a batch file may
+					//need it - but it is not required and the instruction must not say it is.
+					message.append( "  " ).append( entry.file.getName() )
+							.append( String.format( Locale.ROOT, "  %-16s %6d steps, score %9.1f",
+									parentName( entry ), entry.steps, entry.score ))
 							.append( System.lineSeparator() );
 				}
 				System.out.print( message );

@@ -93,6 +93,72 @@ the issue was open — and then lists it again under `### Not done`, correctly, 
   is not — and it has been printing on all seven `trainer-replays/` recordings too, on the base tree as
   well as this one, because a replay written before a reward change cannot carry the new reward table.
 
+- **`ReplayCatalog` listed every trainer recording twice, and the duplication decided which files read
+  watchable.** The trainer resolved its default destination from the working directory and got
+  `superintelligence/./trainer-replays`; the catalogue's own default spelled the same directory
+  `superintelligence/trainer-replays`. One directory, two strings, and the deduplication compared
+  strings — so all 185 trainer recordings were scanned twice and every one reported
+  `2 recordings share this seed`. Measured on this machine:
+
+  | | before | after |
+  | --- | --- | --- |
+  | entries listed | 380 | 190 |
+  | `share this seed` warnings | 170 | 10 |
+  | marked `not watchable` | **1** | **9** |
+
+  **The last row is the half that was wrong rather than noisy.** The dedup keeps one entry per seed and
+  keeps whichever spelling came first, so the `not watchable` marker on the nine four-field-wire
+  recordings from `issues.md` 15 was decided by directory order. The listing called one of them
+  unwatchable and the other eight fine, and the eight were the same files — a list confidently wrong
+  about eight recordings the viewer halts on at step 1.
+
+  Fixed at three layers, because the property matters more than which spelling produced it: `scan`
+  deduplicates by canonical path and keeps the first spelling's `sourceIndex`, `defaultDirectories`
+  canonicalises before deduplicating, and `ReplayIndex` and `Trainer.replayDirDefault` stop writing a
+  path with a `.` in it. **Mutation-tested** by reverting the canonicalisation, which reports
+  `2 entries for one recording instead of 1`.
+
+- **A file name did not resolve, and the listing told you to type one.** Two faults, and the second is
+  why the first was invisible. The footer read *"pass a full path to pick one"* and printed 26 absolute
+  paths — around a hundred characters of shared parent directory each, after a ranked list, which it
+  dwarfed. But a full path was never necessary: `byName` resolves a filename exactly. Then that turned
+  out to be untrue as well. Measured, on the corpus as it stood:
+
+  ```
+  IPW-QMA-AFY-r3.dat  ->  No recording named IPW-QMA-AFY-r3.dat
+  IPW-QMA-AFY-r3      ->  No recording named IPW-QMA-AFY-r3
+  ```
+
+  `byName` searched `entries`, which is deduplicated to one row per seed — right for a listing, wrong
+  here, because a file is not a seed and the three files behind one seed were not in the list it
+  searched. So the instruction named a full path, the thing it asked for did not work either, and the
+  only names that resolved were seeds with no duplicates. `byName` and `find` now search every file;
+  the footer prints file name, parent directory, steps and score as a four-column block and says to type
+  the file name.
+
+  ```
+  10 seeds are recorded more than once. Type the file name to pick one:
+
+    duelist-death-last duelist-death-last.replay      test-replays       1230     -122.3
+                       NAK-NKP-BFQ-r2.dat             trainer-replays    1230     -122.3
+  ```
+
+  **Mutation-tested** twice: reverting the search list fails on `'SHARED-SEED-r3.replay' does not
+  resolve`, and restoring the old wording fails on `the listing still tells the reader to pass a full
+  path`.
+
+- **185 recordings the trainer had written into temp directories are now in `trainer-replays/`,** in
+  git rather than a reboot away. `ReplayIndex` is append-only and never forgets: on this machine it held
+  **241 directory entries, 220 of which no longer existed**, and the 21 that did held 185 recordings,
+  mostly under `%TEMP%/opencode/*` from earlier runs. They were moved, never overwriting — 14 collided
+  on a seed and took the existing `-r2` convention, so no file was replaced and none was lost. The index
+  is pruned to the one directory that still holds recordings.
+
+  **This puts nine known-unwatchable recordings back in the directory whose job is "recordings you can
+  watch"**, which `issues.md` 15 resolved by deleting them. They are back because they are evidence of
+  what the wire dropped, they are marked as unwatchable in the listing, and they are in version control
+  rather than a temp directory. `issues.md` 15's table is corrected accordingly.
+
 ### Added
 
 - **`gradle :superintelligence:presscheck` is in `gates`.** It was excluded only because it was red, and

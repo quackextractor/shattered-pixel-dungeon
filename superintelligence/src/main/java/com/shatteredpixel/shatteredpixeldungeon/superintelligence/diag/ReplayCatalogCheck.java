@@ -35,7 +35,7 @@ public class ReplayCatalogCheck {
 
 	private static final List< String > failures = new ArrayList<>();
 
-	private static final int CHECKS = 14;
+	private static final int CHECKS = 16;
 
 	private static File workDir;
 
@@ -62,6 +62,8 @@ public class ReplayCatalogCheck {
 			checkDeduplicatesTheSameSeed();
 			checkAmbiguousSeedIsRefusedNotGuessed();
 			checkIndexedDirectoriesAreDiscovered();
+			checkASharedSeedResolvesByFileName();
+			checkTheSameDirectoryUnderTwoSpellingsIsOneDirectory();
 			checkSectionsSplitByProvenance();
 		checkDepthIsAReadableColumn();
 		} finally {
@@ -803,8 +805,151 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	// --------------------------------------------------------------------------- fixtures
+	/**
+	 * One directory, two spellings, one set of entries.
+	 *
+	 * <p><b>Measured on this machine, and the gate that would have caught it did not fire.</b> The trainer
+	 * resolved its default replay destination from the working directory and got
+	 * {@code superintelligence/./trainer-replays}; the catalogue's own default spelled the same directory
+	 * {@code superintelligence/trainer-replays}. They are one directory and two strings, and the
+	 * deduplication compared strings — so all 185 trainer recordings were scanned twice and every one of
+	 * them reported {@code 2 recordings share this seed}.
+	 *
+	 * <p>Worse than noise: the dedup that keeps one entry per seed then keeps whichever spelling came
+	 * first, so the {@code not watchable} marker on the nine four-field-wire recordings was decided by
+	 * directory order. The listing said one was unwatchable and eight were fine, and the eight were the
+	 * same files.
+	 *
+	 * <p>The fixture spells a directory two ways on purpose, because the real input does.
+	 */
+	private static void checkTheSameDirectoryUnderTwoSpellingsIsOneDirectory(){
+		File dir = dir( "spelled" );
+		write( dir, "SPELLED-SEED", "ROGUE", 5.0, 1, 60 );
 
+		List< File > both = new ArrayList<>();
+		both.add( dir.getAbsoluteFile() );
+		both.add( new File( dir.getPath() + File.separator + "." ).getAbsoluteFile() );
+
+		ReplayCatalog catalog = new ReplayCatalog().scan( both );
+
+		List< ReplayCatalog.Entry > copies = catalog.copies().get( "SPELLED-SEED" );
+		int found = copies == null ? 0 : copies.size();
+		if (found != 1){
+			fail( "the same directory passed under two spellings produced " + found + " entries for one"
+					+ " recording instead of 1, so every file in it is listed twice and every seed reports"
+					+ " that it was recorded N times. The trainer's default destination resolved to"
+					+ " 'superintelligence/./trainer-replays' while the catalogue's own default spelled it"
+					+ " without the '.', and the deduplication compared paths as strings." );
+			return;
+		}
+
+		//and the wrong marker is the worst half of it: which of the two spellings wins decides which
+		//entry a seed keeps, so a duplicated directory could decide whether a file reads watchable
+		ReplayCatalog.Entry entry = catalog.byName( "SPELLED-SEED" );
+		if (entry == null || !entry.watchable){
+			fail( "the surviving entry for a duplicated directory is not the watchable one, so which"
+					+ " spelling came first decides whether the listing calls a recording watchable." );
+		}
+	}
+
+	/**
+	 * A file name names a file, and must resolve even when its seed does not.
+	 *
+	 * <p>The listing refuses a bare seed that several runs recorded, which is right, and then says to
+	 * "type the file name to pick one". Typing one answered <em>no such recording</em>: {@code byName}
+	 * searched {@code entries}, which is deduplicated to one row per seed, so the three files behind one
+	 * seed were not in the list it searched. A file is not a seed. Measured, before the fix:
+	 *
+	 * <pre>
+	 *   IPW-QMA-AFY-r3.dat  -&gt; No recording named IPW-QMA-AFY-r3.dat
+	 *   IPW-QMA-AFY-r3      -&gt; No recording named IPW-QMA-AFY-r3
+	 * </pre>
+	 *
+	 * <p>which made the instruction the listing gave impossible to follow, and the picker the last thing
+	 * standing between a person and a recording.
+	 */
+	private static void checkASharedSeedResolvesByFileName(){
+		File dir = dir( "shared" );
+
+		//Three runs, one seed, three file names. The trainer never overwrites, so this is exactly what
+		//re-running a seed leaves behind: the same header seed, suffixed filenames.
+		File first  = write( dir, "SHARED-SEED", "WARRIOR", 1.0, 1, 10 );
+		File second = writeAs( dir, "SHARED-SEED", "SHARED-SEED-r2", "WARRIOR", 2.0, 1, 20 );
+		File third  = writeAs( dir, "SHARED-SEED", "SHARED-SEED-r3", "WARRIOR", 3.0, 1, 30 );
+		if (first == null || second == null || third == null) return;
+
+		ReplayCatalog catalog = new ReplayCatalog().scan( List.of( dir ));
+
+		if (catalog.byName( "SHARED-SEED" ) != null){
+			fail( "a bare seed that three files carry resolved to one of them, so it still guesses."
+					+ " Deduping the listing must not dedupe the resolver into a confident answer." );
+			return;
+		}
+
+		for (String name : new String[]{ "SHARED-SEED-r2.replay", "SHARED-SEED-r3.replay", "SHARED-SEED-r2" }){
+			ReplayCatalog.Entry entry = catalog.byName( name );
+			if (entry == null){
+				fail( "'" + name + "' does not resolve, and the listing told the reader to type the file"
+						+ " name to pick one of several recordings. A file name names exactly one file;"
+						+ " it fails only because byName searched the seed-deduplicated list." );
+				return;
+			}
+			if (!entry.file.getName().equalsIgnoreCase( name.endsWith( ".replay" ) ? name : name + ".replay" )){
+				fail( "'" + name + "' resolved to " + entry.file.getName() + " rather than to itself." );
+				return;
+			}
+		}
+
+		//and the instruction has to match what works, or it is worse than no instruction
+		String listing = catalog.render( true );
+		if (listing.contains( "pass a full path" )){
+			fail( "the listing still tells the reader to pass a full path, which is not what byName"
+					+ " takes and is far more than picking one recording out of a list requires." );
+		}
+		if (!listing.contains( "Type the file name" )){
+			fail( "the listing does not say that a file name is what to type, so a reader told a seed is"
+					+ " ambiguous has no instruction to follow." );
+		}
+	}
+
+	/**
+	 * Writes a recording under a chosen file name with a seed of its own.
+	 *
+	 * <p>The trainer's never-overwrite rule produces exactly this: three runs of one seed, three
+	 * suffixed filenames, one header seed. {@link #write} names the file after the seed, so it cannot
+	 * build the fixture the duplicate-seed case needs.
+	 */
+	private static File writeAs( File dir, String seed, String fileStem, String hero,
+			double score, int depth, int turns ){
+
+		List<String> lines = new ArrayList<>( Arrays.asList(
+				Replay.MAGIC,
+				"version=" + Replay.VERSION,
+				"seed=" + seed,
+				"hero=" + hero,
+				"challenges=0",
+				"generation=0",
+				"score=" + score,
+				"depth=" + depth,
+				"turns=" + turns,
+				"turn_limit=" + turns,
+				"max_slots=32",
+				"allow_equipping=true",
+				"termination=OTHER",
+				"steps=1" ));
+
+		lines.add( "WAIT 0 WORLD 100 0.0  20 1.0 Food:1" );
+
+		File file = new File( dir, fileStem + ".replay" );
+		try {
+			Files.write( file.toPath(), lines, StandardCharsets.UTF_8 );
+		} catch (IOException e){
+			throw new IllegalStateException( "could not write " + file, e );
+		}
+		return file;
+	}
+
+	// --------------------------------------------------------------------------- fixtures
 	private static File dir( String name ){
 		File dir = new File( workDir, name );
 		if (!dir.mkdirs() && !dir.isDirectory()){

@@ -47,12 +47,18 @@ public class ReplayIndex {
 	/**
 	 * Records that {@code directory} holds recordings.
 	 *
+	 * <p>Canonical path, because this is what makes the record comparable. The trainer resolved its
+	 * default destination from the working directory, which spelled it {@code
+	 * superintelligence/./trainer-replays} while the catalogue's own default spelled the same directory
+	 * {@code superintelligence/trainer-replays} — and a directory listed twice is every recording in it
+	 * counted twice.
+	 *
 	 * <p>Silent on failure by design. See the class comment.
 	 */
 	public static void record( File directory ){
 		if (directory == null) return;
 
-		File absolute = directory.getAbsoluteFile();
+		File absolute = canonical( directory );
 		if (!absolute.isDirectory()) return;
 
 		for (File known : read()){
@@ -86,13 +92,28 @@ public class ReplayIndex {
 				String path = line.trim();
 				if (path.isEmpty()) continue;
 
-				File dir = new File( path );
-				if (dir.isDirectory()) found.add( dir.getAbsoluteFile() );
+				File dir = canonical( new File( path ));
+				if (dir.isDirectory()) found.add( dir );
 			}
 		} catch (IOException ignored){
 			//an unreadable index means no extra directories, which is the old behaviour
 		}
 
 		return new ArrayList<>( found );
+	}
+
+	/**
+	 * The directory's real path, with {@code .} and {@code ..} resolved away.
+	 *
+	 * <p>Falls back to the absolute path. Canonicalisation can fail on a path nothing can reach, and an
+	 * index entry that reads twice costs discoverability — which {@code --dir} recovers — while an
+	 * exception would cost a finished training run.
+	 */
+	private static File canonical( File dir ){
+		try {
+			return dir.getCanonicalFile();
+		} catch (IOException e){
+			return dir.getAbsoluteFile();
+		}
 	}
 }

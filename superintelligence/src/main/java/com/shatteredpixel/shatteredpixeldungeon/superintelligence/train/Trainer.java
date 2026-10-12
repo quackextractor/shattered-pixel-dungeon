@@ -852,11 +852,28 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 	static File replayDirDefault(){
 		File here = new File( "." ).getAbsoluteFile();
 		for (int i = 0; i < 6 && here != null; i++){
-			if (new File( here, "superintelligence.properties" ).isFile()) return here;
+			if (new File( here, "superintelligence.properties" ).isFile()) return tidy( here );
 			here = here.getParentFile();
 		}
 		//not found: the caller's own working directory, which is where a relative path would have gone
-		return new File( "." ).getAbsoluteFile();
+		return tidy( new File( "." ).getAbsoluteFile() );
+	}
+
+	/**
+	 * The path without a {@code .} in it.
+	 *
+	 * <p>{@code getAbsoluteFile} leaves the {@code .} from {@code new File( "." )} in, so the resolved
+	 * destination was {@code superintelligence/./trainer-replays} while the catalogue's own default spelled
+	 * the same directory {@code superintelligence/trainer-replays}. The two are the same directory and two
+	 * different strings, and the catalogue's deduplication compares strings — so every trainer recording
+	 * was listed twice. Canonicalisation touches the filesystem and can fail, hence the fallback.
+	 */
+	private static File tidy( File dir ){
+		try {
+			return dir.getCanonicalFile();
+		} catch (java.io.IOException e){
+			return dir.getAbsoluteFile();
+		}
 	}
 
 	private File replayDir(){
