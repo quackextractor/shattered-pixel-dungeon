@@ -32,16 +32,14 @@ import java.util.List;
  * about what it does with a request that arrives with nothing in it.
  *
  * <p><b>What it was.</b> {@code handleTransition} tested {@code curTransition == null} before it
- * tested {@code mode == FALL}. On a fall {@code curTransition} is null <i>by construction</i>, so the
- * null test fired first, the method answered "not a level transition", cleared the switch request,
- * and dropped the fall. Measured on three seeds: a hero put on a chasm cell and stepped stayed on
- * depth 1 with the switch acknowledged. {@code Transition.FALL} and {@code LevelPipeline.handleFall}
- * were unreachable code.
+ * tested {@code mode == FALL}, and on a fall {@code curTransition} is null <i>by construction</i> — so
+ * the null test fired first, the method answered "not a level transition", cleared the switch request
+ * and dropped the fall, and {@code Transition.FALL} and {@code LevelPipeline.handleFall} were
+ * unreachable code. Measured on three seeds: a hero put on a chasm cell and stepped stayed on depth 1
+ * with the switch acknowledged.
  *
- * <p>That is a divergence waiting to happen rather than a divergence on its own - both the recording
- * and its replay go through the same pipeline - but it is what made the chasm path untested. Nothing
- * in the suite drove one, and {@code transitioncheck}'s nine cases are all stair transitions, which
- * do carry a {@code curTransition}.
+ * <p>Nothing in the suite drove one, and {@code transitioncheck}'s nine cases are all stair
+ * transitions, which do carry a {@code curTransition}.
  */
 public class FallCheck {
 
@@ -403,7 +401,6 @@ public class FallCheck {
 
 	/**
 	 * The same fall twice, in one process, is the same fall.
-	 *
 	 * <p>This is the property {@code issues.md} 16 is about and the one nothing above it can establish:
 	 * that where a hero lands is a function of the seed he fell from and of the floor he fell through,
 	 * rather than of whatever the process did before. {@code Level.fallCell} draws from the base

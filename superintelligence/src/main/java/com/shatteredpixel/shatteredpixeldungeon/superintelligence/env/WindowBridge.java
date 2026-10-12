@@ -45,6 +45,34 @@ public class WindowBridge {
 		return window() instanceof WndOptions;
 	}
 
+	/**
+	 * Ages the parked dialog by one frame.
+	 *
+	 * <p>A dialog the game opened is on screen for as long as the player looks at it, and some of them
+	 * refuse to do anything until they have been up a while. {@code Chasm}'s "jump?" prompt is the one
+	 * that matters here: its {@code onSelect} and its {@code hide} are both gated on an {@code elapsed}
+	 * counter it increments in its own {@code update()}, and {@code PixelScene.update()} is the only
+	 * thing that ever calls it. Headlessly there is no {@code PixelScene}, so the counter never moved,
+	 * the option never fired, and the environment was offered the game's own question and then had the
+	 * answer thrown away by the game's own code - measured: option 0 pressed, {@code jumpConfirmed}
+	 * still false, hero still standing where he was.
+	 *
+	 * <p>So this calls it, <b>once per environment step, which is once per frame</b> - the same
+	 * approximation {@code ReplayPlayer} already makes, where one recorded step is at most one rendered
+	 * frame. The gate is therefore the game's own 0.2 s rather than something invented here, and the
+	 * price is the game's own: the world is frozen behind a modal dialog, so those steps are decisions
+	 * that change nothing. {@code Game.elapsed} is 1/60 headlessly, so a chasm costs about twelve of
+	 * them.
+	 *
+	 * <p>Uniform rather than special-cased for the chasm. Every dialog the game parks is aged the same
+	 * way, and the ones with no timing guard simply accrue a counter nothing reads.
+	 */
+	public static void age(){
+		Window w = window();
+		if (w == null) return;
+		w.update();
+	}
+
 	/** Number of selectable options, or 0 when the window is not a WndOptions. */
 	public static int optionCount(){
 		Window w = window();
@@ -56,22 +84,30 @@ public class WindowBridge {
 		return (w instanceof WndOptions) && ((WndOptions) w).optionSelectable( index );
 	}
 
-	public static boolean selectOption( int index ){
+public static boolean selectOption( int index ){
 		Window w = window();
 		if (!(w instanceof WndOptions)) return false;
 		boolean fired = ((WndOptions) w).selectOption( index );
-		//The headless slot is cleared on both paths. With no scene that is the only place the window
-		//was ever held; with a scene it was never held and clearing it is a no-op, so this stays
-		//unconditional rather than branching on which case applies.
-		if (fired) GameScene.clearHeadlessWindow();
+
+		//Nothing clears the slot here, which is the point of the case being asked rather than
+		//assumed. Pressing a WndOptions button calls hide() before onSelect(), and the game's own
+		//hide() now closes a parked window because it is parked in a Group rather than in a bare
+		//field - so a dialog whose handler declines the click stays open, which is what a rendered
+		//game does too. Chasm's "jump?" prompt is that case: it declines both its option and its hide
+		//until it has been up for a fifth of a second, and clearing the slot here reported it
+		//answered while the hero was still standing where he was.
+		//
+		//A dialog that neither hides nor answers therefore stays, and the agent is asked again, which
+		//is the correct end state - and the one the stall guard exists for if it never resolves.
 		return fired;
 	}
 
 	/**
 	 * Closes the window without picking an option.
 	 *
-	 * WndOptions buttons hide themselves on click, so the option body is not reached here; this
-	 * simply drops the pending window, which is the same end state for every dialog that matters.
+	 * The stand-in for {@code GameScene.cancel()}, which is what a rendered game does to a dialog the
+	 * player backs out of. Nothing the game itself does here, so this is the one place the slot is
+	 * emptied on the caller's behalf.
 	 */
 	public static boolean close(){
 		if (!open()) return false;

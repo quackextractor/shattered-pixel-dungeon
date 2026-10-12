@@ -578,6 +578,33 @@ still uses `Collections.shuffle` (`ENGINE-CHANGES.md` §7 has it open), so copyi
 unseeded draw into every fall and undo reproducibility for the sake of a behaviour no policy in this
 project can reach.
 
+**And the second half, which made the chasm unreachable rather than merely broken.** Walking *at* a
+chasm raises the game's own "jump?" prompt, and the environment was handed it and then had the answer
+thrown away. `Chasm`'s dialog gates both its option and its hide on `elapsed > 0.2f`, a counter its own
+`update()` increments, and `PixelScene.update()` is the only thing that ever called it — so headlessly
+the option could not fire. `WindowBridge.selectOption` made it worse: it cleared the parked window on
+any press, so a handler that declined had its dialog removed anyway, which is exactly what `Chasm` does
+while `elapsed` is under 0.2 s. Three fixes, all gated:
+
+- `WindowBridge.age()` advances the parked dialog once per environment step — once per frame, the
+  approximation `ReplayPlayer` already makes about a recorded step, so the gate is the game's own 0.2 s.
+  Measured on `FALLCHECK-A`: **the answer takes 13 steps**, and they cost nothing the environment scores,
+  because `settle` reports a dialog before it scores a turn.
+- a parked window lives in a one-slot `Group` rather than a bare field, so the game's own
+  `Window.hide()` closes the slot. `GameScene.answerableWindow()` had to read the accessor rather than
+  the field for the same reason — a dialog the game had hidden was still reported answerable.
+- `settle` reports a dialog opened *during* the drain rather than a turn later. The prompt is raised from
+  inside `Hero.act()`, so the agent was being handed the world for one more turn with a modal question
+  already up — a turn it could spend walking away from the chasm it had just asked about.
+
+Measured end to end: **the prompt opens, the agent answers, the game accepts, the dialog closes itself,
+and the next move puts the hero a floor down.**
+
+`Levitation.detach()` still does not re-check the landing cell headlessly, because the game guards that
+call on a `GameScene` — so a hero whose levitation expires *over* a pit still has to step off it and
+back on. That is a `:core` guard and it is left alone under the engine boundary; `ENGINE-CHANGES.md` §7
+is where it is recorded.
+
 ### What is gated, and what it refuses
 
 `gradle :superintelligence:fallcheck`, five cases, each reverted and refused in turn:
@@ -590,13 +617,25 @@ project can reach.
 | walking into a chasm does not take the process down | the null guard is dropped from `Image` |
 | the same fall twice is the same fall | the fall does not happen at all — so the case refuses to compare a fall with itself |
 
-The fifth case is `issues.md` 16's question asked directly: the same seed, the same fall, twice in one
+and `gradle :superintelligence:dialogcheck`, three more, for the question rather than the fall:
+
+| case | fails when |
+| --- | --- |
+| the agent answers the game's own dialog | `WindowBridge.age()` is neutered (2 of 3), or `selectOption` clears the slot again (2), or `GameScene.headlessWindow()` ignores the game's own `hide()` (3) |
+| a dialog closes when the game closes it | `selectOption` clears the slot (1), or `headlessWindow()` ignores `hide()` (2) |
+| a dialog opened during a turn is reported in that turn | `settle` does not report it (1), or `headlessWindow()` ignores `hide()` (2) |
+
+The second of those uses `Chasm`'s *shape* as its fixture rather than the chasm itself — a dialog whose
+`hide()` and `onSelect` are both gated on its own elapsed clock — so the property is asserted against the
+shape and not against the one place it was found.
+
+The fifth fall case is `issues.md` 16's question asked directly: the same seed, the same fall, twice in one
 process with other runs churned in between, landing on the same cell of the same floor with the same
 health, clock and `SpecialRoom.runSpecials`. It is the measurement the control above was reaching for
 and could not get, because it needed a fixture that drives a fall.
 
-**Still open, and it is a fidelity gap rather than a divergence:** the game's own "jump?" prompt cannot
-be answered headlessly, because `Chasm`'s dialog requires `elapsed > 0.2f` on a clock only a rendered
-frame loop advances. So the agent can never *choose* to walk into a chasm; falls happen only where the
-engine drops him onto a pit cell. Deterministic on both sides of a replay, and recorded at `TODO.md`
-§0.11 with the three ways to close it.
+**What is left, and it is small.** The agent can cross a chasm. It cannot cross one silently:
+`Chasm.jumpConfirmed` is a one-shot that `Chasm.heroFall` clears on the very step that acts on it, so a
+second chasm asks again — which is the game's own behaviour, not this module's. `Levitation.detach()`
+still does not re-check the landing cell headlessly because the game guards that call on a `GameScene`;
+that is a `:core` guard, left alone under the engine boundary and recorded at `ENGINE-CHANGES.md` §7.

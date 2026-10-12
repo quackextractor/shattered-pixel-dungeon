@@ -96,6 +96,31 @@ records, which is the same class of change as re-pricing `STALLED`.
 - **`LevelPipeline.handleFall` no longer forces `Dungeon.branch = 0`.** The game increments the depth
   and leaves the branch alone.
 
+- **The agent could not answer the game's "jump?" prompt, and so could never walk into a chasm.** The
+  game asks before it drops anyone — `Chasm.heroJump` raises a `WndOptions` — and the environment was
+  offered it and then had the answer thrown away, in two halves.
+
+  `Chasm`'s dialog gates both its option and its hide on an `elapsed` counter its own `update()`
+  increments, and `PixelScene.update()` is the only thing that ever called it; there is no `PixelScene`
+  headlessly, so the counter never moved and the option never fired. `WindowBridge.age()` calls it, once
+  per environment step, which is once per frame — the same approximation `ReplayPlayer` already makes
+  about a recorded step, so the gate is the game's own 0.2 s and measured on `FALLCHECK-A` the answer
+  takes **13 steps**. Those cost nothing the environment scores: `settle` reports a dialog before it
+  scores a turn.
+
+  And `WindowBridge.selectOption` cleared the parked window on *any* press, so a dialog whose handler
+  declined was reported as answered and removed anyway — which is precisely what `Chasm` does while
+  `elapsed` is under 0.2 s. A parked window now lives in a one-slot `Group` rather than in a bare
+  field, so the game's own `Window.hide()` erases itself from its parent and closes the slot, and a
+  handler that declines leaves the dialog up. `GameScene.answerableWindow()` had to read the accessor
+  rather than the field for the same reason: a dialog the game had hidden was still being reported as
+  answerable.
+
+- **A dialog the drain opened was reported to the agent a turn late.** `settle()` only tested for one at
+  the top of its loop, and the jump prompt is raised from inside `Hero.act()` — so the agent was handed
+  the world for one more turn with a modal question already up, and could spend it walking away from the
+  chasm it had just asked about. A rendered game blocks cell input the instant the window appears.
+
 ### Added
 
 - **`gradle :superintelligence:fallcheck`**, a gate, five cases. It drives a real fall through
@@ -111,9 +136,24 @@ records, which is the same class of change as re-pricing `STALLED`.
   | the same fall twice is the same fall | the fall does not happen, so the case refuses to compare a fall with itself |
 
   Each was reverted and the gate re-run; the first was refused by three cases and the rest by one each.
-  The last is `issues.md` 16's question asked directly — the same seed and the same fall twice in one
+  The fifth is `issues.md` 16's question asked directly — the same seed and the same fall twice in one
   process, with other runs churned in between, landing on the same cell of the same floor with the same
   health, clock and `SpecialRoom.runSpecials`.
+
+- **`gradle :superintelligence:dialogcheck`**, a gate, three cases, and the home for the half of the
+  chasm that is about answering rather than falling. `WindowBridge` is the whole surface and nothing
+  about it was ever asserted.
+
+  | case | fails when |
+  | --- | --- |
+  | the agent answers the game's own dialog | `WindowBridge.age()` is neutered (2 of 3 fail), or `selectOption` clears the slot again (2), or `headlessWindow()` ignores the game's own `hide()` (3) |
+  | a dialog closes when the game closes it | `selectOption` clears the slot (1), or `headlessWindow()` ignores `hide()` (2) |
+  | a dialog opened during a turn is reported in that turn | `settle` does not report it (1), or `headlessWindow()` ignores `hide()` (2) |
+
+  The second case's fixture is `Chasm`'s shape rather than the chasm itself — a dialog whose `hide()`
+  and `onSelect` are both gated on its own elapsed clock — so the property is asserted against the shape
+  rather than against the one place it was found, and its second half is the positive control: without
+  something that closes the dialog, "no dialog" would be true of every press.
 
 ### Not done
 
@@ -122,28 +162,33 @@ records, which is the same class of change as re-pricing `STALLED`.
   unseeded draw into every fall in the trainer and undo reproducibility for the sake of a behaviour no
   policy in this project can reach. When the shuffle is seeded this gets the call with it.
 
-- **The game's "jump?" prompt still cannot be answered headlessly.** `Chasm`'s dialog requires
-  `elapsed > 0.2f` on a clock only a rendered frame loop advances, so the environment is offered the
-  game's own question, presses its button, and the game's own code declines — the hero does not jump. A
-  fall therefore only happens where the engine drops him onto a pit cell. Deterministic on both sides of
-  a replay, so it is a fidelity gap rather than a divergence; recorded at `TODO.md` §0.11 with the
-  measurement and the three ways to close it.
+- **`Levitation.detach()` still does not re-check the landing cell headlessly**, because the game guards
+  that call on a `GameScene` (`Levitation.java:58`). A hero whose levitation expires *over* a pit
+  therefore has to step off it and step back on rather than falling the moment the buff ends. That is a
+  `:core` guard and it is left alone under the engine boundary in `AGENTS.md`.
 
 ### Verified
 
-- `verifyall` — `:superintelligence:gates` at 21 (with `fallcheck`), `:desktop:playbackcheck`, both green.
-- `:desktop:viewcheck` — **19 of 19**, 139.7 s at 8 children. Re-run rather than carried over, because
-  the change touches `SPD-classes` and the floor pipeline.
-- `fallcheck` mutation-tested four ways, each reverted after: reordering the `mode == FALL` test (3 of 5
-  cases fail), removing `Buff.affect(Chasm.Falling.class)` (1), removing
+- `verifyall` — `:superintelligence:gates` at 22 (with `fallcheck` and `dialogcheck`), `:desktop:playbackcheck`, both green.
+- `:desktop:viewcheck` — **19 of 19**, 134.3 s at 8 children. Re-run rather than carried over, because
+  the change touches `SPD-classes`, `:core` and the floor pipeline.
+- `fallcheck` mutation-tested four ways, each reverted after: reordering the `mode == FALL` test
+  (3 of 5 cases fail), removing `Buff.affect(Chasm.Falling.class)` (1), removing
   `InterlevelScene.mode = null` from `clearSwitchRequest` (1), reverting the `Image` guard (1, with the
   `NullPointerException`).
+- `dialogcheck` mutation-tested four ways, each refused by 2, 3, 1 and 2 of its 3 cases: restoring the
+  caller-side clear in `WindowBridge.selectOption`, making `GameScene.headlessWindow()` ignore the
+  game's own `hide()`, removing the mid-drain dialog report from `settle`, and neutering
+  `WindowBridge.age()`.
+- All seven committed trainer recordings still reproduce, and a fresh two-generation trainer run writes
+  two more that verify.
 
-## [0.7.0] - 2026-10-11
+## [0.8.0] - 2026-10-12
 
-Closes `issues.md` 15. Recordings written by the trainer could not be watched at all, `verify` reported
-them as perfect, and the one post-fix recording that got further diverged in the viewer on a `DROP` that
-every gate passed. Four faults, in the order they had to be found.
+Closes `issues.md` 16. **A chasm fall was never serviced at all**, and nothing in the project had found
+out, because nothing in the project had ever put a hero into a chasm. Pre-1.0, and this is a minor
+rather than a patch for the reason `0.3.0` was: a fall now changes what a run does and what a recording
+records, which is the same class of change as re-pricing `STALLED`.
 
 ### Fixed
 

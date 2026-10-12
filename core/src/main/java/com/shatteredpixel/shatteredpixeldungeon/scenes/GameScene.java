@@ -1514,6 +1514,14 @@ public synchronized void update() {
 	public static void show( Window wnd ) {
 		//no scene to attach to when the renderer is bypassed, eg. headless training
 		if (scene == null) {
+			//Parked in a Group rather than in a bare field, so that the game's own hide() clears
+			//the slot. Window.hide() erases itself from its parent; a field has no parent, so nothing
+			//the game did could close a parked dialog and the caller had to close it unconditionally -
+			//which reports a dialog as answered when the game threw the answer away. Chasm's "jump?"
+			//prompt is the case that bit: it refuses both its option and its hide until it has been up
+			//for a fifth of a second, so the agent answered it, was ignored, and had the question taken
+			//away anyway.
+			headlessPark.add( wnd );
 			headlessWindow = wnd;
 			return;
 		}
@@ -1542,9 +1550,31 @@ public synchronized void update() {
 
 	private static Window headlessWindow = null;
 
-	/** Window awaiting an answer from a headless caller, or null. */
-	public static Window headlessWindow(){ return headlessWindow; }
-	public static void clearHeadlessWindow(){ headlessWindow = null; }
+	/**
+	 * The parent the parked headless window lives in, so its own {@code hide()} can close it.
+	 *
+	 * <p>Never drawn from and never updated: {@link Window#hide()} erases the window from it, which
+	 * nulls {@code Gizmo.parent}, and that is the whole of the signal {@link #headlessWindow()} reads.
+	 */
+	private static final Group headlessPark = new Group();
+
+	/**
+	 * Window awaiting an answer from a headless caller, or null.
+	 *
+	 * <p>Null once the window has hidden itself, which is what makes it the same question in both
+	 * environments: in a rendered game a dialog leaves the scene when it hides, and here a parked one
+	 * loses its parent when it hides.
+	 */
+	public static Window headlessWindow(){
+		return (headlessWindow != null && headlessWindow.parent == null) ? null : headlessWindow;
+	}
+
+	public static void clearHeadlessWindow(){
+		if (headlessWindow != null && headlessWindow.parent != null){
+			headlessPark.remove( headlessWindow );
+		}
+		headlessWindow = null;
+	}
 
 	/**
 	 * The window a caller should answer, whichever way the game opened it.
@@ -1565,7 +1595,9 @@ public synchronized void update() {
 	 */
 	public static Window answerableWindow(){
 		if (scene != null) return topWindow();
-		return headlessWindow;
+		//The accessor, not the field: a parked window stops being the answerable one when the game
+		//hides it, and reading the field here reported a dialog that had already closed.
+		return headlessWindow();
 	}
 
 public static boolean showingWindow(){

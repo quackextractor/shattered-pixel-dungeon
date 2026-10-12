@@ -36,7 +36,7 @@ scored by a configurable reward function, with the best run per seed recorded an
 
 **Nothing has won a run, and nothing has reached floor 5.** The machinery is correct - the network's
 gradients check against central differences, the environment is reproducible across processes,
-recordings replay exactly, and every one of the twenty-one gates is green - and the reward function now
+recordings replay exactly, and every one of the twenty-two gates is green - and the reward function now
 asks for the right thing. Measured, over twelve generations: **deaths fell 100% to 19%, mean turns rose
 377 to 1335**, and `bestDepth 2` has been observed once. **Depth does not trend yet.**
 
@@ -246,7 +246,7 @@ from `KILL`'s "declared, plumbed and never emitted". `TODO.md` 1.10 is the missi
 
 ## Gates
 
-Twenty-one gates, one invocation, ~22 seconds:
+twenty-two gates, one invocation, ~22 seconds:
 
 ```sh
 ./gradlew :superintelligence:gates
@@ -263,6 +263,7 @@ Twenty-one gates, one invocation, ~22 seconds:
 | `rewardcheck` | Ending an episode being cheaper than dying, **or** an action that consumes several engine turns being charged for one |
 | `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
 | `fallcheck` | A chasm fall the environment drops, a free landing, or a fall that leaves a hand-off behind for the next episode |
+| `dialogcheck` | An answer that cannot reach a dialog the game opened, a dialog taken away when the game declined it, or one reported a turn late |
 | `replaycheck` | A catalog that misgroups, misranks or misresolves, **or** mislabels what it did |
 | `rolloutcheck` | A recording with no usable seed |
 | `modecheck` | An action mode the environment cannot reach |
@@ -350,6 +351,18 @@ Three of them are worth singling out, because they reach faults the others struc
   health bill, and asserts the hand-off leaves nothing behind for the next episode - which matters
   because `InterlevelScene.mode` is a process static that a real game resets by building a fresh
   `InterlevelScene` for every descent, and nothing headless does.
+- **`dialogcheck`** covers the other half of the chasm: the agent could not *choose* to fall. Walking
+  at a chasm raises the game's own "jump?" prompt, and the environment was handed it and then had the
+  answer thrown away — the dialog gates its option and its hide on `elapsed > 0.2f`, a counter its own
+  `update()` increments and `PixelScene.update()` is the only thing that ever called, so headlessly the
+  option could not fire; and `WindowBridge.selectOption` cleared the window on any press, so a handler
+  that declined had its dialog removed anyway. `WindowBridge.age()` advances it once per environment
+  step, which is once per frame — the same approximation `ReplayPlayer` makes about a recorded step —
+  and a parked window now lives in a `Group`, so the game's own `hide()` closes it. A rendered game
+  blocks cell input the instant the window appears, and `settle` likewise reports a dialog opened
+  *during* the drain rather than a turn later. Measured on `DIALOGCHECK-A`: the answer takes 13 steps,
+  and they cost nothing the environment scores, because `settle` reports a dialog before it scores a
+  turn.
 
 ## Replay and determinism
 

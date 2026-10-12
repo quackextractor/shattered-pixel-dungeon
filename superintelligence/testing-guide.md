@@ -99,10 +99,11 @@
 
 | Test Command / Task | Subsystem Verified | Success Criterion |
 | :--- | :--- | :--- |
-| **`./gradlew :superintelligence:gates`** | Master aggregator running all 21 automated gate checks across all modules. | **All 21 gates pass cleanly** in ~22 seconds. |
+| **`./gradlew :superintelligence:gates`** | Master aggregator running all 22 automated gate checks across all modules. | **All 22 gates pass cleanly** in ~22 seconds. |
 | **`./gradlew :superintelligence:run --args="verify <file.replay>"`** | Headless re-execution of a recorded replay through `ActionMapper` & `LevelPipeline`, resolving each recorded slot index against its recorded quickslot bindings - the same `Quickslots.prepare` the viewer calls. | Replays trajectory to completion, matching recorded position, HP, turns, and inventory. Exits 3 rather than 0 on a recording whose slot indices cannot be resolved at all. |
 | **`transitioncheck` (`:superintelligence`)** | Drives real descents **and** an ascent through `Level.activateTransition`, and asserts the hero's first action on the new floor is not swallowed by the act where the floor's mobs notice him. 9 cases, mutation-tested. | Depth changes in both directions, the episode continues, the engine clock restarts with the floor, and the agent's first action there moves the hero. |
 | **`fallcheck` (`:superintelligence`)** | Drives a real chasm fall through `Level.occupyCell` - the transition that carries **no** `LevelTransition`, so `curTransition` is null on it by construction. 5 cases, each mutation-tested. | The fall lands the hero a floor down, alive, on a restarted clock, and the landing costs health the way `InterlevelScene.fall()` costs it; the hand-off leaves `InterlevelScene.mode` and `curTransition` clear, so the next episode's ordinary descent is a descent; walking toward a chasm asks the game's own question instead of throwing; and the same fall twice in one process, with other runs in between, lands on the same cell of the same floor. |
+| **`dialogcheck` (`:superintelligence`)** | The `WindowBridge` surface: a dialog the game opened, and an answer the agent gave it. 3 cases, each mutation-tested. | The game's own "jump?" prompt is reached, aged, answered, and closes itself, and the agent ends up a floor down; a dialog the game declines survives the answer and one it accepts closes; and a dialog raised *during* a turn is reported in that turn. |
 | **`paritycheck` (`:superintelligence`)** | Records a sweep of seeds x hero classes in one process, then verifies each recording twice - once immediately, once after the whole sweep has run in between. | Every recording replays exactly, both times. |
 | **`playbackcheck` (`:desktop`)** | Drives `ReplayPlayer` logic headlessly without UI or display server. Covers the player's own logic only, and plays the committed corpus. | Faithful replays pass; altered steps (HP, position, turn, quickslots) fail at exact step; playing a death recording leaves no `bones.dat` behind; every committed recording plays **every step**; a recording whose bindings were never written is refused *at* the first step that needed them, not after playing; and a death landing on the **final** recorded step still plays that step, which the corpus could not reach until `duelist-death-last.replay` was added. 23 cases. |
 | **`viewcheck` (`:desktop`)** | Plays the **whole committed corpus through the real viewer** - real `GameScene`, real frame driver, real GL context, window hidden. Needs a display, so it is outside `gates`. | Every committed recording plays **every step** in the viewer - not merely "did not diverge", which is what a halt for any other reason used to score. **Green**: 19 of 19, and stable across repeated runs. |
@@ -212,7 +213,7 @@ NullPointerException: cannot invoke "SmartTexture.uvRect" because "this.texture"
   at Worker.serve(...)                    <- nothing between these two catches it
 ```
 
-`fallcheck` now drives both, and each of its five cases was reverted-and-refused in turn:
+`fallcheck` drives both, and each of its five cases was reverted-and-refused in turn:
 
 | Reverted | Case that refuses it |
 | --- | --- |
@@ -221,9 +222,42 @@ NullPointerException: cannot invoke "SmartTexture.uvRect" because "this.texture"
 | `InterlevelScene.mode = null` removed from `clearSwitchRequest` | `a fall leaves no hand-off behind` |
 | the null guard removed from `Image`'s five-argument constructor | `walking into a chasm does not take the process down` |
 
-**What is still not right, and is recorded rather than guessed:** the game's "jump?" prompt cannot be
-*answered* headlessly. `Chasm`'s dialog requires `elapsed > 0.2f` on a clock only a rendered frame loop
-advances, so the environment is offered the game's own question, presses its button, and the game's own
-code declines - the hero does not jump and stays put. That is deterministic on both sides of a replay,
-so it is a fidelity gap rather than a divergence, and closing it means deciding how much rendered time a
-headless answer is worth. `TODO.md` §0.11 has it with the measurement.
+The fifth case is the question `issues.md` 16 asked, asked directly: the same seed and the same fall
+twice in one process, with other runs churned in between, landing on the same cell of the same floor
+with the same health, clock and `SpecialRoom.runSpecials`. It needed a fixture that drives a fall, which
+is what this gate is.
+
+---
+
+### The question the game asks before it drops you, and the answer it never got
+
+`dialogcheck` covers the other half of the same path, and it is the half that made the chasm
+*unreachable* rather than merely broken.
+
+The agent was **offered** the game's "jump?" prompt and then had the answer thrown away. `Chasm`'s
+dialog gates both its option and its hide on `elapsed > 0.2f`, a counter its own `update()` increments
+and `PixelScene.update()` is the only thing that ever called — so headlessly the option could not fire.
+And `WindowBridge.selectOption` cleared the parked window on any press, so a handler that declined had
+its dialog removed anyway, which is exactly what `Chasm` does while `elapsed` is under 0.2 s.
+
+`WindowBridge.age()` advances a parked dialog once per environment step, which is once per frame — the
+same approximation `ReplayPlayer` already makes about a recorded step, so the gate is the game's own
+0.2 s and **the answer takes 13 steps**. Those cost nothing the environment scores, because `settle`
+reports a dialog before it scores a turn. A parked window now lives in a `Group`, so the game's own
+`Window#hide()` closes it; and `settle` reports a dialog opened *during* the drain rather than a turn
+later, because a rendered game blocks cell input the instant the window appears.
+
+| Reverted | Cases that refuse it |
+| --- | --- |
+| `WindowBridge.selectOption` clearing the slot again | 2 of 3 |
+| `GameScene.headlessWindow()` ignoring the game's own `hide()` | 3 of 3 |
+| `settle` not reporting a dialog the drain opened | 1 of 3 |
+| `WindowBridge.age()` neutered | 2 of 3 |
+
+Measured end to end: **the prompt opens, the agent answers, the game accepts, the dialog closes itself,
+and the next move puts the hero a floor down — `DIALOGCHECK-A`, 13 steps for the answer, depth 1 → 2.**
+
+**What is left, and it is small:** the agent can cross a chasm, but `Chasm.jumpConfirmed` is a one-shot
+that `Chasm.heroFall` clears on the step that acts on it, so a second chasm asks again — the game's own
+behaviour, not this module's. And `Levitation.detach()` still does not re-check the landing cell
+headlessly, because the game guards that call on a `GameScene` (`ENGINE-CHANGES.md` §7).

@@ -304,6 +304,13 @@ if (mode == EnvMode.WORLD){
 
 			//a dialog opened during the step takes priority over the next turn
 			if (WindowBridge.open()){
+				//and it ages while it is up. Some of the game's dialogs refuse to do anything until
+				//they have been on screen a while - Chasm's "jump?" prompt gates both its option and
+				//its hide on an elapsed counter its own update() increments - and headlessly nothing
+				//ever called that, so the environment answered the question and the game's own code
+				//threw the answer away. One step is one frame, which is the same approximation the
+				//rendered viewer already makes about a recorded step.
+				WindowBridge.age();
 				mode = EnvMode.MENU;
 				break;
 			}
@@ -380,6 +387,17 @@ if (mode == EnvMode.WORLD){
 			//the agent just waited, or the engine advanced only other actors; observe and hand back
 			mapper.refreshSlots();
 			refreshMasks();
+
+			//A dialog the drain itself opened is reported on the step it opened, not the step after.
+			//The loop only tests for one at the top, and the game's own "jump?" prompt is raised from
+			//inside Hero.act(): the hero walks at a chasm, gets asked, and this branch hands the agent
+			//the world for one more turn while a modal question is already up. A rendered game blocks
+			//cell input the instant the window appears, so the agent would not get that turn - and here
+			//it is a turn it can spend walking away from the chasm it asked about.
+			if (WindowBridge.open()){
+				WindowBridge.age();
+				mode = EnvMode.MENU;
+			}
 			break;
 		}
 

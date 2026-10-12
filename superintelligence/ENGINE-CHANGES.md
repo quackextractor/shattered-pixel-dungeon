@@ -45,7 +45,7 @@ survive that. Each of these is a guard, not a stub: with a renderer present ever
 
 | File | Change |
 | --- | --- |
-| `GameScene` | `show`, `selectCell`, `checkKeyHold`, `resetKeyHold` handle a null scene or cell selector, and stash pending dialogs and aiming requests for a headless caller |
+| `GameScene` | `show`, `selectCell`, `checkKeyHold`, `resetKeyHold` handle a null scene or cell selector, and stash pending dialogs and aiming requests for a headless caller. `show` parks the window in a one-slot `Group` rather than in a bare field, so the game's own `Window.hide()` closes it — a bare field has no parent to erase from, so a dialog whose handler declines the click (Chasm's "jump?" prompt does, until it has been up a fifth of a second) used to be reported answered by the caller and removed anyway. `answerableWindow()` reads the accessor rather than the field for the same reason |
 | `Button.press()`, `WndOptions.optionCount/optionSelectable/selectOption` | let a caller drive a dialog with no UI |
 | `Image` | the five-argument constructor and `frame(int,int,int,int)` tolerate a null texture. `frame(RectF)` had carried the guard since the bypass landed and the two callers that derive the frame rectangle *from* the texture had not, which is how one hero stepping at a chasm killed a worker: `Chasm.heroJump` builds its "jump?" prompt out of `new Image(Dungeon.level.tilesTex(), ...)` and there is no renderer to load that texture |
 | `CharSprite.sprint/updateArmor/read/fall` | presentation hooks moved up from `HeroSprite` and `MobSprite`, so game logic stops depending on the concrete sprite type |
@@ -200,3 +200,7 @@ reading exactly like a simulation that consumes no randomness at all.
 - **`Game.elapsed` cannot be pinned from outside.** It is derived in `Game.update` before any game code
   runs, so animation timing remains frame-rate dependent and a future timing fault will need an engine
   change at the point the delta is measured.
+- **`Levitation.detach()` only re-presses the hero's cell when a `GameScene` exists** (`Levitation.java:58`),
+  so headlessly a hero whose levitation expires *over* a pit does not fall until he steps off it and back
+  on. A gameplay guard keyed on a scene, which is the same shape as the animation clock above and the same
+  decision: left alone under the engine boundary rather than changed.

@@ -10,9 +10,12 @@ writes `InterlevelScene.mode` and asks for a scene switch, and nothing else — 
 `LevelPipeline.handleTransition` tested `curTransition == null` before it tested the mode, which is true
 on every fall by construction. So it answered "not a level transition", cleared the switch request, and
 `Transition.FALL` and `handleFall()` were unreachable code. Walking a hero *at* a chasm threw a
-`NullPointerException` out of `Chasm.heroJump` and out of the worker with it. Both are fixed and gated by
-`fallcheck` (5 cases, mutation-tested); §0.11 has the remaining gap on that path, which is that the
-game's own "jump?" prompt still cannot be answered headlessly.
+`NullPointerException` out of `Chasm.heroJump` and out of the worker with it.
+
+The second half took longer and was less visible: **the agent could never walk into a chasm at all**,
+because the game's own "jump?" prompt gated both its option and its hide on a clock only a rendered
+frame loop advances, and the environment discarded the dialog on any press regardless. Both are fixed, the first by `fallcheck` (5 cases) and the second by `dialogcheck` (3 cases),
+all mutation-tested; §0.11 has the whole thing.
 
 Last updated before that: 2026-10-11, after `issues.md` "Training" 15 was closed. **A recording the trainer writes
 can now be played in the viewer, and `verify` says so instead of saying `[OK]`.** Four faults, found in
@@ -47,42 +50,85 @@ and is 17 of 17. The entry before that — `issues.md` "Env" 6 and 7 investigate
 
 ---
 
-## 0.11 The "jump?" prompt the environment cannot answer - RECORDED, not fixed
+## 0.11 The "jump?" prompt the environment could not answer - FIXED
 
-Found while closing `issues.md` 16, and the remaining half of that path.
+Found while closing `issues.md` 16, and the remaining half of that path. **The agent could never walk
+into a chasm.** It was the environment's own question being asked and then thrown away, in two halves
+that each had to be fixed before the other one mattered.
+
+### The question was never aged
 
 A hero who walks toward a chasm makes the game ask. `Hero.getCloser` finds the next cell is a pit and
-calls `Chasm.heroJump`, which raises a `WndOptions` - "you are about to jump into a chasm, are you
-sure" - through `Game.runOnRenderThread`, which the headless backend runs inline, which parks the window
-in `GameScene`'s headless slot, which is what `WindowBridge.open()` reads. So the environment *does*
-get the game's own question, and the agent is put into `MENU` with two options, and answering it is an
-ordinary `MENU` step.
+calls `Chasm.heroJump`, which raises a `WndOptions` — "you are about to jump into a chasm, are you
+sure" — through `Game.runOnRenderThread`, which the headless backend runs inline, which parks the window
+in `GameScene`'s headless slot, which is what `WindowBridge.open()` reads. So the environment *did* get
+the game's own question, and the agent was put into `MENU` with two options.
 
-**The answer is then discarded, by the game's own code.** `Chasm`'s dialog overrides `onSelect` with
+**The answer was then discarded, by the game's own code.** `Chasm`'s dialog overrides `onSelect` with
 
 ```java
 if (index == 0 && elapsed > 0.2f){ ... jumpConfirmed = true; hero.resume(); }
 ```
 
-where `elapsed` accumulates `Game.elapsed` in the window's `update()`. Nothing headless ever calls
-`Window.update()` - `PixelScene.update()` is what calls it, and there is no `PixelScene` - so `elapsed`
-stays at zero, the option does not fire, and the hero does not jump. Measured: the window opens, option
-0 is pressed, `WindowBridge` reports the dialog answered and clears it, and the hero is still standing
-where he was with `Chasm.jumpConfirmed` false.
+where `elapsed` accumulates `Game.elapsed` in the window's `update()`. `PixelScene.update()` is the only
+thing that ever calls it, and there is no `PixelScene` headlessly — so `elapsed` stayed at zero, the
+option did not fire, and the hero stood where he was.
 
-**Why it is not fixed here.** It is deterministic on both sides of a replay, so it is a fidelity gap
-rather than a divergence, and closing it is a decision rather than a repair: the guard exists so a
-player cannot click through the prompt before reading it, and a headless caller has no reading time. The
-three answers are (a) pump the window once per environment step, which is the viewer's shape but takes
-13 steps to cross the guard; (b) let `WindowBridge` press the option past the guard, which is the
-agent's decision made explicit but invents a rule the game does not have; (c) treat a chasm as
-impassable, which is what happens today and is the one thing a dungeon crawler cannot afford.
+`WindowBridge.age()` calls it, **once per environment step, which is once per frame** — the same
+approximation `ReplayPlayer` already makes about a recorded step. The gate is therefore the game's own
+0.2 s rather than something invented here, and measured on `FALLCHECK-A` the answer takes **13 steps**.
+Those steps cost nothing the environment scores: `settle` reports a dialog before it scores a turn, so
+a step spent answering a question does not advance `turnsThisFloor`.
 
-The consequence to weigh is on (c): **the agent can never walk into a chasm.** Falls happen only when
-the engine drops the hero onto a pit cell - `Level.occupyCell`, reached by a Displacing Dart, a
-teleport, `Preparation`'s rest, `HeroicLeap` - and `Levitation.detach()` does not re-check the cell
-headlessly because the game guards that call on a `GameScene`. So chasms are currently walls the hero
-cannot choose to cross, and no floor behind one is reachable by walking.
+### The question was then taken away
+
+`WindowBridge.selectOption` cleared the parked window on any press, so a dialog whose handler declined
+the click was reported as answered and removed anyway — and `Chasm`'s declines exactly as long as
+`elapsed` is under 0.2 s. A parked window now lives in a one-slot `Group` rather than in a bare field,
+so the game's own `Window.hide()` erases itself from its parent and closes the slot, and a handler that
+declines leaves the dialog up. `GameScene.answerableWindow()` had to read the accessor rather than the
+field for the same reason: a dialog the game had hidden was still being reported as answerable.
+
+Uniform rather than special-cased: every dialog the game parks is aged the same way, and the ones with
+no timing guard simply accrue a counter nothing reads.
+
+### And a dialog opened mid-turn was reported a turn late
+
+`settle()` only tested for a dialog at the top of its loop, so one raised from inside `Hero.act()` — the
+jump prompt is — was noticed on the *next* step. The agent was handed the world for one more turn with a
+modal question already up, and could spend it walking away from the chasm it had just asked about. A
+rendered game blocks cell input the instant the window appears. `settle` now reports one before handing
+back.
+
+### Gated
+
+`gradle :superintelligence:dialogcheck`, three cases, mutation-tested four ways:
+
+| reverted | cases that refuse it |
+| --- | --- |
+| `WindowBridge.selectOption` clearing the slot again | 2 of 3 |
+| `GameScene.headlessWindow()` ignoring the game's own `hide()` | 3 of 3 |
+| `settle` not reporting a dialog the drain opened | 1 of 3 |
+| `WindowBridge.age()` neutered | 2 of 3 |
+
+The second case's fixture is `Chasm`'s shape rather than the chasm itself — a dialog whose `hide()` and
+`onSelect` are both gated on its own elapsed clock — so the property is asserted against the shape rather
+than against the one place it was found, and its second half is the positive control: without something
+that closes the dialog, "no dialog" would be true of every press and the case would pass for the wrong
+reason.
+
+Measured, end to end: **the prompt opens, the agent answers it, the game accepts, the dialog closes
+itself, and the next move puts the hero a floor down — `DIALOGCHECK-A`, 13 steps for the answer, depth
+1 → 2.**
+
+### What is still not right, and is now a much smaller thing than it was
+
+The agent can cross a chasm. It cannot choose to cross one *silently*: `Chasm.jumpConfirmed` is a
+one-shot that `Chasm.heroFall` clears on the very step that acts on it, so a second chasm asks again,
+which is the game's own behaviour. And `Levitation.detach()` still does not re-check the landing cell
+headlessly, because the game guards that call on a `GameScene` — so a hero whose levitation expires
+*over* a pit still has to step off it and step back on. That is a `:core` guard and it is left alone
+under the engine boundary; `ENGINE-CHANGES.md` §7 is where an unfixed engine gap is recorded.
 
 ---
 

@@ -122,7 +122,13 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   `handleFall()` were unreachable code. Three more faults on the same path: the landing ignored
   `InterlevelScene.fallIntoPit`, the landing applied no fall damage (so a fall was free and strictly
   better than the stairs), and walking a hero *at* a chasm threw a `NullPointerException` out of
-  `Chasm.heroJump` and out of the worker with it. `issues.md` 16; `fallcheck` gates it.
+  `Chasm.heroJump` and out of the worker with it. **And the agent could not cross a chasm by choice** —
+  the game's "jump?" prompt gated its own answer on `elapsed > 0.2f` on a clock only a rendered frame
+  loop advances, and `WindowBridge` discarded the dialog on any press regardless, so the environment was
+  asked the question and then had the answer thrown away. The prompt is now aged once per environment
+  step (once per frame, the approximation `ReplayPlayer` already makes about a recorded step) and the
+  game's own `hide()` closes it, so the agent asks, answers, and ends up a floor down. `issues.md` 16;
+  `fallcheck` and `dialogcheck` gate it.
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
@@ -200,7 +206,7 @@ something.
 | Area | State |
 | --- | --- |
 | Headless engine (renderer bypassed, single-threaded scheduler) | Verified, reproducible across processes |
-| Level pipeline, floor transitions, chasm falls | Verified - descending and ascending, in both directions, with the hero's landing act (`transitioncheck`, 9 cases). **A chasm fall was being dropped entirely** - it is the one transition that carries no `LevelTransition`, and `handleTransition` tested for one first, so `Transition.FALL` and `handleFall()` were unreachable and a hero put into a chasm stayed where he was. `fallcheck` is a gate, 5 cases |
+| Level pipeline, floor transitions, chasm falls | Verified - descending and ascending, in both directions, with the hero's landing act (`transitioncheck`, 9 cases). **A chasm fall was being dropped entirely** - it is the one transition that carries no `LevelTransition`, and `handleTransition` tested for one first, so `Transition.FALL` and `handleFall()` were unreachable and a hero put into a chasm stayed where he was. **And the agent could not choose to fall at all**: the game's own "jump?" prompt gated its answer on a clock only a rendered frame loop advances, and the environment threw the answer away. `fallcheck` is a gate, 5 cases, and `dialogcheck` is a gate, 3 more |
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified, **with a known limit** - `env.max_slots=32` against an engine ceiling of 96, so a full inventory is silently truncated. `TODO.md` §0.8 |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process. `verify` also resolves a recorded slot index against its recorded quickslot bindings, so it and the viewer cannot disagree about a recording and both be right |
@@ -272,7 +278,7 @@ something.
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"
 ```
 
-**Twenty-one gates, one invocation.** Each has had the thing it guards deleted, and each has been
+**twenty-two gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives
@@ -284,7 +290,9 @@ waking up, and every recording in the corpus that descended described a run that
 fourth, `fallcheck`, is the same argument one floor further: **a chasm fall was never serviced at
 all**, because it is the only transition that carries no `LevelTransition` and the pipeline tested for
 one first - so `Transition.FALL` and `handleFall()` were unreachable code, and nothing in the project
-had ever put a hero into a chasm to find out.
+had ever put a hero into a chasm to find out. A fifth, `dialogcheck`, covers the half that made the
+chasm *unreachable*: the environment was handed the game's own "jump?" prompt and then had the answer
+thrown away, so the agent could be told yes by the game and still never cross.
 
 **A gate that passes because the thing it would catch is absent is the same failure as a gate that
 cannot fail**, and the corpus was one for a long time: 17 recordings, 310 SLOT-mode steps, and not one
