@@ -35,7 +35,7 @@ public class ReplayCatalogCheck {
 
 	private static final List< String > failures = new ArrayList<>();
 
-	private static final int CHECKS = 16;
+	private static final int CHECKS = 17;
 
 	private static File workDir;
 
@@ -63,6 +63,7 @@ public class ReplayCatalogCheck {
 			checkAmbiguousSeedIsRefusedNotGuessed();
 			checkIndexedDirectoriesAreDiscovered();
 			checkASharedSeedResolvesByFileName();
+			checkTheBlurbAgreesWithItsOwnRows();
 			checkTheSameDirectoryUnderTwoSpellingsIsOneDirectory();
 			checkSectionsSplitByProvenance();
 		checkDepthIsAReadableColumn();
@@ -667,6 +668,67 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			}
 		} catch (IOException e){
 			fail( "reading the watchability fixtures threw: " + e.getMessage() );
+		}
+	}
+
+	/**
+	 * The section header and the section's own rows must not contradict each other.
+	 *
+	 * <p>The trainer section's blurb read <em>"these reproduce too, and every one of them is watchable in
+	 * the viewer"</em> — over a section carrying nine lines marked <em>not watchable</em>, on the same
+	 * screen. It was written when every recording in that directory was the fixed trainer's and the claim
+	 * was true, and it was never revisited when nine files came back.
+	 *
+	 * <p>Worth being precise about which half matters. The header is what a skimming reader takes away,
+	 * so a false header costs more than nine absent markers would: it does not merely fail to inform, it
+	 * actively contradicts the list under it. The count is in the blurb now, which makes the claim a
+	 * function of the section rather than a sentence someone typed once.
+	 */
+	private static void checkTheBlurbAgreesWithItsOwnRows(){
+		File corpus = dir( "blurb-corpus" );
+		File trainer = dir( "blurb-trainer" );
+		write( corpus, "BLURB-CORPUS", "WARRIOR", 1.0, 1, 10 );
+
+		File good = write( trainer, "BLURB-GOOD", "WARRIOR", 2.0, 1, 20 );
+		File dropped = write( trainer, "BLURB-DROPPED", "WARRIOR", 3.0, 1, 30 );
+
+		Replay replay = ReplayIOReadQuietly( dropped );
+		for (Replay.Step step : replay.steps){
+			step.quickslots = "";
+			step.heroHp = -1;
+			step.turn = -1f;
+			step.inventory = "";
+		}
+		writeBack( dropped, replay );
+		if (good == null || dropped == null) return;
+
+		String listing = new ReplayCatalog().scan( List.of( corpus, trainer )).render( true );
+
+		if (listing.contains( "every one of them is watchable" )){
+			fail( "the trainer section's header still claims every recording is watchable while the same"
+					+ " section lists recordings marked 'not watchable'. The header is the part a skimming"
+					+ " reader takes away, so it is the half that has to be true." );
+			return;
+		}
+		if (!listing.contains( "1 of 2, marked 'not watchable'" )){
+			fail( "the trainer section's header does not count the recordings it cannot play, so it says"
+					+ " nothing about them. Expected it to report '1 of 2'." );
+			return;
+		}
+
+		//and the claim it does make has to be true: every marker in the rows is counted by the header.
+		//Row lines only - the first token is the entry's number. The header names the state in words too,
+		//so a naive count over the whole listing finds the header's own mention and reports a
+		//disagreement that is not one.
+		int marked = 0;
+		for (String line : listing.split( "\n" )){
+			String trimmed = line.trim();
+			if (trimmed.isEmpty() || !trimmed.contains( "not watchable" )) continue;
+			if (trimmed.split( "\\s+" )[ 0 ].matches( "\\d+" )) marked++;
+		}
+		if (marked != 1){
+			fail( "the fixture marks one recording unwatchable and the list marks " + marked
+					+ ", so the header's count and the rows disagree about the same section." );
 		}
 	}
 

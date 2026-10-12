@@ -147,6 +147,25 @@ the issue was open — and then lists it again under `### Not done`, correctly, 
   resolve`, and restoring the old wording fails on `the listing still tells the reader to pass a full
   path`.
 
+- **The trainer section's header claimed every recording was watchable, over nine rows that said
+  otherwise.** The blurb read *"these reproduce too, and every one of them is watchable in the viewer"*
+  above a section carrying nine lines marked `not watchable`, on the same screen. It was written when
+  every file in that directory was the fixed trainer's and it was true, and it was never revisited when
+  nine came back with the migration.
+
+  The header is what a skimming reader takes away, so a false one costs more than nine absent markers: it
+  does not merely fail to inform, it contradicts the list under it. The count is now in the blurb, which
+  makes the claim a function of the section rather than a sentence somebody typed once:
+
+  ```
+  TRAINER OUTPUT   written by the trainer through the worker pipe - these reproduce too. 9 of 169,
+                   marked 'not watchable', were written before the replay wire carried all nine step
+                   fields and nothing can recover that (issues.md 15)
+  ```
+
+  Gated by a case that builds a section with one unplayable recording and asserts the header reports
+  `1 of 2`, does not say "every one of them is watchable", and that the number matches the rows.
+  **Mutation-tested** by restoring the old sentence, which fails on the contradiction.
 - **185 recordings the trainer had written into temp directories are now in `trainer-replays/`,** in
   git rather than a reboot away. `ReplayIndex` is append-only and never forgets: on this machine it held
   **241 directory entries, 220 of which no longer existed**, and the 21 that did held 185 recordings,

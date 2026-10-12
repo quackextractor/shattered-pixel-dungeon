@@ -98,7 +98,16 @@
     `IPW-QMA-AFY-r3.dat` and `IPW-QMA-AFY-r3` both failed while the bare seed refused as designed. The
     check builds three files sharing one seed under different names, asserts the bare seed is still
     refused, asserts each file name resolves to itself, and asserts the instruction does not ask for a
-    path.
+      path.
+* **The section header and its own rows must not contradict each other** (`replaycheck`). The trainer
+    section's blurb read *"every one of them is watchable in the viewer"* over a section carrying nine
+    lines marked `not watchable` - same screen, opposite claims. Written when the claim was true, never
+    revisited when nine files came back. The header is what a skimming reader takes away, so a false one
+    costs more than nine absent markers: it contradicts the list under it. The count is now in the blurb,
+    making the claim a function of the section rather than a sentence somebody typed once. The check
+    builds a section with one unplayable recording, asserts the header reports `1 of 2` and not "every
+    one of them is watchable", and asserts the number matches the rows - counting row lines only, since
+    the header names the state in words too and a naive count finds its own mention.
 
   **A corpus that cannot witness a fault is a gate that cannot fail, and this one was.** For the whole
   life of `issues.md` 15 the corpus held 17 recordings and 310 SLOT-mode steps, and the entire SLOT

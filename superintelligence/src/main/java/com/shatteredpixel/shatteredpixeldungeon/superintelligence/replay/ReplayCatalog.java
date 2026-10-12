@@ -590,7 +590,7 @@ public class ReplayCatalog {
 			//output is backwards: a piped listing is read by a script or a log file, which is where a
 			//note about a recording not playing is most likely to be wanted and least likely to be
 			//discovered.
-			String blurb = "  " + sectionBlurb( section.getKey() );
+			String blurb = "  " + sectionBlurb( section.getKey(), section.getValue() );
 			if (!plain) blurb = Ansi.wrap( blurb, Ansi.DIM );
 
 			out.append( "\n  " ).append( section.getKey() ).append( " " ).append( blurb ).append( "\n" );
@@ -667,14 +667,30 @@ public class ReplayCatalog {
 		return parent == null ? "" : parent.getName();
 	}
 
-	/** One line saying what a section is and what to expect from it. */
-	private static String sectionBlurb( String section ){
+	/** One line saying what a section is and what to expect from it, counting what cannot be played. */
+	private String sectionBlurb( String section, Map<String, List<Entry>> groups ){
 		if (SECTION_CORPUS.equals( section )){
 			return "recorded through ReplayRecorder directly - these reproduce";
 		}
-		return "written by the trainer through the worker pipe - these reproduce too, and every one of"
-				+ " them is watchable in the viewer. A line marked 'not watchable' is one written before the"
-				+ " replay wire carried all nine step fields, and nothing can recover that (issues.md 15)";
+
+		//The count is in the blurb because the blurb used to assert the opposite in plain sight. It
+		//read "every one of them is watchable in the viewer" over a section that carried nine lines
+		//marked not watchable - so the header and the list below it contradicted each other on the same
+		//screen, and the header is the part a skimming reader takes away.
+		int unwatchable = 0;
+		for (List<Entry> hero : groups.values()){
+			for (Entry entry : hero) if (!entry.watchable) unwatchable++;
+		}
+
+		if (unwatchable == 0){
+			return "written by the trainer through the worker pipe - these reproduce, and every one of"
+					+ " them is watchable in the viewer";
+		}
+
+		return "written by the trainer through the worker pipe - these reproduce too. " + unwatchable
+				+ " of " + sectionCount( groups ) + ", marked 'not watchable', were written before the"
+				+ " replay wire carried all nine step fields and nothing can recover that"
+				+ " (issues.md 15)";
 	}
 
 	private int sectionCount( Map<String, List<Entry>> groups ){
