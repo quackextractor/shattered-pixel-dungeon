@@ -37,11 +37,17 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ScriptedEp
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.DropFixture;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.PressFixture;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayCatalog;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.function.ToIntFunction;
 
 /**
  * Entry point for the headless training framework.
@@ -100,6 +106,7 @@ public class Main {
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": ReplayCatalogCheck.main( rest ); break;
 		case "dropfixture": dropfixture( rest ); break;
+		case "pressfixture": pressfixture( rest ); break;
 		case "train":    Trainer( rest );   break;
 			case "help":     usage();          break;
 			default:
@@ -133,6 +140,7 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "  replays [--dir d]...     list recordings, grouped by hero class and ranked" );
 		System.out.println( "  replaycheck               fail if the replay catalog misgroups or misranks" );
 		System.out.println( "  dropfixture --save <f>    record the DROP-in-SLOT fixture the viewer gates play" );
+		System.out.println( "  pressfixture --save <f>   record the throw-that-presses fixture the viewer gates play" );
 		System.out.println( "  train [options]          run the PPO trainer across worker JVMs" );
 		System.out.println();
 		System.out.println( "options:" );
@@ -213,7 +221,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 				ReplayIO.write( episode.replay, options.saveTo );
 				System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "   wrote "
 						+ episode.replay.length() + " steps to " + options.saveTo.getPath() );
-			} catch (java.io.IOException e){
+			} catch (IOException e){
 				System.err.println( "[ERROR] cannot write the replay to " + options.saveTo
 						+ " (" + e.getClass().getSimpleName() + ")" );
 				System.exit( 1 );
@@ -232,16 +240,34 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 	 * where the instant a recording captures the quickslot bindings decides what a slot index means on
 	 * playback. {@code viewcheck} was green on all seventeen recordings because the thing it would have
 	 * caught was absent, not because anything was caught.
-	 *
-	 * <p>Verified before it is written, so a fixture that cannot be played never reaches the corpus: a
-	 * file the viewer cannot play is the fault, and checking one in would replace a hole with a lie.
 	 */
 	private static void dropfixture( String[] args ){
+		writeFixture( "dropfixture", args, DropFixture::recordAndWrite,
+				replay -> firstStep( replay, "DROP", "SLOT" ),
+				"DROP in SLOT" );
+	}
+
+	/**
+	 * Records the throw-that-presses fixture the viewer gates play, and verifies it.
+	 *
+	 * <p>The same argument for the same reason, on a different hole: {@code presscheck} proves a dropped
+	 * item presses the cell it lands on, and nothing in any committed recording contains a press, so
+	 * nothing could tell whether the two environments now agree about one.
+	 */
+	private static void pressfixture( String[] args ){
+		writeFixture( "pressfixture", args, PressFixture::recordAndWrite,
+				replay -> firstStep( replay, "USE", "TARGETING" ),
+				"throw resolved in TARGETING" );
+	}
+
+	/** Records a corpus fixture, refuses to write one that covers nothing, then verifies what it wrote. */
+	private static void writeFixture( String name, String[] args,
+			FixtureWriter writer, ToIntFunction< Replay > witness, String covers ){
 		Options options = Options.parse( args );
 		boot( options );
 
 		if (options.saveTo == null){
-			System.err.println( "[ERROR] dropfixture needs --save <file>; it writes the recording rather"
+			System.err.println( "[ERROR] " + name + " needs --save <file>; it writes the recording rather"
 					+ " than reporting one" );
 			System.exit( 1 );
 			return;
@@ -249,38 +275,33 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 
 		EnvConfig config = configFor( options );
 
-		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay replay;
+		Replay replay;
 		try {
-			replay = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.DropFixture
-					.recordAndWrite( config, options.saveTo );
+			replay = writer.write( config, options.saveTo );
 		} catch (IllegalStateException e){
 			System.err.println( "[ERROR] " + e.getMessage() );
 			System.exit( 1 );
 			return;
-		} catch (java.io.IOException e){
+		} catch (IOException e){
 			System.err.println( "[ERROR] cannot write the fixture to " + options.saveTo.getPath()
 					+ " (" + e.getClass().getSimpleName() + ")" );
 			System.exit( 1 );
 			return;
 		}
 
-		int drops = 0;
-		for (Replay.Step step : replay.steps){
-			if (step.action.equals( "DROP" ) && step.mode.equals( "SLOT" )) drops++;
-		}
-		if (drops == 0){
-			System.err.println( "[ERROR] the fixture recorded no DROP in SLOT, so it is a recording that"
+		//The first step that carries it, not a count of the whole run. A witness that counts reports the
+		//run's vocabulary rather than the fixture's contribution to it, and "3 throws" on a fixture whose
+		//point is one deliberate throw reads as a coverage claim it has not made.
+		int covered = witness.applyAsInt( replay );
+		if (covered < 0){
+			System.err.println( "[ERROR] the fixture recorded no " + covers + ", so it is a recording that"
 					+ " would pass every viewer gate while covering nothing. Refusing to write it." );
 			System.exit( 1 );
 			return;
 		}
 
-		SPDEnv env = new SPDEnv(
-				com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO
-						.configFor( replay ), HeadlessGame.install() );
-		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.Verification result =
-				com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO
-						.verify( replay, env );
+		SPDEnv env = new SPDEnv( ReplayIO.configFor( replay ), HeadlessGame.install() );
+		ReplayIO.Verification result = ReplayIO.verify( replay, env );
 
 		if (!result.passed()){
 			System.err.println( "[ERROR] the fixture does not reproduce, so it is not a fixture:"
@@ -292,8 +313,27 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		}
 
 		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "     wrote " + replay.length()
-				+ " steps, " + drops + " DROP in SLOT, to " + options.saveTo.getPath()
+				+ " steps, first " + covers + " at step " + covered + ", to " + options.saveTo.getPath()
 				+ "; reproduced in " + result.stepsVerified + " steps" );
+	}
+
+	/**
+	 * Index of the first recorded step carrying this action in this mode, or -1.
+	 *
+	 * <p>Used as a witness: a count is zero only when nothing matched, but a count is also a statement
+	 * about the whole run, and a scripted tail is free to produce more of whatever the fixture is about.
+	 * The index says where the fixture put it.
+	 */
+	private static int firstStep( Replay replay, String action, String mode ){
+		for (int i = 0; i < replay.steps.size(); i++){
+			Replay.Step step = replay.steps.get( i );
+			if (step.action.equals( action ) && step.mode.equals( mode )) return i;
+		}
+		return -1;
+	}
+
+	private interface FixtureWriter {
+		Replay write( EnvConfig config, File file ) throws IOException;
 	}
 
 	/**
@@ -315,7 +355,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			System.out.println( com.shatteredpixel.shatteredpixeldungeon.superintelligence.env
 					.EnvConfigBinder.describe( options.configFile, loaded.keysApplied ));
 			return loaded.config;
-		} catch (java.io.IOException e){
+		} catch (IOException e){
 			System.err.println( "[ERROR] cannot read the configuration at " + options.configFile
 					+ " (" + e.getClass().getSimpleName() + "): " + e.getMessage() );
 			System.exit( 1 );
@@ -347,7 +387,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			return;
 		}
 
-		java.io.File file = new java.io.File( args[ 0 ] );
+		File file = new File( args[ 0 ] );
 		Options options = Options.parse( tail( args ) );
 		boot( options );
 
@@ -357,7 +397,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		Replay replay;
 		try {
 			replay = ReplayIO.read( file );
-		} catch (java.io.IOException e){
+		} catch (IOException e){
 			//the bare path is all FileNotFoundException gives on some platforms, which names the
 			//problem without saying what it was
 			System.err.println( "[ERROR] cannot read the replay " + file
@@ -389,7 +429,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 				java.nio.file.Files.write( options.rngTraceSites,
 						String.join( "\n", com.watabou.utils.RandomTrace.siteReport() )
 								.getBytes( java.nio.charset.StandardCharsets.UTF_8 ) );
-			} catch (java.io.IOException e){
+			} catch (IOException e){
 				System.err.println( "[ERROR] cannot write the draw-site tally to "
 						+ options.rngTraceSites + " (" + e.getClass().getSimpleName() + ")" );
 				System.exit( 1 );
@@ -405,7 +445,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		if (out != null){
 			try {
 				trace.writeTo( out );
-} catch (java.io.IOException e){
+} catch (IOException e){
 			System.err.println( "[ERROR] cannot write the rng trace to " + out
 					+ " (" + e.getClass().getSimpleName() + ")" );
 			System.exit( 1 );
@@ -437,14 +477,14 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			return;
 		}
 
-		java.io.File file = new java.io.File( args[ 0 ] );
+		File file = new File( args[ 0 ] );
 		Options options = Options.parse( tail( args ) );
 		boot( options );
 
 		Replay replay;
 		try {
 			replay = ReplayIO.read( file );
-		} catch (java.io.IOException e){
+		} catch (IOException e){
 			System.err.println( "[ERROR] " + e.getMessage() );
 			System.exit( 1 );
 			return;
@@ -568,9 +608,9 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 	static void boot( Options options ){
 		if (options.noColor) Ansi.enable( false );
 
-		java.io.File workDir = options.outDir != null
+		File workDir = options.outDir != null
 				? options.outDir
-				: new java.io.File( System.getProperty( "java.io.tmpdir" ), "spd-headless" );
+				: new File( System.getProperty( "java.io.tmpdir" ), "spd-headless" );
 
 		HeadlessServices.install( workDir );
 		HeadlessServices.disableSaving( !options.persistSaves );
@@ -583,8 +623,8 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		/** External settings file, or null for the compiled defaults. See {@link #configFor}. */
 		java.nio.file.Path configFile;
 		HeroClass hero = HeroClass.WARRIOR;
-		java.io.File saveTo;
-		java.io.File outDir;
+		File saveTo;
+		File outDir;
 		int maxTurns = 0;
 boolean noColor = false;
       boolean persistSaves = false;
@@ -607,10 +647,10 @@ case "--seed":
 						o.hero = HeroClass.valueOf( args[ ++i ].toUpperCase() );
 						break;
 					case "--save":
-						o.saveTo = new java.io.File( args[ ++i ] );
+						o.saveTo = new File( args[ ++i ] );
 						break;
 					case "--out":
-						o.outDir = new java.io.File( args[ ++i ] );
+						o.outDir = new File( args[ ++i ] );
 						break;
 case "--max-turns":
 					o.maxTurns = Integer.parseInt( args[ ++i ] );

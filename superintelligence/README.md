@@ -2,13 +2,13 @@
 
 | Badge | Version |
 | --- | --- |
-| [![Version](https://img.shields.io/badge/version-0.8.0-blue.svg)](CHANGELOG.md) | 0.8.0 |
+| [![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)](CHANGELOG.md) | 0.9.0 |
 | [![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
 
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
 described in [`docs.md`](docs.md) and [`research.md`](research.md).
 
-**Two versions, two subjects.** The `version-` badge is this module's - `0.8.0` - and its history is in
+**Two versions, two subjects.** The `version-` badge is this module's - `0.9.0` - and its history is in
 [`CHANGELOG.md`](CHANGELOG.md). The `game-` badge is Shattered Pixel Dungeon's - `4.0.2` - which is
 upstream's and moves only when this fork merges upstream. Neither moves because of anything recorded in
 the other's changelog, and the module's series starts at **0** specifically so the two cannot be read as
@@ -129,11 +129,21 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   step (once per frame, the approximation `ReplayPlayer` already makes about a recorded step) and the
   game's own `hide()` closes it, so the agent asks, answers, and ends up a floor down — for 13 steps and
   -15.00, against a descent at +1800.00. And a levitation expiring over a chasm now drops the hero, which the
-  game's `Levitation.detach` does not do without a renderer. `issues.md` 16; `fallcheck` and
-  `dialogcheck` gate it, 6 and 3 cases. A third divergence on this path is **still open and filed as
-  its own issue, 17**: a thrown item does not trigger the trap it lands on, because `Level.drop` presses
-  the cell only behind a scene test no headless run can satisfy. `presscheck` is its gate, out of
-  `gates` and expected-red.
+   game's `Levitation.detach` does not do without a renderer. `issues.md` 16; `fallcheck` and
+   `dialogcheck` gate it, 6 and 3 cases.
+- **A thrown item did not trigger what it landed on, and nothing had ever found out** — the third fault
+   on this path, filed as its own issue and now closed. `Level.drop` presses the cell an item lands on,
+   which is how a thrown stone sets off a trap or flattens grass, and it did so only behind
+   `scene() instanceof GameScene`: a renderer-bypassed process has no scene, so **every throw landed on a
+   trap and did nothing to it.** Measured on four seeds, an armed `WornDartTrap` was still armed after a
+   `Food` was dropped on it in all four. `Level.drop` is the only place that needed to change — `Item.onThrow`
+   and `Item.doDrop` both call it and nothing else puts an item on a floor — and the scene test survives,
+   because the two drops it exists to exclude (`AlchemyScene` crafting onto the cell the hero stands on,
+   `InterlevelScene.resurrect` onto the cell he died on) both need a renderer and cannot exist headlessly.
+   A dropped item now fires a trap and tramples grass, and level generation still presses nothing.
+   `presscheck` gates it — 3 cases, in `gates` — and `test-replays/duelist-throw.replay` is the recording
+   that makes a recorded press reproducible on both sides. `issues.md` 17.
+
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
@@ -216,7 +226,8 @@ something.
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified, **with a known limit** - `env.max_slots=32` against an engine ceiling of 96, so a full inventory is silently truncated. `TODO.md` §0.8 |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process. `verify` also resolves a recorded slot index against its recorded quickslot bindings, so it and the viewer cannot disagree about a recording and both be right |
 | **A recording the trainer writes is watchable** | **Verified end to end, repeatedly** - the trainer pinned a step's bindings *after* the step, so a `DROP` named a different item on playback; `verify` skipped the comparison when the field was empty and reported nine unplayable recordings as `[OK]`; `viewcheck` scored a pass for any halt that was not a divergence. All fixed. **`trainer-replays/` was regenerated**: it had been 9 dead ends out of 10, because every file in it predated the wire fix. It now holds five recordings from the fixed trainer, all of which verify and play clean - so *every* recording in both directories is watchable |
-| Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 19 committed recordings, and the gate now requires every step to have played rather than merely "did not diverge". **A recording whose death lands on its final step** used to report N-1 of N - `issues.md` 2's symptom, one path from the one its fix closed - and no gate reached it, because every death recording in the corpus was dead *by* its last step rather than *on* it. `duelist-death-last.replay` is the file that does. **Note the limit**: every child is forked hidden at speed 40, so the gate has never run the timing path a human run takes - see `TODO.md` §0.7 |
+| **A thrown item does what it lands on** | **Verified** - `Level.drop` pressed the landing cell only behind a `scene() instanceof GameScene` test no headless run can satisfy, so every throw landed inert: an armed `WornDartTrap` was still armed after a `Food` was dropped on it on four seeds out of four. `Level.drop` is the only chokepoint - `Item.onThrow` and `Item.doDrop` both call it - so the fix is one added term and the scene test survives. A dropped item now fires a trap and tramples grass, level generation still presses nothing, `presscheck` is a gate with 3 cases, and `duelist-throw.replay` is the recording that carries a recorded press through both environments. `issues.md` 17 |
+| Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 20 committed recordings, and the gate now requires every step to have played rather than merely "did not diverge". **A recording whose death lands on its final step** used to report N-1 of N - `issues.md` 2's symptom, one path from the one its fix closed - and no gate reached it, because every death recording in the corpus was dead *by* its last step rather than *on* it. `duelist-death-last.replay` is the file that does. **Note the limit**: every child is forked hidden at speed 40, so the gate has never run the timing path a human run takes - see `TODO.md` §0.7 |
 | Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate |
 | A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation - and the viewer does the same at both ends of a playback, so watching a recording no longer leaves `bones.dat` in the player's profile |
 | Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
@@ -271,19 +282,23 @@ something.
 # measure what a PPO update costs, and project it across sample rates
 ./gradlew :superintelligence:updatecost
 
-# every correctness gate, one invocation, ~22 seconds
+# every correctness gate, one invocation, ~23 seconds
 ./gradlew :superintelligence:gates
 
 # regenerate the DROP-in-SLOT fixture the viewer gates play. It verifies before writing, so a
 # fixture that no longer plays cannot be committed in place of one that does.
 ./gradlew :superintelligence:dropfixture --args="dropfixture --save test-replays/duelist-drop.replay"
 
+# regenerate the throw-that-presses fixture, the same way, and refusing to write a run whose
+# throw did not press anything.
+./gradlew :superintelligence:pressfixture --args="pressfixture --save test-replays/duelist-throw.replay"
+
 # train
 
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"
 ```
 
-**twenty-two gates, one invocation.** Each has had the thing it guards deleted, and each has been
+**twenty-three gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives
@@ -297,13 +312,18 @@ all**, because it is the only transition that carries no `LevelTransition` and t
 one first - so `Transition.FALL` and `handleFall()` were unreachable code, and nothing in the project
 had ever put a hero into a chasm to find out. A fifth, `dialogcheck`, covers the half that made the
 chasm *unreachable*: the environment was handed the game's own "jump?" prompt and then had the answer
-thrown away, so the agent could be told yes by the game and still never cross.
+thrown away, so the agent could be told yes by the game and still never cross. A sixth, `presscheck`,
+covers a third fault on the same path with the same cause: `Level.drop` pressed the cell an item lands
+on only behind a scene test no headless run can satisfy, so every throw was inert and nothing in the
+project had ever thrown an item at a trap.
 
 **A gate that passes because the thing it would catch is absent is the same failure as a gate that
 cannot fail**, and the corpus was one for a long time: 17 recordings, 310 SLOT-mode steps, and not one
 `DROP` in any of them. `collectcheck` and `verifycheck` now cover the wiring that made that matter -
 whether a rebinding step is recorded against the world it was chosen in, and whether a recording whose
-bindings cannot be resolved is refused rather than verified. Full table in
+bindings cannot be resolved is refused rather than verified. And a fault confined to the trainer cannot
+be caught by the rendered gate at all, because the viewer never had it - `viewcheck` stays green when
+`Level.drop`'s headless half is reverted, and `duelist-throw.replay` is what goes red. Full table in
 [`testing-guide.md`](testing-guide.md).
 
 `probeClasspath` prints the runtime classpath, which is what the trainer uses to launch workers.
@@ -369,7 +389,7 @@ survives disk exactly, Adam moments included, and that bad checkpoints are refus
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and worker bootstrap |
 | `rl` | `Network` (CNN + LSTM + heads), `PPO` (the learner), `ShardedUpdate` (the parallel minibatch and its gradient reduction), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector` (plays an episode, computes its advantages), `EpisodeRecord` (one episode's scalars + sampled observations) |
 | `train` | `Trainer` (generation loop), `TrainerWorkers` (everything crossing a worker pipe), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `PpoHyperparameters`, `Checkpoint` (save/resume), `MetricsHistory` (per-generation CSV + end-of-run trend), `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
-| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `Quickslots` (the one place a recorded slot index is resolved against its bindings), `DropFixture` (the DROP-in-SLOT recording the viewer gates play), `ReplayCatalog`, `RngTrace`, `WorldSnapshot`, `WorldDiff` |
+| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `Quickslots` (the one place a recorded slot index is resolved against its bindings), `DropFixture` and `PressFixture` (the DROP-in-SLOT and throw-that-presses recordings the viewer gates play), `ReplayCatalog`, `RngTrace`, `WorldSnapshot`, `WorldDiff` |
 | `diag` | `RunReport`, `Graph`, `Ansi`, and the checks: `GradientCheck`, `ModeCoverageCheck`, `RestartCheck`, `GaeCheck`, `UpdateCostCheck`, `ConfigCheck`, `ParityCheck` |
 
 ## Configuration
@@ -485,6 +505,12 @@ rather than behaviour-changing when a renderer is present:
 - `CharSprite.link`, `AttackIndicator.checkEnemies`, `Wand.staffFx` and
   `MagesStaff.StaffParticle.update` draw from `PRandom`. These are presentation draws that only the
   rendered game makes, and they were spending the gameplay RNG stream.
+- `GameScene.headlessGameplay()` - declares that this process is simulating gameplay with the renderer
+  bypassed. `Level.drop`'s press is guarded on a `GameScene` being the current scene, so a headless
+  process never pressed the cell a thrown or dropped item landed on and every throw was inert. The flag
+  is set by `HeadlessGame.install()` and by nothing else, so a game with a renderer never reads it and
+  the guard's answer there is unchanged. It is the one entry below that widens a condition rather than
+  tolerating a null.
 
 The last one is not cosmetic bookkeeping. **Four presentation draws on the gameplay stream cost the
 viewer 16 generator values per run that a headless run never spent**, which is why a recording could

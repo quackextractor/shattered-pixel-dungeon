@@ -1351,6 +1351,31 @@ public synchronized void update() {
 		headlessEmitter = emitter;
 	}
 
+	/**
+	 * Whether this process is simulating gameplay with the renderer bypassed.
+	 *
+	 * <p>{@code Level.drop} presses the cell an item lands on only when the current scene is a
+	 * {@code GameScene}, which separates gameplay drops from the two scene drops that must not press -
+	 * {@code AlchemyScene} crafting onto the cell the hero stands on, and
+	 * {@code InterlevelScene.resurrect} dropping the LostBackpack on the cell he died on. A
+	 * renderer-bypassed process has no scene at all, so that test is false and every thrown item landed
+	 * inert. Both scene drops live in scenes that cannot exist here either, so a headless run's drops are
+	 * gameplay drops and this flag is what says so.
+	 *
+	 * <p>Nothing sets it when a renderer is present, so the guard's answer in a real game is unchanged.
+	 */
+	private static boolean headlessGameplay = false;
+
+	/** Declares whether this process is simulating gameplay with no renderer. */
+	public static void headlessGameplay( boolean on ){
+		headlessGameplay = on;
+	}
+
+	/** True when this process simulates gameplay with no renderer, so every drop is a gameplay drop. */
+	public static boolean headlessGameplay(){
+		return headlessGameplay;
+	}
+
 	public static synchronized Emitter emitter() {
 		if (scene != null) {
 			Emitter emitter = (Emitter)scene.emitters.recycle( Emitter.class );

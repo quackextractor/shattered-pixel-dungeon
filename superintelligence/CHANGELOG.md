@@ -7,7 +7,7 @@ This module is versioned independently of the game it wraps. The game is
 names; the `version-` badge in that file is the **game's** version and is not touched by anything
 recorded here. The version series below is the module's own, and it starts at **0** so that it cannot
 be mistaken for a game release even when read out of context: the game is at `4.0.2`, this module is at
-`0.4.0`, and no `0.x.y` here corresponds to any `x.y.z` there.
+`0.9.0`, and no `0.x.y` here corresponds to any `x.y.z` there.
 
 **The module is pre-1.0, and that is a statement about stability rather than about numbering.** Under
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) a `0.x.y` release carries no compatibility
@@ -22,6 +22,155 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.9.0] - 2026-10-12
+
+Closes `issues.md` 17. **A thrown or dropped item landed inert**, and nothing in the project had found
+out, because nothing in the project had ever put an item on a cell a press could act on. Pre-1.0, and
+this is a minor rather than a patch because a throw now changes what a run does — and the reason that
+is more than a hunch is measured, not inferred: **every committed recording still reproduces**, all
+twenty through `playbackcheck` and all seven in `trainer-replays/` through `verify`, and the one fixture
+that had to be regenerated changed by **reward column only** (below).
+
+**A correction to `0.8.0` first, because it was wrong in a way a reader would act on.** `0.8.0` lists
+this fault under `### Fixed` — with the measurement and no fix, because the entry was written while
+the issue was open — and then lists it again under `### Not done`, correctly, as `issues.md` 17. The
+`Fixed` bullet was the wrong half and `Not done` was the right one. It is fixed in this release.
+
+### Fixed
+
+- **A thrown or dropped item never triggered what it landed on.** `Level.drop` presses the landing cell,
+  which is how a thrown stone sets off a trap, flattens grass, opens a door or fills a well. It did so
+  only behind `ShatteredPixelDungeon.scene() instanceof GameScene`, and a renderer-bypassed process has
+  no scene at all, so **every throw landed on a trap and did nothing to it.** Measured before the fix
+  on four seeds, an armed `WornDartTrap` was still armed after a `Food` was dropped on it in all four.
+
+  Measured after, same seeds:
+
+  ```
+  PRESSCHECK-A:  trap WornDartTrap at 1093  ->  disarmed after Level.drop
+  PRESSCHECK-A:  high grass at cell 281    ->  terrain 15 -> 2 after Level.drop
+  ```
+
+  **`Level.drop` is the only place that needed to change.** `Item.onThrow` and `Item.doDrop` both call
+  it and nothing else puts an item on a floor, so throwing, dropping, the shop, the blacksmith, the imp
+  and the rest are covered by one line — and the earlier conclusion on `issues.md` 17, that there was no
+  way to fix this without a second implementation of `Level.drop`, was right about the method and wrong
+  about the conclusion.
+
+- **The scene test is load-bearing and is still there.** It separates *gameplay* drops from *scene*
+  drops, and two scene drops are deliberately not gameplay ones: `AlchemyScene.java:761,864,1003`
+  crafts onto the cell the hero is standing on, so a press there would flatten the grass under him on
+  every craft, and `InterlevelScene.java:815` drops the LostBackpack on the cell he died on during
+  resurrect. **Deleting that half was tried, built green, and altered alchemy and resurrection in a game
+  that is not this module's.** What replaced it is one added term:
+
+  ```java
+  if (Dungeon.level != null && (ShatteredPixelDungeon.scene() instanceof GameScene || GameScene.headlessGameplay())) {
+      pressCell( cell );
+  }
+  ```
+
+  `GameScene.headlessGameplay` is a new static that **only `HeadlessGame.install()` sets**, so in a game
+  with a renderer it is always `false` and the guard's answer is bit-for-bit what it was. It is safe
+  precisely because both scene drops need a renderer: neither `AlchemyScene` nor `InterlevelScene` can
+  exist in the process that sets the flag, so every drop such a process makes is a gameplay drop.
+
+  This is the only entry in `ENGINE-CHANGES.md` that widens a condition rather than tolerating a null,
+  and it is why that file no longer opens by claiming nothing in it changes what the game does.
+
+  The `Dungeon.level != null` half is untouched and still doing its job: level generation runs with no
+  current level, so `RegularLevel.createItems` placing its starting items still presses nothing.
+
+- **`test-replays/duelist-drop.replay` had been carried over from before the reward re-pricing, and
+  nothing noticed.** Regenerating it changes the header score and every step's reward, and **not one of
+  the 60 positions, health values, engine times or inventories** — which is the shape of a recording
+  that is stale in the one column nothing compares.
+
+  Worth recording what that cost. `ReplayIO.verify` reports a score mismatch as
+  `[WARN] score recorded …, reproduced …` and carries on, because the score is a reward-model artefact
+  rather than a trajectory. A green next to it is exactly as meaningful as the `[WARN]` sounds like it
+  is not — and it has been printing on all seven `trainer-replays/` recordings too, on the base tree as
+  well as this one, because a replay written before a reward change cannot carry the new reward table.
+
+### Added
+
+- **`gradle :superintelligence:presscheck` is in `gates`.** It was excluded only because it was red, and
+  a gate for an open defect is not a gate. Three cases, mutation-tested:
+
+  | case | fails when |
+  | --- | --- |
+  | an item dropped on a trap fires it | the `headlessGameplay` term is removed from the guard |
+  | an item dropped on high grass tramples it | the same — 2 of 3 |
+  | generating a floor presses nothing | the `Dungeon.level != null` half is removed |
+
+  The second case covers the branch a trap does not reach, and it is the reason `AlchemyScene` is a
+  special case at all. The third is the half of the guard that stops widening it from quietly becoming
+  a loosening — and its mutation is reported honestly: removing that half does not fail the case, it
+  makes **level generation itself** throw before the case is reached, at `RegularLevel.build:120`. The
+  gate goes red either way.
+
+- **`test-replays/duelist-throw.replay`, and `gradle :superintelligence:pressfixture` to regenerate it.**
+  A gate proves a press happens; only a recording proves the two environments *agree* about one, and the
+  corpus could not ask it — twenty recordings, not one throw onto a cell a press could act on. Recorded
+  through the agent's own three steps (`USE`, `USE` on the slot, `USE` on the target) so it carries the
+  aim the way a real run does, from a seed searched rather than fixed because no single floor can be
+  relied on to have grass beside the hero. It **verifies before writing** and refuses to write a run
+  whose throw did not press:
+
+  ```
+  the throw pressed its landing cell: PRESS-THROW-C, ThrowingSpike thrown at cell 609, terrain 15 -> 2
+  [OK]  wrote 60 steps, first throw resolved in TARGETING at step 2; reproduced in 60 steps
+  ```
+
+- **`replay.PressFixture`**, and `writeFixture` in `Main`, which both fixture commands now share rather
+  than duplicating: record, refuse one that covers nothing, verify, then write.
+
+### Verified
+
+- `verifyall` — `:superintelligence:gates` at **23** (with `presscheck`) and `:desktop:playbackcheck` at
+  23, both green.
+- `:desktop:viewcheck` — **20 of 20**, 50.9 s at 8 children on an idle machine and 134.5 s on a loaded
+  one. Re-run rather than carried over, because the change touches `:core` and the whole item tree's
+  drop path.
+- The new fixture mutation-tested, and **the gate that refuses it is not the one you would guess**:
+  reverting the guard leaves `viewcheck` green on all twenty recordings, because the viewer's press never
+  depended on the flag — it has a real `GameScene` and always pressed. That is the correct answer, and it
+  is worth stating: the viewer half of this fix was never at risk. The trainer half is caught where a
+  recording is compared against a fresh headless run.
+
+  ```
+  verify          replay diverged at step 27 of 60 - hp: replayed 17, recorded 19
+  playbackcheck   duelist-throw.replay diverged at step 27: DIVERGED at step 28 - INTERACT/0 in WORLD:
+                  hp is 17, recording says 19
+  ```
+
+- **The rest of the corpus is unaffected, and that is a measurement rather than an assumption.** No
+  committed recording drops an item onto a cell a press could act on, so the press was a no-op on all of
+  them. Measured three ways: `playbackcheck` plays all twenty headlessly and clean, `viewcheck` plays all
+  twenty in the real viewer and clean, and all seven `trainer-replays/` verify — 235, 392, 517, 534, 701,
+  1100 and 1508 steps, no divergence. The one file that had to be regenerated, `duelist-drop.replay`,
+  changed by **reward column alone**: 60 of 60 steps identical in position, health, engine time and
+  inventory, against a header score of 16.25 → 47.60. Its `DROP` lands on cell 413, which is plain
+  floor, and `pressCell` on plain floor draws nothing at all — so the fix changed that recording's
+  numbers and none of its world.
+
+### Not done
+
+- **`Mob.holdAllies` is still unseeded** (`ENGINE-CHANGES.md` §7), so `LevelPipeline.handleFall` still
+  does not call it. Unchanged by this release and for the same reason.
+
+- **`rolloutcheck` fails about one run in thirty, and it is pre-existing.** A random-seed episode
+  occasionally records a trajectory that does not verify — measured on the base tree with this release's
+  changes stashed, so the two trees fail at the same rate and with the same signature. Filed as
+  `issues.md` 18 with the A/B numbers. It is a gate being red about three percent of the time without
+  saying why, which is worth more than a silent green and is still not a gate anyone should learn to
+  re-run.
+
+- **`./gradlew test` does not run in this environment**: `:android:testDebugUnitTest` needs an Android
+  SDK and there is no `local.properties` or `ANDROID_HOME` here. It is a pre-existing environment gap, not
+  a consequence of this change; the JVM modules carry no JUnit sources and the gate suite is the test
+  suite, which `verifyall` runs.
 
 ## [0.8.0] - 2026-10-12
 
@@ -164,7 +313,9 @@ records, which is the same class of change as re-pricing `STALLED`.
   pressed, and he has to be off a `FeatherBuff` — an elixir of feather fall is the one state in which
   `Chasm.heroLand` returns early and a hero is *meant* to be standing on a chasm.
 
-- **A thrown or dropped item never triggers what it landed on.** `Level.drop` presses the landing cell
+- **A thrown or dropped item never triggers what it landed on.** _[Corrected in 0.9.0: this entry was
+  written while the issue was open, so it is the measurement and not a fix — see 0.9.0, where it is
+  closed.]_ `Level.drop` presses the landing cell
   so an item can set off a trap, open a door or fill a well, but it does so only behind
   `ShatteredPixelDungeon.scene() instanceof GameScene`. Headlessly that is false, so **every thrown stone
   lands on a trap and does nothing to it.** Measured on four seeds: a `Food` dropped on an armed

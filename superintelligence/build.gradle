@@ -168,6 +168,7 @@ cliTask('gaecheck', 'Fails if the two advantage implementations disagree, or sam
   cliTask('replays', 'Lists recordings, grouped by hero class and ranked by score.')
 
   cliTask('dropfixture', 'Records the DROP-in-SLOT fixture the viewer gates play, and verifies it.')
+  cliTask('pressfixture', 'Records the throw-that-presses fixture the viewer gates play, and verifies it.')
 
 cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misresolves a name.')
 
@@ -179,24 +180,24 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
   cliTask('weightsdiff', 'Reports how far a checkpoint is from a freshly initialised policy.')
 
 //Every gate in one invocation, because gradle's per-invocation overhead is most of the cost.
-//Measured: gaecheck is 0.22s of actual work and 2.4s through gradle, so gradle is ~90% of it. Nineteen
-//gates together take ~21s in one invocation against roughly a minute run one after another - and that
-//each if the daemon is cold. The checks are not slow; the harness around them is.
+//Measured: gaecheck is 0.22s of actual work and 2.4s through gradle, so gradle is ~90% of it.
+//Twenty-three gates together take 23s in one invocation (measured 2026-10-12) against roughly a
+//minute run one after another - and that each if the daemon is cold. The checks are not slow; the
+//harness around them is.
 //
 //dependsOn is enough for correctness: gradle fails the build if any dependency task exits non-zero,
 //which is what each of these already does on a mismatch. doLast only adds a line to read.
 //Named `gates`, not `check`: the java-library plugin already contributes a lifecycle `check`, and
 //Gradle refuses to shadow it. `check` also conventionally means compile plus test, and this runs
 //neither a compiler pass nor JUnit.
-//presscheck is deliberately NOT in gates. It asserts a divergence that is still open: a thrown item
-//does not trigger the trap it lands on, because Level.drop presses the cell only behind a
-//`scene() instanceof GameScene` test that no headless run can satisfy. The fix needs an engine change
-//this project may make but not commit, so the gate is expected-red until the owner decides on it.
-//Run it by hand with `gradle :superintelligence:presscheck`.
+//presscheck is in gates because it is green. It was excluded while the divergence was open: a thrown
+//item landed inert because Level.drop pressed the cell only behind a `scene() instanceof GameScene`
+//test no headless run can satisfy, and the fix needed an engine change. Run it on its own with
+//`gradle :superintelligence:presscheck` when working on drops.
 tasks.register('gates') {
     dependsOn 'gradcheck', 'gaecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck', 'transitioncheck', 'fallcheck', 'dialogcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
-		'observecheck', 'configcheck', 'paritycheck'
+		'observecheck', 'configcheck', 'paritycheck', 'presscheck'
     group = 'verification'
     description = 'Runs every correctness gate in one invocation.'
     doLast { println "all gates passed" }

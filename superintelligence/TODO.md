@@ -3,7 +3,19 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-12, after `issues.md` "Training" 16 was closed. **A chasm fall was being dropped
+Last updated: 2026-10-12, after `issues.md` "Chasm" 17 was closed. **A thrown or dropped item landed
+inert**, and nothing in the project had ever found out, because nothing in the project had ever put an
+item on a cell a press could act on. `Level.drop` presses the cell an item lands on — which is how a
+thrown stone sets off a trap or flattens grass — and it did so only behind
+`scene() instanceof GameScene`, a test a renderer-bypassed process can never satisfy. Measured on four
+seeds, an armed `WornDartTrap` was still armed after a `Food` was dropped on it in all four. It is now
+fixed in one line, because `Level.drop` is the only chokepoint — `Item.onThrow` and `Item.doDrop` both
+call it and nothing else puts an item on a floor — and the scene test survives because both scene drops
+it excludes need a renderer and cannot exist headlessly. `presscheck` is a gate with 3 cases and
+`duelist-throw.replay` is the recording that carries a press through both environments; §0.12 has the
+whole thing.
+
+Last updated before that: 2026-10-12, after `issues.md` "Training" 16 was closed. **A chasm fall was being dropped
 entirely**, and nothing in the project had ever found out, because nothing in the project had ever put a
 hero into one. A fall is the only floor transition that carries no `LevelTransition` — `Chasm.heroFall`
 writes `InterlevelScene.mode` and asks for a scene switch, and nothing else — and
@@ -164,21 +176,105 @@ since the hero becomes ready on that same step. Two guards, both the game's own 
 has to be on the level being pressed, and off a `FeatherBuff` — an elixir of feather fall is the one
 state in which `Chasm.heroLand` returns early and a hero is *meant* to be standing on a chasm.
 
-**`Level.drop`'s `pressCell` has the same guard, and there is no supervisor-side fix.** A thrown or
-dropped item presses nothing headlessly, so a stone lands on a trap and does nothing to it — measured,
-an armed `WornDartTrap` still armed after a `Food` was dropped on it on four seeds out of four. `drop` is
-called from a dozen places in the item tree, none of them ours, so pressing the cell from the
-environment would mean intercepting every call site.
+**`Level.drop`'s `pressCell` had the same guard, and the conclusion drawn from that — that there is no
+fix short of a second implementation of `Level.drop` — was wrong about the conclusion.** A thrown or
+dropped item pressed nothing headlessly, so a stone landed on a trap and did nothing to it: measured, an
+armed `WornDartTrap` still armed after a `Food` was dropped on it on four seeds out of four. `drop` is
+called from a dozen places in the item tree, none of them ours — but that is an argument for changing
+*one* function rather than intercepting twelve call sites, and `Level.drop` is where all twelve meet.
+See §0.12.
 
-**I changed the guard anyway, and was wrong.** Dropping the `scene() instanceof GameScene` half looked
-safe because the `Dungeon.level != null` half genuinely does keep level generation from pressing. But
-the scene half is not redundant — it separates *gameplay* drops from *scene* drops, and
-`AlchemyScene.java:761,864,1003` drops onto the cell the hero is standing on while
-`InterlevelScene.java:815` drops onto the cell he died on. Neither pressed before; both would have.
-Reverted, and the reasoning is on `issues.md` 17 with the rest of it.
+**I changed the guard by deleting the scene test, and that was wrong.** It looked safe because the
+`Dungeon.level != null` half genuinely does keep level generation from pressing. But the scene half is
+not redundant — it separates *gameplay* drops from *scene* drops, and `AlchemyScene.java:761,864,1003`
+drops onto the cell the hero is standing on while `InterlevelScene.java:815` drops onto the cell he died
+on. Neither pressed before; both would have. Reverted, and the reasoning is on `issues.md` 17 with the
+rest of it. **The fix that works is the opposite of that one: the scene test stays and gains a term that
+only a renderer-bypassed process sets.**
 
 Traps still fire when a hero **walks** onto one, because `Level.occupyCell` presses unconditionally
-and is never scene-guarded. Only thrown and dropped items are inert.
+and is never scene-guarded. Only thrown and dropped items were inert.
+
+---
+
+## 0.12 A thrown item landed inert - FIXED
+
+The last of the three faults on the chasm path, and the one with the longest reach: it is not about
+chasms at all. Filed as its own issue because it is a different function in a different part of the
+game.
+
+### What was true
+
+`Level.drop` presses the cell an item lands on, which is how a thrown stone sets off a trap, flattens
+grass, opens a door or fills a well:
+
+```java
+if (Dungeon.level != null && ShatteredPixelDungeon.scene() instanceof GameScene) {
+    pressCell( cell );
+}
+```
+
+`ShatteredPixelDungeon.scene()` is `Game.instance.scene`, and a headless process has no scene at all —
+`HeadlessGame.step()` refuses to instantiate one, because `InterlevelScene` would take over the turn
+loop. So the second half was false and **every thrown and dropped item landed without touching what it
+landed on.**
+
+### What the earlier entry got wrong, and it is worth keeping
+
+§0.11 recorded: "`Level.drop` is called from a dozen places in the item tree, none of them ours, so
+pressing the cell from the environment would mean intercepting every call site." That is true and it is
+an argument about *how*, not *whether*. `Item.onThrow` and `Item.doDrop` both call `Level.drop` and
+nothing else puts an item on a floor, so the twelve call sites were never twelve places to fix — they
+were one. A conclusion drawn from the shape of the code rather than from where it converges is worth
+recording, because the next reader has the same code.
+
+### The change
+
+One line in `:core`, and one new static:
+
+```java
+if (Dungeon.level != null && (ShatteredPixelDungeon.scene() instanceof GameScene || GameScene.headlessGameplay())) {
+    pressCell( cell );
+}
+```
+
+`GameScene.headlessGameplay` is set by `HeadlessGame.install()` and by nothing else, so **a game with a
+renderer never reads it as anything but `false`** and the guard's answer there is bit-for-bit what it
+was. That is what separates this from the attempt §0.11 reverted: that one deleted the scene test, which
+is load-bearing, and it altered alchemy and resurrection in a game that is not this module's.
+
+It is safe precisely because the two scene drops the scene test exists to exclude — `AlchemyScene`
+crafting onto the cell the hero stands on, `InterlevelScene.resurrect` onto the cell he died on — both
+need a renderer, so neither can exist in the process that sets the flag. Every drop a headless process
+makes is a gameplay drop, and that is the question the guard was asking.
+
+The `Dungeon.level != null` half is untouched and still doing its job.
+
+### Gated, and a recording, because a gate cannot reach both halves
+
+`gradle :superintelligence:presscheck`, three cases, **now in `gates`** — it was out only because it was
+red. Removing the new term fails two of three; removing the `Dungeon.level != null` half fails the
+third, though it fails it by making **level generation itself** throw at `RegularLevel.build:120` before
+the case is reached, which is a red gate and not a case failure.
+
+`duelist-throw.replay` closes the other half. A gate proves a press happens; only a recording proves
+the two environments *agree* about one, and the corpus had no throw onto a cell a press could act on in
+twenty files. Measured, from `gradle :superintelligence:pressfixture`:
+
+```
+the throw pressed its landing cell: PRESS-THROW-C, ThrowingSpike thrown at cell 609, terrain 15 -> 2
+[OK]  wrote 60 steps, first throw resolved in TARGETING at step 2; reproduced in 60 steps
+```
+
+**And the mutation says which gate was ever going to catch it.** Reverting the fix leaves `viewcheck`
+green on all twenty recordings — correctly, because the viewer has a real `GameScene` and always
+pressed — and turns `verify` and `playbackcheck` red on that one file at step 27. **A fault that exists
+only in the trainer is invisible to the rendered gate, and the recording is what closes it.**
+
+Traps still fire when a hero **walks** onto one, because `Level.occupyCell` presses unconditionally and
+was never scene-guarded. Only thrown and dropped items were inert, so the hole was much narrower than
+"traps do not work" — and a thrown item still does not trigger a trap *at range* the way a hero walking
+onto one does, which is the game's own arrangement and was not changed.
 
 ---
 

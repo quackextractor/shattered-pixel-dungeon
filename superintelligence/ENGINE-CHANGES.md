@@ -6,7 +6,7 @@ The rule `instructions.md` §12.3 sets is that engine *logic* changes stay out o
 proposed, while getters and observation-only additions may be committed freely. This file is the
 proposal record, and it is ordered by what each change is rather than by when it was made.
 
-**Nothing here changes what the game does.** Every entry is one of:
+**Almost nothing here changes what the game does.** Every entry is one of:
 
 - a **getter**, added so an observer can ask a question the engine would not answer;
 - an **instrumentation** change, which makes randomness countable without altering which values come
@@ -16,6 +16,11 @@ proposal record, and it is ordered by what each change is rather than by when it
 
 The last category is the one that looks like a behaviour change and is not, and it is also the one that
 did real damage: see §4 for the twelve values it cost and the fourteen recordings it broke.
+
+**One entry is a fourth thing**, and it is called out where it lives: `Level.drop` widens a guard so a
+renderer-bypassed process presses the cell a thrown item lands on (§7). In a game with a renderer the
+guard's answer is bit-for-bit what it was, because the new term is only ever set by a process that has
+no scene — but it does change what a *headless* run does, and that is the whole point of it.
 
 `superintelligence/README.md` lists these under "Changes to the game" without the reasoning, and
 `superintelligence/FINDINGS-viewer-fidelity.md` holds the measurements.
@@ -36,6 +41,7 @@ Each one exists because an observer needed a fact the engine kept to itself, and
 | `Mob.currentEnemy()`, `Mob.enemySeen()`, `Mob.alerted()` | The same for a mob's decision, so a trace can say what it was doing rather than inferring it from a cooldown. |
 | `MovieClip.animationInFlight()` | The only way to ask whether an action's effect is still pending. `CharSprite.isMoving` is set by movement and nothing else, so an attack in flight is invisible to it — and whether an attack is in flight is exactly what decides whether the attacker's turn has been spent. |
 | `GameScene.answerableWindow()` | `GameScene.show()` parks a dialog in `headlessWindow` **only when there is no scene**. So a caller reading that slot directly saw no dialog in the rendered game, and a recorded `MENU` step resolved against nothing while `ReplayController` deliberately left the `WndOptions` on screen forever. This prefers the scene's live window and falls back to the slot. |
+| `GameScene.headlessGameplay()` | Declares that this process is simulating gameplay with the renderer bypassed. `Level.drop` presses the cell a thrown or dropped item lands on only when the current scene is a `GameScene`, which separates gameplay drops from the two scene drops that must not press — `AlchemyScene` crafting onto the cell the hero stands on, and `InterlevelScene.resurrect` dropping the LostBackpack on the cell he died on. A headless process has no scene at all, so the test was false and every thrown item landed inert: measured, an armed `WornDartTrap` was still armed after a `Food` was dropped on it on four seeds out of four. Both scene drops need a renderer, so neither can exist here, which is what makes the flag safe. See §7. |
 | `PRandom.element(Collection)` | Mirrors `Random.element` for the presentation stream, so a caller choosing presentation can be moved across without reimplementing the indexing. |
 
 ## 2. Null-tolerance for a bypassed renderer
@@ -178,6 +184,7 @@ reading exactly like a simulation that consumes no randomness at all.
 | `paritycheck` | A recording survives a write, a read, and a second episode. The only gate that lets the hero die repeatedly, which is where `Bones` becomes visible. Found that fault on its first run. |
 | `paritycheck` | A run following a hero's death inherits none of that hero's remains. |
 | `slotcheck` | A recorded slot index resolves to the item it was recorded against — measured on `KXY-JHB-LXK`, where a recorded `DROP` dropped a `Waterskin` in one environment and a `VelvetPouch` in the other because the quickslot bindings differed. |
+| `presscheck` | A dropped item fires the trap it lands on and tramples the grass it lands on, and level generation — which runs with no current level — presses nothing. The second half is what stops widening the guard from becoming a loosening. |
 | `:desktop:viewcheck` | Every committed recording plays clean in the **real** viewer. Needs a display, so it is outside `gates` and is a manual gate. |
 
 ## 7. Known remaining gaps in the engine changes
@@ -204,15 +211,32 @@ reading exactly like a simulation that consumes no randomness at all.
   and `Level.drop` only calls `pressCell` under a scene test too (`Level.java:1068`). A gameplay guard
   keyed on a scene — the same shape as the animation clock above.
 
-  **The levitation half is covered from the supervisor.** `LevelPipeline.runToHeroReady` makes the
+  The levitation half is covered from the supervisor. `LevelPipeline.runToHeroReady` makes the
   decision the guard was suppressing and calls the game's own `Chasm.heroFall`, so the outcome matches
   without `:core` changing. The guard itself is still in the game.
 
-  **`Level.drop`'s half is open, and is `issues.md` 17 rather than something this file proposes an
-  answer to.** `drop` is called from a dozen places in the item tree, none of them ours, so pressing
-  the cell from the environment would mean intercepting every call site and reproducing the game's own
-  notion of which drops press. The scene half is also carrying real work: it separates *gameplay* drops
-  from *scene* drops, and `AlchemyScene.java:761,864,1003` (onto the cell the hero is standing on) and
-  `InterlevelScene.java:815` (onto the cell the hero died on) are scene drops that must not press.
-  Removing it was tried, built green, and altered alchemy and resurrection in a game that is not this
-  module's; it is reverted. `presscheck` is the gate, it is out of `gates`, and it is red.
+  **`Level.drop`'s half is now closed too, and it is the only change here that widens a condition rather
+  than tolerating a null.** One line in `:core`:
+
+  ```java
+  if (Dungeon.level != null && (ShatteredPixelDungeon.scene() instanceof GameScene || GameScene.headlessGameplay())) {
+      pressCell( cell );
+  }
+  ```
+
+  **`GameScene.headlessGameplay` is a static that only `HeadlessGame.install()` sets, so a real game
+  never reads it as anything but `false` and the guard's answer there is unchanged.** That is the part
+  that makes it a different change from the one that was tried and reverted: that one deleted the scene
+  test, which altered alchemy and resurrection in a game that is not this module's. The scene test is
+  still there, still doing its job — the flag only answers the question the headless process cannot
+  pose, and it answers "gameplay", which is correct because `AlchemyScene` and `InterlevelScene` both
+  need a renderer and so cannot exist in the process that sets it.
+
+  `Level.drop` is the only chokepoint: `Item.onThrow` and `Item.doDrop` both call it and nothing else
+  puts an item on a floor, which is why one line covers throwing, dropping, the blacksmith, the shop,
+  the imp and the rest. Measured after: an armed `WornDartTrap` disarms, and a `Food` dropped on high
+  grass changes its terrain 15 → 2.
+
+  `presscheck` is the gate, is **in `gates`**, and is green on three cases. `duelist-throw.replay` is
+  the recording that makes a *recorded* press reproducible in both environments — see `issues.md` 17.
+

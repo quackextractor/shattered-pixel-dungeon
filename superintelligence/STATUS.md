@@ -29,6 +29,20 @@ The rule that survives is the important one: **logic changes are uncommitted unl
 getters may always be committed.** The permission to experiment is not permission to ship a behaviour
 change silently.
 
+### The one engine logic change this project has needed since
+
+`issues.md` 17, and it is the first case where the two halves of the rule had to be read together.
+`Level.drop` presses the cell a thrown or dropped item lands on, behind a `scene() instanceof GameScene`
+test that a renderer-bypassed process can never satisfy, so every throw landed inert. The fix is one
+widened term plus a new `GameScene` static that **only `HeadlessGame.install()` sets** — so a game with
+a renderer reads it as `false` and the guard's answer there is unchanged.
+
+That is the shape worth naming: the change is a logic change to `:core`, so it stays uncommitted until
+the owner decides, and it is safe to propose because in the game it is a no-op by construction rather
+than by argument. The version that was tried before — deleting the scene test — *was* a behaviour change
+to alchemy and resurrection in a game that is not this module's, which is what the boundary exists to
+prevent. The proposal record is `ENGINE-CHANGES.md` §7 and `issues.md` 17.
+
 ## 12.4 — the loop is not yet closed
 
 The "repeat the whole process" clause has not terminated, and the reason is recorded rather than

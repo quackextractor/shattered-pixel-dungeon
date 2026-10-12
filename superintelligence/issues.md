@@ -680,7 +680,7 @@ the guard is still there.
 
 # Chasm
 
-17. A thrown or dropped item never triggers what it lands on — **OPEN**, measured.
+17. A thrown or dropped item never triggers what it lands on — **CLOSED**, measured.
 
     Found while closing `issues.md` 16. The chasm path has two halves — the engine asking whether the
     hero wants to jump, and the engine dropping him — and this is a third thing on the same path that
@@ -705,17 +705,24 @@ the guard is still there.
     FALLCHECK-A:  trap WornDartTrap at   86  ->  still armed after Level.drop
     ```
 
-    **There is no supervisor-side fix.** `Level.drop` is called from a dozen places in the item tree and
-    none of them are ours — throwing, dropping, equipping, selling, the blacksmith, the imp, the ghost,
-    the wandmaker, alchemy, the resurrection backpack. Pressing the cell from the environment would mean
-    intercepting every one of them and reproducing the game's own notion of which drops press. That is
-    not the shape of a fix; it is a second implementation of `Level.drop`.
+    ### The fix, and why the scene half survives
 
-    **The guard is load-bearing, which is the part worth writing down.** Dropping the
-    `scene() instanceof GameScene` half looks safe, because the `Dungeon.level != null` half genuinely
-    does stop level generation from pressing — `Dungeon.newLevel()` nulls `Dungeon.level` for the
-    duration of `create()`, so `RegularLevel.createItems` places its starting items with no current level.
-    But the scene half is not redundant. It separates *gameplay* drops from *scene* drops, and two scene
+    `Level.drop` is the one chokepoint for the whole item tree — `Item.onThrow` and `Item.doDrop` both
+    call it and there is no other way an item reaches a floor — so the fix is one line and there is no
+    interception to build:
+
+    ```java
+    if (Dungeon.level != null && (ShatteredPixelDungeon.scene() instanceof GameScene || GameScene.headlessGameplay())) {
+        pressCell( cell );
+    }
+    ```
+
+    **`GameScene.headlessGameplay` is a new static, and only a renderer-bypassed process sets it.**
+    `HeadlessGame.install()` declares itself; nothing in the game's own launch path does, so **in a real
+    game the guard's answer is unchanged**, which is the property the earlier attempt at this fix lacked.
+
+    The earlier attempt dropped the scene half outright. It built, every gate passed, and it was wrong:
+    the scene half is not redundant. It separates *gameplay* drops from *scene* drops, and two scene
     drops are deliberately not gameplay drops:
 
     | call site | scene | cell that would start pressing |
@@ -723,25 +730,127 @@ the guard is still there.
     | `AlchemyScene.java:761,864,1003` | `AlchemyScene` | `Dungeon.hero.pos` — the cell the hero is standing on, so crafting would trample the tall grass under him (`Level.java:1282`) |
     | `InterlevelScene.java:815` | `InterlevelScene` | `invPos` — the cell the hero died on, during resurrect, while the lines directly above it deliberately pick a respawn cell with no trap or plant on it |
 
-    That change was made, it built, every gate passed, and it was wrong: it altered alchemy and
-    resurrection in a game that is not this module's. It has been reverted. The cost of being wrong here
-    is not a red build — it is two systems behaving differently in the real game, discovered later by
-    whoever notices next.
+    Both of those scenes need a renderer, so neither can exist in a headless process — which is exactly
+    why the flag is safe. Every drop a renderer-bypassed process makes is a gameplay drop.
 
-    **`presscheck` is the gate for it, and it is not in `gates`** because it is red and the tree has to
-    be green. Run it by hand: `gradle :superintelligence:presscheck`.
+    The `Dungeon.level != null` half is untouched, and it is still doing the work it was doing: level
+    generation runs with no current level, so a press during `RegularLevel.createItems` is still
+    skipped.
+
+    Measured after the fix, same seeds, same trap:
 
     ```
-    [ERROR]  cell presses: 1 of 2 checks failed
-        PRESSCHECK-A: a Food was dropped on an armed WornDartTrap at cell 1093 and the trap is still
-        armed. Level.drop presses the landing cell so a thrown item can trigger what it lands on, but
-        it only does so behind a scene() instanceof GameScene test, which is false with no renderer.
+    PRESSCHECK-A:  trap WornDartTrap at 1093  ->  disarmed after Level.drop
+    PRESSCHECK-A:  high grass at cell 281    ->  terrain 15 -> 2 after Level.drop
     ```
 
-    Its second case pins the half that has to survive any fix: with `Dungeon.level` nulled — the state
-    `RegularLevel.createItems` places starting items in — a dropped item leaves the trap armed. That
-    case passes today, and it is what stops the obvious fix from quietly becoming a loosening.
+    ### What is gated, and what it refuses
+
+    `gradle :superintelligence:presscheck`, **three cases**, and it is now **in `gates`** — it was left
+    out only because it was red.
+
+    | case | fails when |
+    | --- | --- |
+    | an item dropped on a trap fires it | the `headlessGameplay` half is removed from the guard |
+    | an item dropped on high grass tramples it | the same — 2 of 3 |
+    | generating a floor presses nothing | the `Dungeon.level != null` half is removed |
+
+    The second case covers the branch a trap does not reach, and it is the reason `AlchemyScene` is a
+    special case at all: crafting puts an item on the cell the hero is standing on, so a press there
+    would flatten the grass under him on every craft.
+
+    The third case's mutation is worth recording honestly: removing that half does not make the case
+    fail, it makes **level generation itself** die, before the case is ever reached —
+
+    ```
+    NullPointerException  at RegularLevel.build(RegularLevel.java:120)
+    ```
+
+    — because the press now runs against a level that is still being built. The gate goes red either
+    way, which is what it is for, but "the case refused it" would be the wrong description.
+
+    ### And a recording, because a gate that cannot reach a fault is not a gate
+
+    `presscheck` proves a press happens. It cannot prove the two environments *agree* about one, which
+    is the property a trainer whose runs are watched has to have — and **the corpus could not ask it**:
+    twenty recordings, no throw of anything onto a cell a press could act on, so `viewcheck` and
+    `verify` were both green about a behaviour neither had ever run.
+
+    `test-replays/duelist-throw.replay`, recorded by `gradle :superintelligence:pressfixture`, which
+    **verifies the recording before writing it** and refuses to write one whose throw did not press:
+
+    ```
+    the throw pressed its landing cell: PRESS-THROW-C, ThrowingSpike thrown at cell 609, terrain 15 -> 2
+    [OK]  wrote 60 steps, first throw resolved in TARGETING at step 2; reproduced in 60 steps
+    ```
+
+    Terrain 15 is `HIGH_GRASS` and 2 is `GRASS`: the spike flattened it. The throw is driven through
+    the agent's own three steps — `USE`, `USE` on the slot, `USE` on the target — so the recording
+    carries the aim the way a real run does, and the seed is searched rather than fixed because no
+    single floor can be relied on to have grass beside the hero.
+
+    **Mutation-tested, and the gate that refuses it is not the one you would guess.** Reverting the
+    guard leaves `viewcheck` green on all twenty recordings, because the viewer's press never depended
+    on the flag — it has a real `GameScene` and always pressed. That is the correct answer and it is
+    worth stating: the viewer half of this fix was never at risk, and the trainer half is caught by
+    the gates that compare a recording against a fresh headless run.
+
+    ```
+    verify          replay diverged at step 27 of 60 - hp: replayed 17, recorded 19
+    playbackcheck   duelist-throw.replay diverged at step 27: DIVERGED at step 28 - INTERACT/0 in WORLD:
+                    hp is 17, recording says 19
+    ```
+
+    **Not fixed by any of this, and it is the right answer:** a thrown item does not *trigger* a trap the
+    way a hero walking onto one does, in one specific respect. `Level.occupyCell` presses with the hero
+    standing on the cell; `Level.drop` presses with nothing on it. That is the game's own arrangement
+    and it was not changed.
 
     **What is not broken, and is worth being precise about:** traps still fire when a hero *walks* onto
     one. `Level.occupyCell` presses unconditionally and was never scene-guarded. Only thrown and
-    dropped items are inert, so the hole is much narrower than "traps do not work".
+    dropped items were inert, so the hole was much narrower than "traps do not work".
+
+---
+
+18. `rolloutcheck` fails about one run in thirty, and the recording it made verifies on the next
+    attempt — **OPEN**, measured, pre-existing.
+
+    Found while closing 17, and unrelated to it. `rolloutcheck` is in `gates`, and `gates` failed on one
+    run out of roughly thirty while the fix above was being verified:
+
+    ```
+    [ERROR]  rollout recording: 2 of 3 checks failed
+        a recording made from a random-seed episode does not verify: position: replayed 1026, recorded 193 at step 32
+        verification covered 33 of 60 steps; a short match is not a reproduction
+    ```
+
+    **It is not caused by the change that was in flight.** A/B'd against the base tree, the same
+    committed code with every edit stashed:
+
+    | tree | runs | failures |
+    | --- | --- | --- |
+    | base (`HEAD`, nothing stashed in) | 30 | 1 — `position: replayed 656, recorded 582 at step 54` |
+    | with the `issues.md` 17 fix | 60 | 1 — `position: replayed 1026, recorded 193 at step 32` |
+
+    Same signature, same rate, different random draws.
+
+    **Why it is intermittent, and it is not a seed lock.** `RolloutCheck`'s first two cases record an
+    episode with an **empty seed**, so `SeedPool` puts it on a random one — which is deliberate, and is
+    what makes the "does a random-seed recording verify" case possible at all. A locked-seed gate cannot
+    see this class of fault, so this gate exists specifically to see it, and what it is seeing is that
+    a minority of worlds do not reproduce.
+
+    **Not investigated, and stated as open rather than guessed at.** A recorded position and a replayed
+    position several hundred cells apart, mid-run, on a floor that presumably contains whatever caused
+    it — the chasm path and the stairs path are the two places a position this far apart can be
+    produced in one step, and both were changed recently and are gated (`fallcheck`,
+    `transitioncheck`). What is needed is the world trace for a failing seed, which means catching a
+    failing draw rather than waiting for one: `episodediff` takes a seed and two runs and reports where
+    they part, and a random-seed sweep that keeps the seed of any recording that fails to verify would
+    turn a one-in-thirty flake into a reproducible case. Until then this is a gate that is **red about
+    three percent of the time and does not say why**, which is worth more than a silent green and is
+    still not a gate anyone should have to learn to re-run.
+
+    **What is not wrong:** `paritycheck` verifies 32 recordings across seeds in one process and passes,
+    and both viewer gates pass the whole committed corpus. The failure needs a *random* seed and a
+    60-step scripted episode.

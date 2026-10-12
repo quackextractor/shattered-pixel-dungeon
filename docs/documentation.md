@@ -36,7 +36,7 @@ scored by a configurable reward function, with the best run per seed recorded an
 
 **Nothing has won a run, and nothing has reached floor 5.** The machinery is correct - the network's
 gradients check against central differences, the environment is reproducible across processes,
-recordings replay exactly, and every one of the twenty-two gates is green - and the reward function now
+recordings replay exactly, and every one of the twenty-three gates is green - and the reward function now
 asks for the right thing. Measured, over twelve generations: **deaths fell 100% to 19%, mean turns rose
 377 to 1335**, and `bestDepth 2` has been observed once. **Depth does not trend yet.**
 
@@ -102,6 +102,10 @@ reported success.
 # regenerate the DROP-in-SLOT fixture the viewer gates play; it verifies before writing
 ./gradlew :superintelligence:dropfixture --args="dropfixture --save test-replays/duelist-drop.replay"
 
+# regenerate the throw-that-presses fixture, the same way; it also refuses to write a run whose
+# throw did not press anything
+./gradlew :superintelligence:pressfixture --args="pressfixture --save test-replays/duelist-throw.replay"
+
 # every correctness gate, one invocation
 ./gradlew :superintelligence:gates
 
@@ -139,7 +143,8 @@ kept half rather than copying it - one implementation of the objective, one impl
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and fixtures |
 | `rl` | `Network` (CNN + LSTM + heads), `PPO` (the learner), `ShardedUpdate` (the parallel minibatch and its gradient reduction), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector`, `EpisodeRecord` |
 | `train` | `Trainer` (generation loop), `TrainerWorkers` (everything crossing a worker pipe), `WorkerPool`, `Protocol`, `TransitionCodec`, `TrainOptions`, `PpoHyperparameters`, `Checkpoint`, `MetricsHistory`, `SeedPool` |
-| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `Quickslots` (the one place a recorded slot index is resolved against its bindings), `DropFixture`, `ReplayCatalog`, `RngTrace` |
+| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `Quickslots` (the one place a
+           recorded slot index is resolved against its bindings), `DropFixture`, `PressFixture`, `ReplayCatalog`, `RngTrace` |
 | `diag` | `RunReport`, `Graph`, `Ansi`, and the gates listed below |
 
 ### Four design decisions worth knowing before reading the code
@@ -246,7 +251,7 @@ from `KILL`'s "declared, plumbed and never emitted". `TODO.md` 1.10 is the missi
 
 ## Gates
 
-twenty-two gates, one invocation, ~22 seconds:
+twenty-three gates, one invocation, ~23 seconds:
 
 ```sh
 ./gradlew :superintelligence:gates
@@ -264,6 +269,7 @@ twenty-two gates, one invocation, ~22 seconds:
 | `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
 | `fallcheck` | A chasm fall the environment drops, a free landing, or a fall that leaves a hand-off behind for the next episode |
 | dialogcheck | An answer that cannot reach a dialog the game opened, a dialog taken away when the game declined it, or one reported a turn late |
+| `presscheck` | A dropped item that does not fire the trap or flatten the grass it landed on, **or** level generation pressing a cell it is still building |
 | `replaycheck` | A catalog that misgroups, misranks or misresolves, **or** mislabels what it did |
 | `rolloutcheck` | A recording with no usable seed |
 | `modecheck` | An action mode the environment cannot reach |
@@ -280,10 +286,11 @@ twenty-two gates, one invocation, ~22 seconds:
 Plus `playbackcheck` in `:desktop`, which drives the rendered viewer with no window and no scene, and
 `viewcheck`, which plays the whole corpus through the real viewer and needs a display.
 
-One gate is deliberately **not** in that list: `presscheck`, run by hand with
-`gradle :superintelligence:presscheck`. It asserts a divergence that is still open — a thrown item does
-not trigger the trap it lands on, because `Level.drop` presses the cell only behind a
-`scene() instanceof GameScene` test that no headless run can satisfy. It is filed as `issues.md` 17.
+`presscheck` was deliberately outside that list while its divergence was open — a thrown item did not
+trigger the trap it landed on, because `Level.drop` pressed the cell only behind a
+`scene() instanceof GameScene` test no headless run could satisfy. It is fixed and in `gates`;
+`issues.md` 17 has the measurement, and `duelist-throw.replay` is the recording that carries a recorded
+press through both environments.
 
 `playbackcheck` also plays **the committed corpus** headlessly, which is the headless half of
 `viewcheck` and the only one of the two that can be a gate. That half was added because every other
@@ -368,6 +375,16 @@ Three of them are worth singling out, because they reach faults the others struc
   *during* the drain rather than a turn later. Measured on `DIALOGCHECK-A`: the answer takes 13 steps, and
   **one crossing costs -15.00** — the 12 refused steps are free, but the accepting step resumes the
   hero's interrupted move and that turn is scored, against a descent at `+1800.00`.
+- **`presscheck`** covers the third fault on that path, which is not about chasms at all. `Level.drop`
+  presses the cell a thrown or dropped item lands on - which is how a stone sets off a trap or flattens
+  grass - and it did so only behind `scene() instanceof GameScene`, a test a renderer-bypassed process
+  can never satisfy because it has no scene at all. Every throw was inert: an armed `WornDartTrap` was
+  still armed after a `Food` was dropped on it on four seeds out of four. `Level.drop` is the one place
+  that needed changing - `Item.onThrow` and `Item.doDrop` both call it - and the scene test survives,
+  because the two drops it exists to exclude (`AlchemyScene` crafting onto the cell the hero stands on,
+  `InterlevelScene.resurrect` onto the cell he died on) both need a renderer and cannot exist headlessly.
+  The gate asserts both halves: a drop fires a trap and flattens grass, and level generation - which runs
+  with no current level - still presses nothing.
 
 ## Replay and determinism
 
@@ -508,10 +525,10 @@ Guaranteed, and gated:
 
 ## Changes to the game
 
-The renderer bypass required small, additive, guarded changes to `:core` and `:SPD-classes`. Every one is
-a no-op when a renderer is present, and each is listed with its reason in
-[`superintelligence/README.md`](../superintelligence/README.md#changes-to-the-game). One was added for
-this work:
+The renderer bypass required small, additive, guarded changes to `:core` and `:SPD-classes`. Almost all of
+them are a no-op when a renderer is present, and each is listed with its reason in
+[`superintelligence/README.md`](../superintelligence/README.md#changes-to-the-game) and
+[`ENGINE-CHANGES.md`](../superintelligence/ENGINE-CHANGES.md). Added for this work:
 
 - **`Bones.clear()`** - forgets a fallen hero's remains. Nothing in the game calls it; a normal
   playthrough wants the opposite. It exists because an environment playing many independent runs in one
@@ -521,3 +538,10 @@ this work:
   saw no dialog in the rendered game, and a recorded `MENU` step resolved against nothing.
 - **`PRandom.element`** - mirrors `Random.element` for the presentation stream, so a caller choosing
   presentation can be moved across without reimplementing the indexing.
+- **`GameScene.headlessGameplay()`, and one widened term in `Level.drop`** - **the one entry that changes
+  behaviour rather than tolerating a missing renderer.** `drop` presses the cell a thrown or dropped item
+  lands on, so a stone can set off a trap or flatten grass, and it did so only when the current scene is
+  a `GameScene`. A renderer-bypassed process has no scene, so every throw was inert. The flag is set by
+  `HeadlessGame.install()` and by nothing else, so **a game with a renderer never reads it and the
+  guard's answer there is unchanged** - which is what distinguishes it from the version that deleted the
+  scene test, which altered alchemy and resurrection in a game that is not this module's.

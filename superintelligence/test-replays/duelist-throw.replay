@@ -1,0 +1,74 @@
+SPD-REPLAY
+version=3
+seed=PRESS-THROW-C
+hero=DUELIST
+challenges=0
+generation=0
+score=-284.59999971464276
+depth=1
+turns=58
+turn_limit=1500
+max_slots=32
+allow_equipping=true
+termination=OTHER
+steps=60
+USE 0 WORLD 653 -1.0  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 653 0.0 ThrowingSpike:1,Waterskin:2 20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 1 TARGETING 653 -0.8500000238418579  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 653 -13.0  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 653 0.0 ThrowingSpike:1,Waterskin:2 20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 0 TARGETING 653 -2.5  20 2.0 Food:1,VelvetPouch():1,Waterskin:1
+OPEN_INVENTORY 0 WORLD 653 -13.0  20 2.0 Food:1,VelvetPouch():1,Waterskin:1
+USE 0 INVENTORY 653 -4.0 Waterskin:2 20 5.0 VelvetPouch():1,Waterskin:1
+MOVE_S 0 WORLD 697 -0.75  20 6.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 653 -0.5  20 8.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_S 0 WORLD 697 -1.0  20 9.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 653 -1.0  20 10.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_S 0 WORLD 697 -1.0  20 11.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_SW 0 WORLD 740 -0.699999988079071  20 12.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_SW 0 WORLD 783 0.05000007152557373  20 13.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 782 -1.0  20 14.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 781 -1.0  20 15.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 780 -1.0  20 16.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 779 -1.0  20 17.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 778 -1.0  20 18.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 777 -1.0  20 19.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 776 0.25  20 20.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 776 -1.0  20 21.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 731 -0.3999999761581421  20 22.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_SW 0 WORLD 774 -1.0  20 23.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 731 -1.0  20 24.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_SW 0 WORLD 774 -1.0  20 25.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 774 -41.0  19 26.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 774 149.0  19 27.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 731 -1.5  19 29.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_SW 0 WORLD 774 -1.0  19 30.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_SW 0 WORLD 817 -1.0  19 31.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_SW 0 WORLD 860 -0.09999996423721313  19 32.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 859 -1.0  19 33.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 858 -1.0  19 34.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 857 -0.8999999761581421  19 35.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_NW 0 WORLD 812 0.15000003576278687  20 36.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 768 -0.699999988079071  20 37.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_NW 0 WORLD 723 -0.800000011920929  20 38.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 722 -1.0  20 39.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 721 0.6000000238418579  20 40.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 720 -0.1499999761581421  20 41.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 719 -0.34999996423721313  20 42.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_W 0 WORLD 718 -0.949999988079071  20 43.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 717 -1.0  20 44.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 673 -81.0  18 45.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 673 -81.0  16 46.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 673 -1.0  16 47.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 673 -41.0  15 48.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 673 -13.0  15 48.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 1 SLOT 673 0.0 ThrowingSpike:1,Waterskin:2 15 48.0 ScrollOfTerror:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
+USE 8 TARGETING 673 -82.5  13 49.0 ScrollOfTerror:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 673 -13.0  13 49.0 ScrollOfTerror:1,VelvetPouch():1,Waterskin:1
+USE 0 SLOT 673 -1.5 Waterskin:2 13 50.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 717 -1.0  13 51.0 VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 673 -0.5  13 52.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 717 -1.0  13 53.0 VelvetPouch():1,Waterskin:1
+MOVE_N 0 WORLD 673 -1.0  13 54.0 VelvetPouch():1,Waterskin:1
+INTERACT 0 WORLD 717 -1.0  14 56.0 PotionOfFrost:1,VelvetPouch():1,Waterskin:1
+USE 0 WORLD 717 -13.0  14 56.0 PotionOfFrost:1,VelvetPouch():1,Waterskin:1

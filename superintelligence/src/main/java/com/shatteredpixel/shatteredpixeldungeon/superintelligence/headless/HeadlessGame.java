@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless;
 
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.watabou.glscripts.Script;
 import com.watabou.noosa.Camera;
 import com.watabou.noosa.Game;
@@ -40,6 +41,9 @@ public class HeadlessGame extends Game {
 
 	/** Idempotent; safe to call from every worker. */
 	public static HeadlessGame install(){
+		//With no scene, Level.drop's gameplay/scene test is false for every drop, so a thrown item lands
+		//inert. This is the statement that a renderer-bypassed process is playing a floor.
+		GameScene.headlessGameplay( true );
 		if (HeadlessServices.installed && Game.instance instanceof HeadlessGame){
 			return (HeadlessGame) Game.instance;
 		}
