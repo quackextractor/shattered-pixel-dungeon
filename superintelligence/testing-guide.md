@@ -241,11 +241,18 @@ And `WindowBridge.selectOption` cleared the parked window on any press, so a han
 its dialog removed anyway, which is exactly what `Chasm` does while `elapsed` is under 0.2 s.
 
 `WindowBridge.age()` advances a parked dialog once per environment step, which is once per frame — the
-same approximation `ReplayPlayer` already makes about a recorded step, so the gate is the game's own
-0.2 s and **the answer takes 13 steps**. Those cost nothing the environment scores, because `settle`
-reports a dialog before it scores a turn. A parked window now lives in a `Group`, so the game's own
-`Window#hide()` closes it; and `settle` reports a dialog opened *during* the drain rather than a turn
-later, because a rendered game blocks cell input the instant the window appears.
+same approximation `ReplayPlayer` makes about a recorded step, so the gate is the game's own 0.2 s and
+**the answer takes 13 steps**. Those are not free, contrary to what this file said when the case was
+first written: the 12 *refused* steps cost nothing, because `settle` returns before it scores a turn, but
+the step that accepts the answer resumes the hero's interrupted move and that turn is scored as one
+which advanced no engine time. **One crossing costs -15.00** (`NO_PROGRESS -12.00`, `TURN_COST -3.00`),
+against a descent at `+1800.00`.
+
+Separately, `WindowBridge.selectOption` cleared the parked window on any press, so a handler that
+declined had its dialog removed anyway — which is exactly what `Chasm` does while `elapsed` is under
+0.2 s. A parked window now lives in a `Group`, so the game's own `hide()` closes it. And `settle` reports
+a dialog opened *during* the drain rather than a turn later, because a rendered game blocks cell input
+the instant the window appears.
 
 | Reverted | Cases that refuse it |
 | --- | --- |
@@ -257,7 +264,8 @@ later, because a rendered game blocks cell input the instant the window appears.
 Measured end to end: **the prompt opens, the agent answers, the game accepts, the dialog closes itself,
 and the next move puts the hero a floor down — `DIALOGCHECK-A`, 13 steps for the answer, depth 1 → 2.**
 
-**What is left, and it is small:** the agent can cross a chasm, but `Chasm.jumpConfirmed` is a one-shot
-that `Chasm.heroFall` clears on the step that acts on it, so a second chasm asks again — the game's own
-behaviour, not this module's. And `Levitation.detach()` still does not re-check the landing cell
-headlessly, because the game guards that call on a `GameScene` (`ENGINE-CHANGES.md` §7).
+**What is left, and it is small:** `Chasm.jumpConfirmed` is a one-shot, so a second chasm asks again —
+measured, and that is the game's own behaviour rather than something this module introduced.
+`Levitation.detach()` still does not re-check the landing cell headlessly, because the game guards that
+call on a `GameScene` (`ENGINE-CHANGES.md` §7): measured, a hero whose levitation expires over a pit
+ends up standing *on* the pit cell, and walking off it does not drop him either.

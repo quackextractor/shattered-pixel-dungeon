@@ -360,9 +360,9 @@ Three of them are worth singling out, because they reach faults the others struc
   step, which is once per frame — the same approximation `ReplayPlayer` makes about a recorded step —
   and a parked window now lives in a `Group`, so the game's own `hide()` closes it. A rendered game
   blocks cell input the instant the window appears, and `settle` likewise reports a dialog opened
-  *during* the drain rather than a turn later. Measured on `DIALOGCHECK-A`: the answer takes 13 steps,
-  and they cost nothing the environment scores, because `settle` reports a dialog before it scores a
-  turn.
+  *during* the drain rather than a turn later. Measured on `DIALOGCHECK-A`: the answer takes 13 steps, and
+  **one crossing costs -15.00** — the 12 refused steps are free, but the accepting step resumes the
+  hero's interrupted move and that turn is scored, against a descent at `+1800.00`.
 
 ## Replay and determinism
 

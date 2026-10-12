@@ -588,8 +588,11 @@ while `elapsed` is under 0.2 s. Three fixes, all gated:
 
 - `WindowBridge.age()` advances the parked dialog once per environment step — once per frame, the
   approximation `ReplayPlayer` already makes about a recorded step, so the gate is the game's own 0.2 s.
-  Measured on `FALLCHECK-A`: **the answer takes 13 steps**, and they cost nothing the environment scores,
-  because `settle` reports a dialog before it scores a turn.
+  Measured on `DIALOGCHECK-A`: **the answer takes 13 steps**, and **one crossing costs -15.00** — the 12
+  refused steps are free because `settle` returns before it scores a turn, but the accepting step resumes
+  the hero's interrupted move and that turn is scored as one that advanced no engine time. Against a
+  descent at `+1800.00` that is cheap, which is what makes it worth having. It is not free, and an
+  earlier draft of this entry claimed it was.
 - a parked window lives in a one-slot `Group` rather than a bare field, so the game's own
   `Window.hide()` closes the slot. `GameScene.answerableWindow()` had to read the accessor rather than
   the field for the same reason — a dialog the game had hidden was still reported answerable.
@@ -598,12 +601,24 @@ while `elapsed` is under 0.2 s. Three fixes, all gated:
   already up — a turn it could spend walking away from the chasm it had just asked about.
 
 Measured end to end: **the prompt opens, the agent answers, the game accepts, the dialog closes itself,
-and the next move puts the hero a floor down.**
+and the next move puts the hero a floor down.** Both answers cost the same 13 steps and the same -15.00;
+declining leaves the hero where he was (`onSelect(1)` is empty) and the chasm still there, and he can
+walk off it.
 
 `Levitation.detach()` still does not re-check the landing cell headlessly, because the game guards that
-call on a `GameScene` — so a hero whose levitation expires *over* a pit still has to step off it and
-back on. That is a `:core` guard and it is left alone under the engine boundary; `ENGINE-CHANGES.md` §7
-is where it is recorded.
+call on a `GameScene`. Measured, with the hero on a pit cell while flying:
+
+```
+hero placed on pit 197 while flying: onPit=true flying=true depth=1
+after levitation.detach():           onPit=true flying=false depth=1 alive=true
+then walked MOVE_SW off it:          pos 197 -> 232, depth=1 (still no fall)
+```
+
+So the hero stands *on* the chasm and walking off it does not drop him either —
+`Level.occupyCell`'s pit check is behind `if (!ch.flying)` and is only reached on entering a cell. In
+the game that sequence falls him. `:core` guard, `:core` method, gameplay change, so left alone under
+the engine boundary and recorded at `ENGINE-CHANGES.md` §7; bounded, in that levitation is an elixir
+rather than a fixture.
 
 ### What is gated, and what it refuses
 

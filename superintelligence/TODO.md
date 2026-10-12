@@ -76,9 +76,31 @@ option did not fire, and the hero stood where he was.
 
 `WindowBridge.age()` calls it, **once per environment step, which is once per frame** — the same
 approximation `ReplayPlayer` already makes about a recorded step. The gate is therefore the game's own
-0.2 s rather than something invented here, and measured on `FALLCHECK-A` the answer takes **13 steps**.
-Those steps cost nothing the environment scores: `settle` reports a dialog before it scores a turn, so
-a step spent answering a question does not advance `turnsThisFloor`.
+0.2 s rather than something invented here, and measured on `DIALOGCHECK-A` the answer takes **13 steps**.
+
+**Those steps are not free, and an earlier version of this entry said they were.** Measured, on
+`PROBE-A`:
+
+```
+13 answer steps:  turns 1 -> 3,  score -1.00 -> -15.00
+                  NO_PROGRESS -12.00,  TURN_COST -3.00
+```
+
+`settle` returns before it scores a turn, so the 12 *refused* steps cost nothing — but the step that
+**accepts** the answer resumes the hero's interrupted move, and that turn is scored as a turn which
+advanced no engine time. **The real cost of one crossing is -15.00, not zero.** It is still cheap against
+a descent at +1800.00, which is what makes it worth having rather than what makes it free.
+
+Both answers measured, same run:
+
+```
+accept  (option 0): 13 steps, -15.00, then depth 1 -> 2 and +1800.00 DEPTH_ADVANCE
+decline (option 1): 13 steps, -15.00, then four more waits for -67.00 and depth 1
+```
+
+Declining is neither a no-op nor a free retreat: `onSelect(1)` is empty, so the hero is left where he
+was with the chasm still there — measured, he walks off it — but the 13 steps and the -15.00 are spent
+either way.
 
 ### The question was then taken away
 
@@ -123,12 +145,28 @@ itself, and the next move puts the hero a floor down — `DIALOGCHECK-A`, 13 ste
 
 ### What is still not right, and is now a much smaller thing than it was
 
-The agent can cross a chasm. It cannot choose to cross one *silently*: `Chasm.jumpConfirmed` is a
-one-shot that `Chasm.heroFall` clears on the very step that acts on it, so a second chasm asks again,
-which is the game's own behaviour. And `Levitation.detach()` still does not re-check the landing cell
-headlessly, because the game guards that call on a `GameScene` — so a hero whose levitation expires
-*over* a pit still has to step off it and step back on. That is a `:core` guard and it is left alone
-under the engine boundary; `ENGINE-CHANGES.md` §7 is where an unfixed engine gap is recorded.
+**`Chasm.jumpConfirmed` is a one-shot, so a second chasm asks again.** Measured on `PROBE-A`: after one
+accepted crossing and the fall that followed it (`jc=false` — `Chasm.heroFall` clears it, line 102), the
+next chasm on depth 2 put the environment straight back into `MENU` with the game's question open. That
+is the game's own behaviour and it was not changed; it is named here because it is a per-crossing cost
+rather than a once-per-run one, and the -15.00 above is per crossing for the same reason.
+
+**`Levitation.detach()` still does not re-check the landing cell headlessly.** The game guards that call
+on a `GameScene` (`Levitation.java:58`), and `Level.occupyCell`'s own pit check sits behind
+`if (!ch.flying)` and is only reached when a hero *enters* a cell. Measured, with the hero on a pit cell
+while flying — the state a levitation crossing produces:
+
+```
+hero placed on pit 197 while flying: onPit=true flying=true depth=1
+after levitation.detach():           onPit=true flying=false depth=1 alive=true
+then walked MOVE_SW off it:          pos 197 -> 232, depth=1 (still no fall)
+```
+
+So the hero ends up **standing on the chasm cell**, and walking off it does not drop him either. In the
+game that sequence falls him a floor. That is a `:core` method with a `:core` guard on it, changing it
+changes gameplay, and it is left alone under the engine boundary; `ENGINE-CHANGES.md` §7 is where it is
+recorded. It is bounded — levitation is an elixir, not a fixture, so it needs one to reach — but it is a
+real divergence and it is the last one on this path.
 
 ---
 

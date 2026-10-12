@@ -202,5 +202,9 @@ reading exactly like a simulation that consumes no randomness at all.
   change at the point the delta is measured.
 - **`Levitation.detach()` only re-presses the hero's cell when a `GameScene` exists** (`Levitation.java:58`),
   so headlessly a hero whose levitation expires *over* a pit does not fall until he steps off it and back
-  on. A gameplay guard keyed on a scene, which is the same shape as the animation clock above and the same
-  decision: left alone under the engine boundary rather than changed.
+  on — and stepping off it does not drop him either, because `Level.occupyCell`'s pit check is behind
+  `if (!ch.flying)` and is only reached when a character *enters* a cell. Measured, with the hero on a
+  pit cell while flying: `detach()` leaves him `onPit=true flying=false depth=1` alive, and a following
+  move off the cell lands him on depth 1 still. A gameplay guard keyed on a scene — the same shape as the
+  animation clock above, and the same decision: it changes gameplay, so it is left alone under the engine
+  boundary rather than changed. Bounded, in that levitation is an elixir rather than a fixture.

@@ -104,9 +104,21 @@ records, which is the same class of change as re-pricing `STALLED`.
   increments, and `PixelScene.update()` is the only thing that ever called it; there is no `PixelScene`
   headlessly, so the counter never moved and the option never fired. `WindowBridge.age()` calls it, once
   per environment step, which is once per frame — the same approximation `ReplayPlayer` already makes
-  about a recorded step, so the gate is the game's own 0.2 s and measured on `FALLCHECK-A` the answer
-  takes **13 steps**. Those cost nothing the environment scores: `settle` reports a dialog before it
-  scores a turn.
+  about a recorded step, so the gate is the game's own 0.2 s and measured on `DIALOGCHECK-A` **the
+  answer takes 13 steps**.
+
+  **Those steps are not free, and this entry first claimed they were.** Measured, on the same run:
+
+  ```
+  13 answer steps:  turns 1 -> 3,  score -1.00 -> -15.00
+                     NO_PROGRESS -12.00,  TURN_COST -3.00
+  ```
+
+  `settle` returns before it scores a turn, so the 12 steps that are refused cost nothing — but the
+  step that *accepts* the answer resumes the hero's interrupted move, and that turn is scored and
+  charged as a turn that advanced no engine time. So the real cost is **-15.00 for one crossing**, not
+  zero. It is still cheap against a descent at `+1800.00`, which is what makes it worth having rather
+  than what makes it free.
 
   And `WindowBridge.selectOption` cleared the parked window on *any* press, so a dialog whose handler
   declined was reported as answered and removed anyway — which is precisely what `Chasm` does while
@@ -115,6 +127,17 @@ records, which is the same class of change as re-pricing `STALLED`.
   handler that declines leaves the dialog up. `GameScene.answerableWindow()` had to read the accessor
   rather than the field for the same reason: a dialog the game had hidden was still being reported as
   answerable.
+
+  Measured, both answers, on `PROBE-A`:
+
+  ```
+  accept (option 0): 13 steps, -15.00, then depth 1 -> 2 and +1800.00 DEPTH_ADVANCE
+  decline (option 1): 13 steps, -15.00, then four more waits for -67.00 and depth 1
+  ```
+
+  The decline is not a no-op: `onSelect(1)` is empty, so the hero is left where he was and the chasm
+  is still there on the next move. Measured, he can walk off it — so declining costs the same -15.00
+  and leaves the hero where he started.
 
 - **A dialog the drain opened was reported to the agent a turn late.** `settle()` only tested for one at
   the top of its loop, and the jump prompt is raised from inside `Hero.act()` — so the agent was handed
@@ -163,9 +186,21 @@ records, which is the same class of change as re-pricing `STALLED`.
   policy in this project can reach. When the shuffle is seeded this gets the call with it.
 
 - **`Levitation.detach()` still does not re-check the landing cell headlessly**, because the game guards
-  that call on a `GameScene` (`Levitation.java:58`). A hero whose levitation expires *over* a pit
-  therefore has to step off it and step back on rather than falling the moment the buff ends. That is a
-  `:core` guard and it is left alone under the engine boundary in `AGENTS.md`.
+  that call on a `GameScene` (`Levitation.java:58`). Measured, with the hero placed on a pit cell while
+  flying — which is what a levitation crossing produces:
+
+  ```
+  hero placed on pit 197 while flying: onPit=true flying=true depth=1
+  after levitation.detach():           onPit=true flying=false depth=1 alive=true
+  then walked MOVE_SW off it:          pos 197 -> 232, depth=1 (still no fall)
+  ```
+
+  So a hero whose levitation expires over a chasm ends up **standing on the chasm cell**, and walking
+  off it does not make him fall either — `Level.occupyCell`'s pit check is behind `if (!ch.flying)` and
+  is only reached when the hero *enters* a cell, never when he is already standing on one. That is a
+  `:core` guard on a `:core` method, it changes gameplay, and it is left alone under the engine boundary
+  in `AGENTS.md`; `ENGINE-CHANGES.md` §7 is where it is recorded. It is a real divergence from the game,
+  where the same sequence drops him, and it is bounded: levitation is an elixir, not a fixture.
 
 ### Verified
 

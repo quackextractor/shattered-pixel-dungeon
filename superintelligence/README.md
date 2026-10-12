@@ -127,8 +127,9 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   loop advances, and `WindowBridge` discarded the dialog on any press regardless, so the environment was
   asked the question and then had the answer thrown away. The prompt is now aged once per environment
   step (once per frame, the approximation `ReplayPlayer` already makes about a recorded step) and the
-  game's own `hide()` closes it, so the agent asks, answers, and ends up a floor down. `issues.md` 16;
-  `fallcheck` and `dialogcheck` gate it.
+  game's own `hide()` closes it, so the agent asks, answers, and ends up a floor down — for 13 steps and
+  -15.00, against a descent at +1800.00. `issues.md` 16; `fallcheck` and `dialogcheck` gate it, 5 and 3
+  cases.
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
