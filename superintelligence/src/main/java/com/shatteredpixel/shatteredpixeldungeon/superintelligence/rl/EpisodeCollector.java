@@ -135,6 +135,8 @@ public class EpisodeCollector {
 
 	/** Where {@link #trace} writes it. Null with {@link #trace} null, i.e. off. */
 	private String tracePath;
+	/** Counts traced episodes, so each trace file is distinct even when seeds repeat. */
+	private int tracedEpisodes;
 
 	private final EpisodeRecord record = new EpisodeRecord();
 
@@ -296,7 +298,7 @@ public class EpisodeCollector {
 
 		//written here rather than in trace(), because the trace is only complete once the episode has
 		//run - and because a diagnostic that silently produced an empty file would be worse than none
-		flushTrace();
+		flushTrace( env.seedText() );
 
 		return record;
 	}
@@ -385,14 +387,24 @@ public class EpisodeCollector {
 	public void trace( String path ){
 		tracePath = (path == null || path.trim().isEmpty()) ? null : path;
 		if (tracePath == null) trace = null;
-		else trace = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot();
+		//Cells off: the question is what level generation read, and a 1500-step run at cells=true wrote
+		//100 MB per episode - which is a disk problem before it is a diagnostic. The roster carries the
+		//mob roster and the special-room pools, which is what is being compared.
+		else trace = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot()
+				.cells( false );
 	}
 
 	/** Writes the collected trace, if {@link #trace(String)} asked for one. */
-	private void flushTrace(){
+	private void flushTrace( String seed ){
 		if (trace == null || tracePath == null) return;
 		try {
-			trace.writeTo( java.nio.file.Paths.get( tracePath ));
+			//**Keyed by an episode counter, not by the seed.** Two episodes in one run can share a seed -
+			//SeedPool hands locked seeds back round - and then every trace for that seed lands on the same
+			//file, which is how a 125-step recording ended up with 188 records and a diff that compared
+			//two different episodes. The counter is what makes the record count match the step count, which
+			//is the only thing that makes the two sides comparable.
+			trace.writeTo( java.nio.file.Paths.get(
+					tracePath + "-" + (++tracedEpisodes) + "-" + seed + ".txt" ));
 		} catch (java.io.IOException e){
 			System.err.println( "[WARN] could not write the world trace to " + tracePath + ": "
 					+ e.getMessage() );

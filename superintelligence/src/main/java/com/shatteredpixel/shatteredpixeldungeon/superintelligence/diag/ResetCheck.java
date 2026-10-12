@@ -47,7 +47,7 @@ import java.util.Random;
  */
 public class ResetCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 6;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -81,6 +81,7 @@ public class ResetCheck {
 		checkARunDoesNotInheritRemains();
 		checkEveryEpisodeStartsInWorld( env, config );
 		checkTrajectoriesDoNotDependOnOrder( env, config );
+		checkSpecialRoomPoolsDoNotDependOnOrder( env, config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reset isolation: " + CHECKS + " checks passed" );
@@ -317,6 +318,91 @@ public class ResetCheck {
 
 		System.out.println( "  " + SEEDS.length + " seeds reproduce identically after running the"
 				+ " others in between (" + TRACE_STEPS + " steps each)" );
+	}
+
+	/**
+	 * The special-room pools must be a function of the seed, not of what ran before.
+	 *
+	 * <p>The companion to {@link #checkTrajectoriesDoNotDependOnOrder}, and it exists because that case
+	 * compares the hero's <em>trajectory</em> and is blind to this. Two trainer recordings diverge at a
+	 * step where the recorded and replayed floors agree cell for cell, so the difference is in something
+	 * level generation read rather than in where the hero stood. The pools are that something:
+	 * {@code SpecialRoom.runSpecials} is a run-level static, {@code initForRun} shuffles it, and
+	 * {@code createRoom} picks by index into it - so a different permutation gives a different floor, and
+	 * a {@code WeakFloorRoom} on the wrong floor means a chasm on the wrong floor.
+	 *
+	 * <p>Checked on the pools rather than on the trajectory because the trajectory is the symptom and this
+	 * is the state. A seed run twice with other seeds in between must produce the same order both times.
+	 */
+	private static void checkSpecialRoomPoolsDoNotDependOnOrder( SPDEnv env, EnvConfig config ){
+		for (String seed : SEEDS){
+			String first = pools( env, config, seed );
+
+			for (String other : SEEDS){
+				if (!other.equals( seed )) pools( env, config, other );
+			}
+			String second = pools( env, config, seed );
+
+			if (!first.equals( second )){
+				fail( "seed " + seed + " produced a different special-room order the second time in the"
+						+ " same process. The pools decide which room every floor gets, so floor 2 of one"
+						+ " run is not floor 2 of another - and a recording made here replays into a"
+						+ " different dungeon. First difference: \"" + first + "\" vs \"" + second + "\"" );
+				return;
+			}
+		}
+
+		System.out.println( "  the special-room order is a function of the seed for " + SEEDS.length
+				+ " seeds run around each other" );
+	}
+
+	/**
+	 * The pools as they stand after a run of {@code seed}, as one comparable string.
+	 *
+	 * <p>Ordered, because the order is the state. Two pools with the same rooms in a different order
+	 * describe two different dungeons, which is what a set comparison would hide.
+	 */
+	private static String pools( SPDEnv env, EnvConfig config, String seed ){
+		env.config().turnLimitPerFloor = config.turnLimitPerFloor;
+		env.reset( seed, HeroClass.WARRIOR );
+
+		//**Straight after the reset, with nothing played.** `reset` generates floor 1, and floor 1's
+		//special rooms are placed during that generation - which is the whole point, because
+		//`useType` moves them to the back of the run-level pool and floor 2 draws from what is left.
+		//
+		//An earlier version of this case played twenty steps first and passed. That was vacuous: a
+		//random policy places no special rooms, so it was comparing a pool nothing had touched. A
+		//check that cannot fail is not a check, and this one looked fine.
+		StringBuilder sb = new StringBuilder();
+		sb.append( "run=" );
+		for (Object room : com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.SpecialRoom
+				.runSpecials){
+			sb.append( nameOf( room )).append( ',' );
+		}
+		sb.append( "\nfloor=" );
+		for (Object room : com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.SpecialRoom
+				.floorSpecials){
+			sb.append( nameOf( room )).append( ',' );
+		}
+		sb.append( "\npitNeededDepth=" )
+				.append( pitNeededDepth() );
+		return sb.toString();
+	}
+
+	/** {@code SpecialRoom.pitNeededDepth} is private, and it is the state that decides a pit floor. */
+	private static String pitNeededDepth(){
+		try {
+			java.lang.reflect.Field f = com.shatteredpixel.shatteredpixeldungeon.levels.rooms
+					.special.SpecialRoom.class.getDeclaredField( "pitNeededDepth" );
+			f.setAccessible( true );
+			return String.valueOf( f.get( null ));
+		} catch (ReflectiveOperationException e){
+			return "?";
+		}
+	}
+
+	private static String nameOf( Object room ){
+		return room instanceof Class ? ((Class<?>) room).getSimpleName() : String.valueOf( room );
 	}
 
 	// --------------------------------------------------------------------------- tracing
