@@ -636,17 +636,8 @@ guards, both the game's own preconditions: the hero has to be on the level being
 `FeatherBuff`, since an elixir of feather fall is the one state in which `Chasm.heroLand` returns
 early and a hero is *meant* to be standing on a chasm.
 
-`Level.drop`'s `pressCell` carried the same guard and **had to be fixed in `:core`**. A thrown or
-dropped item pressed nothing, so a stone landed on a trap and did nothing to it — measured, an armed
-`WornDartTrap` still armed after a `Food` was dropped on it on four seeds out of four. `drop` is called
-from inside the item tree, so there was no supervisor-side equivalent — pressing the cell would mean
-intercepting every call site.
-
-**Neither is fixed.** A change here needs a decision, and the obvious one is a trap of its own — see
-`ENGINE-CHANGES.md` §7 for the three options. What *is* settled is that the guard is load-bearing in the
-real game and cannot simply have its scene half dropped: the scene test separates gameplay drops from
-scene drops, and `AlchemyScene` and `InterlevelScene.resurrect` both drop onto cells that must not be
-pressed.
+There was a sixth fault on this path, a thrown item never triggering what it landed on, which is **not**
+part of this issue** and is filed as its own at 17.
 
 ### What is gated, and what it refuses
 
@@ -659,9 +650,6 @@ pressed.
 | a fall leaves no hand-off behind | `InterlevelScene.mode = null` is dropped from `clearSwitchRequest` |
 | walking into a chasm does not take the process down | the null guard is dropped from `Image` |
 | the same fall twice is the same fall | the fall does not happen at all — so the case refuses to compare a fall with itself |
-
-`presscheck` is a separate gate for the last divergence and is **not** in `gates`; it is expected-red.
-See the closed entry above and `ENGINE-CHANGES.md` §7.
 | levitation ending over a chasm drops the hero | the pipeline's standing-on-a-chasm check is removed, leaving the hero on the chasm cell at full health |
 
 and `gradle :superintelligence:dialogcheck`, three more, for the question rather than the fall:
@@ -684,5 +672,76 @@ and could not get, because it needed a fixture that drives a fall.
 **What is left, and it is small.** The agent can cross a chasm. It cannot cross one silently:
 `Chasm.jumpConfirmed` is a one-shot that `Chasm.heroFall` clears on the very step that acts on it, so a
 second chasm asks again — which is the game's own behaviour, not this module's. `Levitation.detach()`
-still does not re-check the landing cell headlessly because the game guards that call on a `GameScene`;
-that is a `:core` guard, left alone under the engine boundary and recorded at `ENGINE-CHANGES.md` §7.
+still does not re-press the cell itself because the game guards that call on a `GameScene`; the
+environment now makes the same decision the guard was suppressing, so the outcome is right even though
+the guard is still there.
+
+---
+
+# Chasm
+
+17. A thrown or dropped item never triggers what it lands on — **OPEN**, measured.
+
+    Found while closing `issues.md` 16. The chasm path has two halves — the engine asking whether the
+    hero wants to jump, and the engine dropping him — and this is a third thing on the same path that
+    neither of them covers.
+
+    **`Level.drop` presses the landing cell**, which is how a thrown stone sets off a trap, opens a door
+    or fills a well. It does so only behind a scene test:
+
+    ```
+    if (Dungeon.level != null && ShatteredPixelDungeon.scene() instanceof GameScene) {
+        pressCell( cell );
+    }
+    ```
+
+    Headlessly that second half is false, so the press never happened and a dropped item was inert.
+    Measured, four seeds out of four — a `Food` dropped on an armed `WornDartTrap`:
+
+    ```
+    PRESS-A:      trap WornDartTrap at  253  ->  still armed after Level.drop
+    PRESS-B:      trap WornDartTrap at 1107  ->  still armed after Level.drop
+    PRESS-C:      trap WornDartTrap at  992  ->  still armed after Level.drop
+    FALLCHECK-A:  trap WornDartTrap at   86  ->  still armed after Level.drop
+    ```
+
+    **There is no supervisor-side fix.** `Level.drop` is called from a dozen places in the item tree and
+    none of them are ours — throwing, dropping, equipping, selling, the blacksmith, the imp, the ghost,
+    the wandmaker, alchemy, the resurrection backpack. Pressing the cell from the environment would mean
+    intercepting every one of them and reproducing the game's own notion of which drops press. That is
+    not the shape of a fix; it is a second implementation of `Level.drop`.
+
+    **The guard is load-bearing, which is the part worth writing down.** Dropping the
+    `scene() instanceof GameScene` half looks safe, because the `Dungeon.level != null` half genuinely
+    does stop level generation from pressing — `Dungeon.newLevel()` nulls `Dungeon.level` for the
+    duration of `create()`, so `RegularLevel.createItems` places its starting items with no current level.
+    But the scene half is not redundant. It separates *gameplay* drops from *scene* drops, and two scene
+    drops are deliberately not gameplay drops:
+
+    | call site | scene | cell that would start pressing |
+    | --- | --- | --- |
+    | `AlchemyScene.java:761,864,1003` | `AlchemyScene` | `Dungeon.hero.pos` — the cell the hero is standing on, so crafting would trample the tall grass under him (`Level.java:1282`) |
+    | `InterlevelScene.java:815` | `InterlevelScene` | `invPos` — the cell the hero died on, during resurrect, while the lines directly above it deliberately pick a respawn cell with no trap or plant on it |
+
+    That change was made, it built, every gate passed, and it was wrong: it altered alchemy and
+    resurrection in a game that is not this module's. It has been reverted. The cost of being wrong here
+    is not a red build — it is two systems behaving differently in the real game, discovered later by
+    whoever notices next.
+
+    **`presscheck` is the gate for it, and it is not in `gates`** because it is red and the tree has to
+    be green. Run it by hand: `gradle :superintelligence:presscheck`.
+
+    ```
+    [ERROR]  cell presses: 1 of 2 checks failed
+        PRESSCHECK-A: a Food was dropped on an armed WornDartTrap at cell 1093 and the trap is still
+        armed. Level.drop presses the landing cell so a thrown item can trigger what it lands on, but
+        it only does so behind a scene() instanceof GameScene test, which is false with no renderer.
+    ```
+
+    Its second case pins the half that has to survive any fix: with `Dungeon.level` nulled — the state
+    `RegularLevel.createItems` places starting items in — a dropped item leaves the trap armed. That
+    case passes today, and it is what stops the obvious fix from quietly becoming a loosening.
+
+    **What is not broken, and is worth being precise about:** traps still fire when a hero *walks* onto
+    one. `Level.occupyCell` presses unconditionally and was never scene-guarded. Only thrown and
+    dropped items are inert, so the hole is much narrower than "traps do not work".

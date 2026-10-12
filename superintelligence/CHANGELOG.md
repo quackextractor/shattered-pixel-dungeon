@@ -212,28 +212,8 @@ records, which is the same class of change as re-pricing `STALLED`.
   unseeded draw into every fall in the trainer and undo reproducibility for the sake of a behaviour no
   policy in this project can reach. When the shuffle is seeded this gets the call with it.
 
-- **The thrown-item divergence has no supervisor-side fix, and the obvious engine change was wrong.**
-  `Level.drop` is called from a dozen places in the item tree, none of them ours, so pressing the cell
-  from the environment would mean intercepting every call site. That leaves a change to `Level.drop`'s
-  guard — and the guard is **load-bearing in the real game**, which is the part worth recording.
-
-  I changed it to `Dungeon.level != null` and described it as behaviour-preserving. It is not. The scene
-  test is what separates *gameplay* drops from *scene* drops, and there are scene drops that are not
-  gameplay drops:
-
-  | call site | scene | cell |
-  | --- | --- | --- |
-  | `AlchemyScene:761,864,1003` | `AlchemyScene` | `Dungeon.hero.pos` — the cell the hero is standing on |
-  | `InterlevelScene:815` | `InterlevelScene` | `invPos` — the cell the hero died on, during resurrect |
-
-  Under the old guard neither pressed. Under my change both do: crafting while standing in tall grass
-  tramples it (`Level.java:1282`), and resurrect presses the death cell — which the code immediately
-  above it deliberately avoids for the respawn cell, choosing a position with no trap or plant on it.
-  `InterlevelScene:783,787` are the same resurrection path and are guarded only incidentally.
-
-  **Reverted.** The gate stays, out of `gates` and expected-red, because the divergence is real and the
-  fix needs a decision rather than a plausible-looking edit. `ENGINE-CHANGES.md` §7 has the three
-  options and what each costs.
+- **A thrown item does not trigger what it lands on — filed as `issues.md` 17, open.** Not a
+  changelog entry of its own; it is a separate defect with its own gate, and the reasoning is there.
 
 - **`Levitation.detach()` still does not re-press the cell itself**, and still asks for a `GameScene` to
   do it. The outcome is now right — see the fixed entry above — but the guard is in the game rather than

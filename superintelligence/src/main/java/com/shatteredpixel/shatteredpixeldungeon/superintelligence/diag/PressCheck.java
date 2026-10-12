@@ -19,9 +19,13 @@ import java.util.List;
  *
  * <pre>gradle :superintelligence:presscheck</pre>
  *
+ * <p><b>This is {@code issues.md} 17 and the gate for it.</b> It is deliberately <b>not</b> in
+ * {@code gates}: it is red, because the divergence it asserts is open, and a committed tree has to be
+ * green. Run it by hand.
+ *
  * <p>{@code Level.occupyCell} presses a cell on every step, which is how the game's traps, doors, wells
  * and plants fire — but it only presses a cell somebody <em>enters</em>. {@code Level.drop} has to press
- * the landing cell itself, and did so only behind a {@code scene() instanceof GameScene} test:
+ * the landing cell itself, and does so only behind a {@code scene() instanceof GameScene} test:
  *
  * <pre>
  * if (Dungeon.level != null && ShatteredPixelDungeon.scene() instanceof GameScene) {
@@ -29,17 +33,20 @@ import java.util.List;
  * }
  * </pre>
  *
- * <p>Headlessly that second half is false, so **every thrown or dropped item landed on a trap and did
- * nothing to it**. Measured on four seeds before the fix, a {@code Food} dropped on an armed
- * {@code WornDartTrap} left it armed in all four.
+ * <p>Headlessly that second half is false, so every thrown item landed on a trap and did nothing to it.
+ * Measured on four seeds: a {@code Food} dropped on an armed {@code WornDartTrap} left it armed in all
+ * four.
  *
- * <p>The asymmetry is the tell: {@code Level.drop}'s <i>own</i> chasm check, thirty lines above that
- * guard, is not scene-guarded at all and does fire headlessly. The file already answers the question this
- * gate asks, in one of its two branches.
+ * <p>The scene half is <b>not</b> redundant, and this gate exists partly to say so. It separates
+ * <em>gameplay</em> drops from <em>scene</em> drops: {@code AlchemyScene} drops a crafted item on the
+ * cell the hero is standing on and {@code InterlevelScene.resurrect} drops the LostBackpack on the cell
+ * he died on, and neither should press. Removing the scene half is a gameplay change to alchemy and
+ * resurrection, and it was tried, built green, and reverted.
  *
- * <p>This is a <b>{@code :core} change to gameplay</b>, and the first this project has made to
- * {@code Level}. It is left uncommitted under the engine boundary in {@code AGENTS.md}, which permits
- * editing game files and not committing them, and is recorded in {@code ENGINE-CHANGES.md} §7.
+ * <p>Second case matters most: it pins the half of the guard that has to survive any fix. With
+ * {@code Dungeon.level} nulled — the state {@code RegularLevel.createItems} places starting items in,
+ * because {@code Dungeon.newLevel()} nulls it for the duration of {@code create()} — a dropped item
+ * must leave the trap armed.
  */
 public class PressCheck {
 

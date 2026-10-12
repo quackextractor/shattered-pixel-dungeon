@@ -172,20 +172,13 @@ environment would mean intercepting every call site.
 
 **I changed the guard anyway, and was wrong.** Dropping the `scene() instanceof GameScene` half looked
 safe because the `Dungeon.level != null` half genuinely does keep level generation from pressing. But
-the scene half is not redundant — it separates *gameplay* drops from *scene* drops, and two scene drops
-are deliberately not gameplay drops:
+the scene half is not redundant — it separates *gameplay* drops from *scene* drops, and
+`AlchemyScene.java:761,864,1003` drops onto the cell the hero is standing on while
+`InterlevelScene.java:815` drops onto the cell he died on. Neither pressed before; both would have.
+Reverted, and the reasoning is on `issues.md` 17 with the rest of it.
 
-- `AlchemyScene.java:761,864,1003` drops a crafted item on `Dungeon.hero.pos` — the cell the hero is
-  standing on — so pressing would trample the tall grass under him (`Level.java:1282`).
-- `InterlevelScene.java:815` drops the LostBackpack at `invPos`, the cell the hero died on, while the
-  lines immediately above deliberately choose a respawn cell with no trap or plant on it.
-
-Neither pressed before; both would have. Reverted.
-
-`presscheck` is the gate for the divergence and is **out of `gates` and expected-red** until a fix is
-chosen — `ENGINE-CHANGES.md` §7 has the three options. Worth being precise about what is *not* broken:
-traps still fire when a hero **walks** onto one, because `Level.occupyCell` presses unconditionally and
-is never scene-guarded. Only thrown and dropped items are inert.
+Traps still fire when a hero **walks** onto one, because `Level.occupyCell` presses unconditionally
+and is never scene-guarded. Only thrown and dropped items are inert.
 
 ---
 

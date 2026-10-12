@@ -224,14 +224,11 @@ NullPointerException: cannot invoke "SmartTexture.uvRect" because "this.texture"
 | the null guard removed from `Image`'s five-argument constructor | `walking into a chasm does not take the process down` |
 | the pipeline's standing-on-a-chasm check removed | `levitation ending over a chasm drops the hero`, with the hero left on the chasm cell at full health |
 
-`presscheck` exists because the same guard appears on a second call site the supervisor could not reach.
-`Level.drop` presses the cell a thrown item landed on only behind a scene test, so headlessly a stone
-dropped on a trap did nothing to it — measured, armed after the drop on four of four seeds. `drop` is
-called from inside the item tree, so there is no supervisor-side fix: pressing the cell would mean
-intercepting every call site. Its two cases pin both halves of the guard that replaced it — the press
-during play, and its absence during generation, which is what the `Dungeon.level != null` half is
-actually for. Reverting the edit fails the first; dropping that half fails the second, so the `:core`
-change cannot quietly become a loosening.
+`presscheck` is the gate for `issues.md` 17 and is **not** in `gates`, because it is red. It runs
+headlessly by hand: `gradle :superintelligence:presscheck`. Its two cases pin the divergence and the
+half of the guard that has to survive any fix — a dropped item fires the trap it landed on, and with
+`Dungeon.level` nulled it does not, which is the state level generation places its starting items in.
+The issue has the measurement and the reasoning.
 
 The fifth case is the question `issues.md` 16 asked, asked directly: the same seed and the same fall
 twice in one process, with other runs churned in between, landing on the same cell of the same floor

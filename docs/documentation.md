@@ -283,9 +283,7 @@ Plus `playbackcheck` in `:desktop`, which drives the rendered viewer with no win
 One gate is deliberately **not** in that list: `presscheck`, run by hand with
 `gradle :superintelligence:presscheck`. It asserts a divergence that is still open — a thrown item does
 not trigger the trap it lands on, because `Level.drop` presses the cell only behind a
-`scene() instanceof GameScene` test that no headless run can satisfy. The fix is an engine change this
-project may make but not commit, so the gate is expected-red until the owner decides; `ENGINE-CHANGES.md`
-§7 has why the obvious one is wrong.
+`scene() instanceof GameScene` test that no headless run can satisfy. It is filed as `issues.md` 17.
 
 `playbackcheck` also plays **the committed corpus** headlessly, which is the headless half of
 `viewcheck` and the only one of the two that can be a gate. That half was added because every other

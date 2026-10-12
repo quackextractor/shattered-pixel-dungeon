@@ -202,46 +202,17 @@ reading exactly like a simulation that consumes no randomness at all.
   change at the point the delta is measured.
 - **`Levitation.detach()` only re-presses the hero's cell when a `GameScene` exists** (`Levitation.java:58`),
   and `Level.drop` only calls `pressCell` under a scene test too (`Level.java:1068`). A gameplay guard
-  keyed on a scene — the same shape as the animation clock above. Both are now covered from the
-  supervisor or by a `:core` edit recorded in the entry below.
+  keyed on a scene — the same shape as the animation clock above.
 
-  **The levitation half is now covered from the supervisor** — `LevelPipeline.runToHeroReady` makes the
+  **The levitation half is covered from the supervisor.** `LevelPipeline.runToHeroReady` makes the
   decision the guard was suppressing and calls the game's own `Chasm.heroFall`, so the outcome matches
-  without `:core` changing.
+  without `:core` changing. The guard itself is still in the game.
 
-  **`Level.drop`'s half has no supervisor-side fix, and the obvious engine change was wrong.** `drop` is
-  called from a dozen places in the item tree, none of them ours, so pressing the cell from the
-  environment would mean intercepting every call site. That leaves the guard in `Level.drop`:
-
-  ```
-  if (Dungeon.level != null && ShatteredPixelDungeon.scene() instanceof GameScene) {
-      pressCell( cell );
-  }
-  ```
-
-  I changed it to `Dungeon.level != null` and called it behaviour-preserving. **It is not, and the reason
-  is worth more than the fix.** The scene test is what separates *gameplay* drops from *scene* drops,
-  and two scene drops are deliberately not gameplay drops:
-
-  | call site | scene | cell pressed |
-  | --- | --- | --- |
-  | `AlchemyScene.java:761,864,1003` | `AlchemyScene` | `Dungeon.hero.pos` — the cell the hero is standing on |
-  | `InterlevelScene.java:815` | `InterlevelScene` | `invPos` — the cell the hero died on, during resurrect |
-
-  Neither pressed before, and both would under the change: crafting while standing in tall grass would
-  trample it (`Level.java:1282`), and resurrect would press the death cell — the same function
-  immediately above deliberately picks a respawn cell with no trap or plant on it. So the scene half is
-  carrying real work, and removing it is a gameplay change to alchemy and resurrection that has nothing
-  to do with the headless trainer.
-
-  **Reverted, and the gate kept out of `gates`.** The divergence is real — a thrown stone lands on a
-  trap and does nothing to it — and the gate is what keeps it visible, but a fix here needs a decision:
-
-  1. **Give the environment a way to say it is in gameplay.** A flag the headless backend sets, which
-     the guard reads alongside the scene test. Correct, and it is new API in the game.
-  2. **Accept the change and audit the two scene paths** — alchemy and resurrect — to decide whether
-     pressing is right for them. Narrow, but it decides gameplay questions the trainer never asked.
-  3. **Leave it.** Thrown items are inert headlessly; traps still trigger when a hero *walks* onto them,
-     through `occupyCell`, which is unguarded.
-
-  `presscheck` asserts the divergence either way and is expected-red until one of these is chosen.
+  **`Level.drop`'s half is open, and is `issues.md` 17 rather than something this file proposes an
+  answer to.** `drop` is called from a dozen places in the item tree, none of them ours, so pressing
+  the cell from the environment would mean intercepting every call site and reproducing the game's own
+  notion of which drops press. The scene half is also carrying real work: it separates *gameplay* drops
+  from *scene* drops, and `AlchemyScene.java:761,864,1003` (onto the cell the hero is standing on) and
+  `InterlevelScene.java:815` (onto the cell the hero died on) are scene drops that must not press.
+  Removing it was tried, built green, and altered alchemy and resurrection in a game that is not this
+  module's; it is reverted. `presscheck` is the gate, it is out of `gates`, and it is red.
