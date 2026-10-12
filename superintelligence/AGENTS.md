@@ -24,6 +24,14 @@ Edit this file, not `instructions.md`. `STATUS.md` records which of these have a
 - DRY, unless it produces an opaque helper module.
 - Introduce a pattern only when it removes real complexity; justify it if the benefit is not obvious.
 
+## Code documentation
+
+- Write no comments in code. Not `//`, not `/* */`, not Javadoc, not license headers, not annotations of prose. Naming carries meaning; a comment restating the line below it is noise.
+- No lengthy docs or prose blocks in source. If a comment is unavoidable, keep it to one short line and only for something the code cannot say: a non-obvious invariant, a workaround for an external quirk, a units or format note.
+- Never a multiline comment block. Never a comment explaining what was changed, why the author was confused, or what the next reader should think about.
+- When existing code carries lengthy docs or comments, delete them as part of the change that touches that code. Replace only what a reader genuinely cannot recover from names and types with one compact line.
+- Do not create extra `.md` files to explain code. Prose belongs in the existing docs, and only when asked.
+
 ## Safety
 
 - Bind SQL/ORM parameters; never build queries by concatenation.
