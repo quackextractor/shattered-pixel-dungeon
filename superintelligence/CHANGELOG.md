@@ -165,18 +165,28 @@ the issue was open — and then lists it again under `### Not done`, correctly, 
 
   Gated by a case that builds a section with one unplayable recording and asserts the header reports
   `1 of 2`, does not say "every one of them is watchable", and that the number matches the rows.
-  **Mutation-tested** by restoring the old sentence, which fails on the contradiction.
-- **185 recordings the trainer had written into temp directories are now in `trainer-replays/`,** in
-  git rather than a reboot away. `ReplayIndex` is append-only and never forgets: on this machine it held
-  **241 directory entries, 220 of which no longer existed**, and the 21 that did held 185 recordings,
-  mostly under `%TEMP%/opencode/*` from earlier runs. They were moved, never overwriting — 14 collided
-  on a seed and took the existing `-r2` convention, so no file was replaced and none was lost. The index
-  is pruned to the one directory that still holds recordings.
 
-  **This puts nine known-unwatchable recordings back in the directory whose job is "recordings you can
-  watch"**, which `issues.md` 15 resolved by deleting them. They are back because they are evidence of
-  what the wire dropped, they are marked as unwatchable in the listing, and they are in version control
-  rather than a temp directory. `issues.md` 15's table is corrected accordingly.
+- **`trainer-replays/` had 185 recordings in it and is now empty and untracked.** Found while closing
+  the catalog faults above: the trainer had written recordings into temp directories across earlier
+  runs, reachable only through `ReplayIndex`, which is append-only and never forgets — on this machine
+  it held **241 directory entries, 220 of which no longer existed**, and the 21 that did held 185
+  recordings under `%TEMP%/opencode/*`. Those were consolidated into `trainer-replays/`, and are now
+  deleted along with the seven that had been committed there.
+
+  **This reverses the "keep the evidence" call in `issues.md` 15 twice over, and the reasoning is
+  worth keeping because the first answer was wrong twice.** Consolidating them answered "a reboot takes
+  evidence with a timer on it" with 5.9 MB in a repository, which protects nothing a second training run
+  does not. The files are reproducible; the catalog finds them the instant any run writes there; what
+  the wire dropped is recorded in `issues.md` 15 and in `CHANGELOG.md` 0.7.0 rather than only in the
+  files. And a directory whose job is "recordings you can watch" was still wrong nine times out of 185,
+  and a label does not stop anybody picking that row.
+
+  The trainer still writes there by default — that is where a run's output belongs and where the catalog
+  reads it — and `.gitignore` keeps the directory out of the repository. **What changed is that a run's
+  output is yours to watch and yours to delete**, which is the right default for 5.9 MB of training
+  artefacts.
+
+  The index is pruned to the one directory that still holds recordings.
 
 ### Added
 

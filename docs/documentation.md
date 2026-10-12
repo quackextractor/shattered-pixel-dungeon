@@ -316,7 +316,7 @@ directory already, so the fix cost one file rather than a second corpus.
 
 Closing the wire is not the same as showing it, though, and the next thing this turned up was that
 `trainer-replays/` was **10 of 10 unplayable** - every file in it predates the fix, so picking anything
-from that section of the catalog ended in a halt. `APR-SLJ-DXM` is now checked in beside them (1514
+from that section of the catalog ended in a halt. `APR-SLJ-DXM` was checked in beside them (1514
 steps, 245 slot-bearing of which 49 are `DROP`), and the catalog labels each recording rather than the
 section:
 
@@ -326,7 +326,9 @@ APR-SLJ-DXM                -80.6  d1   1,500   gen 1
 ```
 
 The nine cannot be repaired: they carry `hp=-1 turn=-1.0 inventory=""` on every step, so the data was
-never written and only a new run records it. They are kept as evidence of what the wire dropped.
+never written and only a new run records it. `trainer-replays/` is now **empty and untracked** - it is
+gitignored and a training run writes there by default - so what the wire dropped is recorded here, in
+`issues.md` 15 and in `CHANGELOG.md` 0.7.0 rather than only in the files.
 
 Three of them are worth singling out, because they reach faults the others structurally cannot:
 

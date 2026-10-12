@@ -409,26 +409,37 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > All five verify and play clean, and at the time **every recording in `trainer-replays/` was
 > watchable** — which is the property the section header claims and, until now, did not have.
 >
-> ### Nine of them are back, and the call below is reversed
+> ### The call above was reversed, then reversed again, and this time for a third reason
 >
-> **Reverted, 0.9.0, and this is a decision not an accident.** The trainer had written **185 recordings
-> into temp directories** across earlier runs — `%TEMP%/opencode/spd-*/replays` and a dozen siblings,
-> reachable only through `ReplayIndex`, which is append-only and had accumulated 241 directory entries of
-> which **220 no longer existed**. Nine of the nine four-field-wire recordings were in that pile. They are
-> now in `trainer-replays/`, and the section header's claim is false again: 9 of 185 are marked
-> `not watchable` and the viewer halts on them at step 1.
+> **Reverted once, 0.9.0.** The trainer had written 185 recordings into temp directories across earlier
+> runs — `%TEMP%/opencode/spd-*/replays` and a dozen siblings, reachable only through `ReplayIndex`,
+> which is append-only and had accumulated 241 directory entries of which **220 no longer existed**. They
+> were moved into `trainer-replays/`, all 185, and the nine four-field-wire recordings came with them.
 >
-> What changed my mind is that the argument above holds only while the choice is binary. Keeping them
-> meant the picker was offering 9 dead ends out of 10; **deleting them meant the recordings this project
-> has actually produced were in a temp directory, which a reboot empties, and the index that pointed at
-> them was 91% dead paths.** A third option existed and was not taken: keep the files, mark them, and say
-> so — which is what the listing has always done per file. Evidence that only survives in a temp directory
-> is evidence with a timer on it, and nine files the viewer cannot play is a label rather than a trap.
+> The argument for deleting them holds only while the choice is binary. Deleting them meant the
+> recordings this project has actually produced were in a temp directory, which a reboot empties.
 >
-> The five fixed-trainer recordings are still there and still verify. The directory now holds **185 files**,
-> of which 170 seeds are unique.
+> **Reversed again, same release.** `trainer-replays/` is now **empty and untracked**, and every one of
+> those 185 files is deleted. Three things settled it, and none of them is "the evidence is worthless":
 >
-> The removed files, for the record (restored in 0.9.0; in git history at `5356a8abb` and `5356a8abb^`):
+> — **They are reproducible.** A trainer run writes them again. Keeping 5.9 MB of recordings in a
+>   repository protects nothing that a second run does not, and the repo's `.gitignore` already said so
+>   by ignoring the directory.
+> — **The evidence was never only the files.** What the wire dropped is recorded here, in this table, in
+>   `CHANGELOG.md` 0.7.0, and in git history — and it is still *observable* through the catalog the moment
+>   any run writes there, because `ReplayIndex` and `defaultDirectories` both find it.
+> — **Nine dead ends is still nine dead ends.** The label is honest, and a label does not stop a person
+>   picking the row. The picker is for finding a run to watch, and a directory whose job is that is
+>   wrong 9 times out of 185.
+>
+> So: the trainer writes to `trainer-replays/` by default, the directory is gitignored, and the
+> repository carries none of them. The recordings a run produces are yours to watch and yours to delete;
+> nothing in the project depends on them being committed.
+>
+> The removed files, for the record (in git history at `5356a8abb`, `5356a8abb^`, and `689770273`):
+>
+> | recording | steps | what was wrong with it |
+> | --- | --- | --- |
 >
 > | recording | steps | what was wrong with it |
 > | --- | --- | --- |

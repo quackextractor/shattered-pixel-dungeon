@@ -741,9 +741,11 @@ signature rather than the section as a whole, because `ReplayIO.readHeader` can 
 parsing every step - and because a blanket sentence is a claim about eleven files, ten of which it got
 right and one of which it condemned wrongly.
 
-**All ten are now gone from the directory**, replaced by five recordings the fixed trainer wrote, so
-that every recording in `trainer-replays/` is watchable. A picker offering nine dead ends out of ten is
-worse than no picker: the label made it honest and honest is not the same as useful.
+**All ten are gone from the directory**, and `trainer-replays/` is now **empty and untracked** — gitignored,
+with a training run writing there by default. A picker offering nine dead ends out of ten is worse than no
+picker: the label made it honest and honest is not the same as useful. The answer was tried the other way
+twice — consolidate everything in, then check it all in — and 5.9 MB of training artefacts in a repository
+protects nothing a second run does not. See `issues.md` 15.
 
 **`MSU-OTL-OAT` was the one file the listing got wrong**, and it is worth naming rather than leaving:
 it carries bindings, so the header scan passed it, and nothing in the file records *when* they were
@@ -850,9 +852,9 @@ built from one of them **passes when the fix is reverted**, which it did when tr
                                 245 slot-bearing steps, of which 49 are DROP
   ```
 
-  That is `issues.md` 15's headline claim, closed. `APR-SLJ-DXM` is checked into `trainer-replays/`, so
-  the evidence outlives the temp directory a reboot empties — and so the trainer section of the catalog
-  is not 10 of 10 unplayable.
+That is `issues.md` 15's headline claim, closed. `APR-SLJ-DXM` was checked into `trainer-replays/` so
+the evidence would outlive the temp directory a reboot empties; it is untracked again now, and `issues.md`
+15 records what the run proved.
 - Mutation-tested five ways, each reverted after: moving `onDecision` after `env.step` fails
   `collectcheck`; removing `Quickslots.prepare` from `verify` fails `collectcheck` and `verifycheck`;
   restoring `Dungeon.quickslot.reset()` in `restore` fails `slotcheck`; blanking the fixture's `DROP`
