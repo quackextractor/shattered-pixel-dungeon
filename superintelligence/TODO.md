@@ -682,16 +682,27 @@ missing `TALENT` action is what is keeping them dormant.
 
 ### Two recordings do not verify
 
+**Now `issues.md` 16, which has the measurement and the four refuted hypotheses.** Summarised here because
+this entry is where the run was read.
+
 `GRB-YWQ-ZJH` (score +844, floor 3) and `LNL-PDP-CJK` (score +1646, floor 2) diverge at 153 of 189 and
 61 of 88 respectively. **Every other one of the 106 verifies.**
 
 These are the two best runs the run produced - the only positive scores in it - and they are the two
 that walk furthest, which is the pattern this whole project keeps hitting: a fault only becomes reachable
 once something works. Both diverge on an ordinary WORLD action (`MOVE_S`, `INTERACT`) rather than on
-anything exotic, which points at the floor transition or at a mob type floor 2 introduces rather than at
-the reward change.
+anything exotic.
 
-**Not diagnosed, and recorded rather than guessed at.** `verify` names the step; it does not yet say why.
+**Diagnosed as far as measurement allows, and no further.** The hero stands on the same cell on floor 2 in
+both, the floor's generation is seeded by `seedForDepth(depth, branch)` with `branch=0` on both, and the
+special-room pools and `pitNeededDepth` are proven seed-deterministic by
+`resetcheck.checkSpecialRoomPoolsDoNotDependOnOrder`. So floor 2 differs, and nothing measured explains
+why.
+
+A control that reproduces perfectly - 3312 steps, **383 floor transitions**, both sides traced, all 368
+`specials` records identical - says the divergence is **not** seed-determined and needs a worker that has
+already run other episodes. `--trace-world` now traces the recording path so a failing recording can be
+diffed against its replay; the last obstacle is that the trace key is per worker rather than per run.
 
 ---
 ## 1.12 Every replay the trainer wrote was missing five of its nine fields - FIXED

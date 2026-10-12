@@ -428,3 +428,96 @@ Certain items do not take up inventory space. Gold coins, keys, energy crystals,
 > full-length 1508-step recording that takes ~4 minutes at gate speed. The gate reported *"the viewer
 > never stopped"* for runs that had stopped having applied **every** step — a false failure whose message
 > names the opposite of what happened. Now 300 s, with the measurement recorded.
+
+---
+
+16. Two trainer recordings diverge on a chasm fall, and floor 2 is generated differently — **OPEN**,
+    measured, cause not yet identified.
+
+    Found while reading the recordings of a 150-generation run. Two of the 106 fail `verify`, and they
+    are the two best-scoring ones:
+
+    ```
+    GRB-YWQ-ZJH   score  +844   floors 3   diverges at step 153 of 189
+    LNL-PDP-CJK   score +1646   floors 2   diverges at step  61 of  88
+    ```
+
+    The other 104 verify. As with `issues.md` 15, **the two failures are the two runs that walk
+    furthest** — the pattern this project keeps hitting, where a fault is only reachable once something
+    works.
+
+    ### The measurement
+
+    `LNL-PDP-CJK`, around the divergence. Both sides replayed; the world agrees cell for cell right up to
+    step 60:
+
+    ```
+    recording  step 59  MOVE_E    1235 -> 1236     onto a chasm
+               step 60  WAIT      1236 -> 937      the fall lands him on floor 3
+               step 61  INTERACT           937
+    replay     step 59  MOVE_E    1235 -> 1236
+               step 60  WAIT      1236 -> 1236     nothing happens
+               step 61  INTERACT          1203
+    ```
+
+    `verify` says: `position: replayed 1203, recorded 937`. **Same seed, same floor number, `branch=0`
+    on both, same cell, same clock — and a different floor.**
+
+    ### What it is not, each refuted by changing the code and re-running
+
+    | Candidate | Verdict |
+    | --- | --- |
+    | `LevelPipeline.handleFall` hardcodes `fallCell(true)`, ignoring `InterlevelScene.fallIntoPit` | **wrong** — changed nothing |
+    | `clearSwitchRequest` leaves `InterlevelScene.mode` at `FALL`, so the next descent is misread | **wrong** — changed nothing |
+    | `SpecialRoom.runSpecials` / `pitNeededDepth` depend on run history | **wrong** — gated, and green |
+    | Reseeding the base generator before `initForRun` | **wrong** — broke all 19 corpus recordings, so the old order is self-consistent |
+
+    The third is the one the two recordings were being blamed on, and it is now a gate:
+    `checkSpecialRoomPoolsDoNotDepindOnOrder` runs each seed twice with the others in between and compares
+    `runSpecials`, `floorSpecials` **and** `pitNeededDepth`. It passes. Those are a function of the seed.
+
+    ### The control, which is the useful part
+
+    A recording made by one worker in one episode, with **both** sides traced:
+
+    ```
+    recording steps        368
+    record-side records    368
+    replay-side  records   368
+    differing records        0
+    ```
+
+    A run that descends **383 times** reproduces perfectly, with the special-room pools identical at every
+    step on both sides. So the mechanism works, the pools are deterministic, and **the divergence is not
+    seed-determined** — it needs a worker that has already run other episodes.
+
+    That is the whole of what is known. Everything in the table above is refuted; nothing in it explains
+    the two failures.
+
+    ### Getting to a clean failing pair
+
+    `WorldSnapshot` now records `runSpecials`/`floorSpecials` per step, and
+    `--trace-world <file>` makes every worker trace the **recording** path, so a recording and its replay
+    can be diffed rather than merely compared. Two obstacles were found and fixed on the way, both of
+    which had produced wrong readings first:
+
+    - The trace path was shared, so six episodes landed in one file — 1071 records for a 190-step
+      recording, and record 0 was a *different episode* from the one being compared.
+    - It is now keyed by an episode counter, which is **per worker**, so two workers tracing the same
+      seed still collide: a 125-step recording produced 188 records.
+
+    One counter issued by the trainer rather than per worker is the last thing standing between this
+    instrument and a clean failing pair. That is where to pick it up.
+
+    ### Also wrong along the way, and worth recording because it cost time
+
+    I read `tier=Floor` in the world trace as "not a chasm". **It is not evidence of anything**:
+    `Level` stores chasms in `pit[]`, a flag array entirely separate from `map[]` (`Level.java:878`),
+    so a pit cell renders as an ordinary Floor. Worse, a pit cell is exactly the "plain cell" shape the
+    trace's elision filter drops — walked, empty, passable, no heap or trap or transition — so the one
+    feature that can put the hero a floor down was **absent from the record entirely**. `pit[]` is now
+    recorded and pit cells are exempted from elision; without that, "the two floors differ" was an
+    assumption rather than a measurement.
+
+    I also counted 8522 "chasm cells" in a replay trace, which was records across steps rather than
+    distinct cells, and read it as the floor having plenty of chasms. It does not mean that.
