@@ -151,22 +151,23 @@ next chasm on depth 2 put the environment straight back into `MENU` with the gam
 is the game's own behaviour and it was not changed; it is named here because it is a per-crossing cost
 rather than a once-per-run one, and the -15.00 above is per crossing for the same reason.
 
-**`Levitation.detach()` still does not re-check the landing cell headlessly.** The game guards that call
-on a `GameScene` (`Levitation.java:58`), and `Level.occupyCell`'s own pit check sits behind
-`if (!ch.flying)` and is only reached when a hero *enters* a cell. Measured, with the hero on a pit cell
-while flying — the state a levitation crossing produces:
+**`Levitation.detach()` is guarded on a `GameScene`, and the pipeline now makes the decision that guard
+was suppressing.** Measured: the hero stood on a chasm cell at 391 with `flying` false and 20 health on
+depth 1 and stayed there for the rest of the episode — a state the game cannot produce.
 
-```
-hero placed on pit 197 while flying: onPit=true flying=true depth=1
-after levitation.detach():           onPit=true flying=false depth=1 alive=true
-then walked MOVE_SW off it:          pos 197 -> 232, depth=1 (still no fall)
-```
+The fix is supervisor-side and calls the game's own `Chasm.heroFall`, so the landing cell, the damage and
+the fall flag all stay the game's; what is added is only the decision the game would have made inside a
+renderer. It sits at the top of `LevelPipeline.runToHeroReady`'s drain rather than after a scheduler
+step, because the buff ends *inside* `Actor.headlessStep()` and the following iteration is the one where
+the hero is grounded on a chasm with the drain still running — checking only after a step misses it,
+since the hero becomes ready on that same step. Two guards, both the game's own preconditions: the hero
+has to be on the level being pressed, and off a `FeatherBuff` — an elixir of feather fall is the one
+state in which `Chasm.heroLand` returns early and a hero is *meant* to be standing on a chasm.
 
-So the hero ends up **standing on the chasm cell**, and walking off it does not drop him either. In the
-game that sequence falls him a floor. That is a `:core` method with a `:core` guard on it, changing it
-changes gameplay, and it is left alone under the engine boundary; `ENGINE-CHANGES.md` §7 is where it is
-recorded. It is bounded — levitation is an elixir, not a fixture, so it needs one to reach — but it is a
-real divergence and it is the last one on this path.
+`Level.drop`'s `pressCell` has the same guard and is still not pressed, so a thrown or dropped item
+still never triggers a trap headlessly. That one has no supervisor-side equivalent: `drop` is called from
+inside the item tree, and knowing which cell was pressed would mean intercepting every call. It needs
+the `:core` change this one avoided, so it is recorded at `ENGINE-CHANGES.md` §7 rather than fixed here.
 
 ---
 

@@ -2,6 +2,9 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Levitation;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
@@ -43,10 +46,10 @@ import java.util.List;
  */
 public class FallCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 6;
 
 	/** Seeds searched for a floor with a chasm the hero can be put next to. */
-	private static final String[] SEEDS = {
+	static final String[] SEEDS = {
 			"FALLCHECK-A", "FALLCHECK-B", "FALLCHECK-C", "FALLCHECK-D",
 			"FALLCHECK-E", "FALLCHECK-F", "FALLCHECK-G", "FALLCHECK-H"
 	};
@@ -62,6 +65,7 @@ public class FallCheck {
 		checkAnEpisodeDoesNotInheritTheLastEpisodesFall();
 		checkWalkingIntoAChasmDoesNotTakeTheProcessDown();
 		checkTheSameFallTwiceIsTheSameFall();
+		checkLevitationEndingOverAChasmDropsTheHero();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     chasm falls: " + CHECKS + " checks passed" );
@@ -465,6 +469,132 @@ public class FallCheck {
 		}
 
 		System.out.println( "  the same fall twice is the same fall: " + after );
+	}
+	/**
+	 * A levitation that expires over a chasm drops the hero.
+	 *
+	 * <p>The state is reached the way the game reaches it: {@code Hero.getCloser} lets a flying hero
+	 * step onto a pit while {@code Levitation.detachesWithinDelay} is false, and {@code Char.move}'s
+	 * {@code Level.occupyCell} skips the pit branch behind {@code if (!ch.flying)}. So the hero is
+	 * standing on a chasm cell with {@code flying} true, and the only thing that ever presses that
+	 * cell again is {@code Levitation.detach()} - which asks for a {@code GameScene} and so never runs
+	 * headlessly.
+	 *
+	 * <p>Reached by giving the buff its full duration, walking the hero onto the pit, then grounding
+	 * him the way the expiry grounds him - clearing {@code flying} and detaching. Both halves are the
+	 * game's. Neither {@code Chasm.heroFall} nor {@code handleFall} is called here: the fall has to
+	 * come out of the pipeline noticing the state, which is the whole point of the case. Everything
+	 * after it is the environment reacting on its own.
+	 *
+	 * <p>Mutation-tested by reverting the pipeline's check, which leaves the hero on depth 1 at full
+	 * health on the chasm cell.
+	 */
+	private static void checkLevitationEndingOverAChasmDropsTheHero(){
+		SPDEnv env = env();
+
+		for (String seed : SEEDS){
+			env.reset( seed, HeroClass.WARRIOR );
+
+			int[] beside = new int[1];
+			int pit = pitBeside( beside );
+			if (pit < 0) continue;
+
+			Action into = toward( beside[0], pit );
+			if (into == null ) continue;
+
+			Buff.affect( Dungeon.hero, Levitation.class, Levitation.DURATION );
+
+			Dungeon.hero.pos = beside[0];
+			Dungeon.hero.curAction = null;
+			Dungeon.hero.ready = false;
+
+			env.step( into, 0 );
+
+			if (Dungeon.hero.pos != pit || !Dungeon.hero.flying){
+				//he did not end up flying over the chasm, so this seed cannot test the case
+				continue;
+			}
+
+			//the expiry, as Levitation.detach begins: flying cleared, then the buff detached
+			Levitation lev = Dungeon.hero.buff( Levitation.class );
+			lev.detach();
+
+			if (Dungeon.hero.flying || !Dungeon.level.pit[ Dungeon.hero.pos ]){
+				fail( seed + ": the levitation ended but the hero is on cell " + Dungeon.hero.pos
+						+ " with flying=" + Dungeon.hero.flying + ", so the state under test never "
+						+ "existed and this case measured nothing." );
+				return;
+			}
+
+			int depth = Dungeon.depth;
+			env.step( Action.WAIT, 0 );
+
+			if (Dungeon.depth != depth + 1){
+				fail( seed + ": the hero was standing on the chasm at " + pit + " when his levitation "
+						+ "ran out, and is still on depth " + Dungeon.depth + " at cell "
+						+ Dungeon.hero.pos + " on " + Dungeon.hero.HP + " health. In the game this is a "
+						+ " fall: Levitation.detach() clears flying and presses the cell,"
+						+ " Level.occupyCell's pit branch calls Chasm.heroFall, and the hero lands a"
+						+ " floor down. It asks for a GameScene, so headlessly nothing ever presses that"
+						+ " cell again - and walking off it does not either, because the pit branch is"
+						+ " behind if (!ch.flying) and is only reached on entering a cell." );
+				return;
+			}
+
+			System.out.println( "  levitation ending over a chasm drops the hero: " + seed
+					+ ", depth " + depth + " -> " + Dungeon.depth + " on "
+					+ Dungeon.hero.HP + " health" );
+			return;
+		}
+
+		fail( "no seed let a hero fly onto a chasm and keep flying, so this case measured nothing." );
+	}
+
+	/**
+	 * Burns one turn of engine time with the hero on {@code pit}.
+	 *
+	 * <p>The hero has to keep moving for the buff to tick — {@code WAIT} costs him nothing — so this
+	 * cannot hold him still. It spends a real turn and then puts him back on the chasm, which is the
+	 * state the buff expiring over a chasm is supposed to produce.
+	 *
+	 * <p>An earlier version tried to do this with movement alone, by walking back and forth. Measured,
+	 * it did not work: the mask offers eight directions and the hero drifted further from the pit every
+	 * few turns, so he was somewhere else entirely by the time the buff ran out — 20 turns on, 85
+	 * cells from where he started. Pinning is honest here because the state under test is exactly
+	 * "standing on a chasm when levitation ends", and how he got there is covered by the first case.
+	 */
+	private static void burnTurnOnPit( SPDEnv env, int pit ){
+		Action mv = null;
+		for (Action a : Action.values()){
+			if (a.directional() && env.actionMask()[ a.index ] != 0f ){ mv = a; break; }
+		}
+		env.step( mv == null ? Action.WAIT : mv, 0 );
+
+//Back onto the chasm, unless he fell, died, or left it for a reason of its own.
+		//
+		//Through Char.move rather than by writing Dungeon.hero.pos. Assigning pos moves the hero without
+		//moving anything that tracks him — a mob whose sprite was linked to the old cell keeps pointing
+		//at it, and Mob.act dereferences that sprite, so an earlier version of this fixture died on a
+		//NullPointerException inside Rat.act and said nothing about the chasm. handleCell is not usable
+		//either: it resolves a target into an action and a chasm is not passable.
+		//
+		//travelling=false because the fixture is seating him, not walking him there. The game reaches
+		//this state the same way, through Hero.getCloser, which allows a flying hero onto a pit only
+		//while Levitation.detachesWithinDelay is false.
+		if (!env.running() || Dungeon.hero == null || !Dungeon.hero.isAlive()) return;
+		if (Dungeon.depth != 1 || !Dungeon.hero.flying) return;
+		if (Dungeon.hero.pos == pit) return;
+		if (Actor.findChar( pit ) != null) return;
+
+		Dungeon.hero.move( pit, false );
+	}
+
+	/** The one action that walks from {@code from} onto {@code to}, or null if they are not adjacent. */
+	private static Action toward( int from, int to ){
+		for (Action a : Action.values()){
+			if (a.directional() && from + a.dx + a.dy * Dungeon.level.width() == to) return a;
+		}
+		return null;
 	}
 
 	/** Depth, cell, health, clock and floor shape, as one comparable string. */

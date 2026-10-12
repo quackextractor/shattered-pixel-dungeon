@@ -128,8 +128,9 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   asked the question and then had the answer thrown away. The prompt is now aged once per environment
   step (once per frame, the approximation `ReplayPlayer` already makes about a recorded step) and the
   game's own `hide()` closes it, so the agent asks, answers, and ends up a floor down — for 13 steps and
-  -15.00, against a descent at +1800.00. `issues.md` 16; `fallcheck` and `dialogcheck` gate it, 5 and 3
-  cases.
+  -15.00, against a descent at +1800.00. And a levitation expiring over a chasm now drops the hero, which the
+  game's `Levitation.detach` does not do without a renderer. `issues.md` 16; `fallcheck` and
+  `dialogcheck` gate it, 6 and 3 cases.
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
@@ -207,7 +208,7 @@ something.
 | Area | State |
 | --- | --- |
 | Headless engine (renderer bypassed, single-threaded scheduler) | Verified, reproducible across processes |
-| Level pipeline, floor transitions, chasm falls | Verified - descending and ascending, in both directions, with the hero's landing act (`transitioncheck`, 9 cases). **A chasm fall was being dropped entirely** - it is the one transition that carries no `LevelTransition`, and `handleTransition` tested for one first, so `Transition.FALL` and `handleFall()` were unreachable and a hero put into a chasm stayed where he was. **And the agent could not choose to fall at all**: the game's own "jump?" prompt gated its answer on a clock only a rendered frame loop advances, and the environment threw the answer away. `fallcheck` is a gate, 5 cases, and `dialogcheck` is a gate, 3 more |
+| Level pipeline, floor transitions, chasm falls | Verified - descending and ascending, in both directions, with the hero's landing act (`transitioncheck`, 9 cases). **A chasm fall was being dropped entirely** - it is the one transition that carries no `LevelTransition`, and `handleTransition` tested for one first, so `Transition.FALL` and `handleFall()` were unreachable and a hero put into a chasm stayed where he was. **And the agent could not choose to fall at all**: the game's own "jump?" prompt gated its answer on a clock only a rendered frame loop advances, and the environment threw the answer away. `fallcheck` is a gate, 6 cases, and `dialogcheck` is a gate, 3 more |
 | Action space, action masking, menus, targeting | Verified |
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified, **with a known limit** - `env.max_slots=32` against an engine ceiling of 96, so a full inventory is silently truncated. `TODO.md` §0.8 |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process. `verify` also resolves a recorded slot index against its recorded quickslot bindings, so it and the viewer cannot disagree about a recording and both be right |

@@ -102,7 +102,7 @@
 | **`./gradlew :superintelligence:gates`** | Master aggregator running all 22 automated gate checks across all modules. | **All 22 gates pass cleanly** in ~22 seconds. |
 | **`./gradlew :superintelligence:run --args="verify <file.replay>"`** | Headless re-execution of a recorded replay through `ActionMapper` & `LevelPipeline`, resolving each recorded slot index against its recorded quickslot bindings - the same `Quickslots.prepare` the viewer calls. | Replays trajectory to completion, matching recorded position, HP, turns, and inventory. Exits 3 rather than 0 on a recording whose slot indices cannot be resolved at all. |
 | **`transitioncheck` (`:superintelligence`)** | Drives real descents **and** an ascent through `Level.activateTransition`, and asserts the hero's first action on the new floor is not swallowed by the act where the floor's mobs notice him. 9 cases, mutation-tested. | Depth changes in both directions, the episode continues, the engine clock restarts with the floor, and the agent's first action there moves the hero. |
-| **`fallcheck` (`:superintelligence`)** | Drives a real chasm fall through `Level.occupyCell` - the transition that carries **no** `LevelTransition`, so `curTransition` is null on it by construction. 5 cases, each mutation-tested. | The fall lands the hero a floor down, alive, on a restarted clock, and the landing costs health the way `InterlevelScene.fall()` costs it; the hand-off leaves `InterlevelScene.mode` and `curTransition` clear, so the next episode's ordinary descent is a descent; walking toward a chasm asks the game's own question instead of throwing; and the same fall twice in one process, with other runs in between, lands on the same cell of the same floor. |
+| **`fallcheck` (`:superintelligence`)** | Drives a real chasm fall through `Level.occupyCell` - the transition that carries **no** `LevelTransition`, so `curTransition` is null on it by construction. 6 cases, each mutation-tested. | The fall lands the hero a floor down, alive, on a restarted clock, and the landing costs health the way `InterlevelScene.fall()` costs it; the hand-off leaves `InterlevelScene.mode` and `curTransition` clear, so the next episode's ordinary descent is a descent; walking toward a chasm asks the game's own question instead of throwing; the same fall twice in one process, with other runs in between, lands on the same cell of the same floor; and **a levitation that expires over a chasm drops the hero**, which `Levitation.detach` does not do headlessly. |
 | **`dialogcheck` (`:superintelligence`)** | The `WindowBridge` surface: a dialog the game opened, and an answer the agent gave it. 3 cases, each mutation-tested. | The game's own "jump?" prompt is reached, aged, answered, and closes itself, and the agent ends up a floor down; a dialog the game declines survives the answer and one it accepts closes; and a dialog raised *during* a turn is reported in that turn. |
 | **`paritycheck` (`:superintelligence`)** | Records a sweep of seeds x hero classes in one process, then verifies each recording twice - once immediately, once after the whole sweep has run in between. | Every recording replays exactly, both times. |
 | **`playbackcheck` (`:desktop`)** | Drives `ReplayPlayer` logic headlessly without UI or display server. Covers the player's own logic only, and plays the committed corpus. | Faithful replays pass; altered steps (HP, position, turn, quickslots) fail at exact step; playing a death recording leaves no `bones.dat` behind; every committed recording plays **every step**; a recording whose bindings were never written is refused *at* the first step that needed them, not after playing; and a death landing on the **final** recorded step still plays that step, which the corpus could not reach until `duelist-death-last.replay` was added. 23 cases. |
@@ -213,7 +213,7 @@ NullPointerException: cannot invoke "SmartTexture.uvRect" because "this.texture"
   at Worker.serve(...)                    <- nothing between these two catches it
 ```
 
-`fallcheck` drives both, and each of its five cases was reverted-and-refused in turn:
+`fallcheck` drives both, and each of its six cases was reverted-and-refused in turn:
 
 | Reverted | Case that refuses it |
 | --- | --- |
@@ -221,6 +221,7 @@ NullPointerException: cannot invoke "SmartTexture.uvRect" because "this.texture"
 | `Buff.affect(hero, Chasm.Falling.class)` removed from `handleFall` | `landing hurts` |
 | `InterlevelScene.mode = null` removed from `clearSwitchRequest` | `a fall leaves no hand-off behind` |
 | the null guard removed from `Image`'s five-argument constructor | `walking into a chasm does not take the process down` |
+| the pipeline's standing-on-a-chasm check removed | `levitation ending over a chasm drops the hero`, with the hero left on the chasm cell at full health |
 
 The fifth case is the question `issues.md` 16 asked, asked directly: the same seed and the same fall
 twice in one process, with other runs churned in between, landing on the same cell of the same floor

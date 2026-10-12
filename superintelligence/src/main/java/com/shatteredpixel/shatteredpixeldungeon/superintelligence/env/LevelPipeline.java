@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.SPDSettings;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
+import com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessSprite;
@@ -219,6 +220,43 @@ public class LevelPipeline {
 			}
 
 			attachLateSprites();
+
+			//A hero left standing on a chasm falls, and this is the game's own rule rather than one of
+			//ours. Level.occupyCell presses a cell and its pit branch calls Chasm.heroFall; the game
+			//reaches that press for a cell somebody is *already on* through Levitation.detach(), which
+			//clears flying and re-presses the cell the hero is standing on.
+			//
+			//That detach asks for a GameScene, so headlessly the only thing that ever presses an occupied
+			//cell never runs — and walking off the chasm does not reach it either, because the pit branch
+			//is behind `if (!ch.flying)` and is only entered when a character moves *into* a cell. So a
+			//hero whose levitation expires over a chasm stands there for the rest of the episode, which is
+			//a state the game cannot produce. Measured on FALLCHECK-A: the hero flew onto the chasm at
+			//391, the buff ran out, and he was still on depth 1 on that pit cell at full health.
+			//
+			//Checked here, after the late sprites and before the scheduler step, because that is where the
+			//state exists: the buff ends *inside* Actor.headlessStep(), and the following iteration is the
+			//one where the hero is grounded on a chasm with the drain still running. Checking only after a
+			//step misses it — the hero becomes ready on that same step and the loop returns.
+			//
+			//The call is the game's, so the landing cell, the damage and the fall flag all stay the game's;
+			//what is added is only the decision the game would have made inside a renderer, which is the
+			//same kind of thing handleTransition already does when it reads InterlevelScene.mode.
+			//
+			//Both guards are the game's own preconditions rather than new rules. The hero has to be on the
+			//level being pressed — Chasm.heroFall reads Dungeon.level, and a hero mid-transition briefly
+			//stands on a level that is no longer current — and he has to be off a FeatherBuff, because
+			//Chasm.heroLand returns early for an elixir of feather fall, and that is the one state in
+			//which a hero is meant to be standing on a chasm.
+			if (Dungeon.level != null
+					&& Dungeon.hero.pos >= 0
+					&& Dungeon.hero.pos < Dungeon.level.length()
+					&& Dungeon.level.pit[ Dungeon.hero.pos ]
+					&& !Dungeon.hero.flying
+					&& Dungeon.hero.buff(
+							com.shatteredpixel.shatteredpixeldungeon.items.potions.elixirs.ElixirOfFeatherFall.FeatherBuff.class ) == null ){
+				Chasm.heroFall( Dungeon.hero.pos );
+				return Outcome.TRANSITION;
+			}
 
 			//Give the scheduler a step before testing readiness.
 			//

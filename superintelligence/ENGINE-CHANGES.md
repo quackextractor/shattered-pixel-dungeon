@@ -201,10 +201,18 @@ reading exactly like a simulation that consumes no randomness at all.
   runs, so animation timing remains frame-rate dependent and a future timing fault will need an engine
   change at the point the delta is measured.
 - **`Levitation.detach()` only re-presses the hero's cell when a `GameScene` exists** (`Levitation.java:58`),
-  so headlessly a hero whose levitation expires *over* a pit does not fall until he steps off it and back
-  on — and stepping off it does not drop him either, because `Level.occupyCell`'s pit check is behind
-  `if (!ch.flying)` and is only reached when a character *enters* a cell. Measured, with the hero on a
-  pit cell while flying: `detach()` leaves him `onPit=true flying=false depth=1` alive, and a following
-  move off the cell lands him on depth 1 still. A gameplay guard keyed on a scene — the same shape as the
-  animation clock above, and the same decision: it changes gameplay, so it is left alone under the engine
-  boundary rather than changed. Bounded, in that levitation is an elixir rather than a fixture.
+  and `Level.drop` only calls `pressCell` under the same test (`Level.java:1068`). Headlessly, a hero
+  whose levitation expires over a pit does not fall — measured: he stands on the pit cell at 391 with
+  `flying` false and 20 health and stays there for the rest of the episode. Walking off it does not
+  drop him either, because `Level.occupyCell`'s pit check is behind `if (!ch.flying)` and is only
+  reached when a character *enters* a cell.
+
+  **The levitation half is now covered from the supervisor** — `LevelPipeline.runToHeroReady` makes the
+  decision the guard was suppressing and calls the game's own `Chasm.heroFall`, so the outcome matches
+  without `:core` changing. `Level.drop`'s half is not, and is the real gap: `drop` is called from
+  inside the item tree, so pressing the cell would mean intercepting every call, and headlessly **every
+  thrown or dropped item therefore never triggers a trap, enters a door or fills a well**. A gameplay
+  guard keyed on a scene, which is the same shape as the animation clock above and the same decision —
+  it changes gameplay, so it is recorded rather than changed. Note that `Level.drop`'s own chasm check
+  thirty lines above the guard is *not* guarded and does fire headlessly, so the file is already
+  internally inconsistent about whether pressing matters.

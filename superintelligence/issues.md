@@ -616,13 +616,33 @@ then walked MOVE_SW off it:          pos 197 -> 232, depth=1 (still no fall)
 
 So the hero stands *on* the chasm and walking off it does not drop him either —
 `Level.occupyCell`'s pit check is behind `if (!ch.flying)` and is only reached on entering a cell. In
-the game that sequence falls him. `:core` guard, `:core` method, gameplay change, so left alone under
-the engine boundary and recorded at `ENGINE-CHANGES.md` §7; bounded, in that levitation is an elixir
-rather than a fixture.
+the game that sequence falls him.
+
+**Fixed on the supervisor side, without touching `:core`.** The agent is exactly the party that can
+make this decision: it already decides when to service a switch request, and this is the same decision
+the game makes inside a renderer. `LevelPipeline.runToHeroReady` notices a hero standing on a chasm with
+`flying` false and calls the game's own `Chasm.heroFall`, so the landing cell, the damage and the fall
+flag stay the game's. Measured, same state both ways:
+
+```
+without the check:  depth 1, pos 391, 20 health, still on the chasm
+with the check:     depth 2, pos 759, 15 health
+```
+
+It runs at the top of the drain rather than after a scheduler step, because the buff ends *inside*
+`Actor.headlessStep()` and the next iteration is the one where the hero is grounded with the drain still
+running — checking only after a step misses it, because the hero becomes ready on that same step. Two
+guards, both the game's own preconditions: the hero has to be on the level being pressed, and off a
+`FeatherBuff`, since an elixir of feather fall is the one state in which `Chasm.heroLand` returns
+early and a hero is *meant* to be standing on a chasm.
+
+`Level.drop`'s `pressCell` carries the same guard and is still not pressed, so a thrown or dropped item
+still never triggers a trap headlessly. That one has no supervisor-side equivalent — `drop` is called
+from inside the item tree — so it is recorded at `ENGINE-CHANGES.md` §7 rather than fixed here.
 
 ### What is gated, and what it refuses
 
-`gradle :superintelligence:fallcheck`, five cases, each reverted and refused in turn:
+`gradle :superintelligence:fallcheck`, six cases, each reverted and refused in turn:
 
 | case | fails when |
 | --- | --- |
@@ -631,6 +651,7 @@ rather than a fixture.
 | a fall leaves no hand-off behind | `InterlevelScene.mode = null` is dropped from `clearSwitchRequest` |
 | walking into a chasm does not take the process down | the null guard is dropped from `Image` |
 | the same fall twice is the same fall | the fall does not happen at all — so the case refuses to compare a fall with itself |
+| levitation ending over a chasm drops the hero | the pipeline's standing-on-a-chasm check is removed, leaving the hero on the chasm cell at full health |
 
 and `gradle :superintelligence:dialogcheck`, three more, for the question rather than the fall:
 

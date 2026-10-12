@@ -146,7 +146,7 @@ records, which is the same class of change as re-pricing `STALLED`.
 
 ### Added
 
-- **`gradle :superintelligence:fallcheck`**, a gate, five cases. It drives a real fall through
+- **`gradle :superintelligence:fallcheck`**, a gate, six cases. It drives a real fall through
   `Level.occupyCell` — the call `Char.move` makes and the one `Chasm.heroLand` makes — so it tests the
   fall rather than a method the gate called.
 
@@ -157,6 +157,7 @@ records, which is the same class of change as re-pricing `STALLED`.
   | a fall leaves no hand-off behind | `InterlevelScene.mode = null` is dropped from `clearSwitchRequest` |
   | walking into a chasm does not take the process down | the null guard is dropped from `Image` |
   | the same fall twice is the same fall | the fall does not happen, so the case refuses to compare a fall with itself |
+| levitation ending over a chasm drops the hero | the pipeline's standing-on-a-chasm check is removed (1) |
 
   Each was reverted and the gate re-run; the first was refused by three cases and the rest by one each.
   The fifth is `issues.md` 16's question asked directly — the same seed and the same fall twice in one
@@ -180,37 +181,46 @@ records, which is the same class of change as re-pricing `STALLED`.
 
 ### Not done
 
+- **A hero left standing on a chasm falls, and the agent was the only thing that could make that
+  happen.** `Levitation.detach()` clears `flying` and presses the cell the hero is on; the press goes
+  through `Level.occupyCell`'s pit branch to `Chasm.heroFall`. That detach asks for a `GameScene`, so
+  headlessly the only thing that ever presses an *occupied* cell never ran — and walking off the chasm
+  did not reach it either, because the pit branch is behind `if (!ch.flying)` and is only entered when a
+  character moves *into* a cell. Measured: hero standing on the chasm at 391 with `flying` false and 20
+  health, depth 1, and stayed there for the rest of the episode — a state the game cannot produce.
+
+  Fixed in the pipeline rather than in `:core`. The call is the game's, so the landing cell, the damage
+  and the fall flag all stay the game's; what is added is the *decision* the game would have made inside
+  a renderer, which is the same kind of thing `handleTransition` already does when it reads
+  `InterlevelScene.mode`. It runs at the top of `LevelPipeline.runToHeroReady`'s drain — after the late
+  sprites, before the scheduler step — because the buff ends *inside* `Actor.headlessStep()` and the
+  following iteration is the one where the hero is grounded on a chasm with the drain still running.
+  Checking only after a step misses it: the hero becomes ready on that same step and the loop returns.
+
+  Both guards are the game's own preconditions, not new rules: the hero has to be on the level being
+  pressed, and he has to be off a `FeatherBuff` — an elixir of feather fall is the one state in which
+  `Chasm.heroLand` returns early and a hero is *meant* to be standing on a chasm.
+
 - **`Mob.holdAllies` is still not called from `handleFall`.** `InterlevelScene.fall` opens with it and it
   still uses `Collections.shuffle` (`ENGINE-CHANGES.md` §7 has it open), so copying it would put an
   unseeded draw into every fall in the trainer and undo reproducibility for the sake of a behaviour no
   policy in this project can reach. When the shuffle is seeded this gets the call with it.
 
-- **`Levitation.detach()` still does not re-check the landing cell headlessly**, because the game guards
-  that call on a `GameScene` (`Levitation.java:58`). Measured, with the hero placed on a pit cell while
-  flying — which is what a levitation crossing produces:
-
-  ```
-  hero placed on pit 197 while flying: onPit=true flying=true depth=1
-  after levitation.detach():           onPit=true flying=false depth=1 alive=true
-  then walked MOVE_SW off it:          pos 197 -> 232, depth=1 (still no fall)
-  ```
-
-  So a hero whose levitation expires over a chasm ends up **standing on the chasm cell**, and walking
-  off it does not make him fall either — `Level.occupyCell`'s pit check is behind `if (!ch.flying)` and
-  is only reached when the hero *enters* a cell, never when he is already standing on one. That is a
-  `:core` guard on a `:core` method, it changes gameplay, and it is left alone under the engine boundary
-  in `AGENTS.md`; `ENGINE-CHANGES.md` §7 is where it is recorded. It is a real divergence from the game,
-  where the same sequence drops him, and it is bounded: levitation is an elixir, not a fixture.
+- **`Levitation.detach()` still does not re-press the cell itself.** The game guards that call on a
+  `GameScene` (`Levitation.java:58`) and still does; the pipeline now makes the same decision the guard
+  was suppressing, so the *outcome* is right. The guard itself remains — removing it would change
+  gameplay in a game that is not ours, which is the line `AGENTS.md` draws.
 
 ### Verified
 
 - `verifyall` — `:superintelligence:gates` at 22 (with `fallcheck` and `dialogcheck`), `:desktop:playbackcheck`, both green.
 - `:desktop:viewcheck` — **19 of 19**, 134.3 s at 8 children. Re-run rather than carried over, because
   the change touches `SPD-classes`, `:core` and the floor pipeline.
-- `fallcheck` mutation-tested four ways, each reverted after: reordering the `mode == FALL` test
-  (3 of 5 cases fail), removing `Buff.affect(Chasm.Falling.class)` (1), removing
+- `fallcheck` mutation-tested five ways, each reverted after: reordering the `mode == FALL` test
+  (3 of 6 cases fail), removing `Buff.affect(Chasm.Falling.class)` (1), removing
   `InterlevelScene.mode = null` from `clearSwitchRequest` (1), reverting the `Image` guard (1, with the
-  `NullPointerException`).
+  `NullPointerException`), and removing the pipeline's standing-on-a-chasm check (1, which leaves the
+  hero on the chasm cell at full health).
 - `dialogcheck` mutation-tested four ways, each refused by 2, 3, 1 and 2 of its 3 cases: restoring the
   caller-side clear in `WindowBridge.selectOption`, making `GameScene.headlessWindow()` ignore the
   game's own `hide()`, removing the mid-drain dialog report from `settle`, and neutering
