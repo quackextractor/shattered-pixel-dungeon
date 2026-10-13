@@ -36,7 +36,7 @@ scored by a configurable reward function, with the best run per seed recorded an
 
 **Nothing has won a run, and nothing has reached floor 5.** The machinery is correct - the network's
 gradients check against central differences, the environment is reproducible across processes,
-recordings replay exactly, and every one of the twenty-three gates is green - and the reward function now
+recordings replay exactly, and every one of the twenty-four gates is green - and the reward function now
 asks for the right thing. Measured, over twelve generations: **deaths fell 100% to 19%, mean turns rose
 377 to 1335**, and `bestDepth 2` has been observed once. **Depth does not trend yet.**
 
@@ -210,6 +210,7 @@ objective:
 | `reward.death_penalty` | `2500.0` | What dying costs |
 | `reward.turn_limit_penalty` | `2000.0` | What running out of a floor costs |
 | `reward.no_progress_penalty` | `12.0` | A step that advanced no engine time |
+| `env.free_step_budget` | `120` | Steps on a floor that may advance no engine time before the episode is called stalled |
 | `reward.kill_reward` | `150.0` | Per mob killed, from `Statistics.enemiesSlain` |
 | `reward.sneak_attack_reward` | `300.0` | Per surprise attack, from `Statistics.sneakAttacks` |
 | `reward.talent_reward` | `400.0` | Per talent point spent, from `Hero.talentPointsSpent`. **Nothing can spend one yet** - see below |
@@ -239,6 +240,14 @@ The terminal outcomes are ordered, and the order is the property rather than the
 worse than dying, dying is worse than running out of a floor, and running out of a floor is worse than
 clearing one. `rewardcheck` asserts the ordering, not the constants, so it survives them being retuned.
 
+**A stall is bounded twice, and the second bound exists because the first one has a hole in it.**
+`env.stall_limit` counts consecutive steps where the hero's cell and health are unchanged - so **one move
+resets it**, which is what a free-action loop does. Measured on a trainer recording: 502 of 1215 steps
+advanced no engine time, 41% of that episode's cost, almost all of it `OPEN_INVENTORY` then `CANCEL` out of
+`INVENTORY` with a move between pairs, and the position guard never reached its hundred.
+`env.free_step_budget` counts those steps as a total on the floor, and reaching it ends the episode as a
+stall - so the bound costs more than dying, which is the ordering above.
+
 **The surprise attack is the largest combat payout on purpose.** A kill is paid for damage dealt, which
 depends on the weapon and on rolls. A surprise attack is paid for arriving unseen - `Mob.surprisedBy`
 skips the defender's defence skill outright, so the same hit lands for far more - and it is the only
@@ -266,7 +275,7 @@ from `KILL`'s "declared, plumbed and never emitted". `TODO.md` 1.10 is the missi
 
 ## Gates
 
-twenty-three gates, one invocation, ~23 seconds:
+twenty-four gates, one invocation, ~23 seconds:
 
 ```sh
 ./gradlew :superintelligence:gates
@@ -285,6 +294,7 @@ twenty-three gates, one invocation, ~23 seconds:
 | `fallcheck` | A chasm fall the environment drops, a free landing, or a fall that leaves a hand-off behind for the next episode |
 | dialogcheck | An answer that cannot reach a dialog the game opened, a dialog taken away when the game declined it, or one reported a turn late |
 | `presscheck` | A dropped item that does not fire the trap or flatten the grass it landed on, **or** level generation pressing a cell it is still building |
+| `mobspritecheck` | An item that creates a mob leaving it with no sprite, or outside `Actor.chars`, **or** the stand-in factory being reachable with the headless flag off |
 | `replaycheck` | A catalog that misgroups, misranks or misresolves, **or** mislabels what it did |
 | `rolloutcheck` | A recording with no usable seed |
 | `modecheck` | An action mode the environment cannot reach |

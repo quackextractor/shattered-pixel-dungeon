@@ -241,7 +241,7 @@ reading exactly like a simulation that consumes no randomness at all.
   the recording that makes a *recorded* press reproducible in both environments — see `issues.md` 17.
 
 
-## 8. An item that creates a mob leaves it with no sprite - **PROPOSED, UNCOMMITTED**
+## 8. An item that creates a mob leaves it with no sprite - **COMMITTED, GATED**
 
 Found by a 30-generation training run under `reward.profile=depth_only`, 16 workers, seed 20261013. The
 agent **used a Scroll of Mirror Image**, and two workers died with the same `NullPointerException`:
@@ -313,7 +313,14 @@ PROBE result=no crash
 PROBE mobs 8 -> 10, mirror images=2 with sprite=2 in Actor.chars=2
 ```
 
-**What it does not cover.** The mirror image is now a real actor that acts, fades and dies as the game's
-does, but nothing here is gated: a gate needs the `:core` change committed, which is the owner's call.
-The patch is kept at `%TEMP%/opencode/mirror-image-engine.patch` rather than in the repository, because
-a committed gate that depends on uncommitted engine code is a tree that does not build.
+**It is committed and gated.** On the owner's word, with `gradle :superintelligence:mobspritecheck` as the
+gate: 3 cases, **in `gates`**, mutation-tested by reverting each half, and the third case is the one that
+makes the rest safe to ship - with `headlessGameplay` off, `GameScene.add( mob )` never consults the
+stand-in factory, asserted rather than argued. `verifyall` green and `:desktop:viewcheck` green at 20 of 20,
+which is the one that matters here because this file is `GameScene` and the viewer loads it.
+
+**What it still does not cover.** Other item paths that create a mob through a route `GameScene.add( Mob )`
+does not guard - a `SummoningTrap`-style spawn does go through it, and that one was already right, but
+nothing has enumerated every `createMob` call in the game. The guard is at the chokepoint rather than at
+the twelve call sites, which is the same argument §7 makes for `Level.drop`, and it has the same limit:
+a path that builds a mob and never adds it through `GameScene` is still uncovered.

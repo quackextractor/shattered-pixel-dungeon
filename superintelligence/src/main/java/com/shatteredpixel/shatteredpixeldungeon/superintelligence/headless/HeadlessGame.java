@@ -44,6 +44,12 @@ public class HeadlessGame extends Game {
 		//With no scene, Level.drop's gameplay/scene test is false for every drop, so a thrown item lands
 		//inert. This is the statement that a renderer-bypassed process is playing a floor.
 		GameScene.headlessGameplay( true );
+		//The stand-in a mob created by an item path needs: GameScene.add(Mob) hands it to the scene
+		//otherwise, and with no scene it left the mob with no sprite and out of Actor.chars, so a
+		//Scroll of Mirror Image died with an NPE inside Char.move. Uncommitted with the core half -
+		//see ENGINE-CHANGES.md 8.
+		GameScene.headlessMobSprite(
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline::spriteFor );
 		if (HeadlessServices.installed && Game.instance instanceof HeadlessGame){
 			return (HeadlessGame) Game.instance;
 		}

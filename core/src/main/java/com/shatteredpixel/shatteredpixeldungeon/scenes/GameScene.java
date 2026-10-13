@@ -1251,6 +1251,19 @@ public synchronized void update() {
 			scene.addMobSprite(mob);
 			Actor.addDelayed(mob, delay);
 			mob.spendToWhole();
+		} else if (headlessGameplay && headlessMobSprite != null ) {
+			//Same shape as the Heap branch above, and for the same reason: game logic calls
+			//mob.sprite unconditionally, and Char.move assigns sprite.visible on every move of a Char
+			//that is not the hero. An item that creates a mob - ScrollOfMirrorImage, via appear() -
+			//therefore died with a NullPointerException in a renderer-bypassed process, which had no
+			//scene to give it a sprite. Actor.add is here for the same reason: without it the mob is in
+			//level.mobs but not in Actor.chars, so it never acts and Actor.findChar cannot see it.
+			//
+			//Unreachable in the game: with a scene this branch is not entered, and nothing sets
+			//headlessGameplay when a renderer is present.
+			if (mob.sprite == null ) headlessMobSprite.accept( mob );
+			Actor.add( mob );
+			mob.spendToWhole();
 		}
 	}
 	
@@ -1374,6 +1387,20 @@ public synchronized void update() {
 	/** True when this process simulates gameplay with no renderer, so every drop is a gameplay drop. */
 	public static boolean headlessGameplay(){
 		return headlessGameplay;
+	}
+
+	/**
+	 * Installs the stand-in sprite factory a renderer-bypassed process needs, or null to remove it.
+	 *
+	 * <p>Like {@link #headlessEmitter}, a stand-in for something that would otherwise be provided by the
+	 * scene. Set by the headless module and by nothing else, so {@link #add(Mob, float)}'s scene-less
+	 * branch is unreachable in a game.
+	 */
+	private static java.util.function.Consumer<Char> headlessMobSprite = null;
+
+	/** Installs the stand-in mob sprite factory for use with no scene present. */
+	public static void headlessMobSprite( java.util.function.Consumer<Char> factory ){
+		headlessMobSprite = factory;
 	}
 
 	public static synchronized Emitter emitter() {

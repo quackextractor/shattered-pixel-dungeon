@@ -80,7 +80,10 @@ public class MirrorImage extends NPC {
 		
 		if (hero.tier() != armTier){
 			armTier = hero.tier();
-			((MirrorSprite)sprite).updateArmor( armTier );
+			//headless sprites are HeadlessSprite, and this cast is unguarded seventeen lines below the
+			//identical one in SentryRoom.act, which guards for exactly this reason. updateArmor is
+			//cosmetic - it re-textures the sprite - so a renderer-bypassed process has nothing to do.
+			if (sprite instanceof MirrorSprite) ((MirrorSprite)sprite).updateArmor( armTier );
 		}
 		
 		return super.act();

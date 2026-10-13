@@ -174,6 +174,19 @@ depends on the weapon and on rolls. A surprise attack is paid for *arriving unse
 combat outcome that costs no health at all: `Mob.surprisedBy` skips the defender's `defenseSkill`
 outright. Paying the kill alone teaches trading blows with whatever is in reach.
 
+**A free-action loop is bounded, not merely charged.** `HRT-YYP-KGC` spent **502 of 1215 steps advancing
+no engine time - 41% of that episode's whole cost** - almost all of it `OPEN_INVENTORY` followed by
+`CANCEL` out of `INVENTORY`, with a real move between pairs. `env.stall_limit` cannot see it: it counts
+consecutive steps where the hero did not move, so **one move resets it**. `env.free_step_budget=120`
+counts those steps as a total on the floor and ends the episode as a stall when it reaches the budget.
+Measured: 120 free steps ended the loop as `STALLED` at **-4622.00 against dying's -2500.00**.
+
+**An item that creates a mob now leaves it usable with no renderer.** A Scroll of Mirror Image killed two
+workers in a training run - `GameScene.add( Mob, float )` gives a mob a sprite and a place in `Actor.chars`
+only when a scene exists, and `Char.move` dereferences the sprite unconditionally. `mobspritecheck` is the
+gate: 3 cases, in `gates`, and the third asserts that with `headlessGameplay` off the stand-in factory is
+never consulted, so a game with a renderer cannot reach the branch.
+
 `rewardcheck` grew from 9 cases to 13, and the new ones assert **properties** — that the four terminal
 outcomes are ordered, that descending beats idling out the floor, that exploration cannot outbuy a
 descent, that a free step costs more than a real one — rather than comparing constants. It is 20 cases
@@ -326,7 +339,7 @@ something.
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"
 ```
 
-**twenty-three gates, one invocation.** Each has had the thing it guards deleted, and each has been
+**twenty-four gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives

@@ -25,6 +25,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **An item that creates a mob left it with no sprite, and killed the worker - now committed and gated.**
+  Found by a 30-generation training run under `reward.profile=depth_only`, not by a gate: the agent used a
+  **Scroll of Mirror Image** and two workers died with `NullPointerException: Cannot assign field "visible"
+  because "this.sprite" is null` at `Char.move`. `GameScene.add( Mob, float )` gives a mob its sprite and
+  its place in `Actor.chars` only when a scene exists, so an item-created mob reaches `Char.move` with
+  neither - and `add( Heap )` already carries the headless answer for heaps, which is why nothing had found
+  it. Reachable on floor 1, and the same class as §1's unguarded `SentryRoom` and `ArmoredStatue` casts.
+
+  Two `:core` changes, and the second was found by the first: with only the scene-less branch the NPE
+  becomes a `ClassCastException`, because `MirrorImage.act` casts its sprite on the hero's armour tier
+  changing and `MirrorSprite` cannot be built headlessly at all (measured - `new MirrorSprite()` dies
+  reading a null texture width). So the guard is the honest shape, and it is the one `SentryRoom.act`
+  already carries.
+
+  `gradle :superintelligence:mobspritecheck` is the gate, 3 cases, **in `gates`**. It reads a real scroll
+  through `SlotAction.use`, asserts every image came out with a sprite and in `Actor.chars` rather than
+  only in `level.mobs`, and asserts the third thing that makes this safe: **with `headlessGameplay` off,
+  `GameScene.add( mob )` never consults the stand-in factory**, so the branch is unreachable in a game with
+  a renderer. Mutation-tested both ways:
+
+  | reverted | what fails |
+  | --- | --- |
+  | the scene-less branch in `add( Mob, float )` | `reading a Scroll of Mirror Image threw java.lang.NullPointerException at Char.move:1334` |
+  | the `instanceof MirrorSprite` guard in `MirrorImage.act` | `reading a Scroll of Mirror Image threw java.lang.ClassCastException at MirrorImage.act:86` |
+
 - **A free-action loop was charged and not bounded, and the charge did not stop it.** `HRT-YYP-KGC` spent
   **502 of its 1215 steps advancing no engine time - 41% of that episode's whole cost** - almost all of it
   `OPEN_INVENTORY` followed by `CANCEL` out of `INVENTORY`, with a real move between pairs. The existing
@@ -52,6 +77,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`env.free_step_budget`** (`SPD_ENV_FREE_STEP_BUDGET`), default 120 - about 8% of a floor's 1500 turns.
   A judgement rather than a law: a policy that re-equips honestly may find it tight, and that is what the
   key is for.
+- **`mobspritecheck` is a gate**, so `gates` is now 24 checks. Measured: `verifyall` green, and
+  `:desktop:viewcheck` green at 20 of 20 - which matters here, because this change is in `GameScene` and the
+  viewer is what loads it.
 
 ## [0.10.0] - 2026-10-13
 

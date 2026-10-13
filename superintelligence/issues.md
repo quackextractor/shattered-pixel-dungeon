@@ -885,7 +885,7 @@ the guard is still there.
     and both viewer gates pass the whole committed corpus. The failure needs a *random* seed and a
     60-step scripted episode.
 
-## 19. An item that creates a mob leaves it with no sprite, and a mirror image then casts its sprite - **OPEN, FIX PROPOSED AND UNCOMMITTED**
+## 19. An item that creates a mob leaves it with no sprite, and a mirror image then casts its sprite - **CLOSED, in `:core` and gated**
 
 Found by a 30-generation training run under `reward.profile=depth_only` (16 workers, seed 20261013): two
 workers died with `NullPointerException: Cannot assign field "visible" because "this.sprite" is null` at
@@ -896,8 +896,18 @@ Reachable on floor 1 with nothing but a mirror image scroll and a policy that re
 exists; a renderer-bypassed process has none, so an item-created mob has no sprite and `Char.move`
 dereferences it unconditionally. `add( Heap )` already carries the headless answer for heaps and its
 comment says why; the mob branch does not. The fix and its second half - `MirrorImage.act`'s unguarded
-`MirrorSprite` cast, which a `HeadlessSprite` cannot satisfy - are written up in `ENGINE-CHANGES.md` §8
-and are **uncommitted**, because they are logic changes to `:core`.
+`MirrorSprite` cast, which a `HeadlessSprite` cannot satisfy - are written up in `ENGINE-CHANGES.md` §8 and
+are **committed**, on the owner's word, with `mobspritecheck` as the gate: 3 cases, in `gates`,
+mutation-tested by reverting each half, and the third case asserting that with `headlessGameplay` off the
+stand-in factory is never consulted - so a game with a renderer cannot reach the branch.
+
+```
+reading a Scroll of Mirror Image threw java.lang.NullPointerException at Char.move:1334
+reading a Scroll of Mirror Image threw java.lang.ClassCastException at MirrorImage.act:86
+2 mirror image(s) created by a scroll, every one with a sprite
+every mirror image is in level.mobs and in Actor.chars, so it acts and the hero can walk into it
+with the headless flag off, GameScene.add(mob) never consults the stand-in factory
+```
 
 ## 20. Under `depth_only` the run converges on dying early rather than on descending - **OPEN, and it is a finding rather than a defect**
 

@@ -1057,6 +1057,28 @@ engine time at all and changes nothing. The best recording of the same run, `TLH
 thing four times in thirty steps. **Before another hour of training, this is the loop to price or refuse**:
 it is the only thing in these runs that is both free and purposeless.
 
+**It is now bounded, and the shape of the bound is the whole finding.** `env.free_step_budget=120`: steps
+on a floor that advanced no engine time are counted as a **total**, and reaching the budget ends the
+episode as a stall. Charging was not enough - 12 per step did not stop it - and the reason is now stated
+in `EnvConfig`: the existing `env.stall_limit` guard **counts consecutive steps where the hero did not
+move, so one move resets it**, and this loop makes a real move between every pair. Measured, gated on
+`rewardcheck` (21 cases, mutation-tested):
+
+```
+a free-action loop is bounded: 120 free steps ended it as STALLED at -4622.00, worse than dying's
+-2500.00; the same loop with the budget out of reach reached 359 free steps before ending OTHER
+```
+
+The first version of the guard counted a **streak** and passed anyway, which is the shape of this
+project's whole history: a control run with the budget out of reach reached only 125 free steps because a
+wall refused the hardcoded move and the *position* guard ended the episode instead. The gate now asserts
+the control reached well past the budget, and the driver picks its move from the action mask, so what
+ended the bounded run is the thing under test.
+
+**Whether a cumulative 120 is the right number is a judgement, and the measurement behind it is a line
+rather than a law**: 120 free steps is about 8% of a floor's 1500. A policy that re-equips honestly may
+find it tight, and the key is there to raise.
+
 ### The run also found an engine crash, on a scroll
 
 Two workers died with `NullPointerException: Cannot assign field "visible" because "this.sprite" is null`

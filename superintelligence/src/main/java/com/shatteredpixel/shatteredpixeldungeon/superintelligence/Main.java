@@ -23,6 +23,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateChec
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.TransitionCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.FallCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.DialogCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.MobSpriteCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.PressCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ValueScale;
@@ -101,6 +102,7 @@ public class Main {
 		case "fallcheck": FallCheck.main( rest ); break;
 		case "dialogcheck": DialogCheck.main( rest ); break;
 		case "presscheck": PressCheck.main( rest ); break;
+		case "mobspritecheck": MobSpriteCheck.main( rest ); break;
 		case "rolloutcheck": RolloutCheck.main( rest ); break;
 			case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
