@@ -857,6 +857,12 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		File here = new File( "." ).getAbsoluteFile();
 		for (int i = 0; i < 6 && here != null; i++){
 			if (new File( here, "superintelligence.properties" ).isFile()) return tidy( here );
+			//the repository root as well as the module directory: a command launched from the root used to
+			//fall through to the caller's own working directory and write out/ there, which is not the
+			//directory the catalogue and the index were told about
+			if (new File( here, "superintelligence/build.gradle" ).isFile()){
+				return tidy( new File( here, "superintelligence" ) );
+			}
 			here = here.getParentFile();
 		}
 		//not found: the caller's own working directory, which is where a relative path would have gone

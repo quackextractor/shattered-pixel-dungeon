@@ -35,3 +35,7 @@ local.properties
 /superintelligence/out/*
 !/superintelligence/out/.gitkeep
 
+
+# Same directory as above, for a command launched from the repository root before the module was found.
+/out/
+
