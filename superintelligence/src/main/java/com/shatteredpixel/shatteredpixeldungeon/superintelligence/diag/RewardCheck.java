@@ -55,7 +55,7 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 21;
+	private static final int CHECKS = 22;
 
 	/** How many heaps to try before calling a floor that offers none a failure. */
 	private static final int MAX_HEAP_TRIES = 12;
@@ -73,6 +73,7 @@ public class RewardCheck {
 		checkTerminalsAreOrdered( config );
 		checkDepthBeatsAPerFloorTurnLimit( config );
 		checkExplorationCannotOutbuyADescent( config );
+		checkOnlyANewFloorIsPaidFor( config );
 		checkFreeStepLoopIsBounded( config );
 		checkStallPathRecordsOnce( config );
 		checkDefaultProfilePaysEveryTerm();
@@ -1351,11 +1352,81 @@ public class RewardCheck {
 				+ " of turn cost" );
 	}
 
+/**
+	 * Descending has to be paid for reaching a floor, not for going down a stair.
+ *
+ * <p>Measured on a training run: {@code JEA-FKU-WZS} recorded nine floor rows at {@code deepest=2} and
+ * {@code DEPTH_ADVANCE +7200}, because the hero went 1 -> 2 -> 1 -> 2 -> 1 -> 2 -> 1 and each descent
+ * paid {@code depthReward} again. Ascending already pays zero, so the two halves were a closed money
+ * machine, and under a profile whose entire claim is that a *new floor* is the only route to a positive
+ * score it was the most profitable thing in the game.
+ *
+	 * <p>The driver does exactly that, through the real environment: descend, climb back, descend again -
+	 * the sequence {@code transitioncheck} already proves is servable. The assertion is that the second
+	 * descent paid nothing at all, and that the total is one floor's reward rather than three.
+	 */
+	private static void checkOnlyANewFloorIsPaidFor( EnvConfig config ){
+		final int[] descents = { 0 };
+		final int[] ascents = { 0 };
+
+		Outcome o = play( config, 120, "PINGPONG", turn -> {
+			SPDEnv env = turn.env;
+			if (env.mode() != EnvMode.WORLD ){
+				env.step( Action.CANCEL, 0 );
+				return;
+			}
+
+			if (Dungeon.hero == null || !Dungeon.hero.isAlive()) return;
+
+			//three descents with a climb between each, which is the recorded sequence
+			if (turn.step % 12 == 4 ){
+				if (ascend( env )){
+					ascents[ 0 ]++;
+					return;
+				}
+			}
+			if (turn.step % 12 == 0 ){
+				if (descend( env )) descents[ 0 ]++;
+				return;
+			}
+			env.step( Action.WAIT, 0 );
+		} );
+
+		if (descents[ 0 ] < 3 || ascents[ 0 ] < 2 ){
+			fail( "the driver performed " + descents[ 0 ] + " descent(s) and " + ascents[ 0 ] + " ascent(s),"
+					+ " so it never reached the shape this case is about (depth "
+					+ Dungeon.depth + ", deepest " + o.deepest + "). A case that cannot reach the code it"
+					+ " guards is not a check." );
+			return;
+		}
+
+		if (o.deepest < 2 ){
+			fail( "the driver descended " + descents[ 0 ] + " times and never got past depth "
+					+ o.deepest + ", so there was nothing to re-descend." );
+			return;
+		}
+
+		double paid = o.termTotal( RewardTerm.DEPTH_ADVANCE );
+		double oneFloor = config.depthReward * (o.deepest - 1);
+
+		if (Math.abs( paid - oneFloor ) > 1e-4 ){
+			fail( "after " + descents[ 0 ] + " descents to a deepest floor of " + o.deepest
+					+ ", DEPTH_ADVANCE paid " + paid + " where " + oneFloor + " was expected - one reward"
+					+ " per new floor, and none for coming back down a stair the run had already used."
+					+ " Paying on the direction made 1 -> 2 -> 1 -> 2 a money machine: +7200 at deepest=2 on"
+					+ " JEA-FKU-WZS." );
+			return;
+		}
+
+		System.out.println( "  " + descents[ 0 ] + " descents and " + ascents[ 0 ] + " ascents reached depth "
+				+ o.deepest + " and paid " + fmt( paid ) + " - one reward per new floor, not per stair" );
+	}
+
 	/**
 	 * The hero is put on the stairs and the level is asked for the transition, as
 	 * {@code Hero.actTransition} does when he is standing on them.
 	 *
-	 * @return false when the floor has no exit, which the caller reports rather than treating as a pass
+	 * @return false when the floor has no exit to use, which the caller reports rather than treating as a pass
 	 */
 	private static boolean descend( SPDEnv env ){
 		com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition exit =
@@ -1366,6 +1437,23 @@ public class RewardCheck {
 		Hero hero = Dungeon.hero;
 		hero.pos = exit.cell();
 		boolean accepted = Dungeon.level.activateTransition( hero, exit );
+		hero.ready = false;
+		return accepted;
+	}
+
+	/**
+	 * The same, for the stairs a hero climbs to go back up - the floor's {@code REGULAR_ENTRANCE}, which is
+	 * the same tile seen from the other direction and the naming the game uses throughout.
+	 */
+	private static boolean ascend( SPDEnv env ){
+		com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition entrance =
+				Dungeon.level.getTransition(
+						com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition.Type.REGULAR_ENTRANCE );
+		if (entrance == null) return false;
+
+		Hero hero = Dungeon.hero;
+		hero.pos = entrance.cell();
+		boolean accepted = Dungeon.level.activateTransition( hero, entrance );
 		hero.ready = false;
 		return accepted;
 	}
@@ -1747,6 +1835,9 @@ public class RewardCheck {
 	private static class Outcome {
 		double score;
 		int turns;
+
+		/** The deepest floor the run reached - the game's own figure, as the trainer reports it. */
+		int deepest;
 		RewardModel.TerminateReason endReason = RewardModel.TerminateReason.OTHER;
 		boolean endedNaturally;
 		String startMode = "?";
@@ -1836,6 +1927,7 @@ public class RewardCheck {
 
 		outcome.score = env.ledger().total();
 		outcome.turns = env.turnsTotal();
+		outcome.deepest = env.deepestDepth();
 		outcome.endReason = env.endReason();
 		outcome.endedNaturally = env.endedNaturally();
 		outcome.ledger = env.ledger();

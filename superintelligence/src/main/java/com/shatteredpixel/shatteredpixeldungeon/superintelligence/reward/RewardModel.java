@@ -53,6 +53,15 @@ public class RewardModel {
 	private boolean snapshotValid = false;
 
 	/**
+	 * The deepest floor this episode has been paid for descending to.
+	 *
+	 * <p>Zero rather than one, because the run starts on floor 1 and the first descent is to floor 2.
+	 * Reset with the snapshot, which {@code SPDEnv} calls at the start of an episode and deliberately
+	 * <em>not</em> on a floor change - see the note at the bottom of its own {@code step}.
+	 */
+	private int deepestPaid = 0;
+
+	/**
 	 * Whether the step just scored advanced the engine's clock.
 	 *
 	 * <p>The same question {@link RewardTerm#NO_PROGRESS} asks, read here rather than re-derived, because
@@ -68,9 +77,16 @@ public class RewardModel {
 		this.curriculum = curriculum;
 	}
 
-	/** Called on episode start and after every floor change. */
+	/**
+	 * Forgets the previous turn, at the start of an episode.
+	 *
+	 * <p>Not called on a floor change, and deliberately so: {@code SPDEnv.step} says why where it used to
+	 * be called, and the difference is what lets the descent be scored on the turn after the transition
+	 * rather than swallowed by it.
+	 */
 	public void resetSnapshot(){
 		snapshotValid = false;
+		deepestPaid = 0;
 	}
 
 	public RewardLedger ledger(){
@@ -107,7 +123,11 @@ public class RewardModel {
 		//progression
 		int depth = Dungeon.depth;
 		if (depth != prevDepth || Dungeon.branch != prevBranch){
-			if (depth > prevDepth){
+			if (depth > prevDepth && depth > deepestPaid){
+				//A new floor, not a descent. Paying on the direction rather than on the depth reached
+				//made 1 -> 2 -> 1 -> 2 a money machine: four descents, +7200, deepest=2, measured on
+				//JEA-FKU-WZS. Ascending already pays nothing, so the pair was closed.
+				deepestPaid = depth;
 				//clearedByAdvancing is false: the floor this marks is the one the hero just left, which
 				//SPDEnv.markFloorCleared() sets on the row that is being closed. Passing true here would
 				//mark the floor the hero has just arrived on instead, and the per-floor report would say
