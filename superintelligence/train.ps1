@@ -178,7 +178,12 @@ try {
         '--save',             $bin
     )
     if ($Workers -gt 0) { $trainArgs += @('--workers', $Workers) }
-    if ($Resume)        { $trainArgs += '--resume' }
+    # The checkpoint this run's own --save writes. -Resume means "carry on from what this run last
+    # saved", and $bin is that file - so a bare '--resume', which is what this used to append, was
+    # both wrong (the flag takes a path, so the parser read off the end of the argument list and
+    # answered ArrayIndexOutOfBoundsException, naming neither the flag nor what was missing) and
+    # would have pointed at a different run's policy if it had parsed.
+    if ($Resume)        { $trainArgs += @('--resume', $bin) }
 
     $argLine = ($trainArgs -join ' ')
     Write-Host ''

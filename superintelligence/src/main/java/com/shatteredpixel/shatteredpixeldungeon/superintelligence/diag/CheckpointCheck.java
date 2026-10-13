@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Checkpoint;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TrainOptions;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,7 +41,7 @@ import java.util.Random;
  */
 public class CheckpointCheck {
 
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 9;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -70,6 +71,7 @@ public class CheckpointCheck {
 			checkLeavesNoTemporaryFiles( original, small, file, dir );
 			checkResumesIntoAnUntrainedNetwork( original, small, file );
 			checkReportsGenerationAndSteps( original, small, file, 7, 4242L );
+		checkAMissingFlagValueIsRefusedNamingItself();
 
 			//the default config, because every real run uses it and a shape that only works at 12x12
 			//would pass everything above
@@ -356,6 +358,63 @@ public class CheckpointCheck {
 		if (meta.gridWidth != config.gridWidth || meta.gridHeight != config.gridHeight
 				|| meta.maxSlots != config.maxSlots){
 			fail( "the header's config does not match the one it was saved with" );
+		}
+	}
+
+	/**
+	 * A flag with nothing after it is refused, naming itself.
+	 *
+	 * <p>{@code --resume} is where this was found, and it is the flag most likely to be emitted bare:
+	 * the natural reading of "resume this run" is a switch, and {@code train.ps1 -Resume} appended
+	 * exactly that. Every flag in the switch reads {@code args[i + 1]} with nothing checking there is
+	 * one, so the answer was
+	 *
+	 * <pre>ArrayIndexOutOfBoundsException: Index 19 out of bounds for length 19</pre>
+	 *
+	 * <p>which names neither the flag nor what was missing, from a stack trace inside a parser - and it
+	 * only ever appeared once, in a 60-generation run stopped at generation 55 by an external timeout,
+	 * which is the worst time to discover it.
+	 *
+	 * <p>The positive control is the other direction, and it matters: an unknown option still only
+	 * warns. A parser that refused every unrecognised token would not have caught anything here; it
+	 * would have moved the failure.
+	 */
+	private static void checkAMissingFlagValueIsRefusedNamingItself(){
+		for (String flag : new String[]{ "--resume", "--workers", "--replay-group", "--save" }){
+			String message = null;
+			try {
+				TrainOptions.parse( new String[]{ flag });
+			} catch (IllegalArgumentException e){
+				message = String.valueOf( e.getMessage() );
+			} catch (IOException e){
+				message = "IO: " + e.getMessage();
+			} catch (RuntimeException e){
+				//caught rather than allowed to escape, because that is the shape the case is about:
+				//an ArrayIndexOutOfBoundsException out of the parser used to kill this gate with a
+				//stack trace, so the one run that proves the fix works also destroys the report
+				message = e.getClass().getSimpleName() + ": " + e.getMessage();
+			}
+
+			if (message == null){
+				fail( "'" + flag + "' with nothing after it was accepted, so a flag that needs a path"
+						+ " silently resumes from the default or from nothing." );
+				return;
+			}
+			if (!message.contains( flag ) || !message.contains( "needs a value" )){
+				fail( "'" + flag + "' with nothing after it was refused as '" + message + "', which does"
+						+ " not name the flag or say what was missing" );
+				return;
+			}
+		}
+
+		//an unknown option is still only a warning, and the run continues
+		try {
+			TrainOptions.parse( new String[]{ "--workers", "2", "--not-a-real-flag" });
+		} catch (IllegalArgumentException e){
+			fail( "an unknown option was refused instead of warned about: " + e.getMessage()
+					+ ". A refusal here would move the failure rather than catch it." );
+		} catch (IOException e){
+			fail( "parsing an unknown option threw: " + e.getMessage() );
 		}
 	}
 

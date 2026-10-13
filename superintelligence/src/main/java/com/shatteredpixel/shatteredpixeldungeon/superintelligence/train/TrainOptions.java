@@ -241,44 +241,56 @@ public class TrainOptions {
 		o.stallSeconds = hyper.stallSeconds;
 
 		for (int i = 0; i < args.length; i++){
+			//Every flag in the switch below takes a value, and every one of them read args[i + 1] with
+			//nothing checking there was one. `train.ps1 -Resume` emitted a bare --resume and the parser
+			//answered ArrayIndexOutOfBoundsException: Index 19 out of bounds for length 19 - which names
+			//neither the flag nor what was missing, and arrives from a stack trace inside a parser. A
+			//refusal naming the flag is this project's own rule: a check that cannot report *why* it
+			//failed is the same failure as no check.
+			//
+			//Read through value() rather than checked up front, because a check up front cannot tell a
+			//known flag from an unknown one without a second list of the flags to drift away from the
+			//switch. An unknown option stays a warning.
+			final int at = i;
+
 			switch (args[ i ]) {
 				case "--config":     i++; break;
 				case "--reward-profile":
-					o.rewardProfile = args[ ++i ]; break;
-				case "--workers":     o.workers = Integer.parseInt( args[ ++i ] ); break;
-				case "--generations": o.generations = Integer.parseInt( args[ ++i ] ); break;
-				case "--episodes":   o.episodes = Integer.parseInt( args[ ++i ] ); break;
-				case "--seed":        o.seed = Long.parseLong( args[ ++i ] ); break;
-				case "--java-home":   o.javaHome = args[ ++i ]; break;
-				case "--classpath":   o.classpath = args[ ++i ]; break;
-					case "--out":         o.workDir = new File( args[ ++i ] ); break;
-			case "--replay-dir":   o.replayDir = new File( args[ ++i ] ); break;
-				case "--replay-group": o.replayGroup = args[ ++i ]; break;
+					o.rewardProfile = value( args, at ); i++; break;
+				case "--workers":     o.workers = Integer.parseInt( value( args, at )); i++; break;
+				case "--generations": o.generations = Integer.parseInt( value( args, at )); i++; break;
+				case "--episodes":   o.episodes = Integer.parseInt( value( args, at )); i++; break;
+				case "--seed":        o.seed = Long.parseLong( value( args, at )); i++; break;
+				case "--java-home":   o.javaHome = value( args, at ); i++; break;
+				case "--classpath":   o.classpath = value( args, at ); i++; break;
+				case "--out":         o.workDir = new File( value( args, at )); i++; break;
+				case "--replay-dir":   o.replayDir = new File( value( args, at )); i++; break;
+				case "--replay-group": o.replayGroup = value( args, at ); i++; break;
 				case "--stall-seconds":
 					//how long a worker may be silent before the run is failed as a protocol desync.
 					//A blocked pipe costs no CPU, so without this a stall is indistinguishable from a
 					//long episode.
-					o.stallSeconds = Long.parseLong( args[ ++i ] ); break;
-				case "--epochs":      o.epochs = Integer.parseInt( args[ ++i ] ); break;
-				case "--minibatch":   o.minibatchSize = Integer.parseInt( args[ ++i ] ); break;
-				case "--update-threads": o.updateThreads = Integer.parseInt( args[ ++i ] ); break;
+					o.stallSeconds = Long.parseLong( value( args, at )); i++; break;
+				case "--epochs":      o.epochs = Integer.parseInt( value( args, at )); i++; break;
+				case "--minibatch":   o.minibatchSize = Integer.parseInt( value( args, at )); i++; break;
+				case "--update-threads": o.updateThreads = Integer.parseInt( value( args, at )); i++; break;
 				//these three existed as public Trainer fields with these defaults, but were never
 				//reachable from the command line - so the knobs the plan documents could not be turned
-				case "--sample-rate": o.sampleRate = Double.parseDouble( args[ ++i ] ); break;
+				case "--sample-rate": o.sampleRate = Double.parseDouble( value( args, at )); i++; break;
 				case "--max-sampled-per-episode":
-					o.maxSampledPerEpisode = Integer.parseInt( args[ ++i ] ); break;
+					o.maxSampledPerEpisode = Integer.parseInt( value( args, at )); i++; break;
 				case "--max-samples":
-					o.maxSamplesPerGeneration = Integer.parseInt( args[ ++i ] ); break;
-				case "--metrics":     o.metricsCsv = new File( args[ ++i ] ); o.metricsGiven = true; break;
+					o.maxSamplesPerGeneration = Integer.parseInt( value( args, at )); i++; break;
+				case "--metrics":     o.metricsCsv = new File( value( args, at )); o.metricsGiven = true; i++; break;
 				case "--trace-world":
 					//A world trace of the *recording* path, so it can be diffed against `worldtrace` of the
 					//same recording. Off by default; there is exactly one question it can answer that
 					//nothing else can.
-					o.traceWorld = args[ ++i ]; break;
-				case "--save":        o.save = new File( args[ ++i ] ); o.saveGiven = true; break;
-				case "--resume":      o.resume = new File( args[ ++i ] ); break;
+					o.traceWorld = value( args, at ); i++; break;
+				case "--save":        o.save = new File( value( args, at )); o.saveGiven = true; i++; break;
+				case "--resume":      o.resume = new File( value( args, at )); i++; break;
 				case "--checkpoint-every":
-					o.checkpointEvery = Integer.parseInt( args[ ++i ] ); break;
+					o.checkpointEvery = Integer.parseInt( value( args, at )); i++; break;
 				default:
 					if (args[ i ].startsWith( "--" )){
 						System.err.println( "[WARN] unknown option: " + args[ i ] );
@@ -334,6 +346,18 @@ public class TrainOptions {
 	private void deriveOutputsUnder( File dir ){
 		if (!metricsGiven) metricsCsv = new File( dir, "metrics.csv" );
 		if (!saveGiven) save = new File( dir, "weights.bin" );
+	}
+
+	/**
+	 * The argument after the flag at {@code at}, or a refusal naming the flag.
+	 *
+	 * <p>Every flag {@link #parse} handles takes a value, and none of them checked there was one.
+	 */
+	private static String value( String[] args, int at ){
+		if (at + 1 >= args.length){
+			throw new IllegalArgumentException( args[ at ] + " needs a value" );
+		}
+		return args[ at + 1 ];
 	}
 
 	/**

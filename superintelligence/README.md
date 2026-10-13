@@ -299,7 +299,7 @@ something.
 | **The hero levels but cannot spend the point** | **Partial** - `TALENT_UPGRADE` at `reward.talent_reward` 20.0, wired from `Hero.talentPointsSpent` and gated. **No action reaches it**: spending is UI-only (`TalentButton` → `TalentsPane` → `WndHero`) and `WindowBridge` answers only `WndOptions`. The first point arrives at **level 2** — two rats on floor 1 — so this is not an endgame gap. `TODO.md` 1.10 |
 | Actions report what happened | Done - `WAIT`/`REST`/`SEARCH` were recorded as `INVALID_ACTION`, and the term carried no weight, so nothing observed it |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
-| Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included. `checkpointcheck` is a gate |
+| Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included. `checkpointcheck` is a gate, 9 cases - one of them asserts that a flag with no value after it is **refused naming itself**, because every flag reads `args[i + 1]` and `train.ps1 -Resume` used to append a bare `--resume` |
 | Bad checkpoint handling | Done - foreign, truncated, trailing-byte and wrong-config files all refused, the last naming the field |
 | Parallel minibatch update | Done - `--update-threads N`, measured 3.29x at 4 threads, 3.47x at 8. `parallelcheck` is a gate |
 | Cross-sample gradient leak | Fixed - `dCell` was not cleared, so every gradient depended on the previous sample |

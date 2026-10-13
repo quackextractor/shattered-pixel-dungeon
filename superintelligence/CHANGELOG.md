@@ -23,6 +23,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`train.ps1 -Resume` had never worked, and the parser turned it into a stack trace.** `-Resume`
+  appended a bare `--resume`, and every flag in `TrainOptions.parse` reads `args[i + 1]` with nothing
+  checking there is one - so the answer was:
+
+  ```
+  Exception in thread "main" java.lang.ArrayIndexOutOfBoundsException: Index 19 out of bounds for length 19
+    at ...train.TrainOptions.parse(TrainOptions.java:279)
+    at ...train.Trainer.main(Trainer.java:363)
+  ```
+
+  which names neither the flag nor what was missing, from a stack trace inside a parser. `-Resume` now
+  passes the checkpoint the run's own `--save` writes, which is what "resume this run" means.
+
+  **Found by running it, at the worst possible moment**: a 60-generation run stopped at generation 55 by
+  an external timeout, and the first attempt to carry on from its checkpoint died in four seconds.
+  Nothing had ever taken this path, because nothing had ever needed it before.
+
+  `parse` now reads every value through one accessor that refuses a missing one by name -
+  `--resume needs a value`. It is one place rather than a check per case, and it is inside the switch
+  rather than in front of it: **a check in front of the switch cannot tell a known flag from an unknown
+  one without a second list of the flags to drift away from the switch.** That was the first version and
+  its own gate's positive control refused it - `an unknown option was refused instead of warned about`.
+  A parser that refused every unrecognised token would not have caught anything; it would have moved the
+  failure.
+
+  `checkpointcheck` is **9 cases**, and the new one asserts four flags in both directions: each is refused
+  naming itself, and an unknown option still only warns. Mutation-tested: with the bound check removed
+  the gate dies with
+
+  ```
+  ArrayIndexOutOfBoundsException: Index 1 out of bounds for length 1
+    at ...train.TrainOptions.value(TrainOptions.java:360)
+  ```
+
+  which is the original fault, reproduced inside the case that exists to prevent it - so the case catches
+  `RuntimeException` too, rather than taking the process down and destroying the report on the one run
+  that proves it works.
+
 ### Changed
 
 - **The scripts that configure, watch and rebuild this module now live in it.** `replay-viewer.bat`,
