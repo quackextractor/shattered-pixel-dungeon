@@ -190,7 +190,7 @@ public class ReplayCatalog {
 
 		for (File dir : ReplayIndex.read()) dirs.add( canonical( dir ));
 
-		dirs.add( canonical( new File( System.getProperty( "java.io.tmpdir" ), "spd-train/replays" )));
+		dirs.add( canonical( new File( com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer.outDirDefault(), "replays" )));
 		return new ArrayList<>( dirs );
 	}
 

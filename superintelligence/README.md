@@ -34,10 +34,15 @@ APR-SLJ-DXM.dat, 1514 steps   [OK] verify reproduced 1514   [OK] viewcheck playe
 
 `trainer-replays/` is **empty and untracked**, and that is deliberate. It is where the trainer writes by
 default and it is in `.gitignore`, so a run's output lands in one place the catalog already reads and a
-reboot does not take it — while nothing accumulates in version control. The seven recordings that were
+reboot does not take it - while nothing accumulates in version control. The seven recordings that were
 committed there once are untracked, the 185 that earlier runs had scattered across temp directories are
 deleted, and every claim this file made about what that directory contains has been corrected below.
 See `issues.md` 15 and [`CHANGELOG.md`](CHANGELOG.md) 0.9.0.
+
+**A run's weights, checkpoints and metrics go to `out/run/`**, which is `superintelligence/out/` - gitignored
+apart from a tracked `.gitkeep`, and *not* the system temp directory, which is emptied on a schedule nobody
+controls. Evidence worth keeping goes in `superintelligence/out/evidence/` in the session that produced it.
+`AGENTS.md` **Artefacts** is the rule; gate scratch (`spd-<gate>` under temp) is the exception.
 
 ## Read this first
 
@@ -412,7 +417,7 @@ restart from `--seed` — the policy continues, the schedule does not.
 ```sh
 # 50 generations, then 50 more
 ./gradlew :superintelligence:train --args="--generations 50"
-./gradlew :superintelligence:train --args="--generations 50 --resume %TEMP%\spd-train\weights.bin"
+./gradlew :superintelligence:train --args="--generations 50 --resume superintelligence/out/run/weights.bin"
 ```
 
 `gradle :superintelligence:weightsdiff --args="<file>"` reports how far a checkpoint is from a freshly

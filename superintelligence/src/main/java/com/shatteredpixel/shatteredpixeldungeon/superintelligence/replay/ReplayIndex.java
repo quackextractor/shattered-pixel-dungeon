@@ -14,8 +14,10 @@ import java.util.List;
  *
  * <p><b>Why this exists.</b> The trainer writes replays to {@code <--out>/replays}, and {@code --out}
  * is wherever the run was pointed. The viewer and the catalog, meanwhile, searched exactly two fixed
- * directories: the repository's {@code replays/} and {@code %TEMP%/spd-train/replays}. So a run with
- * {@code --out} anywhere else wrote recordings that nothing could find.
+ * directories: the repository's {@code test-replays/} and {@code trainer-replays/}, plus whatever a run
+ * was told to write. Anything a run wrote elsewhere is only findable because it is written down here, so
+ * the index file lives beside the artefacts it describes - {@code <module>/out/run/replay-dirs.txt} -
+ * rather than in the system temp directory, where it would be the first thing a reboot took away.
  *
  * <p>That first directory has since moved to {@code superintelligence/test-replays}, alongside
  * {@code superintelligence/trainer-replays}, and the catalog locates both by walking up to the
@@ -41,7 +43,7 @@ public class ReplayIndex {
 
 	/** Where the index itself lives. Beside the default replay directory, which is where a reader looks first. */
 	public static File indexFile(){
-		return new File( System.getProperty( "java.io.tmpdir" ), "spd-train/replay-dirs.txt" );
+		return new File( com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer.outDirDefault(), "replay-dirs.txt" );
 	}
 
 	/**

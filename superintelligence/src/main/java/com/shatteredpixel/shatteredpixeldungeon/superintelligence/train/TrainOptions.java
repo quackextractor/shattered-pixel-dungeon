@@ -88,7 +88,7 @@ public class TrainOptions {
 	 * line beats a value from a file, or the file becomes a trap.
 	 */
 	public java.nio.file.Path configFile;
-	public File workDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-train" );
+	public File workDir = Trainer.outDirDefault();
 
 	/**
 	 * Where a run writes its recordings, or null for the default.

@@ -74,6 +74,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A run's artefacts go to `superintelligence/out/run/`, not to the system temp directory.** `--out` used
+  to default to `%TEMP%/spd-train`, which is emptied on a schedule nobody controls: the metrics CSV that
+  says what a run learned and the checkpoint that lets it be resumed were both evidence with a timer on
+  it. `Trainer.outDirDefault()` is now the default for `TrainOptions.workDir`, `WorkerPool`'s directory and
+  the CLI's `--out`, and `ReplayIndex`'s index file moved with it - the index exists to find directories a
+  run was pointed at, so a file that is the first thing a reboot takes away is the wrong place for it.
+  `superintelligence/out/` is gitignored apart from a tracked `.gitkeep`; the rule is in `AGENTS.md` under
+  **Artefacts**, and gate scratch (`spd-<gate>` under temp) is the stated exception because it is
+  regenerated on every run.
+
+  The evidence from the `depth_only` runs was moved into `superintelligence/out/evidence/` rather than
+  copied out afterwards: the per-generation metrics CSV, both run logs, the 61 trainer recordings, the
+  config the runs used, and the engine patch.
 - **`env.free_step_budget`** (`SPD_ENV_FREE_STEP_BUDGET`), default 120 - about 8% of a floor's 1500 turns.
   A judgement rather than a law: a policy that re-equips honestly may find it tight, and that is what the
   key is for.

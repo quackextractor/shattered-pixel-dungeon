@@ -864,6 +864,18 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 	}
 
 	/**
+	 * Where a run's weights, checkpoints and metrics go when nobody says otherwise.
+	 *
+	 * <p>{@code <module>/out/run}, not the system temp directory. Temp is emptied on a schedule nobody
+	 * controls, and a run's evidence - the metrics CSV that says what a run learned, the checkpoint that
+	 * lets it be resumed - is worth exactly nothing after that. The directory is gitignored, so an
+	 * artefact there costs the repository nothing.
+	 */
+	public static File outDirDefault(){
+		return new File( replayDirDefault(), "out/run" );
+	}
+
+	/**
 	 * The path without a {@code .} in it.
 	 *
 	 * <p>{@code getAbsoluteFile} leaves the {@code .} from {@code new File( "." )} in, so the resolved

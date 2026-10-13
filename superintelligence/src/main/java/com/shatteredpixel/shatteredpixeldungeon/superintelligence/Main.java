@@ -612,7 +612,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 
 		File workDir = options.outDir != null
 				? options.outDir
-				: new File( System.getProperty( "java.io.tmpdir" ), "spd-headless" );
+				: com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer.outDirDefault();
 
 		HeadlessServices.install( workDir );
 		HeadlessServices.disableSaving( !options.persistSaves );

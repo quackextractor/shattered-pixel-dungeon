@@ -58,8 +58,29 @@ In practice: uncommitted engine edits are the normal way to test a hypothesis �
 - **Smoke runs stay short.** Bound every test training run with `--max-turns` and an external timeout. A run proving a wiring change does not need to finish an episode.
 - **Tune rewards, don't stall.** Every knob lives in `superintelligence/superintelligence.properties`, overridable via `.env` as `SPD_*`. If a value you need is not exposed, expose it — properties file, `.env`, or a CLI flag. Modify the trainer when that is what it takes. Do not ask for input and do not wait to be told. That is the job.
 - **Do not waste clock.** Never re-run a gate because formatting looks off, and never re-run a passing test to be sure. One run, one verdict.
-- **Read the replays.** `testing-guide.md` names the tools; the recordings in `superintelligence/test-replays/` and whatever a run has written into `superintelligence/trainer-replays/` are small enough to read in full — and that second directory is gitignored, so copy anything out of it before a reboot empties it. Start with the highest- and lowest-scoring ones and read all of them — the worst run is usually where the bug is. The first directory is the checked-in corpus, which reproduces end to end; the second is what the trainer actually wrote, which does not yet — see `issues.md` 15.
+- **Read the replays.** `testing-guide.md` names the tools; the recordings in `superintelligence/test-replays/` and whatever a run has written into `superintelligence/trainer-replays/` are small enough to read in full. Start with the highest- and lowest-scoring ones and read all of them — the worst run is usually where the bug is. The first directory is the checked-in corpus, which reproduces end to end; the second is what the trainer actually wrote, which does not yet — see `issues.md` 15.
 - **The goal is the game.** Make the AI good enough to win, or at least descend several floors. Those are the two things that matter most; everything else is subordinate.
+
+## Artefacts
+
+**Everything a session or a run produces goes under `superintelligence/out/`, and nothing meant to be read
+later goes in the system temp directory.** The temp directory is emptied on a schedule nobody controls, so
+a metrics CSV, a training log, a trace, a saved replay, a patch or a commit message parked there is
+evidence with a timer on it — which is worth nothing the moment the machine reboots, and the whole reason
+`out/` exists.
+
+| what | where |
+| --- | --- |
+| training weights, checkpoints, metrics CSV | `superintelligence/out/run/` — the trainer's default `--out` |
+| evidence worth keeping: logs, per-generation CSVs, replay copies, patches, diffs | `superintelligence/out/evidence/` |
+| a run's own recordings | `superintelligence/trainer-replays/` (the catalog reads it) |
+| gate scratch — `spd-<gate>` under temp | **the exception**: regenerated on every run, nothing to keep |
+
+`out/` is gitignored apart from a tracked `.gitkeep`, so an artefact there costs the repository nothing and
+can be deleted freely. Commit an artefact only when it is part of what the change is about, and then by
+copying it in rather than by un-ignoring the directory. When a run's output matters to a later reader —
+which is most measurements worth making — it goes in `out/evidence/` **in the same session it was produced**,
+not copied out afterwards on the assumption someone will remember.
 
 ## Workflow
 

@@ -45,7 +45,7 @@ public class WorkerPool {
 
 	/** Root of the per-worker scratch directories. */
 	private static File workerDir(){
-		return new File( System.getProperty( "java.io.tmpdir" ), "spd-train" );
+		return Trainer.outDirDefault();
 	}
 
 	/**

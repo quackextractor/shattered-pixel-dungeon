@@ -28,3 +28,10 @@ local.properties
 # is rebuilt from the jar, and viewcheck creates it under the repo root because that is its working dir.
 .lwjgl/
 /superintelligence/trainer-replays
+
+# Run artefacts: weights, checkpoints, metrics CSVs, replay directories, traces. Evidence a run
+# produced belongs in the repository, not in the system temp directory, and none of it belongs in
+# version control. The .gitkeep keeps the directory itself tracked so it exists on a fresh clone.
+/superintelligence/out/*
+!/superintelligence/out/.gitkeep
+
