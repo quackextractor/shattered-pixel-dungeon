@@ -23,6 +23,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`--replay-group <id>`: a run's recordings are its own group, in the catalogue and on disk.** Until now
+  every training run on a machine wrote into `trainer-replays/`, and the catalogue listed the lot under one
+  `TRAINER OUTPUT` heading ranked by score. Two runs could not be compared: "what did this run do" was
+  answered with a list of every run the machine had ever trained, in one score-ordered block.
+
+  A group is an id the trainer is given. It becomes three things at once:
+
+  | | |
+  | --- | --- |
+  | a `group=` line in the recording header | so the recording says which run wrote it, on its own, wherever the file ends up |
+  | a subdirectory of the replay directory | `trainer-replays/<id>/`, so a run's output is one directory that can be copied or deleted whole |
+  | a `GROUP <ID>` section of the catalogue | ranked and numbered like any other, one numbering across every section |
+
+  The catalogue reads the **header**, not the folder, so a recording moved out of its directory still says
+  which run wrote it. Sections order as corpus, ungrouped training output, then groups by name - a fixed
+  order, so the number beside a recording does not move between two listings of the same disk. Empty is no
+  group, which is the default and what every recording written before this is.
+
+  **The scan had to go and look, and that is half the change.** `ReplayCatalog.scan` listed one directory
+  and stopped, so the moment a run was grouped `trainer-replays/` looked empty: written, ranked, closed,
+  and unreachable - the failure `ReplayIndex` exists to stop happening by accident. It now walks
+  subdirectories, to a bound of four levels, in a total order (name then path) so two runs over the same
+  tree cannot disagree about which of two same-named recordings a seed dedup keeps. `rejected/` is the one
+  directory skipped: that is where `regenerate-corpus.ps1` parks what a rebuild could not reproduce, and
+  offering it in a picker is the dead end `issues.md` 15 already paid for once.
+
+  **Stamped in the trainer, not sent down the worker pipe.** `ReplayCodec` is unchanged and stays at
+  version 3. A group is a property of the run rather than of any episode, and the worker never learns it -
+  so it is written beside the generation, in the one place that knows it. That is the mirror image of
+  `issues.md` 12, where a field written on one side of the pipe only was **dropped**; the difference is
+  that nothing here has to cross the pipe, so there is no half to disagree about.
+
+  **`Replay.VERSION` stays at 3.** Every header key is read by name and a missing one already has a
+  defined answer here - no group - and unlike `max_slots`, `termination` and `reward_profile` this field
+  changes no step, no seed and no setting, so a recording verified and played by a build that predates it
+  is unaffected. A bump would only refuse older builds for a header line they already parse.
+
+  Measured end to end on a 2-generation, 2-worker run at `--replay-group smoke-group-a`: the run wrote
+  `trainer-replays/smoke-group-a/SGD-CKH-JUO.dat` with `group=smoke-group-a` in its header, the catalogue
+  printed `GROUP SMOKE-GROUP-A   written by training run group smoke-group-a - these reproduce, and every
+  one of them is watchable in the viewer` with its recording at number 65 of 65 across three sections, and
+  `verify` reproduced all 87 steps. `verifyall` green at 24 gates plus `playbackcheck` at 23; `viewcheck`
+  green at **20 of 20**, 166.7s at 8 children.
+
+  **`replaycheck` is 19 cases**, and the two new ones were each reverted and watched to fail:
+
+  | reverted | what fails |
+  | --- | --- |
+  | `sectionOf` always answering `TRAINER OUTPUT` | `replaycheck 1 of 19 fails` - a group's rows land in another section |
+  | the subdirectory walk | `replaycheck 2 of 19 fail` - a group's recordings are not listed at all |
+  | the `rejected/` exclusion | `a recording in rejected/ is listed as a run to watch` |
+  | the `group` header key not parsed | `replaycheck 1 of 19 fails` |
+
+  The header-parity case now carries a group, because the catalogue's whole grouping decision comes from
+  the cheap header-only read: a field `readHeader` misses is a recording filed under the wrong section.
+
+  **`train.ps1` passes `-Name` as the group**, so `./train.ps1 -Name depth-only-60` files that run's
+  recordings under `depth_only-60` with no extra flag to remember. The name is sanitised rather than
+  refused - a space or a slash becomes a dash - because a label is not worth failing a run over, and the
+  trainer refuses anything outside `[A-Za-z0-9._-]` anyway, since a group becomes a path segment.
+
+  Evidence: `out/evidence/group-id-smoke.txt`.
+
 ### Fixed
 
 - **An item that creates a mob left it with no sprite, and killed the worker - now committed and gated.**

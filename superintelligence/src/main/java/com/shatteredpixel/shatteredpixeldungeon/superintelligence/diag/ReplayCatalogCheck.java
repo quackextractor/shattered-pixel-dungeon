@@ -35,7 +35,7 @@ public class ReplayCatalogCheck {
 
 	private static final List< String > failures = new ArrayList<>();
 
-	private static final int CHECKS = 17;
+	private static final int CHECKS = 19;
 
 	private static File workDir;
 
@@ -67,6 +67,8 @@ public class ReplayCatalogCheck {
 			checkTheSameDirectoryUnderTwoSpellingsIsOneDirectory();
 			checkSectionsSplitByProvenance();
 		checkDepthIsAReadableColumn();
+		checkAGroupIsItsOwnSection();
+		checkSubdirectoriesAreScannedAndRejectedIsNot();
 		} finally {
 			deleteTree( workDir );
 		}
@@ -579,7 +581,9 @@ private static int depthColumnIn( String row ){
 		File dir = dir( "parity" );
 		//declared and actual must agree here: this check reads the file twice, once each way, and
 		//read() rejects a body that does not match its header. Truncation is the previous check's job.
-		File file = write( dir, "parity", "DUELIST", -12.75, 3, 1234, 5, 5 );
+		//Grouped, because a field the cheap read misses is a recording filed under the wrong section -
+		//and the catalogue's whole grouping decision now comes from the cheap read.
+		File file = writeGrouped( dir, "parity-run", "parity", "DUELIST", -12.75, 3, 1234, 5, 5 );
 
 		try {
 			Replay full = ReplayIO.read( file );
@@ -595,6 +599,7 @@ private static int depthColumnIn( String row ){
 					&& header.depth == full.depth
 					&& header.turns == full.turns
 					&& header.generation == full.generation
+					&& header.group.equals( full.group )
 					&& header.turnLimitPerFloor == full.turnLimitPerFloor
 					&& header.declaredSteps == full.steps.size()){
 				return;
@@ -603,6 +608,7 @@ private static int depthColumnIn( String row ){
 fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedText
 					+ " score " + header.score + "/" + full.score
 					+ " depth " + header.depth + "/" + full.depth
+					+ " group '" + header.group + "'/" + full.group
 					+ " turns " + header.turns + "/" + full.turns );
 		} catch (IOException e){
 			fail( "reading the fixture threw: " + e.getMessage() );
@@ -975,6 +981,141 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 	}
 
 	/**
+	 * A run's recordings are its own section, and nothing else joins it.
+	 *
+	 * <p>{@code --replay-group} exists so two runs can be watched against each other. Without a section
+	 * of its own a group's recordings would sit interleaved with every other run the machine has trained,
+	 * ranked by score - which is exactly the question that run was not asking: "what did this run do"
+	 * answered by a list of unrelated runs.
+	 *
+	 * <p>Asserted on the header rather than the folder, because that is where it is read from. A recording
+	 * moved out of its directory still says which run wrote it, and a recording in a group directory
+	 * whose header says otherwise would be filed under the header - so both are covered.
+	 */
+	private static void checkAGroupIsItsOwnSection(){
+		File corpus = dir( "group-corpus" );
+		File trainer = dir( "group-trainer" );
+
+		write( corpus, "GROUP-CORPUS", "WARRIOR", 3.0, 1, 40 );
+		write( trainer, "UNGROUPED", "WARRIOR", -10.0, 1, 60 );
+		writeGrouped( trainer, "run-a-60", "RUN-A-ONE", "MAGE", -20.0, 2, 80 );
+		writeGrouped( trainer, "run-a-60", "RUN-A-TWO", "ROGUE", -40.0, 1, 70 );
+		writeGrouped( trainer, "run-b-60", "RUN-B-ONE", "MAGE", -30.0, 1, 90 );
+
+		ReplayCatalog catalog = new ReplayCatalog().scan( List.of( corpus, trainer ));
+		Map<String, Map<String, List<ReplayCatalog.Entry>>> sections = catalog.sections();
+
+		String runA = ReplayCatalog.GROUP_PREFIX + "RUN-A-60";
+		if (!sections.containsKey( runA ) || !sections.containsKey( ReplayCatalog.GROUP_PREFIX + "RUN-B-60" )){
+			fail( "the listing has no section per group, so two training runs are interleaved in one"
+					+ " ranking and \"what did this run do\" is answered with every run on the machine."
+					+ " Sections present: " + sections.keySet() );
+			return;
+		}
+
+		List<ReplayCatalog.Entry> inRunA = flatten( sections.get( runA ));
+		if (inRunA.size() != 2){
+			fail( "group run-a-60 holds " + inRunA.size() + " recordings and its two fixtures wrote 2, so"
+					+ " a group's own rows are landing in another section" );
+			return;
+		}
+
+		for (ReplayCatalog.Entry entry : inRunA){
+			if (!"run-a-60".equals( entry.group )){
+				fail( entry.label() + " is listed under group run-a-60 but carries '"
+						+ entry.group + "', so the section is not reading the header" );
+				return;
+			}
+		}
+
+		//and nothing leaks the other way: the ungrouped half and the reference corpus keep only their own
+		if (flatten( sections.get( ReplayCatalog.SECTION_TRAINER )).size() != 1){
+			fail( "the ungrouped training section does not hold exactly the one ungrouped fixture, so a"
+					+ " grouped recording is being listed as ungrouped as well" );
+			return;
+		}
+		if (flatten( sections.get( ReplayCatalog.SECTION_CORPUS )).size() != 1){
+			fail( "the reference corpus section holds more than its own fixture, so a trainer recording"
+					+ " is being listed as a fixture that reproduces" );
+			return;
+		}
+
+		//order is asserted because it is what makes the numbering reproducible: corpus, ungrouped, then
+		//groups by name. Sorted by directory or by write order, the same set of runs lists differently
+		//twice and every number a person read last time points somewhere else.
+		List<String> order = new ArrayList<>( sections.keySet() );
+		List<String> expected = List.of( ReplayCatalog.SECTION_CORPUS, ReplayCatalog.SECTION_TRAINER,
+				runA, ReplayCatalog.GROUP_PREFIX + "RUN-B-60" );
+		if (!order.equals( expected )){
+			fail( "sections are ordered " + order + " and the order has to be corpus, ungrouped, then"
+					+ " groups by name" );
+			return;
+		}
+
+		//the heading is printed and the blurb names the run, because a heading a reader has to decode is
+		//no better than the seed-shaped filename it replaced
+		String listing = catalog.render( true );
+		if (!listing.contains( "\n  " + runA + " " ) || !listing.contains( "group run-a-60" )){
+			fail( "the listing does not print a heading and a blurb for group run-a-60, so the rows are"
+					+ " there without saying which run they belong to" );
+			return;
+		}
+
+		//and one numbering still spans all four sections
+		List<ReplayCatalog.Entry> ordered = catalog.inListingOrder();
+		for (int i = 0; i < ordered.size(); i++){
+			ReplayCatalog.Entry byIndex = catalog.byNumber( i + 1 );
+			if (byIndex == null || !byIndex.file.equals( ordered.get( i ).file )){
+				fail( "number " + ( i + 1 ) + " does not resolve to the recording listed at that"
+						+ " position once a group exists, so a number read off the screen plays a"
+						+ " different file" );
+				return;
+			}
+		}
+	}
+
+	/**
+	 * A run's recordings live in a subdirectory, so the scan has to go and look for them - but not into
+	 * the one directory that holds files nobody should be offered.
+	 *
+	 * <p>The two halves are one property and neither is optional. Stopping at the top level makes
+	 * {@code trainer-replays/} look empty the moment a run is grouped: written, ranked, closed, and
+	 * unreachable, which is the failure {@link ReplayIndex} exists to stop happening by accident.
+	 *
+	 * <p>And {@code rejected/} is where {@code regenerate-corpus.ps1} parks a recording the rebuild could
+	 * not reproduce. Listing it would be the failure this project has already paid for: a picker offering
+	 * a file whose playback diverges is a dead end, and a {@code not watchable} marker beside it does not
+	 * stop anybody taking it.
+	 */
+	private static void checkSubdirectoriesAreScannedAndRejectedIsNot(){
+		File dir = dir( "nested" );
+		write( dir, "TOP-LEVEL", "WARRIOR", 1.0, 1, 10 );
+		writeGrouped( dir, "run-a", "NESTED-ONE", "MAGE", 2.0, 1, 20 );
+		writeGrouped( dir, "run-a", "NESTED-TWO", "MAGE", 3.0, 1, 30 );
+		write( dir( "nested/rejected" ), "REJECTED-ONE", "MAGE", 4.0, 1, 40 );
+
+		ReplayCatalog catalog = new ReplayCatalog().scan( List.of( dir ));
+
+		if (catalog.byName( "NESTED-ONE" ) == null || catalog.byName( "NESTED-TWO" ) == null){
+			fail( "a recording written into a group's subdirectory is not listed, so --replay-group files"
+					+ " runs into a directory the catalog does not look in and the picker cannot see any of"
+					+ " them" );
+			return;
+		}
+
+		if (catalog.byName( "REJECTED-ONE" ) != null){
+			fail( "a recording in rejected/ is listed as a run to watch. That directory is where a corpus"
+					+ " rebuild parks what it could not reproduce, and offering it is a dead end" );
+			return;
+		}
+
+		if (catalog.entries().size() != 3){
+			fail( "expected the three listed recordings and found " + catalog.entries().size()
+					+ ", so the subdirectory scan is picking up something else or missing something" );
+		}
+	}
+
+	/**
 	 * Writes a recording under a chosen file name with a seed of its own.
 	 *
 	 * <p>The trainer's never-overwrite rule produces exactly this: three runs of one seed, three
@@ -983,32 +1124,23 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 	 */
 	private static File writeAs( File dir, String seed, String fileStem, String hero,
 			double score, int depth, int turns ){
+		return writeFile( new File( dir, fileStem + ".replay" ), seed, "", hero, score, depth, turns, 1, 1 );
+	}
 
-		List<String> lines = new ArrayList<>( Arrays.asList(
-				Replay.MAGIC,
-				"version=" + Replay.VERSION,
-				"seed=" + seed,
-				"hero=" + hero,
-				"challenges=0",
-				"generation=0",
-				"score=" + score,
-				"depth=" + depth,
-				"turns=" + turns,
-				"turn_limit=" + turns,
-				"max_slots=32",
-				"allow_equipping=true",
-				"termination=OTHER",
-				"steps=1" ));
+	/** A recording a training run filed under a group: a subdirectory named after it, and the header. */
+	private static File writeGrouped( File dir, String group, String seed, String hero,
+			double score, int depth, int turns ){
+		return writeGrouped( dir, group, seed, hero, score, depth, turns, 1, 1 );
+	}
 
-		lines.add( "WAIT 0 WORLD 100 0.0  20 1.0 Food:1" );
-
-		File file = new File( dir, fileStem + ".replay" );
-		try {
-			Files.write( file.toPath(), lines, StandardCharsets.UTF_8 );
-		} catch (IOException e){
-			throw new IllegalStateException( "could not write " + file, e );
+	private static File writeGrouped( File dir, String group, String seed, String hero,
+			double score, int depth, int turns, int declared, int actual ){
+		File groupDir = new File( dir, group );
+		if (!groupDir.mkdirs() && !groupDir.isDirectory()){
+			throw new IllegalStateException( "could not create " + groupDir );
 		}
-		return file;
+		return writeFile( new File( groupDir, seed + ".replay" ), seed, group, hero,
+				score, depth, turns, declared, actual );
 	}
 
 	// --------------------------------------------------------------------------- fixtures
@@ -1037,6 +1169,24 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 	 */
 	private static File write( File dir, String seed, String hero, double score,
 			int depth, int turns, int declared, int actual ){
+		return writeFile( new File( dir, seed + ".replay" ), seed, "", hero,
+				score, depth, turns, declared, actual );
+	}
+
+	/**
+	 * One recording written by hand, every step field present.
+	 *
+	 * <p>Every field, deliberately. The default {@code Step} sentinel for health, engine time and
+	 * inventory is "not recorded", and a file written with those three at their sentinels carries the
+	 * exact signature of the four-field wire - so a fixture meant to stand for a <em>healthy</em>
+	 * recording has to give it real values, or the thing it is not testing is what fails.
+	 *
+	 * <p>An ungrouped recording carries no {@code group} line at all rather than an empty one, which is
+	 * what every recording made before groups existed looks like and is therefore the case worth
+	 * holding: an absent key has to mean no group.
+	 */
+	private static File writeFile( File file, String seed, String group, String hero, double score,
+			int depth, int turns, int declared, int actual ){
 
 		List<String> lines = new ArrayList<>( Arrays.asList(
 				Replay.MAGIC,
@@ -1054,9 +1204,9 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 				"termination=OTHER",
 				"steps=" + declared ));
 
+		if (!group.isEmpty()) lines.add( "group=" + group );
 		for (int i = 0; i < actual; i++) lines.add( "WAIT 0 WORLD 100 0.0  20 " + i + ".0 Food:1" );
 
-		File file = new File( dir, seed + ".replay" );
 		try {
 			Files.write( file.toPath(), lines, StandardCharsets.UTF_8 );
 		} catch (IOException e){

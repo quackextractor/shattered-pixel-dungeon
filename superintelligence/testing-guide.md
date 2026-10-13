@@ -92,6 +92,24 @@
     warnings against 10, and - the part that was wrong rather than noisy - **1 recording marked
     `not watchable` against the correct 9**, because the dedup kept whichever spelling came first and so
     directory order decided it. The check spells one directory two ways and asserts one entry per file.
+  * **A group is a section, and a group's subdirectory is not a hole** (`replaycheck`). Two cases, and
+    each of four ways of breaking them was reverted and watched to fail:
+
+    | reverted | what fails |
+    | --- | --- |
+    | `sectionOf` always answering `TRAINER OUTPUT` | `replaycheck 1 of 19 fails` - the group's two rows land in the ungrouped section |
+    | the subdirectory walk | `replaycheck 2 of 19 fail` - a recording written into `trainer-replays/<id>/` is not listed at all |
+    | the `rejected/` exclusion | `a recording in rejected/ is listed as a run to watch` |
+    | the `group` header key not parsed | `replaycheck 1 of 19 fails` |
+
+    The subdirectory half is the one that matters and the one that is invisible while it is wrong: **a
+    run that is grouped writes into a directory the picker reads as empty** - written, ranked, closed and
+    unreachable, which is the failure `ReplayIndex` exists to stop happening by accident. The `rejected/`
+    half is the other direction: that directory holds what a corpus rebuild could not reproduce, and
+    offering it in a picker is a dead end, which `issues.md` 15 already paid for once. The group itself is
+    read from the **header**, so a recording moved out of its folder still says which run wrote it -
+    and the header-parity case now carries a group, because the catalogue's whole grouping decision comes
+    from the cheap header-only read.
   * **A file name names a file** (`replaycheck`). The listing refused a bare seed several runs had
     recorded and told the reader to type a file name; typing one answered *no such recording*, because
     `byName` searched the seed-deduplicated list and a file is not a seed. Measured:

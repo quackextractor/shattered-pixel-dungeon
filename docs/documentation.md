@@ -190,9 +190,9 @@ Two rules the layer holds to, both of which exist because the alternative is sil
 
 `superintelligence.properties` ships with every key documented against its reason, and `configcheck`
 asserts it agrees with the compiled defaults in both directions - so a key cannot drift away from the
-code that reads it unnoticed. `.env.example` at the repository root is the environment-variable half of
-the same thing, with each `SPD_*` name spelled out and the reward keys annotated for what they buy; `.env`
-itself is git-ignored, and a run with neither file uses the compiled defaults.
+code that reads it unnoticed. `.env.example` beside it in `superintelligence/` is the environment-variable
+half of the same thing, with each `SPD_*` name spelled out and the reward keys annotated for what they
+buy; `.env` itself is git-ignored, and a run with neither file uses the compiled defaults.
 
 ### The reward, and the one ratio that decides it
 
@@ -462,7 +462,8 @@ Two consequences that are easy to get backwards:
 
 ### Watching a recording
 
-`replay-viewer.bat` plays a recording in the real game with a HUD over it. The keys are:
+`superintelligence/replay-viewer.bat` plays a recording in the real game with a HUD over it. The keys
+are:
 
 | Key | Does |
 | --- | --- |
@@ -507,6 +508,23 @@ Two things follow from doing it properly, and both were found only by doing it:
 The general lesson is the one this gate was written for: a step that is not exercised is a step that
 is not checked, and a viewer that reports "clean" over an unexamined step is reporting on less than it
 appears to.
+
+### The catalogue, and which run a recording came from
+
+With no argument, `replay-viewer.bat` prints every recording it can find and asks for a number. The
+listing has three kinds of section: `TEST CORPUS` is the checked-in reference set, `TRAINER OUTPUT` is
+everything a run wrote that carried no group, and one `GROUP <ID>` per `--replay-group`. Every section is
+ranked by score within its hero class and numbered in one sequence, so the number beside a row is the
+number typed back.
+
+A group is read from the recording's **header**, not from the directory the file sits in - so a recording
+moved out of its folder still says which run wrote it, and a run's output is one directory that can be
+copied or deleted whole. Sections order as corpus, ungrouped output, then groups by name: a fixed order,
+so two listings of the same disk number the same recordings.
+
+`superintelligence/train.ps1 -Name` supplies the group, so the script does it without a flag to remember.
+The id becomes a path segment and a heading, so it is refused rather than escaped - letters, digits,
+`.`, `_` and `-`, up to 64 characters.
 
 ### What determinism is guaranteed, and what is not
 

@@ -39,6 +39,12 @@ committed there once are untracked, the 185 that earlier runs had scattered acro
 deleted, and every claim this file made about what that directory contains has been corrected below.
 See `issues.md` 15 and [`CHANGELOG.md`](CHANGELOG.md) 0.9.0.
 
+**A run's recordings are its own group.** `--replay-group <id>` puts a run's output in a subdirectory of
+`trainer-replays/`, stamps `group=<id>` into every header, and gives the catalogue a `GROUP <ID>` section
+of its own - so "what did this run do" is answered with that run and not with every run on the machine.
+`train.ps1 -Name` supplies the group, so the script does it without a flag to remember. Empty is no group,
+which is the default and what every recording written before groups existed is. See `CHANGELOG.md`.
+
 **A run's weights, checkpoints and metrics go to `out/run/`**, which is `superintelligence/out/` - gitignored
 apart from a tracked `.gitkeep`, and *not* the system temp directory, which is emptied on a schedule nobody
 controls. Evidence worth keeping goes in `superintelligence/out/evidence/` in the session that produced it.
@@ -270,7 +276,8 @@ something.
 | Observation encoder (spatial planes + inventory + hero scalars) | Verified, **with a known limit** - `env.max_slots=32` against an engine ceiling of 96, so a full inventory is silently truncated. `TODO.md` §0.8 |
 | Replay record / re-verify | Verified exact - 4/4 fresh processes, identical score, and a 32-recording sweep in one process. `verify` also resolves a recorded slot index against its recorded quickslot bindings, so it and the viewer cannot disagree about a recording and both be right |
 | **A recording the trainer writes is watchable** | **Verified end to end, repeatedly** - the trainer pinned a step's bindings *after* the step, so a `DROP` named a different item on playback; `verify` skipped the comparison when the field was empty and reported nine unplayable recordings as `[OK]`; `viewcheck` scored a pass for any halt that was not a divergence. All fixed. **The nine remain unwatchable and are not kept**: they were written before the wire carried the field, nothing can recover data that was never written, and keeping them made the picker nine dead ends out of ten. `trainer-replays/` is a gitignored local directory, empty in the repository |
-| **The catalog was wrong about which files play** | **Fixed** - the trainer resolved its default replay directory to `superintelligence/./trainer-replays` and the catalog's own default spelled the same directory without the `.`, so every trainer recording was scanned twice and **the duplication decided the `not watchable` marker**: the listing called 1 of 9 unwatchable, the other 8 clean. Deduplication is now by canonical path, gated by a case that spells one directory two ways. `replaycheck`, 17 cases |
+| **The catalog was wrong about which files play** | **Fixed** - the trainer resolved its default replay directory to `superintelligence/./trainer-replays` and the catalog's own default spelled the same directory without the `.`, so every trainer recording was scanned twice and **the duplication decided the `not watchable` marker**: the listing called 1 of 9 unwatchable, the other 8 clean. Deduplication is now by canonical path, gated by a case that spells one directory two ways. `replaycheck`, 19 cases |
+| **A run's recordings are its own group** | **Done** - `--replay-group <id>` writes `trainer-replays/<id>/`, stamps `group=` into every header and gives the catalogue a `GROUP <ID>` section. The group is read from the **header**, not the folder, so a moved recording still says which run wrote it; the scan now walks subdirectories, which is the half that matters, because without it a grouped run writes into a directory the picker reads as empty. `rejected/` is the one directory skipped - it holds what a rebuild could not reproduce. `train.ps1 -Name` supplies it |
 | **A file name did not resolve** | **Fixed** - the listing refused a bare seed several runs had recorded and said "pass a full path"; it now says type the file name, and that works too. `byName` searched the seed-deduplicated list, and a file is not a seed, so `IPW-QMA-AFY-r3.dat` answered *no such recording*. Both the search list and the footer are gated |
 | **A thrown item does what it lands on** | **Verified** - `Level.drop` pressed the landing cell only behind a `scene() instanceof GameScene` test no headless run can satisfy, so every throw landed inert: an armed `WornDartTrap` was still armed after a `Food` was dropped on it on four seeds out of four. `Level.drop` is the only chokepoint - `Item.onThrow` and `Item.doDrop` both call it - so the fix is one added term and the scene test survives. A dropped item now fires a trap and tramples grass, level generation still presses nothing, `presscheck` is a gate with 3 cases, and `duelist-throw.replay` is the recording that carries a recorded press through both environments. `issues.md` 17 |
 | Rendered viewer reproduces a recording | **Verified** - `:desktop:viewcheck` is green on all 20 committed recordings, and the gate now requires every step to have played rather than merely "did not diverge". **A recording whose death lands on its final step** used to report N-1 of N - `issues.md` 2's symptom, one path from the one its fix closed - and no gate reached it, because every death recording in the corpus was dead *by* its last step rather than *on* it. `duelist-death-last.replay` is the file that does. **Note the limit**: every child is forked hidden at speed 40, so the gate has never run the timing path a human run takes - see `TODO.md` §0.7 |
@@ -342,7 +349,15 @@ something.
 # train
 
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"
+
+# train, and file this run's recordings under a group so the catalogue lists it alone.
+# Letters, digits, '.', '_' and '-', up to 64; anything else is refused rather than escaped.
+./gradlew :superintelligence:train --args="--workers 8 --replay-group depth-only-60"
 ```
+
+**`superintelligence/train.ps1` is the workflow**: `./train.ps1`, `./train.ps1 -Profile depth_only
+-Generations 60 -Name depth-only-60`, `./train.ps1 -Resume`. It names the artefacts, prints the gradle
+command it is about to run, and passes `-Name` as the run's replay group.
 
 **twenty-four gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally

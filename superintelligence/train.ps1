@@ -152,6 +152,11 @@ try {
     }
 
     if (-not $Name) { $Name = "$Profile-$Generations" }
+    # The run's name is also its group: the trainer files this run's recordings under it and the
+    # catalogue lists them as a section of their own, so two runs can be compared against each other.
+    # Sanitised rather than refused, because a name is a label and a label is not worth failing a run
+    # over - a space or a slash becomes a dash.
+    $group = ($Name -replace '[^A-Za-z0-9._-]', '-')
     $csv = Join-Path $evidence "$Name.csv"
     $log = Join-Path $evidence "$Name.log"
     $bin = Join-Path $runDir 'weights.bin'
@@ -168,6 +173,7 @@ try {
         '--seed',             $Seed
         '--update-threads',   $UpdateThreads
         '--checkpoint-every', $CheckpointEvery
+        '--replay-group',    $group
         '--metrics',          $csv
         '--save',             $bin
     )
@@ -177,6 +183,7 @@ try {
     $argLine = ($trainArgs -join ' ')
     Write-Host ''
     Write-Host '  run     ' $Name -ForegroundColor Cyan
+    Write-Host '  group   ' $group -ForegroundColor DarkGray
     Write-Host '  cmd     ./gradlew :superintelligence:train --offline --args="' $argLine '"' -ForegroundColor DarkGray
     Write-Host '  out     ' $csv -ForegroundColor DarkGray
     Write-Host '           ' $log -ForegroundColor DarkGray

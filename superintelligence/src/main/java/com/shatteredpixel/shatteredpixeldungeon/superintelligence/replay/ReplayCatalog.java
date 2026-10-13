@@ -46,6 +46,9 @@ public class ReplayCatalog {
 		public final int generation;
 		public final int turnLimit;
 
+		/** The training run that wrote this, or "" when nobody grouped it. */
+		public final String group;
+
 		/** Steps actually present, or -1 when the body was complete. */
 		public final int truncatedAt;
 
@@ -76,6 +79,7 @@ public class ReplayCatalog {
 			this.steps = replay.declaredSteps;
 			this.generation = replay.generation;
 			this.turnLimit = replay.turnLimitPerFloor;
+			this.group = replay.group == null ? "" : replay.group;
 			this.truncatedAt = replay.truncatedAt;
 			this.watchable = !replay.wireDroppedStepFields();
 			this.error = null;
@@ -91,6 +95,7 @@ public class ReplayCatalog {
 			this.steps = 0;
 			this.generation = -1;
 			this.turnLimit = 0;
+			this.group = "";
 			this.truncatedAt = -1;
 			this.watchable = false;
 			this.error = error;
@@ -129,8 +134,20 @@ public class ReplayCatalog {
 	/** The reference set: the first {@code --dir}, which is {@code test-replays} in practice. */
 	public static final String SECTION_CORPUS = "TEST CORPUS";
 
-	/** Everything a training run wrote, whether into the repository or a temp directory. */
+	/** Everything a training run wrote that was not filed under a group. */
 	public static final String SECTION_TRAINER = "TRAINER OUTPUT";
+
+	/**
+	 * Headings for the recordings one training run wrote.
+	 *
+	 * <p>Its own prefix rather than {@code "TRAINER " + group}, because a group named {@code output}
+	 * would then produce a heading identical to {@link #SECTION_TRAINER} and two sections would share one
+	 * key - the listing would print one of them twice and the other not at all.
+	 */
+	public static final String GROUP_PREFIX = "GROUP ";
+
+	/** Not scanned: recordings a rebuild could not reproduce, which is where a corpus script parks them. */
+	private static final String REJECTED_DIR = "rejected";
 
 	private final List<Entry> entries = new ArrayList<>();
 
@@ -269,22 +286,16 @@ public class ReplayCatalog {
 			File dir = directories.get( dirIndex );
 			if (dir == null || !dir.isDirectory()) continue;
 
-			File canonical = canonical( dir );
-			if (!seen.add( canonical.getPath() )) continue;
+File canonical = canonical( dir );
+		if (!seen.add( canonical.getPath() )) continue;
 
-			File[] files = canonical.listFiles();
-			if (files == null) continue;
+		for (File file : recordingsUnder( canonical )){
+			String name = file.getName().toLowerCase();
 
-			//sorted so two runs over the same directory list the same way
-			java.util.Arrays.sort( files, Comparator.comparing( File::getName ));
-
-			for (File file : files){
-				String name = file.getName().toLowerCase();
-
-				//Two extensions, deliberately. The checked-in fixtures are .replay; the trainer writes
-				//<seed>.dat into a temp directory. Both are real recordings and a person looking for
-				//"that run from generation 19" has no reason to know which side wrote it.
-				if (!(name.endsWith( ".replay" ) || name.endsWith( ".dat" ))) continue;
+			//Two extensions, deliberately. The checked-in fixtures are .replay; the trainer writes
+			//<seed>.dat into a temp directory. Both are real recordings and a person looking for
+			//"that run from generation 19" has no reason to know which side wrote it.
+			if (!(name.endsWith( ".replay" ) || name.endsWith( ".dat" ))) continue;
 
 				Entry entry;
 				try {
@@ -319,6 +330,47 @@ public class ReplayCatalog {
 		entries.clear();
 		entries.addAll( bySeed.values() );
 		return this;
+	}
+
+	/**
+	 * Every file below {@code dir}, one level and deeper.
+	 *
+	 * <p>Deeper because a training run given {@code --replay-group} files its recordings into a
+	 * subdirectory, and a listing that stopped at the top level would show the directory as holding
+	 * nothing at all - the recordings would be written, ranked, and unreachable, which is the exact
+	 * failure {@link ReplayIndex} exists to stop happening by accident.
+	 *
+	 * <p>Skipping {@code rejected} is the one exclusion. That directory is where
+	 * {@code regenerate-corpus.ps1} parks recordings a rebuild could not reproduce, and listing them
+	 * would be the failure this project has already paid for once: a picker offering a file whose
+	 * playback diverges is a dead end, and a label on the row does not stop anybody taking it.
+	 *
+	 * <p>Total order, by name and then by path. {@code listFiles} order is unspecified, so two runs
+	 * over the same tree would otherwise disagree about which of two same-named recordings a seed
+	 * dedup keeps - which is the class of bug where directory order decides a property of the listing.
+	 */
+	private static List<File> recordingsUnder( File dir ){
+		List<File> found = new ArrayList<>();
+		collectRecordings( dir, found, 0 );
+		found.sort( Comparator.comparing( File::getName ).thenComparing( File::getPath ));
+		return found;
+	}
+
+	/** Bounded: a directory tree deeper than any run writes into is not one of ours. */
+	private static void collectRecordings( File dir, List<File> found, int depth ){
+		if (depth > 4) return;
+
+		File[] children = dir.listFiles();
+		if (children == null) return;
+
+		for (File child : children){
+			if (child.isDirectory()){
+				if (REJECTED_DIR.equals( child.getName() )) continue;
+				collectRecordings( child, found, depth + 1 );
+			} else {
+				found.add( child );
+			}
+		}
 	}
 
 	/**
@@ -431,10 +483,15 @@ public class ReplayCatalog {
 		return ordered;
 	}
 
+	public String sectionOf( Entry entry ){
+		if (entry.sourceIndex == 0) return SECTION_CORPUS;
+		return entry.group.isEmpty() ? SECTION_TRAINER : GROUP_PREFIX + entry.group.toUpperCase( Locale.ROOT );
+	}
+
 	/**
-	 * The listing's two sections, each holding its hero-class groups.
+	 * The listing's sections, each holding its hero-class groups.
 	 *
-	 * <p><b>Provenance is the outermost axis, and it is there because the two halves are not
+	 * <p><b>Provenance is the outermost axis, and it is there because the halves are not
 	 * interchangeable.</b> The reference corpus is built by {@code replay-viewer --record} through
 	 * {@code ReplayRecorder} directly and reproduces end to end; what the trainer wrote crossed a
 	 * worker pipe and, for every recording made before {@code train.ReplayCodec}, stopped at its first
@@ -443,9 +500,14 @@ public class ReplayCatalog {
 	 * form among descriptive ones, and the viewer gives no reason why selecting one halts after a
 	 * frame.
 	 *
-	 * <p>So the corpus comes first and says so, and the training output comes second and says what is
-	 * wrong with it. Both are still numbered in one sequence: two listings with two sets of numbers
-	 * would make the word "number" mean two different recordings depending on which was on screen.
+	 * <p>Within the training half, a {@code --replay-group} is a section of its own. It is read from the
+	 * header rather than from the directory the file happens to sit in, so a group survives being copied
+	 * and moved, and a recording filed by a run that named its group says which run it is even when the
+	 * folder is gone. Groups come after the ungrouped output and in name order, so the numbering stays a
+	 * function of what is on disk rather than of which group was written last.
+	 *
+	 * <p>Both are still numbered in one sequence: two listings with two sets of numbers would make the
+	 * word "number" mean two different recordings depending on which was on screen.
 	 *
 	 * <p>The split is the first {@code --dir} against everything after it, which is the same precedence
 	 * {@link #scan} already applies when a seed appears in two directories. That falls out of the
@@ -457,22 +519,34 @@ public class ReplayCatalog {
 		sections.put( SECTION_CORPUS, new LinkedHashMap<>() );
 		sections.put( SECTION_TRAINER, new LinkedHashMap<>() );
 
-		for (String hero : CLASS_ORDER){
-			sections.get( SECTION_CORPUS ).put( hero, new ArrayList<>() );
-			sections.get( SECTION_TRAINER ).put( hero, new ArrayList<>() );
+		//in name order, and after the ungrouped output, so a listing reads the same way twice
+		List<String> groups = new ArrayList<>( new LinkedHashSet<>( namedGroups() ));
+		groups.sort( String::compareTo );
+		for (String group : groups) sections.put( GROUP_PREFIX + group, new LinkedHashMap<>() );
+
+		for (Map<String, List<Entry>> heroes : sections.values()){
+			for (String hero : CLASS_ORDER) heroes.put( hero, new ArrayList<>() );
 		}
 
 		for (Entry entry : entries){
-			String section = entry.sourceIndex == 0 ? SECTION_CORPUS : SECTION_TRAINER;
 			String hero = entry.heroClass == null ? "?" : entry.heroClass.toUpperCase();
-			sections.get( section ).computeIfAbsent( hero, k -> new ArrayList<>() ).add( entry );
+			sections.get( sectionOf( entry )).computeIfAbsent( hero, k -> new ArrayList<>() ).add( entry );
 		}
 
-		for (Map<String, List<Entry>> group : sections.values()){
-			group.values().forEach( list -> list.sort( rankOrder() ));
+		for (Map<String, List<Entry>> heroes : sections.values()){
+			heroes.values().forEach( list -> list.sort( rankOrder() ));
 		}
 
 		return sections;
+	}
+
+	/** The distinct group ids recorded by the trainer, lowercased the way a heading uppercases them. */
+	private Set<String> namedGroups(){
+		Set<String> groups = new LinkedHashSet<>();
+		for (Entry entry : entries){
+			if (entry.sourceIndex != 0 && !entry.group.isEmpty()) groups.add( entry.group.toUpperCase( Locale.ROOT ));
+		}
+		return groups;
 	}
 
 	/** The nth listing entry, 1-based, or null when there is no such entry. */
@@ -682,12 +756,17 @@ public class ReplayCatalog {
 			for (Entry entry : hero) if (!entry.watchable) unwatchable++;
 		}
 
+		//A group's heading already names the run; the blurb says what kind of recording that run left,
+		//which is the one thing a reader of a heading cannot infer from it.
+		String origin = section.startsWith( GROUP_PREFIX )
+				? "written by training run group " + section.substring( GROUP_PREFIX.length() ).toLowerCase( Locale.ROOT ) + " - these reproduce"
+				: "written by the trainer through the worker pipe - these reproduce";
+
 		if (unwatchable == 0){
-			return "written by the trainer through the worker pipe - these reproduce, and every one of"
-					+ " them is watchable in the viewer";
+			return origin + ", and every one of them is watchable in the viewer";
 		}
 
-		return "written by the trainer through the worker pipe - these reproduce too. " + unwatchable
+		return origin + " too. " + unwatchable
 				+ " of " + sectionCount( groups ) + ", marked 'not watchable', were written before the"
 				+ " replay wire carried all nine step fields and nothing can recover that"
 				+ " (issues.md 15)";

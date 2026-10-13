@@ -239,6 +239,19 @@ public class Replay {
 
 	/** Total score, kept in sync with the last recorded reward. */
 /**
+	 * Which training run wrote this, as an id the trainer was given, or empty when it was not grouped.
+	 *
+	 * <p>Metadata rather than trajectory: it changes no step, no seed and no setting, so playback and
+	 * verification do not consult it and its absence on an older recording is not a fault. That is why it
+	 * does not bump {@link #VERSION} - every header key is read by name, and the answer for a missing one
+	 * is already defined (no group), unlike the fields that do change what a recording meant.
+	 *
+	 * <p>The catalogue lists one section per group, so a run can be watched against the run it was
+	 * compared with rather than against every other run ever trained.
+	 */
+	public String group = "";
+
+	/**
 	 * Why the run ended, as a {@code RewardModel.TerminateReason} name, or empty when unknown.
 	 *
 	 * <p>Recorded because the viewer cannot otherwise tell a complete recording from a truncated one. A

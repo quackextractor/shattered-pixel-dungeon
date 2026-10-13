@@ -62,9 +62,11 @@ public class ReplayIO {
 			out.newLine();
 out.write( "termination=" + replay.termination );
   			out.newLine();
-  			out.write( "reward_profile=" + replay.rewardProfile.key() );
+out.write( "reward_profile=" + replay.rewardProfile.key() );
   			out.newLine();
-			out.write( "steps=" + replay.steps.size() );
+  			out.write( "group=" + ( replay.group == null ? "" : replay.group ));
+  			out.newLine();
+ 			out.write( "steps=" + replay.steps.size() );
 			out.newLine();
 
 			for (Replay.Step step : replay.steps){
@@ -259,6 +261,8 @@ out.write( "termination=" + replay.termination );
 									.parse( value );
 					break;
 				case "steps":      replay.declaredSteps = Integer.parseInt( value ); break;
+				//absent from every recording written before groups existed, which is no group
+				case "group":      replay.group = value; break;
 				default: break;
 			}
 		}

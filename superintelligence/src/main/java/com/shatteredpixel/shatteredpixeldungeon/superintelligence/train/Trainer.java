@@ -60,6 +60,13 @@ public class Trainer {
 	 */
 	private final File replayDirOverride;
 
+	/**
+	 * {@code --replay-group}: this run's recordings are written into a directory of this name, carry it
+	 * in their header, and the catalogue lists them as a section of their own. Empty writes no
+	 * subdirectory, which is where every recording made before groups existed lives.
+	 */
+	private final String replayGroup;
+
 	private final PPO ppo;
 
 	/**
@@ -176,7 +183,7 @@ public class Trainer {
 
 	public Trainer( EnvConfig config, long seed, File workDir ){
 		this( config, new PpoHyperparameters(), seed, workDir,
-				new File( replayDirDefault(), "trainer-replays" ), null );
+				new File( replayDirDefault(), "trainer-replays" ), null, "" );
 	}
 
 	/**
@@ -185,9 +192,10 @@ public class Trainer {
 	 *
 	 * @param replayDir where recordings go, or null for {@code <workDir>/replays}
 	 * @param traceWorldPath where workers write a recording-side world trace, or null for none
+	 * @param replayGroup id the run's recordings are filed and listed under, or empty for none
 	 */
 	public Trainer( EnvConfig config, PpoHyperparameters hyper, long seed, File workDir,
-			File replayDir, String traceWorldPath ){
+			File replayDir, String traceWorldPath, String replayGroup ){
 		this.config = config;
 		this.rng = new Random( seed );
 		this.rngSeed = seed;
@@ -195,6 +203,7 @@ public class Trainer {
 		this.workDir = workDir;
 		this.traceWorldPath = traceWorldPath;
 		this.replayDirOverride = replayDir;
+		this.replayGroup = replayGroup == null ? "" : replayGroup;
 		this.ppo = new PPO( config, rng );
 		this.pool = new TrainerWorkers( config, ppo );
 		learning( hyper );
@@ -373,7 +382,7 @@ public class Trainer {
 		}
 
 Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
-				options.replayDir, options.traceWorld );
+				options.replayDir, options.traceWorld, options.replayGroup );
 
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
@@ -867,7 +876,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		}
 	}
 
-	private void saveBestReplays(){
+private void saveBestReplays(){
 		clearProgressBar();
 		File dir = replayDir();
 		int saved = 0;
@@ -875,12 +884,22 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		//Record where these landed before writing any of them. A recording in a directory nothing knows
 		//to look in is not a recording: the viewer and the catalog searched a fixed pair of paths and
 		//found 5 of the 147 on this machine, missing the rest without a word.
-		dir.mkdirs();
-		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIndex.record( dir );
+		//
+		//The directory recorded is the one the flag named, not the group subdirectory under it. The
+		//catalog scans a directory's subdirectories, so indexing the group would find these files twice
+		//- once as part of the parent and once as a directory of their own - and every grouped seed
+		//would report that it was recorded twice.
+		replayDirBase().mkdirs();
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIndex.record( replayDirBase() );
 
 		for (Map.Entry<String, Replay> entry : bestPerSeed.entrySet()){
 			Replay replay = entry.getValue();
 			replay.generation = epoch;
+			//Stamped here rather than sent down the worker pipe, because the group is a property of the
+			//run rather than of any episode - the worker never learns it. Same shape as the generation
+			//above, and for the same reason the reward profile was once a codec field: a field that
+			//exists on both sides of a pipe has to be written on one of them.
+			replay.group = replayGroup;
 
 			//**Never overwrite.** One file per seed per run, and a second run of the same seed wrote
 			//straight over the first - so a directory that was meant to accumulate training history
@@ -899,7 +918,8 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 		System.out.println();
 		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "   wrote " + saved
-				+ " best-per-seed replays to " + dir.getPath() );
+				+ " best-per-seed replays to " + dir.getPath()
+				+ ( replayGroup.isEmpty() ? "" : "  (group " + replayGroup + ")" ));
 	}
 
 	/**
@@ -975,9 +995,13 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		}
 	}
 
+	private File replayDirBase(){
+		return replayDirOverride != null ? replayDirOverride : new File( workDir, "replays" );
+	}
+
+	/** The base, plus a directory named after the group when one was given. */
 	private File replayDir(){
-		if (replayDirOverride != null) return replayDirOverride;
-		return new File( workDir, "replays" );
+		return replayGroup.isEmpty() ? replayDirBase() : new File( replayDirBase(), replayGroup );
 	}
 
 	/**

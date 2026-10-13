@@ -99,6 +99,35 @@ public class TrainOptions {
 	 * watches, so they belong where the catalogue already reads them.
 	 */
 	public File replayDir = new File( Trainer.replayDirDefault(), "trainer-replays" );
+
+	/**
+	 * {@code --replay-group}: the id this run's recordings are filed and listed under.
+	 *
+	 * <p>Empty by default, which is what a run wrote before groups existed and what keeps
+	 * {@code trainer-replays} itself listing the ones nobody grouped. It becomes a subdirectory of the
+	 * replay directory and a section of the catalogue in its own right, so two runs can be compared
+	 * against each other rather than against every run the machine has ever trained.
+	 *
+	 * <p>A group becomes a path segment and a heading, so it is refused rather than escaped: anything
+	 * outside {@code [A-Za-z0-9._-]}, and a bare {@code .} or {@code ..}, which would otherwise let a
+	 * flag write outside the directory it was given.
+	 */
+	public String replayGroup = "";
+
+	/** A group id this module is willing to turn into a directory name and a section heading. Empty is one. */
+	public static boolean validGroup( String group ){
+		if (group == null || group.isEmpty()) return true;
+		if (group.length() > 64) return false;
+		if (group.equals( "." ) || group.equals( ".." )) return false;
+		for (int i = 0; i < group.length(); i++){
+			char c = group.charAt( i );
+			boolean ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+					|| (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-';
+			if (!ok) return false;
+		}
+		return true;
+	}
+
 	public long stallSeconds = 180;
 
 	/**
@@ -224,6 +253,7 @@ public class TrainOptions {
 				case "--classpath":   o.classpath = args[ ++i ]; break;
 					case "--out":         o.workDir = new File( args[ ++i ] ); break;
 			case "--replay-dir":   o.replayDir = new File( args[ ++i ] ); break;
+				case "--replay-group": o.replayGroup = args[ ++i ]; break;
 				case "--stall-seconds":
 					//how long a worker may be silent before the run is failed as a protocol desync.
 					//A blocked pipe costs no CPU, so without this a stall is indistinguishable from a
@@ -279,6 +309,11 @@ public class TrainOptions {
 		if (o.rewardProfile != null){
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
 					.parse( o.rewardProfile );
+		}
+		if (!validGroup( o.replayGroup )){
+			throw new IllegalArgumentException( "not a usable --replay-group: '" + o.replayGroup
+					+ "'. Letters, digits, '.', '_' and '-' only, up to 64, because a group names a"
+					+ " directory under the replay directory and a section of the catalogue." );
 		}
 		return o;
 	}
