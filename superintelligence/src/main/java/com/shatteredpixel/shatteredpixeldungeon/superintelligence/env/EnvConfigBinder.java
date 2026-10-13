@@ -88,7 +88,7 @@ public class EnvConfigBinder {
 			"reward.damage_penalty",
 			"reward.kill_reward",
 			"reward.sneak_attack_reward",
-			"reward.no_progress_penalty",
+			"reward.free_step_cost_factor",
 			"reward.death_penalty",
 			"reward.stall_penalty",
 			"reward.turn_limit_penalty",
@@ -274,8 +274,8 @@ case "env.stall_limit":           config.stallLimit = integer( key, value, origi
 			case "reward.kill_reward":       config.killReward = decimal( key, value, origin ); break;
 			case "reward.sneak_attack_reward":
 				config.sneakAttackReward = decimal( key, value, origin ); break;
-			case "reward.no_progress_penalty":
-				config.noProgressPenalty = decimal( key, value, origin ); break;
+case "reward.free_step_cost_factor":
+			config.freeStepCostFactor = decimal( key, value, origin ); break;
 			case "reward.death_penalty":     config.deathPenalty = decimal( key, value, origin ); break;
 			case "reward.stall_penalty":     config.stallPenalty = decimal( key, value, origin ); break;
 			case "reward.turn_limit_penalty":

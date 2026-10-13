@@ -295,15 +295,16 @@ public class RewardCheck {
 		//owns the assertion. Asserted on the record count rather than the score because a duplicate
 		//terminate is invisible in the total only while STALLED is at zero, and it is no longer.
 		double turnCost = stall.termTotal( RewardTerm.TURN_COST );
-		double expectedTurnCost = -config.turnCost * stall.turns;
+		double expectedTurnCost = -config.turnCost * (stall.turns - freeSteps( stall ) );
 
 		//tolerance in ulps rather than ==. Both sides accumulate in float32, so -0.242 computed as 121
 		//single-turn additions and as 121 * 0.002f differ in the last bits. An exact comparison here
 		//would assert about float rounding, not about the reward.
 		if (Math.abs( turnCost - expectedTurnCost ) > 1e-5 ){
-			fail( "a stalled episode charged " + turnCost + " in turn cost where " + stall.turns
-					+ " turns x " + config.turnCost + " = " + expectedTurnCost + " was expected."
-					+ " Stall and idling are separate prices and both are charged." );
+			fail( "a stalled episode charged " + turnCost + " in turn cost where " + expectedTurnCost
+					+ " was expected: " + stall.turns + " turns, " + freeSteps( stall ) + " of them free"
+					+ " and therefore priced separately. Stall and idling are separate prices and both"
+					+ " are charged." );
 			return;
 		}
 
@@ -652,22 +653,41 @@ public class RewardCheck {
 	 * on {@code STALLED} at zero: removing the evidence removes the regression test for it.
 	 */
 	private static void checkFreeStepsCostSomething( EnvConfig config ){
-		if (!( config.noProgressPenalty > config.turnCost * 10f )){
-			fail( "a step that advances no engine time costs " + config.noProgressPenalty
-					+ " against " + config.turnCost + " for a real one, so a free action is cheaper than"
-					+ " acting. duelist-mid alternated equip and unequip for 120 steps at that price." );
+		double realStep = config.turnCost;
+		double freeStep = config.turnCost * config.freeStepCostFactor;
+
+		//The property, and it is a relationship rather than a constant: half a turn, and not nothing.
+		//"Cheaper than a real turn" used to be a failure; it is now the design, because the thing that
+		//stops a policy farming free steps is env.free_step_budget rather than the price. Zero is still a
+		//failure, since equipping and unequipping are free in the real game too and a legal action may be
+		//done a hundred times.
+		if (!( freeStep > 0 )){
+			fail( "a step that advances no engine time costs " + freeStep + ", so a free action is free."
+					+ " duelist-mid alternated equip and unequip for 120 steps at that price." );
+			return;
+		}
+
+		if (!( freeStep < realStep )){
+			fail( "a free step costs " + fine( freeStep ) + " against " + fine( realStep ) + " for a real"
+					+ " one, so free_step_cost_factor is not expressing the ratio it exists to express. The"
+					+ " directive is half a turn: cheaper than acting, and not free." );
 			return;
 		}
 
 		Outcome o = play( config, 60, "FREESTEPCHECK", turn -> {
 			SPDEnv env = turn.env;
+			//the free-step budget can end the episode between the equip and the unequip, and stepping a
+			//dead episode is a crash rather than a result
+			if (!env.running()) return;
+			//out of a non-WORLD mode first, as every other driver here does: leaving the env parked in
+			//SLOT or MENU for the rest of the episode ends it without reaching the code under test
 			if (env.mode() != EnvMode.WORLD){
 				env.step( Action.CANCEL, 0 );
 				return;
 			}
 			//equip, unequip, equip, unequip: the free action, on the hero's own weapon
 			env.step( Action.USE, 0 );
-			if (env.mode() == EnvMode.SLOT) env.step( Action.USE, equippableSlot( env ) );
+			if (env.running() && env.mode() == EnvMode.SLOT) env.step( Action.USE, equippableSlot( env ) );
 		} );
 
 		int charged = o.ledger == null ? 0 : o.ledger.notes( RewardTerm.NO_PROGRESS );
@@ -680,14 +700,29 @@ public class RewardCheck {
 			return;
 		}
 
-		if (o.termTotal( RewardTerm.NO_PROGRESS ) >= 0 ){
-			fail( "NO_PROGRESS was recorded " + charged + " time(s) and paid "
-					+ o.termTotal( RewardTerm.NO_PROGRESS ) + ", so a free step is not being charged." );
+		double paid = o.termTotal( RewardTerm.NO_PROGRESS );
+		if (Math.abs( paid + freeStep * charged ) > 1e-4 ){
+			fail( "NO_PROGRESS was recorded " + charged + " time(s) and paid " + paid + " where "
+					+ fine( freeStep * charged ) + " was expected (" + charged + " x "
+					+ fine( freeStep ) + "). The factor is the relationship, so it is measured per step"
+					+ " rather than compared as a total." );
 			return;
 		}
 
-		System.out.println( "  a free step costs " + config.noProgressPenalty + " against "
-				+ config.turnCost + " for a real one; " + charged + " free step(s) charged" );
+		//and the real steps in the same run must still cost a whole turn each - the ratio is only
+		//meaningful against the thing it is a fraction of, so both halves are measured
+		double realPaid = Math.abs( o.termTotal( RewardTerm.TURN_COST ) );
+		int realSteps = o.turns - charged;
+		if (realSteps > 0 && Math.abs( realPaid - realStep * realSteps ) > 1e-4 ){
+			fail( realSteps + " real steps cost " + realPaid + " where " + fine( realStep * realSteps )
+					+ " was expected (" + realSteps + " x " + fine( realStep ) + "). A free step is half a"
+					+ " turn only if a real one is a whole turn." );
+			return;
+		}
+
+		System.out.println( "  a free step costs " + fine( freeStep ) + " against " + fine( realStep )
+				+ " for a real one - " + charged + " free (" + fine( paid ) + "), " + realSteps
+				+ " real (" + fine( realPaid ) + ")" );
 	}
 
 	/**
@@ -1301,11 +1336,11 @@ public class RewardCheck {
 		}
 
 		double turnCost = stall.termTotal( RewardTerm.TURN_COST );
-		double expectedTurnCost = -config.turnCost * stall.turns;
+		double expectedTurnCost = -config.turnCost * (stall.turns - freeSteps( stall ) );
 		if (Math.abs( turnCost - expectedTurnCost ) > 1e-5 ){
 			fail( "a stalled run under depth_only charged " + turnCost + " in turn cost where "
-					+ stall.turns + " turns x " + config.turnCost + " = " + expectedTurnCost
-					+ " was expected." );
+					+ expectedTurnCost + " was expected: " + stall.turns + " turns, "
+					+ freeSteps( stall ) + " of them free." );
 			return;
 		}
 
@@ -1946,6 +1981,11 @@ public class RewardCheck {
 	 * claim is "these two prices differ" was printing them identically. Three places separates them and
 	 * is still one order below anything else the file reports.
 	 */
+	/** How many of a run's steps advanced no engine time, which is what is priced separately now. */
+	private static int freeSteps( Outcome o ){
+		return o.ledger == null ? 0 : o.ledger.notes( RewardTerm.NO_PROGRESS );
+	}
+
 	private static String fine( double v ){
 		return String.format( java.util.Locale.ROOT, "%.4f", v );
 	}

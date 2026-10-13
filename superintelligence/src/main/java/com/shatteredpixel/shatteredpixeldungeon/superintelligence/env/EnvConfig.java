@@ -64,15 +64,18 @@ public class EnvConfig {
 	 * real move between pairs. The position guard never reached a hundred.
 	 *
 	 * <p>A total on the floor rather than a streak, because a streak is cleared by the very move the loop
-	 * makes between its pairs. At the default this allows about 8% of a floor's steps to cost the engine
-	 * nothing, which is a line rather than a law - raise it if a policy that re-equips honestly finds it
-	 * too tight.
+	 * makes between its pairs. **40, not 120**, and the measurement that chose it is that 120 was binding:
+	 * four of ten recordings from the run that added it ended exactly on it. A dead-end episode then paid
+	 * 120 x 12 = 1,440 in per-step charges <em>before</em> the stall terminal, so the same behaviour was
+	 * charged twice and the per-step half drowned out the ordering this exists to express - a stall at
+	 * 1.5x a death rather than the one step above it. 40 allows about twenty honest equip/unequip cycles
+	 * on a floor, which is what a free action in the real game costs, and costs 480 before the terminal.
 	 *
 	 * <p>Priced rather than prevented, like {@link #noProgressPenalty}: the actions are legal and a player
 	 * may do them, so what must not happen is unbounded numbers of them. Unlike the charge, this bounds
 	 * them, and the bound is the stall price - which is above the death price on purpose.
 	 */
-	public int freeStepBudget = 120;
+	public int freeStepBudget = 40;
 
 	// --- vision ---
 
@@ -211,19 +214,23 @@ public class EnvConfig {
 	public float sneakAttackReward = 300f;
 
 	/**
-	 * Penalty for a step that advanced no engine time at all.
+	 * What a step that advanced no engine time costs, as a fraction of what a real turn costs.
 	 *
-	 * <p>A step is not a turn, and the difference is load-bearing. Equipping and unequipping a weapon
-	 * costs zero - {@code WndUseItem.onClick} calls {@code item.execute} and returns without spending
-	 * anything - so {@code USE} on an equippable is a free action in the real game and the policy found
-	 * it, alternating for 120 steps on one {@code Rapier}. The stall guard eventually catches it on
-	 * position and health, which it should, but a hundred and twenty free steps in between are paid at
-	 * the ordinary turn rate and so cost almost nothing.
+	 * <p>Was an absolute penalty ({@code noProgressPenalty}, 12.0 against a turn cost of 1.0), and the
+	 * shape of that was wrong twice over. It made a free step cost thirteen ordinary steps, so a dead-end
+	 * episode paid 120 x 12 = 1,440 in per-step charges <em>before</em> the stall terminal - charging the
+	 * same behaviour twice and drowning out the ordering the terminal exists to express. And it was a
+	 * second number where the question is a ratio.
 	 *
-	 * <p>Charging here rather than tightening the guard is deliberate: it prices the action honestly
-	 * without changing when any recording ends, so the corpus stays valid. See {@code TODO.md} 0.10.
+	 * <p>0.5, so a free step costs half a turn: priced rather than free, because equipping and
+	 * unequipping cost nothing in the real game too and a legal action may be done a hundred times.
+	 *
+	 * <p><b>Cheaper than a turn is a subsidy, and this is deliberately exposed rather than tuned away.</b>
+	 * The cheapest action available to a policy is now the free one, and the thing that stops it being
+	 * farmed is {@link #freeStepBudget} rather than the price. Raise this toward 1.0 if a run starts
+	 * preferring free steps to real ones; that is what the number is for.
 	 */
-	public float noProgressPenalty = 12f;
+	public float freeStepCostFactor = 0.5f;
 
 	/** Terminal penalty for dying. Large: dying should dominate any accumulated micro-reward. */
 	public float deathPenalty = 2500f;
@@ -292,7 +299,7 @@ public class EnvConfig {
 		c.damagePenalty = damagePenalty;
 		c.killReward = killReward;
 		c.sneakAttackReward = sneakAttackReward;
-		c.noProgressPenalty = noProgressPenalty;
+		c.freeStepCostFactor = freeStepCostFactor;
 		c.deathPenalty = deathPenalty;
 		c.stallPenalty = stallPenalty;
 		c.turnLimitPenalty = turnLimitPenalty;

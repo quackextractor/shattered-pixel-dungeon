@@ -112,9 +112,23 @@ public class ModeCoverageCheck {
 
 		int depth = env.depth();
 
-		for (int i = 0; i < 24 && env.mode() == EnvMode.WORLD; i++ ){
+		//Eight, not twenty-four, and stopped if the episode ends. The fault this case exists for picks
+		//the heap up on the **first** OPEN_INVENTORY, so eight is more than enough instrument for it -
+		//whereas twenty-four pairs is 48 steps that advance no engine time, which is over the shipped
+		//env.free_step_budget and ends the episode by design. The instrument was larger than the
+		//environment's tolerance for a loop, and a gate that crashes on a correct terminal is a worse gate
+		//than one that asks its question with a smaller hammer.
+		for (int i = 0; i < 8 && env.running() && env.mode() == EnvMode.WORLD; i++ ){
 			env.step( Action.OPEN_INVENTORY, 0 );
-			if (env.mode() == EnvMode.INVENTORY ) env.step( Action.CANCEL, 0 );
+			if (env.running() && env.mode() == EnvMode.INVENTORY ) env.step( Action.CANCEL, 0 );
+		}
+
+		if (!env.running() ){
+			failures.add( "eight OPEN_INVENTORY/CANCEL pairs ended the episode (" + env.endReason()
+					+ "), so this case never checked what it was written to check. The heap and the"
+					+ " hero's position are the assertions; running out of episode first is a failure of"
+					+ " the fixture, not a pass." );
+			return;
 		}
 
 		if (env.heroPosition() != heroPos ){
@@ -150,15 +164,22 @@ public class ModeCoverageCheck {
 		env.reset( SEED, HeroClass.WARRIOR );
 		int before = env.turnsTotal();
 		int decisions = 0;
-		for (int i = 0; i < 24 && env.mode() == EnvMode.WORLD; i++ ){
+		for (int i = 0; i < 8 && env.running() && env.mode() == EnvMode.WORLD; i++ ){
 			env.step( Action.OPEN_INVENTORY, 0 );
 			decisions++;
-			if (env.mode() == EnvMode.INVENTORY ){
+			if (env.running() && env.mode() == EnvMode.INVENTORY ){
 				env.step( Action.CANCEL, 0 );
 				decisions++;
 			}
 		}
 		int spent = env.turnsTotal() - before;
+
+		if (!env.running() ){
+			failures.add( "eight inventory round trips ended the episode before the turn accounting could"
+					+ " be compared (" + env.endReason() + "). The assertion here is that every decision"
+					+ " costs exactly one turn; running out of episode first means it was never asked." );
+			return;
+		}
 
 		if (spent != decisions ){
 			failures.add( decisions + " decisions cost " + spent + " turns. Each step the agent takes must"

@@ -314,29 +314,28 @@ public class RewardModel {
 		//other direction. A step that consumes the clock pays for every turn it consumed; a step that
 		//consumes none still pays for one. A multi-turn action can no longer be bought at a discount,
 		//and a no-clock action cannot be free.
-		float turnsCharged = Math.max( 1f, engineTurnsSpent( depth ) );
-		lastStepAdvancedClock = depth != prevDepth || engineTurnsSpent( depth ) > 0f;
-		ledger.add( RewardTerm.TURN_COST, -config.turnCost * turnsCharged, false );
+		float spent = engineTurnsSpent( depth );
+		lastStepAdvancedClock = depth != prevDepth || spent > 0f;
+
+		//One step, one price. A step that consumed the engine clock pays for every turn it consumed,
+		//with the floor of one that makes WAIT and REST cost a decision rather than nothing; a step that
+		//consumed none pays `turnCost * free_step_cost_factor`, which is **less** than that floor rather
+		//than a penalty charged on top of it.
+		//
+		//Stacking them was the shape the old numbers had and it charged a free step more than a real one -
+		//1.0 of turn cost plus a 12.0 penalty against 1.0 for acting - so a policy that preferred free
+		//actions was being pushed away from them by a price that also made every dead-end episode cost
+		//more than the stall terminal it was walking towards.
+		if (lastStepAdvancedClock){
+			ledger.add( RewardTerm.TURN_COST, -config.turnCost * Math.max( 1f, spent ), false );
+		} else {
+			ledger.add( RewardTerm.NO_PROGRESS, -config.turnCost * config.freeStepCostFactor, false );
+		}
 		if (tookAction) ledger.countTurn();
 
-		// A step the game resolved for free.
-		//
-		// Actor.now() is the engine's own clock and it does not move for every action: equipping and
-		// unequipping a weapon spends nothing at all, because WndUseItem.onClick calls item.execute and
-		// returns without touching the hero's turn. A policy that found this could alternate the two
-		// indefinitely - measured on duelist-mid, 120 consecutive USE steps at dEng=0.0 - and each one
-		//cost a hundredth of a turn.
-		//
-		//Charged rather than refused, because the action is legal and a player may do it; what must not
-		//happen is a hundred of them costing nothing. Charged from the diff and not from the stall
-		//guard on purpose: the guard decides when an episode ends, and changing that would invalidate
-		//every recording in the corpus. This prices the step without moving any boundary.
-		//
-		//Skipped on a floor change, where the clock legitimately restarts from zero - Dungeon.newLevel
-		//calls Actor.clear() - and would otherwise read as a step that went backwards in time.
-		if (depth == prevDepth && Actor.now() <= prevEngineTime ){
-			ledger.add( RewardTerm.NO_PROGRESS, -config.noProgressPenalty, false );
-		}
+		// A step the game resolved for free is charged above, as NO_PROGRESS and at
+		// `turnCost * free_step_costFactor` - see the comment there for why it is a fraction of a turn
+		// rather than a penalty stacked on one.
 
 		double reward = ledger.flushTurn();
 		snapshot();
