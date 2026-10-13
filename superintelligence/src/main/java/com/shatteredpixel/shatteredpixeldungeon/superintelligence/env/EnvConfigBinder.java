@@ -68,6 +68,7 @@ public class EnvConfigBinder {
 			"env.turn_limit_total",
 			"env.actor_step_limit",
 			"env.stall_limit",
+	"env.free_step_budget",
 			"env.max_view_distance",
 			"env.honour_vision_buffs",
 			"env.mimics_visible_out_of_fog",
@@ -241,7 +242,8 @@ public class EnvConfigBinder {
 			case "env.turn_limit_per_floor": config.turnLimitPerFloor = integer( key, value, origin ); break;
 			case "env.turn_limit_total":     config.turnLimitTotal = integer( key, value, origin ); break;
 			case "env.actor_step_limit":     config.actorStepLimit = integer( key, value, origin ); break;
-			case "env.stall_limit":          config.stallLimit = integer( key, value, origin ); break;
+case "env.stall_limit":           config.stallLimit = integer( key, value, origin ); break;
+			case "env.free_step_budget":     config.freeStepBudget = integer( key, value, origin ); break;
 			case "env.max_view_distance":    config.maxViewDistance = integer( key, value, origin ); break;
 			case "env.honour_vision_buffs":  config.honourVisionBuffs = bool( key, value, origin ); break;
 			case "env.mimics_visible_out_of_fog":

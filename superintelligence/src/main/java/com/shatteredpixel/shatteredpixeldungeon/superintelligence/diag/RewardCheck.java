@@ -55,7 +55,7 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 20;
+	private static final int CHECKS = 21;
 
 	/** How many heaps to try before calling a floor that offers none a failure. */
 	private static final int MAX_HEAP_TRIES = 12;
@@ -73,6 +73,7 @@ public class RewardCheck {
 		checkTerminalsAreOrdered( config );
 		checkDepthBeatsAPerFloorTurnLimit( config );
 		checkExplorationCannotOutbuyADescent( config );
+		checkFreeStepLoopIsBounded( config );
 		checkStallPathRecordsOnce( config );
 		checkDefaultProfilePaysEveryTerm();
 		checkDepthOnlyPaysOnlyForDepth();
@@ -954,6 +955,114 @@ public class RewardCheck {
 			return t;
 		}
 		return null;
+	}
+
+	/**
+	 * A free-action loop must be bounded, not merely charged.
+	 *
+	 * <p>{@code noProgressPenalty} prices a step that advanced no engine time, and 12 per step did not
+	 * stop it: on {@code HRT-YYP-KGC} the episode spent 502 of its 1215 steps advancing nothing - 41% of
+	 * its whole cost - almost all of it {@code OPEN_INVENTORY} then {@code CANCEL} out of
+	 * {@code INVENTORY}, with a real move between pairs. The position guard could not see it, because a
+	 * move resets that count by design.
+	 *
+	 * <p>So the driver here does exactly that loop, and the case asserts that the episode ends, that it
+	 * ends as a <em>stall</em> rather than quietly running out of clock, and that the stall price is
+	 * above the death price - which is the whole point of pricing stopping above dying. The second half
+	 * runs the identical driver with the budget set out of reach, so the case cannot pass by ending for
+	 * some other reason.
+	 */
+	private static void checkFreeStepLoopIsBounded( EnvConfig config ){
+		Outcome loop = playFreeStepLoop( config, config.freeStepBudget + 200 );
+
+		if (loop.endReason != RewardModel.TerminateReason.STALLED ){
+			fail( "an episode spending its steps on OPEN_INVENTORY and CANCEL, with a move between pairs,"
+					+ " ended " + loop.endReason + " after " + loop.turns + " turns rather than stalling."
+					+ " " + loop.ledger.notes( RewardTerm.NO_PROGRESS ) + " of those steps advanced no"
+					+ " engine time, which is " + loop.termTotal( RewardTerm.NO_PROGRESS )
+					+ " of the run's cost. The position guard cannot see this shape - one move resets it -"
+					+ " so nothing bounded it." );
+			return;
+		}
+
+		int free = loop.ledger == null ? 0 : loop.ledger.notes( RewardTerm.NO_PROGRESS );
+		if (free > config.freeStepBudget || free < config.freeStepBudget - 1 ){
+			fail( "the episode stalled after " + free + " free steps against a budget of "
+					+ config.freeStepBudget + ". The bound is what was supposed to end it." );
+			return;
+		}
+
+		double terminal = loop.termTotal( RewardTerm.STALLED );
+		if (Math.abs( terminal + config.stallPenalty ) > 1e-4 ){
+			fail( "the loop ended on a STALLED carrying " + terminal + ", expected "
+					+ (-config.stallPenalty) + ". A bound that charges less than dying teaches the loop"
+					+ " again." );
+			return;
+		}
+
+		if (!( loop.score < -config.deathPenalty )){
+			fail( "looping scores " + fmt( loop.score ) + " and dying costs " + (-config.deathPenalty)
+					+ ", so the cheapest way to end the episode is to look at nothing repeatedly."
+					+ " Stalling has to cost more than dying." );
+			return;
+		}
+
+		//the control: the same driver with the budget out of reach, which has to get well past the budget
+		//before anything ends it. Asserted on the free-step count rather than on how the control ends,
+		//because a refused MOVE_E leaves the hero standing and the position guard can end it first - which
+		//would still be a control that never reached the budget this case is measuring.
+		EnvConfig roomy = new EnvConfig();
+		roomy.freeStepBudget = 100000;
+		Outcome control = playFreeStepLoop( roomy, config.freeStepBudget * 4 + 60 );
+
+		int controlFree = control.ledger == null ? 0 : control.ledger.notes( RewardTerm.NO_PROGRESS );
+		if (controlFree <= config.freeStepBudget + 20 ){
+			fail( "the control run reached " + controlFree + " free steps against a budget of "
+					+ config.freeStepBudget + " and ended " + control.endReason + " after "
+					+ control.turns + " turns, so it never got far enough past the budget for this case to"
+					+ " be measuring the budget rather than something else." );
+			return;
+		}
+
+		System.out.println( "  a free-action loop is bounded: " + free + " free steps ended it as STALLED"
+				+ " at " + fmt( loop.score ) + ", worse than dying's " + fmt( -config.deathPenalty )
+				+ "; the same loop with the budget out of reach reached " + controlFree
+				+ " free steps before ending " + control.endReason );
+	}
+
+	/**
+	 * The loop {@code HRT-YYP-KGC} spent 502 steps on, driven through the real environment.
+	 *
+	 * <p>{@code OPEN_INVENTORY} then {@code CANCEL} out of {@code INVENTORY}, with one real move between
+	 * pairs. The move is the point: without it the position guard fires at {@code stallLimit} and this
+	 * case would pass without having reached the free-step budget at all - which is what the first version
+	 * did, until the control run showed a wall refusing the fixed direction and the guard firing instead.
+	 *
+	 * <p>So the move is chosen from the action mask rather than hardcoded, which is what keeps it a move
+	 * on every floor and every seed.
+	 */
+	private static Outcome playFreeStepLoop( EnvConfig config, int maxTurns ){
+		return play( config, maxTurns, "FREESTEPLOOP", turn -> {
+			SPDEnv env = turn.env;
+			if (env.mode() == EnvMode.INVENTORY){
+				env.step( Action.CANCEL, 0 );
+				return;
+			}
+			if (env.mode() == EnvMode.WORLD){
+				env.step( turn.step % 3 == 2 ? legalMove( env ) : Action.OPEN_INVENTORY, 0 );
+				return;
+			}
+			env.step( Action.CANCEL, 0 );
+		} );
+	}
+
+	/** The first directional action the environment says is legal here, or {@code SEARCH}. */
+	private static Action legalMove( SPDEnv env ){
+		float[] mask = env.actionMask();
+		for (Action a : Action.values()){
+			if (a.directional() && a.index < mask.length && mask[ a.index ] != 0f ) return a;
+		}
+		return Action.SEARCH;
 	}
 
 	/**

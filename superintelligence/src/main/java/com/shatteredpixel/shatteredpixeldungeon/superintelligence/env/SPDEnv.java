@@ -50,6 +50,9 @@ public class SPDEnv {
 	private int lastDepth = 1;
 	private int lastBranch = 0;
 	private int stallCount;
+
+	/** Steps on this floor that advanced no engine time, for the third stall guard. */
+	private int freeStepsThisFloor;
 	private int lastStallPos = -1;
 	private float lastStallHp;
 
@@ -149,6 +152,7 @@ public class SPDEnv {
 		lastDepth = 1;
 		lastBranch = 0;
 		stallCount = 0;
+		freeStepsThisFloor = 0;
 		lastStallPos = -1;
 		lastStallHp = Dungeon.hero.HP;
 		terminated = false;
@@ -478,6 +482,7 @@ if (mode == EnvMode.WORLD){
 			//index, so carrying the count across a transition could carry a stall that had nothing to
 			//do with this floor.
 			stallCount = 0;
+			freeStepsThisFloor = 0;
 			lastStallPos = -1;
 			ledger.beginFloor( depth, branch );
 		}
@@ -524,11 +529,33 @@ if (mode == EnvMode.WORLD){
 			stallCount++;
 			if (stallCount >= config.stallLimit){
 				terminate( RewardModel.TerminateReason.STALLED );
+				return;
 			}
 		} else {
 			stallCount = 0;
 			lastStallPos = hero.pos;
 			lastStallHp = hero.HP;
+		}
+
+//and a third, for the loop the guard above cannot see.
+		//
+		//It counts every step on the floor that advanced no engine time - a total, not a streak - so a
+		//real move between two free actions does not clear it. Measured on HRT-YYP-KGC: 502 of 1215
+		//steps advanced nothing - OPEN_INVENTORY and CANCEL out of INVENTORY, a move, repeat - and
+		//41% of the episode's cost, while the position guard above never reached its hundred because each
+		//pair was separated by a step that moved the hero.
+		//
+		//A streak would not have caught it, and the first version of this was one: with a move every third
+		//step the streak only reached 5 before a wall refused the move, and what bounded the recorded
+		//episode was the wall rather than the budget.
+		//
+		//The clock is asked of RewardModel rather than read again here: NO_PROGRESS charges the same
+		//condition, and two definitions of "a free step" would be free to drift apart.
+if (!reward.lastStepAdvancedClock()){
+			freeStepsThisFloor++;
+			if (freeStepsThisFloor >= config.freeStepBudget){
+				terminate( RewardModel.TerminateReason.STALLED );
+			}
 		}
 	}
 

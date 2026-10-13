@@ -443,6 +443,7 @@ public class ConfigCheck {
 			case "env.turn_limit_total":      return String.valueOf( config.turnLimitTotal );
 			case "env.actor_step_limit":      return String.valueOf( config.actorStepLimit );
 			case "env.stall_limit":           return String.valueOf( config.stallLimit );
+			case "env.free_step_budget":     return String.valueOf( config.freeStepBudget );
 			case "env.max_view_distance":     return String.valueOf( config.maxViewDistance );
 			case "env.honour_vision_buffs":   return String.valueOf( config.honourVisionBuffs );
 			case "env.mimics_visible_out_of_fog":
@@ -541,6 +542,7 @@ public class ConfigCheck {
 			case "env.turn_limit_total":      return "31337";
 			case "env.actor_step_limit":      return "555";
 			case "env.stall_limit":           return "42";
+			case "env.free_step_budget":     return "77";
 			case "env.max_view_distance":     return "7";
 			case "rl.epochs":                 return "3";
 			case "rl.minibatch_size":         return "16";

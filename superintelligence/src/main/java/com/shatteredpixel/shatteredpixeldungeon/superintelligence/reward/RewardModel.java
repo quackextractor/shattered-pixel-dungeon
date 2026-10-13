@@ -52,6 +52,16 @@ public class RewardModel {
 
 	private boolean snapshotValid = false;
 
+	/**
+	 * Whether the step just scored advanced the engine's clock.
+	 *
+	 * <p>The same question {@link RewardTerm#NO_PROGRESS} asks, read here rather than re-derived, because
+	 * two consumers guessing at one definition is how the charge and the guard end up disagreeing about
+	 * what a free step is. A floor change counts as progress: {@code Dungeon.newLevel} calls
+	 * {@code Actor.clear()} and the clock legitimately restarts from zero.
+	 */
+	private boolean lastStepAdvancedClock = true;
+
 	public RewardModel( EnvConfig config, RewardLedger ledger, Curriculum curriculum ){
 		this.config = config;
 		this.ledger = ledger;
@@ -69,6 +79,11 @@ public class RewardModel {
 
 	public Curriculum curriculum(){
 		return curriculum;
+	}
+
+	/** Whether the step just scored advanced the engine's clock. See {@link #lastStepAdvancedClock}. */
+	public boolean lastStepAdvancedClock(){
+		return lastStepAdvancedClock;
 	}
 
 	// --------------------------------------------------------------------------- per turn
@@ -280,6 +295,7 @@ public class RewardModel {
 		//consumes none still pays for one. A multi-turn action can no longer be bought at a discount,
 		//and a no-clock action cannot be free.
 		float turnsCharged = Math.max( 1f, engineTurnsSpent( depth ) );
+		lastStepAdvancedClock = depth != prevDepth || engineTurnsSpent( depth ) > 0f;
 		ledger.add( RewardTerm.TURN_COST, -config.turnCost * turnsCharged, false );
 		if (tookAction) ledger.countTurn();
 

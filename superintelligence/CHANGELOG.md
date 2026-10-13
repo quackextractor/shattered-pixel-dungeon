@@ -25,40 +25,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **An item that creates a mob left it with no sprite, and killed the worker.** Found by a 30-generation
-  training run under `reward.profile=depth_only`, not by a gate: the agent used a **Scroll of Mirror
-  Image** and two workers died with `NullPointerException: Cannot assign field "visible" because
-  "this.sprite" is null` at `Char.move`. `GameScene.add( Mob, float )` gives a mob its sprite and its place
-  in `Actor.chars` only when a scene exists, and a renderer-bypassed process has none -
-  `ScrollOfMirrorImage` does the right thing by the game's own lights and calls `GameScene.add( mob )`,
-  which is exactly why nothing had found it. `add( Heap )` already carries the headless answer for heaps;
-  the mob branch did not. Reachable on floor 1, and the same class as §1's unguarded `SentryRoom` and
-  `ArmoredStatue` casts.
+- **A free-action loop was charged and not bounded, and the charge did not stop it.** `HRT-YYP-KGC` spent
+  **502 of its 1215 steps advancing no engine time - 41% of that episode's whole cost** - almost all of it
+  `OPEN_INVENTORY` followed by `CANCEL` out of `INVENTORY`, with a real move between pairs. The existing
+  guard could not see it: **`env.stall_limit` counts consecutive steps where the hero did not move, so one
+  move resets it**, and this loop makes one between every pair.
 
-  **The fix is uncommitted**, per the engine boundary in `AGENTS.md`: one scene-less branch in
-  `GameScene.add( Mob, float )` mirroring `add( Heap )`, backed by a `headlessMobSprite` static in the same
-  shape as the existing `headlessEmitter`, plus the `sprite instanceof MirrorSprite` guard in
-  `MirrorImage.act` - the identical guard `SentryRoom.act` already carries. The second half was found by
-  the first: with only the `GameScene` half the NPE becomes a `ClassCastException`, and `MirrorSprite`
-  cannot be built headlessly at all (measured - `new MirrorSprite()` dies reading a null texture width).
-  `ENGINE-CHANGES.md` §8 has the whole proposal; the patch is kept outside the repository so the committed
-  tree still builds on its own.
+  `env.free_step_budget=120` bounds it: steps on a floor that advanced no engine time are counted as a
+  **total** rather than a streak, and reaching the budget ends the episode as a **stall** - which costs
+  more than dying, on purpose. The clock is read from `RewardModel.lastStepAdvancedClock()` rather than
+  re-derived, because `NO_PROGRESS` charges the same condition and two definitions of "a free step" would
+  be free to drift apart.
 
-  Measured after both, on a real scroll used through `SlotAction.use`: `mobs 8 -> 10, mirror images=2 with
-  sprite=2 in Actor.chars=2`, no crash.
+  Measured on `FREESTEPLOOP`, with the loop driven through the real environment: **120 free steps ended it
+  as STALLED at -4622.00 against dying's -2500.00**, and the same driver with the budget out of reach
+  reached 359 free steps.
 
-### Not done
+  **A streak would not have caught it, and the first version was one.** The gate passed against a streak
+  guard until its control run - the same driver with the budget out of reach - reached only 125 free steps,
+  because a wall refused the hardcoded move and the *position* guard ended the episode instead. The case
+  now asserts the control got well past the budget, and the driver takes its move from the action mask, so
+  the thing that ends the bounded run is the thing under test. `rewardcheck` is 21 cases.
 
-- **No gate for the above**, because a gate that depends on uncommitted engine code is a tree that does
-  not build. It needs the `:core` half committed first.
-- **`reward.profile=depth_only` does not make the agent better, and the run says so with numbers.**
-  30 generations, 16 workers x 4 episodes, seed 20261013: `bestDepth 2` in **5 of 31 generations, all
-  before generation 12**, **100% of episodes dead from generation 4**, mean score improved by 4,460 and
-  mean turns fell from 795 to ~300. The policy learned to **die more cheaply**, which is arithmetic and not
-  a mystery: with nothing but the objective paying, dying at turn 300 costs -2,800 against a stall's
-  -3,120, so death is the cheapest reachable outcome for a policy that cannot yet descend. The profile
-  stays a **diagnostic**; `issues.md` 20 has the measurement and the reasoning, and the lever that remains
-  is `Curriculum`'s fade, which has never engaged (`shaping=1.00` in all 30 generations).
+### Changed
+
+- **`env.free_step_budget`** (`SPD_ENV_FREE_STEP_BUDGET`), default 120 - about 8% of a floor's 1500 turns.
+  A judgement rather than a law: a policy that re-equips honestly may find it tight, and that is what the
+  key is for.
 
 ## [0.10.0] - 2026-10-13
 

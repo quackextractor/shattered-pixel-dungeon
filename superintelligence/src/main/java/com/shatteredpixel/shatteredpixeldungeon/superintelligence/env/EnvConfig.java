@@ -53,6 +53,27 @@ public class EnvConfig {
 	/** Consecutive turns with no change to HP, depth, position or inventory before giving up. */
 	public int stallLimit = 120;
 
+	/**
+	 * Steps on one floor that may advance no engine time at all before the episode is called stalled.
+	 *
+	 * <p>A second stall guard, and it exists because the first one cannot see this. {@code stallLimit}
+	 * counts consecutive steps where the hero's cell and health are unchanged, so <b>one move resets
+	 * it</b> - which is exactly what a free-action loop does. Measured on a trainer recording,
+	 * {@code HRT-YYP-KGC}: 502 of 1215 steps advanced no engine time, 41% of the episode's whole cost,
+	 * almost all of it {@code OPEN_INVENTORY} followed by {@code CANCEL} out of {@code INVENTORY}, with a
+	 * real move between pairs. The position guard never reached a hundred.
+	 *
+	 * <p>A total on the floor rather than a streak, because a streak is cleared by the very move the loop
+	 * makes between its pairs. At the default this allows about 8% of a floor's steps to cost the engine
+	 * nothing, which is a line rather than a law - raise it if a policy that re-equips honestly finds it
+	 * too tight.
+	 *
+	 * <p>Priced rather than prevented, like {@link #noProgressPenalty}: the actions are legal and a player
+	 * may do them, so what must not happen is unbounded numbers of them. Unlike the charge, this bounds
+	 * them, and the bound is the stall price - which is above the death price on purpose.
+	 */
+	public int freeStepBudget = 120;
+
 	// --- vision ---
 
 	/** Clamp on hero.viewDistance when building the observation grid. */
@@ -254,6 +275,7 @@ public class EnvConfig {
 		c.turnLimitTotal = turnLimitTotal;
 		c.actorStepLimit = actorStepLimit;
 		c.stallLimit = stallLimit;
+		c.freeStepBudget = freeStepBudget;
 		c.maxViewDistance = maxViewDistance;
 		c.honourVisionBuffs = honourVisionBuffs;
 		c.mimicsVisibleOutOfFog = mimicsVisibleOutOfFog;
