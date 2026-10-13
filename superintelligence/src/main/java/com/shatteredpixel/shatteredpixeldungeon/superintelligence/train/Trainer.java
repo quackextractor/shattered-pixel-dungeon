@@ -88,6 +88,9 @@ public class Trainer {
 	 */
 	private MetricsHistory metrics;
 
+	/** Whether a progress bar is currently on the last line without a newline after it. */
+	private boolean barDrawn;
+
 	/**
 	 * Where the policy is checkpointed to, or {@code null} to save nothing.
 	 *
@@ -360,6 +363,15 @@ public class Trainer {
 		HeadlessServices.install( options.workDir );
 		HeadlessServices.disableSaving( true );
 
+		//after the constructor applies the file, because a flag typed on the command line has to win over
+		//it - and this one decides what every episode in the run is worth
+		if (options.rewardProfile() != null){
+			config.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
+					.RewardProfile.parse( options.rewardProfile() );
+			System.out.println( "reward   profile " + config.rewardProfile.key()
+					+ " (--reward-profile)" );
+		}
+
 Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
 				options.replayDir, options.traceWorld );
 
@@ -498,6 +510,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		//picking up the schedule where it stopped. Recorded rather than hidden.
 		int first = resumedFrom == null ? 0 : resumedFrom.generation;
 		this.lastGeneration = first + generations;
+		long startedAt = System.currentTimeMillis();
 
 		System.out.println( Ansi.wrap( "machine", Ansi.DIM ) + "   "
 				+ ResourceStats.availableProcessors() + " logical processors, pool of "
@@ -556,12 +569,58 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 			//after the report, so a checkpoint failure is reported next to the figures that produced it
 			maybeCheckpoint( g + 1 );
+
+			clearProgressBar();
+			drawProgressBar( g + 1 - first, generations, startedAt );
 		}
+
+		clearProgressBar();
 
 		saveBestReplays();
 
 		//after the replays, so a failure to write them does not cost the history
 		if (metrics != null) metrics.printTrend();
+	}
+
+	/**
+	 * Rewrites one line in place, so a run of an hour looks like a run and not like a hang.
+	 *
+	 * <p>No flushing per generation: {@code System.out} is line-buffered when it is a terminal and block
+	 * buffered when it is a log file, and a bar that flushes twice a minute is not what anyone is reading.
+	 * A log file therefore holds the last bar rather than every bar, which is the right loss - the
+	 * per-generation block {@code report} prints is the record, and that is flushed as it goes.
+	 */
+	private void drawProgressBar( int done, int total, long startedAt ){
+		double meanScore = Double.NaN;
+		int bestDepth = 0;
+
+		if (metrics != null){
+			//the last row the history holds, which is this generation's: read rather than recomputed, so
+			//the bar cannot report a different number from the block above it
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.MetricsHistory.Snapshot last =
+					metrics.latest();
+			if (last != null){
+				meanScore = last.meanScore;
+				bestDepth = last.bestDepth;
+			}
+		}
+
+		System.out.print( ProgressBar.render( done, total, startedAt, meanScore, bestDepth ) );
+		barDrawn = true;
+	}
+
+	/**
+	 * Ends the bar's line, once, before anything else is printed.
+	 *
+	 * <p>The bar is rewritten in place with a carriage return, so whatever prints next would otherwise
+	 * land on top of it - which is what a log file records, and it is unreadable. Called from the places
+	 * that print outside the generation's own block rather than from {@code System.out}, which cannot
+	 * know.
+	 */
+	private void clearProgressBar(){
+		if (!barDrawn) return;
+		System.out.println();
+		barDrawn = false;
 	}
 
 	/**
@@ -698,6 +757,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 	private boolean warnedUnknownReason;
 
 	private void report( int generation, List<Episode> episodes, ResourceStats.Interval gen ){
+		clearProgressBar();
 		lastEpisodes.clear();
 		lastEpisodes.addAll( episodes );
 
@@ -803,6 +863,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 	}
 
 	private void saveBestReplays(){
+		clearProgressBar();
 		File dir = replayDir();
 		int saved = 0;
 
@@ -879,6 +940,17 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 	 */
 	public static File outDirDefault(){
 		return new File( replayDirDefault(), "out/run" );
+	}
+
+	/**
+	 * Where a measurement worth keeping goes: the per-generation metrics CSV.
+	 *
+	 * <p>Separate from {@link #outDirDefault()} because the two are read by different people at different
+	 * times - a checkpoint to resume from, a CSV to answer "what did that run learn" - and because the
+	 * rule in {@code AGENTS.md} asks for evidence in one directory rather than beside whatever produced it.
+	 */
+	public static File evidenceDirDefault( String name ){
+		return new File( new File( replayDirDefault(), "out/evidence" ), name );
 	}
 
 	/**

@@ -1,5 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.ProgressBar;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,7 +26,7 @@ import java.util.List;
  */
 public class GraphCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 5;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -33,6 +35,7 @@ public class GraphCheck {
 		checkFlatSeriesDoesNotWidenItsReportedRange();
 		checkFlatSeriesIsNotBlank();
 		checkVaryingSeriesStillReportsItsRealRange();
+		checkTheProgressBarReportsWhatItMeasured();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     graph honesty: " + CHECKS + " checks passed" );
@@ -134,6 +137,95 @@ public class GraphCheck {
 		if (row.flat){
 			fail( "a series spanning 10 to 80 is reported as flat." );
 		}
+	}
+
+	/**
+	 * The progress bar must report the fraction it was given, and nothing before it has measured one.
+	 *
+	 * <p>The same honesty this file exists for, applied to the line a run rewrites for an hour: the bar's
+	 * width is fixed so the terminal does not jitter, the percentage is the fraction of generations asked
+	 * for that have finished, and the estimate is blank until there is a generation to divide elapsed by.
+	 * A bar that guesses an estimate from nothing is lying in the one place somebody waiting is looking.
+	 */
+	private static void checkTheProgressBarReportsWhatItMeasured(){
+		long now = System.currentTimeMillis();
+		String start = ProgressBar.render( 0, 30, now, Double.NaN, 0 );
+		String half = ProgressBar.render( 15, 30, now, -4200, 2 );
+		String end = ProgressBar.render( 30, 30, now, 1200, 3 );
+		String over = ProgressBar.render( 40, 30, now, 1200, 3 );
+
+		if (!start.contains( "0%" ) || !half.contains( "50%" ) || !end.contains( "100%" )
+				|| !over.contains( "100%" )){
+			fail( "the progress bar's percentages are wrong: 0 -> '" + pct( start ) + "', 15/30 -> '"
+					+ pct( half ) + "', 30/30 -> '" + pct( end ) + "', 40/30 -> '" + pct( over )
+					+ "'. A run asked for 30 generations and given 40 must still say 100%, or a resumed run"
+					+ " ends up with a bar that runs off the end." );
+			return;
+		}
+
+		if (countCells( start ) != countCells( half ) || countCells( half ) != countCells( end )){
+			fail( "the bar is not a fixed width (" + countCells( start ) + ", " + countCells( half )
+					+ ", " + countCells( end ) + " cells), so the line jumps as the fraction changes." );
+			return;
+		}
+
+		if (countCells( end ) != countCells( half )){
+			return;
+		}
+
+		if (filled( half ) * 2 != filled( end )){
+			fail( "the bar at half is " + filled( half ) + " cells filled and at the end " + filled( end )
+					+ ", which is not double. The fraction and the picture disagree, and only one of them"
+					+ " is what a reader believes." );
+			return;
+		}
+
+		//blank before the first generation and after the last, and a duration in between - both blanks are
+		//honest, because there is nothing left to estimate in either case
+		if (!ProgressBar.estimate( 0, 30, now ).equals( "-" )
+				|| !ProgressBar.estimate( 30, 30, now ).equals( "-" )
+				|| ProgressBar.estimate( 15, 30, now ).equals( "-" )){
+			fail( "the estimate is '" + ProgressBar.estimate( 0, 30, now ) + "' before any generation has"
+					+ " finished, '" + ProgressBar.estimate( 15, 30, now ) + "' half way and '"
+					+ ProgressBar.estimate( 30, 30, now ) + "' at the end. It has to be blank at both ends -"
+					+ " an estimate before the first division is invented rather than measured - and a"
+					+ " duration in between." );
+			return;
+		}
+
+		if (!start.contains( "score -" )){
+			fail( "the bar before the first generation reports '" + start + "' instead of a dash for the"
+					+ " score it has not measured." );
+			return;
+		}
+
+		System.out.println( "  progress bar: 0% -> " + pct( start ) + ", 50% -> " + pct( half )
+				+ ", 100% -> " + pct( end ) + ", " + countCells( end ) + " fixed cells, estimate blank"
+				+ " until a generation finishes" );
+	}
+
+	private static String pct( String bar ){
+		for (String word : bar.split( " " )) if (word.endsWith( "%" )) return word;
+		return "(none)";
+	}
+
+	/** Cells inside the brackets only - the line also contains a dash for the score it has not measured. */
+	private static String cells( String bar ){
+		int open = bar.indexOf( '[' );
+		int close = bar.indexOf( ']', open );
+		return open < 0 || close < 0 ? "" : bar.substring( open + 1, close );
+	}
+
+	private static int countCells( String bar ){
+		int n = 0;
+		for (char c : cells( bar ).toCharArray()) if (c == '#' || c == '-') n++;
+		return n;
+	}
+
+	private static int filled( String bar ){
+		int n = 0;
+		for (char c : cells( bar ).toCharArray()) if (c == '#') n++;
+		return n;
 	}
 
 	private static void fail( String message ){

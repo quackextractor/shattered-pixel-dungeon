@@ -212,6 +212,29 @@ public class MetricsHistory {
 		return series.size();
 	}
 
+	/** The last generation recorded, or null before the first one. */
+	public Snapshot latest(){
+		if (series.isEmpty()) return null;
+
+		float[] row = series.get( series.size() - 1 );
+		return new Snapshot( row[ COL_MEAN_SCORE ], row[ COL_BEST_DEPTH ] );
+	}
+
+	private static final int COL_MEAN_SCORE = 5;
+	private static final int COL_BEST_DEPTH = 9;
+
+	/** The two numbers a progress bar shows. Read from the row rather than recomputed, so the bar and
+	 * the block above it cannot disagree. */
+	public static class Snapshot {
+		public final double meanScore;
+		public final int bestDepth;
+
+		Snapshot( double meanScore, double bestDepth ){
+			this.meanScore = meanScore;
+			this.bestDepth = (int) bestDepth;
+		}
+	}
+
 	/** One series as a float array, for a caller that wants to plot or compare it. */
 	public float[] values( int column ){
 		float[] result = new float[ series.size() ];

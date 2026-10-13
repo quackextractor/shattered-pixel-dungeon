@@ -157,8 +157,20 @@ public class TrainOptions {
 	 */
 	private boolean metricsGiven, saveGiven;
 
+	/**
+	 * {@code --reward-profile}, when it was given.
+	 *
+	 * <p>The one setting that is worth a flag of its own, because reaching for it should not cost a
+	 * properties file: a run under {@code depth_only} is an experiment somebody wants to repeat, and
+	 * {@code --reward-profile depth_only} is one token where a file is a path to remember.
+	 */
+	private String rewardProfile;
+
+	/** The {@code --reward-profile} value, or null when the flag was not given. */
+	public String rewardProfile(){ return rewardProfile; }
+
 	public TrainOptions(){
-		metricsCsv = new File( workDir, "metrics.csv" );
+		metricsCsv = Trainer.evidenceDirDefault( "metrics.csv" );
 		save = new File( workDir, "weights.bin" );
 	}
 
@@ -202,6 +214,8 @@ public class TrainOptions {
 		for (int i = 0; i < args.length; i++){
 			switch (args[ i ]) {
 				case "--config":     i++; break;
+				case "--reward-profile":
+					o.rewardProfile = args[ ++i ]; break;
 				case "--workers":     o.workers = Integer.parseInt( args[ ++i ] ); break;
 				case "--generations": o.generations = Integer.parseInt( args[ ++i ] ); break;
 				case "--episodes":   o.episodes = Integer.parseInt( args[ ++i ] ); break;
@@ -257,6 +271,15 @@ public class TrainOptions {
 		if (o.maxSamplesPerGeneration < 1) o.maxSamplesPerGeneration = 1;
 
 		o.deriveOutputsUnder( o.workDir );
+
+		//after everything else, because a flag wins over a file and over the environment - and this one
+		//changes what every episode in the run is worth, so it is refused rather than defaulted if the
+		//name is not a profile. Applied to the run's own config by Trainer.main, which holds the one
+		//EnvConfig the workers are started from.
+		if (o.rewardProfile != null){
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
+					.parse( o.rewardProfile );
+		}
 		return o;
 	}
 
