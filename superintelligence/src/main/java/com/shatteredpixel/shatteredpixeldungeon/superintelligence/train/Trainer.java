@@ -394,6 +394,11 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			trainer.train( options.generations, options.episodes );
 		} catch (IOException e){
 			System.err.println( "[ERROR] training failed: " + e.getMessage() );
+			//the stack, because the message alone was not enough to diagnose a real failure: a 16-worker
+			//run on a 32 GB machine reported only "Insufficient system resources exist to complete the
+			//requested service", which is a Windows error code with no indication of which call wanted
+			//the memory. Cheap to print and the difference between a diagnosis and a guess.
+			e.printStackTrace();
 			System.exit( 1 );
 		} finally {
 			//a normal exit checkpoint, so a run that finished on a non-multiple of the interval still
