@@ -7,7 +7,9 @@ Last updated: 2026-10-13, after `reward.profile` was added: a temporary override
 function down to the objective, so the only route to a positive score is a new floor or a win and the four
 prices for stopping are all that remains negative. Gated in `rewardcheck` (3 cases, mutation-tested twice),
 carried over the trainer/worker params frame and recorded in the replay header - where the first attempt
-dropped it and a smoke run said so. §1.16 has the whole thing.
+dropped it and a smoke run said so. §1.16 has the whole thing, including the 30-generation run under it:
+`bestDepth 2` in 5 of 31 generations, 100% deaths, and the conclusion that it is a diagnostic profile
+rather than a training one (`issues.md` 20).
 
 Last updated before that: 2026-10-12, after `issues.md` "Chasm" 17 was closed. **A thrown or dropped item landed
 inert**, and nothing in the project had ever found out, because nothing in the project had ever put an
@@ -1012,17 +1014,58 @@ the default.
 
 ### What is still open
 
-**A run under this profile has not happened.** The 3-generation smoke run says the wiring works and
-nothing else: it died 92-100% of its episodes with `bestDepth 1`, which is what an untrained policy
-scored under `default` too, and under `depth_only` it is worse in the short run for a reason worth stating
-plainly rather than discovering later - **the dense reward is most of what keeps a weak policy alive**, so
-a run switched to the objective alone has to learn survival before it can be rewarded for descending, and
-those two are the same gradient early on.
+**A run under this profile has been done, and it is the opposite of what the dense terms were suspected of.**
 
-That is the measurement worth making, and it is a long one: `trainerJvmArgs` pins `-Xmx1536m` per worker,
-so 16 workers is what this machine's 31.8 GB holds, `--update-threads 4` is what the update's own
-measurement supports (8.98 -> 2.73 ms/sample at 1 -> 4 threads), and the previous full-length run was
-150 generations in 1h 16m.
+30 generations, 16 workers x 4 episodes, seed 20261013, `depth_reward=1800`, `turn_cost=1.0`,
+`death_penalty=2500`, `stall_penalty=3000`, everything else at the shipped default:
+
+| generation | meanScore | meanDepth | bestDepth | meanTurns | ended |
+| --- | --- | --- | --- | --- | --- |
+| 0 | -7616.8 | 1.00 | 1 | 795 | death 58, turn limit 6 |
+| 6 | -3726.3 | 1.02 | 2 | 231 | death 64 |
+| 11 | -3735.1 | 1.02 | 2 | 276 | death 64 |
+| 20 | -3471.4 | 1.00 | 1 | 209 | death 64 |
+| 29 | -4156.2 | 1.00 | 1 | 363 | death 64 |
+
+`bestDepth 2` in **5 of 31 generations, all before generation 12**, and **100% of episodes dead from
+generation 4 on**. Mean score improved by 4,460 and mean turns fell by 432, which reads as the policy
+learning to *die more cheaply* rather than to descend. §1.15's run under `default` put `bestDepth 2` in
+104 of 150 generations on the same hardware, so this is a measurement and not noise.
+
+The arithmetic behind it is in `issues.md` 20: with nothing but the objective paying, the only reachable
+outcomes are the two terminals and the per-turn cost, and dying at turn 300 costs -2,800 against a stall's
+-3,120. **Death is the cheaper floor, and a gradient with no positive signal finds it.** The `stall > death`
+ordering from §1.9 is working; what it cannot do is make an outcome the policy cannot afford to reach.
+
+So `depth_only` stays a **diagnostic** profile, which is what it was built to be: it proves the objective
+is the only route to a positive score, which is what the assignment asked for, and it proves that removing
+the dense terms is not a way to make the agent smarter. The lever that remains is the one the machinery
+already has - `Curriculum`'s fade, which never engaged (`shaping=1.00` in all 30 generations) because it
+needs a policy that survives first.
+
+**The worst recording is a free-action loop, and it is the largest single cost in it.** `HRT-YYP-KGC`
+(CLERIC, 1215 steps, score -9975, gen 2) reproduces exactly and prices as:
+
+```
+NO_PROGRESS  -6024.00     502 of 1215 steps advanced no engine time
+TURN_COST    -1451.00
+DEATH        -2500.00
+```
+
+41% of that episode is `OPEN_INVENTORY` (146) and `CANCEL` out of `INVENTORY` (117) - a pair that costs no
+engine time at all and changes nothing. The best recording of the same run, `TLH-MLA-DYU`, does the same
+thing four times in thirty steps. **Before another hour of training, this is the loop to price or refuse**:
+it is the only thing in these runs that is both free and purposeless.
+
+### The run also found an engine crash, on a scroll
+
+Two workers died with `NullPointerException: Cannot assign field "visible" because "this.sprite" is null`
+inside `Char.move`, through `ScrollOfMirrorImage.spawnImages`: an item that creates a mob leaves it with no
+sprite headlessly, because `GameScene.add( Mob, float )` gives it one only when a scene exists. Reachable
+on floor 1 with nothing but a mirror image scroll. The fix and its unavoidable second half - the
+`MirrorSprite` cast in `MirrorImage.act` - are in `ENGINE-CHANGES.md` §8 and are **uncommitted**, per the
+engine boundary; they were applied to get these 30 generations through and then reverted, and the patch is
+kept outside the repository so the committed tree still builds on its own.
 
 ---
 
@@ -1892,7 +1935,7 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | 1.13 | ~~No recording the trainer wrote could be watched~~ | done | **Closed — see §1.13.** The recorder captured a step's bindings after the step, `verify` resolved indices against the live bindings and skipped the comparison when the field was empty, `viewcheck` passed any halt that was not a divergence, and the corpus contained no `DROP` in `SLOT` to ask about. A fresh trainer run now verifies and plays clean end to end. |
 | 1.14 | ~~Recordings go where the catalogue reads, and cannot overwrite each other~~ | done | `trainer-replays` by default instead of `<--out>/replays`, `--replay-dir` overrides, and `-r2`/`-r3` suffixes so a second run of a seed cannot destroy the first. `d675e4815` destroyed one by hand and said nothing; the overwritten file is restored as `IPW-QMA-AFY-r2.dat`. |
 | 1.15 | ~~Train for a real hour and see what happens~~ | done | **Partly.** 150 generations at 16 workers, 1h 16m, wrote 106 recordings. **`bestDepth 2` in 104 of 150 generations** - it has been 1 in every run in this project's history. Two engine crashes found, both only reachable by descending. Two recordings (the two best-scoring) still do not verify. §1.15 |
-| 1.16 | **Measure the objective with nothing else paying** | S | `reward.profile=depth_only`: every term silenced but a descent, a win, and the four prices for stopping. Gated in `rewardcheck` (3 cases, mutation-tested twice), travels the trainer/worker params frame and the replay header. **The next measurement is a run under it**, which §1.15's numbers cannot substitute for. §1.16 |
+| 1.16 | **Measure the objective with nothing else paying** | S | `reward.profile=depth_only`: every term silenced but a descent, a win, and the four prices for stopping. Gated in `rewardcheck` (3 cases, mutation-tested twice), travels the trainer/worker params frame and the replay header. **Run: 30 generations at 16 workers, `bestDepth 2` in 5 of 31 generations and 100% deaths** - it converges on dying early, and it is a diagnostic rather than a training setting. `issues.md` 20. §1.16 |
 
 **Ordering was wrong and has been corrected.** 1.6 was originally next. It is still required — the
 measurement does not care what else is on the list — but two smaller items now come first:

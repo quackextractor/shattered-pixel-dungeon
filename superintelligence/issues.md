@@ -884,3 +884,56 @@ the guard is still there.
     **What is not wrong:** `paritycheck` verifies 32 recordings across seeds in one process and passes,
     and both viewer gates pass the whole committed corpus. The failure needs a *random* seed and a
     60-step scripted episode.
+
+## 19. An item that creates a mob leaves it with no sprite, and a mirror image then casts its sprite - **OPEN, FIX PROPOSED AND UNCOMMITTED**
+
+Found by a 30-generation training run under `reward.profile=depth_only` (16 workers, seed 20261013): two
+workers died with `NullPointerException: Cannot assign field "visible" because "this.sprite" is null` at
+`Char.move(Char.java:1334)`, through `ScrollOfMirrorImage.spawnImages` -> `ScrollOfTeleportation.appear`.
+Reachable on floor 1 with nothing but a mirror image scroll and a policy that reads what it finds.
+
+`GameScene.add( Mob, float )` gives a mob its sprite and its place in `Actor.chars` only when a scene
+exists; a renderer-bypassed process has none, so an item-created mob has no sprite and `Char.move`
+dereferences it unconditionally. `add( Heap )` already carries the headless answer for heaps and its
+comment says why; the mob branch does not. The fix and its second half - `MirrorImage.act`'s unguarded
+`MirrorSprite` cast, which a `HeadlessSprite` cannot satisfy - are written up in `ENGINE-CHANGES.md` §8
+and are **uncommitted**, because they are logic changes to `:core`.
+
+## 20. Under `depth_only` the run converges on dying early rather than on descending - **OPEN, and it is a finding rather than a defect**
+
+Measured on the same 30-generation run (30 generations, 16 workers x 4 episodes, `reward.profile=depth_only`,
+`env.turn_limit_per_floor` at its default, seed 20261013, `depth_reward=1800`, `turn_cost=1.0`,
+`death_penalty=2500`, `stall_penalty=3000`):
+
+| generation | meanScore | meanDepth | bestDepth | meanTurns | ended |
+| --- | --- | --- | --- | --- | --- |
+| 0 | -7616.8 | 1.00 | 1 | 795 | death 58, turn limit 6 |
+| 6 | -3726.3 | 1.02 | 2 | 231 | death 64 |
+| 11 | -3735.1 | 1.02 | 2 | 276 | death 64 |
+| 20 | -3471.4 | 1.00 | 1 | 209 | death 64 |
+| 29 | -4156.2 | 1.00 | 1 | 363 | death 64 |
+
+**`bestDepth 2` in 5 of 31 generations, all of them before generation 12, and 100% of episodes dead from
+generation 4 on.** Mean score improved by 4,460 points and mean turns fell by 432. Read plainly: the policy
+learned to **die more cheaply**, not to descend, and the run's improvement is the cost of dying falling
+rather than the cost of descending being paid.
+
+**Why, and it is arithmetic rather than a mystery.** With nothing but the objective paying, the only
+reachable outcomes for an untrained policy are the two terminals and the per-turn cost. Dying at turn 300
+costs `-2500 - 300 = -2800`; stalling costs `-3000 - 120 = -3120`, so death is the cheaper floor and the
+gradient can reach it from anywhere - which is what `meanTurns` falling from 795 to ~300 measures. The
+`stall > death` ordering that §1.9 put in place is doing its job; the problem is that under a profile with
+no positive signal outside depth, **the cheapest reachable outcome is the one the policy converges on.**
+
+**So `depth_only` is a diagnostic profile and not a training default.** It answers the question the
+assignment asked - is the objective the only route to a positive score - and it does: 80 incidental events
+paid 0.00 and the descent's 1800.00 was the whole of a real episode's positive score. What it also
+answers, unintentionally and honestly, is that switching the dense terms off is not a free way to make the
+agent smarter. Compare §1.15: the same 16-worker setup under `default` recorded `bestDepth 2` in 104 of
+150 generations.
+
+**The next measurement is a curriculum rather than a switch**, and the machinery for it already exists and
+has never engaged: `reward.curriculum_progress` is `0.0`, the trainer prints `shaping=1.00` in all 30
+generations, and `Curriculum`'s fade is what would keep the dense terms for survival while the objective
+carries the direction. Nothing in this run reached a descent often enough for the fade to matter, which is
+the finding: **the fade needs a policy that survives, and this profile does not produce one.**

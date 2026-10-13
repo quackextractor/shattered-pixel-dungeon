@@ -240,3 +240,80 @@ reading exactly like a simulation that consumes no randomness at all.
   `presscheck` is the gate, is **in `gates`**, and is green on three cases. `duelist-throw.replay` is
   the recording that makes a *recorded* press reproducible in both environments — see `issues.md` 17.
 
+
+## 8. An item that creates a mob leaves it with no sprite - **PROPOSED, UNCOMMITTED**
+
+Found by a 30-generation training run under `reward.profile=depth_only`, 16 workers, seed 20261013. The
+agent **used a Scroll of Mirror Image**, and two workers died with the same `NullPointerException`:
+
+```
+java.lang.NullPointerException: Cannot assign field "visible" because "this.sprite" is null
+  at Char.move(Char.java:1334)
+  at Mob.move(Mob.java:756)
+  at ScrollOfTeleportation.appear(ScrollOfTeleportation.java:296)
+  at ScrollOfMirrorImage.spawnImages(ScrollOfMirrorImage.java:85)
+  at ScrollOfMirrorImage.doRead(ScrollOfMirrorImage.java:50)
+  at Scroll.execute(Scroll.java:189)
+  at SlotAction.use(SlotAction.java:96)
+  at SPDEnv.step(SPDEnv.java:262)
+```
+
+**Not exotic, and reachable on floor 1** - it needs only a mirror image scroll and a policy that reads
+things it finds, which is what a random policy does within a hundred turns. The same class of fault as
+§1's unguarded `SentryRoom` and `ArmoredStatue` sprite casts: a hand-written policy never read a scroll,
+and this module's own has now.
+
+**The gap is `GameScene.add( Mob, float )`.** It adds the mob to `Dungeon.level.mobs` and then, only
+`if (scene != null)`, gives it a sprite and puts it in `Actor.chars`. A renderer-bypassed process has no
+scene, so a mob created by an item path is left with **no sprite at all**, and `Char.move` assigns
+`sprite.visible` unconditionally for any `Char` that is not the hero. `ScrollOfMirrorImage` does the
+right thing by the game's own lights - it calls `GameScene.add( mob )` before `appear()` - which is
+exactly why the gap was invisible until something ran it.
+
+**`GameScene.add( Heap )` already answers this shape.** With no scene it builds the `ItemSprite` the game
+logic needs and links it, and its comment says why: *game logic calls `heap.sprite` unconditionally once a
+heap exists*. The mob branch has no such branch, and the mob is the one that moves.
+
+Two changes, both uncommitted, both no-ops in a game with a renderer:
+
+```java
+// GameScene.java - the scene-less branch, mirroring add( Heap )
+} else if (headlessGameplay && headlessMobSprite != null ) {
+    if (mob.sprite == null ) headlessMobSprite.accept( mob );
+    Actor.add( mob );
+    mob.spendToWhole();
+}
+```
+
+```java
+// MirrorImage.java - the identical guard SentryRoom.act already carries, seventeen lines above
+if (sprite instanceof MirrorSprite) ((MirrorSprite)sprite).updateArmor( armTier );
+```
+
+`GameScene.headlessMobSprite( Consumer<Char> )` is a new static in the same shape as the existing
+`headlessEmitter`: a stand-in the scene would otherwise supply, set by `HeadlessGame.install()` and by
+nothing else, so a real game never reads it. `Actor.add` is in the same branch for the reason
+`RewardCheck.placeMobBesideHero` documents it: without it the mob is in `level.mobs` but not in
+`Actor.chars`, so it never acts and `Actor.findChar` - which `Hero.handle` reads to decide whether a cell
+holds a mob - cannot see it.
+
+**The second change is not cosmetic to argue about, and it was found by the first.** With only the
+`GameScene` half, the probe stopped crashing with an NPE and started crashing with
+`ClassCastException: HeadlessSprite cannot be cast to MirrorSprite` - `MirrorImage.act` casts its sprite
+whenever the hero's armour tier changes, which is on the image's first turn. `MirrorSprite` itself cannot
+be built headlessly, measured: `new MirrorSprite()` dies with `NullPointerException: Cannot read field
+"width" because "texture" is null`. So a stand-in that satisfied the cast is not available, and the guard
+is the honest shape - the same one the project already applied twice to the same mistake.
+
+Measured after both, on `MIRRORPROBE` with a real `ScrollOfMirrorImage` used through `SlotAction.use`:
+
+```
+PROBE slot after refresh=4
+PROBE result=no crash
+PROBE mobs 8 -> 10, mirror images=2 with sprite=2 in Actor.chars=2
+```
+
+**What it does not cover.** The mirror image is now a real actor that acts, fades and dies as the game's
+does, but nothing here is gated: a gate needs the `:core` change committed, which is the owner's call.
+The patch is kept at `%TEMP%/opencode/mirror-image-engine.patch` rather than in the repository, because
+a committed gate that depends on uncommitted engine code is a tree that does not build.

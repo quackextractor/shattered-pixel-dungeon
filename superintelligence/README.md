@@ -196,6 +196,13 @@ written under it verifies under it. `rewardcheck` asserts the property in both d
 `depth_only` pays nothing outside the objective over a run that provably fires 80 incidental events, and
 that `default` still pays all 30 terms.
 
+**Measured, and it stays a diagnostic.** 30 generations at 16 workers under `depth_only`: `bestDepth 2` in
+**5 of 31 generations, all before generation 12**, **100% of episodes dead from generation 4**, mean score
+improved by 4,460 and mean turns fell from 795 to about 300. The policy learned to **die more cheaply**,
+which is arithmetic rather than mystery - with nothing but the objective paying, dying at turn 300 costs
+-2,800 against a stall's -3,120, so death is the cheapest outcome a policy that cannot yet descend can
+reach. Under `default` the same hardware put `bestDepth 2` in 104 of 150 generations. See `issues.md` 20.
+
 **Measured, and honestly: survival improved and depth did not.** A 12-generation run moved deaths
 100% → 19% and mean turns 377 → 1335, and `bestDepth 2` appeared once in a smoke test. Depth does not
 trend yet; a 40-generation run is the measurement that would settle it. See [`TODO.md`](TODO.md) §1.8.
