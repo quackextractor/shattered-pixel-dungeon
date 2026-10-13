@@ -2,10 +2,17 @@
 rem ---------------------------------------------------------------------------
 rem Plays, records, lists and verifies replay recordings.
 rem
+rem Lives in the :superintelligence module, beside train.ps1 and the two
+rem recording directories it reads, and reaches the repository root for gradle
+rem and for desktop\build. %~dp0 is this module; %ROOT% is the repository, one
+rem level up. Paths are resolved from those two and never from a relative guess,
+rem because the gradle run task's working directory is the module rather than
+rem wherever the script was launched from.
+rem
 rem   replay-viewer                    list the recordings and play one by number
 rem   replay-viewer <file>             play a specific recording
 rem   replay-viewer --list             list the available recordings and stop
-rem   replay-viewer --record <seed>    record a new episode into replays\
+rem   replay-viewer --record <seed>    record a new episode into test-replays\
 rem   replay-viewer --verify <file>    check a recording still reproduces, headless
 rem
 rem With no argument it lists every recording, grouped by hero class and ranked
@@ -42,16 +49,33 @@ rem ---------------------------------------------------------------------------
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-set "TESTREPLAYDIR=%CD%\superintelligence\test-replays"
-set "TRAINERREPLAYDIR=%CD%\superintelligence\trainer-replays"
+rem The module directory, then the repository root above it. Everything this file
+rem names is under one of the two, and the two differ by exactly one level -
+rem which is the only reason a single ".." is correct rather than a guess.
+set "MODULE=%CD%"
+set "ROOT=%CD%\.."
+rem Canonicalised, because %ROOT% is used in `if not exist`, in a PowerShell
+rem Get-Item and on a command line, and a trailing ".." is three different
+rem strings depending on which of them is reading it. %%~fI resolves it once.
+for %%I in ("%ROOT%") do set "ROOT=%%~fI"
+rem What the footer tells a reader to type, which is a path into the module and
+rem not a bare name - the script is no longer on the repository root.
+set "MODULE_NAME=superintelligence\replay-viewer.bat"
+
+set "TESTREPLAYDIR=%MODULE%\test-replays"
+set "TRAINERREPLAYDIR=%MODULE%\trainer-replays"
 rem Both are passed to every catalog query as two --dir flags, not queried in turn. ReplayCatalog merges
 rem them into one ranked listing and dedupes by seed, so a single numbering spans both - which is the
 rem only way "play which?" stays one question. Querying them separately would give two listings with
 rem two sets of numbers, and a number would mean different recordings depending on which was asked.
 rem TESTREPLAYDIR first: on a duplicate seed the deliberate reference corpus should win over a
 rem trainer run, for the reason ReplayCatalog.scan documents.
+rem
+rem trainer-replays is scanned recursively, so a run given --replay-group appears under its own
+rem GROUP heading without this file knowing the group's name. One directory, and the catalogue
+rem finds what a run wrote.
 set "CATDIRS=--dir "%TESTREPLAYDIR%" --dir "%TRAINERREPLAYDIR%""
-set "GRADLE=%CD%\gradlew.bat"
+set "GRADLE=%ROOT%\gradlew.bat"
 
 rem Options for unattended playback.
 rem
@@ -139,7 +163,7 @@ rem --- list ------------------------------------------------------------------
 :list
 call :catalog || exit /b 1
 echo.
-echo Play one with:  replay-viewer ^<file^>
+echo Play one with:  %MODULE_NAME% ^<file^>
 exit /b 0
 
 rem --- pick ------------------------------------------------------------------
@@ -265,7 +289,7 @@ rem policy, which is the same path the committed fixtures were built by and the 
 rem known to produce a recording the viewer can play end to end.
 :record
 if "%~2"=="" (
-    echo Usage: replay-viewer --record ^<seed^>
+    echo Usage: %MODULE_NAME% --record ^<seed^>
     exit /b 1
 )
 if not exist "%TESTREPLAYDIR%" mkdir "%TESTREPLAYDIR%"
@@ -280,14 +304,14 @@ if errorlevel 1 (
 )
 echo.
 echo Saved %TESTREPLAYDIR%\%~2.replay
-echo Play it with:  replay-viewer %~2.replay
+echo Play it with:  %MODULE_NAME% %~2.replay
 exit /b 0
 
 rem --- verify ----------------------------------------------------------------
 
 :verify
 if "%~2"=="" (
-    echo Usage: replay-viewer --verify ^<file^>
+    echo Usage: %MODULE_NAME% --verify ^<file^>
     exit /b 1
 )
 call :resolve "%~2" || exit /b 1
@@ -319,7 +343,7 @@ rem up to date. The classpath only changes when the code does, so it is baked in
 rem :desktop:replaycp and reused after that. Measured 4.7s versus 11.9s per recording.
 rem
 rem Falls back to gradle if the launcher is missing, so this cannot strand anyone.
-set "RUNBAT=%CD%\desktop\build\replay-run.bat"
+set "RUNBAT=%ROOT%\desktop\build\replay-run.bat"
 if not exist "%RUNBAT%" (
     echo building the replay launcher, once...
     call "%GRADLE%" --offline -q :desktop:classes :desktop:replaycp
@@ -392,8 +416,8 @@ rem missing or older than the classes it names, and once on the fallback path wh
 rem produce one. Nothing else about listing, resolving or playing a recording needs it.
 :supervisor
 set "SUPARGS=%~1"
-set "RUNBAT=%CD%\desktop\build\replay-run.bat"
-set "SUPJAR=%CD%\superintelligence\build\libs\superintelligence-4.0.2.jar"
+set "RUNBAT=%ROOT%\desktop\build\replay-run.bat"
+set "SUPJAR=%MODULE%\build\libs\superintelligence-4.0.2.jar"
 
 if not exist "%RUNBAT%" goto :supbuild
 rem The launcher bakes in a classpath, so it goes stale when the classes it names are rebuilt under

@@ -1,5 +1,8 @@
 param(
-  [string]$Dir = "$env:TEMP\spd-regen\replays",
+  # Beside this script, which is the module. It used to default to a temp path that
+  # regenerate-corpus.ps1 had stopped writing to years earlier, so the default either found
+  # nothing or found something nobody had produced.
+  [string]$Dir = (Join-Path $PSScriptRoot 'test-replays'),
   [int]$Limit = 0,
   [string]$Speed = "400",
   # Per-recording wall clock ceiling. A viewer that stops progressing still owns its window and its
@@ -15,10 +18,17 @@ param(
 # hangs instead of reporting.
 
 $ErrorActionPreference = 'Stop'
-$cp = (Get-Content 'desktop\build\replay-classpath.txt' -Raw).Trim()
-$cp = "$cp;superintelligence\build\classes\java\main"
 
-$files = Get-ChildItem $Dir -File -Filter *.replay | Sort-Object Name
+# Both paths are resolved from this script's own location. The classpath file is written by
+# :desktop:replaycp into the desktop module, which is one level up from here.
+$module = $PSScriptRoot
+$repo   = Split-Path -Parent $module
+$cp = (Get-Content (Join-Path $repo 'desktop\build\replay-classpath.txt') -Raw).Trim()
+$cp = "$cp;$(Join-Path $module 'build\classes\java\main')"
+
+# Recursive, because a training run given --replay-group files its recordings one level down. A
+# flat listing over trainer-replays would report zero recordings exactly when there are the most.
+$files = Get-ChildItem $Dir -Recurse -File -Filter *.replay | Sort-Object FullName
 if ($Limit -gt 0) { $files = $files | Select-Object -First $Limit }
 
 $diverged = 0; $clean = 0; $other = 0

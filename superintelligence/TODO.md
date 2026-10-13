@@ -1668,7 +1668,7 @@ same defaults the forked children get, and only where they are unset, so an expl
 `-Dspd.hidden=0` still wins. `ReplayLauncher.MUTE` is a `static final`, so it has to happen before that
 class loads rather than at the first call that needs it.
 
-**`replay-viewer.bat` takes its flags before the file.** `--mute --close --fast 40 --windowed --at X Y
+**`superintelligence/replay-viewer.bat` takes its flags before the file.** `--mute --close --fast 40 --windowed --at X Y
 <replay>`. Given after the file they are silently ignored — the launcher prints `audio=on` and you
 believe you muted it. Noted because it cost a cycle here, not because it is worth a code change.
 

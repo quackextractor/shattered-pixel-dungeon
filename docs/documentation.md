@@ -511,7 +511,8 @@ appears to.
 
 ### The catalogue, and which run a recording came from
 
-With no argument, `replay-viewer.bat` prints every recording it can find and asks for a number. The
+With no argument, `superintelligence/replay-viewer.bat` prints every recording it can find and asks
+for a number. The
 listing has three kinds of section: `TEST CORPUS` is the checked-in reference set, `TRAINER OUTPUT` is
 everything a run wrote that carried no group, and one `GROUP <ID>` per `--replay-group`. Every section is
 ranked by score within its hero class and numbered in one sequence, so the number beside a row is the

@@ -23,6 +23,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The scripts that configure, watch and rebuild this module now live in it.** `replay-viewer.bat`,
+  `replay-batch.ps1`, `regenerate-corpus.ps1` and `.env.example` move from the repository root into
+  `superintelligence/`, beside `train.ps1`, `superintelligence.properties`, `test-replays/` and
+  `trainer-replays/`. Four files that only ever named this module's own directories were the only things
+  in the root that did.
+
+  Paths are resolved from `$PSScriptRoot` / `%~dp0` rather than from the working directory, which is the
+  whole point: **`regenerate-corpus.ps1` defaulted `-Dir` to `superintelligence/test-replays`, which was
+  correct only while the script sat at the root *and* was launched from there**, and `replay-batch.ps1`
+  defaulted to a temp directory `regenerate-corpus.ps1` had stopped writing to years earlier - so its
+  default either found nothing or found something nobody had produced. `replay-batch.ps1` also listed a
+  directory flat, which reports **zero recordings** over `trainer-replays/` exactly when there are the
+  most, now that a grouped run files its output one level down. It walks subdirectories.
+
+  Measured, all three run from the new location:
+
+  ```
+  replay-viewer.bat --list      three sections, 65 recordings, the grouped one listed as GROUP SMOKE-GROUP-A
+  replay-viewer.bat --verify duelist-drop
+                               [OK]  replay reproduced in 60 steps, 317 ms
+  replay-batch.ps1 -Limit 3     total 3  clean 3  diverged 0  other 0
+  regenerate-corpus.ps1        17 recordings, all reproduce, in 21.4s
+  ```
+
+  The corpus rebuild was run against a scratch directory rather than the committed one, so the path fix
+  is measured without putting 17 fixtures at risk to measure it.
+
+  `.env` stays ignored by a bare name in `.gitignore`, which matches at any depth - a pattern of
+  `/superintelligence/.env` would have silently stopped matching the moment the template moved.
+
 ### Added
 
 - **`--replay-group <id>`: a run's recordings are its own group, in the catalogue and on disk.** Until now
