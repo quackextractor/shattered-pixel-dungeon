@@ -948,7 +948,7 @@ generations, and `Curriculum`'s fade is what would keep the dense terms for surv
 carries the direction. Nothing in this run reached a descent often enough for the fade to matter, which is
 the finding: **the fade needs a policy that survives, and this profile does not produce one.**
 
-## 21. Descending pays every time, so the hero ping-pongs between two floors and banks it - **OPEN**
+## 21. Descending pays every time, so the hero ping-pongs between two floors and banks it - **CLOSED**
 
 Found by the run that came after the free-step bound, and it is the same shape as everything else in this
 file: a policy that finds a cheaper way to end an episode, found by a policy rather than by a gate.
@@ -990,16 +990,70 @@ which a ping-pong satisfies perfectly, because the payment is real. **The case t
 the question.** A re-descent of an already-visited floor is not "a new floor" in any sense a player would
 recognise, so the case should be asking whether every descent reached a depth this run had never been on.
 
-**The fix is one condition, and its cost is not free of consequence.** Paying on a new maximum rather than
-on a direction is the honest reading of the objective:
+**The fix is one condition, and it took the first of the two readings.** `51f369f9f` pays when the descent
+reaches a depth deeper than any this episode has reached, tracked in `RewardModel.deepestPaid` and reset
+with the snapshot - which `SPDEnv` calls at the start of an episode and deliberately not on a floor change.
+It is the stricter of the two: paying on the first entry to each floor would also have stopped the
+ping-pong, but would still have paid for a re-descent after an ascent, which is the move this recording is
+made of.
 
-- track the deepest depth reached this episode (the environment already asks the game for it:
-  `Statistics.deepestFloor`, which is what `SPDEnv.deepestDepth()` returns), and pay only when
-  `depth > deepestReached`;
-- or pay on the *first* entry to each floor, which also stops the ping-pong and additionally stops
-  descending twice into the same floor after an ascent.
+Gated by `checkOnlyANewFloorIsPaidFor`, which drives **ten descents with ten ascents** through the real
+environment and requires the total to be one floor's reward:
 
-Either way every recording's reward column moves, so `ReplayIO.verify`'s `[WARN] score recorded ...
-reproduced` will print on the committed corpus until the fixtures are regenerated - the same consequence
-`CHANGELOG.md` 0.9.0 records for the re-pricing. That is why this is filed rather than changed: it is a
-decision about what descent is worth, and the corpus answers it differently from the reward table.
+```
+10 descents and 10 ascents reached depth 2 and paid 1800.00 - one reward per new floor, not per stair
+```
+
+Reverting the new term fails it with the measurement it is about - `paid 16200.0 where 1800.0 was
+expected`.
+
+**What it cost, and what it bought, is in `issues.md` 22.** Closing this removed every positive score from
+the run that had 21 of 30 generations positive, which is the point: those were the exploit.
+
+`ReplayIO.verify`'s `[WARN] score recorded ... reproduced` now prints on the committed corpus, because
+every recording's reward column moves - the same consequence `CHANGELOG.md` 0.9.0 records for the
+re-pricing. The trajectory comparisons are unaffected; the score is a reward-model artefact, which is what
+that warning has always said.
+
+## 22. With the ping-pong closed, nothing the policy does pays - **OPEN, and it is the honest measurement**
+
+The third of the three runs, and the first one where the reward function means what it says. Same seed
+(20261013), same profile (`depth_only`), 30 generations at 16 workers, `out/evidence/ping-pong-fixed-30.csv`:
+
+| | run 1: nothing fixed | run 2: free-step bound | run 3: bound + ping-pong closed |
+| --- | --- | --- | --- |
+| `bestScore` | -2,579 | **+9,540** | -2,132 |
+| generations with a positive best | 0 | **21 of 30** | **0 of 30** |
+| `bestDepth 2` | 5 of 31 | 28 of 30 | **2 of 30** |
+| last generation's endings | death 100% | death 49% / stalled 52% | death 2 / **stalled 62** |
+
+**Run 2's numbers were the exploit, not progress, and closing it removed all of them.** A positive best
+score in 21 of 30 generations sounded like the objective working; it was `DEPTH_ADVANCE` paying for
+1 -> 2 -> 1 -> 2 at `deepest=2`. With the comparison fixed to a new maximum depth, the same run produces no
+positive episode at all and reaches floor 2 twice in thirty generations.
+
+**What the policy does now, from its best recording** (`JEA-FKU-WZS`, CLERIC, 84 steps, reproduced exactly):
+
+```
+terms
+  NO_PROGRESS              -264.00
+  TURN_COST                -104.00
+  DEATH                   -2500.00
+```
+
+15 moves north, 13 interacts, 9 searches, 4 inventory opens: real actions, no free-step flood, no descent to
+farm. It wanders, and then it ends on a terminal - 62 of 64 episodes in the last generation stalled rather
+than dying, because under this profile a stall is the cheapest surviving ending and the free-step budget
+now decides which one that is.
+
+**So the profile is not a training setting, and this is the proof rather than the suspicion.** Every route
+to a positive score is a route the policy cannot reach: no floor, no win, and with the loop bounded and
+depth farming closed, nothing it does pays at all. Sparse reward is a wall, not a setting - and
+`research.md`'s Phase 1 / Phase 2 split, which `Curriculum` implements and which has never once engaged
+(`shaping=1.00` in all 30 generations), is the machinery that was supposed to be what gets a policy past
+it: dense terms for survival while the policy is weak, faded out as depth starts moving.
+
+**The next run is `default`, not `depth_only`,** with the bound and the depth payment in place. That is the
+configuration the milestone from `research.md:40` is measured against, and it is the first run in this
+project's history where `bestDepth` and the score cannot both be explained by something other than
+progress.

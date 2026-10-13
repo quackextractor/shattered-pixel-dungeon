@@ -94,30 +94,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `:desktop:viewcheck` green at 20 of 20 - which matters here, because this change is in `GameScene` and the
   viewer is what loads it.
 
+### Fixed
+
+- **A descent pays for a new floor, not for going down a stair.** `JEA-FKU-WZS` recorded nine floor rows
+  at `deepest=2` and `DEPTH_ADVANCE +7200`: 1 -> 2 -> 1 -> 2 -> 1 -> 2 -> 1, four descents, none to a floor
+  the run had not already been on, ~45 turns a cycle. `RewardModel.step` paid on `depth > prevDepth`, a
+  direction, and nothing asked whether the floor below had been visited; ascending already paid zero, so
+  the pair was a closed money machine.
+
+  It pays now when the descent reaches a depth deeper than any this episode has reached. Gated by
+  `checkOnlyANewFloorIsPaidFor`, which drives ten descents with ten ascents and requires the total to be
+  one floor's reward - **1800.00 measured, against 16200.00 with the fix reverted**.
+
+- **A run now shows a progress bar, and a script means nobody types a path.** `ProgressBar` is one line
+  rewritten in place - fixed-width fraction of generations, elapsed, an estimate built only from
+  generations that have finished, and the last mean score and deepest floor read out of the metrics row
+  rather than recomputed. `graphcheck` gained a fifth case asserting the percentages, the width, that
+  half is exactly half, and that the estimate is blank at both ends; two of those assertions failed on the
+  first version and the bar was at fault both times.
+
+  `--reward-profile depth_only` is one token where a properties file was a path to remember, applied
+  after the file and the environment so a flag still wins. The metrics CSV defaults into
+  `superintelligence/out/evidence/` instead of beside the checkpoint, because a CSV is read later by a
+  person and a weights file is used later by a run.
+
+  `superintelligence/train.ps1` is the workflow: `./train.ps1`, `./train.ps1 -Profile depth_only
+  -Generations 60 -Name depth-only-60`, `./train.ps1 -Resume`. It names the artefacts, prints the gradle
+  command it is about to run, and afterwards prints generations and wall time and seconds per generation,
+  mean score and mean depth for the first third against the last third, the best score and deepest floor
+  with the generation each happened in, the final generation's endings, the slowest generation, and the
+  checkpoint's path and size.
+
 ### Not done
 
-- **`DEPTH_ADVANCE` pays on every descent, and the policy ping-pongs between two floors.** Found by the
-  run that followed the free-step bound, not by a gate. `JEA-FKU-WZS`: **nine floor rows, `deepest=2`,
-  +7,200 of descent paid** - 1 -> 2 -> 1 -> 2 -> 1 -> 2 -> 1, four descents, none of them to a floor the
-  run had not already been on, about 45 turns each. One comparison causes it: `RewardModel.step` pays on
-  `depth > prevDepth`, and nothing asks whether the floor below has been visited. Ascending already pays
-  zero, so the pair of them is a closed money machine.
-
-  **The `depth_only` gate case did not catch it, and why is the useful half.** It asserts the run's
-  positive score equals its `DEPTH_ADVANCE` total - which a ping-pong satisfies perfectly, because the
-  payment is real. It tests the arithmetic and not the question the profile exists for.
-
-  Filed as `issues.md` 21 rather than fixed, because the fix is a decision about what descent is worth and
-  it moves every recording's reward column: pay on a new maximum depth rather than on a direction, or pay
-  on the first entry to each floor. Both stop the ping-pong; only one also stops re-descending a floor
-  after an ascent.
-
-- **The rerun with the free-step bound in place moved the outcome**, which is the measurement that says the
-  loop was not cosmetic. Same seed (20261013), same profile, same constants, 30 generations at 16 workers;
-  the only change was the bound. `bestDepth 2` went from 5 of 31 generations - none after generation 12 -
-  to **28 of 30**, `meanDepth` from 1.03 to **1.23**, `bestScore` from -2,579 with every episode negative
-  to **+9,540** with 21 of 30 generations positive, and endings from 100% deaths to 49% deaths / 52% stalls.
-  Evidence in `out/evidence/`: `budgeted-30.csv`, `budgeted-30.log`, `budgeted-30.bin`.
+- **With the ping-pong closed, nothing the policy does pays, and that is now measured rather than
+  suspected.** Run 3 - same seed, same profile, bound and depth payment both in place: **no positive best
+  score in 30 generations, `bestDepth 2` twice, and 62 of 64 episodes in the last generation ending as
+  stalls.** The 21-of-30 positive generations in run 2 were the exploit. `depth_only` is a diagnostic:
+  every route to a positive score is one this policy cannot reach, which is the sparse-reward wall rather
+  than a setting. `Curriculum`'s fade - dense terms for survival, faded as depth moves - is the machinery
+  that exists to get a policy past it, and it has never once engaged (`shaping=1.00` in all 30
+  generations). Filed as `issues.md` 22, which also records that the next run is `default`.
 
 ## [0.10.0] - 2026-10-13
 
