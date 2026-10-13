@@ -70,6 +70,7 @@ public class SPDEnv {
 		this.mapper = new ActionMapper( config );
 		this.encoder = new ObservationEncoder( config, mapper );
 		this.ledger = new RewardLedger();
+		this.ledger.profile( config.rewardProfile );
 		this.curriculum = new Curriculum();
 		this.reward = new RewardModel( config, ledger, curriculum );
 		this.slotMask = new float[ config.maxSlots ];

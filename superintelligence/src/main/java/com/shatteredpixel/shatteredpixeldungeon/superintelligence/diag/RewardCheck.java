@@ -14,6 +14,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardLedger;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
@@ -54,7 +55,7 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 17;
+	private static final int CHECKS = 20;
 
 	/** How many heaps to try before calling a floor that offers none a failure. */
 	private static final int MAX_HEAP_TRIES = 12;
@@ -73,6 +74,9 @@ public class RewardCheck {
 		checkDepthBeatsAPerFloorTurnLimit( config );
 		checkExplorationCannotOutbuyADescent( config );
 		checkStallPathRecordsOnce( config );
+		checkDefaultProfilePaysEveryTerm();
+		checkDepthOnlyPaysOnlyForDepth();
+		checkDepthOnlyKeepsTheFourNegatives();
 		checkRestIsNotAOneWayDoor( config );
 		checkTheHeroCanDie( config );
 		checkPickingUpAndDroppingIsNotProfitable( config );
@@ -979,6 +983,282 @@ public class RewardCheck {
 		}
 
 		System.out.println( "  the reachable stall path records STALLED exactly once" );
+	}
+
+	// ------------------------------------------------------------- the depth-only reward profile
+
+	/**
+	 * The shipped configuration must still pay every term.
+	 *
+	 * <p>The depth-only profile is a temporary override, and the failure mode of an override is not that
+	 * it breaks - it is that it stops being temporary. If {@code DEFAULT} ever stopped admitting a term,
+	 * or if a run with no configuration asked for {@code DEPTH_ONLY}, every other case in this file would
+	 * still pass on its own constants and the module would quietly be training the experiment.
+	 */
+	private static void checkDefaultProfilePaysEveryTerm(){
+		List< String > refused = new ArrayList<>();
+		for (int i = 0; i < RewardTerm.count(); i++){
+			RewardTerm term = RewardTerm.at( i );
+			if (!RewardProfile.DEFAULT.allows( term )) refused.add( term.name() );
+		}
+
+		if (!refused.isEmpty()){
+			fail( "the DEFAULT profile refuses " + refused + ", so the shipped reward function no longer"
+					+ " pays for terms it is documented to pay for." );
+			return;
+		}
+
+		RewardProfile compiled = new EnvConfig().rewardProfile;
+		if (compiled != RewardProfile.DEFAULT ){
+			fail( "a run with no configuration and no SPD_* variables asks for " + compiled
+					+ ". The compiled default has to be DEFAULT or the experiment ships enabled." );
+			return;
+		}
+
+		RewardProfile loaded = com.shatteredpixel.shatteredpixeldungeon.superintelligence.env
+				.EnvConfigBinder.defaults().config.rewardProfile;
+		if (loaded != RewardProfile.DEFAULT ){
+			fail( "the binder loads " + loaded + " from nothing, where a run with no file must load"
+					+ " DEFAULT." );
+			return;
+		}
+
+		System.out.println( "  DEFAULT admits all " + RewardTerm.count() + " terms and is what a run with"
+				+ " no configuration loads" );
+	}
+
+	/**
+	 * Under {@code DEPTH_ONLY}, reaching a new floor is the only route to a positive score.
+	 *
+	 * <p>The profile exists to measure what the objective alone is worth, which cannot be read off a
+	 * function that also pays for walking over new tiles - and this is the case that says the override
+	 * does what it says. It drives a real episode that provably triggers the incidental terms: a mob is
+	 * placed and fought, an item is picked up and dropped, the weapon is equipped and unequipped at zero
+	 * engine time, and the hero descends. Every term outside the profile's allow-list must then total
+	 * exactly zero, and the descent must pay {@code depthReward}.
+	 *
+	 * <p>Asserted on totals, not on the absence of notes: a term that was recorded and paid nothing is
+	 * the whole point of the profile, and a case that required no notes would pass on an episode that
+	 * never reached the code it guards.
+	 */
+	private static void checkDepthOnlyPaysOnlyForDepth(){
+		EnvConfig config = new EnvConfig();
+		config.rewardProfile = RewardProfile.DEPTH_ONLY;
+
+		final boolean[] placed = { false };
+		final boolean[] descended = { false };
+		final int[] incidental = { 0 };
+		final List< String > incidentalTerms = new ArrayList<>();
+
+		Outcome o = play( config, 220, "DEPTHONLY", turn -> {
+			SPDEnv env = turn.env;
+			if (env.mode() != EnvMode.WORLD ){
+				env.step( Action.CANCEL, 0 );
+				return;
+			}
+
+			if (Dungeon.hero != null && Dungeon.hero.isAlive() && Dungeon.hero.HP < 12){
+				Dungeon.hero.HP = Dungeon.hero.HT;
+			}
+
+			//the free action, so NO_PROGRESS is exercised rather than assumed
+			if (turn.step % 4 == 3 ){
+				env.step( Action.USE, 0 );
+				if (env.mode() == EnvMode.SLOT) env.step( Action.USE, equippableSlot( env ) );
+				return;
+			}
+
+			if (!descended[ 0 ] && turn.step >= 40 && descend( env )){
+				descended[ 0 ] = true;
+				return;
+			}
+
+			if (!placed[ 0 ] && placeMobBesideHero( env )) placed[ 0 ] = true;
+
+			Mob target = adjacentEnemy();
+			if (target != null){
+				env.step( directionToTarget( env, target ), 0 );
+				return;
+			}
+
+			if (turn.step % 3 == 0) env.step( Action.SEARCH, 0 );
+			else env.step( Action.values()[ 4 + (turn.step % 4 )], 0 );
+		} );
+
+		if (o.ledger == null || o.ledger.profile() != RewardProfile.DEPTH_ONLY ){
+			fail( "the episode ran under " + ( o.ledger == null ? "no ledger" : o.ledger.profile() )
+					+ " rather than depth_only, so nothing below measured the override." );
+			return;
+		}
+
+		//Every incidental term that fired, and what it paid. Collected from the run rather than named in
+		//advance, because which of them a given seed reaches is a property of the game.
+		List< String > paid = new ArrayList<>();
+		for (int i = 0; i < RewardTerm.count(); i++){
+			RewardTerm term = RewardTerm.at( i );
+			if (RewardProfile.DEPTH_ONLY.allows( term )) continue;
+			int notes = o.ledger.notes( term );
+			if (notes > 0 ) incidentalTerms.add( term.name() + "x" + notes );
+			if (o.ledger.termTotal( term ) != 0 ){
+				paid.add( term.name() + "=" + o.ledger.termTotal( term ));
+			}
+			incidental[ 0 ] += notes;
+		}
+
+		if (!paid.isEmpty()){
+			fail( "depth_only paid " + paid + ". The only route to a positive score under this profile is"
+					+ " a new floor or a win; everything else must total exactly zero." );
+			return;
+		}
+
+		//Not vacuous: a profile that silences terms a run never reached proves nothing. Exploration and at
+		//least one combat term are the two an ordinary floor reaches within a hundred turns.
+		if (o.ledger.notes( RewardTerm.EXPLORE ) == 0 ){
+			fail( "the driver searched and walked for " + o.turns + " turns and EXPLORE was never recorded,"
+					+ " so this case measured an episode that never reached the terms it silences." );
+			return;
+		}
+
+		int combat = o.ledger.notes( RewardTerm.KILL ) + o.ledger.notes( RewardTerm.SNEAK_ATTACK )
+				+ o.ledger.notes( RewardTerm.DAMAGE_TAKEN );
+		if (combat == 0 ){
+			fail( "a level-appropriate mob was placed beside the hero and fought for " + o.turns
+					+ " turns with no KILL, SNEAK_ATTACK or DAMAGE_TAKEN recorded (placed=" + placed[ 0 ]
+					+ "), so the combat terms were never exercised under the override." );
+			return;
+		}
+
+		if (o.ledger.notes( RewardTerm.NO_PROGRESS ) == 0 ){
+			fail( "the driver equipped and unequipped the hero's weapon throughout and NO_PROGRESS was never"
+					+ " recorded, so the free-step charge was not exercised under the override." );
+			return;
+		}
+
+		if (!descended[ 0 ] || Dungeon.depth <= 1 ){
+			fail( "the hero never descended (depth " + Dungeon.depth + ", descended=" + descended[ 0 ]
+					+ "), so the case never reached the one route to a positive score it exists to protect." );
+			return;
+		}
+
+		double depthPaid = o.ledger.termTotal( RewardTerm.DEPTH_ADVANCE );
+		if (depthPaid < config.depthReward ){
+			fail( "the hero reached depth " + Dungeon.depth + " and DEPTH_ADVANCE paid " + depthPaid
+					+ " against a configured " + config.depthReward + ". Under depth_only this term is the"
+					+ " objective, and the one positive score an episode can earn." );
+			return;
+		}
+
+		double positives = 0;
+		for (int i = 0; i < RewardTerm.count(); i++){
+			double total = o.ledger.termTotal( RewardTerm.at( i ));
+			if (total > 0) positives += total;
+		}
+		if (Math.abs( positives - depthPaid ) > 1e-4 ){
+			fail( "the run's positive score totals " + positives + " against " + depthPaid
+					+ " of DEPTH_ADVANCE, so something other than the descent paid for something." );
+			return;
+		}
+
+		System.out.println( "  depth_only: " + incidental[ 0 ] + " incidental event(s) ("
+				+ String.join( ", ", incidentalTerms ) + ") paid nothing; the descent paid " + fmt( depthPaid )
+				+ " and it is the whole of the run's positive score" );
+	}
+
+	/**
+	 * The profile silences the incidental terms and nothing else.
+	 *
+	 * <p>Silencing everything would be a reward function with no gradient at all, and the profile would
+	 * read as a successful experiment rather than as a run that can only learn the terminal. Stall,
+	 * death and running out of turns are therefore each produced and priced against their configured
+	 * constants, so "only these four still charge" is a measurement rather than the name of an allow-list.
+	 */
+	private static void checkDepthOnlyKeepsTheFourNegatives(){
+		EnvConfig config = new EnvConfig();
+		config.rewardProfile = RewardProfile.DEPTH_ONLY;
+
+		Outcome stall = playWaits( config, config.stallLimit + 8 );
+		if (stall.endReason != RewardModel.TerminateReason.STALLED ){
+			fail( "waiting under depth_only ended " + stall.endReason + " rather than stalling, so the"
+					+ " stall price was not exercised." );
+			return;
+		}
+
+		double stallPaid = stall.termTotal( RewardTerm.STALLED );
+		if (Math.abs( stallPaid + config.stallPenalty ) > 1e-4 ){
+			fail( "a stalled run under depth_only paid " + stallPaid + " for STALLED, expected "
+					+ (-config.stallPenalty) + ". Stall is one of the four prices the profile keeps." );
+			return;
+		}
+
+		double turnCost = stall.termTotal( RewardTerm.TURN_COST );
+		double expectedTurnCost = -config.turnCost * stall.turns;
+		if (Math.abs( turnCost - expectedTurnCost ) > 1e-5 ){
+			fail( "a stalled run under depth_only charged " + turnCost + " in turn cost where "
+					+ stall.turns + " turns x " + config.turnCost + " = " + expectedTurnCost
+					+ " was expected." );
+			return;
+		}
+
+		EnvConfig limited = new EnvConfig();
+		limited.rewardProfile = RewardProfile.DEPTH_ONLY;
+		limited.turnLimitPerFloor = 12;
+		limited.stallLimit = 100000;
+		Outcome capped = playWaits( limited, 40 );
+		if (capped.endReason != RewardModel.TerminateReason.TURN_LIMIT ){
+			fail( "a run capped at " + limited.turnLimitPerFloor + " turns ended "
+					+ capped.endReason + " rather than on the turn limit, so that price was not exercised." );
+			return;
+		}
+
+		double cappedPaid = capped.termTotal( RewardTerm.TURN_LIMIT );
+		if (Math.abs( cappedPaid + limited.turnLimitPenalty ) > 1e-4 ){
+			fail( "a run that ran out of turns paid " + cappedPaid + " for TURN_LIMIT, expected "
+					+ (-limited.turnLimitPenalty) + "." );
+			return;
+		}
+
+		Outcome death = play( config, 60, "DEPTHONLYDEATH", turn -> {
+			turn.env.step( Action.WAIT, 0 );
+			if (Dungeon.hero != null && Dungeon.hero.isAlive()){
+				Dungeon.hero.damage( Dungeon.hero.HP + 1, Dungeon.hero );
+			}
+		} );
+
+		if (death.endReason != RewardModel.TerminateReason.DEATH ){
+			fail( "the hero was killed under depth_only and the run ended " + death.endReason
+					+ ", so the death price was not exercised." );
+			return;
+		}
+
+		double deathPaid = death.termTotal( RewardTerm.DEATH );
+		if (Math.abs( deathPaid + config.deathPenalty ) > 1e-4 ){
+			fail( "a dead run under depth_only paid " + deathPaid + " for DEATH, expected "
+					+ (-config.deathPenalty) + "." );
+			return;
+		}
+
+		System.out.println( "  depth_only still charges stall " + fmt( stallPaid ) + ", turn limit "
+				+ fmt( cappedPaid ) + ", death " + fmt( deathPaid ) + " and " + fmt( turnCost )
+				+ " of turn cost" );
+	}
+
+	/**
+	 * The hero is put on the stairs and the level is asked for the transition, as
+	 * {@code Hero.actTransition} does when he is standing on them.
+	 *
+	 * @return false when the floor has no exit, which the caller reports rather than treating as a pass
+	 */
+	private static boolean descend( SPDEnv env ){
+		com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition exit =
+				Dungeon.level.getTransition(
+						com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition.Type.REGULAR_EXIT );
+		if (exit == null) return false;
+
+		Hero hero = Dungeon.hero;
+		hero.pos = exit.cell();
+		boolean accepted = Dungeon.level.activateTransition( hero, exit );
+		hero.ready = false;
+		return accepted;
 	}
 
 	// --------------------------------------------------------------------------- playing

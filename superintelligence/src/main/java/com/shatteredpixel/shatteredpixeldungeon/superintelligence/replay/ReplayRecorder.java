@@ -47,6 +47,7 @@ public class ReplayRecorder {
 		if (config != null){
 			replay.maxSlots = config.maxSlots;
 			replay.allowEquipping = config.allowEquipping;
+			replay.rewardProfile = config.rewardProfile;
 		}
 		recording = true;
 	}

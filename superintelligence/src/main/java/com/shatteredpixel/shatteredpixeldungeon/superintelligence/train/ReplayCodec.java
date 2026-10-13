@@ -41,13 +41,15 @@ public final class ReplayCodec {
 	/**
 	 * Wire format version, written as the first field of every replay frame.
 	 *
-	 * <p>Not decoration. {@code 1} is the four-field format above, which is only readable by a trainer
-	 * built from the same source as the worker that wrote it; {@code 2} is all nine step fields. A
+* <p>Not decoration. {@code 1} is the four-field format above, which is only readable by a trainer
+	 * built from the same source as the worker that wrote it; {@code 2} is all nine step fields;
+	 * {@code 3} adds the reward profile to the header, without which a recording written under a profile
+	 * was written out saying it was recorded under the default one. A
 	 * trainer that meets a version it does not know refuses the frame, because the alternative — reading
 	 * a body whose length does not match the reader's idea of it — is a desynchronised pipe, and
-	 * {@code WorkerPool}'s stall watchdog reports that as "the workers hung" several minutes later.
+	 * {@link WorkerPool}'s stall watchdog reports that as "the workers hung" several minutes later.
 	 */
-	public static final int VERSION = 2;
+	public static final int VERSION = 3;
 
 	/** The version whose body is the four-field form, kept so {@link #read} can name what it saw. */
 	public static final int LEGACY_4_FIELD_VERSION = 1;
@@ -72,6 +74,7 @@ public final class ReplayCodec {
 		out.writeInt( replay.maxSlots );
 		out.writeBoolean( replay.allowEquipping );
 		out.writeUTF( replay.termination );
+		out.writeUTF( replay.rewardProfile.key() );
 
 		out.writeInt( replay.steps.size() );
 		for (Replay.Step step : replay.steps){
@@ -118,6 +121,9 @@ public final class ReplayCodec {
 		replay.maxSlots = in.readInt();
 		replay.allowEquipping = in.readBoolean();
 		replay.termination = in.readUTF();
+		replay.rewardProfile =
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
+						.parse( in.readUTF() );
 
 		int declared = in.readInt();
 		if (declared != steps ){

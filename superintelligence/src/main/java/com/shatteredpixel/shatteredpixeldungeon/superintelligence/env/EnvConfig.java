@@ -231,6 +231,17 @@ public class EnvConfig {
 	/** Terminal reward for reaching and clearing the final floor. */
 	public float victoryReward = 60000f;
 
+	/**
+	 * Which terms are allowed to pay. DEFAULT is every term; DEPTH_ONLY leaves reaching a new floor or
+	 * winning as the only route to a positive score.
+	 *
+	 * <p>A temporary experimental override rather than a re-pricing: every weight above still applies,
+	 * and {@code reward.profile=default} restores all of them. It exists to measure what the objective
+	 * alone is worth, which cannot be read off a function that also pays for walking over new tiles.
+	 */
+	public com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile rewardProfile
+			= com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile.DEFAULT;
+
 	/** Set false to have every write to Gdx.files redirected into a scratch directory. */
 	public boolean persistSaves = false;
 
@@ -264,6 +275,7 @@ public class EnvConfig {
 		c.stallPenalty = stallPenalty;
 		c.turnLimitPenalty = turnLimitPenalty;
 		c.victoryReward = victoryReward;
+		c.rewardProfile = rewardProfile;
 		c.persistSaves = persistSaves;
 		return c;
 	}

@@ -125,6 +125,10 @@ public class CollectCheck {
 		sample.maxSlots = 32;
 		sample.allowEquipping = false;
 		sample.termination = "DEATH";
+		//Not DEFAULT: the default is what a dropped field reads as, so a fixture carrying it cannot tell
+		//"the wire carried it" from "the wire lost it and the field fell back".
+		sample.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
+				.RewardProfile.DEPTH_ONLY;
 
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay.Step s =
 				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay.Step();
@@ -196,6 +200,13 @@ public class CollectCheck {
 		if (back.turnLimitPerFloor != sample.turnLimitPerFloor || back.depth != sample.depth
 				|| back.termination.compareTo( sample.termination ) != 0 ){
 			fail( "the header lost turnLimitPerFloor, depth or termination" );
+			return;
+		}
+		if (back.rewardProfile != sample.rewardProfile ){
+			fail( "the header lost the reward profile: " + sample.rewardProfile + " -> "
+					+ back.rewardProfile + ". A recording written under a profile and read back as the"
+					+ " default reports a score and a reward column that never matched the run, and says"
+					+ " nothing about the trajectory." );
 			return;
 		}
 

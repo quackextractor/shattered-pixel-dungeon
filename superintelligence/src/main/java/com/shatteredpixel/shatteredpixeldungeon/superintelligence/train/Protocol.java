@@ -34,8 +34,11 @@ public final class Protocol {
 	 *
 	 * <p>So the constant is the thing that catches it, and it had stopped distinguishing the two
 	 * layouts: it was 1 while both frames beneath it had moved.
+	 *
+	 * <p>3 added the reward profile to the params frame. A version-2 worker would read that UTF as the
+	 * sampling float that now follows it, which is the same silent desync rather than a loud failure.
 	 */
-	public static final int VERSION = 2;
+	public static final int VERSION = 3;
 
 	// trainer -> worker
 	public static final int MSG_HELLO = 1;

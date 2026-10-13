@@ -36,6 +36,24 @@ public class RewardLedger {
 	 */
 	private double shapingScale = 1.0;
 
+	/**
+	 * Which terms are allowed to carry an amount at all.
+	 *
+	 * <p>Applied here rather than at each emission site, so that a term cannot be paid by a path that
+	 * forgot to ask. A silenced term is still counted by {@link #notes}, which is what keeps "this
+	 * happened and the profile priced it at nothing" distinguishable from "this did not happen".
+	 */
+	private com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile profile
+			= RewardProfile.DEFAULT;
+
+	public void profile( RewardProfile profile ){
+		this.profile = profile == null ? RewardProfile.DEFAULT : profile;
+	}
+
+	public RewardProfile profile(){
+		return profile;
+	}
+
 	public void shapingScale( double scale ){
 		this.shapingScale = scale;
 	}
@@ -126,6 +144,7 @@ public class RewardLedger {
 	public void add( RewardTerm term, double amount, boolean clearedByAdvancing ){
 		notes[ term.ordinal() ]++;
 		if (term.isShaping()) amount *= shapingScale;
+		if (!profile.allows( term )) amount = 0;
 
 		int i = term.ordinal();
 		runTotals[ i ] += amount;

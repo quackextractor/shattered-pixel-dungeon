@@ -23,6 +23,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-13
+
+`reward.profile=depth_only`: a temporary override that switches the reward function down to the
+objective, so that **the only route to a positive score is a new floor or a win**. Minor rather than a
+patch because a run's score now depends on a setting, and because two wire formats changed.
+
+### Added
+
+- **`reward.profile`, with two values.** `default` pays every term, which is what every run so far has
+  used. `depth_only` pays **nothing but a descent, a win, and four prices for stopping** - the per-turn
+  cost, the charge for a step the engine resolved for free, running out of turns, dying and stalling.
+  Everything else is silenced: exploration, gold, items, identification, levelling, talents, kills,
+  surprise attacks, damage taken, cursed gear, eating early, a drop.
+
+  It exists because the objective cannot be *measured* through a function that also pays for walking over
+  new tiles. A run can post a good score without ever leaving floor 1 under `default`, and that is
+  indistinguishable from a run that learned to descend - which is the same measurement problem that made
+  `bestDepth` unreadable while the score climbed.
+
+  **Nothing is re-priced.** Every weight in `superintelligence.properties` still applies when the
+  profile is on; terms are silenced at the ledger, and `default` restores the whole function. That is the
+  difference between an override and a re-pricing, and it is why this is a setting rather than an edit to
+  the weights.
+
+  ```
+  reward.profile -> SPD_REWARD_PROFILE
+  ```
+
+- **`rewardcheck` grew from 17 cases to 20**, and the three are the gate on the property rather than on
+  the constant:
+
+  | case | asserts |
+  | --- | --- |
+  | `checkDefaultProfilePaysEveryTerm` | `DEFAULT` admits all 30 terms, and a run with no configuration and no `SPD_*` loads it - the failure mode of an override is not that it breaks, it is that it stops being temporary |
+  | `checkDepthOnlyPaysOnlyForDepth` | over a real episode that fires the incidental terms - a mob placed and fought, an item picked up and dropped, the weapon equipped and unequipped at zero engine time, and a real descent through `Level.activateTransition` - every term outside the allow-list totals **exactly zero**, and the descent's 1800.00 is the whole of the run's positive score |
+  | `checkDepthOnlyKeepsTheFourNegatives` | stall, turn limit and death are each produced and priced against their configured constants, and turn cost is still `turns x turnCost`, because a profile that silenced everything would have no gradient and would read as a successful experiment |
+
+  The middle case asserts on totals and **not** on the absence of notes, and it also asserts that the
+  incidental terms were reached at all - a silenced term is still counted by `RewardLedger.notes`, which
+  is what keeps "this happened and the profile priced it at nothing" distinguishable from "this did not
+  happen". Measured on `DEPTHONLY`: **80 incidental events fired and every one paid 0.00**, and the run's
+  positive score was 1800.00 of `DEPTH_ADVANCE`.
+
+  Mutation-tested twice, because a gate that has never been seen to go red is a gate that has not been
+  tested:
+
+  | reverted | what fails |
+  | --- | --- |
+  | the `if (!profile.allows( term )) amount = 0` line in `RewardLedger.add` | `depth_only paid [EXPLORE=5.95, MAX_HP_GAIN=3.5, KILL=450.0, SNEAK_ATTACK=300.0, DAMAGE_TAKEN=-320.0]` |
+  | `this.ledger.profile( config.rewardProfile )` in `SPDEnv`'s constructor | `the episode ran under DEFAULT rather than depth_only, so nothing below measured the override` |
+
+### Fixed
+
+- **A recording written under a profile said it was written under the default one.** The trainer's
+  replays travel the worker pipe as a `ReplayCodec` frame before they are written as text, and the
+  profile was added to the text header and to the `Replay` object without being added to the codec - so
+  the worker's value was dropped in transit and every trainer recording came back `reward_profile=DEFAULT`
+  however the run was priced. **Found by running it, not by reading it**: a 3-generation smoke run under
+  `depth_only` wrote five recordings and all five said `DEFAULT`.
+
+  It is the same shape as `issues.md` 12 - a field that exists on both sides of a pipe and is written on
+  one of them - which is why the fix is a codec field with a case in `collectcheck` rather than a second
+  implementation of the header. `ReplayCodec.VERSION` is **3**; a trainer and a worker built from
+  different sources now refuse the frame instead of exchanging a plausible header.
+
+  `collectcheck`'s wire case carries `DEPTH_ONLY` rather than the default in its fixture, on the same
+  reasoning `verifycheck` uses: a field that falls back to the default when it is dropped cannot be tested
+  by a fixture that holds the default.
+
+### Changed
+
+- **`Protocol.VERSION` is 3.** The params frame carries the reward profile, so a trainer and its workers
+  cannot silently disagree about what an episode was worth. A version-2 worker would have read that UTF
+  as the sampling float that follows it - the desync this constant exists to catch, not another field
+  that happens to look fine.
+- **A replay header records `reward_profile`.** The same actions under a different profile carry
+  different rewards, so a recording verified under the wrong one reports a score and a reward column that
+  never matched its run. Absent from every recording written before this version, which is `default` -
+  what those runs were priced with.
+
+### Not done
+
+- **The profile is an override, not a replacement.** Nothing here says the shaping terms are wrong; it
+  says they cannot be used to *measure* whether depth is being learned, and that a run under `depth_only`
+  with an untrained policy scores worse than one under `default` in the short term, because the only
+  thing keeping a weak policy alive was the dense reward it was exploring for. The 3-generation smoke run
+  is not evidence for or against the profile as a training setting, and `TODO.md` 1.16 records what the
+  next measurement is.
+
 ## [0.9.0] - 2026-10-12
 
 Closes `issues.md` 17. **A thrown or dropped item landed inert**, and nothing in the project had found

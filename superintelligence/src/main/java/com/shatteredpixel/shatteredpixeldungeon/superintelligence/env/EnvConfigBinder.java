@@ -77,6 +77,7 @@ public class EnvConfigBinder {
 			"env.persist_saves",
 
 			// --- reward shaping ---
+			"reward.profile",
 			"reward.turn_cost",
 			"reward.depth_reward",
 			"reward.explore_reward",
@@ -251,6 +252,16 @@ public class EnvConfigBinder {
 			case "env.persist_saves":        config.persistSaves = bool( key, value, origin ); break;
 
 			// --- reward ---
+			case "reward.profile":
+				try {
+					config.rewardProfile =
+							com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
+									.parse( value );
+				} catch (IllegalArgumentException e){
+					throw new IllegalArgumentException( "key " + key + " in " + origin + ": "
+							+ e.getMessage() );
+				}
+				break;
 			case "reward.turn_cost":         config.turnCost = decimal( key, value, origin ); break;
 			case "reward.depth_reward":      config.depthReward = decimal( key, value, origin ); break;
 			case "reward.explore_reward":    config.exploreReward = decimal( key, value, origin ); break;

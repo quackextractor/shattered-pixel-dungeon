@@ -75,6 +75,18 @@ public class Replay {
 	public boolean allowEquipping = true;
 
 	/**
+	 * Which reward terms were allowed to pay while this run was recorded.
+	 *
+	 * Not trajectory: the same actions under a different profile carry different rewards, so a recording
+	 * verified under the wrong one reports a score and a reward column that never matched and says
+	 * nothing about the run. Absent from every recording written before the profile existed, which is
+	 * {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile#DEFAULT} -
+	 * what those runs were priced with.
+	 */
+	public com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile rewardProfile
+			= com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile.DEFAULT;
+
+	/**
 	 * Step count the header declares.
 	 *
 	 * Kept separate from {@link #steps} because the two can disagree: a recording written by an
@@ -256,5 +268,6 @@ public class Replay {
 		generation = 0;
 		declaredSteps = 0;
 		truncatedAt = -1;
+		rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile.DEFAULT;
 	}
 }

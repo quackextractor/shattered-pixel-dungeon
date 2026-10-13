@@ -2,13 +2,13 @@
 
 | Badge | Version |
 | --- | --- |
-| [![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)](CHANGELOG.md) | 0.9.0 |
+| [![Version](https://img.shields.io/badge/version-0.10.0-blue.svg)](CHANGELOG.md) | 0.10.0 |
 | [![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
 
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
 described in [`docs.md`](docs.md) and [`research.md`](research.md).
 
-**Two versions, two subjects.** The `version-` badge is this module's - `0.9.0` - and its history is in
+**Two versions, two subjects.** The `version-` badge is this module's - `0.10.0` - and its history is in
 [`CHANGELOG.md`](CHANGELOG.md). The `game-` badge is Shattered Pixel Dungeon's - `4.0.2` - which is
 upstream's and moves only when this fork merges upstream. Neither moves because of anything recorded in
 the other's changelog, and the module's series starts at **0** specifically so the two cannot be read as
@@ -157,13 +157,13 @@ things were wrong with it, and each was a property rather than a size:
   across 1040 floors, the largest is 81 tall and 419 exceed 48 on one side — so at the old 0.05 a hero
   that mapped a floor without ever touching the stairs earned *more* than descending did. That is the
   objective restated as a ratio, and it is why `bestDepth` had been 1 in every generation of every run.
-  Now `reward.depth_reward=25.0` against `reward.explore_reward=0.01`.
+  Now `reward.depth_reward=1800.0` against `reward.explore_reward=0.05`.
 - **Killing paid nothing and being hit cost something.** `KILL` was declared, `RewardLedger.countKill()`
   was written and never called, and `prevKills` was snapshotted and never compared. Walking past
   everything was optimal, which is the shape every recorded death has: the hero does not lose a fight,
   he runs out of room. Now emitted from `Statistics.enemiesSlain`.
 - **`STALLED` cost exactly what dying cost**, so quitting and losing were one decision with two labels —
-  and the useful label is the one that survives. It is now worse than dying (150 against 100). Separately,
+  and the useful label is the one that survives. It is now worse than dying (3000 against 2500). Separately,
   `TURN_LIMIT` was `-turnCost * 100`, a fifth of a point against a +10 descent, so idling out a floor was
   a *positive-value strategy*. And a step that advances no engine time — equipping and unequipping cost
   nothing in the real game too — is now charged, which is the `duelist-mid` loop at a price.
@@ -176,7 +176,25 @@ outright. Paying the kill alone teaches trading blows with whatever is in reach.
 
 `rewardcheck` grew from 9 cases to 13, and the new ones assert **properties** — that the four terminal
 outcomes are ordered, that descending beats idling out the floor, that exploration cannot outbuy a
-descent, that a free step costs more than a real one — rather than comparing constants.
+descent, that a free step costs more than a real one — rather than comparing constants. It is 20 cases
+now; the three `0.10.0` added are in the next section.
+
+**`reward.profile` can switch the reward function down to the objective alone.** `default` pays every
+term. `depth_only` pays nothing but a descent, a win, and four prices for stopping — the per-turn cost,
+the charge for a step the engine resolved for free, running out of turns, dying and stalling — so
+**the only route to a positive score is a new floor or a win**, and every incidental term is still
+counted while paying zero.
+
+It is a temporary override and nothing is re-priced: every weight still applies when it is on, terms are
+silenced, and `default` restores the whole function. It exists because the objective cannot be *measured*
+through a function that also pays for exploration — a run can score well without ever leaving floor 1, and
+that is indistinguishable from a run that learned to descend.
+
+The profile travels the wire rather than being re-read by each process, so a trainer and its workers
+cannot disagree about what a run was worth, and it is recorded in the replay header, so a recording
+written under it verifies under it. `rewardcheck` asserts the property in both directions: that
+`depth_only` pays nothing outside the objective over a run that provably fires 80 incidental events, and
+that `default` still pays all 30 terms.
 
 **Measured, and honestly: survival improved and depth did not.** A 12-generation run moved deaths
 100% → 19% and mean turns 377 → 1335, and `bestDepth 2` appeared once in a smoke test. Depth does not

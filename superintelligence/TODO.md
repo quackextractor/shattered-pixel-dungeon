@@ -3,7 +3,13 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
-Last updated: 2026-10-12, after `issues.md` "Chasm" 17 was closed. **A thrown or dropped item landed
+Last updated: 2026-10-13, after `reward.profile` was added: a temporary override that switches the reward
+function down to the objective, so the only route to a positive score is a new floor or a win and the four
+prices for stopping are all that remains negative. Gated in `rewardcheck` (3 cases, mutation-tested twice),
+carried over the trainer/worker params frame and recorded in the replay header - where the first attempt
+dropped it and a smoke run said so. §1.16 has the whole thing.
+
+Last updated before that: 2026-10-12, after `issues.md` "Chasm" 17 was closed. **A thrown or dropped item landed
 inert**, and nothing in the project had ever found out, because nothing in the project had ever put an
 item on a cell a press could act on. `Level.drop` presses the cell an item lands on — which is how a
 thrown stone sets off a trap or flattens grass — and it did so only behind
@@ -949,6 +955,77 @@ already run other episodes. `--trace-world` now traces the recording path so a f
 diffed against its replay; the last obstacle is that the trace key is per worker rather than per run.
 
 ---
+## 1.16 A reward function that pays for exploring cannot be used to measure exploring
+
+`bestDepth` has been the project's measurement for whether anything is being learned, and it is a
+measurement taken through a function that also pays for walking over new tiles. §1.8 fixed the *ratio*
+between exploration and a descent; it did not make the two separable, and §1.15's run had to be read by
+eye for the same reason.
+
+**The override.** `reward.profile=depth_only` silences every term except the objective and the prices for
+stopping:
+
+| still pays | why it is still there |
+| --- | --- |
+| `DEPTH_ADVANCE`, `BOSS_SLAIN`, `VICTORY` | the objective |
+| `TURN_COST` | the per-engine-turn charge; without it, idling is free |
+| `NO_PROGRESS` | the charge for a step the engine resolved for free - the `duelist-mid` equip loop |
+| `TURN_LIMIT` | running out of a floor's budget |
+| `DEATH`, `STALLED` | the two terminal prices, ordered above each other and above a descent |
+
+Silenced: exploration, gold, item pickup *and* drop, identification, curing, levelling, talent points,
+strength, kills, surprise attacks, damage taken, cursed equipment, eating early. **Everything else is
+still counted** - `RewardLedger.notes` is what keeps "this happened and the profile priced it at nothing"
+distinguishable from "this did not happen", which is the distinction the whole mechanism rests on.
+
+**It is an override and not a re-pricing.** No weight changes when it is on; terms are silenced at the
+ledger, and `reward.profile=default` restores the function exactly. `rewardcheck` asserts that from both
+sides, because the failure mode of an override is not that it breaks - it is that it stops being
+temporary: `checkDefaultProfilePaysEveryTerm` requires `DEFAULT` to admit all 30 terms and to be what a
+run with no configuration loads.
+
+### What it measured on the way
+
+`DEPTHONLY`, 220 turns, and the incidental terms were reached rather than assumed: a level-appropriate mob
+placed and fought through the same three steps `SummoningTrap` uses, the hero's weapon equipped and
+unequipped throughout, and a real descent at turn 40 through `Level.activateTransition`.
+
+```
+80 incidental event(s) (EXPLOREx10, MAX_HP_GAINx7, KILLx3, SNEAK_ATTACKx1, DAMAGE_TAKENx4,
+INVALID_ACTIONx55) paid nothing; the descent paid 1800.00 and it is the whole of the run's positive score
+depth_only still charges stall -3000.00, turn limit -2000.00, death -2500.00 and -121.00 of turn cost
+```
+
+### Two wire formats had to carry it, and one of them did not
+
+The profile reaches a worker over the params frame (`Protocol.VERSION` 2 **2**, 3), because a trainer and
+its workers that each read their own configuration can disagree about what an episode was worth.
+
+**The replay wire dropped it, and only running it found that.** The profile was on `EnvConfig`, on
+`Replay`, in the recorder and in the text header - and absent from `ReplayCodec`, which is what a
+trainer's replays actually travel before they are written as text. A 3-generation smoke run under
+`depth_only` wrote five recordings and **all five said `reward_profile=DEFAULT`**. Same shape as
+`issues.md` 12: a field that exists on both sides of a pipe and is written on one of them. Fixed as a
+codec field with a case in `collectcheck`, whose fixture carries `DEPTH_ONLY` rather than the default,
+because a field that falls back to the default when it is dropped cannot be tested by a fixture holding
+the default.
+
+### What is still open
+
+**A run under this profile has not happened.** The 3-generation smoke run says the wiring works and
+nothing else: it died 92-100% of its episodes with `bestDepth 1`, which is what an untrained policy
+scored under `default` too, and under `depth_only` it is worse in the short run for a reason worth stating
+plainly rather than discovering later - **the dense reward is most of what keeps a weak policy alive**, so
+a run switched to the objective alone has to learn survival before it can be rewarded for descending, and
+those two are the same gradient early on.
+
+That is the measurement worth making, and it is a long one: `trainerJvmArgs` pins `-Xmx1536m` per worker,
+so 16 workers is what this machine's 31.8 GB holds, `--update-threads 4` is what the update's own
+measurement supports (8.98 -> 2.73 ms/sample at 1 -> 4 threads), and the previous full-length run was
+150 generations in 1h 16m.
+
+---
+
 ## 1.12 Every replay the trainer wrote was missing five of its nine fields - FIXED
 
 Found by looking for a run that had genuinely reached depth 2 and then reading the file it produced.
@@ -1815,6 +1892,7 @@ it, and ships a sample of the transitions. See `PLAN-data-flow.md` steps 2 and 3
 | 1.13 | ~~No recording the trainer wrote could be watched~~ | done | **Closed — see §1.13.** The recorder captured a step's bindings after the step, `verify` resolved indices against the live bindings and skipped the comparison when the field was empty, `viewcheck` passed any halt that was not a divergence, and the corpus contained no `DROP` in `SLOT` to ask about. A fresh trainer run now verifies and plays clean end to end. |
 | 1.14 | ~~Recordings go where the catalogue reads, and cannot overwrite each other~~ | done | `trainer-replays` by default instead of `<--out>/replays`, `--replay-dir` overrides, and `-r2`/`-r3` suffixes so a second run of a seed cannot destroy the first. `d675e4815` destroyed one by hand and said nothing; the overwritten file is restored as `IPW-QMA-AFY-r2.dat`. |
 | 1.15 | ~~Train for a real hour and see what happens~~ | done | **Partly.** 150 generations at 16 workers, 1h 16m, wrote 106 recordings. **`bestDepth 2` in 104 of 150 generations** - it has been 1 in every run in this project's history. Two engine crashes found, both only reachable by descending. Two recordings (the two best-scoring) still do not verify. §1.15 |
+| 1.16 | **Measure the objective with nothing else paying** | S | `reward.profile=depth_only`: every term silenced but a descent, a win, and the four prices for stopping. Gated in `rewardcheck` (3 cases, mutation-tested twice), travels the trainer/worker params frame and the replay header. **The next measurement is a run under it**, which §1.15's numbers cannot substitute for. §1.16 |
 
 **Ordering was wrong and has been corrected.** 1.6 was originally next. It is still required — the
 measurement does not care what else is on the list — but two smaller items now come first:

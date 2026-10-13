@@ -452,6 +452,7 @@ public class ConfigCheck {
 			case "env.allow_alchemy":         return String.valueOf( config.allowAlchemy );
 			case "env.persist_saves":         return String.valueOf( config.persistSaves );
 
+			case "reward.profile":            return config.rewardProfile.key();
 			case "reward.turn_cost":          return String.valueOf( config.turnCost );
 			case "reward.depth_reward":       return String.valueOf( config.depthReward );
 			case "reward.explore_reward":     return String.valueOf( config.exploreReward );
@@ -549,6 +550,7 @@ public class ConfigCheck {
 			case "rl.stall_seconds":          return "60";
 
 			//floats that must stay in a range
+			case "reward.profile":            return "depth_only";
 			case "reward.turn_cost":          return "0.5";
 			case "reward.depth_reward":       return "77.5";
 			case "reward.explore_reward":     return "0.5";

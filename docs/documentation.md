@@ -202,16 +202,31 @@ objective:
 
 | Key | Default | What it decides |
 | --- | --- | --- |
-| `reward.depth_reward` | `25.0` | What one floor deeper is worth |
-| `reward.explore_reward` | `0.01` | What a newly-seen tile is worth |
-| `reward.stall_penalty` | `150.0` | What giving up costs. **Worse than dying** |
-| `reward.death_penalty` | `100.0` | What dying costs |
-| `reward.turn_limit_penalty` | `25.0` | What running out of a floor costs |
-| `reward.kill_reward` | `12.0` | Per mob killed, from `Statistics.enemiesSlain` |
-| `reward.sneak_attack_reward` | `22.0` | Per surprise attack, from `Statistics.sneakAttacks` |
-| `reward.talent_reward` | `20.0` | Per talent point spent, from `Hero.talentPointsSpent`. **Nothing can spend one yet** — see below |
-| `reward.no_progress_penalty` | `0.05` | A step that advanced no engine time |
-| `reward.damage_penalty` | `2.5` | Per HP lost. A full floor-1 bar costs half a death |
+| `reward.profile` | `default` | `default` pays every term. `depth_only` pays **only a descent, a win, and the four prices for stopping** - see below |
+| `reward.depth_reward` | `1800.0` | What one floor deeper is worth |
+| `reward.explore_reward` | `0.05` | What a newly-seen tile is worth |
+| `reward.turn_cost` | `1.0` | What an engine turn costs |
+| `reward.stall_penalty` | `3000.0` | What giving up costs. **Worse than dying** |
+| `reward.death_penalty` | `2500.0` | What dying costs |
+| `reward.turn_limit_penalty` | `2000.0` | What running out of a floor costs |
+| `reward.no_progress_penalty` | `12.0` | A step that advanced no engine time |
+| `reward.kill_reward` | `150.0` | Per mob killed, from `Statistics.enemiesSlain` |
+| `reward.sneak_attack_reward` | `300.0` | Per surprise attack, from `Statistics.sneakAttacks` |
+| `reward.talent_reward` | `400.0` | Per talent point spent, from `Hero.talentPointsSpent`. **Nothing can spend one yet** - see below |
+| `reward.damage_penalty` | `40.0` | Per HP lost. A full floor-1 bar costs 80% of a death |
+
+**`reward.profile=depth_only` switches the function down to the objective**, which is a temporary
+override rather than a re-pricing: no weight changes, terms are silenced at the ledger, and `default`
+restores everything. Under it the **only route to a positive score is reaching a new floor or winning**,
+and the only negatives left are the per-turn cost, the charge for a step the engine resolved for free,
+running out of turns, dying and stalling.
+
+It exists because a function that also pays for exploration cannot be used to *measure* exploration:
+under `default` a run can post a good score without ever leaving floor 1, which is indistinguishable from
+a run that learned to descend. Every silenced term is still counted, so a run report shows the events
+that paid nothing. The profile travels to the workers over the trainer's params frame and is recorded in
+the replay header, so a run's score and a recording's score cannot disagree about what priced them.
+`rewardcheck` asserts it in both directions.
 
 **`depth_reward` against `explore_reward` is the objective.** A regular floor holds several hundred
 walkable tiles (`TODO.md` §0.8 measured 419 of 1040 sampled floors exceeding 48 on at least one side,
@@ -265,7 +280,7 @@ twenty-three gates, one invocation, ~23 seconds:
 | `checkpointcheck` | A policy that does not survive disk, or a bad checkpoint that loads |
 | `statecheck` | A sampled observation that does not replay to its rollout's value |
 | `parallelcheck` | A parallel update that differs from the serial one |
-| `rewardcheck` | Ending an episode being cheaper than dying, **or** an action that consumes several engine turns being charged for one |
+| `rewardcheck` | Ending an episode being cheaper than dying, **or** an action that consumes several engine turns being charged for one, **or** `depth_only` paying anything outside the objective while `default` stops paying a term |
 | `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
 | `fallcheck` | A chasm fall the environment drops, a free landing, or a fall that leaves a hand-off behind for the next episode |
 | dialogcheck | An answer that cannot reach a dialog the game opened, a dialog taken away when the game declined it, or one reported a turn late |

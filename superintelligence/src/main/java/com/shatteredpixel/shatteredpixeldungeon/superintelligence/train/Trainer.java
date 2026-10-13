@@ -413,6 +413,10 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		out.writeFloat( config.victoryReward );
 		out.writeInt( config.stallLimit );
 
+		//A UTF rather than an enum ordinal, because a worker reading an ordinal has no way to say which
+		//profile it got - and this profile decides every episode's score. Matching where Worker reads it.
+		out.writeUTF( config.rewardProfile.key() );
+
 		//The worker computes advantages, so gamma and lambda have to travel with the weights. They
 		//used to be PPO fields on each side with identical defaults - agreement by coincidence, and
 		//it would have drifted the first time either side was tuned.

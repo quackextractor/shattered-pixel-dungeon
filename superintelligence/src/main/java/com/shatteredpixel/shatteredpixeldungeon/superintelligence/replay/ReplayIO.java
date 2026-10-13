@@ -60,8 +60,10 @@ public class ReplayIO {
 			out.newLine();
 			out.write( "allow_equipping=" + replay.allowEquipping );
 			out.newLine();
-			out.write( "termination=" + replay.termination );
-			out.newLine();
+out.write( "termination=" + replay.termination );
+  			out.newLine();
+  			out.write( "reward_profile=" + replay.rewardProfile.key() );
+  			out.newLine();
 			out.write( "steps=" + replay.steps.size() );
 			out.newLine();
 
@@ -251,6 +253,11 @@ public class ReplayIO {
 				case "allow_equipping": replay.allowEquipping = Boolean.parseBoolean( value ); break;
 				//absent before version 3, which then leaves it empty and the reason unknown
 				case "termination": replay.termination = value; break;
+				case "reward_profile":
+					replay.rewardProfile =
+							com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
+									.parse( value );
+					break;
 				case "steps":      replay.declaredSteps = Integer.parseInt( value ); break;
 				default: break;
 			}
@@ -272,6 +279,7 @@ public class ReplayIO {
 		config.turnLimitPerFloor = replay.turnLimitPerFloor;
 		config.maxSlots = replay.maxSlots;
 		config.allowEquipping = replay.allowEquipping;
+		config.rewardProfile = replay.rewardProfile;
 		return config;
 	}
 

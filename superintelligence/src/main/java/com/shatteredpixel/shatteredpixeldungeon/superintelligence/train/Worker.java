@@ -90,6 +90,8 @@ private EnvConfig config;
 		config.deathPenalty = in.readFloat();
 		config.victoryReward = in.readFloat();
 config.stallLimit = in.readInt();
+		config.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
+				.RewardProfile.parse( in.readUTF() );
 
 		//The mirror of Trainer.writeParams. Empty when no trace was asked for.
 

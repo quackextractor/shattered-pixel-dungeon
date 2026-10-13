@@ -141,7 +141,7 @@
 | **`slotcheck` (`:superintelligence`)** | A recorded slot index resolving to a different item, and the binding on an equipped item that no index can name. 6 cases. | Capture and restore reproduce slot resolution; a capture naming nothing clears a carried binding and leaves an equipped one alone. |
 | **`verifycheck` (`:superintelligence`)** | Verification that cannot detect an altered recording, **and** verification that certifies one that cannot be played. 8 cases. | Position, health, engine time and inventory alterations are caught at the altered step; a recording carrying none of the five dropped step fields is refused; and a hero carrying nothing bound is not refused. |
 | **`modecheck` & `restartcheck`** | Verifies action modes (`WORLD`, `SLOT`, `TARGETING`, `MENU`, `INVENTORY`) and floor re-initialisation. | Zero mode traps; floor 1 regenerates identically after 400+ turns. |
-| **`rewardcheck` (`:superintelligence`)** | Drives the real environment and asserts the reward **prices the objective**, as properties rather than as constants. 16 cases. | Terminal outcomes are **ordered** (stall < death < turn limit < a cleared floor); stalling costs *more* than dying; descending beats idling out the floor's turn budget; mapping 120 tiles pays less than a descent; a step that advanced no engine time costs more than a real one; **an action consuming two engine turns is charged for both**; a search is never cheaper than a single-turn action; killing and surprise-attacking both pay, the surprise more; a talent point pays more than a level. |
+| **`rewardcheck` (`:superintelligence`)** | Drives the real environment and asserts the reward **prices the objective**, as properties rather than as constants. 20 cases. | Terminal outcomes are **ordered** (stall < death < turn limit < a cleared floor); stalling costs *more* than dying; descending beats idling out the floor's turn budget; mapping 120 tiles pays less than a descent; a step that advanced no engine time costs more than a real one; **an action consuming two engine turns is charged for both**; a search is never cheaper than a single-turn action; killing and surprise-attacking both pay, the surprise more; a talent point pays more than a level; **`reward.profile=depth_only` pays nothing but a descent and the four prices for stopping over an episode that provably fires 80 incidental events, while `default` still admits all 30 terms.** |
 | **Multi-JVM Byte-Diff Sweep** | Runs identical seed/hero rollouts across separate JVMs. | Generated `.replay` files are **byte-identical** across fresh JVMs. |
 
 ### The reward gate, and what "property rather than constant" means there
@@ -207,6 +207,40 @@ captured changes what a slot index means, had never been recorded by anything.
 The generalisation, and it is the same sentence three times now: **a green is a claim about what was
 checked.** Three of them here were claims about a corpus that could not express the question. The fix
 that works is not a subtler assertion; it is making the corpus able to ask.
+
+### The reward profile override, and how to test that an override is still an override
+
+`reward.profile=depth_only` (`SPD_REWARD_PROFILE`, or a one-line properties file) silences every reward
+term except a descent, a win and the four prices for stopping. Three cases in `rewardcheck` hold the
+property, and the interesting one is `checkDepthOnlyPaysOnlyForDepth`.
+
+**It asserts that the terms it silences were reached.** A profile case that only checked totals would pass
+on an episode that never fired a kill, never dropped an item and never equipped anything - and a gate that
+passes without measuring is the subject of half this file. So the driver places a mob (the three steps
+`SummoningTrap` uses), fights it, alternates equip and unequip on the hero's weapon at zero engine time,
+and descends through `Level.activateTransition`; and the case fails if `EXPLORE`, a combat term or
+`NO_PROGRESS` were not recorded. Measured: **80 incidental events, all paying 0.00**, and the descent's
+1800.00 was the whole of the run's positive score.
+
+**The allow-list is written out rather than derived**, because "everything that is not shaping" would
+admit `DAMAGE_TAKEN`, `GOLD_LOST` and `CURSE_EQUIPPED` - and a derived rule and a stated rule disagree the
+first time a term is added.
+
+**A profile that has become permanent is the failure mode worth gating**, and it is not a crash:
+`checkDefaultProfilePaysEveryTerm` requires `DEFAULT` to admit all 30 terms and to be what a run with no
+configuration and no `SPD_*` variable loads. Every other case in the file would still pass on its own
+constants while the module quietly trained the experiment.
+
+Both mutations are recorded in `CHANGELOG.md` 0.10.0; the shorter version is that a gate which has never
+been seen to go red has not been tested, and the two reverts that make these three cases fail are one
+line in `RewardLedger.add` and one line in `SPDEnv`'s constructor.
+
+**Run a smoke test under the profile and read the header, not the score.** A trainer's replays travel the
+worker pipe before they are written as text, so a profile that is wired everywhere except the codec is
+dropped in transit and every recording says `default`. That is what happened: five recordings from a
+3-generation run under `depth_only`, all of them `reward_profile=DEFAULT`. `collectcheck` now carries the
+field on its wire case, with `DEPTH_ONLY` in the fixture rather than the default - a field that falls back
+to the default when it is dropped cannot be tested by a fixture holding the default.
 
 ---
 
