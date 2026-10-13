@@ -94,6 +94,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `:desktop:viewcheck` green at 20 of 20 - which matters here, because this change is in `GameScene` and the
   viewer is what loads it.
 
+### Not done
+
+- **`DEPTH_ADVANCE` pays on every descent, and the policy ping-pongs between two floors.** Found by the
+  run that followed the free-step bound, not by a gate. `JEA-FKU-WZS`: **nine floor rows, `deepest=2`,
+  +7,200 of descent paid** - 1 -> 2 -> 1 -> 2 -> 1 -> 2 -> 1, four descents, none of them to a floor the
+  run had not already been on, about 45 turns each. One comparison causes it: `RewardModel.step` pays on
+  `depth > prevDepth`, and nothing asks whether the floor below has been visited. Ascending already pays
+  zero, so the pair of them is a closed money machine.
+
+  **The `depth_only` gate case did not catch it, and why is the useful half.** It asserts the run's
+  positive score equals its `DEPTH_ADVANCE` total - which a ping-pong satisfies perfectly, because the
+  payment is real. It tests the arithmetic and not the question the profile exists for.
+
+  Filed as `issues.md` 21 rather than fixed, because the fix is a decision about what descent is worth and
+  it moves every recording's reward column: pay on a new maximum depth rather than on a direction, or pay
+  on the first entry to each floor. Both stop the ping-pong; only one also stops re-descending a floor
+  after an ascent.
+
+- **The rerun with the free-step bound in place moved the outcome**, which is the measurement that says the
+  loop was not cosmetic. Same seed (20261013), same profile, same constants, 30 generations at 16 workers;
+  the only change was the bound. `bestDepth 2` went from 5 of 31 generations - none after generation 12 -
+  to **28 of 30**, `meanDepth` from 1.03 to **1.23**, `bestScore` from -2,579 with every episode negative
+  to **+9,540** with 21 of 30 generations positive, and endings from 100% deaths to 49% deaths / 52% stalls.
+  Evidence in `out/evidence/`: `budgeted-30.csv`, `budgeted-30.log`, `budgeted-30.bin`.
+
 ## [0.10.0] - 2026-10-13
 
 `reward.profile=depth_only`: a temporary override that switches the reward function down to the

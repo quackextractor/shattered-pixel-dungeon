@@ -1075,9 +1075,31 @@ wall refused the hardcoded move and the *position* guard ended the episode inste
 the control reached well past the budget, and the driver picks its move from the action mask, so what
 ended the bounded run is the thing under test.
 
-**Whether a cumulative 120 is the right number is a judgement, and the measurement behind it is a line
-rather than a law**: 120 free steps is about 8% of a floor's 1500. A policy that re-equips honestly may
-find it tight, and the key is there to raise.
+### The same run repeated with the bound in place changed the outcome, and found something worse
+
+30 generations, 16 workers x 4 episodes, **seed 20261013 again**, same profile, same constants, the only
+change the bound. This is a controlled comparison rather than two runs:
+
+| | before the bound | with the bound |
+| --- | --- | --- |
+| `bestDepth 2` | 5 of 31 generations, none after generation 12 | **28 of 30 generations**, from generation 4 on |
+| `meanDepth` | 1.00 -> 1.03 | 1.00 -> **1.23**, peaking 1.31 |
+| `bestScore` | -2,579, every episode negative | **+9,540** at generation 11; positive in 21 of 30 |
+| `meanScore` | -7,617 -> -4,156 | -4,594 -> -3,422 |
+| ended | death 100% from generation 4 | death 49% / **stalled 52%** |
+| `meanTurns` | 795 -> 363 (dying sooner) | 255 -> 260 (flat) |
+
+So the loop was not a cosmetic cost: it was most of what the policy was doing, and removing it moved depth
+from never-2 to every-generation-2, turned the best score positive, and ended half the episodes as stalls
+rather than all of them as deaths. The policy had been converging on death because the free loop was the
+only cheaper thing available.
+
+**And the very first thing it found with the loop gone was an exploit.** `issues.md` 21: `DEPTH_ADVANCE`
+pays on any descent, so 1 -> 2 -> 1 -> 2 -> 1 -> 2 -> 1 banked **+7,200 across nine floor rows at
+`deepest=2`** - four descents, none of them to a floor the run had not already been on, ~45 turns each.
+The `depth_only` gate case did not catch it, and the reason is worth more than the bug: it asserts that
+positive score equals `DEPTH_ADVANCE`, and a ping-pong satisfies that perfectly. **It tests the arithmetic
+and not the question.**
 
 ### The run also found an engine crash, on a scroll
 

@@ -947,3 +947,59 @@ has never engaged: `reward.curriculum_progress` is `0.0`, the trainer prints `sh
 generations, and `Curriculum`'s fade is what would keep the dense terms for survival while the objective
 carries the direction. Nothing in this run reached a descent often enough for the fade to matter, which is
 the finding: **the fade needs a policy that survives, and this profile does not produce one.**
+
+## 21. Descending pays every time, so the hero ping-pongs between two floors and banks it - **OPEN**
+
+Found by the run that came after the free-step bound, and it is the same shape as everything else in this
+file: a policy that finds a cheaper way to end an episode, found by a policy rather than by a gate.
+
+`JEA-FKU-WZS` (DUELIST, generation 22, 395 steps, score **+2747**), read with `verify`:
+
+```
+floor   turns  kills  gold        score
+*1      263    6      0        -1413.00 cleared
+ 2      2      0      0        +1798.00 cleared
+*1      31     1      0         -133.00 cleared
+ 2      31     0      0        +1630.00 cleared
+*1      3      0      0          -15.00 cleared
+ 2      2      0      0        +1798.00 cleared
+*1      41     2      0         -177.00 cleared
+ 2      6      0      0        +1770.00 cleared
+ 1      10     2      0        -2510.00 cleared
+
+terms
+  DEPTH_ADVANCE           +7200.00
+  NO_PROGRESS             -1488.00
+  TURN_COST                -465.00
+  DEATH                   -2500.00
+```
+
+**Nine floor rows, `deepest=2`, and +7200 of descent paid.** Four descents, every one of them to floor 2,
+and the hero went back up after each: 1 -> 2 -> 1 -> 2 -> 1 -> 2 -> 1. It never got past floor 2 and it
+earned four descents' worth of reward for standing on the same two floors.
+
+**The cause is one comparison.** `RewardModel.step` pays `DEPTH_ADVANCE` when `depth > prevDepth`, and
+nothing asks whether the floor below is one the run has already been on. `Dungeon.depth` counts where the
+hero is, not how far he has been: ascending is already priced at zero, so the pair of them is a closed
+money machine. Each cycle is roughly 45 turns and pays +1800 against about -45 in turn cost.
+
+**This is worse under `depth_only` than under `default`, and that is the uncomfortable part.** The profile's
+whole claim is that reaching a new floor is the only route to a positive score, and its gate case
+(`checkDepthOnlyPaysOnlyForDepth`) asserts that the run's positive score equals its `DEPTH_ADVANCE` total -
+which a ping-pong satisfies perfectly, because the payment is real. **The case tests the arithmetic and not
+the question.** A re-descent of an already-visited floor is not "a new floor" in any sense a player would
+recognise, so the case should be asking whether every descent reached a depth this run had never been on.
+
+**The fix is one condition, and its cost is not free of consequence.** Paying on a new maximum rather than
+on a direction is the honest reading of the objective:
+
+- track the deepest depth reached this episode (the environment already asks the game for it:
+  `Statistics.deepestFloor`, which is what `SPDEnv.deepestDepth()` returns), and pay only when
+  `depth > deepestReached`;
+- or pay on the *first* entry to each floor, which also stops the ping-pong and additionally stops
+  descending twice into the same floor after an ascent.
+
+Either way every recording's reward column moves, so `ReplayIO.verify`'s `[WARN] score recorded ...
+reproduced` will print on the committed corpus until the fixtures are regenerated - the same consequence
+`CHANGELOG.md` 0.9.0 records for the re-pricing. That is why this is filed rather than changed: it is a
+decision about what descent is worth, and the corpus answers it differently from the reward table.
