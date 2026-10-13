@@ -236,12 +236,7 @@ rem Through a file rather than a `for /f` backtick loop. Inside one of those the
 rem quotes around --args="..." do not survive and gradle is handed a broken
 rem argument list, which fails with a bare "FAILURE" and no explanation. The path
 rem is read back with set /p, which takes the first line and nothing else.
-rem
-rem No --no-daemon: this runs on every selection, and paying a fresh JVM plus a
-rem gradle startup for it made the menu feel broken. The daemon is started once and
-rem then reused for the listing, the lookup and every later playback's return to the
-rem menu, which is the whole point of being able to come back here.
-call "%GRADLE%" --offline -q :superintelligence:replays --args="--select %TARGET% %CATDIRS%" > "%SELECTFILE%" 2>nul
+call :supervisor "replays --select %TARGET% %CATDIRS%" > "%SELECTFILE%" 2>nul
 if errorlevel 1 (
     echo No recording numbered %TARGET%.
     del "%SELECTFILE%" >nul 2>&1
@@ -375,7 +370,63 @@ rem coming back from a playback look like a hang: the window had closed, and not
 rem happened for several seconds. Paying for a daemon once and reusing it is what makes
 rem the menu worth returning to.
 :catargs
-call "%GRADLE%" --offline -q :superintelligence:replays --args="%CATDIRS%"
+call :supervisor "replays %CATDIRS%"
+exit /b %errorlevel%
+
+rem Runs the :superintelligence module without gradle, by handing its classes to the launcher
+rem :desktop:replaycp already writes for playback - which passes %* straight through, so the same
+rem launcher serves the catalogue.
+rem
+rem Why this is not gradle any more, measured on this machine over the 64 recordings the catalogue
+rem lists: through gradle the same code takes 3.4s with the daemon warm and 8.7s with a fresh one, and
+rem 0.5s as a plain java launch. Gradle's whole contribution to that call is resolving a classpath
+rem that is already written to desktop\build\replay-classpath.txt - and it does it again for every
+rem keypress at the prompt.
+rem
+rem r at the picker is the case that matters. A refresh is what a person reaches for immediately
+rem after a training run has written new recordings, and a three-second wait for a repaint of the
+rem same list is how a refresh stops being used at the one moment it exists for.
+rem
+rem Gradle is still what BUILDS. It is called exactly twice here: once to build the launcher if it is
+rem missing or older than the classes it names, and once on the fallback path when that build did not
+rem produce one. Nothing else about listing, resolving or playing a recording needs it.
+:supervisor
+set "SUPARGS=%~1"
+set "RUNBAT=%CD%\desktop\build\replay-run.bat"
+set "SUPJAR=%CD%\superintelligence\build\libs\superintelligence-4.0.2.jar"
+
+if not exist "%RUNBAT%" goto :supbuild
+rem The launcher bakes in a classpath, so it goes stale when the classes it names are rebuilt under
+rem it. Compared through powershell rather than through %%~t: that expansion is a locale-formatted
+rem string, and "IF GTR" against it is not a comparison at all - the first version of this check fired
+rem on every call, rebuilt through gradle every time, and so measured 3.6s while the thing it was
+rem measuring cost 0.5s.
+rem
+rem Once per session, not per call, and a failure is treated as fresh: the launcher is an optimisation,
+rem and a machine where this cannot be answered is not a machine where the listing is wrong.
+rem Compared by string rather than by "did it print something": for /f runs its body once per output
+rem line whatever that line says, so a command that printed False set the flag just as a command that
+rem printed True would. That is what made the first version rebuild on every call.
+if defined SUPFRESH goto :supcheckdone
+set "SUPFRESH=1"
+set "SUPSTALE="
+for /f %%A in ('powershell -NoProfile -Command "try{ if (((Get-Item -LiteralPath ''%SUPJAR%'').LastWriteTimeUtc) -gt ((Get-Item -LiteralPath ''%RUNBAT%'').LastWriteTimeUtc)) { ''STALE'' } } catch { }" 2^>nul') do set "SUPSTALE=%%A"
+:supcheckdone
+if /i "%SUPSTALE%"=="STALE" goto :supbuild
+goto :suprun
+
+:supbuild
+echo building the supervisor launcher, once...
+call "%GRADLE%" --offline -q :desktop:classes :desktop:replaycp >nul 2>&1
+if not exist "%RUNBAT%" (
+    rem Falling back rather than failing: the launcher is an optimisation, and a build that did not
+    rem produce one still leaves gradle able to run the query - slowly, but correctly.
+    call "%GRADLE%" --offline -q :superintelligence:replays --args="%SUPARGS%"
+    exit /b %errorlevel%
+)
+
+:suprun
+call "%RUNBAT%" --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true com.shatteredpixel.shatteredpixeldungeon.superintelligence.Main %SUPARGS%
 exit /b %errorlevel%
 
 :catalog
@@ -402,7 +453,7 @@ set "FILE=%~1"
 if exist "%FILE%" goto :absolute
 
 set "RESOLVEFILE=%TEMP%\spd-replay-resolve.txt"
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:replays --args="--resolve %~1 %CATDIRS%" > "%RESOLVEFILE%" 2>nul
+call :supervisor "replays --resolve %~1 %CATDIRS%" > "%RESOLVEFILE%" 2>nul
 
 rem The java side answers with either a path or a sentence, and always exits 0 so gradle
 rem does not wrap a refusal in its own FAILURE block. A sentence is not a path, so the

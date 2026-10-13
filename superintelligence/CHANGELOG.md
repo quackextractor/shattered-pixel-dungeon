@@ -87,9 +87,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The evidence from the `depth_only` runs was moved into `superintelligence/out/evidence/` rather than
   copied out afterwards: the per-generation metrics CSV, both run logs, the 61 trainer recordings, the
   config the runs used, and the engine patch.
-- **`env.free_step_budget`** (`SPD_ENV_FREE_STEP_BUDGET`), default 120 - about 8% of a floor's 1500 turns.
-  A judgement rather than a law: a policy that re-equips honestly may find it tight, and that is what the
-  key is for.
+- **`env.free_step_budget`** (`SPD_ENV_FREE_STEP_BUDGET`), **40**. It was 120, and 120 was binding - four of
+  ten recordings from the run that set it ended exactly on it - so the threshold was choosing which price
+  an episode paid rather than catching a loop. Raise it if a policy that re-equips honestly finds it
+  tight.
 - **`mobspritecheck` is a gate**, so `gates` is now 24 checks. Measured: `verifyall` green, and
   `:desktop:viewcheck` green at 20 of 20 - which matters here, because this change is in `GameScene` and the
   viewer is what loads it.
@@ -124,6 +125,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mean score and mean depth for the first third against the last third, the best score and deepest floor
   with the generation each happened in, the final generation's endings, the slowest generation, and the
   checkpoint's path and size.
+- **The viewer catalogue no longer goes through gradle.** Measured over the 64 recordings it lists: 3.4s
+  through gradle with a warm daemon, 8.7s with a fresh one, **0.5s** as a plain `java -cp` launch of the
+  same code. Gradle's whole contribution was resolving a classpath already written to
+  `desktop/build/replay-classpath.txt`, and the launcher beside it - `java -cp "<that>" %*` - is what
+  playback already used. `:catargs`, `:bynumber` and `:resolve` now use it, so **`r` at the prompt costs
+  0.62-0.76s instead of three**, which is the one moment a refresh exists for: straight after a training
+  run has written new recordings. Gradle still builds - called once to build the launcher when it is
+  missing or stale, once on the fallback path if that produced nothing. Output is byte-identical to
+  gradle's. `issues.md` 24.
 
 ### Not done
 

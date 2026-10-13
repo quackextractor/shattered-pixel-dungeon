@@ -1057,3 +1057,46 @@ it: dense terms for survival while the policy is weak, faded out as depth starts
 configuration the milestone from `research.md:40` is measured against, and it is the first run in this
 project's history where `bestDepth` and the score cannot both be explained by something other than
 progress.
+
+## 24. Pressing `r` at the viewer prompt paid a Gradle startup to repaint a list - **CLOSED**
+
+**Measured, on this machine, over the 64 recordings the catalogue lists:**
+
+| | cost |
+| --- | --- |
+| `:superintelligence:replays` through gradle, daemon warm | **3.4s** |
+| the same through gradle with `--no-daemon` | **8.7s** |
+| the same code as a plain `java -cp` launch | **0.5s** |
+| `replay-viewer --list` now | **0.62 - 0.76s** |
+
+Gradle's entire contribution to that call is resolving a classpath that is **already written to disk** -
+`desktop/build/replay-classpath.txt`, written by `:desktop:replaycp`, 11,063 characters, and the launcher
+next to it is `java -cp "<that>" %*`. So the launcher the viewer already uses for playback could serve the
+catalogue too, and did not: `:catargs`, `:bynumber` and `:resolve` each shelled out to gradle.
+
+**Why it matters is the `r` key and nothing else.** A refresh is what a person reaches for in the one
+moment it exists for - immediately after a training run has written new recordings into
+`trainer-replays/` - and it was costing three seconds per repaint. The numbering was never wrong, because
+`:catalog` re-runs the query rather than reprinting a cached listing; that is deliberate and it is what
+makes a number trustworthy after the directory changed. **The rebuild was right and the transport was
+wrong.**
+
+Gradle is still what **builds**. It is called exactly twice from the viewer's script now: once to build
+the launcher if it is missing or older than the classes it names, and once on the fallback path if that
+build produced nothing. Listing, resolving and playing need no build system at all.
+
+**Two things got wrong on the way and both are worth keeping.**
+
+1. **The staleness check was not a comparison.** `for %%I in ("%SUPJAR%") do if %%~tI GTR "%RUNBAT%"`
+   looks like a timestamp comparison and is not one - `%%~tI` expands to a locale-formatted *string*, so
+   the test fired on every call and rebuilt through gradle every time. **The change therefore measured
+   3.6s while the thing it was measuring cost 0.5s**, which is the worst possible failure: a fix that
+   looks like it did nothing. It now compares through PowerShell once per session and tests the string.
+2. **`for /f` runs its body on any output line**, whatever that line says. The first correct staleness
+   command printed `False` and still set the flag. Comparing the string rather than "did it print
+   something" is the whole difference.
+
+Verified: `replay-viewer --list` output is **byte-identical** to gradle's for the same 64 recordings, and
+`replay-viewer --verify duelist-drop` resolves a bare file name through the same new path and reproduces
+the run exactly. The interactive `r` repaint could not be exercised by a harness that cannot feed a
+prompt, so what was measured is the listing call the repaint makes.
