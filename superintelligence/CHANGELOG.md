@@ -365,21 +365,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Not done
 
-- **Two runs with the same seed disagreed, and generation 0 is where it shows.** `default-fresh-15`
-  and `default-fresh-15-all` - same seed 20261013, same profile, same 20 workers, neither resuming -
-  produced generation-0 mean scores of **-3,088.84 and -3,090.29**, and one reached depth 2 while the
-  other did not. Generation 0 is collected **before any update**, from a policy initialised from that
-  seed, so it cannot depend on the update path, the keeper, or anything in this release.
+- **Two runs of the same command disagree, and that is the design working - but it means no single
+  generation is a measurement.** `default-fresh-15` and `default-fresh-15-all` - same seed 20261013,
+  same profile, same 20 workers, neither resuming - gave generation-0 mean scores of **-3,088.84 and
+  -3,090.29**, and one reached depth 2 while the other did not.
 
-  Two candidates, neither investigated: the generation report's mean is accumulated as workers finish,
-  so float addition order varies; and the parallel update's gradient reduction is documented as **not**
-  bit-reproducible (`parallelcheck` says so), which cannot explain generation 0 but would compound
-  after it. **1.45 on 80 values is larger than float32 summation noise should produce**, so the first
-  candidate is probably not the whole of it either.
+  **`SeedPool` hands out a fresh random seed 10% of the time, deliberately, in both phases**
+  (`RANDOM_FRACTION = 0.1f`, and `next()` returns `""` for it). With 80 episodes a generation, about 8
+  play a dungeon that has never existed and cannot be replayed. `research.md` asks the agent to
+  generalise across seeds and the leak exists so the early phase does not memorise one map - the code's
+  own comment says exactly that. **An earlier version of this entry called the disagreement a
+  reproducibility defect; it is not one, and saying so was wrong.**
 
-  This is not filed as an issue and not diagnosed. It is recorded because `docs.md` and `research.md`
-  are both built on locking the seed and comparing runs, and right now "run it again and compare" is not
-  a measurement this project can make.
+  What survives, and what nobody has measured:
+
+  - **A run is a random sample.** One episode in 1,200 reaching floor 2 appearing in one run and not
+    another is unremarkable. Any single generation's mean, or any "best depth in 15 generations", is a
+    random variable.
+  - **The parallel reduction is not bit-reproducible** - `parallelcheck` says so - so even the locked
+    90% diverges across runs after generation 0.
+  - **`docs.md` builds its comparison method on locking the seed**, which means comparing aggregates
+    across enough episodes that the sample noise is small. **That noise floor has never been measured**,
+    so no comparison in this project can currently say whether a difference is real.
 
 - **A correction to the speed claim above.** The "23s -> 11s per generation, 2.1x faster" figure is
   **withdrawn**. A third run at identical configuration gave 13s per generation degrading to 23s by
