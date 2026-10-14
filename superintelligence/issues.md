@@ -1101,6 +1101,101 @@ Verified: `replay-viewer --list` output is **byte-identical** to gradle's for th
 the run exactly. The interactive `r` repaint could not be exercised by a harness that cannot feed a
 prompt, so what was measured is the listing call the repaint makes.
 
+## 26. Reading a scroll completes on a frame in the viewer and immediately headless - **OPEN, localised, not fixed**
+
+Found while replacing `duelist-death-last` after the `WAIT` fix. It is the ninth recording this
+project has produced that verifies exactly headlessly and does not play in the real viewer, and the
+first one whose cause is not a presentation draw.
+
+### What it is
+
+The replacement recording - `duelist-death-last.replay`, seed `DUELIST-LONG-16`, DUELIST, 100 steps,
+`DEATH` on the final step - verifies 100 of 100 headlessly and halts in the viewer:
+
+```
+DIVERGED at step 95 - USE/0 in SLOT: hp is 6, recording says 7
+```
+
+Confirmed with `VIEWCHECK_JOBS=1` over 257s, so it is **not** the documented parallel-playback
+artifact.
+
+### Where it is not
+
+**The randomness is identical.** Compared per step on both sides, `baseDraws` and
+`baseFingerprint` agree at **every step both sides recorded** - steps 0 through 93:
+
+```
+step  headlessTurn  viewerTurn  deficit  h-hp  v-hp
+ 88          87.0        84.0      3.0  9/20  12/20
+ 89          87.0        87.0      0.0  9/20   9/20
+ 90          90.0        87.0      3.0  8/20   9/20
+ 91          90.0        90.0      0.0  8/20   8/20
+```
+
+**It looks like a three-turn deficit and is not one.** The readings oscillate - behind at 88, level
+at 89 - and **at every catch-up the state is identical**. HP agrees at every engine-clock value both
+sides recorded, which is the comparison that does not depend on when a snapshot was taken. That
+oscillation is the same thing `viewdiff` warns about: *"a recorded step is applied on some frames and
+not others, and only the second kind can hide a turn."* A first pass at this read the deficit as a
+fault and that was wrong.
+
+### Where it is
+
+Step 94 is the first step the headless spends draws on the scroll at all, and it is the step the
+viewer halts on:
+
+```
+Char.attack:502=1   Char.attack:503=1   Char.drRoll:705=2   Char.hit:647=2   Char.hit:663=2
+Hero.drRoll:648=2   Hero.drRoll:655=2   Snake.damageRoll:50=2
+Scroll.readAnimation:206=1
+HeadlessSprite$Inert.start:251=1
+```
+
+A tripwire on `SlotAction.use` shows both sides doing **the same thing on the same step**:
+
+```
+[SLOTUSE] item=ScrollOfRecharging action=READ hp=7      <- viewer
+[SLOTUSE] item=ScrollOfRecharging action=READ hp=7      <- headless
+```
+
+So the item, the action and the health going in are identical, and the difference is inside the read.
+`Scroll.readAnimation` calls `((CharSprite)curUser.sprite).read()`. **`CharSprite.read()` is an empty
+method**; `HeroSprite.read()` **plays the `read` animation and calls `ch.onOperateComplete()` from
+the animation's `animCallback`**. The headless sprite has no animation.
+
+That is the shape: in the viewer the scroll's completion is delivered by a **frame-driven animation**,
+and headless delivers it inline, so the hero is `busy` for a different number of frames and the
+Snake's two attacks in that window land at different points relative to the completion. The RNG trace
+cannot show the offset because the viewer halts on the very step where it starts.
+
+### Why 20 of 20 recordings played clean until now
+
+**The corpus had no scroll to read.** The previous `duelist-death-last` used `USE` on food, a
+throwing spike and a potion, and nothing that goes through `HeroSprite.read()`. The replacement was
+found by probing 28 DUELIST seeds for one that ends in `DEATH`, and that probe found one that also
+drinks a haste potion and reads a scroll. The path had never been recorded, so it had never been
+played.
+
+### What is not established
+
+- **That the animation is the cause.** Every link up to it is measured; this one is read from source.
+  `viewdiff` cannot be used to close it - it reports `hero #1 exists here and not in the expected
+  snapshot`, so its two inputs are keyed differently and it has never been run on a pair that matched.
+- **A fix.** Nothing here has been tried.
+- **A gate.** This is the ninth recording in this shape and `playbackcheck` passed it, because
+  `ReplayPlayer` headless agrees with `verify` - the divergence needs the **renderer**, so only
+  `viewcheck` can see it, and `viewcheck` is outside `gates` because it needs a display.
+
+### Two smaller things found alongside it
+
+- **`:desktop:replay` does not forward `-PspdWorldTrace`.** Only `viewcheck` does, so the two-sided
+  diff invocation `README.md` documents silently writes nothing. That is the same failure
+  `desktop/build.gradle` already records for `-PviewcheckJobs`: *"a flag that does nothing is worse
+  than a missing one, because the invocation looks right."*
+- **`spdWorldTrace` is not written on a run that halts on divergence in some configurations**, so
+  the rendered side of the comparison was missing until the replay was driven through
+  `desktop/build/replay-run.bat` directly.
+
 ## 25. Every update thread shares one Network, so a gradient is accumulated on whatever survived the last clear - **CLOSED, gated**
 
 Found while reading the metrics of a `default`-profile run (see below), and it is the most consequential
