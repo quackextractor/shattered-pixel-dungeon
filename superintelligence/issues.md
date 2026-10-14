@@ -1139,7 +1139,22 @@ oscillation is the same thing `viewdiff` warns about: *"a recorded step is appli
 not others, and only the second kind can hide a turn."* A first pass at this read the deficit as a
 fault and that was wrong.
 
-### Where it is
+### Where it is, measured
+
+```
+[DIFF] at step:94: hero field turn
+  expected: 92.0
+  actual:   91.0
+```
+
+**The viewer is one engine turn behind after a scroll read.** Producing that line needs the documented
+pair of commands and nothing else, which it did not before - see the tool fixes below:
+
+```
+./gradlew :superintelligence:worldtrace -PworldArgs="<replay> <headless.txt>"
+./gradlew :desktop:replay --args="--file <replay>" -PspdWorldTrace=<viewer.txt> ...
+./gradlew :superintelligence:viewdiff -PviewDiffArgs="<headless.txt> <viewer.txt>"
+```
 
 Step 94 is the first step the headless spends draws on the scroll at all, and it is the step the
 viewer halts on:
@@ -1159,14 +1174,45 @@ A tripwire on `SlotAction.use` shows both sides doing **the same thing on the sa
 ```
 
 So the item, the action and the health going in are identical, and the difference is inside the read.
-`Scroll.readAnimation` calls `((CharSprite)curUser.sprite).read()`. **`CharSprite.read()` is an empty
-method**; `HeroSprite.read()` **plays the `read` animation and calls `ch.onOperateComplete()` from
-the animation's `animCallback`**. The headless sprite has no animation.
 
-That is the shape: in the viewer the scroll's completion is delivered by a **frame-driven animation**,
-and headless delivers it inline, so the hero is `busy` for a different number of frames and the
-Snake's two attacks in that window land at different points relative to the completion. The RNG trace
-cannot show the offset because the viewer halts on the very step where it starts.
+### The animation hypothesis is WRONG, and was tested
+
+**`CharSprite.read()` being empty while `HeroSprite.read()` plays an animation is where an earlier
+version of this entry pointed, and it is not the cause.** Three measurements killed it:
+
+1. A tripwire on `Scroll.readAnimation`, run through both the real viewer and the headless verifier,
+   printing the engine clock either side of `sprite.read()`:
+
+   ```
+   read-enter now=91.0     <- viewer
+   read-exit  now=91.0     <- viewer
+   read-enter now=91.0     <- headless
+   read-exit  now=91.0     <- headless
+   ```
+
+   **Identical.** The read is entered and left at the same engine time on both sides, so it cannot be
+   what shifts the clock afterwards.
+
+2. `HeroSprite.read()`'s `animCallback` does `idle(); ch.onOperateComplete();`. The viewer fires
+   `onOperateComplete` at 91.0; **the headless never fires it at all**, because it uses the empty
+   `CharSprite.read()`. So the two sides differ in whether the call is made - and yet both reach the
+   same clock on that step, which says the call is not what releases the hero.
+
+3. **The fix was implemented and made no difference.** `HeroSprite.read()` was made to skip its
+   animation when a new `GameScene.replayFidelity()` flag was set, which `ReplayLauncher` turns on for
+   playback and nothing else - the same shape as `GameScene.headlessGameplay()`. Re-running the viewer
+   on the same recording at the same speed produced a **byte-identical** verdict:
+
+   ```
+   [replay] halted: DIVERGED at step 95 - USE/0 in SLOT: hp is 6, recording says 7
+   ```
+
+   The change was reverted. It touches `:core` for no gain, and `instructions.md` 12.3 says an engine
+   logic change stays out of a commit unless it is the fix - this was not.
+
+**What is left is that the viewer has not reached turn 92.0 by the end of step 94**, one turn of
+engine clock later than the recorder had. Not the read, not the animation, not the RNG. The two tools
+below are what makes that a measurement rather than a suspicion.
 
 ### Why 20 of 20 recordings played clean until now
 
@@ -1178,23 +1224,41 @@ played.
 
 ### What is not established
 
-- **That the animation is the cause.** Every link up to it is measured; this one is read from source.
-  `viewdiff` cannot be used to close it - it reports `hero #1 exists here and not in the expected
-  snapshot`, so its two inputs are keyed differently and it has never been run on a pair that matched.
-- **A fix.** Nothing here has been tried.
+- **Why the viewer is a turn behind.** Not the read, not its animation, not the RNG - all three
+  measured. The next instrument is the trace pair above: the viewer's step-94 record is written at
+  `turn 91.0` and the headless's at `92.0`, and what happens in between is not in either trace because
+  the viewer halts on that step.
+- **A fix.** The one that looked obvious has been tried and does nothing.
 - **A gate.** This is the ninth recording in this shape and `playbackcheck` passed it, because
   `ReplayPlayer` headless agrees with `verify` - the divergence needs the **renderer**, so only
-  `viewcheck` can see it, and `viewcheck` is outside `gates` because it needs a display.
+  `viewcheck` can see it, and `viewcheck` is outside `gates` because it needs a display. The two-sided
+  diff is the gate-shaped answer and it is not wired to anything yet: it needs a display for one of its
+  two inputs, exactly as `viewcheck` does.
+
+### The two tools that were broken, and what fixing them bought
+
+Both halves of the instrument were wrong, which is why the fault above read as *unobservable* rather
+than as *unknown*:
+
+- **`:desktop:replay` did not forward `-PspdWorldTrace`.** Only `viewcheck` did, so the invocation this
+  file's "measured" block uses wrote nothing and said nothing. Fixed; the command above now produces a
+  trace.
+- **`viewdiff` keyed its two inputs by a scheme neither side shares.** It reported
+  `hero #1 exists here and not in the expected snapshot` on a run whose two sides agreed, because
+  `ReplayPlayer` snapshots per frame and `WorldTrace` per step; and it reported `a accepted record the
+  expected snapshot does not have`, and then `no cells record`, for records only one side ever writes.
+  Fixed in three parts - the settled state of a step is its **last** record where the expected side
+  holds one row and this side holds several; `accepted` and `cells` are skipped as one-sided.
+
+  Before, on the same two traces: `at step:0: hero #1 exists here and not in the expected snapshot`.
+  After: `at step:94: hero field turn`, which is the fault.
 
 ### Two smaller things found alongside it
 
-- **`:desktop:replay` does not forward `-PspdWorldTrace`.** Only `viewcheck` does, so the two-sided
-  diff invocation `README.md` documents silently writes nothing. That is the same failure
-  `desktop/build.gradle` already records for `-PviewcheckJobs`: *"a flag that does nothing is worse
-  than a missing one, because the invocation looks right."*
-- **`spdWorldTrace` is not written on a run that halts on divergence in some configurations**, so
-  the rendered side of the comparison was missing until the replay was driven through
-  `desktop/build/replay-run.bat` directly.
+- **The viewer's world trace is written on halt but only carries the frame the halt landed on.** The
+  viewer's last `hero` record before the divergence is step 93, and the step that diverges is step 94 -
+  which is why the fault could be pinned only by comparing `viewdiff`, and why the next instrument has
+  to be something that keeps playing past the divergence.
 
 ## 25. Every update thread shares one Network, so a gradient is accumulated on whatever survived the last clear - **CLOSED, gated**
 

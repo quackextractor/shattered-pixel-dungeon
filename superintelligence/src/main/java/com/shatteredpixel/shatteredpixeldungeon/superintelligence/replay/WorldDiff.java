@@ -83,13 +83,17 @@ public class WorldDiff {
 	}
 
 	/**
-	 * Records only one side emits, so their absence is not read as a difference in the world.
+	 * True for a record kind only one side emits, so its absence is not read as a difference.
 	 *
 	 * <p>{@code accepted} is written by {@code ReplayPlayer} and records whether the viewer managed to
-	 * apply a step. {@code WorldTrace} replays the same recording with no player and never emits it.
+	 * apply a step; {@code WorldTrace} replays the same recording with no player and never emits it.
+	 * {@code cells} is the mirror: {@code WorldTrace} writes per-cell rows unless {@code --no-cells} is
+	 * given, and {@code ReplayPlayer} does not write them at all. Neither is a statement about the world -
+	 * each is a statement about what the tool that wrote the trace is for.
 	 */
-	private static final java.util.Set< String > VIEWER_ONLY =
-			java.util.Collections.singleton( "accepted" );
+	private static boolean oneSidedOnly( String name ){
+		return "accepted".equals( name ) || name.startsWith( "cell" );
+	}
 
 	/** One label's worth of records: hero, roster, and one entry per described cell. */
 	private static String compareRecords( String label,
@@ -97,7 +101,7 @@ public class WorldDiff {
 			Map< String, List< String > > got ){
 
 		for (String name : expected.keySet()){
-			if (VIEWER_ONLY.contains( name )) continue;
+			if (oneSidedOnly( name )) continue;
 			List< String > mine = got.get( name );
 			if (mine == null){
 				return "at " + label + ": no " + name + " record, which the expected snapshot has. "
@@ -112,7 +116,7 @@ public class WorldDiff {
 		//absence is not a difference in the world - it is a difference in what each side is for. Skipped
 		//for the same reason `frame:` labels are skipped above.
 		for (String name : got.keySet()){
-			if (VIEWER_ONLY.contains( name )) continue;
+			if (oneSidedOnly( name )) continue;
 			if (!expected.containsKey( name )){
 				return "at " + label + ": a " + name + " record the expected snapshot does not have";
 			}
