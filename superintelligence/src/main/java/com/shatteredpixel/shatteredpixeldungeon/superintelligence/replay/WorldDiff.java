@@ -82,22 +82,37 @@ public class WorldDiff {
 		return "";
 	}
 
+	/**
+	 * Records only one side emits, so their absence is not read as a difference in the world.
+	 *
+	 * <p>{@code accepted} is written by {@code ReplayPlayer} and records whether the viewer managed to
+	 * apply a step. {@code WorldTrace} replays the same recording with no player and never emits it.
+	 */
+	private static final java.util.Set< String > VIEWER_ONLY =
+			java.util.Collections.singleton( "accepted" );
+
 	/** One label's worth of records: hero, roster, and one entry per described cell. */
 	private static String compareRecords( String label,
 			Map< String, List< String > > expected,
 			Map< String, List< String > > got ){
 
-		for (Map.Entry< String, List< String > > e : expected.entrySet()){
-			List< String > mine = got.get( e.getKey() );
+		for (String name : expected.keySet()){
+			if (VIEWER_ONLY.contains( name )) continue;
+			List< String > mine = got.get( name );
 			if (mine == null){
-				return "at " + label + ": no " + e.getKey() + " record, which the expected snapshot has. "
+				return "at " + label + ": no " + name + " record, which the expected snapshot has. "
 						+ "The run produced " + got.size() + " of the expected " + expected.size() + ".";
 			}
-			String diff = compareFields( label, e.getKey(), e.getValue(), mine );
+			String diff = compareFields( label, name, expected.get( name ), mine );
 			if (!diff.isEmpty()) return diff;
 		}
 
+		//`accepted` is written only by ReplayPlayer, which records whether the viewer managed to apply a
+		//step. `WorldTrace` replays the same recording with no player and so never emits it, and the
+		//absence is not a difference in the world - it is a difference in what each side is for. Skipped
+		//for the same reason `frame:` labels are skipped above.
 		for (String name : got.keySet()){
+			if (VIEWER_ONLY.contains( name )) continue;
 			if (!expected.containsKey( name )){
 				return "at " + label + ": a " + name + " record the expected snapshot does not have";
 			}
@@ -116,10 +131,34 @@ public class WorldDiff {
 	private static String compareFields( String label, String name,
 			List< String > expected, List< String > got ){
 
-		//A roster or cell record repeats its key across many rows, so rows are matched in order and only
+//A roster or cell record repeats its key across many rows, so rows are matched in order and only
 		//the field that differs inside a matched row is reported.
 		if (expected.size() == 1 && got.size() == 1){
-			return compareOneRow( label, name, expected.get( 0 ), got.get( 0 ) );
+			return compareOneRow( label, name, expected.get( 0 ), got.get( 0 ));
+		}
+
+		//The two sides record the same step at different granularities, and that used to be reported as a
+		//world difference. `ReplayPlayer` writes a snapshot per frame, so a step it applied has a hero row
+		//before *and* after; `WorldTrace` writes one per step. Matching those row-for-row cannot work, and
+		//it reported:
+		//
+		//    at step:0: hero #1 exists here and not in the expected snapshot
+		//
+		//on a run whose two sides agreed.
+		//
+		//The settled state of a step is its LAST record, so where the expected side has one row and this
+		//side has several, the pair to compare is expected[0] against the last here. Where both have
+		//several - a roster, one row per mob - they must match in count, and a count difference is a real
+		//difference in the world.
+		if (expected.size() == 1 && got.size() > 1){
+			return compareOneRow( label, name + " (settled)", expected.get( 0 ),
+					got.get( got.size() - 1 ));
+		}
+
+		if (expected.size() != got.size()){
+			return "at " + label + ": " + name + " is recorded " + got.size() + " time(s) here and "
+					+ expected.size() + " in the expected snapshot, so they cannot be compared row for"
+					+ " row, and neither side holds a single settled record.";
 		}
 
 		int n = Math.max( expected.size(), got.size() );

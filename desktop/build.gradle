@@ -40,6 +40,11 @@ tasks.register('replay', JavaExec) {
     //writes a per-step RNG trace for comparison against `rngtrace`; see
     //superintelligence/PLAN-replay-verification.md section 6
     if (project.hasProperty('spdRngTrace')) { systemProperty 'spd.rngTrace', project.property('spdRngTrace') }
+    //and a per-step world snapshot for `viewdiff`. Only `viewcheck` forwarded this, so the two-sided
+    //diff invocation README.md documents - `gradlew :desktop:replay -PspdWorldTrace=<out>` - wrote
+    //nothing and said so by not writing anything. Same failure the viewcheckJobs note below records
+    //for a flag that was accepted and ignored.
+    if (project.hasProperty('spdWorldTrace')) { systemProperty 'spd.worldTrace', project.property('spdWorldTrace') }
     systemProperty 'Implementation-Title', appPackageName
     systemProperty 'Implementation-Version', appVersionCode
     standardInput = System.in
