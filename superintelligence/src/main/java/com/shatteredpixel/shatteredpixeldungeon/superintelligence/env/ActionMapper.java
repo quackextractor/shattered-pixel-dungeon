@@ -228,13 +228,26 @@ public class ActionMapper {
 
 		switch (action) {
 			case WAIT:
-				//No curAction: Hero.act() with curAction null calls ready() and hands control back.
-				//Waiting costs the hero nothing in the real game either; other actors advance time.
-				//True, because it is a legal action the environment performed - not a refusal.
-				hero.next();
+				//Actor.next() only hands the turn back; it spends nothing. So WAIT used to be a step
+				//that consumed no engine time, which put it in the same bucket as equipping an item -
+				//and `env.free_step_budget`, which is meant to bound the free-action loop, ended
+				//episodes that were waiting. Measured on a trainer recording: 10 WAIT and 6 REST out of
+				//158 steps advanced no engine time, which is what ended that episode at step 158 of a
+				//1500-turn budget.
+				//
+				//A move costs 1/speed() and resting costs TIME_TO_REST, so a turn the agent
+				//deliberately gives up is priced like one. spendAndNext rather than spendConstant,
+				//because that is what a move uses and it is what advances the hero's own buffs.
+				hero.spendAndNext( 1f );
 				return true;
 
 			case REST:
+				//Left as it was. Resting costs TIME_TO_REST, but Hero.act charges it only when the
+				//scheduler picks the hero again with curAction null and resting set - and the pipeline's
+				//rest backstop returns STALLED after 8 drain steps first, so spending here instead ends
+				//the episode before the agent gets a turn to release the rest. Measured: six rests in a
+				//row advanced no engine time, so REST is still charged as a free step. That is a real
+				//gap and it is not a one-line fix; it needs the drain's rest handling decided first.
 				hero.resting = true;
 				hero.next();
 				return true;

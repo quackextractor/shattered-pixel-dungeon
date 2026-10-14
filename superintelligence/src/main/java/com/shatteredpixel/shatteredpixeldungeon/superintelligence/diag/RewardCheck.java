@@ -55,7 +55,7 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 22;
+	private static final int CHECKS = 23;
 
 	/** How many heaps to try before calling a floor that offers none a failure. */
 	private static final int MAX_HEAP_TRIES = 12;
@@ -84,6 +84,7 @@ public class RewardCheck {
 		checkPickingUpAndDroppingIsNotProfitable( config );
 		checkKillingIsWorthDoing( config );
 		checkFreeStepsCostSomething( config );
+		checkWaitingIsNotAFreeStep( config );
 		checkAMultiTurnActionPaysForEveryTurn( config );
 		checkSearchingIsNotCheaperThanActing( config );
 		checkSpendingATalentIsWorthALot( config );
@@ -1553,6 +1554,75 @@ public class RewardCheck {
 
 		System.out.println( "  the hero can die: DEATH recorded, natural ending, scored "
 				+ fmt( o.score ) );
+	}
+
+	/**
+	 * {@code WAIT} is a step that spends a turn, so it is not a free step.
+	 *
+	 * <p>{@code env.free_step_budget} exists to bound the loop where a policy alternates equipping and
+	 * unequipping - real actions that genuinely advance no engine time, because
+	 * {@code WndUseItem.onClick} calls {@code item.execute} and returns. It was also being spent on
+	 * {@code WAIT}, because {@code Actor.next()} only clears {@code current} and spends nothing, so a
+	 * deliberately given-up turn landed in the same bucket as an equip.
+	 *
+	 * <p>Measured on a trainer recording: of 158 steps, 38 advanced no engine time - 10 {@code WAIT} and
+	 * 6 {@code REST} among them - and that is what ended the episode at step 158 of a 1500-turn budget.
+	 * The budget was ending episodes for choosing to wait.
+	 *
+	 * <p>Asserted on the behaviour rather than on a constant: a run of nothing but {@code WAIT}, three
+	 * times the budget long, must record zero {@code NO_PROGRESS} and must not end at
+	 * {@code env.free_step_budget}. The equip half of the same property is
+	 * {@code checkFreeStepsCostSomething}'s, and keeping them apart is the point - together in one case
+	 * an off-by-one in either reads as the other's failure.
+	 *
+	 * <p>Measured: 121 waits ran to the position guard at 120 unchanged steps, not to the budget at 40,
+	 * with {@code NO_PROGRESS} charged 0 times. The step that ends an episode advances no time, because
+	 * terminating is not a turn the hero spends - which is why this asserts the charge and the budget
+	 * rather than a free-step count, which would only encode where the episode happened to stop.
+	 *
+	 * <p><b>{@code REST} is still wrong and is deliberately not fixed here.</b> It also spends no engine
+	 * time, but {@code Hero.act} charges {@code TIME_TO_REST} only when the scheduler picks the hero
+	 * again, and the pipeline's rest backstop returns {@code STALLED} after eight drain steps first.
+	 * Spending the turn at the action instead ends the episode before the agent gets a turn to release
+	 * the rest, which {@code checkRestIsNotAOneWayDoor} caught. That needs the drain's rest handling
+	 * decided first, not a second line here.
+	 */
+	private static void checkWaitingIsNotAFreeStep( EnvConfig config ){
+		//pure WAIT, and far more of them than env.free_step_budget. No equips: the equip half of the
+		//property is checkFreeStepsCostSomething's, and keeping them apart is the point - together in
+		//one case an off-by-one in either reads as the other's failure.
+		Outcome o = play( config, config.freeStepBudget * 3, "WAITCOST", turn -> {
+			SPDEnv env = turn.env;
+			if (!env.running()) return;
+			if (env.mode() != EnvMode.WORLD){
+				env.step( Action.CANCEL, 0 );
+				return;
+			}
+			env.step( Action.WAIT, 0 );
+		});
+
+		if (o.ledger == null){
+			fail( "the run produced no ledger, so nothing was measured." );
+			return;
+		}
+
+		//measured, and the two halves of it: 121 waits ran to the position guard at 120 unchanged
+		//steps rather than to the free-step budget at 40, and NO_PROGRESS was never charged. The step
+		//that ends the episode advances no time, because terminating is not a turn the hero spends -
+		//so this asserts the charge and the budget, and not a free-step count that would encode
+		//where the episode happened to stop.
+		if (o.turns <= config.freeStepBudget){
+			fail( "waiting " + o.turns + " times ended the episode at or before the free-step budget of "
+					+ config.freeStepBudget + ", so WAIT is still counted as a step that advances no"
+					+ " engine time - which is exactly what env.free_step_budget exists to bound." );
+			return;
+		}
+
+		int charged = o.ledger.notes( RewardTerm.NO_PROGRESS );
+		if (charged != 0){
+			fail( "waiting " + o.turns + " times charged NO_PROGRESS " + charged + " time(s). A turn"
+					+ " the agent deliberately gives up is a turn, and is charged as one." );
+		}
 	}
 
 	/**
