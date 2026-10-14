@@ -3,6 +3,20 @@
 Status of the work in [`docs.md`](docs.md) and [`research.md`](research.md), written against the
 code as it stands. "Verified" means it was run and observed, not merely written.
 
+Last updated: 2026-10-14, with the current work written down rather than attempted in passing.
+**No training run has been measured since any of this session's three fixes**, so nothing yet says
+whether they helped. [`PLAN-learning-measurement.md`](PLAN-learning-measurement.md) is the order:
+`issues.md` 26 first - the viewer spends 1 HP on steps the recording does not and `viewcheck` is 19 of
+20 because of it - then a **noise floor**, three repeats of one 15-generation config, because
+`SeedPool` leaks 10% random seeds by design and therefore **no comparison in this project has an error
+bar**; then one 30-generation run judged against that band. The three fixes: every update thread shared
+one `Network` (`issues.md` 25, so every checkpoint on disk is void), `WAIT` was charged as a free step and
+the budget ended episodes for waiting, and two diff tools could not see a divergence they were built to
+find. Three claims from this session are retracted in that file - the critic's terminal bootstrap is a
+gated decision rather than a defect, the "viewer is three turns behind" reading was snapshot timing, and
+the "viewer is one engine turn behind" reading was the same artefact seen one level up: once playback
+continues past the divergence the clock matches exactly and only `hp` differs.
+
 Last updated: 2026-10-13, after `reward.profile` was added: a temporary override that switches the reward
 function down to the objective, so the only route to a positive score is a new floor or a win and the four
 prices for stopping are all that remains negative. Gated in `rewardcheck` (3 cases, mutation-tested twice),

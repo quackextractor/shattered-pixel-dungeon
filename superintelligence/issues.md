@@ -1101,7 +1101,7 @@ Verified: `replay-viewer --list` output is **byte-identical** to gradle's for th
 the run exactly. The interactive `r` repaint could not be exercised by a harness that cannot feed a
 prompt, so what was measured is the listing call the repaint makes.
 
-## 26. Reading a scroll completes on a frame in the viewer and immediately headless - **OPEN, localised, not fixed**
+## 26. The viewer spends 1 HP on a step the recording does not - **OPEN, diagnosed, not fixed**
 
 Found while replacing `duelist-death-last` after the `WAIT` fix. It is the ninth recording this
 project has produced that verifies exactly headlessly and does not play in the real viewer, and the
@@ -1142,13 +1142,19 @@ fault and that was wrong.
 ### Where it is, measured
 
 ```
-[DIFF] at step:94: hero field turn
-  expected: 92.0
-  actual:   91.0
+[DIFF] at step:94: hero (settled) field hp
+  expected: 7/20
+  actual:   6/20
 ```
 
-**The viewer is one engine turn behind after a scroll read.** Producing that line needs the documented
-pair of commands and nothing else, which it did not before - see the tool fixes below:
+**Only `hp` differs.** The whole step-94 `hero` record is otherwise identical on the two sides - same
+`pos=552`, same `turn=92.0`, same `ready=true`, same buffs (`Charger:0.0,Haste:18.0,Hunger:0.0,
+Recharging:29.0,Regeneration:0.0`), same inventory - and the `roster` record, which is every mob's hp,
+state, energy and buffs, is **byte-identical**. So no mob differs either. A difference in damage that
+leaves no trace in the roster is a damage source the roster does not carry.
+
+Producing that line needs the documented pair of commands and nothing else, which it did not before -
+see the tool fixes below:
 
 ```
 ./gradlew :superintelligence:worldtrace -PworldArgs="<replay> <headless.txt>"
@@ -1210,9 +1216,70 @@ version of this entry pointed, and it is not the cause.** Three measurements kil
    The change was reverted. It touches `:core` for no gain, and `instructions.md` 12.3 says an engine
    logic change stays out of a commit unless it is the fix - this was not.
 
-**What is left is that the viewer has not reached turn 92.0 by the end of step 94**, one turn of
-engine clock later than the recorder had. Not the read, not the animation, not the RNG. The two tools
+**What is left is that the viewer applies 1 HP of damage the recording does not contain**, at step 94
+and again at 97. Not the read, not the animation, not the RNG, not the engine clock. The two tools
 below are what makes that a measurement rather than a suspicion.
+
+### The turn deficit that was here earlier was not a fault
+
+An earlier version of this entry read the divergence as **the viewer being one engine turn behind**,
+from `at step:94: hero field turn / expected 92.0 / actual 91.0`. **That reading was wrong, and it was
+an artefact of the instrument rather than of the game.**
+
+The viewer's world trace is written on halt, and the viewer halted on step 94. Its last `hero` record
+before the halt was therefore written at `turn=91.0` - one engine clock earlier than the *settled*
+state of that step. Comparing that against the headless's settled step-94 record at `turn=92.0` reads
+as a turn deficit. It is the same frame-versus-step granularity `viewdiff` already warns about, one
+level up: the viewer was asked to compare a record taken mid-step against one taken after it.
+
+Once the viewer was made to keep playing past the divergence (see the last section), it ran all 100
+steps, and the settled step-94 record on its side reads `turn=92.0` - **the same clock as headless**.
+Across every step from 86 to 99, `turn` and `pos` agree exactly:
+
+```
+step  headless hp/turn   viewer hp/turn
+  92       7/20  91.0        7/20  91.0
+  93       7/20  91.0        7/20  91.0
+  94       7/20  92.0        6/20  92.0   <- hp only
+  95       7/20  93.0        6/20  93.0   <- hp only
+  96       5/20  94.0        5/20  94.0
+  97       5/20  95.0        2/20  95.0   <- hp only
+  98       4/20  96.0        2/20  96.0   <- hp only
+  99       0/20   0.0        1/20  97.0   <- headless dead
+```
+
+The totals agree too - both sides go from 7 HP at step 92 to 5 HP at step 96 - so this is not the viewer
+dealing extra damage. **The same damage lands on a different step.** Per-step damage, from `spd.trace`:
+
+```
+step  action      headless hp   viewer hp
+  88  USE/0 SLOT      9/20        9/20
+  89  USE/0 WORLD     9/20        9/20
+  90  USE/0 SLOT      8/20        8/20
+  91  USE/0 WORLD     8/20        8/20
+  92  USE/0 SLOT      7/20        7/20
+  93  USE/0 WORLD     7/20        7/20
+  94  USE/0 SLOT      7/20        6/20   <- the fault
+```
+
+**Each `USE/* SLOT` costs exactly 1 HP, and each `USE/* WORLD` costs none.** The viewer applies the
+step-94 one and the headless does not; the headless applies it at step 96 instead, which is why the
+two sides are level again at 96 and the totals match.
+
+**Not a speed artefact.** Measured identically at `spd.fast=800` (2600 frames) and at the gate's
+`spd.fast=40` (2601 frames), same divergence both times.
+
+### Where the damage comes from is still open, and cells are the missing channel
+
+The damage leaves **no trace in the roster** - every mob's hp, state, energy and buffs is identical -
+so whatever deals it is not a mob. The candidates are room features and cell state: `specials` on this
+floor lists `ToxicGasRoom`, and the hero carries a `Charger` buff.
+
+**The viewer writes zero `cells` records.** `ReplayPlayer` constructs its `WorldSnapshot` with
+`.cells( false )`, because it also samples per frame and a floor-sized cell dump per frame would be
+tens of thousands of records. Headless writes 100, one per step. **So cells are the one channel in this
+diff that cannot be compared, and they are the one place a room hazard would show.** Turning cells on
+for `step` records only - not `frame` - is the next instrument.
 
 ### Why 20 of 20 recordings played clean until now
 
@@ -1224,11 +1291,11 @@ played.
 
 ### What is not established
 
-- **Why the viewer is a turn behind.** Not the read, not its animation, not the RNG - all three
-  measured. The next instrument is the trace pair above: the viewer's step-94 record is written at
-  `turn 91.0` and the headless's at `92.0`, and what happens in between is not in either trace because
-  the viewer halts on that step.
-- **A fix.** The one that looked obvious has been tried and does nothing.
+- **What deals the extra HP.** Not the scroll read, not its animation, not the RNG, not the engine
+  clock, not the speed - all five measured. The roster is identical, so it is not a mob. Cells are the
+  uncompared channel and the likely place to look; see above.
+- **A fix.** The one that looked obvious - the read animation - was implemented and makes no
+  difference, and was reverted.
 - **A gate.** This is the ninth recording in this shape and `playbackcheck` passed it, because
   `ReplayPlayer` headless agrees with `verify` - the divergence needs the **renderer**, so only
   `viewcheck` can see it, and `viewcheck` is outside `gates` because it needs a display. The two-sided
@@ -1253,12 +1320,25 @@ than as *unknown*:
   Before, on the same two traces: `at step:0: hero #1 exists here and not in the expected snapshot`.
   After: `at step:94: hero field turn`, which is the fault.
 
-### Two smaller things found alongside it
+### Three smaller things found alongside it
 
-- **The viewer's world trace is written on halt but only carries the frame the halt landed on.** The
-  viewer's last `hero` record before the divergence is step 93, and the step that diverges is step 94 -
-  which is why the fault could be pinned only by comparing `viewdiff`, and why the next instrument has
-  to be something that keeps playing past the divergence.
+- **The viewer's world trace was written on halt but only carried the frame the halt landed on.** The
+  viewer's last `hero` record before the divergence was step 93, and the step that diverges is step 94 -
+  which is why the fault could be pinned only by comparing `viewdiff`, and why keeping playback running
+  past the divergence was needed at all.
+- **`-Dspd.replayContinueOnDiverge`, added here.** `ReplayPlayer` halted on the first divergence, so the
+  steps *after* the fault - the only ones worth looking at - were never recorded. It now keeps applying
+  and tracing after a divergence, reporting it once. Off by default; it is never enabled by a gate,
+  because a run enabled this way is already off the recording's path, so its trace describes the live
+  game rather than the replay.
+- **`:desktop:replay` did not forward `-PspdHidden`.** `ReplayLauncher` reads `spd.hidden` and
+  `ViewCheck` already passes it, so the setting existed and worked - but this task never bound it, so
+  `-PspdHidden` had nothing to bind to and the viewer window came up on the desk in the middle of a
+  traced run. Same class of gap as `spdWorldTrace` above, and the reason this file's commands could not
+  be run unattended.
+
+With `-PspdContinueOnDiverge` the traced run now completes and the diff has 5 more steps to work with,
+which is what turned "the viewer is a turn behind" into "the viewer spends 1 HP at step 94".
 
 ## 25. Every update thread shares one Network, so a gradient is accumulated on whatever survived the last clear - **CLOSED, gated**
 

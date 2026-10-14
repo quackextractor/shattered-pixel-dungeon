@@ -111,7 +111,10 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   entropy that is arithmetically impossible. **Fixed and gated** (`parallelcheck` is 5 cases; reinstating
   the fault fails the new one with *"4 shards hold 1 distinct networks"*). It is also **13% faster** -
   six threads writing 3.5M parameters into one object were contending for the same cache lines.
-  **`issues.md` 25, closed.** Nothing below has been re-measured since.
+  **`issues.md` 25, closed.** **No run has been measured since**, and
+  [`PLAN-learning-measurement.md`](PLAN-learning-measurement.md) sets out why that cannot yet be said
+  either way: `SeedPool` leaks 10% random seeds by design, so no comparison in this project has an error
+  bar yet.
 - **What remains is neither a crash nor a stall.** Every episode runs the full 1500 turns with zero
   stalls, and `meanScore` is falling (186 -> 59 across 6 generations) as the critic fits longer episodes.
   But `bestDepth` is still 1 and nothing dies. `depthReward` of +10 against `turnCost` of 0.002 means
