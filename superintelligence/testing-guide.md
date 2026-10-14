@@ -359,6 +359,47 @@ ends up standing *on* the pit cell, and walking off it does not drop him either.
 
 ---
 
+### Which gate could not see a shared `Network`, and how it came to
+
+`issues.md` 25, and it is the seventh instance of the shape this file keeps recording.
+
+`ShardedUpdate` built every shard from `ppo.network` itself, so all N update threads ran `oneSample` on
+one `Network` - shared parameters, shared gradient accumulators, shared layer scratch, `slotLogits()`
+among them. Every update thread's `clearGradients()` wiped the others' partial sums, and the reduction
+then added the master's own gradient once per shard. **Every training run in this project's history used
+more than one update thread.**
+
+`parallelcheck` passed throughout, because all four of its cases build their own `Network[]` and call
+`oneSample` on each in a serial loop. It proves the *reduction* - N independent networks accumulate the
+same gradient as one - and it never asks `ShardedUpdate` where its shards' networks come from. The
+requirement it was supposed to cover was recorded in `PLAN-data-flow.md` §8 as **"Parallel update
+silently races on shared state | high ... Needs its own equivalence check"**: the right requirement,
+pointed at a gate that could not carry it.
+
+Found by a training run reporting a **negative entropy**, which no distribution over `[0, 1]` can
+produce. The chain: a tripwire printed the buffer (`out[0]=1.128`, every other entry 0); a stage trace
+showed the corruption present immediately after `Policy.probabilities` and unchanged by the two later
+calls; instrumenting `probabilities` showed the mask stable and the one legal logit reading 0.2495 before
+`Arrays.fill` and 0.6160 after; an identity probe found `net=756441311` on every pool call.
+
+| reverted | what fails |
+| --- | --- |
+| `Shard` given `ppo.network` again | `parallelcheck 1 of 5 fails` - `4 shards hold 1 distinct networks` |
+
+**The entropy assertion was tried and measured to be unable to fail, so it is reported rather than
+asserted.** With the fault reinstated and only the identity assertions silenced, 64 samples reported
+**1.4649** and the check passed: a race does not reliably corrupt anything in one minibatch-sized update.
+Over a real run it corrupted roughly one sample in ten thousand - which is why it took 77 generations to
+show, and why asserting it would have been a check that cannot fail. `parallelcheck` is **5 cases**; the
+new one asserts shard identity through the real `ShardedUpdate.run`, reached by
+`PPO.updateShardNetworks()`.
+
+Measured A/B, same machine same minute, 6 workers x 3 episodes, 6 update threads, seed 777, 6
+generations each: turns/s **804 -> 908**, ppo update **15.5s -> 14.0s**, worst `kl` **0.0474 -> 0.0271**,
+valueLoss last **2,378 -> 409**. It is *faster*, because six threads writing 3.5M parameters into one
+object were contending for the same cache lines. The cost is 6 x 14.3 MB of trainer heap, which the
+generation report's `buffer ... MB resident` line does not include.
+
 ### Which gate refuses a fault in the trainer's half of a fix
 
 `issues.md` 17 is the clearest instance in the suite of a fix that changes **only one** of the two

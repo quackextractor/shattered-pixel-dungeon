@@ -288,7 +288,7 @@ twenty-four gates, one invocation, ~23 seconds:
 | `collectcheck` | A recording the collector cannot replay, **or** a rebinding step recorded against the world the step produced |
 | `checkpointcheck` | A policy that does not survive disk, or a bad checkpoint that loads |
 | `statecheck` | A sampled observation that does not replay to its rollout's value |
-| `parallelcheck` | A parallel update that differs from the serial one |
+| `parallelcheck` | A parallel update that differs from the serial one, **or** a shard that does not own its own `Network` |
 | `rewardcheck` | Ending an episode being cheaper than dying, **or** an action that consumes several engine turns being charged for one, **or** `depth_only` paying anything outside the objective while `default` stops paying a term |
 | `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
 | `fallcheck` | A chasm fall the environment drops, a free landing, or a fall that leaves a hand-off behind for the next episode |

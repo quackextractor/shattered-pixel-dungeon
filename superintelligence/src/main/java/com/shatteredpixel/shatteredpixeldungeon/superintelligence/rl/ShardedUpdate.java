@@ -1,5 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -97,6 +99,19 @@ final class ShardedUpdate {
 		shards.clear();
 	}
 
+	/**
+	 * The networks the shards own, in shard order, for {@code ParallelCheck}.
+	 *
+	 * <p>Empty until an update has run. The property that matters is that no two entries are the same
+	 * object and none is the master - object identity, not parameter values, because the parameters are
+	 * copied in per minibatch and are equal by design.
+	 */
+	List< Network > shardNetworks(){
+		List< Network > out = new ArrayList<>( shards.size() );
+		for (Shard shard : shards) out.add( shard.network );
+		return out;
+	}
+
 	// --------------------------------------------------------------------------- update
 
 	/**
@@ -116,7 +131,13 @@ final class ShardedUpdate {
 
 		network().zeroGrad();
 
-		while (shards.size() < n) shards.add( new Shard( ppo.network ) );
+		//A shard per thread, each owning a Network of its own. It used to be handed `ppo.network`,
+		//which made every thread the master: one Network's parameters, gradient accumulators and
+		//forward scratch shared by all of them, so each shard's clearGradients() wiped the others'
+		//partial sums and `slotLogits()` changed value between two reads inside Policy.probabilities.
+		//Measured, `issues.md` 25. Per-minibatch the parameters are copied in below, which is what this
+		//line was always meant to enable.
+		while (shards.size() < n) shards.add( new Shard( ppo.config, new Random( 1L + shards.size() )) );
 
 		float[] policy = new float[ n ];
 		float[] value = new float[ n ];
@@ -195,11 +216,15 @@ final class ShardedUpdate {
 	}
 
 	/**
-	 * Per-epoch scratch a parallel shard owns.
+	 * Per-epoch scratch a parallel shard owns, and its own copy of the parameters.
 	 *
 	 * <p>Sized from the network rather than from a config, because they are the same numbers by
 	 * construction and a second derivation of "how wide is the action head" would be a second thing to
 	 * keep in step.
+	 *
+	 * <p>The initialisation is thrown away: every minibatch copies the master's parameters in before
+	 * the shard does any work. Distinct seeds anyway, so that two shards cannot be the same object by
+	 * accident if this ever changes - the property {@code ParallelCheck} asserts is object identity.
 	 */
 	private static class Shard {
 		final Network network;
@@ -211,8 +236,8 @@ final class ShardedUpdate {
 		final float[] targetGrad;
 		final float[] actionGrad;
 
-		Shard( Network network ){
-			this.network = network;
+		Shard( EnvConfig config, Random rng ){
+			this.network = new Network( config, rng );
 			this.grid = new float[ network.gridLength() ];
 			this.slotProbs = new float[ network.slotCount() ];
 			this.targetProbs = new float[ network.targetCount() ];

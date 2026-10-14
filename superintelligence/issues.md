@@ -1101,7 +1101,7 @@ Verified: `replay-viewer --list` output is **byte-identical** to gradle's for th
 the run exactly. The interactive `r` repaint could not be exercised by a harness that cannot feed a
 prompt, so what was measured is the listing call the repaint makes.
 
-## 25. Every update thread shares one Network, so a gradient is accumulated on whatever survived the last clear - **OPEN, diagnosed, not fixed**
+## 25. Every update thread shares one Network, so a gradient is accumulated on whatever survived the last clear - **CLOSED, gated**
 
 Found while reading the metrics of a `default`-profile run (see below), and it is the most consequential
 defect this project has recorded. Six generations reported an **entropy that cannot exist**: a categorical
@@ -1209,7 +1209,7 @@ a mechanism that would produce the same flatness under any profile, and it has b
 of those runs.** That is a claim about what this explains, not a measurement that it explains all of it -
 the runs that would settle it have not been re-run without the fault.
 
-### The fix, and what it costs
+### The fix, and what it cost
 
 One line in spirit: `Shard` constructs its own `Network` from the config and a seed, exactly as
 `ParallelCheck.reduce:177` already does - `new Network( config, new Random( 1L ) )` followed by
@@ -1217,9 +1217,63 @@ One line in spirit: `Shard` constructs its own `Network` from the config and a s
 real rather than a no-op.
 
 **It invalidates every checkpoint and every measurement in this file that used more than one update
-thread**, and the parallel path would need re-measuring rather than re-deriving. The gate has to go
-through `ShardedUpdate.run` and assert each shard owns a distinct `Network` - the property
-`parallelcheck` was believed to cover and demonstrably does not.
+thread.** The parallel path had to be re-measured rather than re-derived.
+
+`parallelcheck` is **5 cases**. The new one asserts the property deterministically - no two shards hold
+the same `Network` object, and none is the master's - which is what makes one thread's
+`clearGradients()` and layer scratch unreachable from another. `PPO.updateShardNetworks()` exists only so
+a gate can see where the real shards' networks come from; the other four cases supply their own and so
+could never have asked.
+
+**Mutation-tested**, by reinstating `new Shard( ppo.network )`:
+
+```
+[ERROR]  parallel update: 1 of 5 checks failed
+        4 shards hold 1 distinct networks, so at least two update threads shared one Network - its
+        parameters, its gradient accumulators and its forward scratch. A shard's clearGradients() then
+        wipes the others' partial sums, and addGradientsTo adds the master's own gradient once per
+        shard. (issues.md 25)
+```
+
+### The entropy half was measured to be unable to fail, and is reported rather than asserted
+
+The obvious second assertion is `ppo.lastEntropy >= 0` - the symptom the whole thing was found by.
+**Reinstating the fault and silencing only the identity assertions, 64 samples reported 1.4649 and the
+check passed.** A race does not reliably corrupt anything in one update of one minibatch-sized batch;
+over a real run it corrupted roughly one sample in ten thousand, which is why it took 77 generations to
+show and why the big run's `-54.158` was a rare generation rather than a constant.
+
+So that assertion would have been a check that cannot fail, which is the same failure as no check. It is
+**printed** instead, and the case's own comment says so - a reader who assumed it was covered would be
+wrong.
+
+### Measured, A/B on the same machine in the same minute
+
+6 workers x 3 episodes, 6 update threads, seed 777, 6 generations each:
+
+| | with the fault | fixed |
+| --- | --- | --- |
+| turns/s, mean | 804 | **908** |
+| wall, all generations | 13.1s | **11.6s** |
+| ppo update, all generations | 15.5s | **14.0s** |
+| entropy range | 1.775 .. 2.084 | 1.686 .. 2.161 |
+| kl, worst generation | 0.0474 | **0.0271** |
+| valueLoss, first -> last | 17 -> 2,378 | 21 -> **409** |
+
+**It is faster, and that was not expected.** Six threads writing 3.5M parameters and every layer's
+scratch into one object were contending for the same cache lines; separate networks give each thread its
+own memory, and that more than pays for the per-minibatch parameter copies the design already budgeted
+at 0.5%. The worst `kl` nearly halves, which is the reduction agreeing better with itself.
+
+**The memory is real and is not reported anywhere.** Six shard networks is 6 x 14.3 MB = ~86 MB of
+trainer heap on top of the master's, against the ~100 MB transition buffer the generation report prints
+as `buffer ... MB resident` - so that line understates the trainer's memory by roughly its own size. Left
+alone rather than changed unasked, and recorded here instead.
+
+**What this does not settle.** The 77 generations in `default-60` were trained on the broken path, and
+so was every run before it. `issues.md` 22 measured "nothing the policy does pays" under `depth_only`
+with the same flatness this explains; whether a correct update path changes that is **unmeasured**, and
+the run that would answer it has not been made.
 
 Evidence, with the full measurement chain: [`out/evidence/entropy-shard-diagnosis.txt`](out/evidence/entropy-shard-diagnosis.txt).
 The run the finding came from: [`out/evidence/default-60-run.txt`](out/evidence/default-60-run.txt) and

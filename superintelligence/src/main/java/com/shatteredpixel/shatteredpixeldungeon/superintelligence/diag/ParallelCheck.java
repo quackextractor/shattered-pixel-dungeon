@@ -5,8 +5,11 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Fails if the parallel update computes a different gradient from the serial one.
@@ -40,7 +43,7 @@ import java.util.Random;
  */
 public class ParallelCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 5;
 
 	/**
 	 * Relative tolerance, measured against each tensor's own L2 norm.
@@ -61,6 +64,7 @@ public class ParallelCheck {
 		checkShardsAgreeWithOneNetwork( config, 4 );
 		checkShardsAgreeWithOneNetwork( config, 8 );
 		checkThreadCountDoesNotChangeTheAnswer( config );
+		checkShardsOwnTheirOwnNetwork( config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     parallel update: " + CHECKS + " checks passed" );
@@ -224,6 +228,81 @@ public class ParallelCheck {
 
 		ppo.close();
 		return r;
+	}
+
+	/**
+	 * Every shard must own a Network of its own, and none of them may be the master's.
+	 *
+	 * <p><b>This is the check {@code parallelcheck} was believed to be and was not.</b> Every case above
+	 * builds its own {@code Network[]} and calls {@code oneSample} on each in a serial loop, so it
+	 * proves the reduction and never asks {@code ShardedUpdate} where its shards' networks come from.
+	 *
+	 * <p>They all came from the master. {@code ShardedUpdate.run} built its shards as
+	 * {@code new Shard( ppo.network )} and {@code Shard} stored that reference rather than copying it,
+	 * so every update thread ran on one Network - sharing its parameters, its gradient accumulators, and
+	 * its forward scratch. Found by a training run whose metrics reported a <em>negative entropy</em>,
+	 * which no distribution over [0, 1] can produce: {@code Policy.probabilities} was handed a logit
+	 * array that changed value between two reads of the same function. {@code issues.md} 25.
+	 *
+	 * <p>Two kinds of assertion are available here and only one of them works, which was measured rather
+	 * than assumed:
+	 *
+	 * <ul>
+	 * <li><b>Identity - asserted.</b> No two shards' networks are the same object, and none is the
+	 * master's. Deterministic; it does not wait for a race to happen; and it is what makes one thread's
+	 * {@code clearGradients()} and layer scratch unreachable from another.
+	 * <li><b>Entropy - <em>reported</em>, not asserted.</b> The symptom the fault was found by is a
+	 * negative entropy, and it is tempting to assert {@code lastEntropy >= 0} here. Measured with the
+	 * fault reinstated and only these identity assertions silenced: **64 samples reported 1.4649 and the
+	 * check passed.** A race does not reliably corrupt anything in one update of one minibatch-sized
+	 * batch - it corrupted roughly one sample in ten thousand over a real run. So that assertion would
+	 * have been a check that cannot fail, which is the same failure as no check. It is printed instead,
+	 * and saying so is the point: a reader who assumed it was covered would be wrong.
+	 * </ul>
+	 */
+	private static void checkShardsOwnTheirOwnNetwork( EnvConfig config ){
+		PPO ppo = new PPO( config, new Random( 20261013L ) );
+		ppo.threads = 4;
+		ppo.epochs = 1;
+		ppo.minibatchSize = 32;
+		ppo.buffer().addAll( ParallelFixtures.batch( ppo.network, config, 64, 20261013L ) );
+
+		try {
+			ppo.update();
+
+			List< Network > shards = ppo.updateShardNetworks();
+			if (shards.size() < 2){
+				fail( "an update with --update-threads 4 built " + shards.size() + " shard networks, so the"
+						+ " parallel path did not run at all and nothing here was tested." );
+				return;
+			}
+
+			Set< Network > distinct = Collections.newSetFromMap( new IdentityHashMap<>() );
+			distinct.addAll( shards );
+
+			if (distinct.size() != shards.size()){
+				fail( shards.size() + " shards hold " + distinct.size() + " distinct networks, so at least"
+						+ " two update threads shared one Network - its parameters, its gradient"
+						+ " accumulators and its forward scratch. A shard's clearGradients() then wipes"
+						+ " the others' partial sums, and addGradientsTo adds the master's own gradient once"
+						+ " per shard. (issues.md 25)" );
+				return;
+			}
+
+			if (distinct.contains( ppo.network )){
+				fail( "a shard holds the trainer's own Network, so every update thread was running on the"
+						+ " master: shared parameters, shared gradients, shared layer scratch. The"
+						+ " per-minibatch parameter copy the design describes is then a self-copy."
+						+ " (issues.md 25)" );
+				return;
+			}
+
+			System.out.println( "  " + shards.size() + " shards, " + distinct.size()
+					+ " distinct networks, none the master's; entropy " + ppo.lastEntropy
+					+ " (reported, not asserted - see the case's own comment)" );
+		} finally {
+			ppo.close();
+		}
 	}
 
 	private static EnvConfig smallConfig(){

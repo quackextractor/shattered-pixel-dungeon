@@ -73,6 +73,18 @@ public class PPO {
 		return sharded.resolveThreads( threads );
 	}
 
+	/**
+	 * The networks the last parallel update gave its shards, for {@code ParallelCheck}.
+	 *
+	 * <p>Empty until an update has run, and empty forever on the serial path - which is the point of
+	 * asking for the list rather than a count. {@code ParallelCheck} builds its own networks to test
+	 * the reduction, so nothing in the suite was looking at where the real ones come from; this is what
+	 * lets a gate see them. See {@code issues.md} 25.
+	 */
+	public List< Network > updateShardNetworks(){
+		return sharded.shardNetworks();
+	}
+
 	/** Shuts the update pool down and releases the per-thread networks. Safe when there was none. */
 	public void close(){
 		sharded.close();

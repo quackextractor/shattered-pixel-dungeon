@@ -25,6 +25,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every update thread shared one `Network`.** `ShardedUpdate.run` built its shards as
+  `new Shard( ppo.network )` and `Shard` **stored** that reference rather than copying it, so all N
+  threads ran `PPO.oneSample` on the master - sharing its parameters, its gradient accumulators, and every
+  forward scratch including `slotLogits()`. Each shard's `clearGradients()` wiped the others' partial
+  sums; `addGradientsTo` then added the master's own gradient once per shard; `copyParametersFrom` was a
+  self-copy. The class header says the opposite twice, and `PLAN-data-flow.md` step 4 records the same
+  intent.
+
+  Found by six generations of a 77-generation run reporting a **negative entropy**, which no
+  distribution over `[0, 1]` can produce: `Policy.probabilities` was handed a logit array that changed
+  value between two reads of the same function, with the mask stable. Traced to one `Network` identity
+  across every pool call. `parallelcheck` could not see it - it builds its own `Network[]` and never
+  calls `ShardedUpdate`. `issues.md` 25.
+
+  `Shard` now constructs its own `Network` from the config and a seed, exactly as
+  `ParallelCheck.reduce:177` already does, so the per-minibatch parameter copy the design describes
+  becomes real rather than a no-op.
+
+  **`parallelcheck` is 5 cases**, and the new one asserts the property deterministically - no two shards
+  hold the same `Network` object, none is the master's - through the real `ShardedUpdate.run`, reached by
+  a new `PPO.updateShardNetworks()`. Mutation-tested: reinstating `new Shard( ppo.network )` fails it with
+  *"4 shards hold 1 distinct networks"*.
+
+  **The entropy assertion was measured to be unable to fail, and is reported rather than asserted.**
+  Reinstating the fault and silencing only the identity assertions, 64 samples reported 1.4649 and the
+  check passed: a race does not reliably corrupt anything in one minibatch-sized update, which is why it
+  took 77 generations to show. Asserting it would have been a check that cannot fail, so it is printed
+  and the case says so.
+
+  Measured A/B, same machine same minute, 6 workers x 3 episodes, 6 update threads, seed 777, 6
+  generations each:
+
+  | | with the fault | fixed |
+  | --- | --- | --- |
+  | turns/s, mean | 804 | **908** |
+  | ppo update, all generations | 15.5s | **14.0s** |
+  | kl, worst generation | 0.0474 | **0.0271** |
+  | valueLoss, first -> last | 17 -> 2,378 | 21 -> **409** |
+
+  **It is faster, which was not expected**: six threads writing 3.5M parameters into one object were
+  contending for the same cache lines, and separate networks more than pay for the parameter copies.
+  The cost is memory - 6 x 14.3 MB of trainer heap, against a ~100 MB transition buffer the generation
+  report prints as `buffer ... MB resident`, so that line understates the trainer by roughly its own
+  size. Recorded rather than changed unasked.
+
+  **Not settled:** every run in this project's history used more than one update thread, so every
+  checkpoint and every measurement taken on this path is void. Whether a correct update path changes
+  `issues.md` 22's "nothing the policy does pays" is unmeasured.
+
 - **`train.ps1 -Resume` had never worked, and the parser turned it into a stack trace.** `-Resume`
   appended a bare `--resume`, and every flag in `TrainOptions.parse` reads `args[i + 1]` with nothing
   checking there is one - so the answer was:
@@ -274,20 +323,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Not done
 
-- **Every update thread shares one `Network`.** `ShardedUpdate.run` builds its shards as
-  `new Shard( ppo.network )` and `Shard` stores that reference rather than copying it, so all N threads
-  run `PPO.oneSample` on the master - sharing its parameters, its gradient accumulators, and every
-  forward scratch. The class header says the opposite twice, and `PLAN-data-flow.md` step 4 records the
-  same intent. Found by six generations of a 77-generation run reporting a **negative entropy**, which
-  no distribution over `[0, 1]` can produce; traced to a logit array changing value between two reads of
-  the same function, to one `Network` identity across every pool call.
-
-  `parallelcheck` cannot see it: it builds its own `Network[]` and never calls `ShardedUpdate`. It proves
-  the reduction, not the isolation the reduction rests on.
-
-  **Not fixed, and not cheap.** Every run in this project's history used more than one update thread, so
-  the fix invalidates every checkpoint and every measurement taken on that path. `issues.md` 25.
-  Evidence in `out/evidence/entropy-shard-diagnosis.txt`.
+- **Every run in this project's history learned on a broken update path, and none of it has been
+  re-measured.** The shared-`Network` fault above is fixed and gated, but every checkpoint on disk was
+  trained with every update thread sharing one `Network`, so none of them is a policy worth resuming.
+  `issues.md` 22 measured "nothing the policy does pays" under `depth_only` with the same flatness a
+  broken gradient explains, and that is **unmeasured either way since**: whether a correct path changes
+  it is the run that has not been made. Evidence in `out/evidence/entropy-shard-diagnosis.txt`.
 
 - **With the ping-pong closed, nothing the policy does pays, and that is now measured rather than
   suspected.** Run 3 - same seed, same profile, bound and depth payment both in place: **no positive best
