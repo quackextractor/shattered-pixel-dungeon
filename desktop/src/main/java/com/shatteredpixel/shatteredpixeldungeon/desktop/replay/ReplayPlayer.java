@@ -1164,8 +1164,13 @@ awaitingSettle = true;
 			trace( settledPosition );
 			if (!playback.checkPosition( settledPosition )
 					|| !playback.checkState( Dungeon.hero.HP, Actor.now(), ReplayRecorder.inventory() )){
-				diverged = true;
-				halt( playback.status() );
+				if (CONTINUE_ON_DIVERGE){
+					if (!diverged) reportDivergence();
+					diverged = true;
+				} else {
+					diverged = true;
+					halt( playback.status() );
+				}
 			}
 			//sampled after the comparison but before advancing, so a step that diverged is still traced:
 			//the point of a trace is usually to see what the world was doing where it stopped agreeing
@@ -1236,6 +1241,38 @@ awaitingSettle = true;
 	 * only in the way. Enabled with {@code -Dspd.autoClose}.
 	 */
 	private static final boolean AUTO_CLOSE = System.getProperty( "spd.autoClose" ) != null;
+
+	/**
+	 * Keeps applying and tracing recorded steps after a divergence instead of stopping on it.
+	 *
+	 * <p>A divergence is reported on the step where the two sides first disagree, which is rarely the step
+	 * that caused it: the symptom is usually several turns downstream of the mistake, and {@link #halt()}
+	 * stops the run one step before the point worth looking at. This leaves playback running so
+	 * {@code spd.worldTrace} and {@code spd.rngTrace} cover the steps past the fault, which is what
+	 * {@code worlddiff} needs to say anything more than where it gave up.
+	 *
+	 * <p>The live game is already off the recording's path and stays off it, so everything after the
+	 * divergence is the live game doing whatever it does next. That is the point - it is the only way to
+	 * see what the two sides actually do differently - and it is why this is off by default and never
+	 * enabled by a gate.
+	 *
+	 * <p>Enabled with {@code -Dspd.replayContinueOnDiverge}.
+	 */
+	private static final boolean CONTINUE_ON_DIVERGE =
+			System.getProperty( "spd.replayContinueOnDiverge" ) != null;
+
+	/**
+	 * Prints the three lines that describe a divergence, without stopping.
+	 *
+	 * <p>Split out of {@link #halt()} so {@link #CONTINUE_ON_DIVERGE} can report the same thing and keep
+	 * going. {@code halt} is the only place that used to print these, which is why continuing past a
+	 * divergence had to duplicate them rather than reuse the path.
+	 */
+	private void reportDivergence(){
+		System.err.println( "[replay] " + playback.status() );
+		System.err.println( "[replay] " + frameReport() );
+		System.err.println( "[replay] " + schedulerReport() );
+	}
 
 	private void halt( String reason ){
 		if (playing){

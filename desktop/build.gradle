@@ -32,11 +32,19 @@ tasks.register('replay', JavaExec) {
     if (project.hasProperty('spdHeartbeat')) { systemProperty 'spd.heartbeat', '1' }
     if (project.hasProperty('spdAutoClose')) { systemProperty 'spd.autoClose', '1' }
     if (project.hasProperty('spdAutoCloseOnDiverge')) { systemProperty 'spd.autoCloseOnDiverge', '1' }
+    //keeps tracing past a divergence instead of halting on it, so the steps after the fault are
+    //recorded. Paired with spdWorldTrace/spdRngTrace and `viewdiff`. Diagnostic only: a run enabled
+    //this way is already off the recording's path, so its trace describes the live game, not the replay.
+    if (project.hasProperty('spdContinueOnDiverge')) { systemProperty 'spd.replayContinueOnDiverge', '1' }
     if (project.hasProperty('spdMonitorX')) { systemProperty 'spd.monitorX', project.property('spdMonitorX') }
     if (project.hasProperty('spdMonitorY')) { systemProperty 'spd.monitorY', project.property('spdMonitorY') }
     if (project.hasProperty('spdMute')) { systemProperty 'spd.mute', '1' }
     if (project.hasProperty('spdFast')) { systemProperty 'spd.fast', project.property('spdFast') }
     if (project.hasProperty('spdWindowed')) { systemProperty 'spd.windowed', '1' }
+    //ReplayLauncher reads spd.hidden and ViewCheck already passes it, but this task never forwarded it,
+    //so `-PspdHidden` had nothing to bind to and the window came up on the desk mid-run. It still creates
+    //a real GL context - the render loop is what is under test - it just never becomes visible.
+    if (project.hasProperty('spdHidden')) { systemProperty 'spd.hidden', '1' }
     //writes a per-step RNG trace for comparison against `rngtrace`; see
     //superintelligence/PLAN-replay-verification.md section 6
     if (project.hasProperty('spdRngTrace')) { systemProperty 'spd.rngTrace', project.property('spdRngTrace') }
