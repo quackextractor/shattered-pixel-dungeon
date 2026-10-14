@@ -274,6 +274,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Not done
 
+- **Every update thread shares one `Network`.** `ShardedUpdate.run` builds its shards as
+  `new Shard( ppo.network )` and `Shard` stores that reference rather than copying it, so all N threads
+  run `PPO.oneSample` on the master - sharing its parameters, its gradient accumulators, and every
+  forward scratch. The class header says the opposite twice, and `PLAN-data-flow.md` step 4 records the
+  same intent. Found by six generations of a 77-generation run reporting a **negative entropy**, which
+  no distribution over `[0, 1]` can produce; traced to a logit array changing value between two reads of
+  the same function, to one `Network` identity across every pool call.
+
+  `parallelcheck` cannot see it: it builds its own `Network[]` and never calls `ShardedUpdate`. It proves
+  the reduction, not the isolation the reduction rests on.
+
+  **Not fixed, and not cheap.** Every run in this project's history used more than one update thread, so
+  the fix invalidates every checkpoint and every measurement taken on that path. `issues.md` 25.
+  Evidence in `out/evidence/entropy-shard-diagnosis.txt`.
+
 - **With the ping-pong closed, nothing the policy does pays, and that is now measured rather than
   suspected.** Run 3 - same seed, same profile, bound and depth payment both in place: **no positive best
   score in 30 generations, `bestDepth 2` twice, and 62 of 64 episodes in the last generation ending as

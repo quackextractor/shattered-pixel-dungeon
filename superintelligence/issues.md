@@ -1100,3 +1100,127 @@ Verified: `replay-viewer --list` output is **byte-identical** to gradle's for th
 `replay-viewer --verify duelist-drop` resolves a bare file name through the same new path and reproduces
 the run exactly. The interactive `r` repaint could not be exercised by a harness that cannot feed a
 prompt, so what was measured is the listing call the repaint makes.
+
+## 25. Every update thread shares one Network, so a gradient is accumulated on whatever survived the last clear - **OPEN, diagnosed, not fixed**
+
+Found while reading the metrics of a `default`-profile run (see below), and it is the most consequential
+defect this project has recorded. Six generations reported an **entropy that cannot exist**: a categorical
+distribution has `H >= 0` for any probabilities in `[0, 1]`, and `Policy.entropy` is
+`-sum(p * log p)` over the buffer `Policy.probabilities` just wrote, where every entry is
+`exp(logit - max) / total` summed over the same masked set - so each is `<= 1` and each term is `>= 0`.
+`-54.158` was impossible, and the only way to get it is an entry above 1.
+
+**`ShardedUpdate` never makes the per-thread networks its own design calls for.**
+
+```java
+// ShardedUpdate.java:119
+while (shards.size() < n) shards.add( new Shard( ppo.network ) );
+
+// ShardedUpdate.java:214-223
+Shard( Network network ){
+    this.network = network;          // the master, stored - not a copy
+    this.grid = new float[ network.gridLength() ];
+    ...
+}
+```
+
+All N update threads therefore run `PPO.oneSample` on **one** `Network`: its parameters, its gradient
+accumulators, and every internal forward scratch - `slotLogits()` among them - shared. The class header
+states the opposite twice: *"one `Shard` per thread holding a copy of the parameters and its own
+scratch"*, and *"Why per-thread networks rather than shared tensors ... Sharing the tensors would save
+that and reintroduce exactly the aliasing this avoids."* `PLAN-data-flow.md` step 4 records the same
+intent. The code does the thing the document exists to prevent.
+
+### The chain, each step measured rather than read
+
+1. **A tripwire in `Policy.entropy`** printed the offending buffer: `n=32` (the slot head), `out[0]=1.128`,
+   every other entry `0`. One entry above 1, which is exactly what makes the sum negative.
+2. **A stage trace in `PPO.oneSample`** took the buffer's max after each of the three calls that could
+   touch it: after `probabilities` 1.402, after `accumulatePolicyGradient` 1.402, after `backward` 1.402.
+   The corruption is inside `probabilities` and neither other call moves it.
+3. **Instrumenting `probabilities` itself.** The mask is stable and the corruption is in the logits:
+
+   ```
+   legalBefore=1  legalAfter=1
+   logitsBefore=0.24949923157691956   <- read before Arrays.fill(out, 0f)
+   logitsAfter =0.6160362958908081    <- read after it
+   max=0.094019055  total=1.0438831060904241  out=1.579382
+   ```
+
+   One legal action, mask unmoved, and the single legal logit changed value *inside the function* with no
+   other code running on that thread. The only other code running is the update's other threads.
+4. **An identity probe across pool calls** - 67 samples, 2 generations, `--update-threads 6`:
+
+   ```
+   thread=ppo-update net=756441311 logits=1186636202 probs=...
+   thread=ppo-update net=756441311 logits=600935181  probs=...
+   ```
+
+   `net` is identical on every one. `probs` differs per sample, because that scratch **is** per-shard -
+   which is what made the fault hard to see: the one thing a reader would check is the one thing that is
+   correct.
+
+All instrumentation was reverted; the committed tree carries none of it.
+
+### Why `parallelcheck` did not catch it
+
+`ParallelCheck.reduce` never runs `ShardedUpdate`. It builds its own
+
+```java
+Network[] parts = new Network[ shards ];
+```
+
+and calls `ParallelFixtures.oneSample` on each in a plain serial loop - its own networks, its own loop,
+no pool, no `Shard`, no `ShardedUpdate.run`. It proves that N independent networks accumulate the same
+gradient as one network, which is true and worth proving. **It cannot catch a shared network because it
+supplies the networks itself and never asks `ShardedUpdate` where its shards come from.**
+
+`PLAN-data-flow.md` §8 lists *"Parallel update silently races on shared state"* as a **high** risk that
+`parallelcheck` would cover. It covers the reduction, not the isolation the reduction rests on. That is
+the same shape as the six gates in `testing-guide.md`: a green is a claim about what was checked.
+
+### What follows, from reading the source rather than measuring it
+
+- Every shard calls `clearGradients()` on the master, wiping other shards' partial sums.
+- `network().addGradientsTo(network())` runs once per shard, all on the same object, so the applied
+  gradient is whatever survived the last clear, not the sum over the batch.
+- `copyParametersFrom(ppo.network)` is a self-copy.
+- Layer scratch - `Dense.preAct`, `Conv2D`'s im2col, `LSTM.gates/h/c` - is shared, so forwards are torn
+  between threads. `entropy`, `kl` and `clipFraction` are all read off those torn buffers, which is why
+  those were the columns that looked wrong.
+- **Training does not crash**, and that is why nothing looked wrong: PPO tolerates a noisy, badly-scaled
+  gradient. The visible consequence is a policy that does not learn.
+
+### What it plausibly explains
+
+Every training run in this project's history used `--update-threads` above 1, so every one of them
+learned on this path. `default-60` - 77 generations, 20 workers, 6 update threads, `out/evidence/`:
+
+| | |
+| --- | --- |
+| `bestDepth` | **1 in all 77 generations** |
+| mean score, first third -> last third | -3,149.81 -> -3,182.23 |
+| endings, generation 24 and generation 76 alike | stalled 80 (100%), death 0 |
+| generations reporting impossible entropy | 6 (35, 43, 47, 48, 73, 76) |
+
+`kl` of 5.15 and 5.61 on generations 73 and 76, against 0.017-0.04 everywhere else, is the same fault
+and not a second one. **`issues.md` 22 measured "nothing the policy does pays" under `depth_only`; this is
+a mechanism that would produce the same flatness under any profile, and it has been present for every one
+of those runs.** That is a claim about what this explains, not a measurement that it explains all of it -
+the runs that would settle it have not been re-run without the fault.
+
+### The fix, and what it costs
+
+One line in spirit: `Shard` constructs its own `Network` from the config and a seed, exactly as
+`ParallelCheck.reduce:177` already does - `new Network( config, new Random( 1L ) )` followed by
+`copyParametersFrom( ppo.network )`. The per-minibatch parameter copy the design describes then becomes
+real rather than a no-op.
+
+**It invalidates every checkpoint and every measurement in this file that used more than one update
+thread**, and the parallel path would need re-measuring rather than re-deriving. The gate has to go
+through `ShardedUpdate.run` and assert each shard owns a distinct `Network` - the property
+`parallelcheck` was believed to cover and demonstrably does not.
+
+Evidence, with the full measurement chain: [`out/evidence/entropy-shard-diagnosis.txt`](out/evidence/entropy-shard-diagnosis.txt).
+The run the finding came from: [`out/evidence/default-60-run.txt`](out/evidence/default-60-run.txt) and
+[`out/evidence/default-60-full.csv`](out/evidence/default-60-full.csv).

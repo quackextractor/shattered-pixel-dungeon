@@ -100,6 +100,12 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   trend line reading `depth 1.0..2.0`. That `2.0` was not measured: `Graph.bar` widens a flat series'
   scale so its division is defined, then prints the widened span as the range. `bestDepth` is 1 in every
   generation of every run, and all 147 recordings are `depth=1`. `graphcheck` now gates the axis.
+  **There is now a candidate mechanism, and it is not the reward function.** Every run in this project's
+  history used more than one update thread, and `ShardedUpdate` hands every shard the *same* `Network`
+  rather than a copy - so the gradient applied is whatever survived the last `clearGradients()`, and
+  every layer's forward scratch is shared between threads. It was found by six generations of a
+  77-generation run reporting an entropy that is arithmetically impossible. **`issues.md` 25**, open and
+  not fixed; nothing below is re-measured until it is.
 - **What remains is neither a crash nor a stall.** Every episode runs the full 1500 turns with zero
   stalls, and `meanScore` is falling (186 -> 59 across 6 generations) as the critic fits longer episodes.
   But `bestDepth` is still 1 and nothing dies. `depthReward` of +10 against `turnCost` of 0.002 means
@@ -305,7 +311,7 @@ something.
 | Cross-sample gradient leak | Fixed - `dCell` was not cleared, so every gradient depended on the previous sample |
 | Value head range | Fixed - was tanh-bounded to [-1,+1] against a death penalty of 100 |
 | LSTM state with each transition | Fixed - the replay ran under an unrelated sample's state |
-| Trained anything yet | **No.** Never left floor 1; milestone is depth 5 (`research.md:40`) |
+| Trained anything yet | **No.** Never left floor 1; milestone is depth 5 (`research.md:40`). **And the update path itself is faulty** - all N update threads share one `Network`, so every run above learned on a gradient that is not the sum over its batch. `issues.md` 25 |
 | Parallel worker processes, seed schedule | Running; exercised to 8 workers x 25 generations |
 | Graphical trainer UI, desktop replay viewer | Replay viewer done; trainer UI not started |
 | Garbage collection / object pooling audit (research.md:60) | Not started |
