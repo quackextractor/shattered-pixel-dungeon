@@ -12,6 +12,8 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.ReplayKeeper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
 
 import java.io.File;
@@ -77,6 +79,9 @@ public class CollectCheck {
 		checks++;
 		checkTheCollectorAnnouncesADecisionBeforeItIsApplied( config );
 
+		checks++;
+		checkTheKeeperKeepsTheEpisodesWorthWatching( config );
+
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     collection: " + checks + " checks passed" );
 		} else {
@@ -85,6 +90,96 @@ public class CollectCheck {
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}
+	}
+
+	/**
+	 * A run must keep the episodes worth watching, and must not be deciding that by luck.
+	 *
+	 * <p>Two faults, one shape. The trainer recorded only every third episode, so "best per seed" meant
+	 * best of the one in three that happened to be sent - and a 15-generation run whose single floor-2
+	 * episode scored -1,276 against a run-best of -2,778 simply did not have that episode in the
+	 * catalog, because it was one of the two thirds nobody sent. The worker builds the whole replay
+	 * anyway and only skips the transmission, so the sample paid the entire recording cost and saved
+	 * the bytes.
+	 *
+	 * <p>Asserted here on the keeper rather than on a training run, because a run that reaches the
+	 * interesting episode takes 15 generations and the fault is in the selection, not in the play.
+	 */
+	private static void checkTheKeeperKeepsTheEpisodesWorthWatching( EnvConfig config ){
+		ReplayKeeper keeper = new ReplayKeeper();
+
+		//The run as it actually happened. **Scores are negative and higher is better** - a floor-2 episode
+		//scored -1,276 where ordinary ones scored about -3,100 - which is the opposite of what a
+		//positive score would suggest and is why "best" cannot be read as "largest magnitude".
+		//(seed, hero, depth, score); getting the last two the wrong way round makes the ordinary
+		//episode the winner, which is exactly what happened twice while writing this.
+		Replay ordinary = replay( "KEEPER-A", "WARRIOR", 1, -3_100.0 );
+		Replay floorTwo = replay( "KEEPER-A", "ROGUE", 2, -1_276.0 );
+		Replay alsoOrdinary = replay( "KEEPER-B", "MAGE", 1, -3_400.0 );
+		Replay dreadful = replay( "KEEPER-B", "CLERIC", 1, -3_700.0 );
+
+		keeper.consider( ordinary );
+		keeper.consider( floorTwo );
+		keeper.consider( alsoOrdinary );
+		keeper.consider( dreadful );
+		keeper.consider( null );
+
+		List< Replay > kept = keeper.keep();
+
+		if (keeper.considered() != 4){
+			fail( "the keeper counted " + keeper.considered() + " episodes, expected 4; a null replay is"
+					+ " not an episode and must not be counted as one." );
+			return;
+		}
+
+		if (kept.size() != 3){
+			fail( "four episodes over two seeds kept " + kept.size() + ", expected 3 - best per seed is"
+					+ " 2 and the run's worst is one more. Kept: " + seedsOf( kept ) );
+			return;
+		}
+
+		if (!kept.contains( floorTwo )){
+			fail( "the episode that reached floor 2 and scored -1,276 against a run-best of -2,778 was"
+					+ " not kept, which is the whole fault: the catalog's job is the run worth watching"
+					+ " and it discarded it. Kept: " + seedsOf( kept ) );
+			return;
+		}
+
+		if (!kept.contains( dreadful )){
+			fail( "the run's worst episode was not kept, so the catalog carries one end of the range and"
+					+ " not the other. Kept: " + seedsOf( kept ) );
+			return;
+		}
+
+		if (kept.contains( ordinary )){
+			fail( "a worse episode for the same seed was kept alongside a better one, so the per-seed rule"
+					+ " is not being applied. Kept: " + seedsOf( kept ) );
+			return;
+		}
+
+		//the worst must not be double-written when it already is some seed's best
+		ReplayKeeper onlyOne = new ReplayKeeper();
+		onlyOne.consider( dreadful );
+		onlyOne.consider( alsoOrdinary );
+		if (onlyOne.keep().size() != 2){
+			fail( "a run where the worst episode is also a seed's best kept "
+					+ onlyOne.keep().size() + " files, so the worst is written twice." );
+		}
+	}
+
+	private static Replay replay( String seed, String hero, int depth, double score ){
+		Replay replay = new Replay();
+		replay.seedText = seed;
+		replay.heroClass = hero;
+		replay.depth = depth;
+		replay.score = score;
+		return replay;
+	}
+
+	private static List< String > seedsOf( List< Replay > replays ){
+		List< String > names = new ArrayList<>();
+		for (Replay replay : replays) names.add( replay.seedText + "@" + (long) replay.score );
+		return names;
 	}
 
 	/**

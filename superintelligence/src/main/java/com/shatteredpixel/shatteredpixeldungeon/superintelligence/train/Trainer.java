@@ -78,8 +78,20 @@ public class Trainer {
 	 */
 	private final TrainerWorkers pool;
 
-	// per-seed best run, which is what gets saved as a replay
-	private final Map<String, Replay> bestPerSeed = new HashMap<>();
+	// which of a run's episodes get written out: best per seed, plus the run's worst
+	private final ReplayKeeper keeper = new ReplayKeeper();
+
+	/**
+	 * Send one episode's replay in every {@code recordEvery} jobs.
+	 *
+	 * <p>One, so every episode the worker plays is available to {@link ReplayKeeper}. The worker builds
+	 * the whole replay regardless - {@code Worker.runEpisode} records every step and calls
+	 * {@code recorder.end} - and this only decides whether the frame carries it, so a value above 1
+	 * saves pipe traffic and nothing else. It used to be fixed at 3, which is a blind sample: the run
+	 * whose one floor-2 episode scored -1,276 against a run-best of -2,778 did not have that episode in
+	 * the catalog at all.
+	 */
+	private final int recordEvery;
 
 	/** Epoch of the difficulty schedule, exposed so the logs can show progress. */
 	private int epoch = 0;
@@ -183,7 +195,7 @@ public class Trainer {
 
 	public Trainer( EnvConfig config, long seed, File workDir ){
 		this( config, new PpoHyperparameters(), seed, workDir,
-				new File( replayDirDefault(), "trainer-replays" ), null, "" );
+				new File( replayDirDefault(), "trainer-replays" ), null, "", 1 );
 	}
 
 	/**
@@ -193,9 +205,10 @@ public class Trainer {
 	 * @param replayDir where recordings go, or null for {@code <workDir>/replays}
 	 * @param traceWorldPath where workers write a recording-side world trace, or null for none
 	 * @param replayGroup id the run's recordings are filed and listed under, or empty for none
+	 * @param recordEvery send one episode's replay in every N jobs; 1 sends every episode
 	 */
 	public Trainer( EnvConfig config, PpoHyperparameters hyper, long seed, File workDir,
-			File replayDir, String traceWorldPath, String replayGroup ){
+			File replayDir, String traceWorldPath, String replayGroup, int recordEvery ){
 		this.config = config;
 		this.rng = new Random( seed );
 		this.rngSeed = seed;
@@ -204,6 +217,7 @@ public class Trainer {
 		this.traceWorldPath = traceWorldPath;
 		this.replayDirOverride = replayDir;
 		this.replayGroup = replayGroup == null ? "" : replayGroup;
+		this.recordEvery = Math.max( 1, recordEvery );
 		this.ppo = new PPO( config, rng );
 		this.pool = new TrainerWorkers( config, ppo );
 		learning( hyper );
@@ -382,7 +396,7 @@ public class Trainer {
 		}
 
 Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
-				options.replayDir, options.traceWorld, options.replayGroup );
+				options.replayDir, options.traceWorld, options.replayGroup, options.recordEvery );
 
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
@@ -695,8 +709,12 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 		for (WorkerHandle worker : pool.workers()){
 			for (int i = 0; i < workerCount; i++){
-				//every third seed is one worth keeping a replay of
-				boolean wantReplay = (i % 3 == 0);
+				//every episode, unless told otherwise. This was every third, and that made "best per
+				//seed" mean best of the one in three that happened to be sent - so a run whose one floor-2
+				//episode scored four times anything else it did simply did not have it in the catalog.
+				//The worker builds the whole replay either way and only skips the transmission, so the
+				//sample paid the entire recording cost and saved nothing but the bytes.
+				boolean wantReplay = (i % recordEvery) == 0;
 				String seed = seeds.next();
 				HeroClass heroClass = HeroClass.values()[ rng.nextInt( HeroClass.values().length ) ];
 				jobs.add( pool.job( worker, seed, heroClass, wantReplay ));
@@ -866,14 +884,9 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		return 1f;
 	}
 
-	/** Keeps the best run per seed, which is what docs.md asks to be able to replay. */
+	/** Offers an episode to the keeper: the best per seed, plus the run's single worst. */
 	private void keepBest( Episode episode ){
-		if (episode.replay == null) return;
-
-		Replay existing = bestPerSeed.get( episode.replay.seedText );
-		if (existing == null || episode.replay.score > existing.score){
-			bestPerSeed.put( episode.replay.seedText, episode.replay );
-		}
+		keeper.consider( episode.replay );
 	}
 
 private void saveBestReplays(){
@@ -892,8 +905,7 @@ private void saveBestReplays(){
 		replayDirBase().mkdirs();
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIndex.record( replayDirBase() );
 
-		for (Map.Entry<String, Replay> entry : bestPerSeed.entrySet()){
-			Replay replay = entry.getValue();
+		for (Replay replay : keeper.keep()){
 			replay.generation = epoch;
 			//Stamped here rather than sent down the worker pipe, because the group is a property of the
 			//run rather than of any episode - the worker never learns it. Same shape as the generation
@@ -906,20 +918,21 @@ private void saveBestReplays(){
 			//held only the newest run, and the earlier recordings were gone with nothing saying so. The
 			//cost is filenames like `MFS-CDV-GCN-r2.dat`: an unreadable suffix on a file nobody types by
 			//hand, against silently losing the recording a run was pointed at.
-			File file = uniqueFile( dir, entry.getKey() );
+			File file = uniqueFile( dir, replay.seedText );
 			try {
 				ReplayIO.write( replay, file );
 				saved++;
 			} catch (IOException e){
 				System.err.println( "[WARN] could not save replay for seed "
-						+ entry.getKey() + ": " + e.getMessage() );
+						+ replay.seedText + ": " + e.getMessage() );
 			}
 		}
 
 		System.out.println();
 		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "   wrote " + saved
-				+ " best-per-seed replays to " + dir.getPath()
-				+ ( replayGroup.isEmpty() ? "" : "  (group " + replayGroup + ")" ));
+				+ " replays from " + keeper.considered() + " episodes (best per seed, plus the run's"
+				+ " worst) to " + dir.getPath()
+				+ ( replayGroup.isEmpty() ? "" : "  (group " + replayGroup + ")" ) );
 	}
 
 	/**

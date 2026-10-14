@@ -114,6 +114,17 @@ public class TrainOptions {
 	 */
 	public String replayGroup = "";
 
+	/**
+	 * {@code --record-every}: send one episode's replay in every N jobs.
+	 *
+	 * <p>One, so every episode reaches {@link ReplayKeeper} and "best per seed" means what it says. The
+	 * worker builds the whole replay regardless and this only decides whether the frame carries it, so
+	 * a value above 1 saves pipe traffic and nothing else. Fixed at 3 until a 15-generation run's one
+	 * floor-2 episode - scored -1,276 against a run-best of -2,778 - turned out not to be in the catalog,
+	 * because it was one of the two thirds nobody sent.
+	 */
+	public int recordEvery = 1;
+
 	/** A group id this module is willing to turn into a directory name and a section heading. Empty is one. */
 	public static boolean validGroup( String group ){
 		if (group == null || group.isEmpty()) return true;
@@ -266,6 +277,7 @@ public class TrainOptions {
 				case "--out":         o.workDir = new File( value( args, at )); i++; break;
 				case "--replay-dir":   o.replayDir = new File( value( args, at )); i++; break;
 				case "--replay-group": o.replayGroup = value( args, at ); i++; break;
+				case "--record-every": o.recordEvery = Integer.parseInt( value( args, at )); i++; break;
 				case "--stall-seconds":
 					//how long a worker may be silent before the run is failed as a protocol desync.
 					//A blocked pipe costs no CPU, so without this a stall is indistinguishable from a
@@ -300,6 +312,7 @@ public class TrainOptions {
 		o.workers = o.workers > 0 ? o.workers : defaultWorkerCount();
 		o.episodes = o.episodes > 0 ? o.episodes : o.workers;
 		if (o.checkpointEvery < 1) o.checkpointEvery = 1;
+		if (o.recordEvery < 1) o.recordEvery = 1;
 
 		//The sampling and batch fields above started as bare literals in three classes and are now read
 		//from the configuration. The clamps stay, because a flag that sets them to zero is still a

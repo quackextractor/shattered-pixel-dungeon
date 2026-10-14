@@ -39,11 +39,15 @@ committed there once are untracked, the 185 that earlier runs had scattered acro
 deleted, and every claim this file made about what that directory contains has been corrected below.
 See `issues.md` 15 and [`CHANGELOG.md`](CHANGELOG.md) 0.9.0.
 
-**A run's recordings are its own group.** `--replay-group <id>` puts a run's output in a subdirectory of
-`trainer-replays/`, stamps `group=<id>` into every header, and gives the catalogue a `GROUP <ID>` section
-of its own - so "what did this run do" is answered with that run and not with every run on the machine.
-`train.ps1 -Name` supplies the group, so the script does it without a flag to remember. Empty is no group,
-which is the default and what every recording written before groups existed is. See `CHANGELOG.md`.
+**A run's recordings are its own group, and it keeps every episode.** `--replay-group <id>` puts a run's
+output in a subdirectory of `trainer-replays/`, stamps `group=<id>` into every header, and gives the
+catalogue a `GROUP <ID>` section of its own - so "what did this run do" is answered with that run and not
+with every run on the machine. `train.ps1 -Name` supplies the group, so the script does it without a flag
+to remember. Empty is no group, which is the default and what every recording written before groups
+existed is. Separately, **`--record-every N` defaults to 1**: the trainer used to send one episode in
+three, which made "best per seed" mean best of whatever happened to be sent, and a run's single
+floor-2 episode was not in the catalogue because it was one of the two thirds nobody sent. A run also
+keeps its single **worst** episode alongside the best per seed. See `CHANGELOG.md`.
 
 **A run's weights, checkpoints and metrics go to `out/run/`**, which is `superintelligence/out/` - gitignored
 apart from a tracked `.gitkeep`, and *not* the system temp directory, which is emptied on a schedule nobody

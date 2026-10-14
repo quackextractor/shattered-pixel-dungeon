@@ -25,6 +25,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A run recorded one episode in three, so "best per seed" meant best of whatever happened to be sent.**
+  The trainer's own summary now reports it: a 15-generation run wrote **27 replays from 1200 episodes**
+  where it used to write 16 from the same 1200.
+
+  `Worker.runEpisode` builds the complete replay for **every** episode it plays - `recorder.begin`, a
+  `record` per step, `recorder.end` - and then discarded two of every three at `if (wantReplay)`. **The
+  sample paid the whole recording cost and saved only the transmission.** What it bought was a blind
+  selection: a run whose single floor-2 episode scored **-1,276 against a run-best of -2,778** did not
+  have that episode in the catalog at all, because that episode was one of the two thirds nobody sent.
+  `--record-every N` now decides the sampling, and it defaults to 1.
+
+  **`train.ReplayKeeper` replaces the inline selection** and keeps the run's single **worst** episode as
+  well. The worst because the catalog is a diagnostic and not a scoreboard: when every episode stalls,
+  the one worth watching is the one that stalled least. Per-seed it would double the listing for nothing,
+  since the catalog already collapses two files sharing a seed into one row.
+
+  `collectcheck` is **8 cases**. The new one asserts the best-scoring episode survives, the run's worst
+  survives, a worse episode for the same seed does **not** survive alongside a better one, a null replay
+  is not counted, and a worst that is already a seed's best is not written twice. Mutation-tested both
+  ways: dropping the worst, and inverting best-per-seed to lowest. Each fails it.
+
+  **The fixture caught its own author twice, and the second time is the useful part.** Scores in this
+  project are **negative and higher is better** - a floor-2 episode at -1,276 where ordinary ones sit
+  near -3,100 - so a fixture written with an "ordinary" episode at -3 makes that episode the winner and
+  the case fails with the message it exists to produce. Neither the keeper nor the trainer was wrong.
+  Anyone reading "best" in this scoring scheme will get it wrong.
+
+  **The specific episode this was built for cannot be shown fixed from the run it came from.** A second
+  15-generation run at the same seed reached no floor 2 at all, so the keeper is proven by its gate and
+  by 27-from-1200, and not by the episode that motivated it.
+
+- **`replay-batch.ps1` reported `total 0` over a directory full of recordings.** It filtered
+  `*.replay`, and the trainer writes `<seed>.dat` - so pointing it at `trainer-replays` returned
+  `total 0  clean 0  diverged 0  other 0`, which reads as a clean run of nothing. Both extensions now,
+  matching `ReplayCatalog`'s own rule, and an empty directory says so.
+
+- **`replay-batch.ps1 -Parallel N`.** One at a time by default; the ceiling is a new one, each playback
+  being its own JVM with its own GL context. **Measured, and it is a weaker guarantee than viewcheck's:**
+  at `-Parallel 10` over 16 recordings, two reported DIVERGED and **both played clean one at a time**,
+  both failures being `engine time is 2.0, recording says 89.0` - a starved frame, not a bad recording. A
+  batch run's counts are a smoke test that says which files to re-run one at a time, not a verdict.
+
 - **Every update thread shared one `Network`.** `ShardedUpdate.run` built its shards as
   `new Shard( ppo.network )` and `Shard` **stored** that reference rather than copying it, so all N
   threads ran `PPO.oneSample` on the master - sharing its parameters, its gradient accumulators, and every
@@ -322,6 +364,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gradle's. `issues.md` 24.
 
 ### Not done
+
+- **Two runs with the same seed disagreed, and generation 0 is where it shows.** `default-fresh-15`
+  and `default-fresh-15-all` - same seed 20261013, same profile, same 20 workers, neither resuming -
+  produced generation-0 mean scores of **-3,088.84 and -3,090.29**, and one reached depth 2 while the
+  other did not. Generation 0 is collected **before any update**, from a policy initialised from that
+  seed, so it cannot depend on the update path, the keeper, or anything in this release.
+
+  Two candidates, neither investigated: the generation report's mean is accumulated as workers finish,
+  so float addition order varies; and the parallel update's gradient reduction is documented as **not**
+  bit-reproducible (`parallelcheck` says so), which cannot explain generation 0 but would compound
+  after it. **1.45 on 80 values is larger than float32 summation noise should produce**, so the first
+  candidate is probably not the whole of it either.
+
+  This is not filed as an issue and not diagnosed. It is recorded because `docs.md` and `research.md`
+  are both built on locking the seed and comparing runs, and right now "run it again and compare" is not
+  a measurement this project can make.
+
+- **A correction to the speed claim above.** The "23s -> 11s per generation, 2.1x faster" figure is
+  **withdrawn**. A third run at identical configuration gave 13s per generation degrading to 23s by
+  generation 14, with worker cores falling from 19.3 to 7.3 as the machine filled up. The two
+  observations bracket the broken path's ~23s rather than beating it, and the speedup is unproven. The
+  only controlled A/B remains the 6-worker one in `issues.md` 25: 804 -> 908 turns/s, +13%.
 
 - **Every run in this project's history learned on a broken update path, and none of it has been
   re-measured.** The shared-`Network` fault above is fixed and gated, but every checkpoint on disk was
