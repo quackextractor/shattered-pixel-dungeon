@@ -80,20 +80,11 @@ private EnvConfig config;
 			config = new EnvConfig();
 		}
 
-		config.maxSlots = in.readInt();
-		config.gridWidth = in.readInt();
-		config.gridHeight = in.readInt();
-		config.turnLimitPerFloor = in.readInt();
-		config.turnLimitTotal = in.readInt();
-		config.depthReward = in.readFloat();
-		config.turnCost = in.readFloat();
-		config.deathPenalty = in.readFloat();
-		config.victoryReward = in.readFloat();
-config.stallLimit = in.readInt();
-		config.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
-				.RewardProfile.parse( in.readUTF() );
-
-		//The mirror of Trainer.writeParams. Empty when no trace was asked for.
+		//the whole configuration, from the one list in EnvConfig. This used to be a second hand-kept
+		//list of ten fields beside the one in Trainer, and the twenty they omitted were never sent -
+		//so this process silently kept its own defaults for freeStepBudget, damagePenalty, stallPenalty
+		//and seventeen others, whatever the trainer had been configured with.
+		config.readFrom( in );
 
 		//The advantages are computed here, so these have to come from the trainer rather than from
 		//this side's defaults. Previously gamma and lambda were PPO fields that both sides happened

@@ -1611,10 +1611,15 @@ public class RewardCheck {
 		//that ends the episode advances no time, because terminating is not a turn the hero spends -
 		//so this asserts the charge and the budget, and not a free-step count that would encode
 		//where the episode happened to stop.
-		if (o.turns <= config.freeStepBudget){
-			fail( "waiting " + o.turns + " times ended the episode at or before the free-step budget of "
-					+ config.freeStepBudget + ", so WAIT is still counted as a step that advances no"
-					+ " engine time - which is exactly what env.free_step_budget exists to bound." );
+		//The property is that WAIT is not charged as a free step, and it used to be asserted as a turn count
+		//- which only worked while free_step_budget was 40 and the position guard fired at 120 first.
+		//Raising the budget to 250 made that proxy fail while the property still held, which is what a
+		//proxy is for. It is now asserted directly: the episode must end on the POSITION guard, never
+		//on FREE_STEP. See StallCause and issues.md 29.
+		if (o.stallCause == com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause.FREE_STEP){
+			fail( "waiting " + o.turns + " times ended the episode on the FREE_STEP guard, so WAIT is still"
+					+ " counted as a step that advances no engine time - which is exactly what"
+					+ " env.free_step_budget exists to bound." );
 			return;
 		}
 
@@ -1945,6 +1950,9 @@ public class RewardCheck {
 		int deepest;
 		RewardModel.TerminateReason endReason = RewardModel.TerminateReason.OTHER;
 		boolean endedNaturally;
+		/** Which guard ended it, when it ended as STALLED. Lets a case name the guard, not infer it. */
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause stallCause =
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause.NONE;
 		String startMode = "?";
 
 		/** Refusals counted while the environment was in WORLD. See playInWorld. */
@@ -2035,6 +2043,7 @@ public class RewardCheck {
 		outcome.deepest = env.deepestDepth();
 		outcome.endReason = env.endReason();
 		outcome.endedNaturally = env.endedNaturally();
+		outcome.stallCause = env.stallCause();
 		outcome.ledger = env.ledger();
 		return outcome;
 	}

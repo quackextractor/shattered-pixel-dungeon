@@ -442,20 +442,12 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 	private void writeParams( DataOutputStream out ) throws IOException {
 		out.writeInt( Protocol.MSG_PARAMS );
-		out.writeInt( config.maxSlots );
-		out.writeInt( config.gridWidth );
-		out.writeInt( config.gridHeight );
-		out.writeInt( config.turnLimitPerFloor );
-		out.writeInt( config.turnLimitTotal );
-		out.writeFloat( config.depthReward );
-		out.writeFloat( config.turnCost );
-		out.writeFloat( config.deathPenalty );
-		out.writeFloat( config.victoryReward );
-		out.writeInt( config.stallLimit );
-
-		//A UTF rather than an enum ordinal, because a worker reading an ordinal has no way to say which
-		//profile it got - and this profile decides every episode's score. Matching where Worker reads it.
-		out.writeUTF( config.rewardProfile.key() );
+		//the whole configuration, from the one list in EnvConfig. This used to be a second hand-kept
+		//list of ten fields beside the one in Worker, and the twenty they omitted were dropped silently:
+		//the worker built its own EnvConfig and kept its own defaults, so a .env override of
+		//freeStepBudget or damagePenalty was applied to the trainer, reported as applied, and never
+		//reached the process that runs the episodes.
+		config.writeTo( out );
 
 		//The worker computes advantages, so gamma and lambda have to travel with the weights. They
 		//used to be PPO fields on each side with identical defaults - agreement by coincidence, and

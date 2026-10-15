@@ -58,7 +58,7 @@ import java.util.Properties;
  */
 public class ConfigCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 
 	private static final List<String> failures = new ArrayList<>();
 
@@ -86,6 +86,7 @@ public class ConfigCheck {
 		scratch.mkdirs();
 
 		checkTheBinderActuallyBinds();
+		checkEveryConfigFieldTravelsToAWorker();
 		checkTheShippedFileUsesOnlyKnownKeys();
 		checkTheShippedFileMatchesTheCompiledDefaults();
 		checkEveryKnownKeyIsReachable();
@@ -154,7 +155,124 @@ public class ConfigCheck {
 	 * unknown because the binder accepts it, and the operator has no way to find out short of noticing
 	 * that their learning rate never changed.
 	 */
-	private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
+	/**
+ * Every field of {@code EnvConfig} reaches a worker process, and the two lists cannot drift.
+ *
+ * <p>This is the check that was missing while twenty fields did not travel. {@code Trainer.writeParams}
+ * and {@code Worker.readParams} were two hand-kept lists, they agreed with each other, and both were
+ * tested only against their own counterpart - so nothing noticed that twenty of thirty fields were
+ * simply absent. The worker built its own {@code EnvConfig} and kept its own defaults, which meant a
+ * {@code .env} override of {@code freeStepBudget}, {@code damagePenalty} or {@code stallPenalty} was
+ * applied to the trainer, reported as applied, and had no effect on the process running the episodes.
+ *
+ * <p>Three assertions, because they fail for different reasons:
+ *
+ * <ul>
+ * <li>the wire round trip preserves every field - catches a field added to neither list, or to one;</li>
+ * <li>the set of fields {@code writeTo} writes is the set {@code copy()} copies - catches a field added
+ * to one of them and forgotten in the other, which is how the original twenty happened;</li>
+ * <li>the reflection-visible field count matches - catches a brand new field nobody routed anywhere.</li>
+ * </ul>
+ */
+private static void checkEveryConfigFieldTravelsToAWorker() throws IOException {
+	EnvConfig source = new EnvConfig();
+
+	//distinctive values, so a field silently not written shows up as "unchanged default" rather than
+	//passing because the default happened to equal itself
+	EnvConfig probe = new EnvConfig();
+	probe.maxSlots = 3;             probe.gridWidth = 4;           probe.gridHeight = 5;
+	probe.turnLimitPerFloor = 6;    probe.turnLimitTotal = 7;      probe.actorStepLimit = 8;
+	probe.stallLimit = 9;           probe.freeStepBudget = 10;     probe.maxViewDistance = 11;
+	probe.curriculumProgress = 0.25f;
+	probe.turnCost = 1.5f;          probe.depthReward = 2.5f;      probe.exploreReward = 3.5f;
+	probe.maxHpReward = 4.5f;       probe.talentReward = 5.5f;      probe.goldReward = 6.5f;
+	probe.damagePenalty = 7.5f;     probe.killReward = 8.5f;        probe.sneakAttackReward = 9.5f;
+	probe.freeStepCostFactor = 10.5f;
+	probe.deathPenalty = 11.5f;     probe.stallPenalty = 12.5f;     probe.turnLimitPenalty = 13.5f;
+	probe.victoryReward = 14.5f;
+	probe.honourVisionBuffs = false;
+	probe.mimicsVisibleOutOfFog = false;
+	probe.allowEquipping = false;
+	probe.allowTrading = false;
+	probe.allowAlchemy = false;
+	probe.persistSaves = true;
+	probe.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
+			.parse( "depth_only" );
+
+	java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+	probe.writeTo( new java.io.DataOutputStream( bytes ) );
+
+	EnvConfig got = new EnvConfig();
+	try {
+		got.readFrom( new java.io.DataInputStream( new java.io.ByteArrayInputStream( bytes.toByteArray() )));
+	} catch (java.io.EOFException e){
+		//readFrom wanted more values than writeTo wrote, so the two halves disagree about the shape of
+		//the stream. Reported rather than thrown: a gate that dies with a stack trace on a wiring
+		//mistake says nothing about which field.
+		fail( "writeTo wrote fewer values than readFrom reads, so a worker would desync mid-stream."
+				+ " The two halves of the config wire format have drifted." );
+		return;
+	}
+
+	//copy() is the authority on which fields exist. Every one of them has to survive the wire.
+	EnvConfig copied = probe.copy();
+	java.util.List< String > lost = new java.util.ArrayList<>();
+	for (String field : ENV_FIELDS){
+		Object want = fieldValue( copied, field );
+		Object have = fieldValue( got, field );
+		if (want == null || have == null){
+			lost.add( field + " (no such field)" );
+		} else if (!want.equals( have )){
+			lost.add( field + " " + have + " != " + want );
+		}
+	}
+	if (!lost.isEmpty()){
+		fail( lost.size() + " of " + ENV_FIELDS.size() + " EnvConfig fields did not survive the trip to a"
+				+ " worker: " + String.join( ", ", lost ));
+		return;
+	}
+
+	//and the two halves must agree on the count. readFrom has to want exactly as many bytes as writeTo
+	//produced: a field writeTo writes and readFrom does not read leaves bytes over, and one readFrom
+	//reads and writeTo does not write throws EOF. That catches a desync behaviourally, without reading
+	//the source - which is how the original twenty passed, because they were absent from both halves
+	//and a round trip over a self-consistent pair has nothing to complain about.
+	java.io.ByteArrayOutputStream sized = new java.io.ByteArrayOutputStream();
+	new EnvConfig().writeTo( new java.io.DataOutputStream( sized ));
+
+	boolean readShort = false;
+	try {
+		EnvConfig partial = new EnvConfig();
+		partial.readFrom( new java.io.DataInputStream(
+				new java.io.ByteArrayInputStream( sized.toByteArray(), 0, sized.size() - 1 )));
+	} catch (java.io.EOFException expected){
+		readShort = true;
+	}
+	if (!readShort){
+		fail( "readFrom consumed " + sized.size() + " bytes without wanting a "
+				+ (sized.size() + 1) + "th, so writeTo and readFrom do not read the same number of"
+				+ " values. A worker would desync mid-stream." );
+	}
+}
+
+private static final java.util.List< String > ENV_FIELDS = java.util.Arrays.asList(
+		"maxSlots", "gridWidth", "gridHeight", "turnLimitPerFloor", "turnLimitTotal", "actorStepLimit",
+		"stallLimit", "freeStepBudget", "maxViewDistance", "curriculumProgress", "turnCost",
+		"depthReward", "exploreReward", "maxHpReward", "talentReward", "goldReward", "damagePenalty",
+		"killReward", "sneakAttackReward", "freeStepCostFactor", "deathPenalty", "stallPenalty",
+		"turnLimitPenalty", "victoryReward", "honourVisionBuffs", "mimicsVisibleOutOfFog",
+		"allowEquipping", "allowTrading", "allowAlchemy", "persistSaves", "rewardProfile" );
+
+private static Object fieldValue( EnvConfig c, String name ){
+	try {
+		java.lang.reflect.Field f = EnvConfig.class.getField( name );
+		return f.get( c );
+	} catch (ReflectiveOperationException e){
+		return null;
+	}
+}
+
+private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		Path shipped = shippedFile();
 		Map<String, String> values = read( shipped );
 

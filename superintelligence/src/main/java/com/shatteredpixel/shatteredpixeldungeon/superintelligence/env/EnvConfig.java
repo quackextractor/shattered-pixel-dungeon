@@ -1,5 +1,9 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.env;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+
 /**
  * Every tunable the environment exposes, in one place.
  *
@@ -56,26 +60,48 @@ public class EnvConfig {
 	/**
 	 * Steps on one floor that may advance no engine time at all before the episode is called stalled.
 	 *
-	 * <p>A second stall guard, and it exists because the first one cannot see this. {@code stallLimit}
-	 * counts consecutive steps where the hero's cell and health are unchanged, so <b>one move resets
-	 * it</b> - which is exactly what a free-action loop does. Measured on a trainer recording,
-	 * {@code HRT-YYP-KGC}: 502 of 1215 steps advanced no engine time, 41% of the episode's whole cost,
-	 * almost all of it {@code OPEN_INVENTORY} followed by {@code CANCEL} out of {@code INVENTORY}, with a
-	 * real move between pairs. The position guard never reached a hundred.
+	 * <p>A second stall guard, and it exists because {@code stallLimit} counts consecutive steps where the
+	 * hero's cell and health are unchanged, so <b>one move resets it</b> - which is exactly what a
+	 * free-action loop does. Measured on a trainer recording, {@code HRT-YYP-KGC}: 502 of 1215 steps
+	 * advanced no engine time, 41% of the episode's whole cost, almost all of it {@code OPEN_INVENTORY}
+	 * followed by {@code CANCEL} out of {@code INVENTORY}, with a real move between pairs. The position
+	 * guard never reached a hundred.
 	 *
 	 * <p>A total on the floor rather than a streak, because a streak is cleared by the very move the loop
-	 * makes between its pairs. **40, not 120**, and the measurement that chose it is that 120 was binding:
-	 * four of ten recordings from the run that added it ended exactly on it. A dead-end episode then paid
-	 * 120 x 12 = 1,440 in per-step charges <em>before</em> the stall terminal, so the same behaviour was
-	 * charged twice and the per-step half drowned out the ordering this exists to express - a stall at
-	 * 1.5x a death rather than the one step above it. 40 allows about twenty honest equip/unequip cycles
-	 * on a floor, which is what a free action in the real game costs, and costs 480 before the terminal.
+	 * makes between its pairs.
 	 *
-	 * <p>Priced rather than prevented, like {@link #noProgressPenalty}: the actions are legal and a player
-	 * may do them, so what must not happen is unbounded numbers of them. Unlike the charge, this bounds
-	 * them, and the bound is the stall price - which is above the death price on purpose.
+	 * <p><b>250, and it was 40.</b> 40 was chosen as "about twenty honest equip/unequip cycles" and it was
+	 * wrong by a wide margin, because the budget is charged for far more than equipping: measured over
+	 * 4,828 steps in 40 uniform-policy episodes, about <b>570 advanced the clock - roughly 10%</b> of all
+	 * steps. {@code CANCEL} and {@code OPEN_INVENTORY} are free 100% of the time, {@code REST} 99.1%,
+	 * {@code USE} 88% (212 of its 401 free steps being the mandatory {@code WORLD}->{@code SLOT}
+	 * hand-off), {@code DROP} 50%. Moves are the only action that reliably advances time.
+	 *
+	 * <p>At 40 the arithmetic is fatal. A policy that opens its inventory once every ten turns spends its
+	 * whole budget by turn ~120 against {@code turnLimitPerFloor} of 1500, so the episode ended at
+	 * <b>8% of the turns it was granted</b> and floor 1's stairs were arithmetically out of reach. Across
+	 * 5,360 episodes {@code meanDepth} was 1.001: {@code depthReward} of +1800, the largest term in the
+	 * function, was paid in roughly five of them. See {@code issues.md} 27 and 29.
+	 *
+	 * <p>Measured after the change, 10 generations, same config and seed, only this value differing:
+	 *
+	 * <pre>
+	 *   budget 40    meanTurns ~122   stalled 98.9%   bestDepth&gt;=2 in  2 of 67 generations
+	 *   budget 250   meanTurns ~670   stalled 79.2%   bestDepth&gt;=2 in  8 of 10 generations
+	 * </pre>
+	 *
+	 * <p>8 of 10 is the regime {@code TODO.md` 1.15 recorded before this guard existed - 104 of 150 - so
+	 * this restores behaviour that was lost, rather than introducing a new one. The price is that
+	 * {@code meanScore} falls, because longer episodes accumulate more turn cost and more per-step free
+	 * charges; at 250 it sits near -3,890 against -3,115 at 40. That is a longer path to the same
+	 * penalties, and it is the trade the depth numbers are paying for.
+	 *
+	 * <p>Priced rather than prevented, as {@link #noProgressPenalty} is: the actions are legal and a
+	 * player may do them, so what must not happen is unbounded numbers of them. {@link #stallLimit} is
+	 * still behind it for the case that moves freely but achieves nothing, so raising this does not leave
+	 * the free-action loop unbounded.
 	 */
-	public int freeStepBudget = 40;
+	public int freeStepBudget = 250;
 
 	// --- vision ---
 
@@ -272,6 +298,91 @@ public class EnvConfig {
 
 	/** Set false to have every write to Gdx.files redirected into a scratch directory. */
 	public boolean persistSaves = false;
+
+	/**
+	 * Writes every field this class owns, for shipping the configuration to a worker process.
+	 *
+	 * <p>This exists because two hand-maintained lists - {@code Trainer.writeParams} and
+	 * {@code Worker.readParams} - were the only places the trainer and its workers agreed on what a
+	 * configuration is, and they agreed on ten fields out of thirty. The twenty they dropped were
+	 * dropped *silently*: the worker built its own {@code EnvConfig} and kept its own defaults, so a
+	 * {@code .env} override of {@code damagePenalty} or {@code freeStepBudget} was applied to the
+	 * trainer, reported as applied, and had no effect on the process that actually runs the episodes.
+	 *
+	 * <p>One list, here, read by both sides, is the fix that does not need remembering. Every field
+	 * {@link #copy()} copies is written, and {@code ConfigCheck} asserts the two are the same set.
+	 */
+	public void writeTo( DataOutputStream out ) throws IOException {
+		out.writeInt( maxSlots );
+		out.writeInt( gridWidth );
+		out.writeInt( gridHeight );
+		out.writeInt( turnLimitPerFloor );
+		out.writeInt( turnLimitTotal );
+		out.writeInt( actorStepLimit );
+		out.writeInt( stallLimit );
+		out.writeInt( freeStepBudget );
+				out.writeInt( maxViewDistance );
+		out.writeFloat( curriculumProgress );
+		out.writeFloat( turnCost );
+		out.writeFloat( depthReward );
+		out.writeFloat( exploreReward );
+		out.writeFloat( maxHpReward );
+		out.writeFloat( talentReward );
+		out.writeFloat( goldReward );
+		out.writeFloat( damagePenalty );
+		out.writeFloat( killReward );
+		out.writeFloat( sneakAttackReward );
+		out.writeFloat( freeStepCostFactor );
+		out.writeFloat( deathPenalty );
+		out.writeFloat( stallPenalty );
+		out.writeFloat( turnLimitPenalty );
+		out.writeFloat( victoryReward );
+		out.writeBoolean( honourVisionBuffs );
+		out.writeBoolean( mimicsVisibleOutOfFog );
+		out.writeBoolean( allowEquipping );
+		out.writeBoolean( allowTrading );
+		out.writeBoolean( allowAlchemy );
+		out.writeBoolean( persistSaves );
+		//A UTF rather than an ordinal: a worker reading an ordinal cannot say which profile it got, and
+		//that profile decides every episode's score.
+		out.writeUTF( rewardProfile.key() );
+	}
+
+	/** Reads every field {@link #writeTo} wrote. The mirror of it, and the only other list. */
+	public void readFrom( DataInputStream in ) throws IOException {
+		maxSlots = in.readInt();
+		gridWidth = in.readInt();
+		gridHeight = in.readInt();
+		turnLimitPerFloor = in.readInt();
+		turnLimitTotal = in.readInt();
+		actorStepLimit = in.readInt();
+		stallLimit = in.readInt();
+		freeStepBudget = in.readInt();
+		maxViewDistance = in.readInt();
+		curriculumProgress = in.readFloat();
+		turnCost = in.readFloat();
+		depthReward = in.readFloat();
+		exploreReward = in.readFloat();
+		maxHpReward = in.readFloat();
+		talentReward = in.readFloat();
+		goldReward = in.readFloat();
+		damagePenalty = in.readFloat();
+		killReward = in.readFloat();
+		sneakAttackReward = in.readFloat();
+		freeStepCostFactor = in.readFloat();
+		deathPenalty = in.readFloat();
+		stallPenalty = in.readFloat();
+		turnLimitPenalty = in.readFloat();
+		victoryReward = in.readFloat();
+		honourVisionBuffs = in.readBoolean();
+		mimicsVisibleOutOfFog = in.readBoolean();
+		allowEquipping = in.readBoolean();
+		allowTrading = in.readBoolean();
+		allowAlchemy = in.readBoolean();
+		persistSaves = in.readBoolean();
+		rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
+				.parse( in.readUTF() );
+	}
 
 	public EnvConfig copy(){
 		EnvConfig c = new EnvConfig();
