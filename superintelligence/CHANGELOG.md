@@ -3739,3 +3739,51 @@ It claimed the value head is `tanh`-bounded and printed "the head's maximum reac
 builds it with `tanh = false`. Its synthetic targets were stale by an order of magnitude (`deathPenalty`
 is 2500, `victoryReward` 60000), which is why it read as adequate while the real problem is scale: mean
 of target^2 is 2.4e8, so rare endings own `valueLoss`.
+
+### Closed: twenty of thirty config fields never reached the worker processes
+
+`Trainer.writeParams` and `Worker.readParams` were two hand-kept lists of the same ten fields. They agreed
+with each other, so nothing looked wrong, and each was tested only against its counterpart. The worker
+built its own `EnvConfig` and kept its own defaults - so every `SPD_*` override was applied to the trainer,
+reported as applied, and did nothing to the process running the episodes. Missing: `freeStepBudget`,
+`damagePenalty`, `killReward`, `exploreReward`, `goldReward`, `maxHpReward`, `talentReward`,
+`sneakAttackReward`, `stallPenalty`, `turnLimitPenalty`, `freeStepCostFactor` and ten more.
+
+Found by an experiment that failed in a way worth reading: `SPD_ENV_FREE_STEP_BUDGET=1` should end every
+episode on its first free step, and left `meanTurns` at 110-152. That was not a wrong value, it was a knob
+doing nothing. Same override now gives `meanTurns` 2.1.
+
+`EnvConfig` owns the wire format now - `writeTo` and `readFrom` - so there is one list and two callers
+instead of two lists that must agree. `ConfigCheck` asserts all 31 fields survive the round trip and that
+`readFrom` wants exactly as many bytes as `writeTo` produced; mutation-tested twice by dropping a field
+from `writeTo`. See `issues.md` 30.
+
+### Fixed: the free-step budget was ending every episode at 8% of its granted turns
+
+`env.free_step_budget` 40 -> 250. Only about 10% of steps advance the engine clock under a uniform policy,
+so 40 was spent by turn ~120 against `turnLimitPerFloor` of 1500, and floor 1's stairs were arithmetically
+out of reach. Across 5,360 episodes `meanDepth` was 1.001 - `depthReward` of +1800 paid in about five of
+them.
+
+Same config, same seed, only this value differing, 10 generations:
+
+| | meanTurns | stalled | bestDepth >= 2 |
+| --- | --- | --- | --- |
+| budget 40 | ~122 | 98.9% | 2 of 67 generations |
+| budget 250 | ~670 | 79.2% | **8 of 10 generations** |
+
+8 of 10 is the regime `TODO.md` 1.15 recorded before this guard existed (104 of 150), so this restores
+behaviour that was lost rather than introducing a new one. The price is `meanScore` at -3,890 against
+-3,115: longer episodes accumulate more turn cost and more free-step charges.
+
+`RewardCheck`'s WAIT case asserted that property as a turn count, a proxy that only held while the budget
+was 40. Raising it broke the proxy while the property still held - which is what a proxy is for. It now
+asserts directly, via `StallCause`, that a pure-WAIT episode ends on the POSITION guard and never on
+FREE_STEP.
+
+### Fixed: the policy push no longer depends on a single 14MB pipe write succeeding
+
+`pushWeights` wrote a whole policy to each worker in one `write`, which is what died at generation 22. Now
+32KB per write with a bounded retry. **Not gated**, and `issues.md` 28 records why: a case that spawns a
+real worker from a gate's JVM gets a worker that dies in `HeadlessServices.install`, so the state cannot be
+arranged on demand. A robustness argument, not a verification.

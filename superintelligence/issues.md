@@ -1875,3 +1875,74 @@ busy worker is part-way through a generation - a state a gate cannot arrange on 
 That is the same conclusion this entry reached before the fix, and it was right: **the mechanism cannot be
 reproduced in a test at all.** What has changed is that the code no longer depends on a single oversized
 write succeeding. That is a robustness argument, not a verification, and it should not be read as one.
+
+## 30. Twenty of thirty EnvConfig fields never reached the worker processes - **CLOSED, gated**
+
+The most consequential bug found in this project, and it was invisible in the most literal way: it
+reported success.
+
+`Trainer.writeParams` and `Worker.readParams` were two hand-maintained lists of the same ten fields. They
+agreed with each other perfectly. Each was tested only against its counterpart. **The other twenty fields
+were simply never sent.**
+
+The worker then built its own `EnvConfig` and kept its own defaults:
+
+```java
+private void readParams() throws IOException {
+    if (config == null){
+        config = new EnvConfig();
+    }
+    config.maxSlots = in.readInt();
+    // ...ten fields...
+```
+
+So every `SPD_*` and `superintelligence.properties` override was applied to the trainer, printed as
+applied, and had **no effect on the process that runs the episodes**. The twenty:
+
+```
+actorStepLimit      allowAlchemy         allowEquipping      allowTrading
+curriculumProgress  damagePenalty        exploreReward       freeStepBudget
+freeStepCostFactor  goldReward           honourVisionBuffs   killReward
+maxHpReward         maxViewDistance      mimicsVisibleOutOfFog persistSaves
+sneakAttackReward   stallPenalty         talentReward        turnLimitPenalty
+```
+
+**Every reward term except four.** A `.env` that halved `damagePenalty` or set `killReward` would have
+been accepted, reported, and done nothing.
+
+### How it was found, and why the experiment could not run without fixing it
+
+The experiment this session set out to run was "raise the free-step budget and see whether descent
+appears". Setting `SPD_ENV_FREE_STEP_BUDGET=1` should have collapsed every episode to its first free step.
+It did not: `meanTurns` stayed at **110-152**.
+
+That is not a wrong value. That is a knob doing nothing. After the fix, the same override gives
+**`meanTurns` 2.1**, which is what one free step looks like.
+
+**The experiment that would have shown 40 was fatal could not be run at all until this was fixed**,
+because the trainer was never able to tell a worker what budget to use. That is why the budget change and
+the propagation fix are one commit.
+
+### The fix, and why it cannot recur
+
+`EnvConfig` now owns the wire format:
+
+- `writeTo(DataOutputStream)` - every field `copy()` copies
+- `readFrom(DataInputStream)` - the mirror
+
+`Trainer.writeParams` and `Worker.readParams` are each three lines that call them. **One list, two callers,
+no second copy to forget.**
+
+`ConfigCheck` gains `checkEveryConfigFieldTravelsToAWorker`, which asserts three things because they fail
+differently: that a round trip preserves all 31 fields with distinctive values; that `readFrom` wants
+exactly as many bytes as `writeTo` produced, which catches a desync behaviourally rather than by reading
+source; and that the field set matches `copy()`. Mutation-tested twice by dropping `freeStepBudget` from
+`writeTo` - fails with *"the two halves of the config wire format have drifted"*.
+
+### What it was costing
+
+`free_step_budget` was 40 in the trainer and 40 in the worker **by coincidence** - the compiled default
+happened to equal the configured value. Every other reward knob had the same luck, or not.
+
+See `issues.md` 29 for what the budget does, and the `EnvConfig` javadoc for the measurement that moved it
+from 40 to 250.
