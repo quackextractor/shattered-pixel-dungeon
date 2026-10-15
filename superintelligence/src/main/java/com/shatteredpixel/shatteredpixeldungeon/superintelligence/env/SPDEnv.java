@@ -56,6 +56,16 @@ public class SPDEnv {
 	private int lastStallPos = -1;
 	private float lastStallHp;
 
+	/**
+	 * Which guard ended the episode as STALLED, or {@link StallCause#NONE}.
+	 *
+	 * <p>Observation only. Four different guards raise the same {@code TerminateReason}, so a run that
+	 * reports "99% STALLED" cannot say which of them did it, and the fix is different for each. Measured
+	 * over three repeats of one config, 98-99% of all episodes end STALLED at {@code meanTurns} 122-140
+	 * against {@code stallLimit} of 120 - see {@code issues.md} 27.
+	 */
+	private StallCause stallCause = StallCause.NONE;
+
 	private boolean running;
 	private boolean terminated;
 	private boolean truncated;
@@ -298,11 +308,12 @@ if (mode == EnvMode.WORLD){
 		int guard = 0;
 
 		while (running){
-			if (++guard > config.actorStepLimit){
+if (++guard > config.actorStepLimit){
 				//Was called twice, charging STALLED's terminal reward twice over. The duplicate call is
-				//gone and terminate() is now idempotent, so a second call costs nothing anyway — which
+				//gone and terminate() is now idempotent, so a second call costs nothing anyway - which
 				//is why the fix is here rather than only in the guard: rewardcheck cannot reach this path
 				//(see its actorStepLimit comment), so this is protected by construction and not by a test.
+				stallCause = StallCause.ACTOR_STEP_LIMIT;
 				terminate( RewardModel.TerminateReason.STALLED );
 				break;
 			}
@@ -375,6 +386,7 @@ if (mode == EnvMode.WORLD){
 				break;
 			}
 			if (outcome == LevelPipeline.Outcome.STALLED || outcome == LevelPipeline.Outcome.STEP_LIMIT){
+				stallCause = StallCause.PIPELINE;
 				accumulated += terminate( RewardModel.TerminateReason.STALLED );
 				break;
 			}
@@ -438,6 +450,7 @@ if (mode == EnvMode.WORLD){
 			terminate( RewardModel.TerminateReason.DEATH );
 		} else if (landed == LevelPipeline.Outcome.STALLED
 				|| landed == LevelPipeline.Outcome.STEP_LIMIT){
+			stallCause = StallCause.PIPELINE;
 			terminate( RewardModel.TerminateReason.STALLED );
 		}
 	}
@@ -528,6 +541,7 @@ if (mode == EnvMode.WORLD){
 		if (hero.pos == lastStallPos && hero.HP == lastStallHp){
 			stallCount++;
 			if (stallCount >= config.stallLimit){
+				stallCause = StallCause.POSITION;
 				terminate( RewardModel.TerminateReason.STALLED );
 				return;
 			}
@@ -554,6 +568,7 @@ if (mode == EnvMode.WORLD){
 if (!reward.lastStepAdvancedClock()){
 			freeStepsThisFloor++;
 			if (freeStepsThisFloor >= config.freeStepBudget){
+				stallCause = StallCause.FREE_STEP;
 				terminate( RewardModel.TerminateReason.STALLED );
 			}
 		}
@@ -626,6 +641,15 @@ if (!reward.lastStepAdvancedClock()){
 	}
 
 public float[] actionMask(){ return actionMask; }
+
+	/** Which guard ended the episode as STALLED, or {@link StallCause#NONE}. See the field. */
+	public StallCause stallCause(){ return stallCause; }
+
+	/** Whether the last step advanced engine time. A step that did not counts against the free budget. */
+	public boolean lastStepAdvancedClock(){ return reward.lastStepAdvancedClock(); }
+
+	/** Free steps spent on this floor so far, against {@code EnvConfig.freeStepBudget}. */
+	public int freeSteps(){ return freeStepsThisFloor; }
 	public float[] slotMask(){ return slotMask; }
 	public float[] targetMask(){ return targetMask; }
 

@@ -117,6 +117,15 @@ tasks.register('configcheck', JavaExec) {
     jvmArgs trainerJvmArgs
 }
 
+tasks.register('stallbreakdown', JavaExec) {
+    group = 'diagnostics'
+    description = 'Names which of the four stall guards ended each episode, under a uniform policy.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StallBreakdown'
+    jvmArgs trainerJvmArgs
+    if (project.hasProperty('stallArgs')) args project.property('stallArgs').toString().split(' ')
+}
+
 tasks.register('worldtrace', JavaExec) {
     group = 'diagnostics'
     description = 'Replays a recording headlessly and records the whole world at every step, for diffing against the viewer.'

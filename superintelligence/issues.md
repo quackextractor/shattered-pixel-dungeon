@@ -1612,3 +1612,80 @@ reproduce is worse than the crash. What is needed first is a way to reproduce it
 **Workaround meanwhile:** segment long runs at 15-20 generations, which is where nothing has failed.
 
 Evidence: [`out/evidence/measure-30.log`](out/evidence/measure-30.log), [`out/evidence/measure-30.csv`](out/evidence/measure-30.csv).
+
+## 29. Which stall guard fires is 100% free-step budget, and the reward says stalling is cheaper than playing - **OPEN, and it is why nothing learns**
+
+`issues.md` 27 established that 98-99% of every episode ends STALLED and left which guard open. There are
+four, and this names them.
+
+Added `StallCause` and `SPDEnv.stallCause()`, set at each of the four sites, plus
+`gradle :superintelligence:stallbreakdown` which runs episodes under a uniform policy and reports the
+breakdown. 40 episodes, `HeroClass.WARRIOR`, fixed seed per episode:
+
+```
+guards, at the default thresholds:
+  stallLimit 120   freeStepBudget 40   actorStepLimit 20000   turnLimitPerFloor 1500
+
+40 episodes, uniform policy, fixed seed per episode
+  meanTurns 120.575   deepestDepth 1   STALLED 40
+
+which guard ended them:
+  ACTOR_STEP_LIMIT      0    0.0%
+  PIPELINE              0    0.0%
+  POSITION              0    0.0%
+  FREE_STEP            40  100.0%
+
+steps that advanced no engine time, by action (of all steps taken):
+  DROP             280 free /   560 used  = 50.0%
+  CANCEL           332 free /   332 used  = 100.0%
+  INTERACT           3 free /   173 used  =   1.7%
+  USE              401 free /   456 used  =  87.9%
+  MOVE_S             2 free /   272 used  =   0.7%
+  MOVE_E             1 free /   246 used  =   0.4%
+  OPEN_INVENTORY   320 free /   320 used  = 100.0%
+  REST             323 free /   326 used  =  99.1%
+```
+
+**It is the free-step budget, 100% of the time** - not the `stallLimit` position guard, which the
+`meanTurns` of 122-140 sitting next to `stallLimit = 120` had suggested. The two numbers coinciding is
+what made that reading plausible and it is wrong.
+
+**Half the action set is free.** `CANCEL`, `OPEN_INVENTORY` and `REST` are free essentially always, `USE`
+88% of the time, `DROP` half. Moves are the only thing that reliably advances the clock. A uniform policy
+spends 40 of them by turn ~120 against a floor budget of 1500 turns, so **the episode ends at 12% of the
+time it was given**.
+
+### The chain, and where it stops
+
+The reward is not the problem and was checked first because it looked like it. `stallPenalty = 3000` is
+already above `deathPenalty = 2500`, deliberately, per `issues.md` 9. Stalling is priced *worse* than
+dying.
+
+It does not reach the policy. **`STALLED` is a truncation, not a terminal** - `GaeCheck` asserts it, and
+that is the design this project chose deliberately. So the -3000 goes into the reward and the critic is
+then free to fit `V(s_T)` at whatever value absorbs it, leaving the terminal step's advantage near zero.
+The policy gradient never feels the ending. That is the same mechanism as the bootstrap question raised
+and retracted earlier in this session, but arrived at from measurement rather than from a fixed-point
+calculation: **the critic can absorb a charged terminal penalty on a truncated ending, and here almost
+every ending is truncated.**
+
+And the policy cannot learn its way out even in principle while the only signal is per-step: the
+`noProgressPenalty` is charged each time, but with `deathPenalty = 2500` and `depthReward = 1800`
+already in the return, forty small charges do not compete with them. Which is why the three repeats in
+`issues.md` 27 stall 99% at **every** generation including generation 0, and why `bestDepth` never moved.
+
+### What is not settled
+
+- **Why `USE` is free 88% of the time** and `REST` 99.1%. `REST` was already known to advance no engine
+  time and was deferred when it broke `checkRestIsNotAOneWayDoor`; this puts a number on it. `USE` being
+  mostly a no-op is new and unexplained - it suggests `USE` on a slot the action mask allows frequently
+  has nothing to do.
+- **Whether the fix is the guard, the truncation, or the mask.** Four candidates, all behaviour changes,
+  none attempted here: raise or repurpose `freeStepBudget`; stop bootstrapping `STALLED` (which reverts
+  `GaeCheck`); exclude `REST` from the free-step budget on the grounds that resting is not free in the
+  game; or stop `USE` on an empty slot from counting. Each changes what the numbers mean and none of them
+  can be picked from this evidence alone.
+
+The instrumentation and the diagnostic have **no gate**. A gate-shaped version would assert that no
+non-menu action is free more than some fraction of the time, which needs episodes long enough to be
+representative and is not written yet.
