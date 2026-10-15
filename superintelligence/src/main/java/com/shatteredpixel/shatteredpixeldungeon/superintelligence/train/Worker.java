@@ -80,16 +80,16 @@ private EnvConfig config;
 			config = new EnvConfig();
 		}
 
-		//the whole configuration, from the one list in EnvConfig. This used to be a second hand-kept
-		//list of ten fields beside the one in Trainer, and the twenty they omitted were never sent -
-		//so this process silently kept its own defaults for freeStepBudget, damagePenalty, stallPenalty
-		//and seventeen others, whatever the trainer had been configured with.
+
+
+
+
 		config.readFrom( in );
 
-		//The advantages are computed here, so these have to come from the trainer rather than from
-		//this side's defaults. Previously gamma and lambda were PPO fields that both sides happened
-		//to agree on - identical defaults, which is coincidence rather than configuration, and it
-		//would drift the first time either side was tuned.
+
+
+
+
 		float gamma = in.readFloat();
 		float lambda = in.readFloat();
 
@@ -104,9 +104,9 @@ private EnvConfig config;
 
 		network = new Network( config, policyRng );
 
-		//a separate stream for sampling, so that changing the sample rate does not change which
-		//actions a run takes. Otherwise every worker would behave differently at a different rate and
-		//no two sample rates could be compared
+
+
+
 		collector = new EpisodeCollector( config, network, policyRng, new Random( policyRng.nextLong() ),
 				gamma, lambda, sampleRate, maxSampledPerEpisode );
 		if (traceWorld != null && !traceWorld.isEmpty()) collector.trace( traceWorld );
@@ -125,18 +125,18 @@ private EnvConfig config;
 	 * at the end is the summary only; the transitions follow in their own message.
 	 */
 	private void runEpisode( String seed, HeroClass heroClass, boolean wantReplay ) throws IOException {
-		//started after the reset so the CPU figure is the episode and not level generation
+
 		ResourceStats.Interval work = ResourceStats.start();
 
-		//The collector plays the episode, so the recorder is told about each step as it happens
-		//rather than driving it. The seed arrives through onEpisodeStart rather than being passed in
-		//here, because this side of the call only has the seed that was *requested* and an empty one
-		//means the game drew another - recording that request would produce a file no verify could
-		//reproduce, since verify would reset onto a fresh draw.
+
+
+
+
+
 		collector.listener( new EpisodeCollector.Listener() {
 			@Override public void onEpisodeStart( String seedText, String hero ){
-				//the config too, so the header says how wide the slot head was - a recorded
-				//slot index means nothing without it
+
+
 				recorder.begin( seedText, hero, 0, config.turnLimitPerFloor, config );
 			}
 
@@ -171,9 +171,9 @@ private EnvConfig config;
 
 		out.writeInt( Protocol.MSG_EPISODE );
 
-		//written through the shared codec rather than field by field here, because the trainer reads
-		//it with the mirror method. Two lists of the same seven fields is two chances to disagree, and
-		//a disagreement here reads a plausible number rather than failing.
+
+
+
 		Episode summary = new Episode();
 		summary.score = env.ledger().total();
 		summary.depth = env.deepestDepth();
@@ -181,33 +181,33 @@ private EnvConfig config;
 		summary.endedNaturally = env.endedNaturally();
 		summary.reason = env.endReason().name();
 
-		//Cumulative rather than per-episode. OS process CPU counters have roughly millisecond
-		//granularity, and an episode here is often only tens of milliseconds, so differencing the
-		//counter across each one lost most of the signal and under-reported the pool by about half.
-		//A monotonic total let the trainer difference between reports instead.
+
+
+
+
 		summary.workerCpuTotal = ResourceStats.processCpuSecondsTotal();
 		summary.workerHeapMb = work.to().heapUsedMb();
 
 		Episode.write( out, summary );
 
-//The replay keeps its place on this frame for now. It rides on the summary rather than the
-		//transition channel, which is where the plan wants it, and at one replay every third episode
-		//it is a small share of a generation's traffic.
+
+
+
 		out.writeInt( replay.length() );
 
 		if (wantReplay){
 			writeReplay( replay );
 		}
 
-		//after the summary and any replay, so a trainer reading this frame in the documented order
-		//stays in step. The advantages in here were computed over the whole episode, so the trainer
-		//must not try to recompute them.
+
+
+
 		TransitionCodec.write( out, record.sampledTransitions() );
 
 		out.flush();
 
-		//back to the pool now that the frame is written. Holding them until the next episode would
-		//pin ~98MB per worker for no reason.
+
+
 		record.release();
 	}
 
@@ -240,7 +240,7 @@ private EnvConfig config;
 		ReplayCodec.write( out, replay );
 	}
 
-	// --------------------------------------------------------------------------- weights
+
 
 	/** Sends the current policy to the worker. */
 	public static void writeWeights( DataOutputStream out, Network net ) throws IOException {

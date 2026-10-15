@@ -38,7 +38,7 @@ public class Network {
 
 	private final int extraInputs;
 
-	// Adam settings, shared by every layer.
+
 	public float learningRate = 3e-4f;
 	public float beta1 = 0.9f;
 	public float beta2 = 0.999f;
@@ -49,7 +49,7 @@ public class Network {
 
 	private int adamStep = 0;
 
-	// scratch, all owned so the forward pass allocates nothing
+
 	private final Tensor convOut;
 	private final Tensor concat;
 	private final Tensor hidden;
@@ -88,8 +88,8 @@ public class Network {
 
 		this.extraInputs = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT + HeroEncoder.FEATURES;
 
-		//4x4 stride 2 halves a 48x48 grid, keeping the flattened size small enough that the
-		//trunk stays cheap while still resolving a one-tile doorway
+
+
 		this.conv = new Conv2D( config.spatialChannels(), config.gridWidth, 24, 4, 2, rng );
 
 		int convFeatures = conv.outputSize();
@@ -100,10 +100,10 @@ public class Network {
 		this.actionHead = new Dense( 128, Action.size(), rng, 1f );
 		this.slotHead = new Dense( 128, config.maxSlots, rng, 1f );
 		this.targetHead = new Dense( 128, ActionMapper.TARGET_COUNT, rng, 1f );
-		//Linear, unlike the other heads. It is a regression onto an unnormalised GAE return whose
-		//targets reach -100 for a death and +1000 for a victory, and a tanh output cannot express a
-		//number of that size: the critic saturates and its squared error floors out. Measured over 12
-		//generations, valueLoss sat at 2.97-8.11 and never trended down.
+
+
+
+
 		this.valueHead = new Dense( 128, 1, rng, 1f, false );
 
 		this.convOut = new Tensor( 1, convFeatures );
@@ -221,9 +221,9 @@ public class Network {
 
 trunk.forward( concat, hidden );
 
-		//the LSTM narrows 256 to 128, so its output goes in its own buffer. Writing it back into
-		//'hidden' would leave the tail of the trunk output in place and the heads would then be
-		//fed the wrong width.
+
+
+
 		memory.forward( hidden, memoryOut );
 
 		actionHead.forward( memoryOut, actionLogits );
@@ -237,7 +237,7 @@ trunk.forward( concat, hidden );
 	public float[] targetLogits(){ return targetLogits.data; }
 	public float value(){ return value.data[ 0 ]; }
 
-	// --------------------------------------------------------------------------- backward
+
 
 	/**
 	 * Backpropagates one timestep.
@@ -254,7 +254,7 @@ trunk.forward( concat, hidden );
 	public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
 			float dCritic, float[] dPrevState ){
 
-		//dHidden holds d/d(lstm output) and is 128 wide
+
 		Tensor dHiddenT = new Tensor( 1, memoryOut.cols );
 
 		if (dActionLogits != null) copyInto( dActionLogits, dAction );
@@ -266,33 +266,33 @@ trunk.forward( concat, hidden );
 
 		dValueOut.data[ 0 ] = dCritic;
 
-		//accumulate each head's gradient back into the LSTM output
+
 		dHidden.fill( 0f );
 		headGradient( actionHead, dAction );
 		headGradient( slotHead, dSlot );
 		headGradient( targetHead, dTarget );
 		headGradient( valueHead, dValueOut );
 
-		//copy only now, once the heads have finished accumulating into dHidden
+
 		copyInto( dHidden.data, dHiddenT );
 
 		dPrev.fill( 0f );
-		//dCell is the *incoming* cell-state gradient, exactly parallel to dPrev, and it has to be
-		//cleared for the same reason and in the same place.
-		//
-		//LSTM.backward reads dCPrev before it overwrites it - `dc = dCPrev[i] + dOut[i] * o * (...)` -
-		//and writes the result back only at the end of the call. So a dCell left over from the previous
-		//sample is read as if it were this sample's incoming gradient.
-		//
-		//Measured: processing four samples in sequence gave conv.gb[15] = 0.0892, 0.2075, 0.3372,
-		//0.4235, where the same four run individually give 0.0892, 0.0419, -0.1487, 0.0517. The
-		//accumulation was not additive, so the gradient depended on which sample had been processed
-		//before it - which made every sample's gradient a function of its neighbours, and made a
-		//correct parallel reduction impossible to distinguish from a broken one.
-		//
-		//It was invisible before the recurrent-state fix, because PPO replayed samples in a shuffled
-		//order anyway and nothing compared a gradient against the gradient the same sample produced
-		//alone.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		dCell.fill( 0f );
 
 		if (dPrevState != null){
@@ -335,7 +335,7 @@ trunk.forward( concat, hidden );
 		dHidden.addScaled( dHeadScratch, 1f );
 	}
 
-	// --------------------------------------------------------------------------- optimiser
+
 
 	public void zeroGrad(){
 		conv.zeroGrad();
@@ -391,7 +391,7 @@ trunk.forward( concat, hidden );
 				+ valueHead.W.size() + valueHead.b.size();
 	}
 
-	// --------------------------------------------------------------------------- checkpoints
+
 
 	/** One layer's weights, as a flat pair of tensors plus its shape. */
 	public static class Layer {

@@ -61,18 +61,18 @@ public class HeadlessServices {
 		Gdx.graphics   = HeadlessGraphics.install();
 		Gdx.net        = new SilentNet();
 
-		//Gdx.gl staying null is the framework's "there is no renderer" signal. TextureCache,
-		//Chrome and ShadowBox all branch on it, and layout code can still read a screen size from
-		//Gdx.graphics. See HeadlessGraphics for why both are needed.
+
+
+
 		Gdx.gl = null;
 		Gdx.gl20 = null;
 		Gdx.gl30 = null;
 		Gdx.gl31 = null;
 		Gdx.gl32 = null;
 
-		//Every platform launcher does this as its first act, and every file path in the game
-		//depends on it. AndroidLauncher/IOSLauncher use Local, DesktopLauncher picks based on
-		//whether it is running from a jar. Headless we want everything inside the worker dir.
+
+
+
 		com.watabou.utils.FileUtils.setDefaultFileProperties(
 				com.badlogic.gdx.Files.FileType.Local, "" );
 
@@ -127,7 +127,7 @@ public class HeadlessServices {
 		return files != null && files.savingEnabled;
 	}
 
-	// ---------------------------------------------------------------- Application
+
 
 	/**
 	 * {@code Game.runOnRenderThread} funnels through {@code Gdx.app.postRunnable}. In the real
@@ -177,7 +177,7 @@ public class HeadlessServices {
 		@Override public void removeLifecycleListener(LifecycleListener listener) { }
 	}
 
-	// ---------------------------------------------------------------- Files
+
 
 	/**
 	 * SPDSettings, GamesInProgress and Badges all persist through Gdx.files. We give each
@@ -199,10 +199,10 @@ public class HeadlessServices {
 
 		public HeadlessFiles( File root ){
 			this.root = root.getAbsoluteFile();
-			//noinspection ResultOfMethodCallIgnored
+
 			this.root.mkdirs();
 			this.sink = new File( root.getAbsoluteFile(), ".nosave" );
-			//noinspection ResultOfMethodCallIgnored
+
 			this.sink.mkdirs();
 		}
 
@@ -219,12 +219,12 @@ public class HeadlessServices {
 
 				case Local:
 				default:
-					//Gdx.files.internal() is used for BOTH assets and saves (see
-					//TextureCache.getBitmap and FileUtils.bundleToFile), and both arrive as
-					//FileType.Local. They are told apart by name, which is unambiguous here:
-					//every save the game writes is a ".dat" bundle under games/, and every asset is a
-					//png/ogg/ttf/properties read from the jar. This mirrors what DesktopLauncher
-					//resolves when it runs from a packaged jar.
+
+
+
+
+
+
 					if (isSave( path )){
 						File base = savingEnabled ? root : sink;
 						return new FileHandle( new File( base, path ).getAbsolutePath() );
@@ -380,7 +380,7 @@ public class HeadlessServices {
 		private void putRaw( String key, String value ){ synchronized (store){ store.put( key, value ); } }
 	}
 
-	// ---------------------------------------------------------------- Audio
+
 
 	/**
 	 * Sample.INSTANCE.play() is called from deep inside combat, pickup and trap code and would
@@ -434,7 +434,7 @@ public class HeadlessServices {
 		@Override public void setOnCompletionListener(OnCompletionListener listener) { }
 	}
 
-	// ---------------------------------------------------------------- Net
+
 
 	public static class SilentNet implements Net {
 		@Override public void sendHttpRequest(HttpRequest request, HttpResponseListener responseListener) { }

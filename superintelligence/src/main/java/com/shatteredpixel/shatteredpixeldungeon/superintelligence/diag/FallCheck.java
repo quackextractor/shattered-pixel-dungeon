@@ -77,7 +77,7 @@ public class FallCheck {
 		}
 	}
 
-	// --------------------------------------------------------------------------- fixtures
+
 
 	private static SPDEnv env(){
 		EnvConfig config = new EnvConfig();
@@ -124,7 +124,7 @@ public class FallCheck {
 		return true;
 	}
 
-	// --------------------------------------------------------------------------- checks
+
 
 	/**
 	 * A fall is a floor.
@@ -265,7 +265,7 @@ public class FallCheck {
 			return;
 		}
 
-		//and the leftover anyway, staged, because a reset has to drop one from any source
+
 		InterlevelScene.mode = InterlevelScene.Mode.FALL;
 		env.reset( SEEDS[1], HeroClass.WARRIOR );
 
@@ -284,9 +284,9 @@ public class FallCheck {
 
 		Dungeon.hero.pos = exit.cell();
 		boolean accepted = Dungeon.level.activateTransition( Dungeon.hero, exit );
-		//the cell a descent lands the hero on, which handleTransition resolves through destType before
-		//the floor is built. Captured here rather than recomputed afterwards because getTransition is
-		//asked of the *new* level, which does not exist yet.
+
+
+
 		int destType = InterlevelScene.curTransition.destType.ordinal();
 		Dungeon.hero.ready = false;
 		env.step( Action.WAIT, 0 );
@@ -380,7 +380,7 @@ public class FallCheck {
 			}
 
 			if (WindowBridge.open()){
-				//answer it the way an agent would, then require the environment to still be playable
+
 				WindowBridge.selectOption( 0 );
 				env.step( Action.WAIT, 0 );
 				if (!env.running()){
@@ -443,7 +443,7 @@ public class FallCheck {
 			return;
 		}
 
-		//churn: other runs in between, which is what a worker does between two episodes
+
 		SPDEnv churn = new SPDEnv( config, HeadlessGame.install() );
 		for (String other : SEEDS){
 			if (!other.equals( seed )) churn.reset( other, HeroClass.WARRIOR );
@@ -511,11 +511,11 @@ public class FallCheck {
 			env.step( into, 0 );
 
 			if (Dungeon.hero.pos != pit || !Dungeon.hero.flying){
-				//he did not end up flying over the chasm, so this seed cannot test the case
+
 				continue;
 			}
 
-			//the expiry, as Levitation.detach begins: flying cleared, then the buff detached
+
 			Levitation lev = Dungeon.hero.buff( Levitation.class );
 			lev.detach();
 
@@ -570,17 +570,17 @@ public class FallCheck {
 		}
 		env.step( mv == null ? Action.WAIT : mv, 0 );
 
-//Back onto the chasm, unless he fell, died, or left it for a reason of its own.
-		//
-		//Through Char.move rather than by writing Dungeon.hero.pos. Assigning pos moves the hero without
-		//moving anything that tracks him — a mob whose sprite was linked to the old cell keeps pointing
-		//at it, and Mob.act dereferences that sprite, so an earlier version of this fixture died on a
-		//NullPointerException inside Rat.act and said nothing about the chasm. handleCell is not usable
-		//either: it resolves a target into an action and a chasm is not passable.
-		//
-		//travelling=false because the fixture is seating him, not walking him there. The game reaches
-		//this state the same way, through Hero.getCloser, which allows a flying hero onto a pit only
-		//while Levitation.detachesWithinDelay is false.
+
+
+
+
+
+
+
+
+
+
+
 		if (!env.running() || Dungeon.hero == null || !Dungeon.hero.isAlive()) return;
 		if (Dungeon.depth != 1 || !Dungeon.hero.flying) return;
 		if (Dungeon.hero.pos == pit) return;

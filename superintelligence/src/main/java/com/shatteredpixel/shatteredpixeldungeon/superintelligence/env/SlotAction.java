@@ -66,12 +66,12 @@ public static void clearPendingUseItem(){
 	 *         {@link EnvMode#TARGETING}
 	 */
 public static boolean use( Hero hero, Item item, boolean allowEquipping ){
-		//Weapon extends EquipableItem, so a missile weapon is equipable too, and checking
-		//equipability first equipped a throwing stone instead of throwing it. usesTargeting is what
-		//distinguishes the two: a missile is thrown or cast, everything else equipable is equipped.
-		//Getting this backwards also explained a spurious aim step - the old code returned
-		//toggleEquip's "equipped" boolean, which the env read as "needs an aim", so every weapon
-		//change invented a TARGETING step while genuinely thrown items never reached one.
+
+
+
+
+
+
 		boolean equippable = allowEquipping && item instanceof EquipableItem;
 
 		if (equippable && !item.usesTargeting){
@@ -81,15 +81,15 @@ public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 
 		String action = resolveAction( hero, item );
 		if (action == null){
-			//Still spend the turn. Bailing out without releasing the hero left it permanently
-			//mid-action, and the pipeline never saw it become ready again, so the episode ended as
-			//STALLED rather than merely wasting the turn.
+
+
+
 			if (equippable) toggleEquip( hero, (EquipableItem) item );
 			else hero.next();
 			return false;
 		}
 
-		//clear any stale aim request so a fresh one is unambiguous
+
 		GameScene.clearPendingCellListener();
 
 		item.setCurrent( hero );
@@ -102,8 +102,8 @@ public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 
 		hero.next();
 
-		//False, not true: the item was consumed and the turn is over, so there is nothing to aim.
-		//Returning true here sent the env into TARGETING after every potion and every pickup.
+
+
 		return false;
 	}
 
@@ -132,10 +132,10 @@ public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 			changed = item.doEquip( hero );
 		}
 
-		//The turn is spent either way, so the hero always has to be released. Returning early on a
-		//refused equip skipped hero.next(), which left the hero permanently mid-action: the
-		//pipeline never saw the hero become ready again, so every episode that touched a
-		//curse-limited or over-strength item ended as STALLED within a dozen turns.
+
+
+
+
 		hero.next();
 
 		return changed;

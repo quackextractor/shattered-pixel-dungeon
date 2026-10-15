@@ -56,7 +56,7 @@ final class ShardedUpdate {
 		this.ppo = ppo;
 	}
 
-	// --------------------------------------------------------------------------- pool
+
 
 	/**
 	 * Resolves the thread count and creates or tears down the pool to match.
@@ -81,7 +81,7 @@ final class ShardedUpdate {
 
 		if (pool == null){
 			pool = Executors.newFixedThreadPool( threadCount, r -> {
-				//daemon, so a pool left open cannot hold the JVM up after a run
+
 				Thread t = new Thread( r, "ppo-update" );
 				t.setDaemon( true );
 				return t;
@@ -112,7 +112,7 @@ final class ShardedUpdate {
 		return out;
 	}
 
-	// --------------------------------------------------------------------------- update
+
 
 	/**
 	 * Runs one minibatch across the pool and reduces the results into {@code network}.
@@ -123,7 +123,7 @@ final class ShardedUpdate {
 	PPO.Minibatch run( int from, int to ){
 		int count = to - from;
 
-		//one shard per thread, contiguous, so each thread's range is a slice and not a stride
+
 		int n = Math.min( ppo.threads, count );
 		if (n <= 1 || pool == null){
 			return null;
@@ -131,12 +131,12 @@ final class ShardedUpdate {
 
 		network().zeroGrad();
 
-		//A shard per thread, each owning a Network of its own. It used to be handed `ppo.network`,
-		//which made every thread the master: one Network's parameters, gradient accumulators and
-		//forward scratch shared by all of them, so each shard's clearGradients() wiped the others'
-		//partial sums and `slotLogits()` changed value between two reads inside Policy.probabilities.
-		//Measured, `issues.md` 25. Per-minibatch the parameters are copied in below, which is what this
-		//line was always meant to enable.
+
+
+
+
+
+
 		while (shards.size() < n) shards.add( new Shard( ppo.config, new Random( 1L + shards.size() )) );
 
 		float[] policy = new float[ n ];
@@ -145,10 +145,10 @@ final class ShardedUpdate {
 		float[] kl = new float[ n ];
 		float[] clipped = new float[ n ];
 
-		//The shards are created here, on this thread, before anything is dispatched. Creating them
-		//inside the tasks would race on the shared list - two threads both seeing size 1 and both
-		//appending at index 1, which is precisely the class of bug parallelcheck exists to catch, and
-		//would have been caught by it.
+
+
+
+
 		CountDownLatch ready = new CountDownLatch( n );
 		for (int s = 0; s < n; s++){
 			final int shard = s;
@@ -181,8 +181,8 @@ final class ShardedUpdate {
 			} );
 		}
 
-		//wait for every shard's arithmetic. The reduction below is the barrier's other half: it reads
-		//gradients the workers are still writing, so the join cannot be skipped.
+
+
 		await( ready );
 
 		PPO.Minibatch result = new PPO.Minibatch();

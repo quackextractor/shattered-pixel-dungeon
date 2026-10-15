@@ -150,9 +150,9 @@ public class EpisodeCollector {
 	 */
 	private final java.util.ArrayDeque<Tail> tail = new java.util.ArrayDeque<>();
 
-	//one probability buffer per head. The three heads have different widths and the loss reads the
-	//probability vector against that head's own mask, so a shared buffer sized for the widest head
-	//would run off the end of the narrower masks.
+
+
+
 	private final float[] actionProbs;
 	private final float[] slotProbs;
 	private final float[] targetProbs;
@@ -197,7 +197,7 @@ public class EpisodeCollector {
 		env.reset( seed, heroClass );
 		network.resetState();
 
-		//after the reset, because that is when the seed the run actually used is known
+
 		if (listener != null){
 			listener.onEpisodeStart( env.seedText(), heroClass.name() );
 		}
@@ -230,16 +230,16 @@ public class EpisodeCollector {
 
 			int stepIndex = record.stepCount();
 
-			//one snapshot per step, filled before the step because the encoder's buffers are only
-			//valid until the env advances. Whether it is retained is decided twice and independently:
-			//now, by the draw, and again at the end, by its position in the tail.
+
+
+
 			Transition snapshot = snapshot( env );
 
 			if (wantsByDraw( stepIndex )) record.retain( stepIndex, snapshot );
 
-			//every step also enters a short rolling tail, so the last TAIL_STEPS steps are
-			//recoverable however the draw went. The tail is bounded, which is what stops this from
-			//being "keep everything".
+
+
+
 			tail.addLast( new Tail( stepIndex, snapshot ) );
 			while (tail.size() > TAIL_STEPS){
 				Transition dropped = tail.removeFirst().transition;
@@ -249,28 +249,28 @@ public class EpisodeCollector {
 		Action action = Action.fromIndex( actionIndex );
 		int secondary = (liveHead == Policy.HEAD_TARGET) ? targetIndex : slotIndex;
 
-		//The mode is the one the decision was made under, so it has to be read before the step.
+
 		EnvMode mode = env.mode();
 
-		//Before the step, and for the same reason. The recorder pins the quickslot bindings here,
-		//because a slot index means nothing without them and the bindings an equip or unequip in this
-		//step produces are not the ones the index was chosen against.
+
+
+
 		if ( listener != null ) listener.onDecision( mode, action, secondary );
 
 		float reward = (float) env.step( action, secondary );
 
-		//A recording-side world trace, off by default, so a run can be compared against its own replay
-		//rather than only against the verdict. Two trainer recordings diverge at a step where the recorded
-		//and replayed floors agree cell for cell, and the only thing that can differ is what level
-		//generation read - the special-room pools among it. A trace emitted only by `worldtrace` can
-		//only ever describe the replay side, which is half the comparison.
+
+
+
+
+
 		if (trace != null) trace.sample( "step", record.stepCount() );
 
-			//The position is where the hero ended up, so it has to be read after. Reading it before
-			//records where the hero started, which is off by one step and makes every replay recorded
-			//here diverge at step 0 while still playing — the recorded path looks plausible and is
-			//silently wrong, which is the failure mode ReplayIO.verify exists to catch and which it did
-			//catch, on every trainer-written recording.
+
+
+
+
+
 			int heroPosition = env.heroPosition();
 
 			if (listener != null) listener.onStep( heroPosition, reward );
@@ -278,16 +278,16 @@ public class EpisodeCollector {
 			record.add( reward, network.value(), isTerminal, liveHead, actionIndex, slotIndex,
 					logProbability );
 
-			//the bootstrap for a truncated episode needs the value of the state this step led to, and
-			//every other step's bootstrap is the next step's own value - so one extra forward for the
-			//whole episode rather than one per step
+
+
+
 			if (!env.running()){
 				network.forward( env.grid(), env.inventory(), env.heroFeatures() );
 				record.finalValue( network.value() );
 			}
 		}
 
-		//the last TAIL_STEPS steps are now known, and a step already kept by the draw is not kept twice
+
 		for (Tail held : tail){
 			if (!record.isRetained( held.transition )) record.retain( held.step, held.transition );
 		}
@@ -296,8 +296,8 @@ public class EpisodeCollector {
 		record.computeAdvantages( gamma, lambda );
 		network.resetState();
 
-		//written here rather than in trace(), because the trace is only complete once the episode has
-		//run - and because a diagnostic that silently produced an empty file would be worse than none
+
+
 		flushTrace( env.seedText() );
 
 		return record;
@@ -387,9 +387,9 @@ public class EpisodeCollector {
 	public void trace( String path ){
 		tracePath = (path == null || path.trim().isEmpty()) ? null : path;
 		if (tracePath == null) trace = null;
-		//Cells off: the question is what level generation read, and a 1500-step run at cells=true wrote
-		//100 MB per episode - which is a disk problem before it is a diagnostic. The roster carries the
-		//mob roster and the special-room pools, which is what is being compared.
+
+
+
 		else trace = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot()
 				.cells( false );
 	}
@@ -398,11 +398,11 @@ public class EpisodeCollector {
 	private void flushTrace( String seed ){
 		if (trace == null || tracePath == null) return;
 		try {
-			//**Keyed by an episode counter, not by the seed.** Two episodes in one run can share a seed -
-			//SeedPool hands locked seeds back round - and then every trace for that seed lands on the same
-			//file, which is how a 125-step recording ended up with 188 records and a diff that compared
-			//two different episodes. The counter is what makes the record count match the step count, which
-			//is the only thing that makes the two sides comparable.
+
+
+
+
+
 			trace.writeTo( java.nio.file.Paths.get(
 					tracePath + "-" + (++tracedEpisodes) + "-" + seed + ".txt" ));
 		} catch (java.io.IOException e){

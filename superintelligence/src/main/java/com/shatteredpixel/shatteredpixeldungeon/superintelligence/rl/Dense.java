@@ -68,7 +68,7 @@ public class Dense {
 
 		this.preAct = new Tensor( 1, out );
 
-		//Xavier: keeps the activation variance stable across depth
+
 		W.randomNormal( rng, weightScale / (float) Math.sqrt( in ) );
 		b.fill( 0f );
 	}
@@ -85,10 +85,10 @@ public class Dense {
 
 	/** Accumulates dL/dx given dL/dout, where out was produced by forward(x, out). */
 	public void backward( Tensor x, Tensor dout, Tensor dx ){
-		//dL/d(pre-activation): chain the tanh derivative in before touching anything downstream. A
-		//linear layer's derivative is 1, so the chain rule stops here rather than multiplying by a
-		//saturating factor that would shrink the critic's gradient as its error grows - which is the
-		//opposite of what a regressor needs.
+
+
+
+
 		if (tanh){
 			for (int n = 0; n < out; n++){
 				float t = (float) Math.tanh( preAct.data[ n ] );
@@ -96,7 +96,7 @@ public class Dense {
 			}
 		}
 
-		// dW += x^T * dout
+
 		for (int m = 0; m < in; m++){
 			float xv = x.data[ m ];
 			if (xv == 0f) continue;
@@ -108,7 +108,7 @@ public class Dense {
 
 		for (int n = 0; n < out; n++) gb.data[ n ] += dout.data[ n ];
 
-		// dx = dout * W^T
+
 		for (int m = 0; m < in; m++){
 			float sum = 0;
 			int row = m * out;

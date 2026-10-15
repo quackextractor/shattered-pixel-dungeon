@@ -41,8 +41,8 @@ public class WeightsDiff {
 		EnvConfig config = new EnvConfig();
 
 		try {
-			//same seed for both, so `fresh` is exactly what `resumed` would have been had it not been
-			//resumed - the two differ only by what the checkpoint restored
+
+
 			Network fresh = new Network( config, new Random( 1L ) );
 			Network resumed = new Network( config, new Random( 1L ) );
 

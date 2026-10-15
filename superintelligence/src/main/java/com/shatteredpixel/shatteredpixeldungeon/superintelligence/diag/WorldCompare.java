@@ -73,9 +73,9 @@ public class WorldCompare {
 			return;
 		}
 
-		//Steps first, because that is the comparison that has a verdict. Frames only exist on the
-		//rendered side - the headless run has no render loop - so a frame question is answered by asking
-		//what changed between frames, not by diffing two frame sets.
+
+
+
 		String stepDiff = WorldDiff.compare( golden, mine );
 		System.out.println( stepDiff.isEmpty()
 				? "[OK]     every step record agrees"

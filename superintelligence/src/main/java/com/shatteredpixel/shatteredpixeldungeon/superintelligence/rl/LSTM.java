@@ -22,18 +22,18 @@ public class LSTM {
 
 	public final int size;
 
-	//fused input weights: (inputSize + size) x 4*size, gates concatenated
+
 	final Tensor W;
 	final Tensor b;
 
 	final Tensor mW, vW, mb, vb;
 	final Tensor gW, gb;
 
-//per-step scratch, reused
+
 	private final Tensor gates;
 	private final Tensor scratch;
 
-	//per-step derivative scratch, reused
+
 	private final Tensor dCellGrad;
 	private final Tensor dGateGrad;
 
@@ -80,7 +80,7 @@ this.h = new Tensor( 1, size );
 		this.cPrev = new Tensor( 1, size );
 		this.preAct = new Tensor( 1, cols );
 
-		//forget gate bias of 1 is the standard initialisation: start by remembering
+
 		for (int i = 0; i < size; i++) b.data[ i ] = 1f;
 
 		float scale = (float) Math.sqrt( 2.0 / cols );
@@ -133,14 +133,14 @@ this.h = new Tensor( 1, size );
 
 /** out = LSTM(x, h_prev, c_prev). Advances the carried state. */
 	public void forward( Tensor x, Tensor out ){
-		// concatenate x and h into the scratch row
+
 		System.arraycopy( x.data, 0, scratch.data, 0, x.cols );
 		System.arraycopy( h.data, 0, scratch.data, x.cols, size );
 
 		scratch.matmul( W, b, gates );
 
-		//backward needs the gate pre-activations and both prior states, because h and c are
-		//overwritten below
+
+
 		System.arraycopy( gates.data, 0, preAct.data, 0, gates.cols );
 		System.arraycopy( h.data, 0, hPrev.data, 0, size );
 		System.arraycopy( c.data, 0, cPrev.data, 0, size );
@@ -180,25 +180,25 @@ public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 			float g = (float) Math.tanh( preAct.data[ 2 * s + i ] );
 			float o = sigmoid( preAct.data[ 3 * s + i ] );
 
-			//c_t is still live at this point because backward runs immediately after forward
+
 			float ct = c.data[ i ];
 			float tanhCt = (float) Math.tanh( ct );
 
-			//total gradient arriving at c_t
+
 			float dc = dCPrev.data[ i ] + dOut.data[ i ] * o * (1 - tanhCt * tanhCt);
 
-			//dL/dgates, with the previous cell state on the forget gate
+
 			gg[ i ]         = dc * cPrev.data[ i ] * f * (1 - f);
 			gg[ s + i ]     = dc * g * in * (1 - in);
 			gg[ 2 * s + i ] = dc * in * (1 - g * g);
 			gg[ 3 * s + i ] = dOut.data[ i ] * tanhCt * o * (1 - o);
 
-			//dL/dc_{t-1}. h_{t-1} has no other path into the output, so its gradient arrives
-			//entirely through the gates below.
+
+
 			gc[ i ] = dc * f;
 		}
 
-		//dW += [x; h_prev]^T * dgates, db += dgates
+
 		for (int r = 0; r < scratch.cols; r++){
 			float xv = scratch.data[ r ];
 			if (xv == 0f) continue;
@@ -207,7 +207,7 @@ public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 		}
 		for (int n = 0; n < W.cols; n++) gb.data[ n ] += gg[ n ];
 
-		//[x; h_prev] gradient: the x rows feed the layer below, the h rows feed dHPrev
+
 		for (int r = 0; r < scratch.cols; r++){
 			int row = r * W.cols;
 			float sum = 0;
@@ -220,7 +220,7 @@ public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 			}
 		}
 
-		//dc_{t-1} in place, so the caller can pass its incoming gradient straight through
+
 		System.arraycopy( gc, 0, dCPrev.data, 0, s );
 	}
 
@@ -270,7 +270,7 @@ public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 	}
 
 	private static float sigmoid( float x ){
-		//branch on sign to avoid overflow in exp for large negative inputs
+
 		if (x >= 0) return (float) (1.0 / (1.0 + Math.exp( -x )));
 		float e = (float) Math.exp( x );
 		return e / (1f + e);

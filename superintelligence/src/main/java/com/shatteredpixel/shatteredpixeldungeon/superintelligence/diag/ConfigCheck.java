@@ -82,7 +82,7 @@ public class ConfigCheck {
 		}
 
 		scratch = new File( System.getProperty( "java.io.tmpdir" ), "spd-configcheck" );
-		//noinspection ResultOfMethodCallIgnored
+
 		scratch.mkdirs();
 
 		checkTheBinderActuallyBinds();
@@ -104,7 +104,7 @@ public class ConfigCheck {
 		}
 	}
 
-	// --------------------------------------------------------------------------- checks
+
 
 	/**
 	 * The positive control: a wrong value in a file has to produce a wrong setting.
@@ -177,8 +177,8 @@ public class ConfigCheck {
 private static void checkEveryConfigFieldTravelsToAWorker() throws IOException {
 	EnvConfig source = new EnvConfig();
 
-	//distinctive values, so a field silently not written shows up as "unchanged default" rather than
-	//passing because the default happened to equal itself
+
+
 	EnvConfig probe = new EnvConfig();
 	probe.maxSlots = 3;             probe.gridWidth = 4;           probe.gridHeight = 5;
 	probe.turnLimitPerFloor = 6;    probe.turnLimitTotal = 7;      probe.actorStepLimit = 8;
@@ -206,15 +206,15 @@ private static void checkEveryConfigFieldTravelsToAWorker() throws IOException {
 	try {
 		got.readFrom( new java.io.DataInputStream( new java.io.ByteArrayInputStream( bytes.toByteArray() )));
 	} catch (java.io.EOFException e){
-		//readFrom wanted more values than writeTo wrote, so the two halves disagree about the shape of
-		//the stream. Reported rather than thrown: a gate that dies with a stack trace on a wiring
-		//mistake says nothing about which field.
+
+
+
 		fail( "writeTo wrote fewer values than readFrom reads, so a worker would desync mid-stream."
 				+ " The two halves of the config wire format have drifted." );
 		return;
 	}
 
-	//copy() is the authority on which fields exist. Every one of them has to survive the wire.
+
 	EnvConfig copied = probe.copy();
 	java.util.List< String > lost = new java.util.ArrayList<>();
 	for (String field : ENV_FIELDS){
@@ -232,11 +232,11 @@ private static void checkEveryConfigFieldTravelsToAWorker() throws IOException {
 		return;
 	}
 
-	//and the two halves must agree on the count. readFrom has to want exactly as many bytes as writeTo
-	//produced: a field writeTo writes and readFrom does not read leaves bytes over, and one readFrom
-	//reads and writeTo does not write throws EOF. That catches a desync behaviourally, without reading
-	//the source - which is how the original twenty passed, because they were absent from both halves
-	//and a round trip over a self-consistent pair has nothing to complain about.
+
+
+
+
+
 	java.io.ByteArrayOutputStream sized = new java.io.ByteArrayOutputStream();
 	new EnvConfig().writeTo( new java.io.DataOutputStream( sized ));
 
@@ -306,7 +306,7 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		Path shipped = shippedFile();
 		Map<String, String> values = read( shipped );
 
-		//loaded from an empty file, so these are the compiled defaults and nothing else
+
 		EnvConfigBinder.Loaded defaults = EnvConfigBinder.load( null );
 		EnvConfig config = defaults.config;
 		PpoHyperparameters hyper = defaults.hyper;
@@ -319,7 +319,7 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 
 			String actual = compiledValue( key, config, hyper );
 			if (actual == null){
-				//already reported by the key check above; skipped here so one typo produces one message
+
 				continue;
 			}
 			if (!sameValue( actual, written )) mismatched.add( key + ": file says " + written
@@ -489,7 +489,7 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		}
 	}
 
-	// --------------------------------------------------------------------------- helpers
+
 
 	/**
 	 * {@code --out} must move every default output, not just some of them.
@@ -515,7 +515,7 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		expectUnder( "--out without --save moves the checkpoint", plain.save, dir, "weights.bin" );
 		expectUnder( "--out without --metrics moves the history", plain.metricsCsv, dir, "metrics.csv" );
 
-		//an explicit path is the operator's decision and has to survive --out
+
 		File explicit = new File( scratch, "chosen-by-hand.bin" );
 		TrainOptions pinned = TrainOptions.parse( new String[]{
 				"--out", dir.getPath(), "--save", explicit.getPath() } );
@@ -526,7 +526,7 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 			return;
 		}
 
-		//and no --out at all still lands somewhere real rather than null
+
 		TrainOptions bare = TrainOptions.parse( new String[ 0 ] );
 		if (bare.save == null || bare.metricsCsv == null){
 			fail( "a run with no --out has no checkpoint path (" + bare.save + ") or no metrics path ("
@@ -652,7 +652,7 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 	 */
 	private static String numericSentinelFor( String key ){
 		switch ( key ) {
-			//integers that must stay in a range
+
 			case "env.max_slots":             return "9";
 			case "env.grid_width":            return "24";
 			case "env.grid_height":           return "24";
@@ -669,7 +669,7 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 			case "rl.max_samples_per_generation": return "512";
 			case "rl.stall_seconds":          return "60";
 
-			//floats that must stay in a range
+
 			case "reward.profile":            return "depth_only";
 			case "reward.turn_cost":          return "0.5";
 			case "reward.depth_reward":       return "77.5";

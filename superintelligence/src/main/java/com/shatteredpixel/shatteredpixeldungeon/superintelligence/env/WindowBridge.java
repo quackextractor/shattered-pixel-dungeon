@@ -89,16 +89,16 @@ public static boolean selectOption( int index ){
 		if (!(w instanceof WndOptions)) return false;
 		boolean fired = ((WndOptions) w).selectOption( index );
 
-		//Nothing clears the slot here, which is the point of the case being asked rather than
-		//assumed. Pressing a WndOptions button calls hide() before onSelect(), and the game's own
-		//hide() now closes a parked window because it is parked in a Group rather than in a bare
-		//field - so a dialog whose handler declines the click stays open, which is what a rendered
-		//game does too. Chasm's "jump?" prompt is that case: it declines both its option and its hide
-		//until it has been up for a fifth of a second, and clearing the slot here reported it
-		//answered while the hero was still standing where he was.
-		//
-		//A dialog that neither hides nor answers therefore stays, and the agent is asked again, which
-		//is the correct end state - and the one the stall guard exists for if it never resolves.
+
+
+
+
+
+
+
+
+
+
 		return fired;
 	}
 

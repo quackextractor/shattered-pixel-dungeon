@@ -37,7 +37,7 @@ public class Ansi {
 	private static boolean detect(){
 		if (System.console() == null) return false;
 		String term = System.getenv( "TERM" );
-		//dumb terminals cannot render escapes, and NO_COLOR is an explicit request
+
 		if ( term == null || term.equals( "dumb" ) ) return false;
 		return System.getenv( "NO_COLOR" ) == null;
 	}

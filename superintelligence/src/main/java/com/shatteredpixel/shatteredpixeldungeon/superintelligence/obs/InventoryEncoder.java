@@ -68,8 +68,8 @@ public class InventoryEncoder {
 			Item item = (i < slots.size()) ? slots.get( i ) : null;
 
 			if (item == null){
-				//an empty slot still needs a consistent type embedding input, so it shares the
-				//reserved index for "nothing" and is distinguished by F_PRESENT
+
+
 				out[ base + F_TYPE_EMBED ] = 0f;
 				continue;
 			}
@@ -145,8 +145,8 @@ public class InventoryEncoder {
 	}
 
 	static {
-		//ItemSpriteSheet constants are plain ints and no longer touch a texture, but referencing
-		//one here keeps the dependency explicit and catches a regression at class load.
+
+
 		if (ItemSpriteSheet.Icons.SIZE <= 0) throw new IllegalStateException();
 	}
 }

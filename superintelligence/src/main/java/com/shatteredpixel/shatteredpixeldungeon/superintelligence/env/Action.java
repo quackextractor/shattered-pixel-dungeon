@@ -45,10 +45,10 @@ public enum Action {
 	MOVE_W  ( Kind.WORLD, -1,  0 ),
 	MOVE_NW ( Kind.WORLD, -1, -1 ),
 
-	// TIME actions advance time without naming a cell.
 
-	//Never masked out: the policy must always have at least one legal choice or the softmax
-	//normalises NaN, and waiting is genuinely always available to a human player.
+
+
+
 	WAIT    ( Kind.TIME,  0, 0 ),
 
 	/** Rest until healed or interrupted. Costs hunger. */

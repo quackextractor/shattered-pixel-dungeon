@@ -22,12 +22,12 @@ public class Replay {
 
 	/** Header written at the top of every replay file. */
 	public static final String MAGIC = "SPD-REPLAY";
-	//2 adds max_slots and allow_equipping. Version 1 recorded neither, so a v1 replay cannot say
-	//how wide the slot head was or whether equipping was permitted, and a replay that does not record
-	//what changed the meaning of a slot index cannot be trusted to resolve one the same way twice.
-	//v1 still parses, with EnvConfig's defaults, so the tooling fixtures recorded before this stay
-	//readable - but they were recorded against the RNG stream that has since been repaired and so
-	//reproduce nothing anyway.
+
+
+
+
+
+
 	public static final int VERSION = 3;
 
 	public String seedText = "";

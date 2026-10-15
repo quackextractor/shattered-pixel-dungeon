@@ -139,8 +139,8 @@ public class MetricsHistory {
 				(float) s.turnsPerSecond, (float) s.workerCores, (float) s.trainerCores
 		} );
 
-		//copied rather than retained: the snapshot is rebuilt every generation, so holding the
-		//reference would show the last generation's counts for every row of the trend
+
+
 		endReasons.add( s.endReasons.clone() );
 
 		write( s );
@@ -166,9 +166,9 @@ public class MetricsHistory {
 					.append( ',' ).append( fmt( s.turnsPerSecond ) )
 					.append( ',' ).append( fmt( s.workerCores ) ).append( ',' ).append( fmt( s.trainerCores ) );
 
-			//end reasons last, matching REASON_COLUMNS. The count is clamped to the reason's own range
-			//rather than the generation's, so a mismatched array is visible as a wrong number here
-			//instead of an index error somewhere less obvious.
+
+
+
 			RewardModel.TerminateReason[] reasons = RewardModel.TerminateReason.values();
 			int usable = Math.min( reasons.length, s.endReasons.length );
 			for (int i = 0; i < reasons.length; i++){
@@ -176,8 +176,8 @@ public class MetricsHistory {
 			}
 
 			out.write( row.append( '\n' ).toString() );
-			//flushed per generation rather than per run: the run this exists for is long, and a buffer
-			//lost to a crash is exactly the history that was wanted
+
+
 			out.flush();
 		} catch (IOException e){
 			System.err.println( "[WARN] metrics history stopped after generation "
@@ -203,7 +203,7 @@ public class MetricsHistory {
 		try {
 			out.close();
 		} catch (IOException e){
-			//nothing useful to do; the rows are already flushed
+
 		}
 		out = null;
 	}
@@ -265,11 +265,11 @@ public class MetricsHistory {
 		line( "polcl ", 11, width );
 		line( "valcl ", 12, width );
 
-		//end reasons are categorical, not a series to plot, so they are summarised as a fraction
+
 		printEndReasonTrend();
 
-		//a moving average, because per-generation score is noisy enough that its raw shape invites
-		//reading a trend into noise
+
+
 		if (series.size() >= 8){
 			Graph.Row smoothed = Graph.bar( movingAverage( values( 5 ), 7 ), width );
 			System.out.println( "  score7 " + Ansi.wrap( "[7-gen mean] ", Ansi.DIM )

@@ -33,8 +33,8 @@ public class HeadlessSprite extends CharSprite {
 
 	public HeadlessSprite(){
 		super();
-		//CharSprite's constructor chain is Gizmo -> Visual -> Image, all of which only allocate
-		//PointF scratch space, so it is safe with no GL context.
+
+
 	}
 
 	/**
@@ -53,7 +53,7 @@ public class HeadlessSprite extends CharSprite {
 
 	@Override
 	public void linkVisuals( Char ch ){
-		//no shadow, aura or health bar without Assets
+
 	}
 
 	/**
@@ -76,7 +76,7 @@ public class HeadlessSprite extends CharSprite {
 		return headlessParentStore;
 	}
 
-	// ---------------------------------------------------------------- animations that gate the turn
+
 
 	@Override
 	public void attack( int cell ){
@@ -88,7 +88,7 @@ public class HeadlessSprite extends CharSprite {
 		if (callback != null){
 			callback.call();
 		} else if (ch != null){
-			//mirrors CharSprite.onComplete's null-callback branch
+
 			ch.onAttackComplete();
 		}
 	}
@@ -135,42 +135,42 @@ public class HeadlessSprite extends CharSprite {
 
 	@Override
 	public void die(){
-		//Not `ch.die( ch )`. The real sprite plays a death animation and invokes the callback when it
-		//finishes; calling it here recursed forever, because the callback re-enters Hero.die ->
-		//Char.die -> sprite.die -> callback -> Hero.die. Hero.die's own guard does not stop it either:
-		//it returns early only on a repeated *cause*, and each bounce passes a different Char.
-		//Every death therefore blew the stack, which is how this was found: the first episode to reach
-		//a real death crashed its worker with StackOverflowError rather than recording the DEATH that
-		//GAE treats as a terminal state.
-		//
-		//Nothing to do. The callback is the animation finishing, and there is no animation here.
-		//
-		//Verified by mutation: restoring the callback makes rewardcheck die with StackOverflowError
-		//rather than reporting a failed case - the recursion takes the whole JVM down before any
-		//assertion can run. That is also why the fix has no test-shaped failure; the gate asserts the
-		//death is recorded, and the mutant cannot reach it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	}
 
-	// ---------------------------------------------------------------- animations with no turn effect
+
 
 	@Override
 	public void move( int from, int to ){
-		//intentionally does not set isMoving and creates no PosTweener
+
 	}
 
 	@Override
 	public void play( MovieClip.Animation anim ){
-		//no frame bookkeeping: headless there is no frame rate
+
 	}
 
 	@Override
 	public void idle(){
-		//no-op
+
 	}
 
 	@Override
 	public void turnTo( int from, int to ){
-		//flipHorizontal is presentation only
+
 	}
 
 	@Override
@@ -180,13 +180,13 @@ public class HeadlessSprite extends CharSprite {
 
 	@Override
 	public void update(){
-		//no tweener progression, no particles
+
 	}
 
 	@Override
 	public void destroy(){
-		//the superclass nulls out emitters and calls Gizmo.destroy; nothing here needs doing,
-		//but it is overridden so no Visual/Group teardown path can touch GL later.
+
+
 		exists = false;
 	}
 

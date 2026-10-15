@@ -57,7 +57,7 @@ final class ParallelFixtures {
 			t.actionIndex = 2;
 			t.slotIndex = 1;
 
-			//all three heads exercised, so the reduction covers the live-head switch
+
 			t.liveHead = i % 3;
 
 			for (int g = 0; g < t.grid.length; g++) t.grid[ g ] = (byte) (rng.nextFloat() > 0.55f ? 1 : 0);
@@ -65,8 +65,8 @@ final class ParallelFixtures {
 				for (int k = 0; k < a.length; k++) a[ k ] = rng.nextFloat();
 			}
 
-			//the snapshot precedes the forward, matching EpisodeCollector: the state that produced this
-			//step's value is the one the next step would build on
+
+
 			net.saveState( t.recurrentState );
 			net.forward( gridOf( t ), t.inventory, t.hero );
 			t.oldLogProbability = (float) Math.log( rng.nextFloat() + 0.05f );
@@ -75,7 +75,7 @@ final class ParallelFixtures {
 			out.add( t );
 		}
 
-		//advantages and returns, spread like GAE output rather than one sign
+
 		Random adv = new Random( 90210L );
 		for (Transition t : out){
 			t.advantage = (float) (adv.nextGaussian() * 2.0 );

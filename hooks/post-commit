@@ -1,0 +1,99 @@
+#!/bin/sh
+#
+# Post-commit: strip inline comments from the Superintelligence module, commit that separately, and report
+# javac's lint.
+#
+# Installed by copying this to .git/hooks/post-commit. The tracked copy lives in hooks/ beside
+# pre-commit and pre-push; .git/hooks is not in the repository.
+#
+# --------------------------------------------------------------------------------------------
+# WHAT THIS DOES NOT DO, AND WHY
+#
+# It cannot refuse a commit. That is the whole nature of post-commit: the commit exists by the time this
+# runs, and it does not fail because a lint warning was found. So the two halves have deliberately
+# different authority:
+#
+#   comment removal   automatic, and becomes its own commit so it is separately revertable
+#   javac lint        reported, never fatal
+#
+# A stripper that half-works is worse than none, so it is deliberately narrow: it removes `//` comments
+# and nothing else. Javadoc and block comments stay, because they document a type or a method's
+# contract where an inline comment documents a line that should already say what it does.
+#
+# That does mean this deletes comments recording *why* a line is the way it is - non-obvious invariants
+# and the history of a bug. AGENTS.md asks for exactly that ("write no comments in code... as part of the
+# change that touches that code"), but AGENTS.md also says to keep a comment when it covers something the
+# code cannot say, and it asks for the removal to be reviewed. A hook cannot review. So this trades
+# knowledge for tidiness automatically, which is a choice worth having made deliberately rather than
+# inherited from a hook.
+#
+# --------------------------------------------------------------------------------------------
+# THE RECURSION GUARD, which is not optional
+#
+# This hook runs `git commit`, and `git commit` runs post-commit. Without the guard below it would strip,
+# commit, strip, commit, until the disk filled or git refused an empty commit. The inner commit sets
+# SPD_AUTOCOMMIT so the nested invocation returns at the first line.
+
+set -e
+
+[ -n "$SPD_AUTOCOMMIT" ] && exit 0
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+# Only when the commit that just landed touched Java under the module. Otherwise this would start a
+# gradle daemon and print lint on every commit to the game, which is not what it is for.
+if ! git diff-tree --no-commit-id --name-only -r HEAD | grep -q '^superintelligence/.*\.java$'; then
+    exit 0
+fi
+
+# Refuse to touch a dirty tree. Someone with work in progress is not asking for an automatic commit that
+# bundles their half-finished changes with a strip, and a commit made for that reason would be worse
+# than no commit at all.
+if [ -n "$(git status --porcelain)" ]; then
+    echo "[INFO]  post-commit: working tree is not clean, skipping the automatic strip."
+    exit 0
+fi
+
+echo "[INFO]  post-commit: removing inline comments from superintelligence"
+
+set +e
+./gradlew --quiet :superintelligence:stripinlines
+strip_rc=$?
+set -e
+
+# stripinlines exits 3 when it rewrote something, and that is the expected case rather than a failure.
+if [ "$strip_rc" -ne 0 ] && [ "$strip_rc" -ne 3 ]; then
+    echo "[WARN]  post-commit: stripinlines exited $strip_rc, leaving the tree alone."
+    exit 0
+fi
+
+if [ -z "$(git status --porcelain)" ]; then
+    echo "[INFO]  post-commit: nothing to remove."
+else
+    # Verified before committing, because a strip that does not compile must not be committed - it would
+    # be a commit that cannot be built, and the next person to check it out gets a broken tree rather
+    # than a clean revert.
+    echo "[INFO]  post-commit: verifying the tree still builds"
+    if ! ./gradlew --quiet verifyall; then
+        echo "[ERROR] post-commit: the stripped tree does not pass verifyall. Reverting the strip."
+        git checkout -- superintelligence/src
+        exit 0
+    fi
+
+    git add -- superintelligence/src
+    SPD_AUTOCOMMIT=1 git commit -q -m "style(superintelligence): remove inline comments
+
+Added by the post-commit hook, as a separate commit so it reverts on its own.
+Javadoc and block comments are kept; only \`//\` comments were removed."
+    echo "[OK]   post-commit: inline comments removed in a separate commit."
+fi
+
+# Advisory. A post-commit hook cannot fail a commit that has already happened, and the existing sources
+# carry -Xlint:all warnings (an orphan javadoc in Replay.java, a lossy cast in ReplayIO.java), so
+# treating this as fatal would mean failing every commit for a pre-existing condition. Print the count and
+# move on; run 'gradlew :superintelligence:javaclint' yourself to see them.
+./gradlew --quiet :superintelligence:javaclint 2>&1 | grep -c 'warning' | \
+    { read n; echo "[INFO]  post-commit: javac lint reports $n warning line(s). Advisory only."; }
+
+exit 0

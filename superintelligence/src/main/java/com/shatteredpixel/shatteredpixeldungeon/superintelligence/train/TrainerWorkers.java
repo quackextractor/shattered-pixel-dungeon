@@ -73,7 +73,7 @@ public class TrainerWorkers {
 		}
 	}
 
-	// --------------------------------------------------------------------------- lifecycle
+
 
 	/**
 	 * Starts the worker JVMs and hands each the current policy.
@@ -119,7 +119,7 @@ public class TrainerWorkers {
 		return new Job( worker, seed, heroClass, wantReplay );
 	}
 
-	// --------------------------------------------------------------------------- episodes
+
 
 	/**
 	 * Runs every job at once, one thread per worker.
@@ -161,8 +161,8 @@ public class TrainerWorkers {
 			thread.start();
 		}
 
-		//join, rather than poll on a timer: nothing here needs a cadence, and a fixed sleep would
-		//only add latency proportional to however often it fired
+
+
 		InterruptedException interrupted = null;
 		for (Thread thread : threads){
 			try {
@@ -206,17 +206,17 @@ public class TrainerWorkers {
 			episode.workerName = worker.name;
 
 			int steps = in.readInt();
-			//the worker sends the step count always but the body only when a replay was requested,
-			//so the body must only be read in that case. Reading it unconditionally deadlocked the
-			//trainer against a worker that was already waiting for its next command.
+
+
+
 			if (job.wantReplay) episode.replay = ReplayCodec.read( in, steps );
 
-			//the sampled transitions, decoded into this thread's own list and merged on the trainer
-			//thread once every worker has joined. Nothing shared is touched from here.
+
+
 			episode.transitions = Episode.readTransitions( in, config, ppo.network.stateSize() );
 
-			//only after the whole frame has been consumed, so the watchdog sees progress rather
-			//than a thread that has merely started reading
+
+
 			pool.progress();
 
 			episodes.add( episode );
@@ -225,7 +225,7 @@ public class TrainerWorkers {
 		return episodes;
 	}
 
-	// --------------------------------------------------------------------------- policy push
+
 
 	/**
 	 * Pushes the updated policy to every worker.
@@ -245,10 +245,10 @@ public class TrainerWorkers {
 		tmp.flush();
 		final byte[] payload = buffer.toByteArray();
 
-		//in parallel. A policy is ~14MB of floats, so pushing it to twenty workers one after
-		//another means every worker sits at zero CPU for the whole barrier while the trainer
-		//shuttles 280MB down pipes. Each worker owns its own pipe, so all of them can take it at
-		//once and the barrier collapses to the slowest single transfer.
+
+
+
+
 		List<Thread> threads = new ArrayList<>();
 		List<IOException> failures = Collections.synchronizedList( new ArrayList<>() );
 
@@ -321,10 +321,10 @@ public class TrainerWorkers {
 			IOException last = null;
 			for (int attempt = 0; attempt < PUSH_RETRIES && !written; attempt++){
 				if (attempt > 0){
-					//Quadratic and capped. A worker part-way through a generation is busy, and a refusal
-					//from it is a moment rather than a fault - but a worker that has died fails every
-					//chunk, and reporting that once beats looping on it. The budget is about five seconds
-					//in total, which is what a slow reader needs and what a dead one outlasts.
+
+
+
+
 					long wait = Math.min( PUSH_BACKOFF_MAX_MS, 50L * attempt * attempt );
 					try {
 						Thread.sleep( wait );

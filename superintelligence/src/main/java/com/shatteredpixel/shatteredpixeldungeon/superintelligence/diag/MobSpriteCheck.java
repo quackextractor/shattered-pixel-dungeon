@@ -197,7 +197,7 @@ public class MobSpriteCheck {
 				+ " factory" );
 	}
 
-	// --------------------------------------------------------------------------- fixtures
+
 
 	/** What the last scroll use threw, so a crash is a reported failure rather than a dead JVM. */
 	private static Throwable lastThrown;

@@ -48,7 +48,7 @@ public final class TransitionCodec {
 		int inventory = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		int hero = HeroEncoder.FEATURES;
 
-		//grid as bytes, everything else as fp32, plus three ints and three floats and a flag
+
 		return grid
 				+ 4L * (inventory + hero + ActionCount.size + config.maxSlots + TargetCount.value)
 				+ 4L * 3
@@ -99,8 +99,8 @@ public final class TransitionCodec {
 			out.writeFloat( t.returnValue );
 			out.writeBoolean( t.terminal );
 
-			//the LSTM state this step was decided under. 256 floats, and without it the trainer
-			//replays every observation under the wrong hidden state - see Transition.recurrentState
+
+
 			writeState( out, t.recurrentState );
 		}
 	}
@@ -120,8 +120,8 @@ public final class TransitionCodec {
 		int length = in.readInt();
 		if (length == 0) return null;
 
-		//bounded against what the network could hold, so a corrupt length cannot allocate its way to
-		//an OutOfMemoryError - which on a 2GB-pagefile machine takes the run with it
+
+
 		if (length != expected){
 			throw new IOException( "the frame carries a recurrent state of " + length
 					+ " floats but this network's is " + expected + ". The worker and trainer are"
@@ -160,7 +160,7 @@ public final class TransitionCodec {
 		int inventorySize = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		int heroSize = HeroEncoder.FEATURES;
 
-		//one array rather than count empty transitions, so a generation's buffer is 8k pointers
+
 		List<Transition> into = new ArrayList<>( count );
 
 		for (int i = 0; i < count; i++){

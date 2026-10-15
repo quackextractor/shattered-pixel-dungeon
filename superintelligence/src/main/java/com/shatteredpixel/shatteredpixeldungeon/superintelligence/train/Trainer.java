@@ -78,7 +78,7 @@ public class Trainer {
 	 */
 	private final TrainerWorkers pool;
 
-	// which of a run's episodes get written out: best per seed, plus the run's worst
+
 	private final ReplayKeeper keeper = new ReplayKeeper();
 
 	/**
@@ -342,11 +342,11 @@ public class Trainer {
 
 		Checkpoint.Meta meta = Checkpoint.load( file, ppo.network, config );
 
-		//the epoch counter continues, so a resumed run's generations do not overwrite the CSV rows
-		//of the run it is continuing, and so the checkpoint records true progress
+
+
 		epoch = meta.generation;
 		resumedFrom = meta;
-		//the resumed policy is on disk, so exiting without a new save must not look like progress lost
+
 		lastSavedGeneration = meta.generation;
 
 		System.out.println( Ansi.wrap( "resume", Ansi.DIM ) + "   loaded " + file
@@ -370,14 +370,14 @@ public class Trainer {
 		TrainOptions options;
 		EnvConfig config;
 		try {
-			//config first: TrainOptions.parse reads the same file for the learning hyperparameters, and
-			//doing it the other way round would mean loading it twice and could report two different
-			//configurations if the file changed between them
+
+
+
 			config = loadedConfig( configFileIn( args ) );
 			options = TrainOptions.parse( args );
 		} catch (IOException | IllegalArgumentException e){
-			//A bad configuration is refused rather than defaulted, so this is the end of the command and
-			//not a warning beside a run that used numbers nobody asked for.
+
+
 			System.err.println( "[ERROR] " + e.getMessage() );
 			System.exit( 1 );
 			return;
@@ -386,8 +386,8 @@ public class Trainer {
 		HeadlessServices.install( options.workDir );
 		HeadlessServices.disableSaving( true );
 
-		//after the constructor applies the file, because a flag typed on the command line has to win over
-		//it - and this one decides what every episode in the run is worth
+
+
 		if (options.rewardProfile() != null){
 			config.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
 					.RewardProfile.parse( options.rewardProfile() );
@@ -400,8 +400,8 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
-			//after the constructor, because these are the flag-resolved values: the constructor applied the file's,
-			//and a flag typed on the command line has to win over it
+
+
 			trainer.batch( options.epochs, options.minibatchSize );
 			trainer.updateThreads( options.updateThreads );
 			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,
@@ -409,7 +409,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			trainer.history( new MetricsHistory( options.metricsCsv ));
 			trainer.checkpointing( options.save, options.checkpointEvery );
 
-			//before the pool exists: a bad checkpoint should cost a second, not a gigabyte of workers
+
 			trainer.resume( options.resume );
 
 			trainer.pool.launch( options.workers, options.javaHome, options.classpath,
@@ -417,20 +417,20 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			trainer.train( options.generations, options.episodes );
 		} catch (IOException e){
 			System.err.println( "[ERROR] training failed: " + e.getMessage() );
-			//the stack, because the message alone was not enough to diagnose a real failure: a 16-worker
-			//run on a 32 GB machine reported only "Insufficient system resources exist to complete the
-			//requested service", which is a Windows error code with no indication of which call wanted
-			//the memory. Cheap to print and the difference between a diagnosis and a guess.
+
+
+
+
 			e.printStackTrace();
 			System.exit( 1 );
 		} finally {
-			//a normal exit checkpoint, so a run that finished on a non-multiple of the interval still
-			//holds its final policy. afterExit rather than in the loop's own path, so this also covers
-			//the generations that completed before a failure aborted the run
+
+
+
 			try {
 				trainer.saveOnExit();
 			} catch (RuntimeException ignored){
-				//never mask the original failure with a cleanup one
+
 			}
 			trainer.pool.shutdown();
 			trainer.closeUpdate();
@@ -438,37 +438,37 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		}
 	}
 
-	// --------------------------------------------------------------------------- params
+
 
 	private void writeParams( DataOutputStream out ) throws IOException {
 		out.writeInt( Protocol.MSG_PARAMS );
-		//the whole configuration, from the one list in EnvConfig. This used to be a second hand-kept
-		//list of ten fields beside the one in Worker, and the twenty they omitted were dropped silently:
-		//the worker built its own EnvConfig and kept its own defaults, so a .env override of
-		//freeStepBudget or damagePenalty was applied to the trainer, reported as applied, and never
-		//reached the process that runs the episodes.
+
+
+
+
+
 		config.writeTo( out );
 
-		//The worker computes advantages, so gamma and lambda have to travel with the weights. They
-		//used to be PPO fields on each side with identical defaults - agreement by coincidence, and
-		//it would have drifted the first time either side was tuned.
+
+
+
 		out.writeFloat( ppo.gamma );
 		out.writeFloat( ppo.lambda );
 
 
-		//A diagnostic, and the only thing that travels a *path* to a worker rather than a value.
-		//Each worker writes the same filename, so this is one trace of whichever episode the worker
-		//happened to be running - which is all the question needs, because the question is whether
-		//the recording path and the replay path agree, not which worker recorded.
-		//
-		//After gamma and lambda, matching where Worker reads it. Putting it anywhere else desynchronises
-		//the frame, and the failure is a worker that dies on the next readFloat with a
-		//UTFDataFormatException naming no field - which is how it was found.
+
+
+
+
+
+
+
+
 		out.writeUTF( traceWorldPath == null ? "" : traceWorldPath );
-		//A diagnostic, and the only thing that travels a *path* to a worker rather than a value.
-		//Each worker writes the same filename, so this is one trace of whichever episode the worker
-		//happened to be running - which is all the question needs, because the question is whether the
-		//recording path and the replay path agree, not which worker recorded.
+
+
+
+
 		out.writeFloat( (float) sampleRate() );
 		out.writeInt( (int) maxSampledPerEpisode() );
 
@@ -476,7 +476,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		Worker.writeWeights( out, ppo.network );
 	}
 
-	// --------------------------------------------------------------------------- training
+
 
 	/**
 	 * Refuses to grow the update buffer past {@link #maxSamplesPerGeneration}.
@@ -505,7 +505,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 	/** Transitions discarded by {@link #enforceGenerationCap} this generation, for the report. */
 	private int droppedThisGeneration;
 
-	//read before the update consumes the buffer, since afterwards it is always zero
+
 	private int lastSampledSteps;
 	private double lastAdvantageMean;
 	private double lastAdvantageStd;
@@ -524,10 +524,10 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 		if (metrics != null) metrics.open();
 
-		//A resumed run continues counting from where the checkpoint left off, so its generations are
-		//the same numbering as the run it continues and its CSV rows do not collide with them. The
-		//count is not the same run: the trainer's RNG restarts, so seeds are drawn afresh rather than
-		//picking up the schedule where it stopped. Recorded rather than hidden.
+
+
+
+
 		int first = resumedFrom == null ? 0 : resumedFrom.generation;
 		this.lastGeneration = first + generations;
 		long startedAt = System.currentTimeMillis();
@@ -546,10 +546,10 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			epoch = g;
 			advanceSchedule();
 
-			//every (seed, hero, wantReplay) is decided here, on this thread, before any worker is
-			//asked. The seed pool and the RNG are shared mutable state, so handing work out first
-			//and dispatching second is what keeps the concurrent dispatch below race-free while still
-			//producing exactly the same assignment the sequential version did.
+
+
+
+
 			episodesPerWorker = workerCount;
 			List<TrainerWorkers.Job> jobs = planGeneration( workerCount );
 
@@ -558,14 +558,14 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			gen.stop();
 			lastWorkerSeconds = sumWorkerCpuSeconds( episodes );
 
-			//merged here rather than in the dispatch threads: this is the first point at which one
-			//thread owns the learner again, and PPO's buffer is not thread-safe
+
+
 			for (Episode e : episodes) ppo.addAll( e.transitions );
 			enforceGenerationCap();
 
-			//read before the update, which consumes the buffer. Read afterwards it is always zero, which
-			//is exactly what it read before the workers started returning transitions - so the one
-			//number that says the whole design is working was structurally incapable of ever moving.
+
+
+
 			lastSampledSteps = ppo.bufferSize();
 			lastAdvantageMean = ppo.meanAdvantage();
 			lastAdvantageStd = ppo.advantageStdDev();
@@ -576,8 +576,8 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 				update.stop();
 				lastUpdate = update;
 
-				//the push is a barrier: no worker can run while weights are moving, so its cost is
-				//reported next to the update's rather than folded into the collection figure
+
+
 				ResourceStats.Interval push = ResourceStats.start();
 				pool.pushWeights();
 				push.stop();
@@ -587,7 +587,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 			report( g, episodes, gen );
 
-			//after the report, so a checkpoint failure is reported next to the figures that produced it
+
 			maybeCheckpoint( g + 1 );
 
 			clearProgressBar();
@@ -598,7 +598,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 		saveBestReplays();
 
-		//after the replays, so a failure to write them does not cost the history
+
 		if (metrics != null) metrics.printTrend();
 	}
 
@@ -615,8 +615,8 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		int bestDepth = 0;
 
 		if (metrics != null){
-			//the last row the history holds, which is this generation's: read rather than recomputed, so
-			//the bar cannot report a different number from the block above it
+
+
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.MetricsHistory.Snapshot last =
 					metrics.latest();
 			if (last != null){
@@ -701,11 +701,11 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 		for (WorkerHandle worker : pool.workers()){
 			for (int i = 0; i < workerCount; i++){
-				//every episode, unless told otherwise. This was every third, and that made "best per
-				//seed" mean best of the one in three that happened to be sent - so a run whose one floor-2
-				//episode scored four times anything else it did simply did not have it in the catalog.
-				//The worker builds the whole replay either way and only skips the transmission, so the
-				//sample paid the entire recording cost and saved nothing but the bytes.
+
+
+
+
+
 				boolean wantReplay = (i % recordEvery) == 0;
 				String seed = seeds.next();
 				HeroClass heroClass = HeroClass.values()[ rng.nextInt( HeroClass.values().length ) ];
@@ -740,7 +740,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 	/** Seconds the last generation spent on the update and the weight push, where no worker runs. */
 	private double lastBarrierSeconds;
 
-	// --------------------------------------------------------------------------- reporting
+
 
 	/**
 	 * Tally one episode's termination reason into the report.
@@ -833,9 +833,9 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		s.turnsPerSecond = ResourceStats.stepsPerSecond( totalTurns, wall );
 		s.episodesPerSecond = n / Math.max( 1e-9, wall );
 
-		//workerSeconds is a summed CPU total across every episode and every worker. It is kept as a
-		//cross-check on the system figure rather than used to derive one, because differencing a
-		//coarse per-process counter across short episodes loses about half the signal.
+
+
+
 		s.workerCores = wall <= 0 ? 0 : lastWorkerSeconds / wall;
 		s.trainerCores = Math.max( 0, gen.coresUsed() );
 
@@ -849,8 +849,8 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		s.advantageMean = lastAdvantageMean;
 		s.advantageStd = lastAdvantageStd;
 
-		//measured off the transitions that actually arrived, rather than computed from the expected
-		//count: a sample rate that is not doing what it says shows up here as a smaller number
+
+
 		s.sampledBytes = 0;
 		s.gridBytes = 0;
 		for (Episode e : episodes){
@@ -862,13 +862,13 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			}
 		}
 
-		//reset here rather than at the top of the next generation, so the figure printed beside this
-		//generation's data is this generation's drop
+
+
 		droppedThisGeneration = 0;
 
 		GenerationReport.print( s );
 
-		//recorded after the console block, so the report still leads and the file catches up
+
 		if (metrics != null) metrics.record( s );
 	}
 
@@ -886,30 +886,30 @@ private void saveBestReplays(){
 		File dir = replayDir();
 		int saved = 0;
 
-		//Record where these landed before writing any of them. A recording in a directory nothing knows
-		//to look in is not a recording: the viewer and the catalog searched a fixed pair of paths and
-		//found 5 of the 147 on this machine, missing the rest without a word.
-		//
-		//The directory recorded is the one the flag named, not the group subdirectory under it. The
-		//catalog scans a directory's subdirectories, so indexing the group would find these files twice
-		//- once as part of the parent and once as a directory of their own - and every grouped seed
-		//would report that it was recorded twice.
+
+
+
+
+
+
+
+
 		replayDirBase().mkdirs();
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIndex.record( replayDirBase() );
 
 		for (Replay replay : keeper.keep()){
 			replay.generation = epoch;
-			//Stamped here rather than sent down the worker pipe, because the group is a property of the
-			//run rather than of any episode - the worker never learns it. Same shape as the generation
-			//above, and for the same reason the reward profile was once a codec field: a field that
-			//exists on both sides of a pipe has to be written on one of them.
+
+
+
+
 			replay.group = replayGroup;
 
-			//**Never overwrite.** One file per seed per run, and a second run of the same seed wrote
-			//straight over the first - so a directory that was meant to accumulate training history
-			//held only the newest run, and the earlier recordings were gone with nothing saying so. The
-			//cost is filenames like `MFS-CDV-GCN-r2.dat`: an unreadable suffix on a file nobody types by
-			//hand, against silently losing the recording a run was pointed at.
+
+
+
+
+
 			File file = uniqueFile( dir, replay.seedText );
 			try {
 				ReplayIO.write( replay, file );
@@ -948,15 +948,15 @@ private void saveBestReplays(){
 		File here = new File( "." ).getAbsoluteFile();
 		for (int i = 0; i < 6 && here != null; i++){
 			if (new File( here, "superintelligence.properties" ).isFile()) return tidy( here );
-			//the repository root as well as the module directory: a command launched from the root used to
-			//fall through to the caller's own working directory and write out/ there, which is not the
-			//directory the catalogue and the index were told about
+
+
+
 			if (new File( here, "superintelligence/build.gradle" ).isFile()){
 				return tidy( new File( here, "superintelligence" ) );
 			}
 			here = here.getParentFile();
 		}
-		//not found: the caller's own working directory, which is where a relative path would have gone
+
 		return tidy( new File( "." ).getAbsoluteFile() );
 	}
 

@@ -75,7 +75,7 @@ public class GradientCheck {
 
 		Random obs = new Random( seed * 31 + 7 );
 		for (int i = 0; i < grid.length; i++){
-			//sparse, like a real observation: most tiles are empty
+
 			grid[ i ] = (obs.nextFloat() < 0.2f) ? 1f : 0f;
 		}
 		for (int i = 0; i < inventory.length; i++){
@@ -112,7 +112,7 @@ public class GradientCheck {
 
 	/** Runs the check, printing one line per parameter and returning the number of failures. */
 	public int run( boolean verbose ){
-		loss(); //priming forward, so the pre-activation caches backward reads are populated
+		loss(); 
 
 		network.zeroGrad();
 		network.backward( actionGradient(), slotGradient(), targetGradient(), VALUE_W, null );
@@ -176,8 +176,8 @@ public class GradientCheck {
 
 		checks++;
 
-		//A relative error is meaningless when both are zero, which happens for parameters the
-		//loss genuinely does not depend on, eg. a convolution weight under a dead ReLU.
+
+
 		double scale = Math.max( 1e-6, Math.max( Math.abs( numeric ), Math.abs( analytic ) ) );
 		double relative = Math.abs( numeric - analytic ) / scale;
 

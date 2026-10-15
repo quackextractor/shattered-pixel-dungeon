@@ -42,7 +42,7 @@ public class SPDEnv {
 	private final float[] slotMask;
 	private final float[] targetMask = new float[ ActionMapper.TARGET_COUNT ];
 
-	// --- episode state ---
+
 
 	private EnvMode mode = EnvMode.WORLD;
 	private int turnsThisFloor;
@@ -89,7 +89,7 @@ public class SPDEnv {
 		this.slotMask = new float[ config.maxSlots ];
 	}
 
-	// --------------------------------------------------------------------------- lifecycle
+
 
 	/**
 	 * The level pipeline this environment drives.
@@ -121,36 +121,36 @@ public class SPDEnv {
 		this.seedText = (seed == null) ? "" : seed;
 		this.heroClass = heroClass;
 
-		//Every pending-request static, in one call, and BEFORE the run starts. See RunState for what each
-		//one is and what it cost when only some of them were cleared here.
-		//
-		//Before startRun rather than after, and that ordering is load-bearing for one of the four. The
-		//other three are read by the settle() below and would be equally clear afterwards; remains are
-		//read by RegularLevel.createItems, which runs inside startRun, so clearing them afterwards cleared
-		//them one floor too late. The new floor was already carrying a heap of the previous episode's
-		//remains, and every recording made in that state described a dungeon that never existed for the
-		//run that replayed it. Measured by paritycheck: 2 of 32 recorded runs diverged, both on a remnant
-		//item, and neither verified alone.
-		//
-		//The armed aim listener it also clears was worth 4 of 10 recorded runs diverging at step 0 when
-		//only part of this set was cleared; deleting this call makes resetcheck fail 3 of its 4 cases.
-		//
-		//A dialog is cleared here rather than per step because it belongs to one run. Clearing it on
-		//every step meant the step that could have answered it arrived to find it already gone, so MENU
-		//could not be reached at all - and it cannot survive into a WORLD step anyway, since settle()
-		//switches to MENU whenever a dialog is open.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		RunState.clearRunStatics();
 
 		pipeline.startRun( seedText, heroClass, 0 );
 
-		//An empty seed means the game drew one, and it does not write the result back to
-		//customSeedText - that stays empty, while the resolved value sits in Dungeon.seed. Captured
-		//here so a recording of this episode can name the seed that produced it.
-		//
-		//Without it a random-seed episode is recorded with an empty seed=, and verify resets onto a
-		//*different* random run and reports a divergence at step 0 that looks like a broken seed lock
-		//and is not one. SeedPool leaks 10% of episodes onto random seeds deliberately, so this was
-		//not an edge case.
+
+
+
+
+
+
+
+
 		if (seedText.isEmpty()){
 			seedText = com.shatteredpixel.shatteredpixeldungeon.superintelligence.utils
 					.DungeonSeedCodes.encode( pipeline.currentSeed() );
@@ -173,7 +173,7 @@ public class SPDEnv {
 		encoder.resetExplored();
 		mapper.refreshSlots();
 
-		//let the engine settle so the hero is genuinely ready before the first observation
+
 		settle();
 
 		ledger.beginFloor( Dungeon.depth, Dungeon.branch );
@@ -184,7 +184,7 @@ public class SPDEnv {
 		return previous;
 	}
 
-	// --------------------------------------------------------------------------- stepping
+
 
 	/**
 	 * Applies one agent decision.
@@ -200,23 +200,23 @@ public class SPDEnv {
 	public double step( Action action, int slot ){
 		if (!running) throw new IllegalStateException( "step() after the episode ended" );
 
-		//A dialog is state the agent is meant to be answering, so it survives into the step that
-		//resolves it. It used to be cleared on every step, which meant the step that could have
-		//answered it arrived to find it already gone: entering MENU needs a dialog, so WindowBridge
-		//had nothing to select and every rollout that reached one sat choosing at nothing until it
-		//stalled. MENU was not merely hard to record - it was unreachable in a real run.
-		//
-		//The aim listener is deliberately still cleared every step, including TARGETING.
-		//SlotAction.pendingUseItem survives, and resolveTarget falls back to castAt, which throws
-		//without touching the sprite pool. Keeping the listener instead routes the throw through the
-		//game's own path, which recycles a missile sprite from hero.sprite.parent - and headless
-		//there is no parent to recycle from, so the throw died on a NullPointerException instead.
+
+
+
+
+
+
+
+
+
+
+
 		GameScene.clearPendingCellListener();
 		if (mode != EnvMode.TARGETING){
-			//Only drop a stale aim request when a fresh turn begins. Clearing it wiped the item being
-			//aimed with before the agent could resolve the aim, so the following TARGETING step had
-			//nothing to act on: the throw never completed, the hero stayed mid-action and the
-			//pipeline gave up, ending every episode that reached an aim as STALLED.
+
+
+
+
 			SlotAction.clearPendingUseItem();
 		}
 
@@ -227,23 +227,23 @@ public class SPDEnv {
 if (mode == EnvMode.WORLD){
 			acted = mapper.apply( action, slot );
 			if (action == Action.OPEN_INVENTORY){
-				//the one and only entry into INVENTORY. It was documented on the action but never
-				//assigned here, and OPEN_INVENTORY fell through to the generic cell handling as a
-				//no-op, so the mode was unreachable: no rollout could contain it and no replay could
-				//ever exercise it.
+
+
+
+
 				mode = EnvMode.INVENTORY;
 				acted = true;
 			} else if (action == Action.USE || action == Action.DROP){
-				//the slot and, if needed, the aim are chosen on the following steps
+
 				mode = EnvMode.SLOT;
 				if (WindowBridge.open()) mode = EnvMode.MENU;
 			}
 } else if (mode == EnvMode.MENU){
 			acted = mapper.applySecondary( mode, action, slot );
-			//Back to WORLD, the way TARGETING does. Without this the mode never changed hands again:
-			//the dialog could be answered successfully and the episode still sat in MENU forever,
-			//because nothing ever put it back, so the next action was interpreted as another option
-			//choice. If the dialog is genuinely still open, settle() puts it straight back to MENU.
+
+
+
+
 			mode = EnvMode.WORLD;
 		} else if (mode == EnvMode.SLOT){
 			boolean needsTarget = false;
@@ -258,8 +258,8 @@ if (mode == EnvMode.WORLD){
 			mode = needsTarget ? EnvMode.TARGETING : EnvMode.WORLD;
 			acted = true;
 } else if (mode == EnvMode.TARGETING){
-			//CANCEL has to be handled apart from an aim, otherwise it is read as a throw at the
-			//default target - which spent the stone - and the hero was never released.
+
+
 			if (action == Action.CANCEL){
 				acted = SlotAction.cancelPendingUse( Dungeon.hero );
 			} else {
@@ -267,8 +267,8 @@ if (mode == EnvMode.WORLD){
 			}
 			mode = EnvMode.WORLD;
 		} else if (mode == EnvMode.INVENTORY){
-			//mirrors the SLOT branch rather than going through applySecondary, because only use()
-			//reports whether the item needs an aim and that answer decides the next mode
+
+
 			boolean needsTarget = false;
 			if (action == Action.USE){
 				com.shatteredpixel.shatteredpixeldungeon.items.Item item = mapper.slot( slot );
@@ -283,13 +283,13 @@ if (mode == EnvMode.WORLD){
 		}
 
 		if (!acted){
-			//Counted, not rewarded. A refused action is a fact about the turn; giving it a penalty would
-			//be a reward decision this environment has no basis for — see PLAN-reward-signals.md for why
-			//adding guessed penalties here has already gone wrong once.
-			//
-			//This went through note(term, 0) and so moved no total, which made it undetectable: a check
-			//asserting on INVALID_ACTION's *total* compared a constant and passed with WAIT deliberately
-			//mutated back to reporting refusals. Recorded, not scored, so the classification is visible.
+
+
+
+
+
+
+
 			reward.noteEvent( RewardTerm.INVALID_ACTION );
 		}
 
@@ -309,23 +309,23 @@ if (mode == EnvMode.WORLD){
 
 		while (running){
 if (++guard > config.actorStepLimit){
-				//Was called twice, charging STALLED's terminal reward twice over. The duplicate call is
-				//gone and terminate() is now idempotent, so a second call costs nothing anyway - which
-				//is why the fix is here rather than only in the guard: rewardcheck cannot reach this path
-				//(see its actorStepLimit comment), so this is protected by construction and not by a test.
+
+
+
+
 				stallCause = StallCause.ACTOR_STEP_LIMIT;
 				terminate( RewardModel.TerminateReason.STALLED );
 				break;
 			}
 
-			//a dialog opened during the step takes priority over the next turn
+
 			if (WindowBridge.open()){
-				//and it ages while it is up. Some of the game's dialogs refuse to do anything until
-				//they have been on screen a while - Chasm's "jump?" prompt gates both its option and
-				//its hide on an elapsed counter its own update() increments - and headlessly nothing
-				//ever called that, so the environment answered the question and the game's own code
-				//threw the answer away. One step is one frame, which is the same approximation the
-				//rendered viewer already makes about a recorded step.
+
+
+
+
+
+
 				WindowBridge.age();
 				mode = EnvMode.MENU;
 				break;
@@ -339,38 +339,38 @@ if (++guard > config.actorStepLimit){
 
 			if (outcome == LevelPipeline.Outcome.TRANSITION){
 				accumulated += onFloorTransition();
-				//One turn is spent, and the hand goes back after exactly one scheduler step.
-				//
-				//"Exactly one" is the part that was wrong for a long time, in both directions, and each
-				//direction had its own reason for looking right.
-				//
-				//Draining here instead - running the whole new floor's turns before handing control back -
-				//was wrong because InterlevelScene builds the floor and hands the player straight back,
-				//and because a long drain meant working the new floor's sleeping mobs up to the hero's
-				//stale clock: Dungeon.newLevel() starts that clock again from zero, so "stale" was 128
-				//turns on a typical floor. Measured on duelist-mid - the trainer recorded engine time
-				//129.0 on the descent step and the rendered viewer, replaying that recording in the real
-				//game, reported 0.0 and called the trainer wrong. That is fixed by Actor.fixTime() and by
-				//not draining, and it is the fourth instance of the class PLAN-viewer-fidelity.md §6 names.
-				//
-				//Not giving the hero its landing act at all is wrong for the reason the game's own
-				//scheduler makes obvious. The hero arrives on the new floor and is the earliest actor on
-				//it - everything is at time 0 - so the real game selects him for exactly one act before
-				//the player can act at all, and Hero.act() is where Hero.checkVisibleMobs() runs. That
-				//call is what wakes the new floor's sleeping mobs: a mob that sees the hero for the
-				//first time calls Hero.interrupt(), which throws away whatever action is pending.
-				//
-				//Injecting the agent's next action before that act therefore has it eaten by a rat
-				//noticing the hero, and the recording records a turn that moves nobody while the real
-				//game moves. Measured on duelist-mid, issues.md 10: the hero ascends at step 159 and the
-				//recorded MOVE_SE at 160 leaves him on 282 with the clock still at 0.0, because
-				//checkVisibleMobs interrupted it; the rendered viewer replays the same recording, gives
-				//the hero his landing act, and moves to 317. DIVERGED at step 161, on both sides, on a
-				//recording that describes a game which cannot happen.
-				//
-				//One act, not a drain: it costs no turn - Hero.act() with no action calls ready() and
-				//returns - and the loop stops the moment the hero is waiting for input, which is the
-				//first iteration because he is at time 0 on a floor where everything else is too.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 				turnsThisFloor++;
 				turnsTotal++;
 				settleLanding();
@@ -391,7 +391,7 @@ if (++guard > config.actorStepLimit){
 				break;
 			}
 
-			//READY: score the turn that just completed
+
 			turnsThisFloor++;
 			turnsTotal++;
 
@@ -401,16 +401,16 @@ if (++guard > config.actorStepLimit){
 			checkFloorLimits();
 			if (!running) break;
 
-			//the agent just waited, or the engine advanced only other actors; observe and hand back
+
 			mapper.refreshSlots();
 			refreshMasks();
 
-			//A dialog the drain itself opened is reported on the step it opened, not the step after.
-			//The loop only tests for one at the top, and the game's own "jump?" prompt is raised from
-			//inside Hero.act(): the hero walks at a chasm, gets asked, and this branch hands the agent
-			//the world for one more turn while a modal question is already up. A rendered game blocks
-			//cell input the instant the window appears, so the agent would not get that turn - and here
-			//it is a turn it can spend walking away from the chasm it asked about.
+
+
+
+
+
+
 			if (WindowBridge.open()){
 				WindowBridge.age();
 				mode = EnvMode.MENU;
@@ -421,7 +421,7 @@ if (++guard > config.actorStepLimit){
 		return accumulated;
 	}
 
-	// --------------------------------------------------------------------------- transitions
+
 
 	/**
 	 * Gives the hero the one turn the game gives him on arrival at a new floor.
@@ -473,16 +473,16 @@ if (++guard > config.actorStepLimit){
 		}
 
 		if (depth > MAX_FLOOR_DEPTH){
-			//cleared the dungeon; the last transition is what ends a winning run
+
 			settleHeroOnLanding();
 			return terminate( RewardModel.TerminateReason.VICTORY );
 		}
 
 		if (depth != lastDepth || branch != lastBranch){
 			if (depth > lastDepth){
-				//on the row that is being left, not the one being opened. DEPTH_ADVANCE is scored on
-				//the new floor's first turn, which is where reward.step sees the depth change, so it
-				//would otherwise mark the floor the hero has just arrived on as the one they cleared.
+
+
+
 				ledger.markFloorCleared();
 			}
 			lastDepth = depth;
@@ -490,43 +490,43 @@ if (++guard > config.actorStepLimit){
 			turnsThisFloor = 0;
 			encoder.resetExplored();
 			mapper.refreshSlots();
-			//A new floor is a new context, and the guard tests "nothing at all has changed in a long
-			//while" against the last recorded position. Two floors can put the hero on the same cell
-			//index, so carrying the count across a transition could carry a stall that had nothing to
-			//do with this floor.
+
+
+
+
 			stallCount = 0;
 			freeStepsThisFloor = 0;
 			lastStallPos = -1;
 			ledger.beginFloor( depth, branch );
 		}
 
-		//Deliberately no reward.resetSnapshot() here, which is where one used to be.
-		//
-		//Every field the snapshot holds is a property of the hero - health, gold, inventory,
-		//identification, curses, debuffs, hunger, kills - and none of them changes when the floor
-		//under the hero changes. Clearing it therefore threw away exactly the comparison that scores
-		//the transition: reward.step's first branch re-took the snapshot at the new depth, so
-		//`depth != prevDepth` was false on the very turn the depth had changed, and DEPTH_ADVANCE
-		//could never fire. The primary goal term was dead - and it was dead precisely because
-		//nothing ever descended, which is the fault this same commit fixes.
-		//
-		//Kept across the boundary on purpose. A snapshot spanning the floor change is also the honest
-		//one: it lets the first turn on a new floor pay for the descent that got there.
+
+
+
+
+
+
+
+
+
+
+
+
 		refreshMasks();
 		return ledger.flushTurn();
 	}
 
 	private void settleHeroOnLanding(){
-		//one extra pass so the hero is on the new floor and the landing cost is scored
+
 		mapper.refreshSlots();
 		encoder.encode();
 	}
 
-	// --------------------------------------------------------------------------- termination
+
 
 	private void checkFloorLimits(){
-		//research.md: a hard cap per floor, or a constant fractional penalty per turn, to stop
-		//an agent farming Regeneration or pacing in a shop forever
+
+
 		if (turnsThisFloor >= config.turnLimitPerFloor){
 			terminate( RewardModel.TerminateReason.TURN_LIMIT );
 			return;
@@ -536,7 +536,7 @@ if (++guard > config.actorStepLimit){
 			return;
 		}
 
-		//a second, softer guard: nothing at all has changed in a long while
+
 		Hero hero = Dungeon.hero;
 		if (hero.pos == lastStallPos && hero.HP == lastStallHp){
 			stallCount++;
@@ -551,20 +551,20 @@ if (++guard > config.actorStepLimit){
 			lastStallHp = hero.HP;
 		}
 
-//and a third, for the loop the guard above cannot see.
-		//
-		//It counts every step on the floor that advanced no engine time - a total, not a streak - so a
-		//real move between two free actions does not clear it. Measured on HRT-YYP-KGC: 502 of 1215
-		//steps advanced nothing - OPEN_INVENTORY and CANCEL out of INVENTORY, a move, repeat - and
-		//41% of the episode's cost, while the position guard above never reached its hundred because each
-		//pair was separated by a step that moved the hero.
-		//
-		//A streak would not have caught it, and the first version of this was one: with a move every third
-		//step the streak only reached 5 before a wall refused the move, and what bounded the recorded
-		//episode was the wall rather than the budget.
-		//
-		//The clock is asked of RewardModel rather than read again here: NO_PROGRESS charges the same
-		//condition, and two definitions of "a free step" would be free to drift apart.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 if (!reward.lastStepAdvancedClock()){
 			freeStepsThisFloor++;
 			if (freeStepsThisFloor >= config.freeStepBudget){
@@ -608,7 +608,7 @@ if (!reward.lastStepAdvancedClock()){
 		return !isNaturalEnding( reason );
 	}
 
-	// --------------------------------------------------------------------------- accessors
+
 
 	public EnvMode mode(){ return mode; }
 	public boolean running(){ return running; }
@@ -650,7 +650,7 @@ public float[] actionMask(){ return actionMask; }
 	public float[] slotMask(){ return slotMask; }
 	public float[] targetMask(){ return targetMask; }
 
-	// --- scratch buffers, filled by the policy immediately before each step ---
+
 
 	private final float[] actionLogits = new float[ Action.size() ];
 	private final float[] slotLogits = new float[ 128 ];

@@ -85,43 +85,43 @@ public class LevelPipeline {
 		SPDSettings.challenges( challenges );
 		SPDSettings.customSeed( seedText == null ? "" : seedText );
 
-		//Not intro, because an agent is not a player who has just installed the game.
-		//
-		//SPDSettings.intro() defaults to true, so without this the headless run has the tutorial
-		//enabled, and Hunger.act() returns early while it is set - which freezes the hunger clock for
-		//the whole run. The rendered viewer reads a real player's settings, where intro is false, so the
-		//hero starves there and never did in the recording: the hero lost a point of HP at step 454 of a
-		//1500 step run and died in a run whose recording has him alive at full health at turn 1500.
-		//
-		//This is a settings mismatch between the two environments rather than a bug in either, and it is
-		//the third found: quickslot bindings, then scheduler tie-breaking. A setting that only the
-		//headless side sets makes every recording describe a game that is not the one being replayed.
+
+
+
+
+
+
+
+
+
+
+
 		SPDSettings.intro( false );
 
-		//GameSettings.getString(key, def, maxLength) treats an over-long stored value as corrupt:
-		//it overwrites it with the default and returns the default. SPDSettings reads the custom
-		//seed with a 20 character cap, so a longer seed text is silently discarded here and
-		//Dungeon.initSeed() falls through to a random seed. Nothing downstream would notice: the
-		//run simply would not reproduce, and every locked-seed comparison built on it would be
-		//meaningless. So the write is verified instead of assumed.
+
+
+
+
+
+
 		requireSeedSticks( seedText );
 
 		GamesInProgress.selectedClass = heroClass;
 		GamesInProgress.curSlot = 0;
 
-		//Dungeon.initSeed() turns the custom seed text into Dungeon.seed, and Dungeon.init() does
-		//the rest of the per-run reset: label/colour initialisation, Generator state, quest state,
-		//and hero construction. Between them these two are the complete definition of "new run".
+
+
+
 		Dungeon.initSeed();
 		Dungeon.init();
 
-		//Dungeon.init() built a Hero with no sprite. Several code paths (Hero.ready, Char.move,
-		//CharSprite callbacks) dereference ch.sprite, so every actor gets a headless one.
+
+
 		attachSprites();
 
-		//Dungeon.newLevel() picks the Level subclass for depth 1 and calls create(). It also
-		//records the depth in generatedLevels; we clear it first so nothing is ever loaded from
-		//disk and a rerun of the same seed rebuilds identical floors.
+
+
+
 		Dungeon.generatedLevels.clear();
 
 		Dungeon.depth = 1;
@@ -211,7 +211,7 @@ public class LevelPipeline {
 		while (steps++ < maxActorSteps){
 
 			if (game.switchRequested()){
-				//the game is handing off, eg. to a level transition
+
 				return Outcome.TRANSITION;
 			}
 
@@ -221,32 +221,32 @@ public class LevelPipeline {
 
 			attachLateSprites();
 
-			//A hero left standing on a chasm falls, and this is the game's own rule rather than one of
-			//ours. Level.occupyCell presses a cell and its pit branch calls Chasm.heroFall; the game
-			//reaches that press for a cell somebody is *already on* through Levitation.detach(), which
-			//clears flying and re-presses the cell the hero is standing on.
-			//
-			//That detach asks for a GameScene, so headlessly the only thing that ever presses an occupied
-			//cell never runs — and walking off the chasm does not reach it either, because the pit branch
-			//is behind `if (!ch.flying)` and is only entered when a character moves *into* a cell. So a
-			//hero whose levitation expires over a chasm stands there for the rest of the episode, which is
-			//a state the game cannot produce. Measured on FALLCHECK-A: the hero flew onto the chasm at
-			//391, the buff ran out, and he was still on depth 1 on that pit cell at full health.
-			//
-			//Checked here, after the late sprites and before the scheduler step, because that is where the
-			//state exists: the buff ends *inside* Actor.headlessStep(), and the following iteration is the
-			//one where the hero is grounded on a chasm with the drain still running. Checking only after a
-			//step misses it — the hero becomes ready on that same step and the loop returns.
-			//
-			//The call is the game's, so the landing cell, the damage and the fall flag all stay the game's;
-			//what is added is only the decision the game would have made inside a renderer, which is the
-			//same kind of thing handleTransition already does when it reads InterlevelScene.mode.
-			//
-			//Both guards are the game's own preconditions rather than new rules. The hero has to be on the
-			//level being pressed — Chasm.heroFall reads Dungeon.level, and a hero mid-transition briefly
-			//stands on a level that is no longer current — and he has to be off a FeatherBuff, because
-			//Chasm.heroLand returns early for an elixir of feather fall, and that is the one state in
-			//which a hero is meant to be standing on a chasm.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			if (Dungeon.level != null
 					&& Dungeon.hero.pos >= 0
 					&& Dungeon.hero.pos < Dungeon.level.length()
@@ -258,43 +258,43 @@ public class LevelPipeline {
 				return Outcome.TRANSITION;
 			}
 
-			//Give the scheduler a step before testing readiness.
-			//
-			//Injecting an action sets Hero.curAction and calls Hero.next(), but Hero.ready is only
-			//cleared inside Hero.act(). Testing readiness first would always see a stale true, the
-			//hero would never act, and the run would sit still for its whole turn budget - a silent
-			//stall that looks exactly like an agent that has chosen not to move.
+
+
+
+
+
+
 			boolean wantsMore = com.shatteredpixel.shatteredpixeldungeon.actors.Actor.headlessStep();
 
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()){
 				return Outcome.HERO_DEAD;
 			}
 
-			//READY means the hero has finished this turn and can be given the next decision.
-			//
-			//A pending curAction means it has not finished. ActionMapper sets curAction and calls
-			//Hero.next(), which clears the current actor but leaves Hero.ready set. Testing ready alone
-			//therefore returned READY on the first iteration, before the hero had executed the action at
-			//all, and the episode recorded a step the hero never performed - a MOVE_W that moved nobody.
-			//The desktop viewer, which waits for the turn to actually resolve, moved correctly and
-			//reported the trainer as diverging.
-			//
-			//So both conditions are required: the action consumed, and the hero waiting for input.
+
+
+
+
+
+
+
+
+
+
 			if (Dungeon.hero.curAction == null && Dungeon.hero.ready && Dungeon.hero.paralysed == 0){
 				return Outcome.READY;
 			}
 
-			//A resting hero is the only genuine one-way door here. Hero.act() opens by clearing
-			//ready and then, with a null curAction, takes its `curAction == null && resting` branch:
-			//it spends time and calls next(), so !wantsMore, but it never calls ready(). The game escapes
-			//that by having a player choose another action, and ActionMapper.apply clears resting when
-			//it is given one, so this is a backstop rather than the usual path.
-			//
-			//Every other idle, non-resting hero with no action is not a stall and must be left to
-			//resolve. Hero.ready() runs when the hero is next picked with a null curAction, so the wait
-			//ends on its own - one turn later after actPickUp, whose success branch clears curAction
-			//without calling ready(). Setting ready here instead ended that turn early, which made a
-			//recording settle a turn before the game did.
+
+
+
+
+
+
+
+
+
+
+
 			if (!wantsMore && steps > 8 && Dungeon.hero.resting){
 				return Outcome.STALLED;
 			}
@@ -327,7 +327,7 @@ public class LevelPipeline {
 				spriteFor( mob );
 			}
 		}
-		//blobs are added to the level mid-run too, by wands, traps and creatures
+
 		attachBlobEmitters();
 	}
 
@@ -357,13 +357,13 @@ public class LevelPipeline {
 			return Transition.NONE;
 		}
 
-		//Chasm falls are not driven by a LevelTransition, so this test has to come before the null
-		//check above. Chasm.heroFall writes InterlevelScene.mode and nothing else, so on a fall
-		//curTransition is null by construction and the null test used to fire first: the fall was
-		//reported as "not a level transition", the switch request was cleared, and the hero was left
-		//standing on the pit he had just been dropped into. Transition.FALL and handleFall() were
-		//unreachable, which is the same thing as saying the chasm was a wall the hero stood on rather
-		//than a floor down.
+
+
+
+
+
+
+
 		Transition result = (transition.type == LevelTransition.Type.REGULAR_EXIT
 				|| transition.type == LevelTransition.Type.BRANCH_EXIT)
 				? Transition.DESCEND
@@ -372,8 +372,8 @@ public class LevelPipeline {
 		Dungeon.depth    = transition.destDepth;
 		Dungeon.branch   = transition.destBranch;
 
-		//Always regenerate. loadLevel would restore a floor from disk and quietly break
-		//reproducibility, which is the whole basis of the locked-seed comparison in docs.md.
+
+
 		Dungeon.generatedLevels.clear();
 		Level level = Dungeon.newLevel();
 
@@ -407,23 +407,23 @@ public class LevelPipeline {
 	public void handleFall(){
 		fixTimeBeforeSwitching();
 
-		//The game's landing, which the headless path was skipping. Chasm.Falling is a buff whose act()
-		//is Chasm.heroLand(): cripple, bleeding, fall damage, and - the part that matters for the world -
-		//Dungeon.level.occupyCell(hero) on the floor he arrived on. Without it a fall was free and a
-		//landing cell that was itself a pit never noticed.
+
+
+
+
 		Buff.affect( Dungeon.hero, com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm.Falling.class );
 
-		//The game increments the depth and leaves the branch alone; forcing branch 0 here sent a hero
-		//who fell on a branch floor somewhere the game would never have sent him.
+
+
 		Dungeon.depth++;
 		Dungeon.generatedLevels.clear();
 
 		Level level = Dungeon.newLevel();
 
-		//InterlevelScene.fall() passes Chasm.heroFall's own flag. It is false for an ordinary chasm and
-		//true only for a WeakFloorRoom, and it is the difference between landing anywhere survivable and
-		//landing inside the destination floor's PitRoom - a different cell and a different number of
-		//draws, from a hardcoded literal that happened to agree with the game on most floors.
+
+
+
+
 		Dungeon.switchLevel( level, level.fallCell(
 				com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.fallIntoPit ));
 
@@ -461,12 +461,12 @@ public class LevelPipeline {
 	public void clearSwitchRequest(){
 		game.clearSwitchRequest();
 		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.curTransition = null;
-		//The third field of the same hand-off, and the one that decides how it is serviced. A real game
-		//gets a fresh InterlevelScene per descent and therefore a fresh mode; nothing headless does, so
-		//a mode left behind by one run is read by the next. handleTransition tests it before the null
-		//check above - which it has to, because a chasm fall never writes curTransition - so a stale
-		//FALL turns the next ordinary descent into a fall, and a stale DESCEND turns the next fall into
-		//something handleTransition answers with a null transition.
+
+
+
+
+
+
 		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.mode = null;
 	}
 

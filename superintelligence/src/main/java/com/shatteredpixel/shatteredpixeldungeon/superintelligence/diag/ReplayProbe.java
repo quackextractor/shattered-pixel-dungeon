@@ -41,7 +41,7 @@ public class ReplayProbe {
 
 	public static void main( String[] args ){
 		EnvConfig config = new EnvConfig();
-		//small, because this is about arithmetic rather than scale
+
 		config.gridWidth = 12;
 		config.gridHeight = 12;
 		config.maxSlots = 4;
@@ -53,7 +53,7 @@ public class ReplayProbe {
 		List<Transition> transitions = new ArrayList<>();
 		float[] scratch = new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
 
-		//collected sequentially, the way a rollout is: forward, then read the value, carrying state
+
 		for (int i = 0; i < n; i++){
 			Transition t = new Transition();
 			t.grid = new byte[ scratch.length ];
@@ -72,21 +72,21 @@ public class ReplayProbe {
 			t.actionIndex = 3;
 			t.oldLogProbability = -1.1f;
 
-			//the rollout's forward, carrying h/c
+
 			network.forward( scratchFrom( t, scratch ), t.inventory, t.hero );
 			t.value = network.value();
 
 			transitions.add( t );
 		}
 
-		//What the update sees. Same network, same weights, but the state under which each sample is
-		//replayed is the one left by the previous sample of the shuffled buffer.
+
+
 		double correctDrift = 0;
 		double staleDrift = 0;
 		double worstCorrect = 0;
 		double worstStale = 0;
 
-		//replay each sample under the state the rollout had at that point
+
 		network.resetState();
 		for (int i = 0; i < n; i++){
 			Transition t = transitions.get( i );
@@ -96,7 +96,7 @@ public class ReplayProbe {
 			worstCorrect = Math.max( worstCorrect, d );
 		}
 
-		//replay the same samples in reverse, so each is preceded by a different one
+
 		network.resetState();
 		for (int i = n - 1; i >= 0; i--){
 			Transition t = transitions.get( i );

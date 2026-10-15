@@ -180,7 +180,7 @@ public class PressCheck {
 			Trap trap = armedTrap();
 			if (trap == null ) continue;
 
-			//exactly the state generation is in: a level being built, and no current level
+
 			com.shatteredpixel.shatteredpixeldungeon.levels.Level playing = Dungeon.level;
 			Dungeon.level = null;
 			try {
@@ -190,7 +190,7 @@ public class PressCheck {
 			}
 
 			if (!trap.active){
-				//re-arm for a clean report rather than leaving a half-fired trap behind
+
 				trap.active = true;
 				fail( seed + ": with Dungeon.level null - the state RegularLevel.createItems runs in -"
 						+ " dropping an item still pressed cell " + trap.pos + " and fired the "

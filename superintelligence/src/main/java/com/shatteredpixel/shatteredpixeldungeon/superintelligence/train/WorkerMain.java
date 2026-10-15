@@ -35,10 +35,10 @@ public class WorkerMain {
 	}
 
 	private static void serve( File workDir ){
-		//Per-worker save directory. Sharing one across the pool made two workers race on the same
-		//temporary file, which the engine reports as a save failure even though saving is disabled
-		//for training - the game still creates the directory tree on its way to deciding it will not
-		//write.
+
+
+
+
 		if (workDir == null){
 			workDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-worker" );
 		}
@@ -56,7 +56,7 @@ public class WorkerMain {
 		try {
 			new Worker( in, out ).serve();
 		} catch (EOFException e){
-			//the trainer closed the pipe. That is how a run ends, not a failure.
+
 			System.exit( 0 );
 		} catch (IOException e){
 			System.err.println( "[ERROR] worker: " + e );

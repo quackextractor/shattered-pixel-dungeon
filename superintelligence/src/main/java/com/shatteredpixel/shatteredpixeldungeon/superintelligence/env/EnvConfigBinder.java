@@ -60,7 +60,7 @@ public class EnvConfigBinder {
 	 * accepts that the file omits would be a setting with no documented default.
 	 */
 	public static final List<String> KEYS = List.of(
-			// --- environment geometry and limits ---
+
 			"env.max_slots",
 			"env.grid_width",
 			"env.grid_height",
@@ -77,7 +77,7 @@ public class EnvConfigBinder {
 			"env.allow_alchemy",
 			"env.persist_saves",
 
-			// --- reward shaping ---
+
 			"reward.profile",
 			"reward.turn_cost",
 			"reward.depth_reward",
@@ -95,7 +95,7 @@ public class EnvConfigBinder {
 			"reward.victory_reward",
 			"reward.curriculum_progress",
 
-			// --- learning ---
+
 			"rl.learning_rate",
 			"rl.gamma",
 			"rl.gae_lambda",
@@ -174,8 +174,8 @@ public class EnvConfigBinder {
 
 		if (file != null){
 			if (!Files.isReadable( file )){
-				//named and explicit rather than a stack trace: a missing config is a typo or a wrong
-				//working directory far more often than a permissions problem
+
+
 				System.err.println( "[WARN] no configuration at " + file
 						+ "; using the compiled defaults." );
 			} else {
@@ -202,7 +202,7 @@ public class EnvConfigBinder {
 			String envName = environmentName( key );
 			String fromEnv = System.getenv( envName );
 
-			//environment last, so it overrides the file
+
 			boolean fromFile = raw != null;
 			String value = (fromEnv != null) ? fromEnv : raw;
 			if (value == null) continue;
@@ -212,8 +212,8 @@ public class EnvConfigBinder {
 			binder.apply( config, hyper, key, value, origin );
 			applied++;
 			if (!fromFile && fromEnv != null){
-				//worth saying: a value that is in neither the file nor the default is the kind of thing
-				//that makes a run irreproducible for the next person to read the log
+
+
 				binder.warn( key + " came from " + envName
 						+ " rather than a file, so it is not part of the recorded configuration." );
 			}
@@ -235,7 +235,7 @@ public class EnvConfigBinder {
 			String key, String value, String origin ){
 
 		switch (key) {
-			// --- environment ---
+
 			case "env.max_slots":            config.maxSlots = integer( key, value, origin ); break;
 			case "env.grid_width":           config.gridWidth = integer( key, value, origin ); break;
 			case "env.grid_height":          config.gridHeight = integer( key, value, origin ); break;
@@ -253,7 +253,7 @@ case "env.stall_limit":           config.stallLimit = integer( key, value, origi
 			case "env.allow_alchemy":        config.allowAlchemy = bool( key, value, origin ); break;
 			case "env.persist_saves":        config.persistSaves = bool( key, value, origin ); break;
 
-			// --- reward ---
+
 			case "reward.profile":
 				try {
 					config.rewardProfile =
@@ -284,7 +284,7 @@ case "reward.free_step_cost_factor":
 			case "reward.curriculum_progress":
 				config.curriculumProgress = decimal( key, value, origin ); break;
 
-			// --- learning ---
+
 			case "rl.learning_rate":     hyper.learningRate = decimal( key, value, origin ); break;
 			case "rl.gamma":             hyper.gamma = decimal( key, value, origin ); break;
 			case "rl.gae_lambda":        hyper.lambda = decimal( key, value, origin ); break;
@@ -301,9 +301,9 @@ case "reward.free_step_cost_factor":
 			case "rl.stall_seconds":     hyper.stallSeconds = integer( key, value, origin ); break;
 
 			default:
-				//unreachable: every key in KEYS is handled above, and unknown ones were already warned
-				//about. Thrown rather than ignored so a key added to KEYS without a case fails here
-				//instead of silently doing nothing.
+
+
+
 				throw new IllegalStateException( "no handler for key '" + key + "'" );
 		}
 	}

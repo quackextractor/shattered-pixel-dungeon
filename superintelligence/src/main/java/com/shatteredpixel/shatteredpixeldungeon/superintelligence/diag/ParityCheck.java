@@ -124,14 +124,14 @@ public class ParityCheck {
 			for (HeroClass h : DEFAULT_HEROES) heroes.add( h );
 		}
 
-		//A longer sweep for a nightly job, deliberately not the default: the point of a gate is to be
-		//run on every commit, and a gate nobody runs is not a gate.
+
+
 		if (full){
 			turnLimit = 1500;
 		}
 
 		outDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-paritycheck" );
-		//noinspection ResultOfMethodCallIgnored
+
 		outDir.mkdirs();
 
 		HeadlessServices.install( outDir );
@@ -143,8 +143,8 @@ public class ParityCheck {
 		System.out.println( "parity sweep: " + seeds.size() + " seed(s) x " + heroes.size()
 				+ " hero(es), " + turnLimit + " turns, one process" );
 
-		//Round one: record and immediately verify, in order. This is the case that catches a static left
-		//armed by the previous recording.
+
+
 		List< Case > recorded = new ArrayList<>();
 		for (String seed : seeds){
 			for (HeroClass hero : heroes){
@@ -153,9 +153,9 @@ public class ParityCheck {
 			}
 		}
 
-		//Round two: re-verify every recording, in the same order, having run all of them in between.
-		//Nothing has been re-recorded, so any divergence here is state the first pass left behind that
-		//the reset did not clear - which is the whole class of fault this check exists to find.
+
+
+
 		List<String> secondPass = new ArrayList<>();
 		for (Case c : recorded){
 			ReplayIO.Verification again = verify( c.replay );
@@ -179,7 +179,7 @@ public class ParityCheck {
 		}
 	}
 
-	// --------------------------------------------------------------------------- one case
+
 
 	/** One seed/hero pair, recorded once and verified twice. */
 	private static class Case {
@@ -233,8 +233,8 @@ public class ParityCheck {
 
 		try {
 			ReplayIO.write( replay, file );
-			//read back rather than verifying the object in hand: a header that does not round-trip is a
-			//different failure from a replay that does not reproduce, and conflating them hides the first
+
+
 			Replay read = ReplayIO.read( file );
 			c.replay = read;
 			c.steps = read.length();
@@ -259,9 +259,9 @@ public class ParityCheck {
 					+ " of " + c.steps + ": " + result.divergence + " - recording at "
 					+ file.getAbsolutePath() );
 		} else if (Math.abs( result.score - c.recordedScore ) > 1e-6){
-			//not a divergence by the step-wise comparison, so it is reported separately rather than as
-			//one: the trajectory matched and the total did not, which points at the reward accounting
-			//rather than at the simulation
+
+
+
 			failures.add( c.name() + " replayed step for step but scored " + result.score
 					+ " against a recorded " + c.recordedScore );
 		} else if (result.stepsVerified < c.steps){

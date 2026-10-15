@@ -180,8 +180,8 @@ public class GraphCheck {
 			return;
 		}
 
-		//blank before the first generation and after the last, and a duration in between - both blanks are
-		//honest, because there is nothing left to estimate in either case
+
+
 		if (!ProgressBar.estimate( 0, 30, now ).equals( "-" )
 				|| !ProgressBar.estimate( 30, 30, now ).equals( "-" )
 				|| ProgressBar.estimate( 15, 30, now ).equals( "-" )){

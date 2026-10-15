@@ -111,7 +111,7 @@ public class ActionCheck {
 					return;
 				}
 
-				break;  //this direction moved cleanly on this seed; that is enough
+				break;  
 			}
 
 			if (!sawAnyMove ){
@@ -172,7 +172,7 @@ public class ActionCheck {
 			}
 		}
 
-		//and the enum order must match the table above, or the first case is checking the wrong pairs
+
 		for (int i = 0; i < moves.length; i++ ){
 			String expected = "MOVE_" + ( new String[]{ "N", "NE", "E", "SE", "S", "SW", "W", "NW" }[ i ] );
 			if (!moves[ i ].name().equals( expected )){

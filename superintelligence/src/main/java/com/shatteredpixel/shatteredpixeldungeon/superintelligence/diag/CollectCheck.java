@@ -108,11 +108,11 @@ public class CollectCheck {
 	private static void checkTheKeeperKeepsTheEpisodesWorthWatching( EnvConfig config ){
 		ReplayKeeper keeper = new ReplayKeeper();
 
-		//The run as it actually happened. **Scores are negative and higher is better** - a floor-2 episode
-		//scored -1,276 where ordinary ones scored about -3,100 - which is the opposite of what a
-		//positive score would suggest and is why "best" cannot be read as "largest magnitude".
-		//(seed, hero, depth, score); getting the last two the wrong way round makes the ordinary
-		//episode the winner, which is exactly what happened twice while writing this.
+
+
+
+
+
 		Replay ordinary = replay( "KEEPER-A", "WARRIOR", 1, -3_100.0 );
 		Replay floorTwo = replay( "KEEPER-A", "ROGUE", 2, -1_276.0 );
 		Replay alsoOrdinary = replay( "KEEPER-B", "MAGE", 1, -3_400.0 );
@@ -157,7 +157,7 @@ public class CollectCheck {
 			return;
 		}
 
-		//the worst must not be double-written when it already is some seed's best
+
 		ReplayKeeper onlyOne = new ReplayKeeper();
 		onlyOne.consider( dreadful );
 		onlyOne.consider( alsoOrdinary );
@@ -206,7 +206,7 @@ public class CollectCheck {
 	 * list inline in a method, and a codec unit test cannot see someone writing the next such list.
 	 */
 	private static void checkWorkerWireCarriesEveryStepField( EnvConfig config ){
-		// 1. the codec, round-tripped, field by field.
+
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay sample =
 				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay();
 		sample.seedText = "WIRECHECK";
@@ -220,8 +220,8 @@ public class CollectCheck {
 		sample.maxSlots = 32;
 		sample.allowEquipping = false;
 		sample.termination = "DEATH";
-		//Not DEFAULT: the default is what a dropped field reads as, so a fixture carrying it cannot tell
-		//"the wire carried it" from "the wire lost it and the field fell back".
+
+
 		sample.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
 				.RewardProfile.DEPTH_ONLY;
 
@@ -258,8 +258,8 @@ public class CollectCheck {
 		}
 
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay.Step r = back.steps.get( 0 );
-		//Every one of these was silently dropped before, and each is a comparison a verifier skips when
-		//it is missing. heroHp and turn are the load-bearing pair; the rest is why the list is here.
+
+
 		if (r.heroHp != s.heroHp ){
 			fail( "heroHp did not survive the wire: " + s.heroHp + " -> " + r.heroHp
 					+ ". ReplayIO.verify skips its health comparison when heroHp is negative, so a"
@@ -305,9 +305,9 @@ public class CollectCheck {
 			return;
 		}
 
-		// 2. a real episode, recorded through the real ReplayRecorder the worker drives, must carry no
-		// sentinels. Deliberately not Trace: that is this file's own lightweight record, and the
-		// question here is what the worker actually ships.
+
+
+
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		Network network = new Network( config, new Random( 31337L ) );
 		EpisodeCollector collector = new EpisodeCollector( config, network,
@@ -321,13 +321,13 @@ public class CollectCheck {
 				recorder.begin( seedText, hero, 0, config.turnLimitPerFloor, config );
 			}
 
-			//The worker's own listener shape, so an ordering difference between here and Worker.java
-			//shows up as a failure rather than as a check that quietly tests something else.
-			//
-			//Two callbacks, and the split is the point rather than the shape: record() pins the
-			//quickslot bindings at the instant the slot index is chosen, and afterStep() fills in what
-			//the step produced. Both used to be called from onStep, which is after the step by
-			//definition - so this file asserted the same bug it was written to catch.
+
+
+
+
+
+
+
 			@Override public void onDecision( EnvMode mode, Action action, int secondary ){
 				recorder.record( action, secondary, mode );
 			}
@@ -370,13 +370,13 @@ public class CollectCheck {
 					+ " would verify clean." );
 			return;
 		}
-		//Inventory is the one field that is legitimately empty on many steps - a hero that drops
-		//everything really is carrying nothing, and an untrained policy drops things constantly. So
-		//counting empties would be a flaky assertion; a real training run here came back with 347 of
-		//660 steps empty and 88 of those traced straight back to the policy throwing items away. What
-		//distinguishes "empty" from "never written" is whether the value tracks the hero: every class
-		//starts with a VelvetPouch, so step 0 cannot be empty, and a field that is being written has to
-		//change at least once. A field the wire dropped is empty everywhere and has one distinct value.
+
+
+
+
+
+
+
 		if (recorded.steps.get( 0 ).inventory.isEmpty() ){
 			fail( "step 0 carries no inventory, but every hero class starts with a VelvetPouch, so"
 					+ " this field is not being written at all" );
@@ -413,8 +413,8 @@ public class CollectCheck {
 			return;
 		}
 
-		//the position has to have actually moved at some point, or "post-step" and "pre-step" would
-		//be indistinguishable and this check would pass for the wrong reason
+
+
 		boolean moved = false;
 		for (int i = 1; i < trace.steps.size(); i++){
 			if (trace.steps.get( i ).heroPos != trace.steps.get( i - 1 ).heroPos ){
@@ -522,7 +522,7 @@ public class CollectCheck {
 			}
 		} );
 
-		//an empty seed, which is what SeedPool returns for a random episode
+
 		collector.run( env, "", HeroClass.WARRIOR );
 		collector.listener( null );
 
@@ -537,8 +537,8 @@ public class CollectCheck {
 			return;
 		}
 
-		//the resolved text has to decode back to the seed the run used, or the recording is no
-		//better than an empty one
+
+
 		SPDEnv fresh = new SPDEnv( config, HeadlessGame.install() );
 		fresh.reset( trace.seedText, HeroClass.WARRIOR );
 		String replayed = fresh.seedText();
@@ -552,7 +552,7 @@ public class CollectCheck {
 		replay( fresh, config, trace );
 	}
 
-	// --------------------------------------------------------------------------- helpers
+
 
 	/**
 	 * A {@code DROP} must be recorded against the quickslot bindings its slot index was chosen with.
@@ -580,9 +580,9 @@ public class CollectCheck {
 	private static void checkDropRecordsTheBindingsItsSlotIndexWasChosenAgainst( EnvConfig config ){
 		String where = "a DROP records the bindings its slot index was chosen against";
 
-		//DUELIST, because it is the only class whose starting bindings span both halves of the question:
-		//the Rapier is equipped and bound to quickslot 0 - which no slot index can name - and the
-		//ThrowingSpike is carried and bound to quickslot 1 - which one can.
+
+
+
 		Recorded run = recordADrop( config, false );
 		if ( run == null ) return;
 		if ( run.dropAt < 0 ){
@@ -599,8 +599,8 @@ public class CollectCheck {
 			return;
 		}
 
-		//The positive control: after the step the same item is no longer reachable, so the two instants
-		//really are distinguishable and the assertion above could have failed.
+
+
 		if ( run.captureAfter.equals( recorded )){
 			fail( where, "the bindings captured after the step are identical to the ones captured before"
 					+ " it (" + recorded + "), so this case cannot tell the two instants apart and would"
@@ -608,7 +608,7 @@ public class CollectCheck {
 			return;
 		}
 
-		//And the recording, played back, has to reproduce. This is what the viewer does.
+
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.Verification result =
 				verifyRecording( config, run.replay );
 		if ( !result.passed() ){
@@ -618,9 +618,9 @@ public class CollectCheck {
 			return;
 		}
 
-		//The converse, and the reason `ReplayIO.verify` changed: the same run recorded a moment late has
-		//to be caught. It used not to be - it verified on position and reported success, which is how a
-		//file the viewer halts on at step 18 was reported as reproduced in 660 steps.
+
+
+
 		Recorded late = recordADrop( config, true );
 		if ( late == null || late.dropAt < 0 ){
 			fail( where, "the late-capture fixture did not reach a DROP, so the converse could not be run" );
@@ -667,7 +667,7 @@ public class CollectCheck {
 		recorder.begin( env.seedText(), HeroClass.DUELIST.name(), 0, config.turnLimitPerFloor, config );
 		out.replay = recorder.replay();
 
-		//the first slot holding a bound, unequipped item: the one whose resolution the bindings decide
+
 		int slot = -1;
 		env.mapper().refreshSlots();
 		for (int i = 0; i < env.mapper().slots().size(); i++){
@@ -682,12 +682,12 @@ public class CollectCheck {
 		out.droppedItem = chosen.getClass().getSimpleName();
 		out.droppedSlot = com.shatteredpixel.shatteredpixeldungeon.Dungeon.quickslot.getSlot( chosen );
 
-		//step one: enter SLOT. A use spends the step and the environment waits for the slot index.
+
 		recorder.record( Action.USE, 0, EnvMode.WORLD );
 		env.step( Action.USE, 0 );
 		recorder.afterStep( env.heroPosition(), 0f );
 
-		//step two: the drop, which is the step under test
+
 		out.dropAt = recorder.replay().length();
 		if ( captureAfterStep ){
 			env.step( Action.DROP, slot );
@@ -703,7 +703,7 @@ public class CollectCheck {
 					.Quickslots.capture();
 		}
 
-		//enough steps for the recording to be a run rather than a fragment
+
 		int[] nothing = new int[ 1 ];
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy policy =
 				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy(
@@ -776,8 +776,8 @@ public class CollectCheck {
 				}
 			} );
 
-			//short: the game caps custom seed text at 20 characters and silently discards anything
-			//longer, which LevelPipeline refuses rather than running on a different seed
+
+
 			collector.run( env, "COLLECT-DEC-" + attempt, HeroClass.DUELIST );
 			collector.listener( null );
 			recorder.end( 0, env.deepestDepth(), env.turnsTotal(), 0, env.endReason().name() );
@@ -785,8 +785,8 @@ public class CollectCheck {
 			for (int i = 0; i < clockAtDecision.size() && i < clockAtStep.size(); i++){
 				if (clockAtStep.get( i ) <= clockAtDecision.get( i )) continue;
 
-				//and the recorder was told, on the clock the step was chosen on rather than the one it
-				//produced, which is the whole of ReplayRecorder's contract
+
+
 				String bindings = recorder.replay().steps.get( i ).quickslots;
 				System.out.println( "  the collector announces a decision on engine time "
 						+ clockAtDecision.get( i ) + " which the step advances to "

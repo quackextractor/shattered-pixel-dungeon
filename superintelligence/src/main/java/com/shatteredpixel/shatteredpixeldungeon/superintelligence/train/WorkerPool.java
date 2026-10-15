@@ -65,9 +65,9 @@ public class WorkerPool {
 		for (int i = 0; i < count; i++){
 			WorkerHandle handle = new WorkerHandle( java, classpath, "worker" + i );
 
-			//nothing to close here: handle.dataOut is a buffer over this process's stdin pipe and
-			//stays open for the life of the worker. Closing the raw stream first left the buffered
-			//writer writing into a closed pipe, so the handshake below failed immediately.
+
+
+
 			DataOutputStream out = handle.dataOut;
 			out.writeInt( Protocol.MSG_HELLO );
 			out.writeInt( Protocol.VERSION );
@@ -140,8 +140,8 @@ public class WorkerPool {
 					+ " alive=" + worker.process.isAlive() );
 		}
 
-		//a thread dump of the trainer is the only useful diagnostic here, and the blocked frames are
-		//exactly where the protocol went wrong
+
+
 		for (Thread t : Thread.getAllStackTraces().keySet()){
 			if (t.getName().startsWith( "dispatch-" )){
 				System.err.println( "  " + t.getName() + " " + t.getState() );
@@ -159,7 +159,7 @@ public class WorkerPool {
 			try {
 				worker.process.destroy();
 			} catch (RuntimeException e){
-				//a worker that already exited is fine
+
 			}
 		}
 		workers.clear();
@@ -200,20 +200,20 @@ ProcessBuilder pb = new ProcessBuilder(
 				java,
 				"-Xms256m", "-Xmx1536m",
 				"-XX:+UseParallelGC", "-XX:MaxGCPauseMillis=200",
-				//HeadlessServices loads the libGDX natives, and on a JDK that restricts native access
-				//that prints a warning per worker per launch. Silence it explicitly rather than leaving
-				//several hundred lines of it interleaved with the generation report.
+
+
+
 				"--enable-native-access=ALL-UNNAMED",
 				"-cp", classpath,
 					"com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerMain",
 					"--worker",
-					//its own save directory, so workers cannot collide on one temp file
+
 					"--work-dir", new File( workerDir(), name ).getAbsolutePath() );
 
 			pb.redirectError( ProcessBuilder.Redirect.INHERIT );
 
-			//ProcessBuilder resolves its working directory before the process starts, so the worker
-			//cannot create its own - it fails with "The directory name is invalid" instead
+
+
 			File dir = new File( workerDir(), name );
 			if (!dir.isDirectory() && !dir.mkdirs()){
 				throw new IOException( "could not create worker directory " + dir );

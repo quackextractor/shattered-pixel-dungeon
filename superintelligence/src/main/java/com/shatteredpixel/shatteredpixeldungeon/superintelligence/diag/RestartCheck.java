@@ -49,7 +49,7 @@ public class RestartCheck {
 
 		String first = signature();
 
-		//Churn the generators with real play, so the restart is not comparing two pristine states.
+
 		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), SEED.hashCode() );
 		int[] slot = new int[ 1 ];
 		int played = 0;
@@ -89,10 +89,10 @@ public class RestartCheck {
 		Dungeon.hero = null;
 		Dungeon.init();
 
-		//Mirrors LevelPipeline.startRun: sprites are attached before the floor is built, not after.
-		//Without this the hero had no sprite while the level was generated, and the emitter draws a
-		//level makes - Emitter.start takes a Random.Float for its delay - did not happen, so the same
-		//seed produced a different floor and this check failed on a heap count.
+
+
+
+
 		pipeline.attachSprites();
 
 		Level level = Dungeon.newLevel();

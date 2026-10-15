@@ -87,13 +87,13 @@ public class ModeCoverageCheck {
 	private void checkInventoryEntryDoesNotTouchTheWorld(){
 		env.reset( SEED, HeroClass.WARRIOR );
 
-		//Put something worth interacting with on a known adjacent cell first.
-		//
-		//Without this the case passes vacuously. pickInteractCell only returns a cell when a mob, a
-		//heap, a locked door or a transition happens to be adjacent, so on a quiet seed the fall-through
-		//has nothing to act on and the bug is invisible - which is exactly what happened: restoring the
-		//fall-through left this gate green. A regression test that cannot fail on the thing it is
-		//testing is worse than no test, because it reports a property the code does not have.
+
+
+
+
+
+
+
 		int heroPos = env.heroPosition();
 		int heapCell = adjacentPassableCell( heroPos );
 		if (heapCell < 0){
@@ -112,12 +112,12 @@ public class ModeCoverageCheck {
 
 		int depth = env.depth();
 
-		//Eight, not twenty-four, and stopped if the episode ends. The fault this case exists for picks
-		//the heap up on the **first** OPEN_INVENTORY, so eight is more than enough instrument for it -
-		//whereas twenty-four pairs is 48 steps that advance no engine time, which is over the shipped
-		//env.free_step_budget and ends the episode by design. The instrument was larger than the
-		//environment's tolerance for a loop, and a gate that crashes on a correct terminal is a worse gate
-		//than one that asks its question with a smaller hammer.
+
+
+
+
+
+
 		for (int i = 0; i < 8 && env.running() && env.mode() == EnvMode.WORLD; i++ ){
 			env.step( Action.OPEN_INVENTORY, 0 );
 			if (env.running() && env.mode() == EnvMode.INVENTORY ) env.step( Action.CANCEL, 0 );
@@ -140,8 +140,8 @@ public class ModeCoverageCheck {
 			return;
 		}
 
-		//the heap must still be there. Under the fall-through the first OPEN_INVENTORY picked it up,
-		//because pickInteractCell prefers a heap over anything else - so its *absence* is the failure.
+
+
 		if (Dungeon.level.heaps.get( heapCell ) == null ){
 			failures.add( "the item heap on cell " + heapCell + " is gone after 24 OPEN_INVENTORY steps."
 					+ " Under the fall-through it was picked up on the first one, because"
@@ -157,10 +157,10 @@ public class ModeCoverageCheck {
 			return;
 		}
 
-		//Every decision costs exactly one turn. Not "the same as WAIT": an inventory round trip is two
-		//decisions - open, then close - and each legitimately costs a turn. What must not happen is a
-		//turn charged or refunded for something the agent did not choose, which is what the old
-		//fall-through did on top of the action.
+
+
+
+
 		env.reset( SEED, HeroClass.WARRIOR );
 		int before = env.turnsTotal();
 		int decisions = 0;
@@ -233,8 +233,8 @@ public class ModeCoverageCheck {
 	}
 
 	private void run(){
-		//Before anything else, because a mode entry that also acts on the world makes every later
-		//phase start from the wrong cell.
+
+
 		checkInventoryEntryDoesNotTouchTheWorld();
 		checkCancelDoesNotTouchTheWorld();
 
@@ -249,30 +249,30 @@ public class ModeCoverageCheck {
 
 		int stones = quantityAt( stone );
 
-		//WORLD -> SLOT: starting a use is the only route into SLOT
+
 		step( Action.USE, stone, EnvMode.SLOT, "use starts a slot choice" );
 
-		//SLOT -> TARGETING: using the stone needs an aim
+
 		step( Action.USE, stone, EnvMode.TARGETING, "using a missile asks for a target" );
 
-		//TARGETING -> WORLD: resolving the aim, not cancelling it. This is what actually executes
-		//resolveTarget, which reaching the mode on its own never proved.
+
+
 		step( Action.USE, 0, EnvMode.WORLD, "resolving an aim throws the item" );
 		if (quantityAt( stone ) >= stones){
 			failures.add( "the aim was resolved but the stone count did not fall from " + stones + " to "
 					+ quantityAt( stone ) + ", so no throw happened" );
 		}
 
-		//WORLD -> INVENTORY, the mode that used to be unreachable
+
 		step( Action.OPEN_INVENTORY, 0, EnvMode.INVENTORY, "opening the inventory" );
 
-		//INVENTORY -> WORLD, driving the branch the same way SLOT does
+
 		int other = slotOfNonTargetingItem();
 		step( Action.USE, other, EnvMode.WORLD, "using from the inventory" );
 
-		//SLOT -> WORLD through DROP. Worth its own hop because drop releases the hero through the
-		//game's own doDrop rather than through SlotAction, and a mismatch there strands the actor
-		//pipeline exactly as a refused equip did.
+
+
+
 		int droppable = slotOfDroppableItem();
 		if (droppable < 0){
 			failures.add( "no droppable item in the starting kit, so the drop path was not executed" );
@@ -285,8 +285,8 @@ public class ModeCoverageCheck {
 			}
 		}
 
-		//WORLD -> MENU: a real dialog, opened the way the game opens one. Headless the scene is null,
-		//so GameScene.show parks it where WindowBridge can find it.
+
+
 		GameScene.show( new WndOptions( "modecheck", "deliberate dialog", "first", "second" ) );
 		if (!WindowBridge.open()){
 			failures.add( "GameScene.show did not leave a dialog for WindowBridge to find: "
@@ -295,7 +295,7 @@ public class ModeCoverageCheck {
 		}
 		step( Action.WAIT, 0, EnvMode.MENU, "an open dialog takes over the turn" );
 
-		//MENU -> WORLD: answering it, which is the only thing that ever closes a dialog
+
 		step( Action.MENU_SELECT, 0, EnvMode.WORLD, "selecting an option closes the dialog" );
 		if (WindowBridge.open()) failures.add( "the dialog was still open after MENU_SELECT" );
 

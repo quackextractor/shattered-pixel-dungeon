@@ -50,7 +50,7 @@ import java.nio.file.StandardCopyOption;
 public final class Checkpoint {
 
 	/** File magic and format version, so a truncated or foreign file is refused rather than parsed. */
-	private static final int MAGIC = 0x53504431; // "SPD1"
+	private static final int MAGIC = 0x53504431; 
 	private static final int FORMAT = 1;
 
 	private Checkpoint() {}
@@ -88,7 +88,7 @@ public final class Checkpoint {
 		Path parent = target.getParent();
 		if (parent != null) Files.createDirectories( parent );
 
-		//a sibling temp file, so the rename cannot cross a filesystem boundary and lose atomicity
+
 		Path temp = Files.createTempFile( parent, "weights-", ".tmp" );
 		try {
 			try (DataOutputStream out = new DataOutputStream(
@@ -100,9 +100,9 @@ public final class Checkpoint {
 				out.writeInt( network.adamSteps() );
 				out.writeLong( trainSeed );
 
-				//the config fields the tensor shapes depend on. Not the reward weights or the turn
-				//limits: those change what a run scores without changing what it can represent, and
-				//refusing to resume across a reward tweak would be a nuisance rather than a safeguard
+
+
+
 				out.writeInt( config.maxSlots );
 				out.writeInt( config.gridWidth );
 				out.writeInt( config.gridHeight );
@@ -180,7 +180,7 @@ public final class Checkpoint {
 						readFloats( in ), readFloats( in ) );
 			}
 
-			//read before writing anything, so a truncated file cannot leave a half-loaded network
+
 			int momentGroups = in.readInt();
 			Network.Moments[] moments = new Network.Moments[ momentGroups ];
 			for (int i = 0; i < momentGroups; i++){
@@ -198,7 +198,7 @@ public final class Checkpoint {
 			for (Network.Layer layer : layers) network.loadLayer( layer );
 			for (Network.Moments m : moments) network.loadMoments( m );
 
-			//last, because it is the one thing that is not a tensor and so cannot be validated above
+
 			network.adamSteps( meta.adamSteps );
 
 			return meta;
@@ -239,8 +239,8 @@ public final class Checkpoint {
 	private static float[] readFloats( DataInputStream in ) throws IOException {
 		int count = in.readInt();
 		if (count < 0) throw new IOException( "a tensor in the checkpoint claims " + count + " floats" );
-		//a length is the one field that can be hostile, so it is bounded against what this build could
-		//possibly hold rather than trusted: the largest tensor here is the CNN trunk at a few million
+
+
 		if (count > 64 * 1024 * 1024){
 			throw new IOException( "a tensor in the checkpoint claims " + count
 					+ " floats, which is more than any layer in this network has" );

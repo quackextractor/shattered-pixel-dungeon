@@ -97,7 +97,7 @@ public class RolloutCheck {
 			return;
 		}
 
-		//the seed the environment resolved, not the empty request it was handed
+
 		if ( !recorded.equals( episode.seedText() )){
 			fail( "the recording names seed [" + recorded + "] but the environment resolved ["
 					+ episode.seedText() + "]" );

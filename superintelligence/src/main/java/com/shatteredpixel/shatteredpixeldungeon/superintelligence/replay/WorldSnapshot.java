@@ -316,8 +316,8 @@ public class WorldSnapshot {
 		sb.append( "\tstate=" ).append( mob.state == null ? "none" : mob.state.getClass().getSimpleName() );
 		sb.append( "\tcd=" ).append( mob.cooldown() );
 		sb.append( "\tdead=" ).append( !mob.isAlive() );
-		//Three-state, not two: fieldOfView is allocated lazily, so a mob that has never seen anything is
-		//a different fact from one that has and cannot see. EpisodeDiff makes the same point.
+
+
 		sb.append( "\tsees=" ).append( seesHero( mob, heroPos ) );
 		sb.append( "\tseen=" ).append( mob.enemySeen() );
 		sb.append( "\talerted=" ).append( mob.alerted() );
@@ -378,16 +378,16 @@ public class WorldSnapshot {
 		Trap trap = level.traps.get( cell );
 		Plant plant = level.plants.get( cell );
 
-		//The overwhelming majority of cells are bare floor, and a line each for all of them buries the
-		//few that carry anything. Recorded only when the cell has content, a transition, or is not simply
-		//explored-and-empty - so terrain, FOV and passability outside this set are implied rather than
-		//enumerated. A terrain difference on a plain cell is therefore missed, which the fingerprint in
-		// the trailing cells record covers instead.
-		//A pit is invisible in `tier`. Level stores chasms in `pit[]`, a flag array entirely separate
-		//from `map[]`, so a pit cell reads as an ordinary Floor and a plain floor and a *pit floor* are
-		//identical to anything reading the terrain. `pit` also joins the elision test below, because a
-		//pit cell is exactly the "plain" shape - walked, empty, passable - and so was being dropped
-		//from the record of the one thing that can put the hero a floor down without touching stairs.
+
+
+
+
+
+
+
+
+
+
 		boolean pit = level.pit[ cell ];
 		boolean plain = heap == null && trap == null && plant == null && !pit
 				&& level.getTransition( cell ) == null
@@ -397,8 +397,8 @@ public class WorldSnapshot {
 		StringBuilder sb = new StringBuilder( "cell\t" ).append( cell );
 		sb.append( "\tx=" ).append( cell % level.width() );
 		sb.append( "\ty=" ).append( cell / level.width() );
-		//Named rather than the raw id: the id indexes a table that only grows, so a diff across two builds
-		//would compare numbers that no longer mean the same thing. Level.tileName is the game's spelling.
+
+
 		sb.append( "\ttier=" ).append( level.tileName( level.map[cell] ) );
 		sb.append( "\tvis=" ).append( flag( level.heroFOV, cell ) );
 		sb.append( "\texpl=" ).append( flag( level.visited, cell ) );
@@ -490,8 +490,8 @@ public class WorldSnapshot {
 	private static void appendItem( StringBuilder sb, Item item, String path ){
 		if (item == null) return;
 		sb.append( path ).append( '=' ).append( item.getClass().getSimpleName() );
-		//Both levels, because they differ: level() hides a level on an unidentified upgradable item and
-		//trueLevel() does not, so a diff reporting only one would call those two states equal.
+
+
 		sb.append( "(l" ).append( item.level() ).append( "/t" ).append( item.trueLevel() );
 		sb.append( " q" ).append( item.quantity() );
 		sb.append( " v" ).append( item.value() );

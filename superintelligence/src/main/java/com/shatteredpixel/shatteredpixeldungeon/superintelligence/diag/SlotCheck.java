@@ -51,12 +51,12 @@ public class SlotCheck {
 
 		EnvConfig config = new EnvConfig();
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
-		//DUELIST, whose starting Rapier is equipped and bound to quickslot 0 - the one binding a slot
-		//index can never name, and the one `restore` used to wipe
+
+
 		env.reset( "SLOTCHECK-A", HeroClass.DUELIST );
 
-		//First, because it is the only case that needs the bindings a fresh run starts with: the ones
-		//below deliberately wipe them to test what happens to a capture afterwards.
+
+
 		restoreLeavesAloneABindingNoSlotIndexCanName();
 		capturedBindingsResolveTheSameSlotsAfterRestore();
 		restoreClearsBindingsTheRecordingDidNotMention();
@@ -177,7 +177,7 @@ public class SlotCheck {
 		}
 	}
 
-	// --------------------------------------------------------------------------- helpers
+
 
 	/**
 	 * A binding on an equipped item is the game's to keep, not the recording's to overwrite.
@@ -227,7 +227,7 @@ public class SlotCheck {
 		int equippedSlot = Dungeon.quickslot.getSlot( equipped );
 		int carriedSlot = Dungeon.quickslot.getSlot( carried );
 
-		//a capture that names nothing, which is what an old recording carries on its WORLD steps
+
 		Quickslots.restore( "" );
 
 		if (Dungeon.quickslot.getSlot( carried ) != -1){
@@ -248,7 +248,7 @@ public class SlotCheck {
 			return;
 		}
 
-		//put the world back the way it was, since the cases below build their own state anyway
+
 		Dungeon.quickslot.setSlot( carriedSlot, carried );
 
 		System.out.println( "  restore leaves the equipped " + equipped.getClass().getSimpleName()
@@ -265,8 +265,8 @@ public class SlotCheck {
 	private static void bindingsSurviveARoundTripThroughTheFileFormat(){
 		String where = "bindings survive a replay round trip";
 
-		//Fixed rather than taken from the live hero, so the check still holds if the hero happens to
-		//carry nothing bound. Two entries, since a single one would not exercise the separator.
+
+
 		String captured = "Waterskin:1,VelvetPouch:0";
 
 		String read;

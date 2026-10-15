@@ -39,7 +39,7 @@ public class PPO {
 	public final EnvConfig config;
 	public final Network network;
 
-	// hyperparameters, exposed so the trainer can anneal them
+
 	public float gamma = 0.99f;
 	public float lambda = 0.95f;
 	public float clipEpsilon = 0.2f;
@@ -105,9 +105,9 @@ public class PPO {
 
 	private final ArrayList<Transition> buffer = new ArrayList<>();
 
-	//one probability buffer per head. The three heads have different widths and the loss reads
-	//the probability vector against that head's own mask, so a shared buffer sized for the widest
-	//head would run off the end of the narrower masks.
+
+
+
 	private final float[] actionProbs;
 	private final float[] slotProbs;
 	private final float[] targetProbs;
@@ -148,12 +148,12 @@ public class PPO {
 		buffer.subList( 0, Math.min( count, buffer.size() ) ).clear();
 	}
 
-	// diagnostics from the last update, each a mean over the samples seen rather than a running sum
+
 	public float lastPolicyLoss;
 	public float lastValueLoss;
 	public float lastEntropy;
 public float lastKLDivergence;
-// fraction of samples whose PPO ratio fell outside [1-eps, 1+eps], so the surrogate's min() clipped them
+
 public float lastClipFraction;
 	public float lastGradNorm;
 	public float lastGradClipped;
@@ -183,7 +183,7 @@ public float lastClipFraction;
 	}
 
 
-	// --------------------------------------------------------------------------- update
+
 
 	public int bufferSize(){
 		return buffer.size();
@@ -222,8 +222,8 @@ public float lastClipFraction;
 	public void update(){
 		if (buffer.isEmpty()) return;
 
-		//resolves the thread count and creates the pool, which the sharded path assumes exists. Here
-		//rather than in the constructor so that setting `threads` after construction is enough.
+
+
 		threadCount();
 
 		network.zeroGrad();
@@ -243,9 +243,9 @@ public float lastClipFraction;
 
 		for (int epoch = 0; epoch < epochs; epoch++){
 			shuffle( buffer );
-			//Each sample now restores its own state, so the epoch boundary no longer has to clear it.
-			//Left in as a guard: a transition with a null state - only synthetic ones - would otherwise
-			//inherit whatever the last sample of the previous epoch left behind.
+
+
+
 			network.resetState();
 
 			for (int start = 0; start < n; start += minibatchSize){
@@ -256,9 +256,9 @@ public float lastClipFraction;
 			}
 		}
 
-		//the per-minibatch figures were each averaged over their own samples and then summed, so the
-		//total depended on how many minibatches and epochs ran. That made the printed loss grow just
-		//from a longer update. Divide it back out: the report is a mean over the samples seen.
+
+
+
 		if (lastMinibatches > 0){
 			lastPolicyLoss /= lastMinibatches;
 			lastValueLoss /= lastMinibatches;
@@ -286,8 +286,8 @@ public float lastClipFraction;
 	private void oneMinibatch( int from, int to ){
 		int count = Math.max( 1, to - from );
 
-		//null means the sharded path declined - fewer samples than threads, say - and the serial path
-		//runs it instead, so a run that asked for threads still produces the same result.
+
+
 		Minibatch m = threads > 1 ? sharded.run( from, to ) : null;
 		accumulate( m != null ? m : processMinibatch( from, to ), count );
 	}
@@ -407,7 +407,7 @@ public float lastClipFraction;
 
 		Stats s = new Stats();
 
-		//restore the state this step was decided under, before the forward reads it. the method comment below.
+
 		if (t.recurrentState != null) net.loadState( t.recurrentState );
 
 		t.unpackGrid( grid );
@@ -446,9 +446,9 @@ public float lastClipFraction;
 		java.util.Arrays.fill( gradient, 0f );
 
 		Policy.probabilities( logits, mask, probabilities );
-		//whether the surrogate's clip bound this sample, which is PPO's clip fraction. Counting
-		//|advantage| instead - which is what this did - measures nothing: after normalisation
-		//advantages have unit variance, so that count is a constant near P(|N(0,1)| > 0.2).
+
+
+
 		s.clipBinding = Policy.accumulatePolicyGradient( probabilities, mask, chosen,
 				t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
 
@@ -500,10 +500,10 @@ public float lastClipFraction;
 
 		int count = Math.max( 1, to - from );
 
-		//average the minibatch, then clip, then step. Clipping before averaging would make the ceiling
-		//mean something that changes with minibatchSize, and Network.gradClip is declared as an
-		//absolute norm for a reason. Averaging here rather than through step's gradScale also means
-		//the norm reported is the norm of the gradient that was actually applied.
+
+
+
+
 		network.scaleGradients( 1f / count );
 		float norm = network.clipGradients( network.gradClip );
 
@@ -525,7 +525,7 @@ public float lastClipFraction;
 		float newLog = Policy.logProbability( probabilities, chosen );
 		float ratio = (float) Math.exp( newLog - behaviourLogProbability );
 
-		//KL for small deviations is well approximated by (r-1) - ln r
+
 		return (ratio - 1f) - (float) Math.log( Math.max( ratio, 1e-8f ) );
 	}
 

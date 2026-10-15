@@ -76,14 +76,14 @@ public class ReplayIndex {
 					( absolute.getPath() + System.lineSeparator() ).getBytes( StandardCharsets.UTF_8 ),
 					StandardOpenOption.CREATE, StandardOpenOption.APPEND );
 		} catch (IOException ignored){
-			//discoverability is recoverable, a failed training run is not
+
 		}
 	}
 
 	/** Every directory recorded so far that still exists, in the order they were recorded. */
 	public static List<File> read(){
-		//a LinkedHashSet because two runs may well share an output directory, and the caller should not
-		//have to know that
+
+
 		LinkedHashSet<File> found = new LinkedHashSet<>();
 
 		File index = indexFile();
@@ -98,7 +98,7 @@ public class ReplayIndex {
 				if (dir.isDirectory()) found.add( dir );
 			}
 		} catch (IOException ignored){
-			//an unreadable index means no extra directories, which is the old behaviour
+
 		}
 
 		return new ArrayList<>( found );

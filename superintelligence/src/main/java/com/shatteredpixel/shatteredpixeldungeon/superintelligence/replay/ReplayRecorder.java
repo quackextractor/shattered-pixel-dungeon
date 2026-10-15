@@ -62,8 +62,8 @@ public class ReplayRecorder {
 	public void record( Action action, int slot, EnvMode mode ){
 		if (!recording) return;
 		replay.add( action.name(), slot, mode.name(), -1, 0 );
-		//Captured here, before the action runs, because that is when the slot index was chosen. An equip
-		//or unequip in this very step can rebind a slot, so afterwards would describe a different world.
+
+
 		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY){
 			replay.steps.get( replay.length() - 1 ).quickslots = Quickslots.capture();
 		}
@@ -77,9 +77,9 @@ public class ReplayRecorder {
 		Replay.Step step = replay.steps.get( last );
 		step.heroPos = heroPosition;
 		step.reward = reward;
-		//Recorded so that replaying a run is checked against something other than a re-run of the same
-		//code. Position alone cannot see a hero who is starving, or one turn adrift of the recording, and
-		//both of those played back cleanly while being wrong.
+
+
+
 		step.heroHp = Dungeon.hero.HP;
 		step.turn = Actor.now();
 		step.inventory = inventoryOf();

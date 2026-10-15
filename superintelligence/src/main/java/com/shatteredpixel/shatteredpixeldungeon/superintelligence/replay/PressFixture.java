@@ -102,10 +102,10 @@ public final class PressFixture {
 		step( env, recorder, Action.USE, 0, EnvMode.WORLD );
 		step( env, recorder, Action.USE, slot, EnvMode.SLOT );
 
-		//The SLOT step's SlotAction.use reports whether an aim is needed, and that answer is what puts
-		//the environment in TARGETING. A throwable whose use declined would leave it in WORLD, and the
-		//third step below would then be recorded as a target choice against a mode it was never in -
-		//which reads as a divergence on verify rather than as a seed this fixture cannot use.
+
+
+
+
 		if (env.mode() != EnvMode.TARGETING) return null;
 
 		step( env, recorder, Action.USE, target, EnvMode.TARGETING );

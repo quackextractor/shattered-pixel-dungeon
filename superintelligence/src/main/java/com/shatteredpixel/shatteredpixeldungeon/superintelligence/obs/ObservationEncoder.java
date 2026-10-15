@@ -97,7 +97,7 @@ public class ObservationEncoder {
 		return newlyExplored;
 	}
 
-	// --------------------------------------------------------------------------- spatial
+
 
 	private void buildSpatial( Level level, Hero hero ){
 		int width = level.width();
@@ -108,11 +108,11 @@ public class ObservationEncoder {
 		int spanX = gridWidth + MARGIN * 2;
 		int spanY = gridHeight + MARGIN * 2;
 
-		//step > 1 on floors larger than the window, which is how fixed input size is kept
+
 		float stepX = (float) spanX / gridWidth;
 		float stepY = (float) spanY / gridHeight;
 
-		//clamp so the FOV and adjacency channels are not read out of bounds near the map edge
+
 		float scale = Math.max( 1f, Math.max( stepX, stepY ) );
 		int x0 = Math.max( 0, originX );
 		int y0 = Math.max( 0, originY );
@@ -154,7 +154,7 @@ public class ObservationEncoder {
 		put( GridChannel.EXPLORED, p, explored );
 		put( GridChannel.FOGGED, p, explored && !visible );
 
-		//terrain detail is only meaningful where the hero can actually see it
+
 		if (visible){
 			put( GridChannel.HIGH_GRASS, p, terrain == Terrain.HIGH_GRASS
 					|| terrain == Terrain.FURROWED_GRASS );
@@ -180,13 +180,13 @@ public class ObservationEncoder {
 			Heap heap = level.heaps.get( cell );
 			if (heap != null && !heap.isEmpty()){
 				put( GridChannel.HEAP, p, 1f );
-				//a heap whose contents the hero cannot see still shows *that* something is there
+
 				if (heapSeen( heap )) put( GridChannel.GROUND_ITEM, p, groundItem( heap ) );
 			}
 
 			Char ch = Actor.findChar( cell );
 			if (ch != null && ch != hero){
-				//a stealthy mimic on explored terrain stays visible, matching what a player sees
+
 				boolean shown = visible || mimicStillVisible( ch, visible );
 				if (shown){
 					switch (ch.alignment){
@@ -278,7 +278,7 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 		System.arraycopy( edges, 0, grid, plane * PLANE_AREA, edges.length );
 	}
 
-// --------------------------------------------------------------------------- helpers
+
 
 	/** Precomputed channel -> plane offset, so encoding does no enum lookups per tile. */
 	private static final int[] PLANE_INDEX = new int[ GridChannel.count() ];
@@ -323,7 +323,7 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 		for (int i = 0; i < level.length(); i++) if (level.visited[ i ]) explored++;
 
 		if (Dungeon.depth != lastDepth){
-			//new floor: previous floor's total is not comparable
+
 			lastDepth = Dungeon.depth;
 			lastExplored = explored;
 			return explored;

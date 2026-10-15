@@ -51,14 +51,14 @@ public class CheckpointCheck {
 		try {
 			EnvConfig config = new EnvConfig();
 
-			//a small network: the shape checks are what matter and a 3.5M-parameter one costs seconds
+
 			EnvConfig small = new EnvConfig();
 			small.gridWidth = 12;
 			small.gridHeight = 12;
 			small.maxSlots = 4;
 
 			Network original = new Network( small, new Random( 20261007L ) );
-			//some non-trivial moments and a step count, so "did it restore" is a real question
+
 			touch( original );
 
 			File file = new File( dir, "weights.bin" );
@@ -73,8 +73,8 @@ public class CheckpointCheck {
 			checkReportsGenerationAndSteps( original, small, file, 7, 4242L );
 		checkAMissingFlagValueIsRefusedNamingItself();
 
-			//the default config, because every real run uses it and a shape that only works at 12x12
-			//would pass everything above
+
+
 			Checkpoint.save( new File( dir, "default.bin" ),
 					new Network( config, new Random( 1L ) ), config, 1, 1L );
 			File defaultFile = new File( dir, "default.bin" );
@@ -234,8 +234,8 @@ public class CheckpointCheck {
 			File file ) throws IOException {
 		Checkpoint.save( file, original, config, 1, 1L );
 
-		//one field at a time, so each of the three is known to be named. Changing several at once only
-		//proves the first of them is reported, which is exactly what the first version of this check did
+
+
 		checkMismatchNames( config, file, "maxSlots", 6 );
 		checkMismatchNames( config, file, "gridWidth", 10 );
 		checkMismatchNames( config, file, "gridHeight", 10 );
@@ -389,9 +389,9 @@ public class CheckpointCheck {
 			} catch (IOException e){
 				message = "IO: " + e.getMessage();
 			} catch (RuntimeException e){
-				//caught rather than allowed to escape, because that is the shape the case is about:
-				//an ArrayIndexOutOfBoundsException out of the parser used to kill this gate with a
-				//stack trace, so the one run that proves the fix works also destroys the report
+
+
+
 				message = e.getClass().getSimpleName() + ": " + e.getMessage();
 			}
 
@@ -407,7 +407,7 @@ public class CheckpointCheck {
 			}
 		}
 
-		//an unknown option is still only a warning, and the run continues
+
 		try {
 			TrainOptions.parse( new String[]{ "--workers", "2", "--not-a-real-flag" });
 		} catch (IllegalArgumentException e){

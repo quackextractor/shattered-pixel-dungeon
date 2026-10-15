@@ -127,17 +127,17 @@ public class Quickslots {
 	public static String prepare( Replay.Step step, int stepIndex, boolean wireDroppedFields ){
 		String mode = step.mode == null ? "" : step.mode;
 		if (!mode.equals( EnvMode.SLOT.name() ) && !mode.equals( EnvMode.INVENTORY.name() )){
-			//Left alone rather than cleared. Only a SLOT or INVENTORY step resolves a slot index, and
-			//the trainer's bindings evolve with the game between two such steps - equipping one rebinds,
-			//dropping unbinds. Clearing here would put the viewer behind the trainer from its very first
-			//WORLD step, and the bindings it would be clearing are the ones `HeroClass.initHero` set.
+
+
+
+
 			return null;
 		}
 
 		if (step.quickslots == null || step.quickslots.isEmpty()){
 			if (!wireDroppedFields){
-				//Nothing was bound at this moment, which is a state rather than a gap: the index resolves
-				//from backpack order alone.
+
+
 				restore( null );
 				return null;
 			}

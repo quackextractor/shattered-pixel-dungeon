@@ -74,25 +74,25 @@ public class ScriptedPolicy {
 				return windowChoice( env );
 
 case TARGETING:
-				//Aim and use the item, rather than cancelling.
-				//
-				//This policy cancels every aim, which made pickItemWorthUsing's preference for an item
-				//that "usesTargeting" self-defeating: it selected such an item precisely so the use would
-				//enter TARGETING, and then discarded the aim. The result was a fixed three-step cycle -
-				//USE, USE, CANCEL - repeated forever. No turn was ever spent, so the hero stood still until
-				//the environment's stall guard ended the episode. Every seed did it within 20 turns.
-				//
-				//Aiming completes the action instead: one turn is spent, the item is used, and the policy
-				//can move on. The environment records the aim as a TARGETING step, which is what
-				//modecheck asserts is reachable.
+
+
+
+
+
+
+
+
+
+
+
 				slotOut[ 0 ] = chooseTarget( env );
 				return Action.USE;
 
 case SLOT:
 			case INVENTORY:
 				int pick = pickItemWorthUsing( env );
-				//Nothing usable carried. Cancelling closes the pane, which spends the turn and lets the
-				//policy move on; using a slot index of -1 would be a refused action forever.
+
+
 				if (pick < 0){
 					slotOut[ 0 ] = 0;
 					return Action.CANCEL;
@@ -164,27 +164,27 @@ private Action chooseWorldAction( SPDEnv env ){
 		prevChoosePos = Dungeon.hero.pos;
 		settlePendingTransition();
 
-		//start a use, which is the only way to reach SLOT
+
 		if (!useExercised && mask[ Action.USE.index ] > 0.5f ){
 			useExercised = true;
 			noteProgress( env );
 			return Action.USE;
 		}
 
-		//open the inventory, which is the only way to reach INVENTORY
+
 		if (!inventoryExercised && mask[ Action.OPEN_INVENTORY.index ] > 0.5f ){
 			inventoryExercised = true;
 			noteProgress( env );
 			return Action.OPEN_INVENTORY;
 		}
 
-		//heal up when badly hurt and nothing is adjacent
+
 		if (hp < 0.35f && !hasAdjacentEnemy() && mask[ Action.REST.index ] > 0.5f ){
 			noteProgress( env );
 			return Action.REST;
 		}
 
-		//drink when hurt
+
 		if (hp < 0.8f && mask[ Action.USE.index ] > 0.5f ){
 			int slot = pickItemWorthUsing( env );
 			if (slot >= 0){
@@ -194,11 +194,11 @@ private Action chooseWorldAction( SPDEnv env ){
 		}
 
 
-//take the stairs when one is adjacent, which is how a floor is cleared
-		//
-		//Skipped while an item is within reach, and skipped entirely for a transition that has
-		//already been used to no effect - the quest-locked exit on floor 1 is legal to interact
-		//with but never resolves, so retrying it only burns the turn budget.
+
+
+
+
+
 		int stairs = adjacentTransitionCell( env );
 		if (mask[ Action.INTERACT.index ] > 0.5f && stairs >= 0 && !deadTransitions.contains( stairs )
 				&& !itemInReach() ){
@@ -208,29 +208,29 @@ private Action chooseWorldAction( SPDEnv env ){
 			return Action.INTERACT;
 		}
 
-		//fight an adjacent hostile
+
 		if (hasAdjacentEnemy() && mask[ Action.INTERACT.index ] > 0.5f ){
 			noteProgress( env );
 			return Action.INTERACT;
 		}
 
-		//walk onto a visible item. Picking things up is the only way to reach the slot, inventory
-		//and menu modes at all, so without this the policy can never produce a recording that
-		//exercises them - which leaves the rest of the action space unrecorded and untested.
+
+
+
 		if (mask[ Action.INTERACT.index ] > 0.5f && adjacentItem()){
 			noteProgress( env );
 			return Action.INTERACT;
 		}
 
-		//otherwise move. avoiding the direction just taken stops the classic oscillation between
-		//two cells that a greedy walk falls into
+
+
 		Action[] moves = {
 				Action.MOVE_E, Action.MOVE_W, Action.MOVE_S, Action.MOVE_N,
 				Action.MOVE_SE, Action.MOVE_SW, Action.MOVE_NE, Action.MOVE_NW };
 
-		//steer toward a visible item before falling back to wandering. Without an actual goal the
-		//hero bumps into walls for a whole turn budget, which is why every recording made so far is
-		//pure movement: reaching an item is the precondition for the slot and menu modes.
+
+
+
 Action toward = moveTowardItem( env, moves );
 		if (toward != null && mask[ toward.index ] > 0.5f && !backtrack( toward ) ){
 			lastMove = toward;
@@ -238,11 +238,11 @@ Action toward = moveTowardItem( env, moves );
 			return toward;
 		}
 
-		//stepping onto a high-grass heap clears the grass, after which INTERACT can collect it.
-		//Without this the policy circles a grass-covered item forever: INTERACT is illegal there,
-		//so neither the pickup rule nor the mask ever lets it act, and the stall guard ends the run.
-		//Deliberately not gated on INTERACT being legal - on grass it never is, which is the whole
-		//reason for this rule existing.
+
+
+
+
+
 		if (adjacentGrassItem()){
 			Action step = stepOntoGrassItem( env, moves );
 			if (step != null && mask[ step.index ] > 0.5f ){
@@ -268,8 +268,8 @@ Action fallback = null;
 			}
 		}
 
-//prefer a step that does not undo the last one, so a genuine dead end costs one turn
-		//rather than the rest of the episode
+
+
 		if (unbacked != null){
 			lastMove = unbacked;
 			noteProgress( env );
@@ -282,7 +282,7 @@ Action fallback = null;
 			return fallback;
 		}
 
-		//boxed in on every side; rest to let regen work, which also burns a turn legally
+
 		if (mask[ Action.REST.index ] > 0.5f ){
 			noteProgress( env );
 			return Action.REST;
@@ -319,11 +319,11 @@ Action fallback = null;
 		int hero = Dungeon.hero.pos;
 		for (Heap heap : Dungeon.level.heaps.valueList()){
 			if (!Dungeon.level.adjacent( heap.pos, hero )) continue;
-			//A heap on high grass cannot be picked up by interacting with it: the grass has to be
-			//trampled first, which is a separate move onto the tile. Stepping onto it is what clears
-			//the grass, so treat it as approachable and let the mask decide whether the step is
-			//legal - but do not spend a turn on INTERACT there, because it does nothing and the
-			//environment's stall guard would end the run.
+
+
+
+
+
 			if (onPickableTerrain( heap.pos )) return true;
 		}
 		return false;
@@ -397,8 +397,8 @@ Action fallback = null;
 		for (Heap heap : heaps){
 			if (heap.pos == hero) continue;
 
-			//walk from the item back to the hero, then take the step whose own distance is lowest.
-			//Cheap because there is one heap per candidate rather than a map per candidate.
+
+
 			boolean[] passable = Dungeon.level.passable;
 			PathFinder.buildDistanceMap( heap.pos, passable );
 
@@ -409,7 +409,7 @@ Action fallback = null;
 				int cell = hero + move.dx + move.dy * Dungeon.level.width();
 				if (cell < 0 || cell >= distance.length) continue;
 
-				//only consider steps that actually reduce the remaining distance
+
 				if (distance[ cell ] <= 0 || distance[ cell ] >= distance[ hero ]) continue;
 
 				if (distance[ cell ] < bestDistance){
@@ -418,10 +418,10 @@ Action fallback = null;
 				}
 			}
 
-			//Diagonal targets have no cardinal step that strictly shortens the path, so a heap one
-			//step off diagonally would make the hero walk back and forth over the same two tiles
-			//forever - the environment's stall guard then ends the run. Falling back to a step that
-			//does not increase the distance breaks that cycle by sliding around the target instead.
+
+
+
+
 			if (best != null) break;
 
 			for (Action move : moves){
@@ -469,7 +469,7 @@ Action fallback = null;
 		if (pendingCell < 0) return;
 
 		if (Dungeon.depth != pendingDepth){
-			//it worked, so a floor's worth of bad cells is no longer relevant
+
 			deadTransitions.clear();
 		} else {
 			deadTransitions.add( pendingCell );
@@ -503,19 +503,19 @@ private int firstOccupiedSlot( SPDEnv env ){
 			if (item != null && item.usesTargeting) return i;
 		}
 
-		//Bags and empty waterskins are skipped, for the same reason and by the same mechanism.
-		//
-		//A bag's only action opens its own inventory pane; an empty Waterskin's DRINK prints "empty" and
-		//returns without calling hero.spend(). Both therefore cost no turn and change nothing, so the
-		//policy re-picks the same slot forever. Every hero starts with one of each - a VelvetPouch and an
-		//empty Waterskin, per HeroClass.initHero - which is why every seed stalled and why it was not
-		//seed-specific at all.
-		//
-		//Note this is not reward-neutral, despite the action doing nothing: SPDEnv passes tookAction as a
-		//literal true, so TURN_COST is charged every turn regardless. The loop paid -3.00 a step to gain
-		//nothing, and is the most negative reward available. It persisted because the escape heuristic
-		//only breaks when the same position repeats six times and something else eventually nudged it,
-		//rather than because the policy preferred it.
+
+
+
+
+
+
+
+
+
+
+
+
+
 		for (int i = 0; i < mask.length; i++){
 			if (mask[ i ] <= 0.5f ) continue;
 			Item item = env.mapper().slot( i );
@@ -556,8 +556,8 @@ if (pos == lastPos && hp == lastHp){
 		if (stuck > 6){
 			stuck = 0;
 			lastMove = null;
-			//the loop was not about one direction, so allow every cell again rather than
-			//refusing the same backtrack for the rest of the episode
+
+
 			prevChoosePos = -1;
 		}
 	}

@@ -80,7 +80,7 @@ public class Conv2D {
 
 		java.util.Arrays.fill( out.data, 0f );
 
-		//out = col^T * W + b, computed as a sequence of row outputs
+
 		for (int p = 0; p < outSize * outSize; p++){
 			int cOff = p * outChannels;
 			for (int q = 0; q < outChannels; q++){
@@ -94,7 +94,7 @@ public class Conv2D {
 		}
 
 		for (int i = 0; i < out.data.length; i++){
-			if (out.data[ i ] < 0f ) out.data[ i ] = 0f; //ReLU
+			if (out.data[ i ] < 0f ) out.data[ i ] = 0f; 
 		}
 	}
 
@@ -106,7 +106,7 @@ public class Conv2D {
 			int inOff = ch * planeSize;
 			for (int ky = 0; ky < kernel; ky++){
 				for (int kx = 0; kx < kernel; kx++){
-					//column index within the patch, matching the weight row order
+
 					int row = (ch * kernel + ky) * kernel + kx;
 					int rowOff = row * col.cols;
 
@@ -138,15 +138,15 @@ public class Conv2D {
 
 		int planeSize = inSize * inSize;
 
-		//chain the ReLU derivative in. gradOut is the caller's per-step scratch buffer and is
-		//wider than this layer's output, so only the leading entries are touched. Masking in
-		//place costs nothing and keeps the loops below simple.
+
+
+
 		int outLen = outputSize();
 		for (int i = 0; i < outLen; i++){
 			if (preAct[ i ] <= 0f ) gradOut.data[ i ] = 0f;
 		}
 
-		//dL/dW and dL/dinput, walked over the same im2col layout used by forward
+
 		for (int p = 0; p < outSize * outSize; p++){
 			int cOff = p * outChannels;
 

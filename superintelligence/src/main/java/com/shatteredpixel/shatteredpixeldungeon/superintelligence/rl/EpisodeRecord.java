@@ -42,7 +42,7 @@ public class EpisodeRecord {
 	/** Value of the state the last step led to, so a truncated episode can bootstrap. */
 	private float finalValue;
 
-	//total steps the episode took, including ones whose observations were dropped
+
 	public int stepCount(){
 		return steps;
 	}
@@ -82,9 +82,9 @@ public class EpisodeRecord {
 
 		ensure( steps );
 
-		//the arrays are grown together and kept index-aligned, so the GAE pass at the end of the
-		//episode can read reward, value and terminal for any step without knowing which of them a
-		//sampled transition happens to be
+
+
+
 		rewards[ steps ] = reward;
 		values[ steps ] = value;
 		terminal[ steps ] = isTerminal ? 1f : 0f;
@@ -131,8 +131,8 @@ public class EpisodeRecord {
 		Policy.computeEpisodeAdvantages( rewards, values, terminal, steps, finalValue, gamma, lambda,
 				advantages, returns );
 
-		//the retained transitions are the only place these two end up, and the trainer reads them
-		//from there rather than recomputing anything
+
+
 		for (int i = 0; i < sampled.size(); i++){
 			Transition t = sampled.get( i );
 			int step = sampledSteps[ i ];
@@ -157,7 +157,7 @@ public class EpisodeRecord {
 		steps = 0;
 	}
 
-	// --------------------------------------------------------------------------- growth
+
 
 	/** Grows every per-step array together, so the GAE pass can index them in lockstep. */
 	private void ensure( int index ){

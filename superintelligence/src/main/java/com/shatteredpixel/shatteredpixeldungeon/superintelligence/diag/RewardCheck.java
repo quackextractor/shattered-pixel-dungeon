@@ -237,7 +237,7 @@ public class RewardCheck {
 			boolean shouldBeNatural = reason == RewardModel.TerminateReason.DEATH
 					|| reason == RewardModel.TerminateReason.VICTORY;
 
-			//asked of the real predicate, not restated here
+
 			boolean isNatural = SPDEnv.isNaturalEnding( reason );
 			if (isNatural != shouldBeNatural ){
 				fail( reason + " is classified as " + ( isNatural ? "a natural ending" : "a truncation" )
@@ -271,7 +271,7 @@ public class RewardCheck {
 	 */
 	private static void checkStallCostsMoreThanDying( EnvConfig config ){
 		Outcome stall = playWaits( config, config.stallLimit + 8 );
-		if (stall.endReason != RewardModel.TerminateReason.STALLED) return;  // reported already
+		if (stall.endReason != RewardModel.TerminateReason.STALLED) return;  
 
 		double terminal = stall.termTotal( RewardTerm.STALLED );
 		double expected = -config.stallPenalty;
@@ -292,15 +292,15 @@ public class RewardCheck {
 			return;
 		}
 
-		//Both stall guards record exactly once; see checkStallPathRecordsOnce, which drives one and
-		//owns the assertion. Asserted on the record count rather than the score because a duplicate
-		//terminate is invisible in the total only while STALLED is at zero, and it is no longer.
+
+
+
 		double turnCost = stall.termTotal( RewardTerm.TURN_COST );
 		double expectedTurnCost = -config.turnCost * (stall.turns - freeSteps( stall ) );
 
-		//tolerance in ulps rather than ==. Both sides accumulate in float32, so -0.242 computed as 121
-		//single-turn additions and as 121 * 0.002f differ in the last bits. An exact comparison here
-		//would assert about float rounding, not about the reward.
+
+
+
 		if (Math.abs( turnCost - expectedTurnCost ) > 1e-5 ){
 			fail( "a stalled episode charged " + turnCost + " in turn cost where " + expectedTurnCost
 					+ " was expected: " + stall.turns + " turns, " + freeSteps( stall ) + " of them free"
@@ -430,14 +430,14 @@ public class RewardCheck {
 				return;
 			}
 
-			//Top the hero up between steps.
-			//
-			//Not so the fight is easier to win - it is a real mob, really attacked, and Statistics
-			//increments for real - but so the case does not depend on whether this seed's floor 1 is
-			//survivable. That is a property of the game's balance, and a gate that failed on it would
-			//start failing the moment the hero got better at surviving, which is the direction this
-			//whole module is trying to move. Same reasoning, and the same technique, as
-			// checkTheHeroCanDie applying lethal damage rather than waiting for the mob cluster.
+
+
+
+
+
+
+
+
 			if (Dungeon.hero != null && Dungeon.hero.isAlive() && Dungeon.hero.HP < 12){
 				Dungeon.hero.HP = Dungeon.hero.HT;
 			}
@@ -479,17 +479,17 @@ public class RewardCheck {
 			return;
 		}
 
-		//Damage has to be priced against dying rather than picked, or the gradient disappears.
-		//
-		//A floor-1 hero has 20 HP. damagePenalty * 20 is what losing a full health bar costs, and it
-		//has to be within an order of magnitude of deathPenalty - otherwise a run that dies every
-		//episode returns the same terminal every time and the only term that varies is a twentieth of
-		//it. At the old 0.25 that was 5 against 100, and two 12- and 22-generation runs ended 100%
-		//dead with no movement on any axis.
-		//
-		//It also has to leave room for killReward: killing a rat has to be worth the health it costs,
-		//and a rat is about 8 HP, so the trade is close enough that a surprise attack is the right way
-		//to take it - which is precisely what the ordering below is for.
+
+
+
+
+
+
+
+
+
+
+
 		final int HP = 20;
 		double wholeHealthBar = config.damagePenalty * HP;
 
@@ -509,10 +509,10 @@ public class RewardCheck {
 			return;
 		}
 
-		//A surprise attack is the one combat outcome that costs the hero nothing, because
-		//Mob.surprisedBy skips the defender's defence skill outright. It is therefore paid above the
-		//kill, and the ordering is the property: it pays for arriving unseen rather than for trading
-		//blows with whatever happens to be in reach.
+
+
+
+
 		if (!( config.sneakAttackReward > config.killReward )){
 			fail( "a surprise attack pays " + config.sneakAttackReward + " and a kill pays "
 					+ config.killReward + ". The surprise is the one that costs no health -"
@@ -521,8 +521,8 @@ public class RewardCheck {
 			return;
 		}
 
-		//The emission site itself, not just the price. Statistics.sneakAttacks is what makes the term
-		//more than a second name for KILL, and it is read rather than re-derived.
+
+
 		int sneaks = o.ledger == null ? 0 : o.ledger.notes( RewardTerm.SNEAK_ATTACK );
 		if (sneaks == 0 ){
 			fail( "the fight killed " + kills + " mob(s) and recorded no SNEAK_ATTACK, on a mob the"
@@ -563,24 +563,24 @@ public class RewardCheck {
 			if (cell < 0 || cell >= Dungeon.level.length()) continue;
 			if (!Dungeon.level.insideMap( cell )) continue;
 			if (!Dungeon.level.passable[ cell ]) continue;
-			//never wrap a row: a naive +/-1 puts a mob on the far side of a thin floor
+
 			if (Math.abs( cell % w - hero.pos % w ) > 1) continue;
 			if (Actor.findChar( cell ) != null) continue;
 			if (Dungeon.level.heaps.get( cell ) != null) continue;
 
 			Mob mob = Dungeon.level.createMob();
 			if (mob == null) continue;
-			//a large mob does not fit, and the engine's own summoning code discards one for that
+
 			if (Char.hasProp( mob, Char.Property.LARGE ) && !Dungeon.level.openSpace[ cell ]) continue;
 			if (mob.state != mob.PASSIVE) mob.state = mob.WANDERING;
 			mob.pos = cell;
 
-			//GameScene.add is what does this in the game and never runs headlessly. All three calls
-			//matter: the sprite because Char paths dereference it, level.mobs because Mob.destroy
-			//removes itself from there, and Actor.add because Actor.findChar - which is what
-			//ActionMapper.moveLegal and Hero.handle both use to decide whether a cell holds a mob -
-			//searches Actor.chars and nothing else. Without it the hero walks into the mob and
-			//nothing happens, which is what the first version of this fixture did.
+
+
+
+
+
+
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline.spriteFor( mob );
 			Actor.add( mob );
 			Dungeon.level.mobs.add( mob );
@@ -628,7 +628,7 @@ public class RewardCheck {
 				return a;
 			}
 		}
-		//not adjacent, or the cell is blocked: step toward it by whatever the mask offers
+
 		for (Action a : order){
 			if (a.index < env.actionMask().length && env.actionMask()[ a.index ] != 0f ) return a;
 		}
@@ -657,11 +657,11 @@ public class RewardCheck {
 		double realStep = config.turnCost;
 		double freeStep = config.turnCost * config.freeStepCostFactor;
 
-		//The property, and it is a relationship rather than a constant: half a turn, and not nothing.
-		//"Cheaper than a real turn" used to be a failure; it is now the design, because the thing that
-		//stops a policy farming free steps is env.free_step_budget rather than the price. Zero is still a
-		//failure, since equipping and unequipping are free in the real game too and a legal action may be
-		//done a hundred times.
+
+
+
+
+
 		if (!( freeStep > 0 )){
 			fail( "a step that advances no engine time costs " + freeStep + ", so a free action is free."
 					+ " duelist-mid alternated equip and unequip for 120 steps at that price." );
@@ -677,16 +677,16 @@ public class RewardCheck {
 
 		Outcome o = play( config, 60, "FREESTEPCHECK", turn -> {
 			SPDEnv env = turn.env;
-			//the free-step budget can end the episode between the equip and the unequip, and stepping a
-			//dead episode is a crash rather than a result
+
+
 			if (!env.running()) return;
-			//out of a non-WORLD mode first, as every other driver here does: leaving the env parked in
-			//SLOT or MENU for the rest of the episode ends it without reaching the code under test
+
+
 			if (env.mode() != EnvMode.WORLD){
 				env.step( Action.CANCEL, 0 );
 				return;
 			}
-			//equip, unequip, equip, unequip: the free action, on the hero's own weapon
+
 			env.step( Action.USE, 0 );
 			if (env.running() && env.mode() == EnvMode.SLOT) env.step( Action.USE, equippableSlot( env ) );
 		} );
@@ -710,8 +710,8 @@ public class RewardCheck {
 			return;
 		}
 
-		//and the real steps in the same run must still cost a whole turn each - the ratio is only
-		//meaningful against the thing it is a fraction of, so both halves are measured
+
+
 		double realPaid = Math.abs( o.termTotal( RewardTerm.TURN_COST ) );
 		int realSteps = o.turns - charged;
 		if (realSteps > 0 && Math.abs( realPaid - realStep * realSteps ) > 1e-4 ){
@@ -774,8 +774,8 @@ public class RewardCheck {
 			return;
 		}
 
-		//the point: an action spending n turns must cost more than n steps' worth, so a multi-turn
-		//action cannot come out cheaper per turn than a single-turn one
+
+
 		double flat = config.turnCost * steps[ 0 ];
 		if (charged < flat * 1.5 ){
 			fail( "SEARCH consumed " + fmt( spent[ 0 ] ) + " engine turns over " + steps[ 0 ]
@@ -844,7 +844,7 @@ public class RewardCheck {
 			return;
 		}
 
-		//and it must never pay the agent to spend time
+
 		if (o.termTotal( RewardTerm.TURN_COST ) > 0 ){
 			fail( "TURN_COST paid " + o.termTotal( RewardTerm.TURN_COST ) + " over " + steps[ 0 ]
 					+ " searches; a positive turn cost pays the agent to spend time." );
@@ -892,19 +892,19 @@ public class RewardCheck {
 	 * say the choice does not matter.
 	 */
 	private static void checkSpendingATalentIsWorthALot( EnvConfig config ){
-		//**And a talent point must not outbid a descent.** This replaces an assertion that it must, and the
-		//replacement is worth stating plainly because weakening a gate to pass is normally the wrong move.
-		//
-		//The old requirement was `talentReward > 4 * a whole floor's turns`, on the reasoning that
-		//spending a point has to beat "every remaining turn of the floor". At `turn_cost = 1.0` and 1500
-		//turns a floor that is **6000**, which put a talent point at 4.7 floors against depth's 1.2 -
-		//so levelling was the best thing the agent could do and descending was not. The gate was
-		//enforcing an inversion of the objective rather than protecting it.
-		//
-		//A talent point is worth what it is worth *relative to the objective*, and the objective is depth.
-		//Its real opportunity cost is the turns spent levelling instead, which is `LEVEL_UP`, and that is
-		//asserted below. The claim worth making here is the one the directive implies: depth must be the
-		//largest thing on the board, so an incidental term cannot be worth more than going deeper.
+
+
+
+
+
+
+
+
+
+
+
+
+
 		if (!( config.depthReward > config.talentReward )){
 			fail( "a talent point pays " + config.talentReward + " against " + config.depthReward
 					+ " for a descent. Depth is the objective, so it must outbid every incidental term -"
@@ -920,8 +920,8 @@ public class RewardCheck {
 			Hero hero = Dungeon.hero;
 			if (hero == null || !hero.isAlive()) return;
 
-			//One plain turn first, for the same reason the pickup case takes one: the first settled
-			//turn of an episode only establishes the reward model's snapshot.
+
+
 			if (turn.step < 2){
 				turn.env.step( Action.WAIT, 0 );
 				return;
@@ -962,8 +962,8 @@ public class RewardCheck {
 			return;
 		}
 
-		//The relationship is the claim, and LEVEL_UP is the natural yardstick: a level is a fixed
-		//automatic gain, a point is a permanent choice about which gains to take.
+
+
 		double levelUp = 2f;
 		if (!( paid > levelUp * notes )){
 			fail( "a talent point pays " + ( paid / notes ) + " against " + levelUp + " for a level."
@@ -1044,10 +1044,10 @@ public class RewardCheck {
 			return;
 		}
 
-		//the control: the same driver with the budget out of reach, which has to get well past the budget
-		//before anything ends it. Asserted on the free-step count rather than on how the control ends,
-		//because a refused MOVE_E leaves the hero standing and the position guard can end it first - which
-		//would still be a control that never reached the budget this case is measuring.
+
+
+
+
 		EnvConfig roomy = new EnvConfig();
 		roomy.freeStepBudget = 100000;
 		Outcome control = playFreeStepLoop( roomy, config.freeStepBudget * 4 + 60 );
@@ -1118,7 +1118,7 @@ public class RewardCheck {
 	 */
 	private static void checkStallPathRecordsOnce( EnvConfig config ){
 		Outcome stall = playWaits( config, config.stallLimit + 8 );
-		if (stall.endReason != RewardModel.TerminateReason.STALLED ) return;  // reported already
+		if (stall.endReason != RewardModel.TerminateReason.STALLED ) return;  
 
 		int records = stall.ledger == null ? 0 : stall.ledger.notes( RewardTerm.STALLED );
 		if (records != 1 ){
@@ -1131,7 +1131,7 @@ public class RewardCheck {
 		System.out.println( "  the reachable stall path records STALLED exactly once" );
 	}
 
-	// ------------------------------------------------------------- the depth-only reward profile
+
 
 	/**
 	 * The shipped configuration must still pay every term.
@@ -1207,7 +1207,7 @@ public class RewardCheck {
 				Dungeon.hero.HP = Dungeon.hero.HT;
 			}
 
-			//the free action, so NO_PROGRESS is exercised rather than assumed
+
 			if (turn.step % 4 == 3 ){
 				env.step( Action.USE, 0 );
 				if (env.mode() == EnvMode.SLOT) env.step( Action.USE, equippableSlot( env ) );
@@ -1237,8 +1237,8 @@ public class RewardCheck {
 			return;
 		}
 
-		//Every incidental term that fired, and what it paid. Collected from the run rather than named in
-		//advance, because which of them a given seed reaches is a property of the game.
+
+
 		List< String > paid = new ArrayList<>();
 		for (int i = 0; i < RewardTerm.count(); i++){
 			RewardTerm term = RewardTerm.at( i );
@@ -1257,8 +1257,8 @@ public class RewardCheck {
 			return;
 		}
 
-		//Not vacuous: a profile that silences terms a run never reached proves nothing. Exploration and at
-		//least one combat term are the two an ordinary floor reaches within a hundred turns.
+
+
 		if (o.ledger.notes( RewardTerm.EXPLORE ) == 0 ){
 			fail( "the driver searched and walked for " + o.turns + " turns and EXPLORE was never recorded,"
 					+ " so this case measured an episode that never reached the terms it silences." );
@@ -1414,7 +1414,7 @@ public class RewardCheck {
 
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()) return;
 
-			//three descents with a climb between each, which is the recorded sequence
+
 			if (turn.step % 12 == 4 ){
 				if (ascend( env )){
 					ascents[ 0 ]++;
@@ -1494,7 +1494,7 @@ public class RewardCheck {
 		return accepted;
 	}
 
-	// --------------------------------------------------------------------------- playing
+
 
 	/**
 	 * The hero must be able to die.
@@ -1526,7 +1526,7 @@ public class RewardCheck {
 			turn.env.step( Action.WAIT, 0 );
 
 			if (Dungeon.hero != null && Dungeon.hero.isAlive()){
-				//lethal in one hit, so the ending cannot depend on how much HP the hero rolled
+
 				Dungeon.hero.damage( Dungeon.hero.HP + 1, Dungeon.hero );
 			}
 		} );
@@ -1588,9 +1588,9 @@ public class RewardCheck {
 	 * decided first, not a second line here.
 	 */
 	private static void checkWaitingIsNotAFreeStep( EnvConfig config ){
-		//pure WAIT, and far more of them than env.free_step_budget. No equips: the equip half of the
-		//property is checkFreeStepsCostSomething's, and keeping them apart is the point - together in
-		//one case an off-by-one in either reads as the other's failure.
+
+
+
 		Outcome o = play( config, config.freeStepBudget * 3, "WAITCOST", turn -> {
 			SPDEnv env = turn.env;
 			if (!env.running()) return;
@@ -1606,16 +1606,16 @@ public class RewardCheck {
 			return;
 		}
 
-		//measured, and the two halves of it: 121 waits ran to the position guard at 120 unchanged
-		//steps rather than to the free-step budget at 40, and NO_PROGRESS was never charged. The step
-		//that ends the episode advances no time, because terminating is not a turn the hero spends -
-		//so this asserts the charge and the budget, and not a free-step count that would encode
-		//where the episode happened to stop.
-		//The property is that WAIT is not charged as a free step, and it used to be asserted as a turn count
-		//- which only worked while free_step_budget was 40 and the position guard fired at 120 first.
-		//Raising the budget to 250 made that proxy fail while the property still held, which is what a
-		//proxy is for. It is now asserted directly: the episode must end on the POSITION guard, never
-		//on FREE_STEP. See StallCause and issues.md 29.
+
+
+
+
+
+
+
+
+
+
 		if (o.stallCause == com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause.FREE_STEP){
 			fail( "waiting " + o.turns + " times ended the episode on the FREE_STEP guard, so WAIT is still"
 					+ " counted as a step that advances no engine time - which is exactly what"
@@ -1646,9 +1646,9 @@ public class RewardCheck {
 	 */
 	private static void checkRestIsNotAOneWayDoor( EnvConfig config ){
 
-		//The driver has to observe the hero *between* the step that rests and the step that releases,
-		//because after a release the flag is false either way - which is why this is a probe with its
-		//own replay rather than a read of the final state.
+
+
+
 		HeroProbe rest = HeroProbe.restThenWait( config );
 
 		if (!rest.measured ){
@@ -1687,7 +1687,7 @@ public class RewardCheck {
 		boolean released;
 
 		static HeroProbe restThenWait( EnvConfig config ){
-			//rested-after-REST, released-after-WAIT, REST-issued, WAIT-issued
+
 			final boolean[] seen = { false, false, false, false };
 
 			play( config, config.stallLimit + 40, "RESTPROBE", turn -> {
@@ -1755,9 +1755,9 @@ public class RewardCheck {
 		final double[] refunded = { 0 };
 		final int[] slotUsed = { -1 };
 
-		//IDENTIFIED moved by the whole round trip, read off the ledger the episode itself produced.
-		//Reading either half alone can look innocent - the pickup pays, the drop refunds nothing - so it
-		//is the *net* that has to be zero, and that is what the assertion below asks.
+
+
+
 		final double[] identification = { 0 };
 
 		Outcome o = play( config, 200, "EXPLOITCHECK", turn -> {
@@ -1773,18 +1773,18 @@ public class RewardCheck {
 					}
 					tries[0]++;
 					grabbed[ 0 ] = new Potion();
-					//**identified**, because that is the version the exploit cycles. An unidentified
-					// potion contributes 0 to `countIdentified` both while carried and after dropped,
-					//so the round trip moves the count by nothing and the case proves nothing - which
-					//is how the one-sided term survived a gate that ran this same loop. A player who
-					//drinks one knows what it is; a dropped one stays known, so picking it back up is
-					//paying again for knowledge the hero never lost.
+
+
+
+
+
+
 					grabbed[ 0 ].identify();
 					if (!takeItemFromTheFloor( env, grabbed[ 0 ] )) return;
 					if (!carries( grabbed[ 0 ] )){
-						//Hero.handle refuses to collect with enemies in sight, and refuses anything
-						//that will not fit. Both are properties of where the hero is standing, not of the
-						//reward, so try again rather than reporting a reward failure.
+
+
+
 						phase[0] = 0;
 						return;
 					}
@@ -1793,7 +1793,7 @@ public class RewardCheck {
 					return;
 
 				case 1:
-					//WORLD opens the inventory; INVENTORY drops the item the pickup just paid for.
+
 					if (mode == EnvMode.WORLD){ env.step( Action.OPEN_INVENTORY, 0 ); return; }
 					if (mode == EnvMode.INVENTORY){
 						int slot = slotOf( env, grabbed[ 0 ] );
@@ -1807,7 +1807,7 @@ public class RewardCheck {
 					return;
 
 				default:
-					//settle onto WORLD and stop, so the run ends on a clean turn
+
 					if (mode != EnvMode.WORLD) env.step( Action.CANCEL, 0 );
 					else env.step( Action.WAIT, 0 );
 			}
@@ -1846,12 +1846,12 @@ public class RewardCheck {
 			return;
 		}
 
-		//**And no other term may pay for the same round trip.** This is the half that was missing, and
-		// it is where the actual profit was. `ITEM_PICKUP`/`ITEM_DROPPED` have cancelled correctly since
-		// issues.md 8 was fixed, so this case passed - while `IDENTIFIED` paid +0.5 for carrying an
-		// already-identified item and refunded nothing when it was dropped, and the hero banked +27.50
-		// over a run whose inventory churn was itself net negative. A gate that only inspects the term it
-		// was written for cannot see a second term paying for the same event.
+
+
+
+
+
+
 		double identifiedNow = o.ledger == null ? 0 : o.ledger.termTotal( RewardTerm.IDENTIFIED );
 		identification[ 0 ] = identifiedNow;
 		if (Math.abs( identification[ 0 ] ) > 1e-4 ){
@@ -1881,9 +1881,9 @@ public class RewardCheck {
 	private static boolean takeItemFromTheFloor( SPDEnv env, Item item ){
 		if (Dungeon.level == null || Dungeon.hero == null) return false;
 
-		//One plain turn first. The first settled turn of an episode only establishes the reward model's
-		//snapshot - reward.step re-takes it and charges turn cost, scoring nothing - so a pickup landing
-		//on that turn is real and invisible. Measured: the pickup happened and ITEM_PICKUP stayed at 0.
+
+
+
 		env.step( Action.WAIT, 0 );
 		if (!env.running()) return false;
 
@@ -1939,7 +1939,7 @@ public class RewardCheck {
 		return -1;
 	}
 
-	// --------------------------------------------------------------------------- playing
+
 
 	/** One episode's outcome, and the per-term totals that produced it. */
 	private static class Outcome {
@@ -1983,13 +1983,13 @@ public class RewardCheck {
 	 * those turns is asserted non-zero so the case cannot pass by measuring nothing.
 	 */
 	private static Outcome playInWorld( EnvConfig config, Action action, int maxTurns ){
-		//effectively final, so the driver lambda below can write through it
+
 		Outcome counted = new Outcome();
 
-		//CANCEL first, because a fresh reset can land in TARGETING or MENU and never return to WORLD
-		//on its own — settle() keeps re-entering the mode, so a WORLD-only driver would spin until the
-		//budget ran out having tested nothing. Cancelling out of those modes is what a real episode does
-		//and is the only way to reach a clean WORLD turn to measure the action in.
+
+
+
+
 		Outcome o = play( config, maxTurns, "REWARDCHECK", turn -> {
 			if (turn.env.mode() != EnvMode.WORLD ){
 				turn.env.step( Action.CANCEL, 0 );
@@ -1998,7 +1998,7 @@ public class RewardCheck {
 
 			turn.env.step( action, 0 );
 			counted.worldTurns++;
-			//read straight after the step, so it covers this turn only
+
 			counted.refusals += turn.env.ledger().notes( RewardTerm.INVALID_ACTION );
 		} );
 

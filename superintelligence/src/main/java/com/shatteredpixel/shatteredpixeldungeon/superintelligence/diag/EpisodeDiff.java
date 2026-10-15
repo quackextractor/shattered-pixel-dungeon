@@ -100,7 +100,7 @@ public class EpisodeDiff {
 		System.out.println( "all " + SEEDS.length + " seeds reproduce after running the others in between" );
 	}
 
-	// --------------------------------------------------------------------------- reporting
+
 
 	private static boolean report( String seed, List< String > first, List< String > second ){
 		int n = Math.min( first.size(), second.size() );
@@ -125,7 +125,7 @@ public class EpisodeDiff {
 		return true;
 	}
 
-	// --------------------------------------------------------------------------- tracing
+
 
 	private static List< String > trace( String seed, int steps, boolean includeRoster ){
 		EnvConfig config = new EnvConfig();
@@ -254,11 +254,11 @@ public class EpisodeDiff {
 			boolean sees = mob.fieldOfView != null && mob.fieldOfView[ heroPos ];
 			out.put( mob.id(), mob.pos + ":hp" + mob.HP
 					+ ":" + (mob.state == null ? "none" : mob.state.getClass().getSimpleName())
-					//cooldown is the mob's scheduled turn minus now, and it is the column that matters
-					//most. A mob that wanders toward a queued target steps one cell without drawing, so a
-					//divergence in who is due shows up as a moved mob and nothing else - and only at the step
-					//where the difference happens to be paid out. Comparing cooldowns finds it at the step
-					//where it was created instead.
+
+
+
+
+
 					+ ":cd" + mob.cooldown()
 					+ (sees ? ":sees" : "") );
 		}

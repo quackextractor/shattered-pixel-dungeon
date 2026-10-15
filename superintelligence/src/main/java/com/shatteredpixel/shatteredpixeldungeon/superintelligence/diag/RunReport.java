@@ -153,7 +153,7 @@ public class RunReport {
 
 		for (int i = 0; i < width; i++){
 			if (depthLine[ i ] == 1){
-				//splice the marker in without disturbing the series shape
+
 				row.text = row.text.substring( 0, i ) + Ansi.wrap( "|", Ansi.YELLOW )
 						+ row.text.substring( i + 1 );
 			}

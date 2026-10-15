@@ -83,7 +83,7 @@ public class ReplayCatalogCheck {
 		}
 	}
 
-	// --------------------------------------------------------------------------- sections
+
 
 	/**
 	 * The listing separates the reference corpus from what the trainer wrote, and the numbers still
@@ -121,8 +121,8 @@ public class ReplayCatalogCheck {
 			return;
 		}
 
-		//provenance follows directory order, not the score: the corpus files score better than the
-		//trainer ones here, and a ranking-driven split would have got this right by accident
+
+
 		List<ReplayCatalog.Entry> inCorpus = flatten( sections.get( ReplayCatalog.SECTION_CORPUS ));
 		List<ReplayCatalog.Entry> inTrainer = flatten( sections.get( ReplayCatalog.SECTION_TRAINER ));
 
@@ -142,7 +142,7 @@ public class ReplayCatalogCheck {
 			return;
 		}
 
-		//one sequence across both sections, and every number resolves to the recording printed beside it
+
 		String listing = catalog.render( true );
 		List<ReplayCatalog.Entry> ordered = catalog.inListingOrder();
 		if (ordered.size() != 4){
@@ -159,9 +159,9 @@ public class ReplayCatalogCheck {
 				return;
 			}
 
-			//and the number is actually printed beside that recording, not merely implied by position.
-			//A literal newline rather than %n, because render() appends its own "\n" before the row and
-			//%n would be the platform separator, which is not the same thing on every machine.
+
+
+
 			if (!listing.contains( String.format( "\n     %2d  %s", i + 1, ordered.get( i ).label() ))){
 				fail( "the listing does not print number " + ( i + 1 ) + " beside "
 						+ ordered.get( i ).label() + ", so the two views of the order have drifted" );
@@ -169,20 +169,20 @@ public class ReplayCatalogCheck {
 			}
 		}
 
-		//the sections are labeled, and the training one says what is wrong with it - a heading reading
-		//only "trainer output" leaves a person to discover the difference by watching a playback halt
+
+
 		if (!listing.contains( ReplayCatalog.SECTION_CORPUS )
 				|| !listing.contains( ReplayCatalog.SECTION_TRAINER )){
 			fail( "the rendered listing does not print both section headings" );
 			return;
 		}
 
-		//The claim the training section has to make, per recording rather than for the whole section.
-		//It used to be a blanket "NOT known to play end to end", which was the only thing standing
-		//between a reader and a playback that halts at step 1 - and it was also wrong the moment a
-		//trainer recording was written by the fixed wire, because it condemned a file that plays. So
-		//the requirement is the stronger one: a recording written by the broken wire must say so on its
-		//own line, and one carrying real health and engine time must not be condemned.
+
+
+
+
+
+
 		File healthy = write( trainer, "TRAINER-HEALTHY", "MAGE", -30.0, 1, 100, 1, 1 );
 		Replay healthyReplay = ReplayIOReadQuietly( healthy );
 		healthyReplay.steps.get( 0 ).mode = "SLOT";
@@ -254,7 +254,7 @@ private static void checkDepthIsAReadableColumn(){
 		return;
 	}
 
-	//and it must not be the score column's, which is what made it unreadable before
+
 	String header = listing.contains( "depth" ) ? listing : "";
 	if (!header.contains( "turns" )){
 		fail( "the listing has a depth heading but no turns heading, so the two columns cannot be told"
@@ -262,17 +262,17 @@ private static void checkDepthIsAReadableColumn(){
 		return;
 	}
 
-	//and a recorded-at column, because "which of these is new" is a question the listing otherwise
-	//cannot answer: every recording carries a generation, and a run pointed at the same seed twice
-	//overwrites, so age was the only thing distinguishing this run's output from an earlier one's.
+
+
+
 	if (!listing.contains( "recorded" )){
 		fail( "the listing has no 'recorded' heading, so a fresh training run's output cannot be told"
 				+ " from yesterday's" );
 		return;
 	}
-	//A cell lookup rather than a pattern over the line. `String.matches` anchors the whole string, and a
-	//row ends in trailing padding, so a pattern with anything after the timestamp never matched a row
-	//that had one - which is how this assertion first reported a timestamp it was printing.
+
+
+
 	String deepRow = rowFor( listing, "DEEP" );
 	if (deepRow.split( "\\s+" ).length < 6 ){
 		fail( "the recording row has fewer cells than the listing has columns: \"" + deepRow
@@ -287,10 +287,10 @@ private static void checkDepthIsAReadableColumn(){
 		return;
 	}
 
-	//and every row's depth must sit at the same offset, so the column scans. Compared as the position
-	//of the depth *cell* rather than the first "d1"/"d3" in the line: a seed like SHALLOW contains a
-	//"d" before the depth column ever does, and matching on the letter rather than the cell reported a
-	//misalignment that was not there.
+
+
+
+
 	String shallow = rowFor( listing, "SHALLOW" );
 	String deep = rowFor( listing, "DEEP" );
 	int shallowAt = depthColumnIn( shallow );
@@ -313,7 +313,7 @@ private static void checkDepthIsAReadableColumn(){
  */
 private static int depthColumnIn( String row ){
 	String[] cells = row.trim().split( "\\s+" );
-	//number, label, score, then the depth cell - the fields before it are the ones that cannot be it
+
 	if (cells.length < 4) return -1;
 	String cell = cells[ 3 ];
 	return cell.matches( "d\\d+" ) ? row.indexOf( cell ) : -1;
@@ -325,7 +325,7 @@ private static int depthColumnIn( String row ){
 		return all;
 	}
 
-	// --------------------------------------------------------------------------- ordering
+
 
 	/**
 	 * Descending by score inside one class.
@@ -391,7 +391,7 @@ private static int depthColumnIn( String row ){
 			fail( "ROGUE should hold 1 recording, holds " + groups.get( "ROGUE" ).size() );
 		}
 
-		//the whole point of grouping: a 90.0 Huntress outranks a 50.0 Rogue, and they are listed apart
+
 		if (groups.get( "HUNTRESS" ).get( 0 ).label().equals( "h-weak" ) == false){
 			fail( "HUNTRESS group is not ranked by score internally" );
 		}
@@ -412,7 +412,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	// --------------------------------------------------------------------------- damaged files
+
 
 	/**
 	 * A truncated recording is listed, with the shortfall named.
@@ -469,7 +469,7 @@ private static int depthColumnIn( String row ){
 		write( dir, "good-one", "WARRIOR", 1.0, 1, 10 );
 		write( dir, "good-two", "WARRIOR", 2.0, 1, 10 );
 
-		//not a replay at all, so nothing about it can be known
+
 		try {
 			Files.write( new File( dir, "junk.replay" ).toPath(),
 					Arrays.asList( "not a replay", "junk" ), StandardCharsets.UTF_8 );
@@ -487,7 +487,7 @@ private static int depthColumnIn( String row ){
 			return;
 		}
 
-		//it must not have been filed under WARRIOR on a guess
+
 		if (groups.get( "WARRIOR" ).size() != 2){
 			fail( "an unreadable file was filed under WARRIOR, which is a guess: group holds "
 					+ groups.get( "WARRIOR" ).size() + ", expected the 2 readable ones" );
@@ -513,7 +513,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	// --------------------------------------------------------------------------- name resolution
+
 
 	/**
 	 * A bare seed resolves — the form a person reads off the screen.
@@ -568,7 +568,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	// --------------------------------------------------------------------------- format
+
 
 	/**
 	 * The header-only read agrees with a full read.
@@ -579,10 +579,10 @@ private static int depthColumnIn( String row ){
 	 */
 	private static void checkHeaderOnlyReadMatchesAFullRead(){
 		File dir = dir( "parity" );
-		//declared and actual must agree here: this check reads the file twice, once each way, and
-		//read() rejects a body that does not match its header. Truncation is the previous check's job.
-		//Grouped, because a field the cheap read misses is a recording filed under the wrong section -
-		//and the catalogue's whole grouping decision now comes from the cheap read.
+
+
+
+
 		File file = writeGrouped( dir, "parity-run", "parity", "DUELIST", -12.75, 3, 1234, 5, 5 );
 
 		try {
@@ -633,14 +633,14 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 	private static void checkHeaderOnlyReadAgreesOnWatchability(){
 		File dir = dir( "watchable" );
 
-		//a healthy recording whose hero has nothing bound: must be watchable
+
 		File unbound = write( dir, "UNBOUND", "DUELIST", -1.0, 1, 3 );
 		Replay unboundReplay = ReplayIOReadQuietly( unbound );
 		unboundReplay.steps.get( 0 ).mode = "SLOT";
 		unboundReplay.steps.get( 0 ).quickslots = "";
 		writeBack( unbound, unboundReplay );
 
-		//the four-field wire: health, turn and inventory all at their sentinels, on every step
+
 		File dropped = write( dir, "DROPPED", "DUELIST", -2.0, 1, 3 );
 		Replay droppedReplay = ReplayIOReadQuietly( dropped );
 		for (Replay.Step step : droppedReplay.steps){
@@ -665,7 +665,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 				return;
 			}
 
-			//and the full read must agree with the cheap one, which is the drift this guards
+
 			if (ReplayIO.read( unbound ).wireDroppedStepFields()
 					!= ReplayIO.readHeader( unbound ).wireDroppedStepFields()
 					|| ReplayIO.read( dropped ).wireDroppedStepFields()
@@ -722,10 +722,10 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			return;
 		}
 
-		//and the claim it does make has to be true: every marker in the rows is counted by the header.
-		//Row lines only - the first token is the entry's number. The header names the state in words too,
-		//so a naive count over the whole listing finds the header's own mention and reports a
-		//disagreement that is not one.
+
+
+
+
 		int marked = 0;
 		for (String line : listing.split( "\n" )){
 			String trimmed = line.trim();
@@ -811,9 +811,9 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			return;
 		}
 
-		//A filename is NOT unambiguous here either, and refusing is right: every run that used this seed
-		//wrote the same filename, so two directories hold TWIN-SEED.replay. The way out is a path, which
-		//is why the listing prints them.
+
+
+
 		if (catalog.byName( "TWIN-SEED.replay" ) != null){
 			fail( "a bare filename that exists in two directories resolved to one of them. Two runs"
 					+ " writing the same seed produce the same filename, so the filename does not"
@@ -821,7 +821,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			return;
 		}
 
-		//and the listing has to print the paths, or there is no way to pick one
+
 		String listing = catalog.render( true );
 		if (!listing.contains( "share this seed" )){
 			fail( "the listing does not flag a seed recorded more than once, so refusing to resolve it"
@@ -854,7 +854,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			return;
 		}
 
-		//recording twice must not double the entry
+
 		ReplayIndex.record( dir );
 		int count = 0;
 		for (File known : ReplayIndex.read()){
@@ -865,7 +865,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			return;
 		}
 
-		//and it must actually be scannable once known
+
 		ReplayCatalog catalog = new ReplayCatalog().scan( ReplayIndex.read() );
 		if (catalog.byName( "INDEXED-SEED" ) == null){
 			fail( "a recording in an indexed directory is still not resolvable, so indexing it changed"
@@ -911,8 +911,8 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			return;
 		}
 
-		//and the wrong marker is the worst half of it: which of the two spellings wins decides which
-		//entry a seed keeps, so a duplicated directory could decide whether a file reads watchable
+
+
 		ReplayCatalog.Entry entry = catalog.byName( "SPELLED-SEED" );
 		if (entry == null || !entry.watchable){
 			fail( "the surviving entry for a duplicated directory is not the watchable one, so which"
@@ -939,8 +939,8 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 	private static void checkASharedSeedResolvesByFileName(){
 		File dir = dir( "shared" );
 
-		//Three runs, one seed, three file names. The trainer never overwrites, so this is exactly what
-		//re-running a seed leaves behind: the same header seed, suffixed filenames.
+
+
 		File first  = write( dir, "SHARED-SEED", "WARRIOR", 1.0, 1, 10 );
 		File second = writeAs( dir, "SHARED-SEED", "SHARED-SEED-r2", "WARRIOR", 2.0, 1, 20 );
 		File third  = writeAs( dir, "SHARED-SEED", "SHARED-SEED-r3", "WARRIOR", 3.0, 1, 30 );
@@ -968,7 +968,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			}
 		}
 
-		//and the instruction has to match what works, or it is worse than no instruction
+
 		String listing = catalog.render( true );
 		if (listing.contains( "pass a full path" )){
 			fail( "the listing still tells the reader to pass a full path, which is not what byName"
@@ -1028,7 +1028,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			}
 		}
 
-		//and nothing leaks the other way: the ungrouped half and the reference corpus keep only their own
+
 		if (flatten( sections.get( ReplayCatalog.SECTION_TRAINER )).size() != 1){
 			fail( "the ungrouped training section does not hold exactly the one ungrouped fixture, so a"
 					+ " grouped recording is being listed as ungrouped as well" );
@@ -1040,9 +1040,9 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			return;
 		}
 
-		//order is asserted because it is what makes the numbering reproducible: corpus, ungrouped, then
-		//groups by name. Sorted by directory or by write order, the same set of runs lists differently
-		//twice and every number a person read last time points somewhere else.
+
+
+
 		List<String> order = new ArrayList<>( sections.keySet() );
 		List<String> expected = List.of( ReplayCatalog.SECTION_CORPUS, ReplayCatalog.SECTION_TRAINER,
 				runA, ReplayCatalog.GROUP_PREFIX + "RUN-B-60" );
@@ -1052,8 +1052,8 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			return;
 		}
 
-		//the heading is printed and the blurb names the run, because a heading a reader has to decode is
-		//no better than the seed-shaped filename it replaced
+
+
 		String listing = catalog.render( true );
 		if (!listing.contains( "\n  " + runA + " " ) || !listing.contains( "group run-a-60" )){
 			fail( "the listing does not print a heading and a blurb for group run-a-60, so the rows are"
@@ -1061,7 +1061,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 			return;
 		}
 
-		//and one numbering still spans all four sections
+
 		List<ReplayCatalog.Entry> ordered = catalog.inListingOrder();
 		for (int i = 0; i < ordered.size(); i++){
 			ReplayCatalog.Entry byIndex = catalog.byNumber( i + 1 );
@@ -1143,7 +1143,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 				score, depth, turns, declared, actual );
 	}
 
-	// --------------------------------------------------------------------------- fixtures
+
 	private static File dir( String name ){
 		File dir = new File( workDir, name );
 		if (!dir.mkdirs() && !dir.isDirectory()){

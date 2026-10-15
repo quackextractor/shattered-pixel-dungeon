@@ -40,9 +40,9 @@ public class SeedPool {
 	public void fill( int count ){
 		locked.clear();
 		for (int i = 0; i < count; i++){
-			//floorMod, not the raw draw: half of nextLong() is negative and the game's encoder
-			//rejects anything outside [0, TOTAL_SEEDS), so an unsigned draw would throw on roughly
-			//one seed in two.
+
+
+
 			long seed = Math.floorMod( rng.nextLong(), DungeonSeed.TOTAL_SEEDS );
 			locked.add( DungeonSeedCodes.encode( seed ) );
 		}
@@ -81,7 +81,7 @@ public class SeedPool {
 			return "";
 		}
 		if (rng.nextFloat() < RANDOM_FRACTION){
-			//a random draw even during the locked phase, so the pool is sampled not memorised
+
 			return "";
 		}
 		return locked.get( rng.nextInt( activeSeeds ) );

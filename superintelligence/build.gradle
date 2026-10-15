@@ -117,6 +117,25 @@ tasks.register('configcheck', JavaExec) {
     jvmArgs trainerJvmArgs
 }
 
+tasks.register('stripinlines', JavaExec) {
+    group = 'maintenance'
+    description = 'Removes // comments from Java sources, preserving javadoc and block comments. Exits 3 if it rewrote anything.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.tools.InlineCommentStripper'
+    jvmArgs trainerJvmArgs
+    if (project.hasProperty('stripPaths')) args project.property('stripPaths').toString().split(' ')
+    else args "${project.projectDir}/src"
+}
+
+tasks.register('javaclint', JavaExec) {
+    group = 'verification'
+    description = 'Compiles the module with every javac lint enabled and fails on a warning.'
+    dependsOn 'compileJava'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.tools.JavaLint'
+    jvmArgs trainerJvmArgs
+}
+
 tasks.register('stallcausecheck', JavaExec) {
     group = 'verification'
     description = 'Fails if any of the four stall guards is unreachable or reports the wrong guard.'

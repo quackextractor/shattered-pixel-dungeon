@@ -26,12 +26,12 @@ public class ReplayIO {
 
 	private ReplayIO() {}
 
-	// --------------------------------------------------------------------------- writing
+
 
 	public static void write( Replay replay, File file ) throws IOException {
 		File parent = file.getAbsoluteFile().getParentFile();
 		if (parent != null){
-			//noinspection ResultOfMethodCallIgnored
+
 			parent.mkdirs();
 		}
 
@@ -79,11 +79,11 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				out.write( Integer.toString( step.heroPos ));
 				out.write( ' ' );
 				out.write( Double.toString( step.reward ));
-				//Sixth field, appended so recordings written before this field still parse: the
-				//reader's length check already tolerates a short step line.
+
+
 				out.write( ' ' );
 				out.write( step.quickslots );
-				//Fields 7-9. Absent on older recordings, which the length checks below tolerate.
+
 				out.write( ' ' );
 				out.write( Integer.toString( step.heroHp ));
 				out.write( ' ' );
@@ -95,11 +95,11 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		}
 	}
 
-	// --------------------------------------------------------------------------- reading
+
 
 	public static Replay read( File file ) throws IOException {
-		//read whole file first: header lines are "key=value" and step lines are not, so the header
-		//has to be told where it ends. Doing that on a live reader would swallow the first step.
+
+
 		java.util.List<String> lines = Files.readAllLines( file.toPath(), StandardCharsets.UTF_8 );
 
 		Replay replay = parseHeader( lines, file.getPath() );
@@ -125,9 +125,9 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			step.mode = parts[ 2 ];
 			if (parts.length > 3) step.heroPos = Integer.parseInt( parts[ 3 ] );
 			if (parts.length > 4) step.reward = Double.parseDouble( parts[ 4 ] );
-			//Absent on recordings made before quickslots were recorded. Such a recording cannot be played
-			//back faithfully, because a slot index is meaningless without its bindings; the viewer says so
-			//rather than silently resolving slot 0 to whatever happens to be first in the backpack.
+
+
+
 			if (parts.length > 5) step.quickslots = parts[ 5 ];
 			if (parts.length > 6) step.heroHp = Integer.parseInt( parts[ 6 ] );
 			if (parts.length > 7) step.turn = Float.parseFloat( parts[ 7 ] );
@@ -250,10 +250,10 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				case "depth":      replay.depth = Integer.parseInt( value ); break;
 				case "turns":      replay.turns = Integer.parseInt( value ); break;
 				case "turn_limit": replay.turnLimitPerFloor = Integer.parseInt( value ); break;
-				//Absent in version 1, which then keeps EnvConfig's defaults - see Replay.VERSION.
+
 				case "max_slots": replay.maxSlots = Integer.parseInt( value ); break;
 				case "allow_equipping": replay.allowEquipping = Boolean.parseBoolean( value ); break;
-				//absent before version 3, which then leaves it empty and the reason unknown
+
 				case "termination": replay.termination = value; break;
 				case "reward_profile":
 					replay.rewardProfile =
@@ -261,7 +261,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 									.parse( value );
 					break;
 				case "steps":      replay.declaredSteps = Integer.parseInt( value ); break;
-				//absent from every recording written before groups existed, which is no group
+
 				case "group":      replay.group = value; break;
 				default: break;
 			}
@@ -287,7 +287,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		return config;
 	}
 
-	// --------------------------------------------------------------------------- verification
+
 
 	/** What re-executing a recorded run observed. */
 	public static class Verification {
@@ -378,8 +378,8 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			heroClass = HeroClass.WARRIOR;
 		}
 
-		//every setting the header carries, not just the turn cap: the slot width and the
-		//equipping rule are both part of what a recorded index meant at the time.
+
+
 		EnvConfig replayed = configFor( replay );
 		env.config().turnLimitPerFloor = replayed.turnLimitPerFloor;
 		env.config().maxSlots = replayed.maxSlots;
@@ -388,8 +388,8 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		if (observer != null) observer.onReset();
 
 		int cumulative = 0;
-		//once per recording, because it is a property of the recording rather than of a step: the answer
-		//is carried by the fields the same wire would have dropped, not by the bindings
+
+
 		boolean wireDroppedFields = replay.wireDroppedStepFields();
 
 		for (int i = 0; i < replay.steps.size(); i++){
@@ -398,18 +398,18 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			Replay.Step step = replay.steps.get( i );
 			Action action = Action.valueOf( step.action );
 
-			//The recorded quickslot bindings go back in force before the step, exactly as the viewer
-			//does it. Without this line a recorded slot index is resolved against whatever bindings
-			//this process happens to have, so the verifier is checking a different resolution path from
-			//the one a person watching the recording takes - and it says so either way. On
-			//MSU-OTL-OAT that was the whole disagreement: `DROP/1` in SLOT, a ThrowingSpike in the
-			//trainer and a Food in the viewer, on a file this method reported as reproduced in 660 steps.
-			//
-			//A step whose bindings cannot be resolved is not a divergence to work around. It is a
-			//recording that cannot be watched, and reporting it as reproduced is the sentinel weakness
-			//TODO.md 1.12 and issues.md 15 both name: every comparison below is guarded by its own
-			//"not recorded" sentinel, which cannot tell a field that does not apply from one that was
-			//lost in transit. So it is stopped here, named, and the file is not called verified.
+
+
+
+
+
+
+
+
+
+
+
+
 			String unwatchable = Quickslots.prepare( step, i, wireDroppedFields );
 			if (unwatchable != null){
 				result.unwatchableAt = i;
@@ -421,15 +421,15 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			cumulative += env.step( action, step.slot );
 			result.stepsVerified++;
 
-			//Each comparison below is against something the recording carries, not against another run of
-			//this code. Re-executing a replay through the same headless path only proves the engine is
-			//deterministic; it cannot see a headless-specific fault, because both sides share it. That is
-			//how a run whose hunger clock never advanced - the intro setting froze Hunger.act() - replayed
-			//perfectly in the viewer while being wrong from step 454 on, with the hero at full health in
-			//the recording and dying in the game.
-			//
-			//So the recorded state is the authority: position, health, engine time and inventory. Each
-			//catches a class the others cannot see.
+
+
+
+
+
+
+
+
+
 			if (step.heroPos >= 0 && env.heroPosition() != step.heroPos ){
 				result.diverged = true;
 				result.divergedAt = i;
@@ -444,9 +444,9 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				break;
 			}
 
-			//A turn is a duration and can be fractional, so this is compared exactly rather than rounded.
-			//It is what catches a step that spends a turn the recording says it did not: the two
-			//environments were one turn apart from step 2 onwards while identical in position.
+
+
+
 			if (step.turn >= 0 && Actor.now() != step.turn ){
 				result.diverged = true;
 				result.divergedAt = i;
@@ -462,10 +462,10 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				break;
 			}
 
-			//reported after the comparisons, so a step that diverged is still traced: the point of a
-			//trace is often to see what the world was doing at the step where it stopped agreeing.
-			//One sample per replayed step and no trailing sentinel, so a trace lines up against one
-			//collected by the viewer step for step.
+
+
+
+
 			if (observer != null) observer.onStep( i, step, true );
 		}
 

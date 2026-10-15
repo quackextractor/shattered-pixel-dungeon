@@ -116,14 +116,14 @@ public class VerifyCheck {
 	}
 
 	private static void checkAlteredHealthIsCaught( Replay source ){
-		//The field that mattered most: a frozen hunger clock left health untouched while the hero starved
-		//in the game. Alter it by one point, as any damage difference would.
+
+
 		checkAlterationIsCaught( source, "hp",
 				step -> { if (step.heroHp > 0) step.heroHp -= 1; } );
 	}
 
 	private static void checkAlteredTurnIsCaught( Replay source ){
-		//Turns are fractional durations, so this is off by a fraction rather than a whole one.
+
 		checkAlterationIsCaught( source, "turn",
 				step -> { if (step.turn >= 0) step.turn = step.turn + 0.25f; } );
 	}
@@ -170,9 +170,9 @@ public class VerifyCheck {
 		}
 
 		Replay copy = copyOf( source );
-		//all five fields, on every step, because that is what the wire did: it sent four of nine and
-		//left the rest at their sentinels throughout. Blanking only the slot steps would leave real
-		//health elsewhere, which is the signature of a *healthy* recording and would not be refused.
+
+
+
 		for (Replay.Step step : copy.steps){
 			step.quickslots = "";
 			step.heroHp = -1;
@@ -238,7 +238,7 @@ public class VerifyCheck {
 			return;
 		}
 
-		//the whole point: health and engine time stay real, so the wire clearly carried everything
+
 		ReplayIO.Verification result = verify( copy );
 		if (!result.passed()){
 			fail( where, blanked + " slot steps were given no bindings while the first kept its own and"

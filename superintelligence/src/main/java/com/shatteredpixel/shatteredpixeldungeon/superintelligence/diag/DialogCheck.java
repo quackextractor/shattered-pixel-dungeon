@@ -151,7 +151,7 @@ public class DialogCheck {
 				return;
 			}
 
-			//and the world has to be back in the agent's hands before it can move again
+
 			int guard = 0;
 			while (env.mode() != EnvMode.WORLD && env.running() && guard++ < 20){
 				env.step( Action.CANCEL, 0 );
@@ -163,9 +163,9 @@ public class DialogCheck {
 				return;
 			}
 
-			//and the move has to land. The fall is serviced on the step after the one that asks for it,
-			//so this drives until the floor changes rather than asserting a step count - the count is
-			//the game's sequencing and not this gate's to pin.
+
+
+
 			int depth = Dungeon.depth;
 			int moves = 0;
 			while (Dungeon.depth == depth && env.running() && moves++ < 10){
@@ -236,7 +236,7 @@ public class DialogCheck {
 			return;
 		}
 
-		//too young: the answer is discarded, and the dialog has to stay for the agent to try again
+
 		WindowBridge.selectOption( 0 );
 
 		if (!WindowBridge.open()){
@@ -252,7 +252,7 @@ public class DialogCheck {
 			return;
 		}
 
-		//old enough: the same press closes it, and closing it is the game's own hide()
+
 		for (int i = 0; i < 40 && WindowBridge.open(); i++) env.step( Action.WAIT, 0 );
 		WindowBridge.selectOption( 0 );
 
@@ -289,7 +289,7 @@ public class DialogCheck {
 		SPDEnv env = env();
 		env.reset( SEEDS[1], HeroClass.WARRIOR );
 
-		//walk one real turn, so the turn is genuinely over and the dialog is genuinely mid-drain
+
 		env.step( Action.WAIT, 0 );
 		if (!env.running()){
 			fail( "the episode ended as " + env.endReason() + " after one turn, so this case measured"

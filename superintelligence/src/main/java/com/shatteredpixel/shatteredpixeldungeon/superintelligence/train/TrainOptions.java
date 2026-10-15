@@ -242,7 +242,7 @@ public class TrainOptions {
 		PpoHyperparameters hyper = loaded.hyper;
 		o.hyper = hyper;
 
-		//the file's values become the new defaults, so a flag below still overrides them
+
 		o.epochs = hyper.epochs;
 		o.minibatchSize = hyper.minibatchSize;
 		o.updateThreads = hyper.updateThreads;
@@ -252,16 +252,16 @@ public class TrainOptions {
 		o.stallSeconds = hyper.stallSeconds;
 
 		for (int i = 0; i < args.length; i++){
-			//Every flag in the switch below takes a value, and every one of them read args[i + 1] with
-			//nothing checking there was one. `train.ps1 -Resume` emitted a bare --resume and the parser
-			//answered ArrayIndexOutOfBoundsException: Index 19 out of bounds for length 19 - which names
-			//neither the flag nor what was missing, and arrives from a stack trace inside a parser. A
-			//refusal naming the flag is this project's own rule: a check that cannot report *why* it
-			//failed is the same failure as no check.
-			//
-			//Read through value() rather than checked up front, because a check up front cannot tell a
-			//known flag from an unknown one without a second list of the flags to drift away from the
-			//switch. An unknown option stays a warning.
+
+
+
+
+
+
+
+
+
+
 			final int at = i;
 
 			switch (args[ i ]) {
@@ -279,15 +279,15 @@ public class TrainOptions {
 				case "--replay-group": o.replayGroup = value( args, at ); i++; break;
 				case "--record-every": o.recordEvery = Integer.parseInt( value( args, at )); i++; break;
 				case "--stall-seconds":
-					//how long a worker may be silent before the run is failed as a protocol desync.
-					//A blocked pipe costs no CPU, so without this a stall is indistinguishable from a
-					//long episode.
+
+
+
 					o.stallSeconds = Long.parseLong( value( args, at )); i++; break;
 				case "--epochs":      o.epochs = Integer.parseInt( value( args, at )); i++; break;
 				case "--minibatch":   o.minibatchSize = Integer.parseInt( value( args, at )); i++; break;
 				case "--update-threads": o.updateThreads = Integer.parseInt( value( args, at )); i++; break;
-				//these three existed as public Trainer fields with these defaults, but were never
-				//reachable from the command line - so the knobs the plan documents could not be turned
+
+
 				case "--sample-rate": o.sampleRate = Double.parseDouble( value( args, at )); i++; break;
 				case "--max-sampled-per-episode":
 					o.maxSampledPerEpisode = Integer.parseInt( value( args, at )); i++; break;
@@ -295,9 +295,9 @@ public class TrainOptions {
 					o.maxSamplesPerGeneration = Integer.parseInt( value( args, at )); i++; break;
 				case "--metrics":     o.metricsCsv = new File( value( args, at )); o.metricsGiven = true; i++; break;
 				case "--trace-world":
-					//A world trace of the *recording* path, so it can be diffed against `worldtrace` of the
-					//same recording. Off by default; there is exactly one question it can answer that
-					//nothing else can.
+
+
+
 					o.traceWorld = value( args, at ); i++; break;
 				case "--save":        o.save = new File( value( args, at )); o.saveGiven = true; i++; break;
 				case "--resume":      o.resume = new File( value( args, at )); i++; break;
@@ -314,11 +314,11 @@ public class TrainOptions {
 		if (o.checkpointEvery < 1) o.checkpointEvery = 1;
 		if (o.recordEvery < 1) o.recordEvery = 1;
 
-		//The sampling and batch fields above started as bare literals in three classes and are now read
-		//from the configuration. The clamps stay, because a flag that sets them to zero is still a
-		//mistake worth correcting rather than a value to honour literally - except the sample rate, where
-		//zero is meaningful: the collector always retains an episode's last 20 steps, so 0 is how "off"
-		//is expressed rather than a special case. See PpoHyperparameters.sampleRate.
+
+
+
+
+
 		if (o.minibatchSize < 1) o.minibatchSize = 1;
 		if (o.epochs < 1) o.epochs = 1;
 		if (o.updateThreads < 0) o.updateThreads = 0;
@@ -327,10 +327,10 @@ public class TrainOptions {
 
 		o.deriveOutputsUnder( o.workDir );
 
-		//after everything else, because a flag wins over a file and over the environment - and this one
-		//changes what every episode in the run is worth, so it is refused rather than defaulted if the
-		//name is not a profile. Applied to the run's own config by Trainer.main, which holds the one
-		//EnvConfig the workers are started from.
+
+
+
+
 		if (o.rewardProfile != null){
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
 					.parse( o.rewardProfile );
@@ -396,7 +396,7 @@ public class TrainOptions {
 			Object v = m.invoke( os );
 			if (v instanceof Number) return ((Number) v).longValue();
 		} catch (ReflectiveOperationException | RuntimeException ignored){
-			//not available on every JVM; fall through to "unlimited"
+
 		}
 		return Long.MAX_VALUE;
 	}

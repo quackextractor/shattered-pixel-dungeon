@@ -41,13 +41,13 @@ public class HeadlessGame extends Game {
 
 	/** Idempotent; safe to call from every worker. */
 	public static HeadlessGame install(){
-		//With no scene, Level.drop's gameplay/scene test is false for every drop, so a thrown item lands
-		//inert. This is the statement that a renderer-bypassed process is playing a floor.
+
+
 		GameScene.headlessGameplay( true );
-		//The stand-in a mob created by an item path needs: GameScene.add(Mob) hands it to the scene
-		//otherwise, and with no scene it left the mob with no sprite and out of Actor.chars, so a
-		//Scroll of Mirror Image died with an NPE inside Char.move. Uncommitted with the core half -
-		//see ENGINE-CHANGES.md 8.
+
+
+
+
 		GameScene.headlessMobSprite(
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline::spriteFor );
 		if (HeadlessServices.installed && Game.instance instanceof HeadlessGame){
@@ -72,19 +72,19 @@ public class HeadlessGame extends Game {
 		elapsed = 1f/60f;
 		timeTotal = 0f;
 
-		//Camera.main is null until something calls Camera.reset(). PixelScene.shake() - reached
-		//from stairs, traps and mining - dereferences it unconditionally.
+
+
 		Camera.reset();
 
-		//Every CellEmitter entry point dereferences the scene's emitter pool without checking, and
-		//GameScene.emitter() returns null with no scene. A heap of gold dropping reaches it from
-		//ItemSprite.drop, so the first chest opened headless died with an NPE.
+
+
+
 		com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.headlessEmitter(
 				new com.watabou.noosa.particles.Emitter() );
 
-		//PixelScene.uiCamera is created in PixelScene.create(), which never runs headlessly.
-		//Window's constructor reads its dimensions to size a click blocker, so every dialog
-		//constructed without a scene would fail here.
+
+
+
 		if (com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene.uiCamera == null) {
 			com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene.uiCamera =
 					Camera.createFullscreen( 1f );
@@ -92,22 +92,22 @@ public class HeadlessGame extends Game {
 		}
 	}
 
-	// ---------------------------------------------------------------- libGDX callbacks
-	// Each of these normally allocates GL resources. Headlessly they must not.
+
+
 
 	@Override
 	public void create(){
-		//no super.create(): that queries Gdx.graphics for GLVersion and reloads textures
+
 	}
 
 	@Override
 	public void resize(int width, int height){
-		//the "real" implementation compares Gdx.gl object identity, which is null here
+
 	}
 
 	@Override
 	public void render(){
-		//the "real" implementation clears the framebuffer and draws the scene
+
 	}
 
 	@Override
@@ -118,26 +118,26 @@ public class HeadlessGame extends Game {
 
 	@Override
 	public void resume(){
-		//no-op
+
 	}
 
 	@Override
 	public void finish(){
-		//no-op: a headless run is not a window that can be closed
+
 	}
 
 	@Override
 	public void destroy(){
-		//the "real" implementation resets Music/Sample, which would touch the audio device
+
 	}
 
-	// ---------------------------------------------------------------- noosa internals
+
 
 	@Override
 	protected void step(){
-		//The "real" implementation instantiates and swaps in the requested scene. A rollout must
-		//never do that: InterlevelScene would take over the turn loop. We just acknowledge the
-		//request so the caller can service it.
+
+
+
 		if (requestedReset){
 			requestedReset = false;
 			requestedSceneClass = sceneClass;
@@ -147,22 +147,22 @@ public class HeadlessGame extends Game {
 
 	@Override
 	protected void draw(){
-		//no-op
+
 	}
 
 	@Override
 	protected void update(){
-		//The "real" implementation polls input, updates audio and advances the scene. All three
-		//are meaningless headlessly, and input processing would consume the (nonexistent) device.
-		//elapsed/timeTotal are still advanced so tweeners that read them behave deterministically.
+
+
+
 		elapsed = 1f/60f;
 		timeTotal += elapsed;
 	}
 
 	@Override
 	protected void switchScene(){
-		//the "real" implementation destroys the old scene, clears vertexbuffers and calls create()
-		//on the new one. All GL work, all skipped.
+
+
 		scene = null;
 		elapsed = 0f;
 		timeScale = 1f;
@@ -171,8 +171,8 @@ public class HeadlessGame extends Game {
 
 	@Override
 	protected void logException(Throwable tr){
-		//The "real" implementation calls Gdx.app.error. We keep the stack trace because a
-		//crashing rollout is a training bug that must not be swallowed silently.
+
+
 		tr.printStackTrace();
 	}
 
@@ -186,7 +186,7 @@ public class HeadlessGame extends Game {
 		return false;
 	}
 
-	// ---------------------------------------------------------------- switch observation
+
 
 	/**
 	 * True once the game has been asked to switch scenes, until {@link #clearSwitchRequest}.

@@ -69,8 +69,8 @@ public final class DropFixture {
 		recorder.begin( env.seedText(), HERO.name(), 0, config.turnLimitPerFloor, config );
 		Replay replay = recorder.replay();
 
-		//the first slot holding a bound, unequipped item - the one whose resolution the bindings decide,
-		//which on a DUELIST is the ThrowingSpike rather than the Food an unbound list would give
+
+
 		env.mapper().refreshSlots();
 		int slot = -1;
 		for (int i = 0; i < env.mapper().slots().size(); i++){
@@ -86,7 +86,7 @@ public final class DropFixture {
 					+ " fixture cannot drop an item whose slot resolution the bindings decide." );
 		}
 
-		//two steps, because that is what a slot action costs: one to choose it and one to say which
+
 		step( env, recorder, Action.USE, 0, EnvMode.WORLD );
 		step( env, recorder, Action.DROP, slot, EnvMode.SLOT );
 

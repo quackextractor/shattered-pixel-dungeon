@@ -86,8 +86,8 @@ public class ObserveCheck {
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		env.reset( "OBSERVECHECK-A", HeroClass.WARRIOR );
 
-		//walk the hero far enough in to be carrying something, so the inventory encoder has real work
-		//and the check cannot pass by measuring an empty world
+
+
 		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), 11 );
 		int[] slot = new int[ 1 ];
 		for (int i = 0; i < 14 && env.running(); i++){
@@ -142,7 +142,7 @@ public class ObserveCheck {
 		RandomTrace.enable();
 		RandomTrace.reset();
 		encoder.encode();
-		//captured before the reset, so a failure reports the numbers that were actually measured
+
 		String measured = RandomTrace.summary();
 		long drawn = RandomTrace.draws();
 		RandomTrace.reset();

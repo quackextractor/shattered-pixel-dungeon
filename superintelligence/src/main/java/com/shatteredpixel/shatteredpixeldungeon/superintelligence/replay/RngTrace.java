@@ -87,30 +87,30 @@ public class RngTrace {
 	 * the caller cannot get between the world being built and the first step being replayed.
 	 */
 	public void onReset(){
-		//What generation left behind, recorded before the counters are zeroed. Every recorded step shows
-		//zero base draws, so the entire windowed-versus-headless difference has to be settled here or it
-		//is not settled at all: if these two agree, generation reproduced and the offset was introduced
-		//afterwards, and if they differ then the two paths never built the same base stream to begin with.
+
+
+
+
 		generationBaseDraws = RandomTrace.baseDraws();
 		generationBaseFingerprint = RandomTrace.baseFingerprint();
 
 		RandomTrace.reset();
-		//The current tally becomes the baseline rather than being cleared. Attribution is switched on
-		//before the world is built, so clearing would make step 0's delta the entire generation - several
-		//thousand draws that have nothing to do with the first recorded step, and that every step would
-		//then be compared against.
+
+
+
+
 		previousSites.clear();
 		previousSites.putAll( RandomTrace.sites() );
 
-		//The generation window's own tally goes into the trace as a header line, because it is the one
-		//part of the run that is deliberately excluded from the per-step comparison and so has nowhere
-		//else to be looked at.
-		//
-		//It is also where a fault of this class hides. Level generation is the largest single consumer of
-		//randomness in a run, and if the two environments draw different amounts of it the gameplay stream
-		//starts in a different place - which then shows up hundreds of steps later as a damage roll that
-		//came out differently, with nothing at the divergence to say why. Written as "site=count" pairs so
-		//two traces can be diffed on it directly.
+
+
+
+
+
+
+
+
+
 		StringBuilder window = new StringBuilder();
 		for (java.util.Map.Entry< String, Integer > e : RandomTrace.sites().entrySet()){
 			if (e.getValue() <= 0) continue;
@@ -119,11 +119,11 @@ public class RngTrace {
 		}
 		lines.add( "# generationSites=" + window );
 
-		//Read here, not by the caller before the run starts. Dungeon.seed is only set once the level
-		//pipeline has run, so a caller that samples it earlier reads whatever was there before - which is
-		//zero in a fresh headless process, and looks exactly like a seeding fault when it is a measurement
-		//one. onReset is called immediately after the environment reset, which is the first moment the
-		//seed exists.
+
+
+
+
+
 		dungeonSeed( com.shatteredpixel.shatteredpixeldungeon.Dungeon.seed );
 		lines.add( "# generationBaseDraws=" + generationBaseDraws
 				+ " generationBaseFingerprint=" + generationBaseFingerprint );

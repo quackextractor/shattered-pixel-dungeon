@@ -117,14 +117,14 @@ public class HeroEncoder {
 		out[ F_STRENGTH ] = (hero.STR() - 3) / 40f;
 		out[ F_DEFENSE ]  = defenseCeiling( hero ) / 60f;
 
-		//gold spans three orders of magnitude across a run, so it is logged
+
 		out[ F_GOLD_LOG ] = (float) (Math.log( 1 + Dungeon.gold ) / Math.log( 1000 ) );
 
 		if (Dungeon.level != null){
 			out[ F_FLOOR_EXPLORED ] = Dungeon.level.levelExplorePercent( Dungeon.depth );
 		}
 
-		//hunger drives the docs.md "punish eating early" term, so the agent must be able to see it
+
 		Hunger hunger = hero.buff( Hunger.class );
 		if (hunger != null){
 			out[ F_HUNGER ] = Math.min( 1f, hunger.hunger() / HUNGER_SCALE );

@@ -37,7 +37,7 @@ public class ValueScale {
 	public static void main( String[] args ){
 		EnvConfig config = new EnvConfig();
 
-		//the real reward constants, so the numbers here are the ones a run will see
+
 		System.out.println( "env: depthReward=" + config.depthReward
 				+ " deathPenalty=" + config.deathPenalty
 				+ " victoryReward=" + config.victoryReward );
@@ -46,16 +46,16 @@ public class ValueScale {
 		Network network = new Network( config, new Random( 5L ) );
 		PPO ppo = new PPO( config, new Random( 5L ) );
 
-		//synthetic targets spanning the shape a rollout produces: ordinary per-step rewards, and the two
-		//terminal charges, which are the only terms here that are copied from EnvConfig rather than invented.
-		//
-		//It previously used -100 and +250 against the constants that were current when it was written, and
-		//understated them by more than an order of magnitude - which is why it read as adequate while the
-		//returns are what is large. An earlier revision of this fix added depthReward to stand in for a
-		//descent target; that was wrong too, since depthReward is a per-step reward and a return is an
-		//accumulation of them. So it is gone, and the array no longer claims to be a measured distribution.
-		//The point of the diagnostic is the scale of the terminal terms against everything else, and that
-		//is what this shows.
+
+
+
+
+
+
+
+
+
+
 		float[] targets = {
 				0.02f, -0.01f, 0.05f, 0.11f, 0.04f, -0.02f, 0.03f, 12.4f, 8.1f, -3.2f,
 				-config.deathPenalty, config.victoryReward, 0.07f, -0.04f
@@ -93,7 +93,7 @@ public class ValueScale {
 				+ fmt( meanSquare ) );
 		System.out.println();
 
-		//the head's reachable range, empirically: drive it hard and see where it saturates
+
 		network.resetState();
 		float observed = 0;
 		for (int i = 0; i < 8; i++){
@@ -104,16 +104,16 @@ public class ValueScale {
 			observed = network.value();
 		}
 
-		//stale while the head was tanh-bound, and it printed a range the head could not reach while the
-		//real fault was elsewhere. Stated as what the head is rather than as a fixed interval, so the next
-		//change to it shows up here instead of contradicting this line.
+
+
+
 		System.out.println( "value head: linear (Network builds it with tanh = false), so unbounded." );
 		System.out.println( "  observed output " + fmt( observed ) );
 		System.out.println();
 
-		//The "head cannot reach it" argument was sound while the head was tanh-bound and is void now. What
-		//is left is scale: one terminal sample at victoryReward dominates the squared error, which is
-		//what valueLoss in the tens of thousands - and a 2.5x spread across identical repeats - is.
+
+
+
 		System.out.println( "The largest target is " + fmt( Math.abs( sorted[ sorted.length - 1 ] ) )
 				+ ", and the mean of target^2 is " + fmt( meanSquare )
 				+ " - so a handful of terminal samples own the critic's loss." );

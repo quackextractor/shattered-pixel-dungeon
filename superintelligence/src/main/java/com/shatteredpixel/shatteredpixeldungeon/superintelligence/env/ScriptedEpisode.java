@@ -81,10 +81,10 @@ public class ScriptedEpisode {
 		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), policySeed );
 		ReplayRecorder recorder = new ReplayRecorder();
 
-		//begun after the reset, and with the seed the environment resolved rather than the one asked
-		//for. On a random episode those differ, and recording the empty request produces a replay that
-		//verify cannot rebuild: it draws a different random world and reports a step-0 divergence that
-		//looks like a broken seed lock and is not one.
+
+
+
+
 		recorder.begin( env.seedText(), hero.name(), 0, config.turnLimitPerFloor, config );
 
 		RunReport report = new RunReport( env.ledger(), env.seedText() );

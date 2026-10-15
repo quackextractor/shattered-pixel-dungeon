@@ -114,8 +114,8 @@ public class WorldTrace {
 		System.out.println( "[worldtrace] " + file.getName() + ": " + replayed + " steps -> " + out
 				+ " (" + snapshot.lines().size() + " records, cells=" + cells + ")" );
 
-		//A file of records that never change is a broken instrument, so say so rather than leaving a
-		//caller to notice. Every step of a real run moves the hero, so consecutive records must differ.
+
+
 		List< String > changed = WorldDiff.changedRecords( snapshot, "step" );
 		if (changed.isEmpty()){
 			System.out.println( "[worldtrace] WARNING no step record differs from the one before it;"

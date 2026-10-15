@@ -51,7 +51,7 @@ public class Policy {
 			if (cumulative >= target ) return i;
 		}
 
-		//floating point can leave the cumulative sum a hair short of the total
+
 		for (int i = logits.length - 1; i >= 0; i--){
 			if (mask[ i ] > 0.5f ) return i;
 		}
@@ -116,10 +116,10 @@ public class Policy {
 		float clippedRatio = ratio < low ? low : (ratio > high ? high : ratio);
 		boolean clipBinding = clippedRatio != ratio;
 
-		//dL/dlog(pi_chosen), zero when the clip is binding
+
 		float dLogProbability = clipBinding ? 0f : advantage * ratio;
 
-		//d log pi_j / d logit_j = 1 - pi_j
+
 		outGradient[ chosenIndex ] += dLogProbability * (1f - newProbability);
 
 		if (entropyCoeff != 0f){
@@ -128,7 +128,7 @@ public class Policy {
 				if (mask[ i ] <= 0.5f ) continue;
 				float p = probabilities[ i ];
 				if (p <= 1e-8f) continue;
-				//dH/dlogit_i = -p_i * (log p_i + H), and the loss is -coef*H
+
 				outGradient[ i ] -= entropyCoeff * ( -p * ( (float) Math.log( p ) + h ) );
 			}
 		}

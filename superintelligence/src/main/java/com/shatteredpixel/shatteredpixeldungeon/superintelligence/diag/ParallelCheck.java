@@ -138,7 +138,7 @@ public class ParallelCheck {
 		}
 	}
 
-	// --------------------------------------------------------------------------- the measurement
+
 
 	/** One gradient comparison's outcome. */
 	private static class Result {
@@ -162,7 +162,7 @@ public class ParallelCheck {
 	 * the time spent on this bug.
 	 */
 	private static Result reduce( EnvConfig config, int n, int shards ){
-		//one policy, so the samples and the weights are identical for both accumulations
+
 		PPO ppo = new PPO( config, new Random( 20261007L ) );
 		List< com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition > batch =
 				ParallelFixtures.batch( ppo.network, config, n, 4242L );
@@ -194,7 +194,7 @@ public class ParallelCheck {
 
 		float[][] a = straight.gradientTensors();
 
-		//the sum, into tensors of its own
+
 		float[][] summed = new float[ a.length ][];
 		for (int i = 0; i < a.length; i++ ) summed[ i ] = new float[ a[ i ].length ];
 		for (int i = 0; i < a.length; i++ ){
@@ -307,8 +307,8 @@ public class ParallelCheck {
 
 	private static EnvConfig smallConfig(){
 		EnvConfig config = new EnvConfig();
-		//small, because this is about arithmetic rather than scale, and a full-size network makes four
-		//reductions slow enough to discourage running them
+
+
 		config.gridWidth = 10;
 		config.gridHeight = 10;
 		config.maxSlots = 4;

@@ -189,14 +189,14 @@ public class ReplayCatalog {
 	 * resolving to nothing.
 	 */
 	private static List<File> defaultDirectories(){
-		//deduplicated by canonical path. The index and the built-in default overlap by design - a run
-		//that used the default directory records it - and scanning a directory twice makes every file in
-		//it look like a duplicate of itself, which then reads as "recorded 2 times" for every seed.
-		//
-		//Canonical, not absolute, because the two spellings of the same directory are not always the same
-		//string: the index holds `superintelligence/./trainer-replays` as the trainer wrote it and the
-		//built-in default holds `superintelligence/trainer-replays`, and a File set compares paths. So the
-		//dedup was here and did nothing, and every one of the 185 trainer recordings was listed twice.
+
+
+
+
+
+
+
+
 		LinkedHashSet<File> dirs = new LinkedHashSet<>();
 
 		File repo = repositoryRoot();
@@ -244,8 +244,8 @@ public class ReplayCatalog {
 	private static File repositoryRoot(){
 		File dir = new File( System.getProperty( "user.dir" ) ).getAbsoluteFile();
 
-		//bounded, because a pathologically deep working directory should not spin. 12 levels covers
-		//a checkout nested a few directories deep with room to spare.
+
+
 		for (int depth = 0; depth < 12 && dir != null; depth++){
 			if (new File( dir, "settings.gradle" ).isFile()) return dir;
 			dir = dir.getParentFile();
@@ -275,11 +275,11 @@ public class ReplayCatalog {
 		Map<String, Entry> bySeed = new LinkedHashMap<>();
 		Map<String, List<Entry>> all = new LinkedHashMap<>();
 
-		//A directory is scanned once per *canonical* path, not once per spelling. The same directory
-		//arrives under more than one - the index holds whatever the trainer wrote, the built-in default
-		//holds the tidied form - and scanning it twice lists every file in it twice, which then reads
-		//as "recorded 2 times" for every seed. The first spelling wins, so sourceIndex still says which
-		//section a file came from.
+
+
+
+
+
 		Set<String> seen = new LinkedHashSet<>();
 
 		for (int dirIndex = 0; dirIndex < directories.size(); dirIndex++){
@@ -292,17 +292,17 @@ File canonical = canonical( dir );
 		for (File file : recordingsUnder( canonical )){
 			String name = file.getName().toLowerCase();
 
-			//Two extensions, deliberately. The checked-in fixtures are .replay; the trainer writes
-			//<seed>.dat into a temp directory. Both are real recordings and a person looking for
-			//"that run from generation 19" has no reason to know which side wrote it.
+
+
+
 			if (!(name.endsWith( ".replay" ) || name.endsWith( ".dat" ))) continue;
 
 				Entry entry;
 				try {
 					entry = new Entry( file, ReplayIO.readHeader( file ) );
 				} catch (IOException e){
-					//listed with the reason rather than skipped: a file that cannot be parsed is
-					//exactly the one worth knowing about
+
+
 					entry = new Entry( file, e.getMessage() );
 				}
 
@@ -317,12 +317,12 @@ File canonical = canonical( dir );
 		copies.clear();
 		copies.putAll( all );
 
-		//one entry per *file*, not per seed and not per group - ambiguous() counts files, so a list
-		//holding both the deduped entries and the full groups counted a duplicated seed three times
+
+
 		allEntries.clear();
 		for (List<Entry> group : all.values()) allEntries.addAll( group );
 
-		//count on the entry itself, so the renderer does not need the map
+
 		for (Map.Entry<String, List<Entry>> pair : copies.entrySet()){
 			for (Entry entry : pair.getValue()) entry.copies = pair.getValue().size();
 		}
@@ -407,12 +407,12 @@ File canonical = canonical( dir );
 	 */
 	private static Comparator<Entry> rankOrder(){
 		return Comparator
-				//a damaged file has NaN score, and every comparison against NaN is false - which would
-				//leave it wherever it happened to be rather than at the bottom, so they sort explicitly
+
+
 				.comparing( ( Entry e ) -> e.error != null )
-				//negated, because the comparator ascends and a ranked list is best-first. Written this
-				//way rather than reversing, so the damage rule keeps its own key and does not depend on
-				//where a reversal happens to leave it.
+
+
+
 				.thenComparingDouble( e -> e.error != null ? Double.MAX_VALUE : -e.score )
 				.thenComparingInt( e -> -e.depth )
 				.thenComparing( e -> e.label() );
@@ -434,7 +434,7 @@ File canonical = canonical( dir );
 
 		String needle = name.trim().toLowerCase();
 
-		//a full path was given
+
 		File asPath = new File( name.trim() );
 		if (asPath.isFile()){
 			for (Entry entry : allEntries){
@@ -449,8 +449,8 @@ File canonical = canonical( dir );
 		int dot = stem.lastIndexOf( '.' );
 		if (dot > 0) stem = stem.substring( 0, dot );
 
-		//Every file, not one row per seed - the same blind spot byName had. This method exists to say
-		//"three files are called that", and a deduplicated list can never say it for a shared seed.
+
+
 		for (Entry entry : allEntries){
 			boolean hit = entry.file.getName().equalsIgnoreCase( needle )
 					|| entry.label().equalsIgnoreCase( stem )
@@ -462,7 +462,7 @@ File canonical = canonical( dir );
 		return matches;
 	}
 
-	// --------------------------------------------------------------------------- rendering
+
 
 	/**
 	 * The entries in listing order, numbered from 1.
@@ -519,7 +519,7 @@ File canonical = canonical( dir );
 		sections.put( SECTION_CORPUS, new LinkedHashMap<>() );
 		sections.put( SECTION_TRAINER, new LinkedHashMap<>() );
 
-		//in name order, and after the ungrouped output, so a listing reads the same way twice
+
 		List<String> groups = new ArrayList<>( new LinkedHashSet<>( namedGroups() ));
 		groups.sort( String::compareTo );
 		for (String group : groups) sections.put( GROUP_PREFIX + group, new LinkedHashMap<>() );
@@ -575,15 +575,15 @@ File canonical = canonical( dir );
 		String wanted = name == null ? "" : name.trim();
 		if (wanted.isEmpty()) return null;
 
-		//The guard lives here rather than in the caller. It was in the caller first, and byName still
-		//answered: its extension-completion step turned "TWIN-SEED" into "TWIN-SEED.replay", matched
-		//one of two identically named files, and returned it - so a caller that forgot to check first
-		//got a confident wrong answer rather than nothing.
+
+
+
+
 		if (!ambiguous( wanted ).isEmpty()) return null;
 
 		String lower = wanted.toLowerCase();
 
-		//an exact filename is unambiguous even when the seed is not: the person named a file
+
 		for (Entry entry : allEntries){
 			if (entry.file.getName().toLowerCase().equals( lower )) return entry;
 		}
@@ -656,14 +656,14 @@ File canonical = canonical( dir );
 			int inSection = sectionCount( section.getValue() );
 			if (inSection == 0) continue;
 
-			//The provenance line is the reason the section exists. A heading that just said "trainer
-			//output" would leave a person to discover the difference by picking a file and watching it
-			//halt after one frame.
-			//
-			//Plain drops the colour and keeps the words. Removing the warning for the benefit of plain
-			//output is backwards: a piped listing is read by a script or a log file, which is where a
-			//note about a recording not playing is most likely to be wanted and least likely to be
-			//discovered.
+
+
+
+
+
+
+
+
 			String blurb = "  " + sectionBlurb( section.getKey(), section.getValue() );
 			if (!plain) blurb = Ansi.wrap( blurb, Ansi.DIM );
 
@@ -678,8 +678,8 @@ File canonical = canonical( dir );
 
 				for (Entry entry : group.getValue()){
 					shown++;
-					//The note is dimmed rather than colour-coded: a warning here is about the file, not
-					//about the score, and mixing the two in one column makes both harder to read.
+
+
 					String note = note( entry );
 					if (!note.isEmpty() && !plain) note = Ansi.wrap( note, Ansi.DIM );
 
@@ -702,13 +702,13 @@ File canonical = canonical( dir );
 				.append( ", ranked by score within each section"
 				).append( ", numbered 1 to " ).append( shown ).append( "\n" );
 
-//The copies have to be locatable, or refusing to resolve the name is a dead end.
-		//
-		//By file name, not by absolute path. A filename is what a person has in front of them - it is the
-		//second column of the listing above - and byName already resolves one exactly, so a full path was
-		//never necessary; the instruction only said so. It was also unreadable: 26 absolute paths, each
-		//about a hundred characters of shared parent directory, printed after a ranked list and dwarfing
-		//it. The parent is reduced to its directory name, which is the only part two copies can differ in.
+
+
+
+
+
+
+
 		List<Entry> shared = new ArrayList<>();
 		for (Entry entry : entries){
 			if (entry.copies > 1) shared.add( entry );
@@ -747,17 +747,17 @@ File canonical = canonical( dir );
 			return "recorded through ReplayRecorder directly - these reproduce";
 		}
 
-		//The count is in the blurb because the blurb used to assert the opposite in plain sight. It
-		//read "every one of them is watchable in the viewer" over a section that carried nine lines
-		//marked not watchable - so the header and the list below it contradicted each other on the same
-		//screen, and the header is the part a skimming reader takes away.
+
+
+
+
 		int unwatchable = 0;
 		for (List<Entry> hero : groups.values()){
 			for (Entry entry : hero) if (!entry.watchable) unwatchable++;
 		}
 
-		//A group's heading already names the run; the blurb says what kind of recording that run left,
-		//which is the one thing a reader of a heading cannot infer from it.
+
+
 		String origin = section.startsWith( GROUP_PREFIX )
 				? "written by training run group " + section.substring( GROUP_PREFIX.length() ).toLowerCase( Locale.ROOT ) + " - these reproduce"
 				: "written by the trainer through the worker pipe - these reproduce";
@@ -781,8 +781,8 @@ File canonical = canonical( dir );
 	private String note( Entry entry ){
 		if (entry.error != null) return "[WARN] unreadable: " + entry.error;
 
-		//before the generation, because a name that does not identify one file is a bigger obstacle
-		//to acting on this line than not knowing which generation wrote it
+
+
 		if (entry.copies > 1){
 			return "[WARN] " + entry.copies + " recordings share this seed - name the file"
 					+ ( entry.generation > 0 ? ", gen " + entry.generation : "" );
@@ -790,16 +790,16 @@ File canonical = canonical( dir );
 
 		if (entry.truncatedAt >= 0) return "[WARN] truncated at " + entry.truncatedAt + " of " + entry.steps;
 
-		//Whether it can be watched at all, which is the only question a reader of this section has. The nine
-		//trainer recordings written before the wire was fixed sent four of nine step fields and left the
-		//rest at their sentinels, so a slot index in them resolves against nothing. The catalog used to
-		//say only "NOT known to play end to end" for the whole section, which left a reader unable to
-		//tell the one watchable file from the nine dead ones - and became wrong the moment a fixed
-		//recording joined them.
-		//
-		//Deliberately without a [WARN] prefix, unlike every other note here. Nine of eleven recordings in
-		//a section are in this state and none of them is going to be fixed, so a prefix would make the
-		//exception the signal: a reader would come to expect the two clean lines to be the faulty ones.
+
+
+
+
+
+
+
+
+
+
 		String watchable = entry.watchable ? "" : "not watchable ";
 
 		if (entry.generation > 0) return watchable + "gen " + entry.generation;
@@ -879,7 +879,7 @@ File canonical = canonical( dir );
 		return "--------------------------- ----------------------";
 	}
 
-	// --------------------------------------------------------------------------- entry point
+
 
 	public static void main( String[] args ){
 		List<File> directories = new ArrayList<>();
@@ -905,12 +905,12 @@ File canonical = canonical( dir );
 
 		ReplayCatalog catalog = new ReplayCatalog().scan( directories );
 
-		// --select resolves a number from the listing to a path, and nothing else is printed.
-		//
-		// This exists because the alternative was for the batch file to own a second copy of the
-		// grouping and ranking order. It would have looked fine and then drifted the first time a
-		// comparator was touched, so a number printed to a person would select a different recording
-		// than the one they were looking at.
+
+
+
+
+
+
 		if (select != null){
 			int number;
 			try {
@@ -933,30 +933,30 @@ File canonical = canonical( dir );
 			return;
 		}
 
-		// --resolve turns a name typed at the prompt into a path, searching every directory the index
-		// knows about rather than the fixed pair the batch file used to guess at. Same reason as
-		// --select: one implementation of "where are the recordings", in one language, testable.
+
+
+
 		if (resolve != null){
-			//a path is the way out of an ambiguous name, so honour it before anything else
+
 			File asPath = new File( resolve );
 			if (asPath.isFile()){
 				System.out.print( asPath.getAbsolutePath() );
 				return;
 			}
 
-			//A refusal is written to stdout and the process still exits 0, deliberately. This output is
-			//read by a batch file that wants either a path or a sentence and nothing else; a non-zero
-			//exit would make gradle print its own FAILURE block into the same stream, so the explanation
-			//would arrive wrapped in a stack-trace-looking wall of build noise.
+
+
+
+
 			List<Entry> many = catalog.ambiguous( resolve );
 			if (!many.isEmpty()){
 				StringBuilder message = new StringBuilder();
 				message.append( resolve ).append( " is recorded " ).append( many.size() )
 						.append( " times; pass a file name to pick one:" ).append( System.lineSeparator() );
 				for (Entry entry : many){
-					//a file name, which is what --resolve takes next. The absolute path is printed too,
-					//because it is the one thing this output is unambiguous about and a batch file may
-					//need it - but it is not required and the instruction must not say it is.
+
+
+
 					message.append( "  " ).append( entry.file.getName() )
 							.append( String.format( Locale.ROOT, "  %-16s %6d steps, score %9.1f",
 									parentName( entry ), entry.steps, entry.score ))

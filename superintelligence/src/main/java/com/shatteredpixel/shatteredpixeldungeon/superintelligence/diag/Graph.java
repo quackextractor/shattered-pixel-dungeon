@@ -50,10 +50,10 @@ public class Graph {
 			if (v > max) max = v;
 		}
 
-		//true observed bounds, whatever is used for rendering. The order matters and is the whole fix:
-		//compute flat from the data, record the data, and never let a span used for rendering reach
-		//the reported bounds. The original widened first and recorded afterwards, which is how
-		//1.0..2.0 came out of a series that was 1.0 throughout.
+
+
+
+
 		row.min = min;
 		row.max = max;
 		row.flat = (max - min) < 1e-6f;
@@ -61,7 +61,7 @@ public class Graph {
 
 		StringBuilder sb = new StringBuilder( width );
 		for (int i = 0; i < width; i++){
-			//bucket the series into width columns, averaging within a bucket
+
 			int from = (int) ((long) i * values.length / width );
 			int to = (int) ((long) (i + 1) * values.length / width );
 			if (to <= from) to = from + 1;
@@ -110,7 +110,7 @@ public class Graph {
 			if (v > max) max = v;
 		}
 
-		//as in bar(): observed bounds only, and no invented span. See bar() for why.
+
 		row.min = min;
 		row.max = max;
 		row.flat = (max - min) < 1e-6f;

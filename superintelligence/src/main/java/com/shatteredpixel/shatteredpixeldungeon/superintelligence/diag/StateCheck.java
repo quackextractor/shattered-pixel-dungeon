@@ -79,7 +79,7 @@ public class StateCheck {
 		Network network = new Network( config, new Random( 31337L ) );
 		List<Transition> transitions = collect( network, config, 8, 99L );
 
-		//reversed, so every sample's predecessor is unrelated to it
+
 		double worst = 0;
 		network.resetState();
 		for (int i = transitions.size() - 1; i >= 0; i--){
@@ -136,15 +136,15 @@ public class StateCheck {
 
 		float[] full = new float[ network.stateSize() ];
 		network.resetState();
-		//walk to the step so the live state is the one it was decided under
+
 		replayTo( network, t, full );
 
-		//the correct replay, with both halves restored
+
 		network.loadState( full );
 		network.forward( grid( t ), t.inventory, t.hero );
 		float correct = network.value();
 
-		//the same, with the cell half zeroed - what a state field carrying only h would produce
+
 		float[] hiddenOnly = full.clone();
 		int half = hiddenOnly.length / 2;
 		java.util.Arrays.fill( hiddenOnly, half, hiddenOnly.length, 0f );
@@ -181,9 +181,9 @@ public class StateCheck {
 		bare.recurrentState = null;
 		bare.value = t.value;
 
-		//restoring nothing is not the same as restoring the zero state the episode began in, because
-		//this sample was decided several steps in. If it were the same, a dropped field would be
-		//harmless and the check would be asserting the wrong thing.
+
+
+
 		network.loadState( t.recurrentState );
 		network.forward( grid( t ), t.inventory, t.hero );
 		float correct = network.value();
@@ -203,7 +203,7 @@ public class StateCheck {
 		}
 	}
 
-	// --------------------------------------------------------------------------- helpers
+
 
 	private static EnvConfig smallConfig(){
 		EnvConfig config = new EnvConfig();
@@ -236,7 +236,7 @@ public class StateCheck {
 				for (int k = 0; k < a.length; k++) a[ k ] = rng.nextFloat();
 			}
 
-			//the snapshot happens before the forward, matching EpisodeCollector
+
 			network.saveState( t.recurrentState );
 			network.forward( grid( t ), t.inventory, t.hero );
 			t.value = network.value();

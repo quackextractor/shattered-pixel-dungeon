@@ -92,7 +92,7 @@ public class TransitionCheck {
 		}
 	}
 
-	// --------------------------------------------------------------------------- the descent
+
 
 	/**
 	 * Walks the hero onto the exit and asks the level to do what {@code Hero.actTransition} does.
@@ -163,7 +163,7 @@ public class TransitionCheck {
 		return env;
 	}
 
-	// --------------------------------------------------------------------------- checks
+
 
 	/**
 	 * A pending transition has to be noticed and serviced.

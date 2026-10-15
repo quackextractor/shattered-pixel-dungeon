@@ -159,15 +159,15 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "See superintelligence/superintelligence.properties for every key." );
 	}
 
-	// --------------------------------------------------------------------------- rollout
+
 
 private static void rollout( String[] args ){
 		Options options = Options.parse( args );
 
-//Only an explicitly empty --seed is an error. Omitting the flag still means "draw me a random
-		//seed", and the first version of this guard rejected that too - so it told a user to omit the
-		//flag in order to reach the only path that then rejected them. The distinction is whether the
-		//flag was given, not whether the value is empty.
+
+
+
+
 		if ( options.seedProvided && (options.seed == null || options.seed.trim().isEmpty()) ){
 			System.err.println( "[ERROR] --seed was given but empty. Omit the flag entirely for a "
 					+ "random seed, which is then recorded in the replay." );
@@ -175,8 +175,8 @@ private static void rollout( String[] args ){
 			return;
 		}
 
-		//started before anything else so the resource block is the cost of the whole command,
-		//level generation and engine boot included, not just the step loop
+
+
 		ResourceStats.Interval timing = ResourceStats.start();
 
 		boot( options );
@@ -187,8 +187,8 @@ private static void rollout( String[] args ){
 		HeadlessGame game = HeadlessGame.install();
 		SPDEnv env = new SPDEnv( config, game );
 
-		//the episode itself, and its recording, live in ScriptedEpisode so rolloutcheck can assert on
-		//what this command records without invoking a command line
+
+
 		ResourceStats.Interval simulation = ResourceStats.start();
 		long start = System.nanoTime();
 
@@ -231,7 +231,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		}
 	}
 
-	// --------------------------------------------------------------------------- configuration
+
 
 	/**
 	 * Records the {@code DROP}-in-{@code SLOT} fixture the viewer gates play, and verifies it.
@@ -291,9 +291,9 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			return;
 		}
 
-		//The first step that carries it, not a count of the whole run. A witness that counts reports the
-		//run's vocabulary rather than the fixture's contribution to it, and "3 throws" on a fixture whose
-		//point is one deliberate throw reads as a coverage claim it has not made.
+
+
+
 		int covered = witness.applyAsInt( replay );
 		if (covered < 0){
 			System.err.println( "[ERROR] the fixture recorded no " + covers + ", so it is a recording that"
@@ -363,15 +363,15 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			System.exit( 1 );
 			return new EnvConfig();
 		} catch (IllegalArgumentException e){
-			//a bad value is refused rather than defaulted, so this has to stop the command rather than
-			//quietly substituting a number nobody asked for
+
+
 			System.err.println( "[ERROR] " + e.getMessage() );
 			System.exit( 1 );
 			return new EnvConfig();
 		}
 	}
 
-	// --------------------------------------------------------------------------- replay
+
 
 	/**
 	 * Replays a recording and reports how much randomness each step consumed.
@@ -400,8 +400,8 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		try {
 			replay = ReplayIO.read( file );
 		} catch (IOException e){
-			//the bare path is all FileNotFoundException gives on some platforms, which names the
-			//problem without saying what it was
+
+
 			System.err.println( "[ERROR] cannot read the replay " + file
 					+ " (" + e.getClass().getSimpleName() + ")" );
 			System.exit( 1 );
@@ -419,9 +419,9 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 
 		RngTrace trace = new RngTrace();
 		com.watabou.utils.RandomTrace.enable();
-		//attribution on for the whole replay, so a windowed tally and a headless one cover the same span
-		//and can be diffed. The window between reset and the first step is a prefix of that, not a
-		//separate measurement - the viewer's .sites.gen file is the same span for comparison.
+
+
+
 		com.watabou.utils.RandomTrace.attribute();
 
 		ReplayIO.verify( replay, env, trace.observer() );
@@ -492,11 +492,11 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			return;
 		}
 
-		//Refused rather than guessed. The seed is the only handle on which world gets built, so a
-		//recording without one cannot be replayed at all; rebuilding it from a random seed would
-		//diverge at step 0 and report that as a corruption of the recording rather than of the
-		//recorder that wrote it. Name the file and the field, because the failure this replaces
-		//named neither.
+
+
+
+
+
 		if ( replay.seedText == null || replay.seedText.trim().isEmpty() ){
 			System.err.println( "[ERROR] " + file.getName() + " records no seed (header field 'seed=' is empty)."
 					+ " Its world cannot be rebuilt, so it cannot be verified. Re-record with a seed." );
@@ -523,8 +523,8 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		System.out.println();
 
 		if (result.diverged){
-			//a replay that stops reproducing means the seed lock has been broken somewhere, and
-			//every locked-seed comparison the trainer makes becomes meaningless
+
+
 			System.err.println( "[ERROR] replay diverged at step " + result.divergedAt
 					+ " of " + replay.steps.size() );
 			System.err.println( "        " + result.divergence );
@@ -533,10 +533,10 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 					+ " mode " + replay.steps.get( result.divergedAt ).mode );
 			System.exit( 2 );
 		} else if (result.unwatchableAt >= 0){
-			//Reported as its own failure and not folded into the divergence, because it is not the same
-			//thing and the distinction is the point: the run below reproduced, which is why this went
-			//unnoticed for so long, and the file still cannot be watched. Nine recordings the trainer
-			//wrote were in this state and every one of them printed [OK].
+
+
+
+
 			System.err.println( "[ERROR] replay reproduced in " + result.stepsVerified
 					+ " steps but is not watchable:" );
 			System.err.println( "        " + result.unwatchable );
@@ -553,7 +553,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		}
 	}
 
-// --------------------------------------------------------------------------- gradients
+
 
 	/**
 	 * Checks the network's analytic gradients against finite differences.
@@ -573,7 +573,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		if (failures > 0) System.exit( 1 );
 	}
 
-	// --------------------------------------------------------------------------- shared
+
 
 	/**
 	 * Resets the env, reporting a bad seed as a message rather than a stack trace.

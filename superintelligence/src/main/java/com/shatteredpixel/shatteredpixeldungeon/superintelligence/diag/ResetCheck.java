@@ -118,7 +118,7 @@ public class ResetCheck {
 			@Override public String prompt(){ return "test"; }
 		} );
 
-		//guard: the arming has to have worked or the case passes for the wrong reason
+
 		if (GameScene.pendingCellListener() == null){
 			fail( "GameScene.selectCell did not arm a pending listener, so the case cannot test whether"
 					+ " reset disarms one." );
@@ -167,7 +167,7 @@ public class ResetCheck {
 		GameScene.show( new WndOptions( "RESETCHECK", "dialog left open by the previous episode",
 				"Yes", "No" ) );
 
-		//guard: without it the case passes for a reason unrelated to the reset
+
 		if (!WindowBridge.open()){
 			fail( "GameScene.show did not park an answerable window, so the case cannot test whether"
 					+ " reset clears one." );
@@ -176,12 +176,12 @@ public class ResetCheck {
 
 		env.reset( SEEDS[ 2 ], HeroClass.WARRIOR );
 
-		//the static itself, checked as the reference rather than through WindowBridge.open().
-		//
-		//open() answers a narrower question - "is the parked window an answerable one" - and anything
-		//that replaced the dialog during the reset would make it false while a window was still parked.
-		//Reset asserts the field is empty, because that is the property the reset actually promises and
-		//the only one no other code path can accidentally satisfy.
+
+
+
+
+
+
 		if (GameScene.headlessWindow() != null){
 			fail( "a dialog left open by the previous episode was still parked after reset ("
 					+ GameScene.headlessWindow().getClass().getSimpleName() + "). settle() tests for it"
@@ -227,17 +227,17 @@ public class ResetCheck {
 	private static void checkARunDoesNotInheritRemains(){
 		EnvConfig config = new EnvConfig();
 
-		//A ROGUE on a seed measured to die at turn 56 rather than one of the seeds above, which were
-		//chosen for trajectory diversity and mostly survive their floor. Which seeds die is a property of
-		//the world, so this names one that was observed to, and the death itself is asserted below.
+
+
+
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ScriptedEpisode.Result first =
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ScriptedEpisode.record(
 						config, DYING_SEED, HeroClass.ROGUE, 0, 1 );
 
-		//The positive control. Without it the case passes for a reason that has nothing to do with the
-		//reset: a hero who survives never calls Bones.leave, so there is no remains to inherit and the
-		//assertion below is true of a run that was never at risk. That is not hypothetical - it is what
-		//this case did for its first few revisions.
+
+
+
+
 		if (first.env.endReason() != com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
 				.RewardModel.TerminateReason.DEATH){
 			fail( "the first episode ended " + first.env.endReason() + " after "
@@ -273,7 +273,7 @@ public class ResetCheck {
 
 	/** Every episode begins in WORLD, whatever the previous one was doing when it ended. */
 	private static void checkEveryEpisodeStartsInWorld( SPDEnv env, EnvConfig config ){
-		//four episodes back to back, with real play between them, which is what a worker does
+
 		for (int i = 0; i < 4; i++){
 			env.reset( SEEDS[ i % SEEDS.length ], HeroClass.WARRIOR );
 
@@ -301,7 +301,7 @@ public class ResetCheck {
 		for (String seed : SEEDS){
 			String first = trace( env, config, seed );
 
-			//churn with the other seeds, then trace the same one again
+
 			for (String other : SEEDS){
 				if (!other.equals( seed )) trace( env, config, other );
 			}
@@ -366,13 +366,13 @@ public class ResetCheck {
 		env.config().turnLimitPerFloor = config.turnLimitPerFloor;
 		env.reset( seed, HeroClass.WARRIOR );
 
-		//**Straight after the reset, with nothing played.** `reset` generates floor 1, and floor 1's
-		//special rooms are placed during that generation - which is the whole point, because
-		//`useType` moves them to the back of the run-level pool and floor 2 draws from what is left.
-		//
-		//An earlier version of this case played twenty steps first and passed. That was vacuous: a
-		//random policy places no special rooms, so it was comparing a pool nothing had touched. A
-		//check that cannot fail is not a check, and this one looked fine.
+
+
+
+
+
+
+
 		StringBuilder sb = new StringBuilder();
 		sb.append( "run=" );
 		for (Object room : com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.SpecialRoom
@@ -405,7 +405,7 @@ public class ResetCheck {
 		return room instanceof Class ? ((Class<?>) room).getSimpleName() : String.valueOf( room );
 	}
 
-	// --------------------------------------------------------------------------- tracing
+
 
 	/** A seeded random policy, so the only thing that can differ between two traces is the environment. */
 	private static void play( SPDEnv env, int steps ){

@@ -41,7 +41,7 @@ public class HeadlessGraphics implements Graphics {
 		return graphics;
 	}
 
-	// --- GL availability: none, so nothing tries to draw ---
+
 
 	@Override public boolean isGL30Available(){ return false; }
 	@Override public boolean isGL31Available(){ return false; }
@@ -57,7 +57,7 @@ public class HeadlessGraphics implements Graphics {
 	@Override public void setGL31( GL31 gl31 ){ }
 	@Override public void setGL32( GL32 gl32 ){ }
 
-	// --- screen geometry ---
+
 
 	@Override public int getWidth(){ return WIDTH; }
 	@Override public int getHeight(){ return HEIGHT; }
@@ -88,7 +88,7 @@ public class HeadlessGraphics implements Graphics {
 	@Override public void setCursor( Cursor cursor ){ }
 	@Override public void setSystemCursor( Cursor.SystemCursor cursor ){ }
 
-	// --- timing: fixed, so layout maths never sees a zero delta ---
+
 
 	@Override public long getFrameId(){ return 0L; }
 	@Override public float getDeltaTime(){ return 1f / 60f; }
