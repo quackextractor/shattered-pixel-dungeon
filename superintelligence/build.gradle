@@ -117,6 +117,16 @@ tasks.register('configcheck', JavaExec) {
     jvmArgs trainerJvmArgs
 }
 
+tasks.register('stallcausecheck', JavaExec) {
+    group = 'verification'
+    description = 'Fails if any of the four stall guards is unreachable or reports the wrong guard.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StallBreakdown'
+    jvmArgs trainerJvmArgs
+    //-1 selects the reachability probe rather than the breakdown; it exits non-zero on a mismatch.
+    args '-1'
+}
+
 tasks.register('stallbreakdown', JavaExec) {
     group = 'diagnostics'
     description = 'Names which of the four stall guards ended each episode, under a uniform policy.'
@@ -205,7 +215,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 //test no headless run can satisfy, and the fix needed an engine change. Run it on its own with
 //`gradle :superintelligence:presscheck` when working on drops.
 tasks.register('gates') {
-    dependsOn 'gradcheck', 'gaecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck', 'transitioncheck', 'fallcheck', 'dialogcheck',
+    dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck', 'transitioncheck', 'fallcheck', 'dialogcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
 		'observecheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck'
     group = 'verification'

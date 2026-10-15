@@ -46,14 +46,19 @@ public class ValueScale {
 		Network network = new Network( config, new Random( 5L ) );
 		PPO ppo = new PPO( config, new Random( 5L ) );
 
-		//synthetic targets spanning the plausible range a rollout produces: ordinary steps, a truncated
-		//episode, and the two large terms. Written to match the constants above rather than the values
-		//they had when this was written - deathPenalty is 2500 and victoryReward 60000, so targets of
-		//-100 and +250 understate the distribution by more than an order of magnitude and made the
-		//head look adequate when the returns are what is large.
+		//synthetic targets spanning the shape a rollout produces: ordinary per-step rewards, and the two
+		//terminal charges, which are the only terms here that are copied from EnvConfig rather than invented.
+		//
+		//It previously used -100 and +250 against the constants that were current when it was written, and
+		//understated them by more than an order of magnitude - which is why it read as adequate while the
+		//returns are what is large. An earlier revision of this fix added depthReward to stand in for a
+		//descent target; that was wrong too, since depthReward is a per-step reward and a return is an
+		//accumulation of them. So it is gone, and the array no longer claims to be a measured distribution.
+		//The point of the diagnostic is the scale of the terminal terms against everything else, and that
+		//is what this shows.
 		float[] targets = {
 				0.02f, -0.01f, 0.05f, 0.11f, 0.04f, -0.02f, 0.03f, 12.4f, 8.1f, -3.2f,
-				-config.deathPenalty, config.victoryReward, config.depthReward, 0.07f, -0.04f
+				-config.deathPenalty, config.victoryReward, 0.07f, -0.04f
 		};
 
 		List<Transition> batch = new ArrayList<>();

@@ -647,9 +647,6 @@ public float[] actionMask(){ return actionMask; }
 
 	/** Whether the last step advanced engine time. A step that did not counts against the free budget. */
 	public boolean lastStepAdvancedClock(){ return reward.lastStepAdvancedClock(); }
-
-	/** Free steps spent on this floor so far, against {@code EnvConfig.freeStepBudget}. */
-	public int freeSteps(){ return freeStepsThisFloor; }
 	public float[] slotMask(){ return slotMask; }
 	public float[] targetMask(){ return targetMask; }
 

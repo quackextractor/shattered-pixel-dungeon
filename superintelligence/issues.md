@@ -1727,3 +1727,32 @@ is not a policy problem at this budget; it is arithmetically out of reach.
 The instrumentation and the diagnostic have **no gate**. A gate-shaped version would assert that no
 non-menu action is free more than some fraction of the time, which needs episodes long enough to be
 representative and is not written yet.
+
+### The four guards are now reachable, and that is what makes this entry checkable
+
+`issues.md` 29 ended with "the instrumentation has no gate". It has one now, and adding it found that
+three of the four assignments had never executed.
+
+Under the default thresholds a uniform policy ends every episode on `FREE_STEP` and the other three sit
+at **0%** - so a mislabelled `StallCause` constant on any of them would compile, pass every gate in the
+repository and be wrong. Nothing was checking them because nothing could reach them.
+
+`gradle :superintelligence:stallcausecheck` drives each guard to the only one that can answer:
+
+```
+  config      stallLimit       freeStepBudget   actorStepLimit    cause
+  defaults    120              40               20000             FREE_STEP (6/6)  expected FREE_STEP  [OK]
+  position    1                1000000          20000             POSITION (6/6)  expected POSITION  [OK]
+  freeStep    120              40               0                 ACTOR_STEP_LIMIT (6/6)  expected ACTOR_STEP_LIMIT  [OK]
+  actorStep   120              40               1                 PIPELINE (6/6)  expected PIPELINE  [OK]
+```
+
+`actorStepLimit` of 0 reaches the guard in `settle` and 1 reaches `settleLanding`'s, which is why the
+two rows differ by one.
+
+**Mutation-tested twice.** Relabelling the `POSITION` site as `PIPELINE` and then as `FREE_STEP` each
+made the check exit 1 with `[ERROR]` on that row. It was reverted both times and the check is green.
+
+A first version of this check only failed when a row reported *no* guard, which does not catch a
+mislabelled one - a relabelled guard still reports a plausible guard. That was found by running the
+mutation, not by reading the check.
