@@ -46,7 +46,11 @@ public class InlineCommentStripper {
 
 		System.out.println( "[stripinlines] " + files.size() + " file(s) scanned, " + changed
 				+ " rewritten, " + removed + " comment line(s) removed" );
-		if (changed > 0) System.exit( 3 );
+
+
+
+
+
 	}
 
 	private static List< Path > javaFiles( Path dir ) throws IOException {

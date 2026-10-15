@@ -62,8 +62,12 @@ set +e
 strip_rc=$?
 set -e
 
-# stripinlines exits 3 when it rewrote something, and that is the expected case rather than a failure.
-if [ "$strip_rc" -ne 0 ] && [ "$strip_rc" -ne 3 ]; then
+# Non-zero means the scan itself failed, so leave the tree alone. Whether anything was rewritten is not
+# read from the exit code: JavaExec does not propagate one, gradle reports a failed task and exits 1 for
+# any non-zero exit, so an earlier version of this that branched on "it exited 3 to mean I changed
+# something" saw 1 instead and treated every successful run as a failure. `git status` below answers
+# that question and cannot be confused with an error.
+if [ "$strip_rc" -ne 0 ]; then
     echo "[WARN]  post-commit: stripinlines exited $strip_rc, leaving the tree alone."
     exit 0
 fi
