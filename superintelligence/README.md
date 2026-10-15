@@ -111,9 +111,9 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   entropy that is arithmetically impossible. **Fixed and gated** (`parallelcheck` is 5 cases; reinstating
   the fault fails the new one with *"4 shards hold 1 distinct networks"*). It is also **13% faster** -
   six threads writing 3.5M parameters into one object were contending for the same cache lines.
-  **`issues.md` 25, closed.** **No run has been measured since**, and
-  [`PLAN-learning-measurement.md`](PLAN-learning-measurement.md) sets out why that cannot yet be said
-  either way: `SeedPool` leaks 10% random seeds by design. **Measured now** - three repeats of one
+  **`issues.md` 25, closed.** It could not be said whether the fixes helped, because `SeedPool` leaks
+  10% random seeds by design and a repeat of the same config is therefore not the same run.
+  **Measured** - three repeats of one
   15-generation config on a fixed seed, `issues.md` 27 - so the band is known: `gen0` agrees to 1.4
   points, `meanScore` over 15 generations moves +/- 16, and `bestDepth` lands on 1 or 2 at chance.
   **Judge on `meanScore` and require it to clear the band; `bestDepth` on its own is not evidence.**
@@ -135,7 +135,7 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   counted — so the instrument that was supposed to catch it was blind to the draws that caused it.
 `gradle :desktop:viewcheck` is now **green on all 17**, and stable across repeated runs. The four
    fixes are engine changes under `instructions.md` §12.3; the proposal record is
-   `ENGINE-CHANGES.md` and they are committed. See `ISSUE-viewer-frame-drift.md`.
+   `ENGINE-CHANGES.md` and they are committed. See `issues.md` 25.
 - **Descending now survives the whole journey, including climbing back up.** A hero who walks down the
   stairs was ending the episode on the spot: `Game.switchScene(...)` raises a request and returns, and
   the acknowledgement that turns it into "a scene wants to take over" is raised in `Game.step()`,

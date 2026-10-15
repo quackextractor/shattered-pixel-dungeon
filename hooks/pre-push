@@ -32,7 +32,7 @@
 #
 # An earlier version of this header said viewcheck was "red by design", and that was true when it was
 # written: 7-9 of the 17 committed recordings diverged in the viewer while all 17 verified clean
-# headlessly (superintelligence/ISSUE-viewer-frame-drift.md). That issue is FIXED, and the gate is green
+# headlessly (that issue is FIXED and its file is removed; the record is in `issues.md` 25). The gate is green
 # on all 17 - measured, not quoted. The reason for staying non-blocking is therefore no longer "it fails";
 # it is that it needs a display, and a pre-push hook that cannot run on a build machine gets deleted by
 # the first person it blocks. It reports, so the number is on the screen every time.
@@ -60,7 +60,7 @@ else
     echo ""
     echo "[WARN] viewer gate failed. The recordings are listed above; compare the set against the"
     echo "[WARN] previous run rather than the count, since playback is timing-sensitive."
-    echo "[WARN] history: superintelligence/ISSUE-viewer-frame-drift.md (fixed),"
+    echo "[WARN] history: the viewer-fidelity plan and issue (both fixed, removed),"
     echo "[WARN]           superintelligence/TODO.md 0.7 (a reported divergence, not reproduced)."
 fi
 
