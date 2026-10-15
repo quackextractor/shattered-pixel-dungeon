@@ -81,7 +81,6 @@ public class InlineCommentStripper {
 				boolean lineIsOnlyComment = out.substring( lineStart ).toString().isBlank();
 				if (lineIsOnlyComment){
 					out.setLength( lineStart );
-					//and take the line terminator with it, so the line is removed rather than emptied
 					if (end < n) i = end + 1;
 					else i = end;
 					lineStart = out.length();
