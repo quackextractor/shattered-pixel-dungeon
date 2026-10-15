@@ -139,7 +139,6 @@ public class ViewCheck {
 		return value == null || value.trim().isEmpty() ? null : flag + "=" + value.trim();
 	}
 
-	// --- parent ------------------------------------------------------------
 
 	/**
 	 * Plays every recording in a child JVM and reports.
@@ -169,20 +168,14 @@ public class ViewCheck {
 			return t;
 		});
 
-		//A progress line on one rewritten row, not one line per file: a 17-file corpus finished in
-		//seconds once parallelised and the per-file lines were what made it look slow.
 		Thread progress = progressPrinter( done, files.length, started );
 
 		for (File file : files){
 			pool.submit( () -> {
-				//Boxed rather than a local, because the catch below has to assign before the finally
-				//runs and a plain int is not definitely assigned on the exception path.
 				AtomicInteger outcome = new AtomicInteger( 1 );
 				try {
 					outcome.set( runChild( file ));
 				} catch (IOException | InterruptedException e){
-					//Reported as a failure of this file rather than aborting the corpus: one unrunnable
-					//recording is a fact about the run, and the other sixteen are still worth knowing about.
 					System.out.println( "        " + file.getName() + " could not be run ("
 							+ e.getClass().getSimpleName() + ")" );
 				} finally {
@@ -205,9 +198,6 @@ public class ViewCheck {
 		double seconds = (System.nanoTime() - started) / 1e9;
 
 		if (failed.isEmpty()){
-			//The mode is reported even on a green. With 8 children now the default, "17 of 17" alone does
-			//not say which measurement it is, and the two modes agree on membership but not on step
-			//numbers - so a green is only fully interpretable alongside how it was run.
 			System.out.println( "[OK]     rendered playback: " + files.length
 					+ " recordings played clean in the real viewer (" + jobs
 					+ " at a time, " + String.format( Locale.ROOT, "%.1fs", seconds ) + ")"
@@ -221,13 +211,6 @@ public class ViewCheck {
 				+ " at a time, " + String.format( Locale.ROOT, "%.1fs", seconds ) + ")" );
 
 		if (jobs > 1){
-			//Said out loud, because it is the difference between a result worth acting on and one that
-			//cannot be compared with the next run. It fires only on failure: the default is now 8, and
-			//printing this on every green would train people to ignore it.
-			//
-			//Which recordings failed is still trustworthy at any job count - that is a per-file answer.
-			//What is not reproducible is the step each one failed at, so that is what the re-run is for and
-			//what the message says to do about.
 			System.out.println( "        NOTE: which recordings diverged is reliable, but at " + jobs
 				+ " children at once the failing STEPS are not reproducible - playback is timing"
 				+ " sensitive. Re-run this recording with VIEWCHECK_JOBS=1 before acting on a step number." );
@@ -271,7 +254,6 @@ public class ViewCheck {
 	 * seconds once parallelised". The measurement above is what settled it.
 	 */
 	private static int parallelism(){
-		//deliberately not final: a check may want to pin it without touching the caller's environment
 		int byDefault = 8;
 
 		String override = System.getProperty( "viewcheckJobs", System.getenv( "VIEWCHECK_JOBS" ) );
@@ -331,16 +313,10 @@ public class ViewCheck {
 		List< String > command = new ArrayList<>( Arrays.asList(
 				javaBin,
 				"-cp", System.getProperty( "java.class.path" ),
-				//no audio device is guaranteed on a build machine, and an unhandled one aborts the
-				//context rather than degrading
 				"-Dspd.mute=1",
-				//the window must exist to own the render loop; it just must not be looked at
 				"-Dspd.windowed=1", "-Dspd.hidden=1",
-				//close on completion so the child exits on its own instead of waiting for a keypress
 				"-Dspd.autoClose=1",
 				"-Dspd.fast=" + (int) GATE_SPEED,
-				//Passed through so one recording can be investigated without touching this file. Both are
-				//diagnostics and both default to off; the gate's own verdict is unaffected by them.
 				optional( "-Dspd.fixedDelta", System.getProperty( "spd.fixedDelta" )),
 				optional( "-Dspd.worldTrace", System.getProperty( "spd.worldTrace" )),
 				"--enable-native-access=ALL-UNNAMED",
@@ -348,34 +324,20 @@ public class ViewCheck {
 				"--one", file.getAbsolutePath()
 		));
 
-		//A private file root per child. The game writes preferences and a bones.dat under the platform
-		//default before playback starts, so children sharing one root collide - GdxRuntimeException
-		//"Error copying source file ... .spdtmp" - and a gate run also rewrites whatever the developer's
-		//own game state is. A scratch directory that is recreated per run keeps both out of the way.
 		File root = new File( System.getProperty( "java.io.tmpdir" ),
 				"spd-viewcheck" + System.nanoTime() );
 
-		//Created here, not relied upon being created for us. libGDX reads its preferences from this
-		//directory and cannot create it, so a missing root made SPDSettings.windowResolution() return
-		//nothing usable and the window came up in the wrong mode - full screen, over the desktop. That is
-		//worse than the collision the isolation was added to prevent.
 		if (!root.mkdirs() && !root.isDirectory()){
 			System.err.println( "[ERROR] could not create a scratch file root at " + root
 					+ "; refusing to run, because children would share the default one" );
 			return 1;
 		}
 
-		//Inserted before the main class rather than appended: a -D after the class name is an argument to
-		//the application, not a system property, and was silently doing nothing.
 		command.add( command.indexOf( ViewCheck.class.getName() ),
 				"-Dspd.fileRoot=" + root.getAbsolutePath() );
 
 		command.removeIf( java.util.Objects::isNull );
 
-		//Output captured, not inherited. Seventeen children writing to one console interleave their
-		//[replay] lines into something unreadable, and with the run parallelised that is no longer a
-		//rare nuisance but the normal case. The parent's own line per recording is the report; the
-		//child's detail is kept and reprinted only for a failure, where it is the evidence.
 		ProcessBuilder builder = new ProcessBuilder( command ).redirectErrorStream( true );
 		Process child = builder.start();
 
@@ -388,7 +350,6 @@ public class ViewCheck {
 					synchronized (captured){ captured.append( line ).append( '\n' ); }
 				}
 			} catch (IOException ignored){
-				//the child died; the exit code says so
 			}
 		}, "viewcheck-child-output" );
 		reader.setDaemon( true );
@@ -419,7 +380,6 @@ public class ViewCheck {
 		return code;
 	}
 
-	// --- child -------------------------------------------------------------
 
 	/**
 	 * States the properties a forked gate child is launched with, for the case where this JVM is the one
@@ -484,7 +444,6 @@ public class ViewCheck {
 
 		watch( player, file );
 
-		//returns only once the loop is up; the watcher thread decides the exit code from here
 		new Lwjgl3Application( game, config );
 	}
 
@@ -500,13 +459,6 @@ public class ViewCheck {
 	 */
 	private static void watch( ReplayPlayer player, File file ){
 		Thread watcher = new Thread( () -> {
-			//The window mode is checked, not assumed. The game goes fullscreen from its own create() by
-			//reading a preference that defaults to true, which happens after the launcher's window
-			//configuration is already complete - so a gate that says it passed can still have spent its
-			//time fullscreen on the developer's desktop. This reads the mode back from the live context.
-			//Waited on, not slept through: polling at 50ms against a frame loop can observe the player
-			//as finished before a single frame has run, which at gate speed is fast enough to happen and
-			//would report a pass for a run that never played.
 			while (player.playing() && player.playback().cursor() == 0){
 				try {
 					Thread.sleep( 50 );
@@ -528,9 +480,6 @@ public class ViewCheck {
 				fullscreen = com.badlogic.gdx.Gdx.graphics != null
 						&& com.badlogic.gdx.Gdx.graphics.isFullscreen();
 			} catch (RuntimeException ignored){
-				//No graphics context yet, or already torn down. Reported as not-fullscreen rather than
-				//unknown: the failure this guards against is the window being up, and a context that
-				//cannot be queried has not put a window on the desktop either.
 			}
 
 			if (fullscreen){
@@ -542,23 +491,10 @@ public class ViewCheck {
 			}
 
 			ReplayPlayback playback = player.playback();
-			//Played *out*, not merely "did not diverge". The verdict used to be `!playback.diverged()`,
-			//which is the same shape of claim ReplayIO.verify used to make with its sentinels: a player
-			//that halted for any other reason - a slot index it could not resolve, a stall, a refusal -
-			//leaves diverged() false, and the gate reported a recording that did not play as clean.
-			//Measured: a trainer recording whose bindings could not be resolved at step 13 was reported
-			//"[OK] rendered playback: 1 recordings played clean" after 3.3 seconds, having played almost
-			//none of a 1500-step run.
 			boolean playedEveryStep = playback.cursor() >= playback.total()
 					&& !playback.diverged();
 			boolean clean = playedEveryStep;
 
-			//The frame accounting is printed on every line, pass or fail. It is the one number that says
-			//how much of the render loop was spent not applying a recorded step, which is the whole
-			//subject here: a recording needing 40 frames per step is one whose playback timing is decided
-			//by animation duration rather than by the recording, and it is those recordings whose outcome
-			//depends on how fast the machine renders. A failure that does not print it sends the next
-			//reader back to the viewer with nothing to compare against.
 			if (clean){
 				System.out.println( "[viewcheck] ok    " + file.getName()
 						+ "  (" + playback.cursor() + "/" + playback.total() + " steps;  "

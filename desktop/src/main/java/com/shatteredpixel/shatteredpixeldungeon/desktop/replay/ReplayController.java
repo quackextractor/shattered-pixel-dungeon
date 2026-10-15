@@ -176,35 +176,14 @@ public static void pump(){
 		ReplayController controller = active;
 		if (controller == null) return;
 
-		//Through FrameDelta, so -Dspd.fixedDelta can pin playback's clock to the animations' clock.
-		//Left as raw Game.elapsed the two share a frame rate, which is what makes the number of frames
-		//per step - and therefore how much the render loop gets to change the world - a property of the
-		//machine rather than of the recording.
 		controller.player.update( FrameDelta.current( Game.elapsed ));
 
 if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
-			//Not just "has a HUD been built". A restart replaces the scene, and the old scene's gizmos
-			//are discarded with it, so a HUD built against the outgoing scene silently vanishes - and
-			//because the field was still set, nothing ever rebuilt it. Comparing against the live
-			//scene heals that automatically, whenever the scene is replaced for any reason.
 			controller.buildHud();
 			controller.hudScene = Game.scene();
 			log( "HUD built" );
 		}
 
-		//Separated from the HUD on purpose, and run on every frame rather than on a rebuild.
-		//
-		//InterlevelScene calls KeyEvent.clearListeners() on its way out, which removes every key listener
-		//including this one. Rebinding therefore has to happen on scene change - but it was tied to the
-		//HUD rebuild, so anything that stopped that rebuild from running (buildHud throwing, a scene whose
-		//camera is not ready) left the viewer with no controls at all, while playback carried on perfectly
-		//because it is driven by the frame hook rather than by keys. That is what makes it look like only
-		//the controls broke.
-		//
-		//Doing it every frame also closes the window between clearListeners() and the next scene change.
-		//In that window SPACE had no viewer listener, and the game's own SPDAction.WAIT_OR_PICKUP binding
-		//was live and unopposed: pressing pause waited the hero instead, which spent a turn no recorded
-		//step asked for and diverged the replay on the very next comparison.
 		controller.bindKeys();
 
 		if (!controller.pumpLogged){
@@ -215,18 +194,6 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 		controller.layout();
 		controller.dismissUnanswerableWindow();
 
-		//A heartbeat, because "the game is unresponsive" and "the controls do nothing" look
-		//identical from the outside and have completely different causes. If this stops printing,
-		//the render loop is stalled and the queued key events are never dispatched; if it keeps
-		//printing, the loop is alive and the loss is between the key arriving and the listener.
-		//
-		//Opt-in with -Dspd.heartbeat, off by default. It answers a question only someone debugging the
-		//viewer asks, and it asks it forever: the window is deliberately left open on a halt, so the
-		//line kept printing at frame rate against a person who was only trying to watch a recording.
-		//That is the same rule -Dspd.trace follows: a diagnostic is not a feature.
-		//
-		//The one-off lines above and below stay on. Each prints at most once, and they are what tells a
-		//dead key apart from a dead loop, which is why they were added in the first place.
 		if (HEARTBEAT){
 			controller.frames++;
 			if (controller.frames % 120 == 0){
@@ -237,23 +204,10 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 			}
 		}
 
-		//Closed here rather than in halt(), so the frame's reporting above is written first.
 		if (controller.player.closing()){
 			log( "closing: " + controller.player.haltReason() );
 			if (game != null ) game.finish();
 		} else if (controller.player.finished() && !controller.stoppedLogged){
-			//Playback has stopped and nothing asked for the window to close. Without this the process
-			//lives forever: the frame loop keeps running, the heartbeat keeps reporting playing=false,
-			//and a batch run blocks on a keypress nobody will send. Reaching the end of a recording was
-			//indistinguishable from hanging on it, because neither printed anything.
-			//
-			//Reported rather than closed, since the point of leaving the window up is to read why it
-			//stopped. A run that is meant to finish unattended passes --close.
-			//
-			//Once. pump() runs every frame for as long as the window is open, and finished() stays true
-			//after the first halt, so an unguarded print put the same DIVERGED line on stderr sixty times
-			//a second and buried everything printed around it. The window stays up either way - only the
-			//reporting is once.
 			controller.stoppedLogged = true;
 			log( "stopped: " + controller.player.haltReason()
 					+ "   (window left open; pass --close to exit on completion)" );
@@ -281,30 +235,15 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 
 		Dungeon.hero = null;
 
-		//InterlevelScene.mode is static and gameplay rewrites it: stepping onto a transition sets it
-		//to ASCEND or DESCEND, so by the time restart is pressed it is whatever the recording last
-		//did. Re-entering under that mode took the game's own path instead - "you return to floor 1"
-		//restored the level as it was, which is a different map from the recording's first step and
-		//diverged immediately. Both statics are set here so the re-entry cannot inherit either.
 		InterlevelScene.mode = InterlevelScene.Mode.DESCEND;
 		InterlevelScene.autoContinue = true;
 
-		//the HUD belongs to the scene being replaced; the scene comparison in pump() rebuilds it
 		hudLines.clear();
 		helpLines.clear();
 		textWidthCamera = null;
 		hudScene = null;
 		dismissed = null;
 
-		//Otherwise the second run's halt is silent. A restart re-arms the one-shot report, because a
-		//fresh playback that stops again is a new event and the reason is a different one.
-		//
-		//Reported before the switch rather than after it. Game.switchScene only sets a flag; the scene
-		//is rebuilt at the top of the next frame, which means the outgoing GameScene.update() still
-		//runs once more with a null hero - and pump()'s finished() branch printed the *previous* run's
-		//halt on it. That is why pressing R on a finished recording appeared to do nothing: the HUD was
-		//immediately overwritten with the old run's "finished" line, while the player underneath had
-		//already rewound.
 		stoppedLogged = false;
 
 		Game.switchScene( InterlevelScene.class );
@@ -343,16 +282,12 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 	}
 
 	private void buildHud(){
-		//no destroy() call: the gizmos these lists held belonged to the scene being replaced, and that
-		//scene discards its own gizmos. Destroying them again would touch a scene no longer on screen.
 		hudLines.clear();
 		helpLines.clear();
 
 		hudLines.add( lineGizmo() );
 		helpLines.add( lineGizmo() );
 
-		//the width text is bounded by belongs to the UI camera, which is re-created whenever the zoom
-		//changes, so the cached bound is dropped with the gizmos it was measured for
 		textWidthCamera = null;
 	}
 
@@ -556,8 +491,6 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 			viewerKeys = newViewerKeyListener();
 			log( "listener registered for SPACE/R/A/+/-/[/]/ESC" );
 		} else {
-			//A no-op when already registered, and the repair when KeyEvent.clearListeners() has dropped
-			//it - which InterlevelScene does every time it hands off to the game scene, so on any restart.
 			KeyEvent.addKeyListener( viewerKeys );
 		}
 
@@ -605,17 +538,10 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 						log( "  -> restart requested" );
 						return true;
 					case Input.Keys.A:
-						//Cycled rather than toggled between two corners. The HUD is five lines tall
-						//once it wraps, and which corner it wants depends on the window and on what
-						//else is on screen - the hero at the bottom, the item log at the right. A
-						//two-way toggle makes someone press it twice to get to the other three.
 						anchor = anchor.next();
 						log( "  -> HUD anchor=" + anchor );
 						return true;
 					case Input.Keys.ESCAPE:
-						//A window on top of the scene gets BACK first and swallows it - that is what
-						//opened the little pause box in the first place. So close anything open
-						//before falling through to quitting.
 						if (!closeTopWindow()){
 							log( "  -> quit" );
 							quit();
@@ -640,7 +566,6 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 	 */
 	private static boolean closeTopWindow(){
 		if (!GameScene.showingWindow()) return false;
-		//the game's own cancel path, which closes whatever window is on top
 		return GameScene.cancel();
 	}
 
@@ -654,15 +579,6 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 	private void layout(){
 		if (hudLines.isEmpty() || PixelScene.uiCamera == null || PixelScene.pixelFont == null) return;
 
-		//Text is bounded by the camera, so leave a margin rather than letting the right edge of the
-		//last glyph sit exactly on the screen edge where it is half-clipped. The same bound serves both
-		//left and right anchors: the available run of text is the window minus both margins either way,
-		//and a right-anchored line starts from the far end of it.
-		//
-		//Tracked by camera identity rather than by a dirty flag, because PixelScene builds a new
-		//uiCamera whenever the UI zoom changes - so a resized or maximised window gets a different
-		//camera object with a different width, and caching the width against anything but that
-		//camera would keep wrapping to the old window's width.
 		if (textWidthCamera != PixelScene.uiCamera){
 			maxTextWidth = PixelScene.uiCamera.width - 2 * MARGIN;
 			textWidthCamera = PixelScene.uiCamera;
@@ -670,8 +586,6 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 
 		ReplayPlayback playback = player.playback();
 
-		//The level width, read from the live level and handed to the playback so a cell can be printed
-		//as coordinates. Null before floor 1 exists, and coordinates() falls back to the raw index.
 		if (Dungeon.level != null){
 			playback.gridWidth( Dungeon.level.width() );
 		}
@@ -679,19 +593,10 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 		ArrayList<String> wrapped = wrapText( playback.status()
 				+ "\nseed " + playback.replay().seedText
 				+ "   hero " + playback.replay().heroClass
-				//"actions", not "turns": Replay.turns is SPDEnv.turnsTotal(), a count of decisions the
-				//agent made. The engine's own clock is Actor.now(), shown separately below, and the two are
-				//not interchangeable - a turn is a duration and can be fractional, so a heavy weapon costs
-				//two and haste less than one. Calling the decision count "turns" invited exactly the
-				//reading that made the turn limit look like it counted something else.
 				+ "\nrecorded depth " + playback.replay().depth
 				+ "   actions " + playback.replay().turns
 				+ "/" + playback.replay().turnLimitPerFloor
 				+ "   engine time " + String.format( "%.1f", com.shatteredpixel.shatteredpixeldungeon.actors.Actor.now() )
-				//Live score, not just the run's total. The total is on the recording and cannot say
-				//which action lost a hundred points; the per-step delta and the gained/lost split can,
-				//and the split is what tells a run that climbed to 40 from one that reached 40 and gave
-				//most of it back.
 				+ "\nscore " + String.format( "%.2f", playback.score() )
 				+ "   last step " + String.format( "%+.3f", playback.stepReward() )
 				+ "   +" + String.format( "%.1f", playback.gained() )
@@ -704,9 +609,6 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 
 		float used = drawBlock( hudLines, wrapped, anchor, 0 );
 
-		//The help line stacks inward from the same corner as the HUD, so it stays adjacent to it at
-		//every anchor. Stacking it always upward - which is what it did when the HUD was pinned to the
-		//bottom - would throw it off the top of the screen the moment the anchor moved up there.
 		drawBlock( helpLines, wrapText(
 				"SPACE pause  +/- speed  [ ] coarser/finer  R restart  A anchor  ESC quit", maxTextWidth ),
 				anchor, used + MARGIN );
@@ -718,8 +620,6 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 		active = null;
 		GameScene.setFrameDriver( null );
 		GameScene.lockCellInput( false );
-		//Process-wide, so it has to go back: the viewer quits to the title screen, where SPACE and R
-		//belong to the game again.
 		KeyBindings.clearOverrides();
 	}
 }

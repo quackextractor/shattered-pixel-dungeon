@@ -101,10 +101,6 @@ public class ReplayLauncher {
 
 		describe( replay );
 
-		//The window config has to be built before anything touches SPDSettings: customSeed() writes
-		//through libGDX preferences, and Gdx.app only exists once the game is running. So the
-		//preferences object is created here, the seed is applied, and only then is the application
-		//started - after which the game scene takes over as the entry point.
 		Lwjgl3ApplicationConfiguration config = windowConfig();
 
 		if (!startRun( replay )){
@@ -114,13 +110,8 @@ public class ReplayLauncher {
 
 		ReplayController.install( new ReplayPlayer( replay ) );
 
-		//the game enters through the interlevel scene, which builds floor 1 and hands off to the
-		//game scene. That transition is hardcoded, so entering at the game scene directly would
-		//arrive before floor 1 existed.
 		Game.setSceneClass( InterlevelScene.class );
 
-		//Kept so ReplayController can close the window when playback ends. Game.finish() is the game's
-		//own exit path and needs an instance; the instance is only created here.
 		ShatteredPixelDungeon game = new ShatteredPixelDungeon( new DesktopPlatformSupport() );
 		ReplayController.gameInstance( game );
 
@@ -133,17 +124,10 @@ private static void describe( Replay replay ){
 		System.out.println( "  hero   " + replay.heroClass );
 		System.out.println( "  steps  " + replay.steps.size() );
 
-		//"actions", not "turns" - see the note in ReplayController.layout. Replay.turns is a count of
-		//the agent's decisions, and the engine's own turn clock is Actor.now(), which is fractional and
-		//is not the same quantity. Printing one under the other's name is what made the turn limit read
-		//as a budget of game turns.
 		System.out.println( "  depth  " + replay.depth
 				+ "   actions " + replay.turns + "/" + replay.turnLimitPerFloor
 				+ ( replay.termination.isEmpty() ? "" : "   ends " + replay.termination ) );
 
-		//Score split into its two halves, which the recording already carries per step. A single net
-		//number cannot distinguish a run that gained steadily from one that gained a great deal and gave
-		//most of it back, and watching that happen is the point of watching a recording.
 		double gained = 0, lost = 0;
 		for (Replay.Step step : replay.steps){
 			if (step.reward > 0) gained += step.reward;
@@ -193,13 +177,8 @@ private static void describe( Replay replay ){
 		Dungeon.daily = Dungeon.dailyReplay = false;
 		Dungeon.initSeed();
 
-//DESCEND with no hero built is exactly how a first floor is entered in normal play, so the
-		//viewer starts on the same path a player does. InterlevelScene then hands off to GameScene,
-		//which is where the recording is pumped from.
 		InterlevelScene.mode = InterlevelScene.Mode.DESCEND;
 
-		//without this the loading screen parks on the region story with a "continue" button and
-		//waits for a click that never comes
 		InterlevelScene.autoContinue = true;
 
 		return true;
@@ -213,13 +192,6 @@ private static void describe( Replay replay ){
 	 * talking to the network about.
 	 */
 static Lwjgl3ApplicationConfiguration windowConfig(){
-		//DeviceCompat.isDebug() reads this and InterlevelScene.create() calls it on the way in, so
-		//it has to be set before the game starts or the first scene throws on a null.
-		//
-		//Deliberately NOT "INDEV". isDebug() zeroes the loading fade, which is tempting, but it
-		//also makes InterlevelScene.descend() pre-generate every prior floor to keep levelgen
-		//consistent with a save - and with the hero null on a first run that is a loop over depths
-		//that produces nothing useful and a 10s levelgen warning. The splash is short enough.
 		Game.version = System.getProperty( "Implementation-Version" );
 		if (Game.version == null) Game.version = "4.0.1";
 		try {
@@ -234,12 +206,6 @@ static Lwjgl3ApplicationConfiguration windowConfig(){
 		String basePath;
 		Files.FileType baseFileType;
 
-//An explicit file root wins over the platform default. Set by ViewCheck, which runs several
-		//playbacks at once and cannot have them sharing one preferences file and one save directory:
-		//the game writes preferences and a bones.dat there on the way in, and two children writing the
-		//same file produced GdxRuntimeException "Error copying source file ... .spdtmp" on any run that
-		//had more than one child in flight. Isolated roots also stop a gate run from touching whatever
-		//the developer's own game state is, which a shared default does on a machine that has played.
 		String rootOverride = System.getProperty( "spd.fileRoot" );
 		if (rootOverride != null && !rootOverride.trim().isEmpty()){
 			String root = rootOverride.trim();
@@ -261,10 +227,6 @@ static Lwjgl3ApplicationConfiguration windowConfig(){
 		}
 
 if (!new File( basePath ).isDirectory() && !new File( basePath ).mkdirs()){
-			//Not fatal - the game creates the directory itself when it saves - but it means nothing can be
-			//read back, so the window mode below is decided from defaults rather than from preferences. A
-			//caller who pointed spd.fileRoot at somewhere unwritable gets a surprising window rather than
-			//a clear failure, so it is reported.
 			System.err.println( "[replay] cannot create the file root at " + basePath
 					+ "; falling back to default preferences" );
 		}
@@ -274,51 +236,14 @@ if (!new File( basePath ).isDirectory() && !new File( basePath ).mkdirs()){
 				new Lwjgl3FileHandle( basePath + SPDSettings.DEFAULT_PREFS_FILE, baseFileType ) ) );
 		FileUtils.setDefaultFileProperties( baseFileType, basePath );
 
-		//Fullscreen off, written into the preferences rather than requested of the window configuration.
-		//
-		//Every window call below is too early to stop this. The game goes fullscreen from its own
-		//create() - ShatteredPixelDungeon.updateSystemUI -> DesktopPlatformSupport.updateSystemUI ->
-		//Gdx.graphics.setFullscreenMode - which runs once the GL context exists, after this method has
-		//returned. It decides by reading SPDSettings.fullscreen(), and that getter defaults to TRUE for a
-		//key that is not present. So an isolated file root, which has no such key, produced a fullscreen
-		//window on every run: a real window, on the primary monitor, that then took the desktop away from
-		//whoever started the gate.
-		//
-		//GLFW_VISIBLE is ignored for fullscreen windows and glfwHideWindow does nothing to them, so once
-		//that switch happens no flag set here can undo it. The only place that can be stopped is the
-		//preference it reads.
-		//
-		//SPDSettings.put, not SPDSettings.fullscreen(false): the setter calls updateSystemUI() as a side
-		//effect, which dereferences Gdx.app, and there is no application yet at this point. GameSettings.put
-		//only writes and flushes, which is what is wanted here.
 		if (WINDOWED || HIDDEN || MONITOR_X != null || MONITOR_Y != null){
 			SPDSettings.put( SPDSettings.KEY_FULLSCREEN, false );
 		}
 
-		//The tutorial off, always - not only for a gate run.
-		//
-		//SPDSettings.intro() defaults to true and Hunger.act() returns early while it is set, which
-		//freezes the hero's hunger clock for the whole run. So the world a recording describes is a world
-		//whose hero never starves, and playing that recording back with the intro on is not playing it.
-		//
-		//This was a real gate failure and not a hypothetical one. The viewer used to inherit intro=false
-		//from the developer's own settings.xml by luck; give it an isolated preferences file and the
-		//default applies, and recordings that had been passing started diverging several steps in. The
-		//trainer already sets this explicitly for exactly this reason, and the comment there names the
-		//same cause - see LevelPipeline.startRun. Both sides of a replay comparison must state the setting
-		//rather than inherit it, or the comparison is between two different games.
-		//
-		//Unconditional because a recording is never of the tutorial: the trainer cannot produce one.
 		SPDSettings.put( SPDSettings.KEY_INTRO, false );
 
 config.setWindowSizeLimits( 720, 400, -1, -1 );
 
-//A gate run must never take over the desktop, whatever the saved preferences say. ViewCheck passes
-		//-Dspd.windowed and -Dspd.hidden precisely so an unattended run cannot cover the display it was
-		//started from, and a saved "maximised" preference would otherwise defeat that. So the mode is
-		//stated rather than asked about. HIDDEN still creates a real GL context - the render loop is what
-		//is being tested, not the pixels. None of this is sufficient on its own; see the preference write
-		//above for the switch that actually fullscreens the game.
 		boolean placed = MONITOR_X != null || MONITOR_Y != null;
 
 		if (placed || WINDOWED || HIDDEN){
@@ -339,21 +264,12 @@ config.setWindowSizeLimits( 720, 400, -1, -1 );
 			config.disableAudio( true );
 		}
 
-		//Position is given rather than looked up: a monitor cannot be enumerated before the window
-		//exists, since Graphics.getMonitors() needs a running GL context.
 		if (placed){
 			int x = MONITOR_X == null ? 0 : MONITOR_X;
 			int y = MONITOR_Y == null ? 0 : MONITOR_Y;
 			config.setWindowPosition( x, y );
 		}
 
-		//Every option is stated, so what the run is actually doing is never a guess. Silence and
-		//window closing in particular are easy to forget to ask for, and were both missed in practice.
-		//States what this process asked for, not what it ended up with. The window can still be made
-		//fullscreen later by the game itself, from a preference, after the context exists - which is why
-		//the fullscreen preference is written above and why the diagnostic is not evidence of the final
-		//mode. An earlier version of this line printed windowed=true while the window was fullscreen, and
-		//was believed.
 		System.err.println( "[replay] audio=" + (MUTE ? "off" : "on")
 				+ " speed=" + speedHint()
 				+ " windowed=" + (WINDOWED || placed)
@@ -425,7 +341,6 @@ config.setWindowSizeLimits( 720, 400, -1, -1 );
 			if (args[ i ].equals( "--file" ) && i + 1 < args.length){
 				file = new File( args[ ++i ] );
 			} else if (!args[ i ].startsWith( "--" ) && file == null){
-				//a bare path is accepted, since that is what people actually type
 				file = new File( args[ i ] );
 			}
 		}

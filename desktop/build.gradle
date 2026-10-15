@@ -27,43 +27,24 @@ tasks.register('replay', JavaExec) {
     description = 'Plays a recorded run back in the rendered game.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ReplayLauncher'
-    //Diagnostics and unattended-playback options, all opt-in so a normal launch is unaffected.
     if (project.hasProperty('spdTrace')) { systemProperty 'spd.trace', '1' }
     if (project.hasProperty('spdHeartbeat')) { systemProperty 'spd.heartbeat', '1' }
     if (project.hasProperty('spdAutoClose')) { systemProperty 'spd.autoClose', '1' }
     if (project.hasProperty('spdAutoCloseOnDiverge')) { systemProperty 'spd.autoCloseOnDiverge', '1' }
-    //keeps tracing past a divergence instead of halting on it, so the steps after the fault are
-    //recorded. Paired with spdWorldTrace/spdRngTrace and `viewdiff`. Diagnostic only: a run enabled
-    //this way is already off the recording's path, so its trace describes the live game, not the replay.
     if (project.hasProperty('spdContinueOnDiverge')) { systemProperty 'spd.replayContinueOnDiverge', '1' }
     if (project.hasProperty('spdMonitorX')) { systemProperty 'spd.monitorX', project.property('spdMonitorX') }
     if (project.hasProperty('spdMonitorY')) { systemProperty 'spd.monitorY', project.property('spdMonitorY') }
     if (project.hasProperty('spdMute')) { systemProperty 'spd.mute', '1' }
     if (project.hasProperty('spdFast')) { systemProperty 'spd.fast', project.property('spdFast') }
     if (project.hasProperty('spdWindowed')) { systemProperty 'spd.windowed', '1' }
-    //ReplayLauncher reads spd.hidden and ViewCheck already passes it, but this task never forwarded it,
-    //so `-PspdHidden` had nothing to bind to and the window came up on the desk mid-run. It still creates
-    //a real GL context - the render loop is what is under test - it just never becomes visible.
     if (project.hasProperty('spdHidden')) { systemProperty 'spd.hidden', '1' }
-    //writes a per-step RNG trace for comparison against `rngtrace`; see
-    //superintelligence/PLAN-replay-verification.md section 6
     if (project.hasProperty('spdRngTrace')) { systemProperty 'spd.rngTrace', project.property('spdRngTrace') }
-    //and a per-step world snapshot for `viewdiff`. Only `viewcheck` forwarded this, so the two-sided
-    //diff invocation README.md documents - `gradlew :desktop:replay -PspdWorldTrace=<out>` - wrote
-    //nothing and said so by not writing anything. Same failure the viewcheckJobs note below records
-    //for a flag that was accepted and ignored.
     if (project.hasProperty('spdWorldTrace')) { systemProperty 'spd.worldTrace', project.property('spdWorldTrace') }
     systemProperty 'Implementation-Title', appPackageName
     systemProperty 'Implementation-Version', appVersionCode
     standardInput = System.in
 }
 
- //Writes a standalone launcher, so playback can bypass gradle entirely.
- //See :replaycp.
- //
- //The classpath is over 11,000 characters. Handing it to java through a batch variable lost
- //characters - the run failed with NoClassDefFoundError for a gdx class that is plainly on the
- //classpath - so it is baked into a script file here instead, where nothing has to re-expand it.
 tasks.register('replaycp') {
     group = 'desktop'
     description = 'Writes a standalone replay launcher, for running playback without gradle.'
@@ -72,10 +53,6 @@ tasks.register('replaycp') {
     def out = file( new File( buildDir, 'replay-run.bat' ))
     def cpOut = file( new File( buildDir, 'replay-classpath.txt' ))
     outputs.files( out, cpOut )
-    //Declared as an input, so a change to core or to a dependency regenerates the launcher. Without
-    //this the task had outputs but no inputs: gradle saw them present, called the task up to date, and
-    //left the launcher pointing at a stale core jar. That surfaced as NoSuchFieldError on a core field
-    //that had plainly just been compiled.
     inputs.files( sourceSets.main.runtimeClasspath )
     doLast {
         def cp = sourceSets.main.runtimeClasspath.asPath
@@ -85,8 +62,6 @@ tasks.register('replaycp') {
     }
 }
 
-//Runs ReplayPlayer with no window and no scene, and asserts both that a faithful recording plays
- //clean and that an altered one is caught. Only possible because ReplayPlayer has no UI dependency.
  tasks.register('playbackcheck', JavaExec) {
     group = 'verification'
     description = 'Fails if the replay viewer cannot play a recording headlessly, or cannot detect an altered one.'
@@ -94,23 +69,9 @@ tasks.register('replaycp') {
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.PlaybackCheck'
     jvmArgs '-Djava.awt.headless=true', '--enable-native-access=ALL-UNNAMED'
 
-    //The committed corpus, so the death-recording case plays a real one rather than a fixture built to
-    //die on demand. A JavaExec runs with the *module* directory as its working directory, so a relative
-    //path would resolve against desktop\ and find nothing - the same trap documented on viewcheck.
     systemProperty 'spd.replayDir', project.findProperty('spdReplayDir') ?: "${rootProject.projectDir}/superintelligence/test-replays"
  }
 
-//Plays the committed corpus through the real rendered viewer and fails on any divergence.
-//
-//  Not in :superintelligence:gates, deliberately. It needs a GL context and a fork per recording, so
-//  it costs far more than the other gates and cannot run where there is no display. It is here because
-//  the fault it exists for is invisible to every gate that does not drive the real frame loop:
-//  playbackcheck calls ReplayPlayer.update directly, so it passes recordings the viewer diverges on.
-//
-//  The corpus moved to superintelligence/test-replays, and this points at the new location. A gradle
-//  JavaExec runs with the
-//  *module* directory as its working directory, so a relative path resolves against desktop\ and
-//  finds nothing - the same trap documented in replay-viewer.bat.
 tasks.register('viewcheck', JavaExec) {
     group = 'verification'
     description = 'Fails if any committed recording diverges when played in the real viewer.'
@@ -120,22 +81,9 @@ tasks.register('viewcheck', JavaExec) {
     systemProperty 'spd.replayDir', project.findProperty('spdReplayDir') ?: "${rootProject.projectDir}/superintelligence/test-replays"
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 
-    //Passed on to each forked child by ViewCheck, so the gate's own verdict is unchanged but a run can be
-    //investigated without editing anything. Both default to off.
     if (project.hasProperty('spdWorldTrace')) { systemProperty 'spd.worldTrace', project.property('spdWorldTrace') }
     if (project.hasProperty('spdFixedDelta')) { systemProperty 'spd.fixedDelta', project.property('spdFixedDelta') }
 
-    //How many recordings to play at once. ViewCheck reads this as a system property and falls back to
-    //the VIEWCHECK_JOBS environment variable and then to 1.
-    //
-    //Wired here because it was not: ViewCheck.parallelism() has always read the `viewcheckJobs` property,
-    //but this task forwarded only spdReplayDir, spdWorldTrace and spdFixedDelta, so -PviewcheckJobs was
-    //silently ignored and the environment variable was the only route that worked. A flag that does
-    //nothing is worse than a missing one, because the invocation looks right.
-    //
-    //Default stays at one child at a time: concurrency does not change which recordings play clean, but it
-    //does shuffle the step each failing recording fails at, and that is what the default exists to keep
-    //stable. Measured 37.0s at 8 children against 219.7s sequential for the same 17 recordings.
     if (project.hasProperty('viewcheckJobs')) { systemProperty 'viewcheckJobs', project.property('viewcheckJobs') }
 }
 
@@ -235,10 +183,6 @@ runtime {
 dependencies {
     implementation project(':core')
 
-    //The replay viewer plays a recording by re-applying its actions through ActionMapper, which is
-    //the same seam the game's own cell selector uses. Reusing it rather than duplicating it means
-    //the viewer inherits the game's action resolution unchanged - attack versus loot versus stairs
-    //versus menu - and cannot drift from the headless verifier that already checks replays.
     implementation project(':superintelligence')
 
     implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"

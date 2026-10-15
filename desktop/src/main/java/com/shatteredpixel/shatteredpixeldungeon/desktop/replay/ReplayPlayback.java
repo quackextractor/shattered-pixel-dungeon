@@ -175,8 +175,6 @@ public class ReplayPlayback {
 		if (expected >= 0 && heroPos != expected){
 			divergedAt = cursor;
 			actualAt = heroPos;
-			//Both cells as coordinates, and both raw. A single 3-digit index says nothing about where
-			//on the floor the hero is, and the reader of a failed replay is looking at a tile map.
 			reason = "hero at " + coordinates( heroPos, gridWidth )
 					+ ", recording says " + coordinates( expected, gridWidth );
 			return false;
@@ -228,7 +226,6 @@ public class ReplayPlayback {
 		return cursor < replay.steps.size() ? replay.steps.get( cursor ) : null;
 	}
 
-	// --------------------------------------------------------------------------- score
 
 	/**
 	 * Running score through the step played so far, from the rewards the recording carries.
@@ -292,7 +289,6 @@ public class ReplayPlayback {
 		return total;
 	}
 
-	// --------------------------------------------------------------------------- coordinates
 
 	/**
 	 * A hero cell as {@code x, y}, which is what a person reading a tile map needs.

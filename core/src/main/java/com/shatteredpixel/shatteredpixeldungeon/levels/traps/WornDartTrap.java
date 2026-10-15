@@ -113,11 +113,6 @@ public class WornDartTrap extends Trap {
 							}
 						};
 
-						//No scene to recycle the dart from, so it cannot be shown - but onHit still has
-						//to run, because it is what applies the damage and what draws the random numbers
-						//the visible path draws. Skipping it would make the dart harmless headless and
-						//would desynchronise the RNG from the rendered game, which is what makes a
-						//recording diverge the moment a trap fires.
 						if (ShatteredPixelDungeon.scene() == null){
 							onHit.call();
 							return false;

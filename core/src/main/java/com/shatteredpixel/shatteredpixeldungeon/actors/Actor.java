@@ -291,7 +291,6 @@ public abstract class Actor implements Bundlable {
 	 */
 	public static boolean headlessStep(){
 
-		//a pending scene switch means the game is handing off, eg. to a level transition
 		if (Game.switchingScene()){
 			current = null;
 			return false;
@@ -302,10 +301,6 @@ public abstract class Actor implements Bundlable {
 		int lowestId = Integer.MAX_VALUE;
 
 		for (Actor actor : all) {
-			//Actor.all is a HashSet keyed on identity hash, so its iteration order differs between
-			//JVM runs. Breaking ties on actPriority alone therefore lets the order decide who acts,
-			//which makes an otherwise seeded run irreproducible across processes. Actor.id() is
-			//assigned in creation order and is stable, so it is used as the final tiebreak.
 			if (actor.time < earliest ||
 					(actor.time == earliest && (acting == null
 							? true
@@ -347,20 +342,6 @@ public abstract class Actor implements Bundlable {
 				synchronized (Actor.class) {
 					for (Actor actor : all) {
 
-						//Some actors will always go before others if time is equal.
-						//
-						//The final tie is left to iteration order. Actor.all is insertion-ordered, so that
-						//is stable across processes, and Actor.add() assigns Actor.id() before adding to
-						//all, which makes it equivalent to headlessStep's id() tiebreak for every actor
-						//that has not been removed and re-added. An earlier version made that explicit by
-						//comparing id() here too; it was reverted because it changed which actor acts
-						//first in a real game without helping the trainer or the viewer. Neither of those
-						//runs this method - see Actor.manualScheduling.
-						//
-						//Open question, not settled: process() and headlessStep() are not equivalent beyond
-						//this comparison. process() blocks while a character's sprite is mid-movement,
-						//which headlessStep does not, so the two can still choose differently over a long
-						//run. Nothing has needed that difference yet.
 						if (actor.time < earliest ||
 								actor.time == earliest && (current == null || actor.actPriority > current.actPriority)) {
 							earliest = actor.time;

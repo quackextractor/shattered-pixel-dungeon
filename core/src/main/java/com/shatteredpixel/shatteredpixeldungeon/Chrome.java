@@ -49,9 +49,6 @@ public class Chrome {
 	private static NinePatch blank = null;
 
 	public static NinePatch get( Type type ) {
-		//with no renderer there is no chrome to draw, and decoding the asset would need a live
-		//texture backend. Returning a blank lets windows still be constructed and driven, which is
-		//how dialogs work in a headless build. See the 'superintelligence' module.
 		if (Gdx.gl == null) {
 			if (blank == null) blank = new NinePatch();
 			return blank;

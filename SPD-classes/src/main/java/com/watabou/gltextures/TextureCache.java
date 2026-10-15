@@ -111,8 +111,6 @@ public class TextureCache {
 	public synchronized static SmartTexture get( Object src ) {
 
 		if (src == null) {
-			//a null source means there is no texture to load - eg. a NinePatch built for layout
-			//when there is no renderer. See NinePatch and the 'superintelligence' module.
 			return null;
 		}
 
@@ -128,8 +126,6 @@ public class TextureCache {
 
 			Pixmap bitmap = getBitmap( src );
 			if (bitmap == null){
-				//nothing decodable, eg. no GL context. Do not cache the failure, so a later
-				//real context can still load it.
 				return null;
 			}
 
@@ -157,9 +153,6 @@ public class TextureCache {
 	
 	public static Pixmap getBitmap( Object src ) {
 
-		//no GL context means nothing will ever sample this, and decoding an asset would need a
-		//live texture backend. Returning null lets callers fall back to an untextured object rather
-		//than failing. See NinePatch, Chrome and the 'superintelligence' module.
 		if (Gdx.gl == null) {
 			return null;
 		}

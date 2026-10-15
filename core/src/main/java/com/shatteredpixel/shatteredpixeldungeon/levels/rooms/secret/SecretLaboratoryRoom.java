@@ -49,8 +49,6 @@ import java.util.LinkedHashMap;
 
 public class SecretLaboratoryRoom extends SecretRoom {
 	
-	//LinkedHashMap because Random.chances walks the key set in iteration order, and Class keys
-	//hash by identity, so a plain HashMap picks a different potion on every JVM run.
 	private static LinkedHashMap<Class<? extends Potion>, Float> potionChances = new LinkedHashMap<>();
 	static{
 		potionChances.put(PotionOfHealing.class,        1f);

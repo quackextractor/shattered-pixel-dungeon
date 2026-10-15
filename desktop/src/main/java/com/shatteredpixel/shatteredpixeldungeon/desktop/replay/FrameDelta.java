@@ -69,15 +69,11 @@ public class FrameDelta {
 		try {
 			value = Float.parseFloat( raw.trim() );
 		} catch (NumberFormatException e){
-			//Not a fatal refusal: this is a diagnostic flag, and a mistyped one should not stop a
-			//playback that would otherwise work. Falling back to real time is the documented behaviour.
 			System.err.println( "[replay] spd.fixedDelta is not a number (" + raw + "); using real frame time" );
 			return -1f;
 		}
 
 		if (value <= 0f || value > 0.2f){
-			//0.2 is Game.update's own ceiling, so a larger pin would be silently clamped and the pin
-			//would not be the pin that was asked for.
 			System.err.println( "[replay] spd.fixedDelta must be in (0, 0.2]; got " + value
 					+ ". Using real frame time." );
 			return -1f;
@@ -112,28 +108,6 @@ public class FrameDelta {
 		float fixed = pinned();
 		if (fixed < 0f) return realDelta;
 
-		//timeScale is left alone, and only the value handed to the player is pinned.
-		//
-		//Three attempts were made to pin the animation clock and all three fail, for one structural
-		//reason: Game.elapsed is *derived*. Game.update computes it as timeScale * frameDelta and folds it
-		//into timeTotal before any game code runs, so the frame driver - which runs from inside
-		//scene.update() - is downstream of the value it would need to influence.
-		//
-		//  - writing Game.elapsed: pins what MovieClip reads, but timeTotal keeps accumulating real
-		//    frame time. Measured 0.0166 against 0.0070 per frame: the clock split 42/58.
-		//  - writing timeScale: applies to the *next* frame's delta, which cannot be observed, so each
-		//    frame's ratio is derived from a delta the previous frame's ratio already distorted. Measured
-		//    oscillating between 0.001 and 0.14 per frame.
-		//  - writing both: no better, same two problems.
-		//
-		//So the honest scope of this flag is the player's own pacing, and nothing else. It makes the
-		//number of frames the player waits between steps independent of frame rate, which is what the
-		//regression tests need - and it does NOT make animations frame-rate independent, because that
-		//would require the pin to sit upstream of Game.update, in the engine, at the point the delta is
-		//measured.
-		//
-		//Refusing loudly rather than appearing to work, because a flag that half-works is worse than one
-		//that says what it does.
 		if (!warned){
 			warned = true;
 			System.err.println( "[replay] spd.fixedDelta pins playback pacing only. Animations still run on"

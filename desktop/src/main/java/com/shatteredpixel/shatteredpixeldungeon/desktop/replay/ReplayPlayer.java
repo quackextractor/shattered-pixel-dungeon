@@ -175,18 +175,8 @@ public class ReplayPlayer {
 		this.mapper = new ActionMapper( config );
 		Actor.manualScheduling = true;
 
-		//A viewer plays one recording per construction, but a batch run builds players back to back in
-		//one process, and a player inherits whatever the previous one left armed. Clearing the same set
-		//the trainer's reset clears is what keeps a second file in a batch from starting in TARGETING
-		//and diverging at step 0. See RunState.
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.RunState.clearRunStatics();
 
-		//The same file again, on purpose, and it is not redundant with the line above. That call also
-		//drops the armed aim, the open dialog and the pending item - all of which the viewer wants
-		//cleared - but its remains half used to be guarded on the headless file backend, which the viewer
-		//is not running, so against a real Gdx.files it silently removed nothing. A bones.dat left in the
-		//player's profile by a previous session is read during level generation, so the first floor of
-		//this recording would carry a heap that is not in it.
 		remainsCleared = false;
 
 		String tracePath = System.getProperty( "spd.rngTrace" );
@@ -195,8 +185,6 @@ public class ReplayPlayer {
 			rngTrace = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace();
 			rngTrace.dungeonSeed( Dungeon.seed );
 			com.watabou.utils.RandomTrace.enable();
-			//attribution on from construction to the first step, because the window being asked about is
-			//exactly the one before it: the renderer draws here that the headless path does not
 			com.watabou.utils.RandomTrace.attribute();
 		} else {
 			rngTracePath = null;
@@ -206,9 +194,6 @@ public class ReplayPlayer {
 		String worldPath = System.getProperty( "spd.worldTrace" );
 		if (worldPath != null && !worldPath.trim().isEmpty()){
 			worldTracePath = worldPath;
-			//Cells are off by default here: a frame record is per frame, so a floor-sized cell dump would
-			//be tens of thousands of records for a 150-step recording and would drown the frames that
-			//matter. The roster is what identifies an actor, and it is on every record.
 			worldSnapshot = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot()
 					.cells( false );
 		} else {
@@ -322,7 +307,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 	}
 
 	public void speed( float multiplier ){
-		//clamped so a stray keypress cannot make playback unplayable or instant
 		this.speed = Math.max( 0.1f, Math.min( 16f, multiplier ) );
 	}
 
@@ -332,7 +316,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 	public void playing( boolean value ){
 		if (diverged && value){
-			//refuse to resume: the live game has already left the recording's path
 			return;
 		}
 		this.playing = value;
@@ -364,14 +347,10 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 	public void update( float elapsed ){
 		if (!playing) return;
 
-		//Cleared the moment a hero exists again, so this is a wait rather than a latch. The rebuild
-		//window is a gap in the level, not a state the viewer stays in.
 		if (rebuilding){
 			if (Dungeon.hero != null){
 				rebuilding = false;
 			} else {
-				//No hero, so no step can be applied and nothing to compare against. Still counted as a
-				//frame, or the frame report for a restarted run would describe only its tail.
 				frameBoundary( false, elapsed, null );
 				return;
 			}
@@ -380,17 +359,12 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		sinceStep += elapsed;
 
 		if (sinceStep < BASE_STEP_SECONDS / speed){
-			//Sampled on every frame, including the ones the pacing timer skips. Those are precisely the
-			//frames that apply no recorded step, so they are the only place a world change nothing
-			//accounted for can appear - and no step-keyed observer sees them, by construction.
 			frameBoundary( false, elapsed, null );
 			return;
 		}
 
 		sinceStep = 0;
 
-		//A step applied on an earlier frame has to settle before another one is applied, or the step
-		//whose comparison settle() performs is never compared at all.
 		if (awaitingSettle){
 			boolean owed = owesNoTurn();
 			Drain drain = owed ? Drain.READY : driveToHeroReady();
@@ -399,43 +373,16 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			return;
 		}
 
-		//Only ever step when the hero is not already ready.
-		//
-		//driveToHeroReady() always advances at least one scheduler step before it tests readiness, so
-		//using it as a per-frame gate advanced the game once for every frame rendered - including the
-		//frames spent waiting out the pacing timer, and at high speed that is every frame, because the
-		//timer is shorter than a frame. Each step handed a turn to some other actor while the hero stood
-		//ready and idle, so the world's actors advanced faster than the hero's actions did.
 		if (!readyToAct() && driveToHeroReady() != Drain.READY){
 			frameBoundary( false, elapsed, null );
 			return;
 		}
 
-		//Counted here, at the only point a recorded step is injected, because that is the question the
-		//real game answers before it hands a turn to anyone: GameScene.update only pokes the scheduler
-		//when Actor.processing() is false, so a player is never given input while an actor holds it. The
-		//viewer consults only the hero, and the hero reads ready for as long as it is idle - which
-		//includes the whole of another actor's attack animation.
 		Actor holding = Actor.currentActor();
 		if (holding != null && holding != Dungeon.hero) stepsAppliedMidTurn++;
 
 		applyNextStep();
 
-		//Settle in this same call where the turn resolves immediately.
-		//
-		//Applying and settling were separate frame callbacks, and the intervening GameScene.update()
-		//cleared the pending Hero.curAction before the hero ever acted: the scheduler log showed
-		//curAction already null on entry, with Actor.now() unmoved and the hero's position unchanged, so
-		//the recorded move was silently discarded. That is what "DIVERGED ... hero at 687, recording says
-		//655" was - a lost action, not a refused one.
-		//
-		//An animated action cannot settle here: its completion is an animation callback, so the drain
-		//reports PENDING and awaitingSettle carries the step to the frame that resolves it. That is the
-		//one case where a frame boundary falls between applying a step and the hero acting, which is why
-		//it is bounded rather than general - see DriveToHeroReady's note on GameScene.cancel().
-		//Held in a named local so the frame record can report what the drain concluded. It used to be
-		//an inline condition, which left nothing to record - and what the drain returned is the only
-		//thing that distinguishes "the animation finished this frame" from "the frame was skipped".
 		Drain after = owesNoTurn() ? Drain.READY : driveToHeroReady();
 		if (after == Drain.READY) settle();
 		frameBoundary( true, elapsed, after );
@@ -469,10 +416,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 	 * @param playerDelta recorded alongside so a disagreement between the two clocks is visible
 	 */
 	private void frameBoundary( boolean appliedStep, float elapsed, Drain drain ){
-		//Both counters advance whether or not a snapshot is being written. They used to sit after the
-		//snapshot's null check, which made the reported frame count zero whenever tracing was off - and
-		//the frame ratio is the one number that says how timing-dependent a playback is, so it has to be
-		//true on a normal run and not only on an instrumented one.
 	int label = frames++;
 		if (appliedStep) steppedFrames++;
 
@@ -702,10 +645,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		Actor now = Actor.currentActor();
 		if (previous != null && now == previous){
 			redundantCalls++;
-			//By class, because the count alone says how much repetition happened and not what was
-			//repeating. An actor that never spends time is one whose turn is being deferred to an
-			//animation, and which of them it is decides whether that is a mob waiting out its swing or a
-			//mob whose swing never completes.
 			String who = now == null ? "none" : now.getClass().getSimpleName();
 			redundantByClass.merge( who, 1, Integer::sum );
 		}
@@ -737,17 +676,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 		for (int steps = 0; steps < MAX_ACTOR_STEPS; steps++){
 
-			//Checked before the hero-alive test below, which is the ordering that used to cost a step.
-			//
-			//What this left was worse than a wrong message. The check sat at the TOP of the loop, before
-			//any scheduler step, so it also fired on the frame the last step was *applied*: the recorded
-			//action went in, and playback ended before the hero ever performed it. Three of the seventeen
-			//corpus files end in death and all three stopped with the hero still standing, one step short
-			//of the death the recording describes - and the step was never compared either, so a recording
-			//whose world had already diverged on that step still reported itself clean.
-			//
-			//Reaching here at all now means the drain has run and the hero has stopped being able to act,
-			//so the recording is over rather than stalled - which is what it says.
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()){
 				if (recordingEndsHere()) return endWhereRecordingEnds();
 				playback.finish();
@@ -755,36 +683,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 				return Drain.STALLED;
 			}
 
-			//A level transition is pending, and this loop cannot resolve it.
-			//
-			//Game.switchScene only sets a flag; the scene is instantiated by Game.step(), which runs from
-			//Game.render() - after this method returns. Actor.headlessStep() honours the flag by refusing
-			//to advance, so every remaining iteration of this budget spends itself on nothing and the
-			//drain ends with "hero did not become ready within 400 turns" on a hero who is standing on
-			//the stairs at full health. Measured on duelist-mid and warrior-death, both of which descend
-			//in their final steps: the drain ran out three steps before the recording ended, and the
-			//rendered game went on to descend exactly as the trainer had.
-			//
-			//Yielding is the answer, for the same reason the animation case below yields: the thing being
-			//waited for is driven by the render loop this method is running ahead of. Bounded, because a
-			//drain that can wait forever is a worse failure than the one it replaced - and a switch that
-			//stays pending is a real possibility if InterlevelScene's own level-generation thread is what
-			//has stalled.
 			if (com.watabou.noosa.Game.switchingScene()){
-				//The viewer never persists anything, so it must never read a floor back either.
-				//
-				//InterlevelScene's ascend branch asks Dungeon.levelHasBeenGenerated(depth, branch) and,
-				//when the answer is yes, calls Dungeon.loadLevel - which reads depth<n>.dat out of the
-				//platform's file root. Descending first records the depth in generatedLevels, so a run
-				//that goes down and then walks back up the stairs satisfies that test and the viewer stops
-				//to show "Cannot read save file", with nothing to show it for: nothing wrote that file.
-				//Reproduced on duelist-mid, the corpus's only descending recording - issues.md 9's shape,
-				//one floor further on.
-				//
-				//Clearing it is what LevelPipeline.handleTransition already does, for the same reason and
-				//with the same comment: a recording is rebuilt from its seed, never from disk. Doing it
-				//here rather than in the engine keeps the change viewer-side and keeps a real playthrough -
-				//where the file genuinely exists - untouched.
 				Dungeon.generatedLevels.clear();
 
 				pendingFrames++;
@@ -798,41 +697,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			}
 			switchPendingFrames = 0;
 
-			//Park while another actor's turn is genuinely unresolved.
-			//
-			//REFUTED BY MEASUREMENT, and kept here because the measurement is the useful part. The idea
-			//was that Actor.headlessStep() re-selects an actor that is still finishing its turn, which
-			//Actor.process() would refuse to do, and that this is why the viewer hands out turns the
-			//trainer does not. Measured on warrior-long before the park: 290 of 303 scheduler calls did
-			//re-select the actor already holding the scheduler. Two things that looks like are not it.
-			//
-			//Re-selecting does not restart the animation. CharSprite.attack calls MovieClip.play, which
-			//returns immediately when the same non-looped animation is already in flight, so the ~3 calls
-			//per frame cost three Mob.act() evaluations and no restart.
-			//
-			//And Actor.current cannot tell a finished turn from an unfinished one. It is cleared only by
-			//Actor.next(), which Hero.act and Buff.act never call - Hero.act calls ready() and Buff.act
-			//diactivates, both returning without it. Actor.process hides this by setting current = null at
-			//the top of every iteration; headlessStep does not, so Actor.current is "who acted last", not
-			//"who is mid-turn". Parking on it wedges immediately, and both times for an actor that had
-			//already finished: first Regeneration@2, a Buff, then Sentry@5 / Piranha@5 / Rat@5 / Snake@5,
-			//every one reporting cooldown 1.0 - which is attackDelay(), so they had spent their turn and
-			//Actor.current was simply stale.
-			//
-			//So Actor.current is not usable as a turn-ownership gate from the viewer. What remains is
-			//that the scheduler re-evaluates an actor three times a frame, which the real game does not do
-			//and which is worth counting rather than assuming harmless.
 
-			//The last recorded step, and the recording says why the run ended. The trainer applied this
-			//step's action and *then* terminated, so the action is still applied here - what is skipped
-			//is the drain and the comparison, because the trainer did not complete this step either and
-			//there is no settled state to compare against. Draining it instead made the viewer wait 400
-			//turns for a hero that would never be ready and then report "stalled", which is false: the
-			//recording was complete, not truncated.
-			//
-			//That reasoning was about a drain that could never finish, and it is still true of the case it
-			//described - but it was applied to the top of the loop, where it also caught the case the hero
-			//*could* act. The distinction that matters is whether progress is still possible, which is what
 			//the blocked counter below measures, not which step of the recording this is.
 
 			Actor before = Actor.currentActor();
@@ -970,16 +835,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			return false;
 		}
 		if (Dungeon.hero.paralysed > 0) return false;
-		//curAction, not just ready.
-		//
-		//Applying a step sets curAction and calls next(), and Hero.ready is only cleared inside
-		//Hero.act() when the action is consumed. So between the two there is a window where the hero
-		//is ready from the previous turn and already holding the new action - and testing ready alone
-		//walked straight through it, applying the following step over the pending one.
-		//
-		//That is what a trace caught: at step 8 the trainer's hero held PickUp, carried from the
-		//INTERACT recorded at step 7, while the viewer held Move, carried from step 6 - two actions
-		//behind. The trainer's READY test has always required curAction == null for this reason.
 		if (Dungeon.hero.curAction != null) return false;
 		return Dungeon.hero.ready;
 	}
@@ -996,16 +851,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		Replay.Step step = playback.peek();
 		if (step == null){
 			playback.finish();
-			//halt() rather than a bare finish(): finishing is not by itself an exit, and nothing else
-			//calls halt on the normal path. Reaching the end of the recording therefore left the window
-			//open with playback stopped, waiting for a keypress that a batch run has no way to send - so
-			//a run that had finished successfully looked identical to one that had hung. This is what made
-			//"no divergence reported" indistinguishable from "still going".
-			//
-			//The recorded reason leads where there is one. A recording that declares why it ended knows
-			//something the viewer cannot observe - a hero left standing at a turn limit and a hero left
-			//standing at the end of the dungeon are the same sight from here - and reporting a plain
-			//completion throws that away at the exact moment it is the only thing left to report.
 			String reason = recordingTermination();
 			halt( reason.isEmpty()
 					? "replay finished - all " + playback.total() + " steps played"
@@ -1023,39 +868,14 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 		EnvMode mode = modeOf( step.mode );
 
-		//Per step, so the resting-stall count measures this step's drain rather than the run's. The
-		//trainer's equivalent is the loop variable of a single runToHeroReady call, which starts at the
-		//step and runs to the next decision point.
 		drainSteps = 0;
 
-		//armed here, not at construction: see rngTraceArmed. Everything above this line is setup the
-		//headless run does not do, and none of it belongs in the trace.
 		if (rngTrace != null && !rngTraceArmed){
-			//flushed before the reset, because onReset zeroes the counters the report quotes. Attribution
-			//stays on past here and the tally is written again at halt: the window from construction to the
-			//first step answers "what drew during generation", and only the whole playback answers "what
-			//drew while the recording was applied", which is where a window-only divergence actually lives.
 			flushDrawSites( ".gen" );
 			rngTrace.onReset();
 			rngTraceArmed = true;
 		}
 
-		//Restore the bindings this step was recorded under, before the slot index is resolved.
-		//
-		//A recorded slot index only means something alongside the quickslot bindings in force when it was
-		//chosen: refreshSlots puts bound items into their bound slots and fills the rest from the
-		//backpack, so the same index names a different item under different bindings. Measured on
-		//KXY-JHB-LXK, a recorded DROP on slot 0 resolved to the VelvetPouch in the trainer and to the
-		//Waterskin in the viewer - the trainer had the Waterskin bound to quickslot 1, the viewer had no
-		//bindings. The wrong item was dropped, which changed Backpack.capacity from 21 to 20, and every
-		//later INTERACT resolved against a different inventory.
-		//
-		//Restored per step, not once: equipping or unequipping rebinds a slot mid-run.
-		//
-		//Quickslots.prepare is the shared entry point, and sharing it is what stops this method and
-		//ReplayIO.verify from resolving the same index two different ways - which is exactly what they
-		//did, and why a file could verify [OK] here and halt at step 18. It restores the bindings for
-		//non-slot steps too, so a WORLD step is never applied against the previous step's leftovers.
 		String unresolvable = Quickslots.prepare( step, playback.cursor(),
 				playback.replay().wireDroppedStepFields() );
 		if (unresolvable != null){
@@ -1063,49 +883,16 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			return;
 		}
 
-		//The trainer's per-step preamble, in the same order as SPDEnv.step:199-208. Without it the
-		//viewer and the trainer do not perform the same state transition, and the window hides which.
-		//
-		//clearPendingCellListener is the one that matters. SlotAction.use sets GameScene's aim
-		//listener (:93-98), and ActionMapper.resolveTarget prefers that listener over the sprite-free
-		//castAt fallback. SPDEnv clears it every step, so the trainer's throws always fall back to
-		//castAt. The viewer kept it, so the throw went through the game's own missile path, which
-		//recycles a sprite from hero.sprite.parent - there is no parent with no scene, the throw died,
-		//and the turn never advanced. Headless probe on RF: "USE/0 in TARGETING: engine time is 0.0,
-		//recording says 1.0", at the third step of a recording the windowed viewer plays to 33.
 		GameScene.clearPendingCellListener();
 		if (mode != EnvMode.TARGETING){
-//The pending item survives a step that is consuming an aim; dropping it leaves the
-		//following TARGETING step with nothing to act on.
 		SlotAction.clearPendingUseItem();
 
-		//A dialog is deliberately NOT cleared here, and the asymmetry with the line above is the point.
-		//A dialog belongs to the *next* step, which is the one recorded in MENU to answer it - clearing
-		//it on entry is the fault that made MENU unreachable from the trainer's side, and mirroring it
-		//here would break the viewer's menu steps the same way. A dialog can only outlive a run, never
-		//a step, and that case is RunState's, at construction.
 	}
 
-		//before the dispatch, not after: SPDEnv refreshes here, so the slot index has to resolve
-		//against the slots the step is about to be applied to.
 		mapper.refreshSlots();
 
-		//Whether the environment accepted the action, which was discarded here.
-		//
-		//ActionMapper.apply and applySecondary both return a boolean saying whether the action was
-		//taken, and SPDEnv reads it to note INVALID_ACTION. Playback read it as nothing, so a recorded
-		//step the engine refused - a move onto a non-adjacent cell, a slot index that resolves to no
-		//item, an unreachable target - was applied silently and the divergence it caused surfaced
-		//later as a position or health mismatch with no mention of the step that actually failed.
-		//
-		//A refusal is not itself a divergence: the trainer recorded the same refusal, and the recording
-		//stores the position the hero really ended up at, which is where he is too. So this counts
-		//refusals and puts the count in the halt message and the frame report, rather than failing on
-		//them. A recording whose refusals do not match the trainer's is still a real finding, and it
-		//is now a number rather than an absence.
 		boolean acted;
 
-		//the follow-up half of a two-step action
 		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY || mode == EnvMode.MENU){
 			acted = mapper.applySecondary( mode, action, step.slot );
 		} else if (mode == EnvMode.TARGETING){
@@ -1122,9 +909,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			}
 		}
 
-		//Advance only after settle() has compared the landing cell. advance() clears the playback's
-		//expected position, so advancing first meant checkPosition() always saw "no expectation" and
-		//silently passed - the on-screen divergence check could never fire.
 awaitingSettle = true;
 	}
 
@@ -1141,19 +925,8 @@ awaitingSettle = true;
 	private void settle(){
 		if (Dungeon.hero == null) return;
 
-		//The level width is a property of the dungeon rather than of the recording, so it is read from the
-		//live level here rather than stored per step - and read on every settle so a divergence report can
-		//name coordinates even on the first step, rather than only once the HUD has been laid out.
 		if (Dungeon.level != null) playback.gridWidth( Dungeon.level.width() );
 
-		//Nothing to settle once every step is accounted for.
-		//
-		//settle() is reached from two places and both can arrive here with the cursor already past the
-		//end. The final step's drain returns READY, settle advances to total, and the *next* frame's
-		//drain - of a hero that a turn limit has left permanently unable to become ready - finds the
-		//recording complete, ends it, and hands control back for a settle that has no step to compare.
-		//Measured on the TURN_LIMIT fixture: 61 of 60 steps played, the extra one from a comparison
-		//against nothing.
 		if (playback.finished()){
 			awaitingSettle = false;
 			return;
@@ -1172,28 +945,10 @@ awaitingSettle = true;
 					halt( playback.status() );
 				}
 			}
-			//sampled after the comparison but before advancing, so a step that diverged is still traced:
-			//the point of a trace is usually to see what the world was doing where it stopped agreeing
 			if (rngTrace != null) rngTrace.sample( playback.cursor() );
-			//before advance(), so the label is the step this record settled rather than the next one. The
-			//headless producer labels the same way, off the same cursor, which is what lets the two files
-			//be diffed by key.
 			if (worldSnapshot != null) worldSnapshot.sample( "step", playback.cursor() );
 			playback.advance();
 		} else {
-			//The hero died **during** this step, so the step was applied and the recording's own
-			//outcome is why. `finish()` alone left the cursor on it, and the recording then reported
-			//N-1 of N steps - which is `issues.md` 2's symptom, one path away from the one its fix
-			//closed. That fix moved the "recording ends here" test into the drain; this is the branch
-			//that test cannot reach, because the drain has already returned by the time settle runs.
-			//
-			//Measured on a trainer recording whose death lands on the final step: 1229 of 1230 steps,
-			//deterministically, with the reward change stashed - so it predates it. `verify` reproduces
-			//all 1230 headlessly, because the headless pipeline ends the episode rather than the
-			//player's settle.
-			//
-			//Advanced before finishing, and by the same path `endWhereRecordingEnds()` uses, so a run
-			//that ended this way and one that ended in the drain report identically.
 			endWhereRecordingEnds();
 		}
 

@@ -84,13 +84,6 @@ public class DesktopPlatformSupport extends PlatformSupport {
 			@Override
 			public void run () {
 				if (windowRequested()){
-					//Nothing is done to the window here on purpose.
-					//
-					//The launcher already stated a windowed mode before the context existed, and this runs
-					//after it. Calling setWindowedMode again would resize the framebuffer mid-run, which
-					//costs a frame and shifts when animations tick - measured as two recordings that had
-					//played clean now diverging, and every failure moving to a different step. The job
-					//here is only to decline the fullscreen switch; the window is already what was asked for.
 					first = false;
 					return;
 				}

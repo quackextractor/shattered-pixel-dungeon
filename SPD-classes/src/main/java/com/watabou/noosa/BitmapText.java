@@ -121,8 +121,6 @@ public class BitmapText extends Visual {
 		}
 
 		if (font == null) {
-			//no font film to pack glyph quads into. Reachable headlessly, where the platform has no
-			//font generator at all, and by the no-argument constructor below.
 			quads = Quad.createSet( text.length() );
 			realLength = 0;
 			dirty = false;

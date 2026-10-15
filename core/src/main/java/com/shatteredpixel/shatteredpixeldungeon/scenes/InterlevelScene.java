@@ -617,8 +617,6 @@ public class InterlevelScene extends PixelScene {
 
 	private void afterLoading(){
 		if (autoContinue){
-			//still reads the page, so documentation stays marked as seen. region and loadingDepth
-			//are locals of create(); lastRegion is the same value, kept as a field.
 			Document.INTROS.readPage( lastRegion );
 			phase = Phase.FADE_OUT;
 			timeLeft = fadeTime;

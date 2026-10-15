@@ -397,7 +397,6 @@ public class QuickSlotButton extends Button {
 				&& !Char.hasProp(target, Char.Property.OBJECT)) {
 			lastTarget = target;
 
-			//the health indicator only exists while the UI is up
 						if (TargetHealthIndicator.instance != null) {
 				TargetHealthIndicator.instance.target( target );
 			}

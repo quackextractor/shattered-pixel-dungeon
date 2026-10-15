@@ -125,8 +125,6 @@ public class WndOptions extends Window {
 		return true;
 	}
 
-	//buttons are built in option order, so keeping them lets the headless training module
-	//enumerate and answer a dialog with no UI present
 	private final ArrayList<RedButton> optionButtons = new ArrayList<>();
 
 	public int optionCount(){

@@ -909,8 +909,6 @@ public class GameScene extends PixelScene {
 public synchronized void update() {
 	lastOffset = null;
 
-	//a driver supplying its own input - the desktop replay viewer - runs first, so a recorded
-	//action is applied before the frame's own processing rather than after it
 	if (frameDriver != null){
 		frameDriver.run();
 	}
@@ -1221,9 +1219,6 @@ public synchronized void update() {
 			heap.autoExplored = true;
 			scene.addHeapSprite( heap );
 		} else if (heap.sprite == null) {
-			//game logic calls heap.sprite unconditionally once a heap exists - trampling grass
-			//drops an item and animates it - so the sprite has to exist even with no scene.
-			//ItemSprite uses the index-only film, which needs no renderer.
 			ItemSprite sprite = heap.sprite = new ItemSprite( heap );
 			sprite.link( heap );
 		}
@@ -1252,15 +1247,6 @@ public synchronized void update() {
 			Actor.addDelayed(mob, delay);
 			mob.spendToWhole();
 		} else if (headlessGameplay && headlessMobSprite != null ) {
-			//Same shape as the Heap branch above, and for the same reason: game logic calls
-			//mob.sprite unconditionally, and Char.move assigns sprite.visible on every move of a Char
-			//that is not the hero. An item that creates a mob - ScrollOfMirrorImage, via appear() -
-			//therefore died with a NullPointerException in a renderer-bypassed process, which had no
-			//scene to give it a sprite. Actor.add is here for the same reason: without it the mob is in
-			//level.mobs but not in Actor.chars, so it never acts and Actor.findChar cannot see it.
-			//
-			//Unreachable in the game: with a scene this branch is not entered, and nothing sets
-			//headlessGameplay when a renderer is present.
 			if (mob.sprite == null ) headlessMobSprite.accept( mob );
 			Actor.add( mob );
 			mob.spendToWhole();
@@ -1335,8 +1321,6 @@ public synchronized void update() {
 	}
 	
 	public static synchronized SpellSprite spellSprite() {
-		//same reasoning as emitter() below: there is nothing to recycle a sprite from without a
-		//scene, and callers that only draw treat a null as "nothing to show"
 		if (scene == null || scene.spells == null) {
 			return null;
 		}
@@ -1564,15 +1548,7 @@ public synchronized void update() {
 	}
 	
 	public static void show( Window wnd ) {
-		//no scene to attach to when the renderer is bypassed, eg. headless training
 		if (scene == null) {
-			//Parked in a Group rather than in a bare field, so that the game's own hide() clears
-			//the slot. Window.hide() erases itself from its parent; a field has no parent, so nothing
-			//the game did could close a parked dialog and the caller had to close it unconditionally -
-			//which reports a dialog as answered when the game threw the answer away. Chasm's "jump?"
-			//prompt is the case that bit: it refuses both its option and its hide until it has been up
-			//for a fifth of a second, so the agent answered it, was ignored, and had the question taken
-			//away anyway.
 			headlessPark.add( wnd );
 			headlessWindow = wnd;
 			return;
@@ -1647,8 +1623,6 @@ public synchronized void update() {
 	 */
 	public static Window answerableWindow(){
 		if (scene != null) return topWindow();
-		//The accessor, not the field: a parked window stops being the answerable one when the game
-		//hides it, and reading the field here reported a dialog that had already closed.
 		return headlessWindow();
 	}
 
@@ -1853,8 +1827,6 @@ public static boolean showingWindow(){
 	}
 	
 	public static void selectCell( CellSelector.Listener listener ) {
-		//no cell selector without a renderer. Wands, throwables and armor abilities ask to aim
-		//through this, so stash the request: a headless caller resolves it with its own cell.
 		if (cellSelector == null) {
 			pendingCellListener = listener;
 			return;
@@ -1876,8 +1848,6 @@ public static boolean showingWindow(){
 	public static void clearPendingCellListener(){ pendingCellListener = null; }
 	
 	public static boolean cancelCellSelector() {
-		//cellSelector only exists once a scene is up. A headless run has none, and there are no
-		//held keys to forget in that case, so this is the correct answer rather than a fallback.
 		if (cellSelector == null) {
 			return false;
 		}

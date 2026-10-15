@@ -257,9 +257,6 @@ public class SentryRoom extends SpecialRoom {
 
 					if (curChargeDelay > 0.001f){ //helps prevent rounding errors
 						if (curChargeDelay == initialChargeDelay) {
-//Headless sprites are HeadlessSprites, not SentrySprites. The charge visual is
-						//purely cosmetic, so it is skipped rather than cast, and the zap that follows
-						//still fires.
 						if (sprite instanceof SentrySprite) ((SentrySprite) sprite).charge();
 					}
 					curChargeDelay -= Dungeon.hero.cooldown();
@@ -272,12 +269,6 @@ public class SentryRoom extends SpecialRoom {
 					if (curChargeDelay <= .001f){
 						curChargeDelay = 1f;
 						sprite.zap(Dungeon.hero.pos);
-						//Same guard as above, and for the same reason: under the headless trainer the
-						//sprite is a HeadlessSprite, so this cast threw ClassCastException and killed
-						//the worker. It needed an agent reaching floor 2 to reach a SentryRoom at all,
-						//which is why a run that never descended never found it.
-						//
-						//The charge animation is cosmetic, so it is skipped rather than emulated.
 						if (sprite instanceof SentrySprite) ((SentrySprite) sprite).charge();
 					}
 

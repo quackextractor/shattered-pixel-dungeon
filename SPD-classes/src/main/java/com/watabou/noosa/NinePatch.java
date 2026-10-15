@@ -96,8 +96,6 @@ public class NinePatch extends Visual {
 
 		texture = TextureCache.get( tx );
 
-		//a null texture means there was no renderer to load one. Keep the size and margins so
-		//layout maths still works, but leave the UV rects empty - nothing will sample them.
 		if (texture == null) {
 			nWidth = width = w;
 			nHeight = height = h;

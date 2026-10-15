@@ -1189,9 +1189,6 @@ public abstract class Char extends Actor {
 	@SuppressWarnings("unchecked")
 	//returns all buffs assignable from the given buff class
 	public synchronized <T extends Buff> LinkedHashSet<T> buffs( Class<T> c ) {
-		//LinkedHashSet, not HashSet: Buff does not override hashCode, so a HashSet would hand
-		//callers back in identity-hash order. Several callers sort or iterate the result in a way
-		//that consumes the RNG or folds floats non-associatively, which made runs diverge.
 		LinkedHashSet<T> filtered = new LinkedHashSet<>();
 		for (Buff b : buffs) {
 			if (c.isInstance( b )) {
@@ -1304,9 +1301,6 @@ public abstract class Char extends Actor {
 	public void move( int step, boolean travelling ) {
 
 		if (travelling && Dungeon.level.adjacent( step, pos ) && buff( Vertigo.class ) != null) {
-			//The two sprite calls are the visual half of vertigo; which way it pushes is gameplay and
-			//is rolled either way. An actor can reach here without a sprite headless, where sprites are
-			//attached lazily, and dereferencing null killed the worker mid-run.
 			if (sprite != null) sprite.interruptMotion();
 			int newPos = pos + PathFinder.NEIGHBOURS8[Random.Int( 8 )];
 			if (!(Dungeon.level.passable[newPos] || Dungeon.level.avoid[newPos])

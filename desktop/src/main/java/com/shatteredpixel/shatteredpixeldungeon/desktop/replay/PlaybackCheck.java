@@ -99,8 +99,6 @@ public class PlaybackCheck {
 		config.turnLimitPerFloor = 200;
 		env = new SPDEnv( config, HeadlessGame.install() );
 
-		//recorded before any ReplayPlayer exists, because constructing one sets
-		//Actor.manualScheduling globally and the recording path expects the engine to own the schedule
 		Replay good = recordAShortRun();
 
 		check( () -> checkAFaithfulReplayPlaysClean( good ) );
@@ -238,7 +236,6 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		}
 	}
 
-	// --------------------------------------------------------------------------- the checks
 
 	private static void checkAFaithfulReplayPlaysClean( Replay replay ){
 		Outcome outcome = play( replay );
@@ -379,11 +376,6 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 	 * one that played it correctly: no divergence, no error, just a replay that quietly does not replay.
 	 */
 	private static void checkAStalledPlayerFailsInsteadOfHanging(){
-		//The four-field wire, not merely missing bindings. A recording with no bindings but real health,
-		//turn and inventory is a run in which the hero had nothing bound at every slot step, which
-		//resolves from backpack order and plays - so blanking only the bindings stopped making this
-		//fixture unwatchable, and it began failing the moment that distinction was drawn. Same trap as
-		//the first version of `verifycheck`'s converse case, reached from the other direction.
 		Replay broken = recordAShortRun();
 		for (Replay.Step step : broken.steps){
 			step.quickslots = "";
@@ -400,11 +392,6 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 			fail( "a recording with no resolvable slot bindings halted with an unexplained reason: "
 					+ outcome.haltReason );
 		} else {
-			//and it must have stopped at the first step that *needed* them, not played the run and then
-			//complained: a fixture that played 120 steps and reported the reason afterwards would satisfy
-			//the string test above while proving nothing about refusing. Compared against the first
-			//slot-bearing step rather than a constant, because steps before it are WORLD steps that resolve
-			//no index and are supposed to play.
 			int firstSlotStep = -1;
 			for (int i = 0; i < broken.steps.size(); i++){
 				if (broken.steps.get( i ).mode.equals( "SLOT" )
@@ -521,7 +508,6 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 					+ " from a header saying 321" );
 		}
 
-		//and the bytes, since an uninformative header would still round-trip
 		try {
 			String header = new String( java.nio.file.Files.readAllBytes( file.toPath() ),
 					java.nio.charset.StandardCharsets.UTF_8 );
@@ -579,14 +565,11 @@ private static void checkDeclaredTerminationEndsPlayback( Replay good ){
 				+ "report this check exists to prevent" );
 	}
 
-	//and the converse: a recording that declares nothing must not be treated as ended
 	Replay silent = recordAShortRun();
 	silent.steps.subList( 60, silent.steps.size() ).clear();
 	silent.termination = "";
 	Outcome undeclared = play( silent );
 	if ( undeclared.diverged || undeclared.cursor < silent.length() ){
-		//not required to reach the end - the hero may simply become ready - but it must not claim to
-		//have ended early on a reason nobody recorded
 		if ( undeclared.haltReason != null && undeclared.haltReason.contains( "the recording ends here" )){
 			fail( "a recording with no recorded termination still ended as if it had one" );
 		}
@@ -616,8 +599,6 @@ private static void checkDeclaredTerminationEndsPlayback( Replay good ){
 private static void checkADeathRunPlaysItsLastStep( Replay good ){
 	Replay dying = corpusRecordingEndingIn( "DEATH" );
 	if ( dying == null ){
-		//Already reported by checkADeathRunActuallyActsOnItsLastStep, which reports the missing case
-		//with the same wording. Reported once rather than twice for one absent file.
 		return;
 	}
 
@@ -642,7 +623,6 @@ private static void checkADeathRunPlaysItsLastStep( Replay good ){
 				+ " - the recorded reason should be what it says, rather than a bare death report" );
 	}
 
-	//and the converse: DEATH is not a licence to stop early on a hero that is still standing
 	Replay falseDeath = recordAShortRun();
 	falseDeath.termination = "DEATH";
 
@@ -785,8 +765,6 @@ private static Replay corpusRecordingEndingIn( String termination ){
 		File remains = new File( new File( new File( System.getProperty( "java.io.tmpdir" ),
 				"spd-playbackcheck" ), ".nosave" ), "bones.dat" );
 
-		//Cleared first, and its absence asserted. A file left over from an earlier run of this gate would
-		//make the assertion below pass for a reason that has nothing to do with the code under test.
 		if ( remains.exists() && !remains.delete() ){
 			fail( "stale remains at " + remains.getAbsolutePath() + " could not be removed before the run,"
 					+ " so this case would have measured whatever the previous run left." );
@@ -830,7 +808,6 @@ private static void checkRestartDoesNotEndTheRun( Replay good ){
 		ReplayPlayer player = new ReplayPlayer( good, ReplayIOConfig( good ) );
 		player.speed( 16f );
 
-		//play a few steps so the cursor is genuinely partway through, which is the state R is pressed in
 		for (int i = 0; i < 5; i++) player.update( 1f / 60f );
 
 		player.restart();
@@ -871,7 +848,6 @@ private static void checkRestartKeepsPlaybackArmedAcrossARebuild( Replay good ){
 
 		player.restart();
 
-		//the gap: no level, no hero, playback must wait rather than declare the run over
 		Dungeon.hero = null;
 		for (int i = 0; i < 10; i++) player.update( 1f / 60f );
 
@@ -884,7 +860,6 @@ private static void checkRestartKeepsPlaybackArmedAcrossARebuild( Replay good ){
 			fail( "the recording was marked finished during the rebuild window after a restart" );
 		}
 
-		//and once the hero is back, playback resumes of its own accord
 		env.reset( good.seedText, heroClassOf( good ) );
 		for (int i = 0; i < 60 && player.playback().cursor() == 0; i++) player.update( 1f / 60f );
 
@@ -982,8 +957,6 @@ private static void checkADeathRunActuallyActsOnItsLastStep(){
 	 * step, or it tests the comparison rather than the branch.
 	 */
 private static void checkADeathOnTheLastStepStillPlaysIt(){
-		//A real corpus recording, not a fixture, and one with a specific property: the hero must be
-		//**alive on the penultimate step**. Three committed recordings declare termination=DEATH and
 		//record zero health on their last step, but all three are dead *by* that step rather than *on*
 		//it - huntress-mid is on 2 HP at step 57 of 59, warrior-death on 2 HP at 42 of 43 - so the drain's
 		//own dead-hero check sees them first and the branch under test is never entered. That is not a
@@ -1056,7 +1029,6 @@ private static Replay corpusRecordingDyingOnItsFinalStep(){
 			if (n < 2) continue;
 			if (!"DEATH".equals( candidate.termination )) continue;
 			if (candidate.steps.get( n - 1 ).heroHp != 0 ) continue;
-			//alive going in, which is the whole condition
 			if (candidate.steps.get( n - 2 ).heroHp <= 0 ) continue;
 			return candidate;
 		}
@@ -1102,9 +1074,6 @@ private static void checkScoreTracksGainAndLossSeparately( Replay good ){
 			fail( "lost() reported " + playback.lost() + " where the negative steps sum to " + expectedLoss );
 		}
 
-		//The split has to be a real split. A run whose steps are all negative gains nothing, and one
-		//whose steps are all positive loses nothing - an implementation that returned the net for both
-		//would pass the arithmetic above on a mixed run and fail these.
 		Replay descending = recordAShortRun();
 		for (Replay.Step step : descending.steps){
 			step.reward = -Math.abs( step.reward ) - 1;
@@ -1120,7 +1089,6 @@ private static void checkScoreTracksGainAndLossSeparately( Replay good ){
 					+ "reported as a negative number" );
 		}
 
-		//and the per-step delta is the step, not the running total
 		Replay one = recordAShortRun();
 		one.steps.get( 0 ).reward = 0.25;
 		ReplayPlayback first = new ReplayPlayback( one );
@@ -1144,7 +1112,6 @@ private static void checkScoreTracksGainAndLossSeparately( Replay good ){
 private static void checkCoordinatesDecodeAPosition(){
 	ReplayPlayback playback = new ReplayPlayback( new Replay() );
 
-		//32 is the width every standard floor is built at.
 		playback.gridWidth( 32 );
 
 		String topLeft = playback.coordinates( 0, 32 );
@@ -1162,14 +1129,11 @@ private static void checkCoordinatesDecodeAPosition(){
 					+ "which is the engine's own order and the one the tile map uses" );
 		}
 
-		//the raw index is kept, because a divergence report is often compared against a trace or a
-		//recording file and silently dropping it would break that comparison
 		if ( !topRight.contains( "31" ) || topRight.endsWith( "(31, 0)" ) ){
 			fail( "the coordinate rendering dropped the raw cell index: " + topRight
 					+ ". Reports are compared against traces by index." );
 		}
 
-		//and with no width it degrades to the index rather than dividing by nothing
 		if ( !playback.coordinates( 687, 0 ).equals( "pos 687" ) ){
 			fail( "with no known width a cell should render as its raw index; got "
 					+ playback.coordinates( 687, 0 ) );
@@ -1239,7 +1203,6 @@ private static void checkADivergenceMessageNamesCoordinates(){
 	}
 }
 
-// --------------------------------------------------------------------------- helpers
 
 	/**
 	 * The HUD anchor is movable, cycles through every corner, and defaults to top left.
@@ -1260,7 +1223,6 @@ private static void checkADivergenceMessageNamesCoordinates(){
 					+ "where a recording spends most of its time sitting still." );
 		}
 
-		//every corner must place text inside the window, for the widest line the HUD can produce
 		float widest = cameraW - 2 * margin;
 		for (ReplayController.Anchor at : ReplayController.Anchor.values()){
 			for (float lineWidth : new float[]{ 0f, widest }){
@@ -1276,7 +1238,6 @@ private static void checkADivergenceMessageNamesCoordinates(){
 				}
 			}
 
-			//the block must grow inward, so its far end stays on screen however tall it gets
 			float top = ReplayController.anchorStartY( at, cameraH, 0 );
 			boolean growsDown = top < cameraH / 2f;
 			if (growsDown != !at.bottom()){
@@ -1289,7 +1250,6 @@ private static void checkADivergenceMessageNamesCoordinates(){
 			}
 		}
 
-		//cycling must reach all four corners and come back round, so the hotkey is not a dead end
 		java.util.Set<ReplayController.Anchor> seen = new java.util.HashSet<>();
 		ReplayController.Anchor at = ReplayController.DEFAULT_ANCHOR;
 		for (int i = 0; i < ReplayController.Anchor.values().length; i++){
@@ -1305,8 +1265,6 @@ private static void checkADivergenceMessageNamesCoordinates(){
 					+ " after one full cycle; it came back to " + at );
 		}
 
-		//the help line stacks inward from the same corner, pushed clear of the HUD block. At a bottom
-		//anchor that puts it above the HUD; at a top anchor, below it.
 		for (ReplayController.Anchor corner : ReplayController.Anchor.values()){
 			float hudTop = ReplayController.anchorStartY( corner, cameraH, 0 );
 			float helpTop = ReplayController.anchorStartY( corner, cameraH, 100 );
@@ -1358,7 +1316,6 @@ private static void checkADivergenceMessageNamesCoordinates(){
 			}
 		}
 
-		//the break must be real, not just a truncation: every word of the original has to survive
 		String joined = String.join( " ", lines ).replaceAll( "\\s+", " " ).trim();
 		String original = hud.replaceAll( "\\s+", " " ).trim();
 		if (!joined.equals( original )){
@@ -1366,15 +1323,12 @@ private static void checkADivergenceMessageNamesCoordinates(){
 					+ "\n         original: " + original );
 		}
 
-		//an explicit \n must still force a break, which is the whole reason wrapText splits on it
 		ArrayList<String> breaks = ReplayController.wrapText( "aaa\nbbb", maxWidth, widthOf );
 		if (breaks.size() != 2){
 			fail( "an explicit newline did not force a line break; got " + breaks.size()
 					+ " lines from 2, so multi-line HUD text would be joined back together" );
 		}
 
-		//a word too wide to break on spaces is kept whole rather than dropped - dropping it would
-		//silently hide the seed, the one value that says which recording is on screen
 		ArrayList<String> wide = ReplayController.wrapText( "hi SUPERLONGSINGLETOKEN1234567890", maxWidth, widthOf );
 		StringBuilder rebuilt = new StringBuilder();
 		for (String line : wide) rebuilt.append( line ).append( ' ' );

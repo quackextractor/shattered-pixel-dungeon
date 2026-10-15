@@ -118,7 +118,6 @@ public class RandomTrace {
 		if (!enabled) return;
 		draws++;
 		if (base) baseDraws++;
-		//FNV-style: multiplication then xor, so the result depends on order and on every bit.
 		fingerprint ^= bits;
 		fingerprint *= 1099511628211L;
 		if (base){
@@ -178,7 +177,6 @@ public class RandomTrace {
 	private static void attributeDraw(){
 		StackTraceElement[] stack = new Throwable().getStackTrace();
 
-		//0 is attributeDraw(), 1 is record(); the RNG methods follow
 		String self = RandomTrace.class.getName();
 		for (int i = 2; i < stack.length; i++){
 			String cls = stack[i].getClassName();

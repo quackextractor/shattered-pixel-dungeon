@@ -826,9 +826,6 @@ public class ItemSpriteSheet {
 		private static final int WIDTH = 16;
 		public static final int SIZE = 8;
 
-		//icon indices are game data and computed by arithmetic below. the film that maps them to
-		//pixel rects is presentation, and is only built when something draws an icon - so game
-		//logic can construct items without a renderer (see the 'superintelligence' module).
 		private static TextureFilm filmCache = null;
 		private static final ArrayList<int[]> pendingRects = new ArrayList<>();
 
