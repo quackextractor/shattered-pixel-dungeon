@@ -89,16 +89,6 @@ public static boolean selectOption( int index ){
 		if (!(w instanceof WndOptions)) return false;
 		boolean fired = ((WndOptions) w).selectOption( index );
 
-
-
-
-
-
-
-
-
-
-
 		return fired;
 	}
 

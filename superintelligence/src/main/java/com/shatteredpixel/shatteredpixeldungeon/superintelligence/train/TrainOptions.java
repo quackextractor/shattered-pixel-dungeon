@@ -242,7 +242,6 @@ public class TrainOptions {
 		PpoHyperparameters hyper = loaded.hyper;
 		o.hyper = hyper;
 
-
 		o.epochs = hyper.epochs;
 		o.minibatchSize = hyper.minibatchSize;
 		o.updateThreads = hyper.updateThreads;
@@ -252,15 +251,6 @@ public class TrainOptions {
 		o.stallSeconds = hyper.stallSeconds;
 
 		for (int i = 0; i < args.length; i++){
-
-
-
-
-
-
-
-
-
 
 			final int at = i;
 
@@ -280,13 +270,10 @@ public class TrainOptions {
 				case "--record-every": o.recordEvery = Integer.parseInt( value( args, at )); i++; break;
 				case "--stall-seconds":
 
-
-
 					o.stallSeconds = Long.parseLong( value( args, at )); i++; break;
 				case "--epochs":      o.epochs = Integer.parseInt( value( args, at )); i++; break;
 				case "--minibatch":   o.minibatchSize = Integer.parseInt( value( args, at )); i++; break;
 				case "--update-threads": o.updateThreads = Integer.parseInt( value( args, at )); i++; break;
-
 
 				case "--sample-rate": o.sampleRate = Double.parseDouble( value( args, at )); i++; break;
 				case "--max-sampled-per-episode":
@@ -295,8 +282,6 @@ public class TrainOptions {
 					o.maxSamplesPerGeneration = Integer.parseInt( value( args, at )); i++; break;
 				case "--metrics":     o.metricsCsv = new File( value( args, at )); o.metricsGiven = true; i++; break;
 				case "--trace-world":
-
-
 
 					o.traceWorld = value( args, at ); i++; break;
 				case "--save":        o.save = new File( value( args, at )); o.saveGiven = true; i++; break;
@@ -314,11 +299,6 @@ public class TrainOptions {
 		if (o.checkpointEvery < 1) o.checkpointEvery = 1;
 		if (o.recordEvery < 1) o.recordEvery = 1;
 
-
-
-
-
-
 		if (o.minibatchSize < 1) o.minibatchSize = 1;
 		if (o.epochs < 1) o.epochs = 1;
 		if (o.updateThreads < 0) o.updateThreads = 0;
@@ -326,10 +306,6 @@ public class TrainOptions {
 		if (o.maxSamplesPerGeneration < 1) o.maxSamplesPerGeneration = 1;
 
 		o.deriveOutputsUnder( o.workDir );
-
-
-
-
 
 		if (o.rewardProfile != null){
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile

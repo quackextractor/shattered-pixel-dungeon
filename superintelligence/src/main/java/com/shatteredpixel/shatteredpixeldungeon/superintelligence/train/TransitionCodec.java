@@ -48,7 +48,6 @@ public final class TransitionCodec {
 		int inventory = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		int hero = HeroEncoder.FEATURES;
 
-
 		return grid
 				+ 4L * (inventory + hero + ActionCount.size + config.maxSlots + TargetCount.value)
 				+ 4L * 3
@@ -99,8 +98,6 @@ public final class TransitionCodec {
 			out.writeFloat( t.returnValue );
 			out.writeBoolean( t.terminal );
 
-
-
 			writeState( out, t.recurrentState );
 		}
 	}
@@ -119,8 +116,6 @@ public final class TransitionCodec {
 	private static float[] readState( DataInputStream in, int expected ) throws IOException {
 		int length = in.readInt();
 		if (length == 0) return null;
-
-
 
 		if (length != expected){
 			throw new IOException( "the frame carries a recurrent state of " + length
@@ -159,7 +154,6 @@ public final class TransitionCodec {
 		int gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
 		int inventorySize = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		int heroSize = HeroEncoder.FEATURES;
-
 
 		List<Transition> into = new ArrayList<>( count );
 

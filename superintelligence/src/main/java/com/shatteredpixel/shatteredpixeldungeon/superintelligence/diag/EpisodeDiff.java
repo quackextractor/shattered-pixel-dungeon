@@ -100,8 +100,6 @@ public class EpisodeDiff {
 		System.out.println( "all " + SEEDS.length + " seeds reproduce after running the others in between" );
 	}
 
-
-
 	private static boolean report( String seed, List< String > first, List< String > second ){
 		int n = Math.min( first.size(), second.size() );
 		int at = -1;
@@ -124,8 +122,6 @@ public class EpisodeDiff {
 		}
 		return true;
 	}
-
-
 
 	private static List< String > trace( String seed, int steps, boolean includeRoster ){
 		EnvConfig config = new EnvConfig();
@@ -254,10 +250,6 @@ public class EpisodeDiff {
 			boolean sees = mob.fieldOfView != null && mob.fieldOfView[ heroPos ];
 			out.put( mob.id(), mob.pos + ":hp" + mob.HP
 					+ ":" + (mob.state == null ? "none" : mob.state.getClass().getSimpleName())
-
-
-
-
 
 					+ ":cd" + mob.cooldown()
 					+ (sees ? ":sees" : "") );

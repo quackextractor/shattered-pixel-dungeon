@@ -78,27 +78,13 @@ public class RunState {
 	 */
 	public static void clearRunStatics(){
 
-
 		GameScene.clearPendingCellListener();
-
-
-
 
 		GameScene.clearHeadlessWindow();
 
-
-
 		SlotAction.clearPendingUseItem();
 
-
-
-
-
-
 		com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm.jumpConfirmed = false;
-
-
-
 
 		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.fallIntoPit = false;
 

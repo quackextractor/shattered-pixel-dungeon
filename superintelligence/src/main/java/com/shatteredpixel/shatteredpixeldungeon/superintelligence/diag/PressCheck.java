@@ -180,7 +180,6 @@ public class PressCheck {
 			Trap trap = armedTrap();
 			if (trap == null ) continue;
 
-
 			com.shatteredpixel.shatteredpixeldungeon.levels.Level playing = Dungeon.level;
 			Dungeon.level = null;
 			try {

@@ -117,7 +117,6 @@ public class VerifyCheck {
 
 	private static void checkAlteredHealthIsCaught( Replay source ){
 
-
 		checkAlterationIsCaught( source, "hp",
 				step -> { if (step.heroHp > 0) step.heroHp -= 1; } );
 	}
@@ -170,8 +169,6 @@ public class VerifyCheck {
 		}
 
 		Replay copy = copyOf( source );
-
-
 
 		for (Replay.Step step : copy.steps){
 			step.quickslots = "";
@@ -237,7 +234,6 @@ public class VerifyCheck {
 					+ " blanked without emptying the whole recording" );
 			return;
 		}
-
 
 		ReplayIO.Verification result = verify( copy );
 		if (!result.passed()){

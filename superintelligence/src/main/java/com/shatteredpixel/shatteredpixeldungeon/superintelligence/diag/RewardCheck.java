@@ -237,7 +237,6 @@ public class RewardCheck {
 			boolean shouldBeNatural = reason == RewardModel.TerminateReason.DEATH
 					|| reason == RewardModel.TerminateReason.VICTORY;
 
-
 			boolean isNatural = SPDEnv.isNaturalEnding( reason );
 			if (isNatural != shouldBeNatural ){
 				fail( reason + " is classified as " + ( isNatural ? "a natural ending" : "a truncation" )
@@ -292,14 +291,8 @@ public class RewardCheck {
 			return;
 		}
 
-
-
-
 		double turnCost = stall.termTotal( RewardTerm.TURN_COST );
 		double expectedTurnCost = -config.turnCost * (stall.turns - freeSteps( stall ) );
-
-
-
 
 		if (Math.abs( turnCost - expectedTurnCost ) > 1e-5 ){
 			fail( "a stalled episode charged " + turnCost + " in turn cost where " + expectedTurnCost
@@ -430,14 +423,6 @@ public class RewardCheck {
 				return;
 			}
 
-
-
-
-
-
-
-
-
 			if (Dungeon.hero != null && Dungeon.hero.isAlive() && Dungeon.hero.HP < 12){
 				Dungeon.hero.HP = Dungeon.hero.HT;
 			}
@@ -479,17 +464,6 @@ public class RewardCheck {
 			return;
 		}
 
-
-
-
-
-
-
-
-
-
-
-
 		final int HP = 20;
 		double wholeHealthBar = config.damagePenalty * HP;
 
@@ -509,10 +483,6 @@ public class RewardCheck {
 			return;
 		}
 
-
-
-
-
 		if (!( config.sneakAttackReward > config.killReward )){
 			fail( "a surprise attack pays " + config.sneakAttackReward + " and a kill pays "
 					+ config.killReward + ". The surprise is the one that costs no health -"
@@ -520,8 +490,6 @@ public class RewardCheck {
 					+ " teaches trading blows instead." );
 			return;
 		}
-
-
 
 		int sneaks = o.ledger == null ? 0 : o.ledger.notes( RewardTerm.SNEAK_ATTACK );
 		if (sneaks == 0 ){
@@ -574,12 +542,6 @@ public class RewardCheck {
 			if (Char.hasProp( mob, Char.Property.LARGE ) && !Dungeon.level.openSpace[ cell ]) continue;
 			if (mob.state != mob.PASSIVE) mob.state = mob.WANDERING;
 			mob.pos = cell;
-
-
-
-
-
-
 
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline.spriteFor( mob );
 			Actor.add( mob );
@@ -657,11 +619,6 @@ public class RewardCheck {
 		double realStep = config.turnCost;
 		double freeStep = config.turnCost * config.freeStepCostFactor;
 
-
-
-
-
-
 		if (!( freeStep > 0 )){
 			fail( "a step that advances no engine time costs " + freeStep + ", so a free action is free."
 					+ " duelist-mid alternated equip and unequip for 120 steps at that price." );
@@ -678,9 +635,7 @@ public class RewardCheck {
 		Outcome o = play( config, 60, "FREESTEPCHECK", turn -> {
 			SPDEnv env = turn.env;
 
-
 			if (!env.running()) return;
-
 
 			if (env.mode() != EnvMode.WORLD){
 				env.step( Action.CANCEL, 0 );
@@ -709,8 +664,6 @@ public class RewardCheck {
 					+ " rather than compared as a total." );
 			return;
 		}
-
-
 
 		double realPaid = Math.abs( o.termTotal( RewardTerm.TURN_COST ) );
 		int realSteps = o.turns - charged;
@@ -773,8 +726,6 @@ public class RewardCheck {
 					+ " spendAndNext(TIME_TO_SEARCH) and the clock must move." );
 			return;
 		}
-
-
 
 		double flat = config.turnCost * steps[ 0 ];
 		if (charged < flat * 1.5 ){
@@ -844,7 +795,6 @@ public class RewardCheck {
 			return;
 		}
 
-
 		if (o.termTotal( RewardTerm.TURN_COST ) > 0 ){
 			fail( "TURN_COST paid " + o.termTotal( RewardTerm.TURN_COST ) + " over " + steps[ 0 ]
 					+ " searches; a positive turn cost pays the agent to spend time." );
@@ -893,18 +843,6 @@ public class RewardCheck {
 	 */
 	private static void checkSpendingATalentIsWorthALot( EnvConfig config ){
 
-
-
-
-
-
-
-
-
-
-
-
-
 		if (!( config.depthReward > config.talentReward )){
 			fail( "a talent point pays " + config.talentReward + " against " + config.depthReward
 					+ " for a descent. Depth is the objective, so it must outbid every incidental term -"
@@ -919,8 +857,6 @@ public class RewardCheck {
 		Outcome o = play( config, 40, "TALENTCHECK", turn -> {
 			Hero hero = Dungeon.hero;
 			if (hero == null || !hero.isAlive()) return;
-
-
 
 			if (turn.step < 2){
 				turn.env.step( Action.WAIT, 0 );
@@ -961,8 +897,6 @@ public class RewardCheck {
 			fail( "TALENT_UPGRADE was recorded " + notes + " time(s) and paid " + paid + "." );
 			return;
 		}
-
-
 
 		double levelUp = 2f;
 		if (!( paid > levelUp * notes )){
@@ -1043,10 +977,6 @@ public class RewardCheck {
 					+ " Stalling has to cost more than dying." );
 			return;
 		}
-
-
-
-
 
 		EnvConfig roomy = new EnvConfig();
 		roomy.freeStepBudget = 100000;
@@ -1131,8 +1061,6 @@ public class RewardCheck {
 		System.out.println( "  the reachable stall path records STALLED exactly once" );
 	}
 
-
-
 	/**
 	 * The shipped configuration must still pay every term.
 	 *
@@ -1207,7 +1135,6 @@ public class RewardCheck {
 				Dungeon.hero.HP = Dungeon.hero.HT;
 			}
 
-
 			if (turn.step % 4 == 3 ){
 				env.step( Action.USE, 0 );
 				if (env.mode() == EnvMode.SLOT) env.step( Action.USE, equippableSlot( env ) );
@@ -1237,8 +1164,6 @@ public class RewardCheck {
 			return;
 		}
 
-
-
 		List< String > paid = new ArrayList<>();
 		for (int i = 0; i < RewardTerm.count(); i++){
 			RewardTerm term = RewardTerm.at( i );
@@ -1256,8 +1181,6 @@ public class RewardCheck {
 					+ " a new floor or a win; everything else must total exactly zero." );
 			return;
 		}
-
-
 
 		if (o.ledger.notes( RewardTerm.EXPLORE ) == 0 ){
 			fail( "the driver searched and walked for " + o.turns + " turns and EXPLORE was never recorded,"
@@ -1414,7 +1337,6 @@ public class RewardCheck {
 
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()) return;
 
-
 			if (turn.step % 12 == 4 ){
 				if (ascend( env )){
 					ascents[ 0 ]++;
@@ -1493,8 +1415,6 @@ public class RewardCheck {
 		hero.ready = false;
 		return accepted;
 	}
-
-
 
 	/**
 	 * The hero must be able to die.
@@ -1589,8 +1509,6 @@ public class RewardCheck {
 	 */
 	private static void checkWaitingIsNotAFreeStep( EnvConfig config ){
 
-
-
 		Outcome o = play( config, config.freeStepBudget * 3, "WAITCOST", turn -> {
 			SPDEnv env = turn.env;
 			if (!env.running()) return;
@@ -1605,16 +1523,6 @@ public class RewardCheck {
 			fail( "the run produced no ledger, so nothing was measured." );
 			return;
 		}
-
-
-
-
-
-
-
-
-
-
 
 		if (o.stallCause == com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause.FREE_STEP){
 			fail( "waiting " + o.turns + " times ended the episode on the FREE_STEP guard, so WAIT is still"
@@ -1645,9 +1553,6 @@ public class RewardCheck {
 	 * {@code curAction} - {@code WAIT}, {@code SEARCH}, {@code USE}, {@code DROP} - leave the flag set.
 	 */
 	private static void checkRestIsNotAOneWayDoor( EnvConfig config ){
-
-
-
 
 		HeroProbe rest = HeroProbe.restThenWait( config );
 
@@ -1755,9 +1660,6 @@ public class RewardCheck {
 		final double[] refunded = { 0 };
 		final int[] slotUsed = { -1 };
 
-
-
-
 		final double[] identification = { 0 };
 
 		Outcome o = play( config, 200, "EXPLOITCHECK", turn -> {
@@ -1774,16 +1676,9 @@ public class RewardCheck {
 					tries[0]++;
 					grabbed[ 0 ] = new Potion();
 
-
-
-
-
-
 					grabbed[ 0 ].identify();
 					if (!takeItemFromTheFloor( env, grabbed[ 0 ] )) return;
 					if (!carries( grabbed[ 0 ] )){
-
-
 
 						phase[0] = 0;
 						return;
@@ -1846,12 +1741,6 @@ public class RewardCheck {
 			return;
 		}
 
-
-
-
-
-
-
 		double identifiedNow = o.ledger == null ? 0 : o.ledger.termTotal( RewardTerm.IDENTIFIED );
 		identification[ 0 ] = identifiedNow;
 		if (Math.abs( identification[ 0 ] ) > 1e-4 ){
@@ -1880,9 +1769,6 @@ public class RewardCheck {
 	 */
 	private static boolean takeItemFromTheFloor( SPDEnv env, Item item ){
 		if (Dungeon.level == null || Dungeon.hero == null) return false;
-
-
-
 
 		env.step( Action.WAIT, 0 );
 		if (!env.running()) return false;
@@ -1939,8 +1825,6 @@ public class RewardCheck {
 		return -1;
 	}
 
-
-
 	/** One episode's outcome, and the per-term totals that produced it. */
 	private static class Outcome {
 		double score;
@@ -1985,10 +1869,6 @@ public class RewardCheck {
 	private static Outcome playInWorld( EnvConfig config, Action action, int maxTurns ){
 
 		Outcome counted = new Outcome();
-
-
-
-
 
 		Outcome o = play( config, maxTurns, "REWARDCHECK", turn -> {
 			if (turn.env.mode() != EnvMode.WORLD ){

@@ -92,8 +92,6 @@ public class TransitionCheck {
 		}
 	}
 
-
-
 	/**
 	 * Walks the hero onto the exit and asks the level to do what {@code Hero.actTransition} does.
 	 *
@@ -162,8 +160,6 @@ public class TransitionCheck {
 		}
 		return env;
 	}
-
-
 
 	/**
 	 * A pending transition has to be noticed and serviced.
@@ -691,7 +687,6 @@ public class TransitionCheck {
 			env.step( move == null ? Action.WAIT : move, 0 );
 		}
 	}
-
 
 	private static void fail( String message ){
 		failures.add( message );

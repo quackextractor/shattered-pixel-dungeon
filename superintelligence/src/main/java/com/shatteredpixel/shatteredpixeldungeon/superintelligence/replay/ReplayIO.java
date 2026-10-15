@@ -26,8 +26,6 @@ public class ReplayIO {
 
 	private ReplayIO() {}
 
-
-
 	public static void write( Replay replay, File file ) throws IOException {
 		File parent = file.getAbsoluteFile().getParentFile();
 		if (parent != null){
@@ -80,7 +78,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				out.write( ' ' );
 				out.write( Double.toString( step.reward ));
 
-
 				out.write( ' ' );
 				out.write( step.quickslots );
 
@@ -95,10 +92,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		}
 	}
 
-
-
 	public static Replay read( File file ) throws IOException {
-
 
 		java.util.List<String> lines = Files.readAllLines( file.toPath(), StandardCharsets.UTF_8 );
 
@@ -125,8 +119,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			step.mode = parts[ 2 ];
 			if (parts.length > 3) step.heroPos = Integer.parseInt( parts[ 3 ] );
 			if (parts.length > 4) step.reward = Double.parseDouble( parts[ 4 ] );
-
-
 
 			if (parts.length > 5) step.quickslots = parts[ 5 ];
 			if (parts.length > 6) step.heroHp = Integer.parseInt( parts[ 6 ] );
@@ -287,8 +279,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		return config;
 	}
 
-
-
 	/** What re-executing a recorded run observed. */
 	public static class Verification {
 		public double score;
@@ -378,8 +368,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			heroClass = HeroClass.WARRIOR;
 		}
 
-
-
 		EnvConfig replayed = configFor( replay );
 		env.config().turnLimitPerFloor = replayed.turnLimitPerFloor;
 		env.config().maxSlots = replayed.maxSlots;
@@ -389,7 +377,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 
 		int cumulative = 0;
 
-
 		boolean wireDroppedFields = replay.wireDroppedStepFields();
 
 		for (int i = 0; i < replay.steps.size(); i++){
@@ -397,18 +384,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 
 			Replay.Step step = replay.steps.get( i );
 			Action action = Action.valueOf( step.action );
-
-
-
-
-
-
-
-
-
-
-
-
 
 			String unwatchable = Quickslots.prepare( step, i, wireDroppedFields );
 			if (unwatchable != null){
@@ -420,15 +395,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 
 			cumulative += env.step( action, step.slot );
 			result.stepsVerified++;
-
-
-
-
-
-
-
-
-
 
 			if (step.heroPos >= 0 && env.heroPosition() != step.heroPos ){
 				result.diverged = true;
@@ -444,9 +410,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				break;
 			}
 
-
-
-
 			if (step.turn >= 0 && Actor.now() != step.turn ){
 				result.diverged = true;
 				result.divergedAt = i;
@@ -461,10 +424,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 						+ "], recorded [" + step.inventory + "]";
 				break;
 			}
-
-
-
-
 
 			if (observer != null) observer.onStep( i, step, true );
 		}

@@ -42,7 +42,6 @@ public class EpisodeRecord {
 	/** Value of the state the last step led to, so a truncated episode can bootstrap. */
 	private float finalValue;
 
-
 	public int stepCount(){
 		return steps;
 	}
@@ -81,9 +80,6 @@ public class EpisodeRecord {
 			float logProbability ){
 
 		ensure( steps );
-
-
-
 
 		rewards[ steps ] = reward;
 		values[ steps ] = value;
@@ -131,8 +127,6 @@ public class EpisodeRecord {
 		Policy.computeEpisodeAdvantages( rewards, values, terminal, steps, finalValue, gamma, lambda,
 				advantages, returns );
 
-
-
 		for (int i = 0; i < sampled.size(); i++){
 			Transition t = sampled.get( i );
 			int step = sampledSteps[ i ];
@@ -156,8 +150,6 @@ public class EpisodeRecord {
 		sampled.clear();
 		steps = 0;
 	}
-
-
 
 	/** Grows every per-step array together, so the GAE pass can index them in lockstep. */
 	private void ensure( int index ){

@@ -75,23 +75,12 @@ public class ScriptedPolicy {
 
 case TARGETING:
 
-
-
-
-
-
-
-
-
-
-
 				slotOut[ 0 ] = chooseTarget( env );
 				return Action.USE;
 
 case SLOT:
 			case INVENTORY:
 				int pick = pickItemWorthUsing( env );
-
 
 				if (pick < 0){
 					slotOut[ 0 ] = 0;
@@ -164,13 +153,11 @@ private Action chooseWorldAction( SPDEnv env ){
 		prevChoosePos = Dungeon.hero.pos;
 		settlePendingTransition();
 
-
 		if (!useExercised && mask[ Action.USE.index ] > 0.5f ){
 			useExercised = true;
 			noteProgress( env );
 			return Action.USE;
 		}
-
 
 		if (!inventoryExercised && mask[ Action.OPEN_INVENTORY.index ] > 0.5f ){
 			inventoryExercised = true;
@@ -178,12 +165,10 @@ private Action chooseWorldAction( SPDEnv env ){
 			return Action.OPEN_INVENTORY;
 		}
 
-
 		if (hp < 0.35f && !hasAdjacentEnemy() && mask[ Action.REST.index ] > 0.5f ){
 			noteProgress( env );
 			return Action.REST;
 		}
-
 
 		if (hp < 0.8f && mask[ Action.USE.index ] > 0.5f ){
 			int slot = pickItemWorthUsing( env );
@@ -192,12 +177,6 @@ private Action chooseWorldAction( SPDEnv env ){
 				return Action.USE;
 			}
 		}
-
-
-
-
-
-
 
 		int stairs = adjacentTransitionCell( env );
 		if (mask[ Action.INTERACT.index ] > 0.5f && stairs >= 0 && !deadTransitions.contains( stairs )
@@ -208,28 +187,19 @@ private Action chooseWorldAction( SPDEnv env ){
 			return Action.INTERACT;
 		}
 
-
 		if (hasAdjacentEnemy() && mask[ Action.INTERACT.index ] > 0.5f ){
 			noteProgress( env );
 			return Action.INTERACT;
 		}
-
-
-
 
 		if (mask[ Action.INTERACT.index ] > 0.5f && adjacentItem()){
 			noteProgress( env );
 			return Action.INTERACT;
 		}
 
-
-
 		Action[] moves = {
 				Action.MOVE_E, Action.MOVE_W, Action.MOVE_S, Action.MOVE_N,
 				Action.MOVE_SE, Action.MOVE_SW, Action.MOVE_NE, Action.MOVE_NW };
-
-
-
 
 Action toward = moveTowardItem( env, moves );
 		if (toward != null && mask[ toward.index ] > 0.5f && !backtrack( toward ) ){
@@ -237,11 +207,6 @@ Action toward = moveTowardItem( env, moves );
 			noteProgress( env );
 			return toward;
 		}
-
-
-
-
-
 
 		if (adjacentGrassItem()){
 			Action step = stepOntoGrassItem( env, moves );
@@ -268,8 +233,6 @@ Action fallback = null;
 			}
 		}
 
-
-
 		if (unbacked != null){
 			lastMove = unbacked;
 			noteProgress( env );
@@ -281,7 +244,6 @@ Action fallback = null;
 			noteProgress( env );
 			return fallback;
 		}
-
 
 		if (mask[ Action.REST.index ] > 0.5f ){
 			noteProgress( env );
@@ -319,10 +281,6 @@ Action fallback = null;
 		int hero = Dungeon.hero.pos;
 		for (Heap heap : Dungeon.level.heaps.valueList()){
 			if (!Dungeon.level.adjacent( heap.pos, hero )) continue;
-
-
-
-
 
 			if (onPickableTerrain( heap.pos )) return true;
 		}
@@ -397,8 +355,6 @@ Action fallback = null;
 		for (Heap heap : heaps){
 			if (heap.pos == hero) continue;
 
-
-
 			boolean[] passable = Dungeon.level.passable;
 			PathFinder.buildDistanceMap( heap.pos, passable );
 
@@ -409,7 +365,6 @@ Action fallback = null;
 				int cell = hero + move.dx + move.dy * Dungeon.level.width();
 				if (cell < 0 || cell >= distance.length) continue;
 
-
 				if (distance[ cell ] <= 0 || distance[ cell ] >= distance[ hero ]) continue;
 
 				if (distance[ cell ] < bestDistance){
@@ -417,10 +372,6 @@ Action fallback = null;
 					best = move;
 				}
 			}
-
-
-
-
 
 			if (best != null) break;
 
@@ -503,19 +454,6 @@ private int firstOccupiedSlot( SPDEnv env ){
 			if (item != null && item.usesTargeting) return i;
 		}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 		for (int i = 0; i < mask.length; i++){
 			if (mask[ i ] <= 0.5f ) continue;
 			Item item = env.mapper().slot( i );
@@ -556,7 +494,6 @@ if (pos == lastPos && hp == lastHp){
 		if (stuck > 6){
 			stuck = 0;
 			lastMove = null;
-
 
 			prevChoosePos = -1;
 		}

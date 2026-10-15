@@ -39,7 +39,6 @@ public class PPO {
 	public final EnvConfig config;
 	public final Network network;
 
-
 	public float gamma = 0.99f;
 	public float lambda = 0.95f;
 	public float clipEpsilon = 0.2f;
@@ -105,9 +104,6 @@ public class PPO {
 
 	private final ArrayList<Transition> buffer = new ArrayList<>();
 
-
-
-
 	private final float[] actionProbs;
 	private final float[] slotProbs;
 	private final float[] targetProbs;
@@ -148,7 +144,6 @@ public class PPO {
 		buffer.subList( 0, Math.min( count, buffer.size() ) ).clear();
 	}
 
-
 	public float lastPolicyLoss;
 	public float lastValueLoss;
 	public float lastEntropy;
@@ -181,9 +176,6 @@ public float lastClipFraction;
 		this.scratchGradTarget = new float[
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.TARGET_COUNT ];
 	}
-
-
-
 
 	public int bufferSize(){
 		return buffer.size();
@@ -222,8 +214,6 @@ public float lastClipFraction;
 	public void update(){
 		if (buffer.isEmpty()) return;
 
-
-
 		threadCount();
 
 		network.zeroGrad();
@@ -244,8 +234,6 @@ public float lastClipFraction;
 		for (int epoch = 0; epoch < epochs; epoch++){
 			shuffle( buffer );
 
-
-
 			network.resetState();
 
 			for (int start = 0; start < n; start += minibatchSize){
@@ -255,9 +243,6 @@ public float lastClipFraction;
 				lastMinibatches++;
 			}
 		}
-
-
-
 
 		if (lastMinibatches > 0){
 			lastPolicyLoss /= lastMinibatches;
@@ -285,8 +270,6 @@ public float lastClipFraction;
 	 */
 	private void oneMinibatch( int from, int to ){
 		int count = Math.max( 1, to - from );
-
-
 
 		Minibatch m = threads > 1 ? sharded.run( from, to ) : null;
 		accumulate( m != null ? m : processMinibatch( from, to ), count );
@@ -407,7 +390,6 @@ public float lastClipFraction;
 
 		Stats s = new Stats();
 
-
 		if (t.recurrentState != null) net.loadState( t.recurrentState );
 
 		t.unpackGrid( grid );
@@ -446,8 +428,6 @@ public float lastClipFraction;
 		java.util.Arrays.fill( gradient, 0f );
 
 		Policy.probabilities( logits, mask, probabilities );
-
-
 
 		s.clipBinding = Policy.accumulatePolicyGradient( probabilities, mask, chosen,
 				t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
@@ -500,10 +480,6 @@ public float lastClipFraction;
 
 		int count = Math.max( 1, to - from );
 
-
-
-
-
 		network.scaleGradients( 1f / count );
 		float norm = network.clipGradients( network.gradClip );
 
@@ -525,10 +501,8 @@ public float lastClipFraction;
 		float newLog = Policy.logProbability( probabilities, chosen );
 		float ratio = (float) Math.exp( newLog - behaviourLogProbability );
 
-
 		return (ratio - 1f) - (float) Math.log( Math.max( ratio, 1e-8f ) );
 	}
-
 
 	private void shuffle( ArrayList<Transition> list ){
 		for (int i = list.size() - 1; i > 0; i--){
@@ -539,4 +513,3 @@ public float lastClipFraction;
 		}
 	}
 }
-

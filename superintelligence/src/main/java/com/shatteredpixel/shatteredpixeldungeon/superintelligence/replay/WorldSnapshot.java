@@ -317,7 +317,6 @@ public class WorldSnapshot {
 		sb.append( "\tcd=" ).append( mob.cooldown() );
 		sb.append( "\tdead=" ).append( !mob.isAlive() );
 
-
 		sb.append( "\tsees=" ).append( seesHero( mob, heroPos ) );
 		sb.append( "\tseen=" ).append( mob.enemySeen() );
 		sb.append( "\talerted=" ).append( mob.alerted() );
@@ -378,16 +377,6 @@ public class WorldSnapshot {
 		Trap trap = level.traps.get( cell );
 		Plant plant = level.plants.get( cell );
 
-
-
-
-
-
-
-
-
-
-
 		boolean pit = level.pit[ cell ];
 		boolean plain = heap == null && trap == null && plant == null && !pit
 				&& level.getTransition( cell ) == null
@@ -397,7 +386,6 @@ public class WorldSnapshot {
 		StringBuilder sb = new StringBuilder( "cell\t" ).append( cell );
 		sb.append( "\tx=" ).append( cell % level.width() );
 		sb.append( "\ty=" ).append( cell / level.width() );
-
 
 		sb.append( "\ttier=" ).append( level.tileName( level.map[cell] ) );
 		sb.append( "\tvis=" ).append( flag( level.heroFOV, cell ) );
@@ -490,7 +478,6 @@ public class WorldSnapshot {
 	private static void appendItem( StringBuilder sb, Item item, String path ){
 		if (item == null) return;
 		sb.append( path ).append( '=' ).append( item.getClass().getSimpleName() );
-
 
 		sb.append( "(l" ).append( item.level() ).append( "/t" ).append( item.trueLevel() );
 		sb.append( " q" ).append( item.quantity() );

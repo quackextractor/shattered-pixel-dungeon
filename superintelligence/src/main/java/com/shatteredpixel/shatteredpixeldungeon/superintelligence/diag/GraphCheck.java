@@ -180,8 +180,6 @@ public class GraphCheck {
 			return;
 		}
 
-
-
 		if (!ProgressBar.estimate( 0, 30, now ).equals( "-" )
 				|| !ProgressBar.estimate( 30, 30, now ).equals( "-" )
 				|| ProgressBar.estimate( 15, 30, now ).equals( "-" )){

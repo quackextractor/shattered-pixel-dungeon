@@ -104,8 +104,6 @@ public class ConfigCheck {
 		}
 	}
 
-
-
 	/**
 	 * The positive control: a wrong value in a file has to produce a wrong setting.
 	 *
@@ -177,8 +175,6 @@ public class ConfigCheck {
 private static void checkEveryConfigFieldTravelsToAWorker() throws IOException {
 	EnvConfig source = new EnvConfig();
 
-
-
 	EnvConfig probe = new EnvConfig();
 	probe.maxSlots = 3;             probe.gridWidth = 4;           probe.gridHeight = 5;
 	probe.turnLimitPerFloor = 6;    probe.turnLimitTotal = 7;      probe.actorStepLimit = 8;
@@ -207,13 +203,10 @@ private static void checkEveryConfigFieldTravelsToAWorker() throws IOException {
 		got.readFrom( new java.io.DataInputStream( new java.io.ByteArrayInputStream( bytes.toByteArray() )));
 	} catch (java.io.EOFException e){
 
-
-
 		fail( "writeTo wrote fewer values than readFrom reads, so a worker would desync mid-stream."
 				+ " The two halves of the config wire format have drifted." );
 		return;
 	}
-
 
 	EnvConfig copied = probe.copy();
 	java.util.List< String > lost = new java.util.ArrayList<>();
@@ -231,11 +224,6 @@ private static void checkEveryConfigFieldTravelsToAWorker() throws IOException {
 				+ " worker: " + String.join( ", ", lost ));
 		return;
 	}
-
-
-
-
-
 
 	java.io.ByteArrayOutputStream sized = new java.io.ByteArrayOutputStream();
 	new EnvConfig().writeTo( new java.io.DataOutputStream( sized ));
@@ -305,7 +293,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 	private static void checkTheShippedFileMatchesTheCompiledDefaults() throws IOException {
 		Path shipped = shippedFile();
 		Map<String, String> values = read( shipped );
-
 
 		EnvConfigBinder.Loaded defaults = EnvConfigBinder.load( null );
 		EnvConfig config = defaults.config;
@@ -489,8 +476,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		}
 	}
 
-
-
 	/**
 	 * {@code --out} must move every default output, not just some of them.
 	 *
@@ -515,7 +500,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		expectUnder( "--out without --save moves the checkpoint", plain.save, dir, "weights.bin" );
 		expectUnder( "--out without --metrics moves the history", plain.metricsCsv, dir, "metrics.csv" );
 
-
 		File explicit = new File( scratch, "chosen-by-hand.bin" );
 		TrainOptions pinned = TrainOptions.parse( new String[]{
 				"--out", dir.getPath(), "--save", explicit.getPath() } );
@@ -525,7 +509,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 					+ " worse bug than the one being fixed here." );
 			return;
 		}
-
 
 		TrainOptions bare = TrainOptions.parse( new String[ 0 ] );
 		if (bare.save == null || bare.metricsCsv == null){
@@ -668,7 +651,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 			case "rl.max_sampled_per_episode": return "128";
 			case "rl.max_samples_per_generation": return "512";
 			case "rl.stall_seconds":          return "60";
-
 
 			case "reward.profile":            return "depth_only";
 			case "reward.turn_cost":          return "0.5";

@@ -50,10 +50,6 @@ public class Graph {
 			if (v > max) max = v;
 		}
 
-
-
-
-
 		row.min = min;
 		row.max = max;
 		row.flat = (max - min) < 1e-6f;
@@ -109,7 +105,6 @@ public class Graph {
 			if (v < min) min = v;
 			if (v > max) max = v;
 		}
-
 
 		row.min = min;
 		row.max = max;

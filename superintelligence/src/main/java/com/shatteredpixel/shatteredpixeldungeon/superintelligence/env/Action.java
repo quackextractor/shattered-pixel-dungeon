@@ -45,10 +45,6 @@ public enum Action {
 	MOVE_W  ( Kind.WORLD, -1,  0 ),
 	MOVE_NW ( Kind.WORLD, -1, -1 ),
 
-
-
-
-
 	WAIT    ( Kind.TIME,  0, 0 ),
 
 	/** Rest until healed or interrupted. Costs hunger. */

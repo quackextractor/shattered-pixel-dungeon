@@ -78,7 +78,6 @@ public class Trainer {
 	 */
 	private final TrainerWorkers pool;
 
-
 	private final ReplayKeeper keeper = new ReplayKeeper();
 
 	/**
@@ -342,8 +341,6 @@ public class Trainer {
 
 		Checkpoint.Meta meta = Checkpoint.load( file, ppo.network, config );
 
-
-
 		epoch = meta.generation;
 		resumedFrom = meta;
 
@@ -371,12 +368,9 @@ public class Trainer {
 		EnvConfig config;
 		try {
 
-
-
 			config = loadedConfig( configFileIn( args ) );
 			options = TrainOptions.parse( args );
 		} catch (IOException | IllegalArgumentException e){
-
 
 			System.err.println( "[ERROR] " + e.getMessage() );
 			System.exit( 1 );
@@ -385,8 +379,6 @@ public class Trainer {
 
 		HeadlessServices.install( options.workDir );
 		HeadlessServices.disableSaving( true );
-
-
 
 		if (options.rewardProfile() != null){
 			config.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
@@ -401,14 +393,12 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
 
-
 			trainer.batch( options.epochs, options.minibatchSize );
 			trainer.updateThreads( options.updateThreads );
 			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,
 					options.maxSamplesPerGeneration );
 			trainer.history( new MetricsHistory( options.metricsCsv ));
 			trainer.checkpointing( options.save, options.checkpointEvery );
-
 
 			trainer.resume( options.resume );
 
@@ -418,14 +408,9 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		} catch (IOException e){
 			System.err.println( "[ERROR] training failed: " + e.getMessage() );
 
-
-
-
 			e.printStackTrace();
 			System.exit( 1 );
 		} finally {
-
-
 
 			try {
 				trainer.saveOnExit();
@@ -438,36 +423,15 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		}
 	}
 
-
-
 	private void writeParams( DataOutputStream out ) throws IOException {
 		out.writeInt( Protocol.MSG_PARAMS );
 
-
-
-
-
 		config.writeTo( out );
-
-
-
 
 		out.writeFloat( ppo.gamma );
 		out.writeFloat( ppo.lambda );
 
-
-
-
-
-
-
-
-
-
 		out.writeUTF( traceWorldPath == null ? "" : traceWorldPath );
-
-
-
 
 		out.writeFloat( (float) sampleRate() );
 		out.writeInt( (int) maxSampledPerEpisode() );
@@ -475,8 +439,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		out.writeLong( rng.nextLong() );
 		Worker.writeWeights( out, ppo.network );
 	}
-
-
 
 	/**
 	 * Refuses to grow the update buffer past {@link #maxSamplesPerGeneration}.
@@ -505,7 +467,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 	/** Transitions discarded by {@link #enforceGenerationCap} this generation, for the report. */
 	private int droppedThisGeneration;
 
-
 	private int lastSampledSteps;
 	private double lastAdvantageMean;
 	private double lastAdvantageStd;
@@ -523,10 +484,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		pool.startWatchdog();
 
 		if (metrics != null) metrics.open();
-
-
-
-
 
 		int first = resumedFrom == null ? 0 : resumedFrom.generation;
 		this.lastGeneration = first + generations;
@@ -546,10 +503,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			epoch = g;
 			advanceSchedule();
 
-
-
-
-
 			episodesPerWorker = workerCount;
 			List<TrainerWorkers.Job> jobs = planGeneration( workerCount );
 
@@ -558,13 +511,8 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			gen.stop();
 			lastWorkerSeconds = sumWorkerCpuSeconds( episodes );
 
-
-
 			for (Episode e : episodes) ppo.addAll( e.transitions );
 			enforceGenerationCap();
-
-
-
 
 			lastSampledSteps = ppo.bufferSize();
 			lastAdvantageMean = ppo.meanAdvantage();
@@ -576,8 +524,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 				update.stop();
 				lastUpdate = update;
 
-
-
 				ResourceStats.Interval push = ResourceStats.start();
 				pool.pushWeights();
 				push.stop();
@@ -586,7 +532,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			}
 
 			report( g, episodes, gen );
-
 
 			maybeCheckpoint( g + 1 );
 
@@ -597,7 +542,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		clearProgressBar();
 
 		saveBestReplays();
-
 
 		if (metrics != null) metrics.printTrend();
 	}
@@ -615,7 +559,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		int bestDepth = 0;
 
 		if (metrics != null){
-
 
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.MetricsHistory.Snapshot last =
 					metrics.latest();
@@ -702,10 +645,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		for (WorkerHandle worker : pool.workers()){
 			for (int i = 0; i < workerCount; i++){
 
-
-
-
-
 				boolean wantReplay = (i % recordEvery) == 0;
 				String seed = seeds.next();
 				HeroClass heroClass = HeroClass.values()[ rng.nextInt( HeroClass.values().length ) ];
@@ -739,8 +678,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 	/** Seconds the last generation spent on the update and the weight push, where no worker runs. */
 	private double lastBarrierSeconds;
-
-
 
 	/**
 	 * Tally one episode's termination reason into the report.
@@ -833,9 +770,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		s.turnsPerSecond = ResourceStats.stepsPerSecond( totalTurns, wall );
 		s.episodesPerSecond = n / Math.max( 1e-9, wall );
 
-
-
-
 		s.workerCores = wall <= 0 ? 0 : lastWorkerSeconds / wall;
 		s.trainerCores = Math.max( 0, gen.coresUsed() );
 
@@ -849,8 +783,6 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		s.advantageMean = lastAdvantageMean;
 		s.advantageStd = lastAdvantageStd;
 
-
-
 		s.sampledBytes = 0;
 		s.gridBytes = 0;
 		for (Episode e : episodes){
@@ -862,12 +794,9 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			}
 		}
 
-
-
 		droppedThisGeneration = 0;
 
 		GenerationReport.print( s );
-
 
 		if (metrics != null) metrics.record( s );
 	}
@@ -886,29 +815,13 @@ private void saveBestReplays(){
 		File dir = replayDir();
 		int saved = 0;
 
-
-
-
-
-
-
-
-
 		replayDirBase().mkdirs();
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIndex.record( replayDirBase() );
 
 		for (Replay replay : keeper.keep()){
 			replay.generation = epoch;
 
-
-
-
 			replay.group = replayGroup;
-
-
-
-
-
 
 			File file = uniqueFile( dir, replay.seedText );
 			try {
@@ -948,8 +861,6 @@ private void saveBestReplays(){
 		File here = new File( "." ).getAbsoluteFile();
 		for (int i = 0; i < 6 && here != null; i++){
 			if (new File( here, "superintelligence.properties" ).isFile()) return tidy( here );
-
-
 
 			if (new File( here, "superintelligence/build.gradle" ).isFile()){
 				return tidy( new File( here, "superintelligence" ) );

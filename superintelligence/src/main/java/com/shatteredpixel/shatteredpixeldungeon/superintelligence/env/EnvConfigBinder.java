@@ -77,7 +77,6 @@ public class EnvConfigBinder {
 			"env.allow_alchemy",
 			"env.persist_saves",
 
-
 			"reward.profile",
 			"reward.turn_cost",
 			"reward.depth_reward",
@@ -94,7 +93,6 @@ public class EnvConfigBinder {
 			"reward.turn_limit_penalty",
 			"reward.victory_reward",
 			"reward.curriculum_progress",
-
 
 			"rl.learning_rate",
 			"rl.gamma",
@@ -175,7 +173,6 @@ public class EnvConfigBinder {
 		if (file != null){
 			if (!Files.isReadable( file )){
 
-
 				System.err.println( "[WARN] no configuration at " + file
 						+ "; using the compiled defaults." );
 			} else {
@@ -202,7 +199,6 @@ public class EnvConfigBinder {
 			String envName = environmentName( key );
 			String fromEnv = System.getenv( envName );
 
-
 			boolean fromFile = raw != null;
 			String value = (fromEnv != null) ? fromEnv : raw;
 			if (value == null) continue;
@@ -212,7 +208,6 @@ public class EnvConfigBinder {
 			binder.apply( config, hyper, key, value, origin );
 			applied++;
 			if (!fromFile && fromEnv != null){
-
 
 				binder.warn( key + " came from " + envName
 						+ " rather than a file, so it is not part of the recorded configuration." );
@@ -253,7 +248,6 @@ case "env.stall_limit":           config.stallLimit = integer( key, value, origi
 			case "env.allow_alchemy":        config.allowAlchemy = bool( key, value, origin ); break;
 			case "env.persist_saves":        config.persistSaves = bool( key, value, origin ); break;
 
-
 			case "reward.profile":
 				try {
 					config.rewardProfile =
@@ -284,7 +278,6 @@ case "reward.free_step_cost_factor":
 			case "reward.curriculum_progress":
 				config.curriculumProgress = decimal( key, value, origin ); break;
 
-
 			case "rl.learning_rate":     hyper.learningRate = decimal( key, value, origin ); break;
 			case "rl.gamma":             hyper.gamma = decimal( key, value, origin ); break;
 			case "rl.gae_lambda":        hyper.lambda = decimal( key, value, origin ); break;
@@ -301,8 +294,6 @@ case "reward.free_step_cost_factor":
 			case "rl.stall_seconds":     hyper.stallSeconds = integer( key, value, origin ); break;
 
 			default:
-
-
 
 				throw new IllegalStateException( "no handler for key '" + key + "'" );
 		}

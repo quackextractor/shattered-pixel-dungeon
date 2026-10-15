@@ -36,7 +36,6 @@ public class JavaLint {
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 		if (compiler == null){
 
-
 			System.err.println( "[WARN]  javaclint: no system java compiler available, skipping" );
 			return;
 		}

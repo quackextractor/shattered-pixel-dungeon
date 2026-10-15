@@ -108,11 +108,6 @@ public class CollectCheck {
 	private static void checkTheKeeperKeepsTheEpisodesWorthWatching( EnvConfig config ){
 		ReplayKeeper keeper = new ReplayKeeper();
 
-
-
-
-
-
 		Replay ordinary = replay( "KEEPER-A", "WARRIOR", 1, -3_100.0 );
 		Replay floorTwo = replay( "KEEPER-A", "ROGUE", 2, -1_276.0 );
 		Replay alsoOrdinary = replay( "KEEPER-B", "MAGE", 1, -3_400.0 );
@@ -156,7 +151,6 @@ public class CollectCheck {
 					+ " is not being applied. Kept: " + seedsOf( kept ) );
 			return;
 		}
-
 
 		ReplayKeeper onlyOne = new ReplayKeeper();
 		onlyOne.consider( dreadful );
@@ -221,7 +215,6 @@ public class CollectCheck {
 		sample.allowEquipping = false;
 		sample.termination = "DEATH";
 
-
 		sample.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
 				.RewardProfile.DEPTH_ONLY;
 
@@ -258,7 +251,6 @@ public class CollectCheck {
 		}
 
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay.Step r = back.steps.get( 0 );
-
 
 		if (r.heroHp != s.heroHp ){
 			fail( "heroHp did not survive the wire: " + s.heroHp + " -> " + r.heroHp
@@ -305,9 +297,6 @@ public class CollectCheck {
 			return;
 		}
 
-
-
-
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		Network network = new Network( config, new Random( 31337L ) );
 		EpisodeCollector collector = new EpisodeCollector( config, network,
@@ -320,13 +309,6 @@ public class CollectCheck {
 			@Override public void onEpisodeStart( String seedText, String hero ){
 				recorder.begin( seedText, hero, 0, config.turnLimitPerFloor, config );
 			}
-
-
-
-
-
-
-
 
 			@Override public void onDecision( EnvMode mode, Action action, int secondary ){
 				recorder.record( action, secondary, mode );
@@ -371,12 +353,6 @@ public class CollectCheck {
 			return;
 		}
 
-
-
-
-
-
-
 		if (recorded.steps.get( 0 ).inventory.isEmpty() ){
 			fail( "step 0 carries no inventory, but every hero class starts with a VelvetPouch, so"
 					+ " this field is not being written at all" );
@@ -412,8 +388,6 @@ public class CollectCheck {
 			fail( "the collector recorded no steps, so nothing was checked" );
 			return;
 		}
-
-
 
 		boolean moved = false;
 		for (int i = 1; i < trace.steps.size(); i++){
@@ -522,7 +496,6 @@ public class CollectCheck {
 			}
 		} );
 
-
 		collector.run( env, "", HeroClass.WARRIOR );
 		collector.listener( null );
 
@@ -537,8 +510,6 @@ public class CollectCheck {
 			return;
 		}
 
-
-
 		SPDEnv fresh = new SPDEnv( config, HeadlessGame.install() );
 		fresh.reset( trace.seedText, HeroClass.WARRIOR );
 		String replayed = fresh.seedText();
@@ -551,8 +522,6 @@ public class CollectCheck {
 
 		replay( fresh, config, trace );
 	}
-
-
 
 	/**
 	 * A {@code DROP} must be recorded against the quickslot bindings its slot index was chosen with.
@@ -580,9 +549,6 @@ public class CollectCheck {
 	private static void checkDropRecordsTheBindingsItsSlotIndexWasChosenAgainst( EnvConfig config ){
 		String where = "a DROP records the bindings its slot index was chosen against";
 
-
-
-
 		Recorded run = recordADrop( config, false );
 		if ( run == null ) return;
 		if ( run.dropAt < 0 ){
@@ -599,15 +565,12 @@ public class CollectCheck {
 			return;
 		}
 
-
-
 		if ( run.captureAfter.equals( recorded )){
 			fail( where, "the bindings captured after the step are identical to the ones captured before"
 					+ " it (" + recorded + "), so this case cannot tell the two instants apart and would"
 					+ " pass with the recording bug present" );
 			return;
 		}
-
 
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.Verification result =
 				verifyRecording( config, run.replay );
@@ -617,9 +580,6 @@ public class CollectCheck {
 						+ result.divergence : result.unwatchable ) );
 			return;
 		}
-
-
-
 
 		Recorded late = recordADrop( config, true );
 		if ( late == null || late.dropAt < 0 ){
@@ -667,7 +627,6 @@ public class CollectCheck {
 		recorder.begin( env.seedText(), HeroClass.DUELIST.name(), 0, config.turnLimitPerFloor, config );
 		out.replay = recorder.replay();
 
-
 		int slot = -1;
 		env.mapper().refreshSlots();
 		for (int i = 0; i < env.mapper().slots().size(); i++){
@@ -682,11 +641,9 @@ public class CollectCheck {
 		out.droppedItem = chosen.getClass().getSimpleName();
 		out.droppedSlot = com.shatteredpixel.shatteredpixeldungeon.Dungeon.quickslot.getSlot( chosen );
 
-
 		recorder.record( Action.USE, 0, EnvMode.WORLD );
 		env.step( Action.USE, 0 );
 		recorder.afterStep( env.heroPosition(), 0f );
-
 
 		out.dropAt = recorder.replay().length();
 		if ( captureAfterStep ){
@@ -702,7 +659,6 @@ public class CollectCheck {
 			out.captureAfter = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay
 					.Quickslots.capture();
 		}
-
 
 		int[] nothing = new int[ 1 ];
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy policy =
@@ -776,16 +732,12 @@ public class CollectCheck {
 				}
 			} );
 
-
-
 			collector.run( env, "COLLECT-DEC-" + attempt, HeroClass.DUELIST );
 			collector.listener( null );
 			recorder.end( 0, env.deepestDepth(), env.turnsTotal(), 0, env.endReason().name() );
 
 			for (int i = 0; i < clockAtDecision.size() && i < clockAtStep.size(); i++){
 				if (clockAtStep.get( i ) <= clockAtDecision.get( i )) continue;
-
-
 
 				String bindings = recorder.replay().steps.get( i ).quickslots;
 				System.out.println( "  the collector announces a decision on engine time "
@@ -803,8 +755,6 @@ public class CollectCheck {
 
 	/** How many collector episodes to try before reporting that the fixture could not be built. */
 	private static final int ATTEMPTS = 12;
-
-
 
 	/** Writes a recording out and reads it back, so verification sees the file rather than the object. */
 	private static com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.Verification

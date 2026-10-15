@@ -57,15 +57,12 @@ final class ParallelFixtures {
 			t.actionIndex = 2;
 			t.slotIndex = 1;
 
-
 			t.liveHead = i % 3;
 
 			for (int g = 0; g < t.grid.length; g++) t.grid[ g ] = (byte) (rng.nextFloat() > 0.55f ? 1 : 0);
 			for (float[] a : new float[][]{ t.inventory, t.hero, t.actionMask, t.slotMask, t.targetMask }){
 				for (int k = 0; k < a.length; k++) a[ k ] = rng.nextFloat();
 			}
-
-
 
 			net.saveState( t.recurrentState );
 			net.forward( gridOf( t ), t.inventory, t.hero );
@@ -74,7 +71,6 @@ final class ParallelFixtures {
 
 			out.add( t );
 		}
-
 
 		Random adv = new Random( 90210L );
 		for (Transition t : out){

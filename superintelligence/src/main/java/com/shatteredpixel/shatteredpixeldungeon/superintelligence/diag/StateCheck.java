@@ -79,7 +79,6 @@ public class StateCheck {
 		Network network = new Network( config, new Random( 31337L ) );
 		List<Transition> transitions = collect( network, config, 8, 99L );
 
-
 		double worst = 0;
 		network.resetState();
 		for (int i = transitions.size() - 1; i >= 0; i--){
@@ -139,11 +138,9 @@ public class StateCheck {
 
 		replayTo( network, t, full );
 
-
 		network.loadState( full );
 		network.forward( grid( t ), t.inventory, t.hero );
 		float correct = network.value();
-
 
 		float[] hiddenOnly = full.clone();
 		int half = hiddenOnly.length / 2;
@@ -181,9 +178,6 @@ public class StateCheck {
 		bare.recurrentState = null;
 		bare.value = t.value;
 
-
-
-
 		network.loadState( t.recurrentState );
 		network.forward( grid( t ), t.inventory, t.hero );
 		float correct = network.value();
@@ -202,8 +196,6 @@ public class StateCheck {
 			fail( "a transition built without a state has one anyway" );
 		}
 	}
-
-
 
 	private static EnvConfig smallConfig(){
 		EnvConfig config = new EnvConfig();
@@ -235,7 +227,6 @@ public class StateCheck {
 			for (float[] a : new float[][]{ t.inventory, t.hero, t.actionMask, t.slotMask, t.targetMask }){
 				for (int k = 0; k < a.length; k++) a[ k ] = rng.nextFloat();
 			}
-
 
 			network.saveState( t.recurrentState );
 			network.forward( grid( t ), t.inventory, t.hero );

@@ -114,8 +114,6 @@ public class WorldTrace {
 		System.out.println( "[worldtrace] " + file.getName() + ": " + replayed + " steps -> " + out
 				+ " (" + snapshot.lines().size() + " records, cells=" + cells + ")" );
 
-
-
 		List< String > changed = WorldDiff.changedRecords( snapshot, "step" );
 		if (changed.isEmpty()){
 			System.out.println( "[worldtrace] WARNING no step record differs from the one before it;"

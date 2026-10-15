@@ -88,7 +88,6 @@ public final class Checkpoint {
 		Path parent = target.getParent();
 		if (parent != null) Files.createDirectories( parent );
 
-
 		Path temp = Files.createTempFile( parent, "weights-", ".tmp" );
 		try {
 			try (DataOutputStream out = new DataOutputStream(
@@ -99,9 +98,6 @@ public final class Checkpoint {
 				out.writeInt( generation );
 				out.writeInt( network.adamSteps() );
 				out.writeLong( trainSeed );
-
-
-
 
 				out.writeInt( config.maxSlots );
 				out.writeInt( config.gridWidth );
@@ -180,7 +176,6 @@ public final class Checkpoint {
 						readFloats( in ), readFloats( in ) );
 			}
 
-
 			int momentGroups = in.readInt();
 			Network.Moments[] moments = new Network.Moments[ momentGroups ];
 			for (int i = 0; i < momentGroups; i++){
@@ -197,7 +192,6 @@ public final class Checkpoint {
 
 			for (Network.Layer layer : layers) network.loadLayer( layer );
 			for (Network.Moments m : moments) network.loadMoments( m );
-
 
 			network.adamSteps( meta.adamSteps );
 
@@ -239,7 +233,6 @@ public final class Checkpoint {
 	private static float[] readFloats( DataInputStream in ) throws IOException {
 		int count = in.readInt();
 		if (count < 0) throw new IOException( "a tensor in the checkpoint claims " + count + " floats" );
-
 
 		if (count > 64 * 1024 * 1024){
 			throw new IOException( "a tensor in the checkpoint claims " + count

@@ -69,7 +69,6 @@ public class InventoryEncoder {
 
 			if (item == null){
 
-
 				out[ base + F_TYPE_EMBED ] = 0f;
 				continue;
 			}
@@ -145,7 +144,6 @@ public class InventoryEncoder {
 	}
 
 	static {
-
 
 		if (ItemSpriteSheet.Icons.SIZE <= 0) throw new IllegalStateException();
 	}

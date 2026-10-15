@@ -176,8 +176,6 @@ public class GradientCheck {
 
 		checks++;
 
-
-
 		double scale = Math.max( 1e-6, Math.max( Math.abs( numeric ), Math.abs( analytic ) ) );
 		double relative = Math.abs( numeric - analytic ) / scale;
 

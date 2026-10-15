@@ -38,7 +38,6 @@ public class Network {
 
 	private final int extraInputs;
 
-
 	public float learningRate = 3e-4f;
 	public float beta1 = 0.9f;
 	public float beta2 = 0.999f;
@@ -48,7 +47,6 @@ public class Network {
 	public float gradClip = 0.5f;
 
 	private int adamStep = 0;
-
 
 	private final Tensor convOut;
 	private final Tensor concat;
@@ -88,8 +86,6 @@ public class Network {
 
 		this.extraInputs = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT + HeroEncoder.FEATURES;
 
-
-
 		this.conv = new Conv2D( config.spatialChannels(), config.gridWidth, 24, 4, 2, rng );
 
 		int convFeatures = conv.outputSize();
@@ -100,9 +96,6 @@ public class Network {
 		this.actionHead = new Dense( 128, Action.size(), rng, 1f );
 		this.slotHead = new Dense( 128, config.maxSlots, rng, 1f );
 		this.targetHead = new Dense( 128, ActionMapper.TARGET_COUNT, rng, 1f );
-
-
-
 
 		this.valueHead = new Dense( 128, 1, rng, 1f, false );
 
@@ -221,9 +214,6 @@ public class Network {
 
 trunk.forward( concat, hidden );
 
-
-
-
 		memory.forward( hidden, memoryOut );
 
 		actionHead.forward( memoryOut, actionLogits );
@@ -236,8 +226,6 @@ trunk.forward( concat, hidden );
 	public float[] slotLogits(){ return slotLogits.data; }
 	public float[] targetLogits(){ return targetLogits.data; }
 	public float value(){ return value.data[ 0 ]; }
-
-
 
 	/**
 	 * Backpropagates one timestep.
@@ -254,7 +242,6 @@ trunk.forward( concat, hidden );
 	public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
 			float dCritic, float[] dPrevState ){
 
-
 		Tensor dHiddenT = new Tensor( 1, memoryOut.cols );
 
 		if (dActionLogits != null) copyInto( dActionLogits, dAction );
@@ -266,32 +253,15 @@ trunk.forward( concat, hidden );
 
 		dValueOut.data[ 0 ] = dCritic;
 
-
 		dHidden.fill( 0f );
 		headGradient( actionHead, dAction );
 		headGradient( slotHead, dSlot );
 		headGradient( targetHead, dTarget );
 		headGradient( valueHead, dValueOut );
 
-
 		copyInto( dHidden.data, dHiddenT );
 
 		dPrev.fill( 0f );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 		dCell.fill( 0f );
 
@@ -301,7 +271,6 @@ trunk.forward( concat, hidden );
 		}
 
 		memory.backward( hidden, dHiddenT, dPrev, dCell );
-
 
 		dLstmIn.fill( 0f );
 		System.arraycopy( memory.inputGrad(), 0, dLstmIn.data, 0,
@@ -334,8 +303,6 @@ trunk.forward( concat, hidden );
 		head.backward( memoryOut, dOut, dHeadScratch );
 		dHidden.addScaled( dHeadScratch, 1f );
 	}
-
-
 
 	public void zeroGrad(){
 		conv.zeroGrad();
@@ -390,8 +357,6 @@ trunk.forward( concat, hidden );
 				+ targetHead.W.size() + targetHead.b.size()
 				+ valueHead.W.size() + valueHead.b.size();
 	}
-
-
 
 	/** One layer's weights, as a flat pair of tensors plus its shape. */
 	public static class Layer {

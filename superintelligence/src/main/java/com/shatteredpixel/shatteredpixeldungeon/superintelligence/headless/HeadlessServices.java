@@ -61,17 +61,11 @@ public class HeadlessServices {
 		Gdx.graphics   = HeadlessGraphics.install();
 		Gdx.net        = new SilentNet();
 
-
-
-
 		Gdx.gl = null;
 		Gdx.gl20 = null;
 		Gdx.gl30 = null;
 		Gdx.gl31 = null;
 		Gdx.gl32 = null;
-
-
-
 
 		com.watabou.utils.FileUtils.setDefaultFileProperties(
 				com.badlogic.gdx.Files.FileType.Local, "" );
@@ -127,8 +121,6 @@ public class HeadlessServices {
 		return files != null && files.savingEnabled;
 	}
 
-
-
 	/**
 	 * {@code Game.runOnRenderThread} funnels through {@code Gdx.app.postRunnable}. In the real
 	 * game that defers work to the GL thread; headlessly the actor thread already is the
@@ -177,8 +169,6 @@ public class HeadlessServices {
 		@Override public void removeLifecycleListener(LifecycleListener listener) { }
 	}
 
-
-
 	/**
 	 * SPDSettings, GamesInProgress and Badges all persist through Gdx.files. We give each
 	 * worker its own directory so N parallel workers do not interleave writes to the same
@@ -219,11 +209,6 @@ public class HeadlessServices {
 
 				case Local:
 				default:
-
-
-
-
-
 
 					if (isSave( path )){
 						File base = savingEnabled ? root : sink;
@@ -380,8 +365,6 @@ public class HeadlessServices {
 		private void putRaw( String key, String value ){ synchronized (store){ store.put( key, value ); } }
 	}
 
-
-
 	/**
 	 * Sample.INSTANCE.play() is called from deep inside combat, pickup and trap code and would
 	 * otherwise load real audio assets. A silent Sound keeps all of those call sites working for
@@ -433,8 +416,6 @@ public class HeadlessServices {
 		@Override public void dispose() { }
 		@Override public void setOnCompletionListener(OnCompletionListener listener) { }
 	}
-
-
 
 	public static class SilentNet implements Net {
 		@Override public void sendHttpRequest(HttpRequest request, HttpResponseListener responseListener) { }

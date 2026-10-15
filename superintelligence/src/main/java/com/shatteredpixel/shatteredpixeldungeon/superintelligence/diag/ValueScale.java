@@ -37,7 +37,6 @@ public class ValueScale {
 	public static void main( String[] args ){
 		EnvConfig config = new EnvConfig();
 
-
 		System.out.println( "env: depthReward=" + config.depthReward
 				+ " deathPenalty=" + config.deathPenalty
 				+ " victoryReward=" + config.victoryReward );
@@ -45,16 +44,6 @@ public class ValueScale {
 
 		Network network = new Network( config, new Random( 5L ) );
 		PPO ppo = new PPO( config, new Random( 5L ) );
-
-
-
-
-
-
-
-
-
-
 
 		float[] targets = {
 				0.02f, -0.01f, 0.05f, 0.11f, 0.04f, -0.02f, 0.03f, 12.4f, 8.1f, -3.2f,
@@ -93,7 +82,6 @@ public class ValueScale {
 				+ fmt( meanSquare ) );
 		System.out.println();
 
-
 		network.resetState();
 		float observed = 0;
 		for (int i = 0; i < 8; i++){
@@ -104,15 +92,9 @@ public class ValueScale {
 			observed = network.value();
 		}
 
-
-
-
 		System.out.println( "value head: linear (Network builds it with tanh = false), so unbounded." );
 		System.out.println( "  observed output " + fmt( observed ) );
 		System.out.println();
-
-
-
 
 		System.out.println( "The largest target is " + fmt( Math.abs( sorted[ sorted.length - 1 ] ) )
 				+ ", and the mean of target^2 is " + fmt( meanSquare )

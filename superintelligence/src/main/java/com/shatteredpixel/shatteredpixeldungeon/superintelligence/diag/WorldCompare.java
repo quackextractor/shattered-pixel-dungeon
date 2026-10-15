@@ -73,9 +73,6 @@ public class WorldCompare {
 			return;
 		}
 
-
-
-
 		String stepDiff = WorldDiff.compare( golden, mine );
 		System.out.println( stepDiff.isEmpty()
 				? "[OK]     every step record agrees"

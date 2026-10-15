@@ -128,15 +128,11 @@ public class Quickslots {
 		String mode = step.mode == null ? "" : step.mode;
 		if (!mode.equals( EnvMode.SLOT.name() ) && !mode.equals( EnvMode.INVENTORY.name() )){
 
-
-
-
 			return null;
 		}
 
 		if (step.quickslots == null || step.quickslots.isEmpty()){
 			if (!wireDroppedFields){
-
 
 				restore( null );
 				return null;

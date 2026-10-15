@@ -42,8 +42,6 @@ public class SPDEnv {
 	private final float[] slotMask;
 	private final float[] targetMask = new float[ ActionMapper.TARGET_COUNT ];
 
-
-
 	private EnvMode mode = EnvMode.WORLD;
 	private int turnsThisFloor;
 	private int turnsTotal;
@@ -89,8 +87,6 @@ public class SPDEnv {
 		this.slotMask = new float[ config.maxSlots ];
 	}
 
-
-
 	/**
 	 * The level pipeline this environment drives.
 	 *
@@ -121,35 +117,9 @@ public class SPDEnv {
 		this.seedText = (seed == null) ? "" : seed;
 		this.heroClass = heroClass;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 		RunState.clearRunStatics();
 
 		pipeline.startRun( seedText, heroClass, 0 );
-
-
-
-
-
-
-
-
 
 		if (seedText.isEmpty()){
 			seedText = com.shatteredpixel.shatteredpixeldungeon.superintelligence.utils
@@ -173,7 +143,6 @@ public class SPDEnv {
 		encoder.resetExplored();
 		mapper.refreshSlots();
 
-
 		settle();
 
 		ledger.beginFloor( Dungeon.depth, Dungeon.branch );
@@ -183,8 +152,6 @@ public class SPDEnv {
 
 		return previous;
 	}
-
-
 
 	/**
 	 * Applies one agent decision.
@@ -200,22 +167,8 @@ public class SPDEnv {
 	public double step( Action action, int slot ){
 		if (!running) throw new IllegalStateException( "step() after the episode ended" );
 
-
-
-
-
-
-
-
-
-
-
-
 		GameScene.clearPendingCellListener();
 		if (mode != EnvMode.TARGETING){
-
-
-
 
 			SlotAction.clearPendingUseItem();
 		}
@@ -228,9 +181,6 @@ if (mode == EnvMode.WORLD){
 			acted = mapper.apply( action, slot );
 			if (action == Action.OPEN_INVENTORY){
 
-
-
-
 				mode = EnvMode.INVENTORY;
 				acted = true;
 			} else if (action == Action.USE || action == Action.DROP){
@@ -240,9 +190,6 @@ if (mode == EnvMode.WORLD){
 			}
 } else if (mode == EnvMode.MENU){
 			acted = mapper.applySecondary( mode, action, slot );
-
-
-
 
 			mode = EnvMode.WORLD;
 		} else if (mode == EnvMode.SLOT){
@@ -259,7 +206,6 @@ if (mode == EnvMode.WORLD){
 			acted = true;
 } else if (mode == EnvMode.TARGETING){
 
-
 			if (action == Action.CANCEL){
 				acted = SlotAction.cancelPendingUse( Dungeon.hero );
 			} else {
@@ -267,7 +213,6 @@ if (mode == EnvMode.WORLD){
 			}
 			mode = EnvMode.WORLD;
 		} else if (mode == EnvMode.INVENTORY){
-
 
 			boolean needsTarget = false;
 			if (action == Action.USE){
@@ -283,12 +228,6 @@ if (mode == EnvMode.WORLD){
 		}
 
 		if (!acted){
-
-
-
-
-
-
 
 			reward.noteEvent( RewardTerm.INVALID_ACTION );
 		}
@@ -310,21 +249,12 @@ if (mode == EnvMode.WORLD){
 		while (running){
 if (++guard > config.actorStepLimit){
 
-
-
-
 				stallCause = StallCause.ACTOR_STEP_LIMIT;
 				terminate( RewardModel.TerminateReason.STALLED );
 				break;
 			}
 
-
 			if (WindowBridge.open()){
-
-
-
-
-
 
 				WindowBridge.age();
 				mode = EnvMode.MENU;
@@ -339,37 +269,6 @@ if (++guard > config.actorStepLimit){
 
 			if (outcome == LevelPipeline.Outcome.TRANSITION){
 				accumulated += onFloorTransition();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 				turnsThisFloor++;
 				turnsTotal++;
@@ -391,7 +290,6 @@ if (++guard > config.actorStepLimit){
 				break;
 			}
 
-
 			turnsThisFloor++;
 			turnsTotal++;
 
@@ -401,15 +299,8 @@ if (++guard > config.actorStepLimit){
 			checkFloorLimits();
 			if (!running) break;
 
-
 			mapper.refreshSlots();
 			refreshMasks();
-
-
-
-
-
-
 
 			if (WindowBridge.open()){
 				WindowBridge.age();
@@ -420,8 +311,6 @@ if (++guard > config.actorStepLimit){
 
 		return accumulated;
 	}
-
-
 
 	/**
 	 * Gives the hero the one turn the game gives him on arrival at a new floor.
@@ -481,8 +370,6 @@ if (++guard > config.actorStepLimit){
 		if (depth != lastDepth || branch != lastBranch){
 			if (depth > lastDepth){
 
-
-
 				ledger.markFloorCleared();
 			}
 			lastDepth = depth;
@@ -491,26 +378,11 @@ if (++guard > config.actorStepLimit){
 			encoder.resetExplored();
 			mapper.refreshSlots();
 
-
-
-
 			stallCount = 0;
 			freeStepsThisFloor = 0;
 			lastStallPos = -1;
 			ledger.beginFloor( depth, branch );
 		}
-
-
-
-
-
-
-
-
-
-
-
-
 
 		refreshMasks();
 		return ledger.flushTurn();
@@ -522,10 +394,7 @@ if (++guard > config.actorStepLimit){
 		encoder.encode();
 	}
 
-
-
 	private void checkFloorLimits(){
-
 
 		if (turnsThisFloor >= config.turnLimitPerFloor){
 			terminate( RewardModel.TerminateReason.TURN_LIMIT );
@@ -535,7 +404,6 @@ if (++guard > config.actorStepLimit){
 			terminate( RewardModel.TerminateReason.TURN_LIMIT );
 			return;
 		}
-
 
 		Hero hero = Dungeon.hero;
 		if (hero.pos == lastStallPos && hero.HP == lastStallHp){
@@ -550,20 +418,6 @@ if (++guard > config.actorStepLimit){
 			lastStallPos = hero.pos;
 			lastStallHp = hero.HP;
 		}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 if (!reward.lastStepAdvancedClock()){
 			freeStepsThisFloor++;
@@ -608,8 +462,6 @@ if (!reward.lastStepAdvancedClock()){
 		return !isNaturalEnding( reason );
 	}
 
-
-
 	public EnvMode mode(){ return mode; }
 	public boolean running(){ return running; }
 	public boolean terminated(){ return terminated; }
@@ -649,8 +501,6 @@ public float[] actionMask(){ return actionMask; }
 	public boolean lastStepAdvancedClock(){ return reward.lastStepAdvancedClock(); }
 	public float[] slotMask(){ return slotMask; }
 	public float[] targetMask(){ return targetMask; }
-
-
 
 	private final float[] actionLogits = new float[ Action.size() ];
 	private final float[] slotLogits = new float[ 128 ];

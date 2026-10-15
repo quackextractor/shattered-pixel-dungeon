@@ -37,8 +37,6 @@ public class RewardModel {
 	private final RewardLedger ledger;
 	private final Curriculum curriculum;
 
-
-
 	private int prevHp, prevMaxHp, prevLevel, prevGold, prevStrength, prevDepth, prevBranch;
 	private float prevItemValue;
 	private int prevIdentified;
@@ -102,8 +100,6 @@ public class RewardModel {
 		return lastStepAdvancedClock;
 	}
 
-
-
 	/**
 	 * Scores the turn that has just finished and returns the reward.
 	 *
@@ -120,26 +116,18 @@ public class RewardModel {
 			return ledger.flushTurn();
 		}
 
-
 		int depth = Dungeon.depth;
 		if (depth != prevDepth || Dungeon.branch != prevBranch){
 			if (depth > prevDepth && depth > deepestPaid){
 
-
-
 				deepestPaid = depth;
-
-
-
 
 				ledger.add( RewardTerm.DEPTH_ADVANCE, config.depthReward, false );
 			} else {
 
-
 				ledger.add( RewardTerm.DEPTH_ADVANCE, 0, false );
 			}
 		}
-
 
 		if (hero.HP > prevHp){
 			ledger.add( RewardTerm.MAX_HP_GAIN,
@@ -158,21 +146,6 @@ public class RewardModel {
 			ledger.add( RewardTerm.LEVEL_UP, 2f * (hero.lvl - prevLevel), false );
 		}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 		int talents = talentsSpent();
 		if (talents > prevTalentsSpent){
 			ledger.add( RewardTerm.TALENT_UPGRADE,
@@ -184,7 +157,6 @@ public class RewardModel {
 			ledger.add( RewardTerm.STRENGTH_GAIN, 1f * (strength - prevStrength), false );
 		}
 
-
 		int gold = Dungeon.gold;
 		if (gold > prevGold){
 			ledger.add( RewardTerm.GOLD_GAIN, config.goldReward * (gold - prevGold), false );
@@ -194,22 +166,6 @@ public class RewardModel {
 			ledger.add( RewardTerm.GOLD_LOST, -config.goldReward * 2f * (prevGold - gold), false );
 		}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 		float carried = inventoryValue();
 		if (carried > prevItemValue){
 			ledger.add( RewardTerm.ITEM_PICKUP, carried - prevItemValue, false );
@@ -217,37 +173,15 @@ public class RewardModel {
 			ledger.add( RewardTerm.ITEM_DROPPED, carried - prevItemValue, false );
 		}
 
-
-
-
-
-
-
-
-
-
-
-
 		int identified = countIdentified();
 		if (identified != prevIdentified){
 			ledger.add( RewardTerm.IDENTIFIED, 0.5f * (identified - prevIdentified), false );
 		}
 
-
 		int debuffs = countDebuffs();
 		if (debuffs < prevDebuffCount){
 			ledger.add( RewardTerm.CURED_DEBUFF, 1.5f * (prevDebuffCount - debuffs), false );
 		}
-
-
-
-
-
-
-
-
-
-
 
 		int kills = kills();
 		if (kills > prevKills){
@@ -256,27 +190,16 @@ public class RewardModel {
 			ledger.countKill();
 		}
 
-
-
-
-
-
-
-
-
-
 		int sneaks = sneaks();
 		if (sneaks > prevSneaks){
 			ledger.add( RewardTerm.SNEAK_ATTACK,
 					config.sneakAttackReward * (sneaks - prevSneaks), false );
 		}
 
-
 		int cursedEquipped = countCursedEquipped();
 		if (cursedEquipped > prevCursedEquipped){
 			ledger.add( RewardTerm.CURSE_EQUIPPED, -5f * (cursedEquipped - prevCursedEquipped), false );
 		}
-
 
 		float hunger = hungerLevel( hero );
 		if (hunger > prevHunger + 20f && !hero.isStarving()){
@@ -284,47 +207,12 @@ public class RewardModel {
 			ledger.add( RewardTerm.EATEN_EARLY, -1f, false );
 		}
 
-
 		if (newlyExplored > 0){
 			ledger.add( RewardTerm.EXPLORE, config.exploreReward * newlyExplored, false );
 		}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 		float spent = engineTurnsSpent( depth );
 		lastStepAdvancedClock = depth != prevDepth || spent > 0f;
-
-
-
-
-
-
-
-
-
 
 		if (lastStepAdvancedClock){
 			ledger.add( RewardTerm.TURN_COST, -config.turnCost * Math.max( 1f, spent ), false );
@@ -332,10 +220,6 @@ public class RewardModel {
 			ledger.add( RewardTerm.NO_PROGRESS, -config.turnCost * config.freeStepCostFactor, false );
 		}
 		if (tookAction) ledger.countTurn();
-
-
-
-
 
 		double reward = ledger.flushTurn();
 		snapshot();
@@ -370,32 +254,9 @@ public class RewardModel {
 				break;
 			case STALLED:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 				ledger.add( RewardTerm.STALLED, -config.stallPenalty, false );
 				break;
 			case TURN_LIMIT:
-
-
-
-
-
-
-
 
 				ledger.add( RewardTerm.TURN_LIMIT, -config.turnLimitPenalty, false );
 				break;
@@ -435,8 +296,6 @@ public class RewardModel {
 		ledger.noteEvent( term );
 	}
 
-
-
 	private void snapshot(){
 		Hero hero = Dungeon.hero;
 		if (hero == null) return;
@@ -472,8 +331,6 @@ public class RewardModel {
 		/** Episode reset for any other reason. */
 		OTHER
 	}
-
-
 
 	/**
 	 * What the hero is currently carrying, in the same units {@link RewardTerm#ITEM_PICKUP} pays in.
@@ -603,7 +460,6 @@ public class RewardModel {
 		if (hero == null) return 0;
 
 		int total = 0;
-
 
 		for (int tier = 1; tier <= hero.talents.size(); tier++){
 			total += hero.talentPointsSpent( tier );

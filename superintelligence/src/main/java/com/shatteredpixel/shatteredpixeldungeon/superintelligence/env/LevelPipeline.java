@@ -85,42 +85,17 @@ public class LevelPipeline {
 		SPDSettings.challenges( challenges );
 		SPDSettings.customSeed( seedText == null ? "" : seedText );
 
-
-
-
-
-
-
-
-
-
-
-
 		SPDSettings.intro( false );
-
-
-
-
-
-
 
 		requireSeedSticks( seedText );
 
 		GamesInProgress.selectedClass = heroClass;
 		GamesInProgress.curSlot = 0;
 
-
-
-
 		Dungeon.initSeed();
 		Dungeon.init();
 
-
-
 		attachSprites();
-
-
-
 
 		Dungeon.generatedLevels.clear();
 
@@ -221,32 +196,6 @@ public class LevelPipeline {
 
 			attachLateSprites();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 			if (Dungeon.level != null
 					&& Dungeon.hero.pos >= 0
 					&& Dungeon.hero.pos < Dungeon.level.length()
@@ -258,42 +207,15 @@ public class LevelPipeline {
 				return Outcome.TRANSITION;
 			}
 
-
-
-
-
-
-
 			boolean wantsMore = com.shatteredpixel.shatteredpixeldungeon.actors.Actor.headlessStep();
 
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()){
 				return Outcome.HERO_DEAD;
 			}
 
-
-
-
-
-
-
-
-
-
-
 			if (Dungeon.hero.curAction == null && Dungeon.hero.ready && Dungeon.hero.paralysed == 0){
 				return Outcome.READY;
 			}
-
-
-
-
-
-
-
-
-
-
-
 
 			if (!wantsMore && steps > 8 && Dungeon.hero.resting){
 				return Outcome.STALLED;
@@ -357,13 +279,6 @@ public class LevelPipeline {
 			return Transition.NONE;
 		}
 
-
-
-
-
-
-
-
 		Transition result = (transition.type == LevelTransition.Type.REGULAR_EXIT
 				|| transition.type == LevelTransition.Type.BRANCH_EXIT)
 				? Transition.DESCEND
@@ -371,8 +286,6 @@ public class LevelPipeline {
 
 		Dungeon.depth    = transition.destDepth;
 		Dungeon.branch   = transition.destBranch;
-
-
 
 		Dungeon.generatedLevels.clear();
 		Level level = Dungeon.newLevel();
@@ -407,22 +320,12 @@ public class LevelPipeline {
 	public void handleFall(){
 		fixTimeBeforeSwitching();
 
-
-
-
-
 		Buff.affect( Dungeon.hero, com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm.Falling.class );
-
-
 
 		Dungeon.depth++;
 		Dungeon.generatedLevels.clear();
 
 		Level level = Dungeon.newLevel();
-
-
-
-
 
 		Dungeon.switchLevel( level, level.fallCell(
 				com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.fallIntoPit ));
@@ -461,11 +364,6 @@ public class LevelPipeline {
 	public void clearSwitchRequest(){
 		game.clearSwitchRequest();
 		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.curTransition = null;
-
-
-
-
-
 
 		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.mode = null;
 	}

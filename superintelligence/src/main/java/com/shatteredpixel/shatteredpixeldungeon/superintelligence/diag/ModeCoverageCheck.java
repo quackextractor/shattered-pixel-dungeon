@@ -87,13 +87,6 @@ public class ModeCoverageCheck {
 	private void checkInventoryEntryDoesNotTouchTheWorld(){
 		env.reset( SEED, HeroClass.WARRIOR );
 
-
-
-
-
-
-
-
 		int heroPos = env.heroPosition();
 		int heapCell = adjacentPassableCell( heroPos );
 		if (heapCell < 0){
@@ -111,12 +104,6 @@ public class ModeCoverageCheck {
 		}
 
 		int depth = env.depth();
-
-
-
-
-
-
 
 		for (int i = 0; i < 8 && env.running() && env.mode() == EnvMode.WORLD; i++ ){
 			env.step( Action.OPEN_INVENTORY, 0 );
@@ -140,8 +127,6 @@ public class ModeCoverageCheck {
 			return;
 		}
 
-
-
 		if (Dungeon.level.heaps.get( heapCell ) == null ){
 			failures.add( "the item heap on cell " + heapCell + " is gone after 24 OPEN_INVENTORY steps."
 					+ " Under the fall-through it was picked up on the first one, because"
@@ -156,10 +141,6 @@ public class ModeCoverageCheck {
 					+ " inventory could take a floor transition." );
 			return;
 		}
-
-
-
-
 
 		env.reset( SEED, HeroClass.WARRIOR );
 		int before = env.turnsTotal();
@@ -234,7 +215,6 @@ public class ModeCoverageCheck {
 
 	private void run(){
 
-
 		checkInventoryEntryDoesNotTouchTheWorld();
 		checkCancelDoesNotTouchTheWorld();
 
@@ -249,13 +229,9 @@ public class ModeCoverageCheck {
 
 		int stones = quantityAt( stone );
 
-
 		step( Action.USE, stone, EnvMode.SLOT, "use starts a slot choice" );
 
-
 		step( Action.USE, stone, EnvMode.TARGETING, "using a missile asks for a target" );
-
-
 
 		step( Action.USE, 0, EnvMode.WORLD, "resolving an aim throws the item" );
 		if (quantityAt( stone ) >= stones){
@@ -263,15 +239,10 @@ public class ModeCoverageCheck {
 					+ quantityAt( stone ) + ", so no throw happened" );
 		}
 
-
 		step( Action.OPEN_INVENTORY, 0, EnvMode.INVENTORY, "opening the inventory" );
-
 
 		int other = slotOfNonTargetingItem();
 		step( Action.USE, other, EnvMode.WORLD, "using from the inventory" );
-
-
-
 
 		int droppable = slotOfDroppableItem();
 		if (droppable < 0){
@@ -285,8 +256,6 @@ public class ModeCoverageCheck {
 			}
 		}
 
-
-
 		GameScene.show( new WndOptions( "modecheck", "deliberate dialog", "first", "second" ) );
 		if (!WindowBridge.open()){
 			failures.add( "GameScene.show did not leave a dialog for WindowBridge to find: "
@@ -294,7 +263,6 @@ public class ModeCoverageCheck {
 					+ ( com.watabou.noosa.Game.scene() == null ? "null" : "present" ) );
 		}
 		step( Action.WAIT, 0, EnvMode.MENU, "an open dialog takes over the turn" );
-
 
 		step( Action.MENU_SELECT, 0, EnvMode.WORLD, "selecting an option closes the dialog" );
 		if (WindowBridge.open()) failures.add( "the dialog was still open after MENU_SELECT" );

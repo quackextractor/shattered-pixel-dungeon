@@ -97,8 +97,6 @@ public class ObservationEncoder {
 		return newlyExplored;
 	}
 
-
-
 	private void buildSpatial( Level level, Hero hero ){
 		int width = level.width();
 		int height = level.height();
@@ -108,10 +106,8 @@ public class ObservationEncoder {
 		int spanX = gridWidth + MARGIN * 2;
 		int spanY = gridHeight + MARGIN * 2;
 
-
 		float stepX = (float) spanX / gridWidth;
 		float stepY = (float) spanY / gridHeight;
-
 
 		float scale = Math.max( 1f, Math.max( stepX, stepY ) );
 		int x0 = Math.max( 0, originX );
@@ -153,7 +149,6 @@ public class ObservationEncoder {
 		put( GridChannel.VISIBLE, p, visible );
 		put( GridChannel.EXPLORED, p, explored );
 		put( GridChannel.FOGGED, p, explored && !visible );
-
 
 		if (visible){
 			put( GridChannel.HIGH_GRASS, p, terrain == Terrain.HIGH_GRASS
@@ -277,8 +272,6 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 		if (plane < 0) return;
 		System.arraycopy( edges, 0, grid, plane * PLANE_AREA, edges.length );
 	}
-
-
 
 	/** Precomputed channel -> plane offset, so encoding does no enum lookups per tile. */
 	private static final int[] PLANE_INDEX = new int[ GridChannel.count() ];

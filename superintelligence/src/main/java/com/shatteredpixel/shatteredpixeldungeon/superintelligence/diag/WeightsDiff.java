@@ -42,7 +42,6 @@ public class WeightsDiff {
 
 		try {
 
-
 			Network fresh = new Network( config, new Random( 1L ) );
 			Network resumed = new Network( config, new Random( 1L ) );
 

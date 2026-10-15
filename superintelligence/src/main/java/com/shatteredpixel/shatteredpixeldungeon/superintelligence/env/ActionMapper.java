@@ -70,8 +70,6 @@ public class ActionMapper {
 		return Dungeon.hero;
 	}
 
-
-
 	/**
 	 * Rebuilds the fixed inventory view.
 	 *
@@ -101,8 +99,6 @@ public class ActionMapper {
 		return (index >= 0 && index < slots.size()) ? slots.get( index ) : null;
 	}
 
-
-
 	/**
 	 * @param mask output of {@link Action#size()} floats, 1 for legal and 0 for illegal.
 	 *             Reused across turns to keep rollout allocation flat.
@@ -117,11 +113,6 @@ public class ActionMapper {
 		}
 
 		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY){
-
-
-
-
-
 
 			mask[Action.CANCEL.index] = 1f;
 			if (hasUsableItem()) mask[Action.USE.index] = 1f;
@@ -159,8 +150,6 @@ public class ActionMapper {
 					break;
 				case OPEN_INVENTORY:
 
-
-
 					mask[a.index] = 1f;
 					break;
 				case MOVE_N: case MOVE_NE: case MOVE_E: case MOVE_SE:
@@ -172,7 +161,6 @@ public class ActionMapper {
 					break;
 			}
 		}
-
 
 		boolean any = false;
 		for (float f : mask) if (f != 0f){ any = true; break; }
@@ -192,8 +180,6 @@ public class ActionMapper {
 			mask[i] = (i < slots.size() && slots.get( i ) != null) ? 1f : 0f;
 		}
 	}
-
-
 
 	/**
 	 * Applies a WORLD or TIME action.
@@ -217,11 +203,6 @@ public class ActionMapper {
 		if (action == null) return false;
 		Hero hero = hero();
 
-
-
-
-
-
 		if (hero.resting && action != Action.REST){
 			hero.resting = false;
 		}
@@ -229,24 +210,10 @@ public class ActionMapper {
 		switch (action) {
 			case WAIT:
 
-
-
-
-
-
-
-
-
-
 				hero.spendAndNext( 1f );
 				return true;
 
 			case REST:
-
-
-
-
-
 
 				hero.resting = true;
 				hero.next();
@@ -260,19 +227,6 @@ public class ActionMapper {
 			case USE:
 			case DROP:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 				SlotAction.clearPendingUseItem();
 				return false;
 
@@ -281,8 +235,6 @@ public class ActionMapper {
 				return true;
 
 			case CANCEL:
-
-
 
 				return true;
 
@@ -293,16 +245,6 @@ public class ActionMapper {
 				break;
 		}
 
-
-
-
-
-
-
-
-
-
-
 		return handleCell( offsetCell( action.dx, action.dy ));
 	}
 
@@ -310,14 +252,6 @@ public class ActionMapper {
 	public boolean applySecondary( EnvMode mode, Action action, int index ){
 		switch (mode) {
 			case TARGETING:
-
-
-
-
-
-
-
-
 
 				if (action == Action.CANCEL){
 					return SlotAction.cancelPendingUse( hero() );
@@ -361,8 +295,6 @@ public class ActionMapper {
 		}
 		return false;
 	}
-
-
 
 	/**
 	 * Applies a cell the agent chose.
@@ -582,13 +514,9 @@ public class ActionMapper {
 		return sb.append( "]" ).toString();
 	}
 
-
-
 	private boolean moveLegal( Action action ){
 		int cell = offsetCell( action.dx, action.dy );
 		if (!insideMap( cell )) return false;
-
-
 
 		Char ch = Actor.findChar( cell );
 		if (ch instanceof Mob) return hero().canAttack( (Mob)ch );
@@ -646,8 +574,6 @@ public class ActionMapper {
 		}
 		return false;
 	}
-
-
 
 	private boolean hasUsableItem(){
 		for (Item item : slots){

@@ -150,9 +150,6 @@ public class EpisodeCollector {
 	 */
 	private final java.util.ArrayDeque<Tail> tail = new java.util.ArrayDeque<>();
 
-
-
-
 	private final float[] actionProbs;
 	private final float[] slotProbs;
 	private final float[] targetProbs;
@@ -197,7 +194,6 @@ public class EpisodeCollector {
 		env.reset( seed, heroClass );
 		network.resetState();
 
-
 		if (listener != null){
 			listener.onEpisodeStart( env.seedText(), heroClass.name() );
 		}
@@ -230,15 +226,9 @@ public class EpisodeCollector {
 
 			int stepIndex = record.stepCount();
 
-
-
-
 			Transition snapshot = snapshot( env );
 
 			if (wantsByDraw( stepIndex )) record.retain( stepIndex, snapshot );
-
-
-
 
 			tail.addLast( new Tail( stepIndex, snapshot ) );
 			while (tail.size() > TAIL_STEPS){
@@ -249,27 +239,13 @@ public class EpisodeCollector {
 		Action action = Action.fromIndex( actionIndex );
 		int secondary = (liveHead == Policy.HEAD_TARGET) ? targetIndex : slotIndex;
 
-
 		EnvMode mode = env.mode();
-
-
-
 
 		if ( listener != null ) listener.onDecision( mode, action, secondary );
 
 		float reward = (float) env.step( action, secondary );
 
-
-
-
-
-
 		if (trace != null) trace.sample( "step", record.stepCount() );
-
-
-
-
-
 
 			int heroPosition = env.heroPosition();
 
@@ -278,15 +254,11 @@ public class EpisodeCollector {
 			record.add( reward, network.value(), isTerminal, liveHead, actionIndex, slotIndex,
 					logProbability );
 
-
-
-
 			if (!env.running()){
 				network.forward( env.grid(), env.inventory(), env.heroFeatures() );
 				record.finalValue( network.value() );
 			}
 		}
-
 
 		for (Tail held : tail){
 			if (!record.isRetained( held.transition )) record.retain( held.step, held.transition );
@@ -295,8 +267,6 @@ public class EpisodeCollector {
 
 		record.computeAdvantages( gamma, lambda );
 		network.resetState();
-
-
 
 		flushTrace( env.seedText() );
 
@@ -388,8 +358,6 @@ public class EpisodeCollector {
 		tracePath = (path == null || path.trim().isEmpty()) ? null : path;
 		if (tracePath == null) trace = null;
 
-
-
 		else trace = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot()
 				.cells( false );
 	}
@@ -398,10 +366,6 @@ public class EpisodeCollector {
 	private void flushTrace( String seed ){
 		if (trace == null || tracePath == null) return;
 		try {
-
-
-
-
 
 			trace.writeTo( java.nio.file.Paths.get(
 					tracePath + "-" + (++tracedEpisodes) + "-" + seed + ".txt" ));

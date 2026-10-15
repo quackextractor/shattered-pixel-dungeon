@@ -150,12 +150,10 @@ checkTerminalZerosTheTail();
 		Policy.computeEpisodeAdvantages( rewards, values, terminal, n, 99f, GAMMA, LAMBDA,
 				advantages, returns );
 
-
 		if (Math.abs( advantages[ 6 ] - (rewards[ 6 ] - values[ 6 ]) ) > 1e-5f){
 			fail( "terminal step bootstrapped: advantage " + advantages[ 6 ]
 					+ ", expected reward minus value " + (rewards[ 6 ] - values[ 6 ]) );
 		}
-
 
 		float[] single = new float[ n ];
 		float[] onlyTerminal = new float[ n ];
@@ -225,13 +223,10 @@ checkTerminalZerosTheTail();
 		float[] asDeath = new float[ n ];
 		float[] scratch = new float[ n ];
 
-
 		rewards[ n - 1 ] = -100f;
-
 
 		Policy.computeEpisodeAdvantages( rewards, values, terminalFlags, n, 10f, GAMMA, LAMBDA,
 				asStall, scratch );
-
 
 		float[] died = terminalFlags.clone();
 		died[ n - 1 ] = 1f;
@@ -276,20 +271,16 @@ checkTerminalZerosTheTail();
 		float[] advantages = new float[ n ];
 		float[] returns = new float[ n ];
 
-
 		terminal[ 1 ] = 1f;
 		rewards[ 3 ] = 100f;
 		Policy.computeEpisodeAdvantages( rewards, values, terminal, n, 0f, GAMMA, LAMBDA,
 				advantages, returns );
-
-
 
 		if (Math.abs( advantages[ 0 ] ) > 1e-6f){
 			fail( "a reward after a terminal step leaked back into step 0: advantage "
 					+ advantages[ 0 ] + ", expected 0" );
 			return;
 		}
-
 
 		if (Math.abs( advantages[ 1 ] ) > 1e-6f){
 			fail( "the terminal step absorbed a downstream reward: advantage " + advantages[ 1 ]
@@ -346,10 +337,8 @@ checkTerminalZerosTheTail();
 		EpisodeRecord record = new EpisodeRecord();
 		java.util.ArrayDeque< Tail > tail = new java.util.ArrayDeque<>();
 
-
 		Random samplingRng = new Random( 7L );
 		float rate = 0.01f;
-
 
 		for (int i = 0; i < n; i++){
 			Transition t = new Transition();
@@ -418,7 +407,6 @@ checkTerminalZerosTheTail();
 		Policy.computeEpisodeAdvantages( rewards, values, terminal, n, 0.5f, GAMMA, LAMBDA,
 				allSteps, allReturns );
 
-
 		EpisodeRecord record = new EpisodeRecord();
 for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 				Policy.HEAD_ACTION, 0, 0, -1f );
@@ -467,7 +455,6 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 			return;
 		}
 
-
 		for (int i = n - tailSteps; i < n; i++){
 			if (!retainsStep( record, i )){
 				fail( "step " + i + " is in a " + n + "-step episode's tail but was not retained" );
@@ -488,7 +475,6 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 		EnvConfig config = new EnvConfig();
 		int gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
 
-
 		int stateFloats = 2 * 128;
 
 		Transition sent = new Transition();
@@ -506,8 +492,6 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 			for (int i = 0; i < a.length; i++) a[ i ] = rng.nextFloat();
 		}
 
-
-
 		sent.liveHead = Policy.HEAD_SLOT;
 		sent.actionIndex = 11;
 		sent.slotIndex = 4;
@@ -515,7 +499,6 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 		sent.advantage = 0.5f;
 		sent.returnValue = -2.5f;
 		sent.terminal = true;
-
 
 		sent.recurrentState = new float[ stateFloats ];
 		for (int i = 0; i < stateFloats; i++) sent.recurrentState[ i ] = (i % 7) * 0.125f - 0.25f;
@@ -604,7 +587,6 @@ private static void checkAPenalisedTruncationStillCarriesItsPenalty(){
 		float[] truncated = new float[ n ];
 		float[] scratch = new float[ n ];
 
-
 		rewards[ n - 1 ] = -3000f;
 
 		Policy.computeEpisodeAdvantages( rewards, values, terminal, n, 10f, GAMMA, LAMBDA, truncated, scratch );
@@ -635,23 +617,18 @@ private static void checkAPenalisedTruncationStillCarriesItsPenalty(){
 	private static void checkClipFractionIsNotAdvantageMagnitude(){
 		float epsilon = 0.2f;
 
-
 		if (clipBindingForRatio( 1f, epsilon )) fail( "ratio 1.0 reported as clipped" );
-
 
 		if (clipBindingForRatio( 1.1f, epsilon )) fail( "ratio 1.1 reported as clipped" );
 
-
 		if (!clipBindingForRatio( 1.25f, epsilon )) fail( "ratio 1.25 not reported as clipped" );
 		if (!clipBindingForRatio( 0.75f, epsilon )) fail( "ratio 0.75 not reported as clipped" );
-
 
 		Random rng = new Random( 4242L );
 		int n = 20000;
 		int advantageCount = 0;
 		for (int i = 0; i < n; i++) if (Math.abs( rng.nextGaussian() ) > epsilon ) advantageCount++;
 		double constant = (double) advantageCount / n;
-
 
 		float[] ratio = { 1.0f, 1.0f, 1.0f };
 		int bound = 0;
@@ -690,8 +667,6 @@ private static void checkAPenalisedTruncationStillCarriesItsPenalty(){
 		return Policy.accumulatePolicyGradient( probabilities, mask, chosen,
 				oldLogProbability, 1f, epsilon, 0f, gradient );
 	}
-
-
 
 	private static boolean retainsStep( EpisodeRecord record, int step ){
 		for (int i = 0; i < record.sampledCount(); i++){

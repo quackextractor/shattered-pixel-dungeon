@@ -172,7 +172,6 @@ public class ActionCheck {
 			}
 		}
 
-
 		for (int i = 0; i < moves.length; i++ ){
 			String expected = "MOVE_" + ( new String[]{ "N", "NE", "E", "SE", "S", "SW", "W", "NW" }[ i ] );
 			if (!moves[ i ].name().equals( expected )){

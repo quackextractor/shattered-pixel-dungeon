@@ -73,8 +73,6 @@ public class TrainerWorkers {
 		}
 	}
 
-
-
 	/**
 	 * Starts the worker JVMs and hands each the current policy.
 	 *
@@ -119,8 +117,6 @@ public class TrainerWorkers {
 		return new Job( worker, seed, heroClass, wantReplay );
 	}
 
-
-
 	/**
 	 * Runs every job at once, one thread per worker.
 	 *
@@ -160,8 +156,6 @@ public class TrainerWorkers {
 			results.add( collected );
 			thread.start();
 		}
-
-
 
 		InterruptedException interrupted = null;
 		for (Thread thread : threads){
@@ -207,15 +201,9 @@ public class TrainerWorkers {
 
 			int steps = in.readInt();
 
-
-
 			if (job.wantReplay) episode.replay = ReplayCodec.read( in, steps );
 
-
-
 			episode.transitions = Episode.readTransitions( in, config, ppo.network.stateSize() );
-
-
 
 			pool.progress();
 
@@ -224,8 +212,6 @@ public class TrainerWorkers {
 
 		return episodes;
 	}
-
-
 
 	/**
 	 * Pushes the updated policy to every worker.
@@ -244,10 +230,6 @@ public class TrainerWorkers {
 		paramWriter.write( tmp );
 		tmp.flush();
 		final byte[] payload = buffer.toByteArray();
-
-
-
-
 
 		List<Thread> threads = new ArrayList<>();
 		List<IOException> failures = Collections.synchronizedList( new ArrayList<>() );
@@ -321,9 +303,6 @@ public class TrainerWorkers {
 			IOException last = null;
 			for (int attempt = 0; attempt < PUSH_RETRIES && !written; attempt++){
 				if (attempt > 0){
-
-
-
 
 					long wait = Math.min( PUSH_BACKOFF_MAX_MS, 50L * attempt * attempt );
 					try {

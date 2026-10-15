@@ -38,7 +38,6 @@ public class InlineCommentStripper {
 			String after = strip( before );
 			if (after.equals( before )) continue;
 
-
 			Files.writeString( file, after, StandardCharsets.UTF_8 );
 			changed++;
 			removed += countStripped( before, after );
@@ -46,10 +45,6 @@ public class InlineCommentStripper {
 
 		System.out.println( "[stripinlines] " + files.size() + " file(s) scanned, " + changed
 				+ " rewritten, " + removed + " comment line(s) removed" );
-
-
-
-
 
 	}
 
@@ -60,12 +55,16 @@ public class InlineCommentStripper {
 		}
 	}
 
-	/**
-	 * Removes line comments, dropping any line that held nothing else.
+/**
+	 * Removes line comments. A line that is only a comment disappears entirely, newline and all.
 	 *
-	 * <p>A {@code //} that trails real code is replaced by nothing rather than by a blank line, so
-	 * {@code foo(); // why} becomes {@code foo();} rather than two lines. A line that is only a comment
-	 * disappears entirely.
+	 * <p>The whole line goes rather than its contents. An earlier version rewound the output to the
+	 * start of the line and carried on, which emptied the comment and left the newline - so a
+	 * twelve-line comment became twelve blank lines. Across this module that left 619 runs of two or
+	 * more consecutive blank lines where there had been 7, the longest being 32.
+	 *
+	 * <p>A {@code //} that trails real code keeps its line and loses only the comment, so
+	 * {@code foo(); // why} becomes {@code foo();} rather than disappearing.
 	 */
 	static String strip( String source ){
 		StringBuilder out = new StringBuilder( source.length() );
@@ -79,10 +78,14 @@ public class InlineCommentStripper {
 			if (c == '/' && i + 1 < n && source.charAt( i + 1 ) == '/'){
 				int end = source.indexOf( '\n', i );
 				if (end < 0) end = n;
-				boolean lineIsOnlyComment = out.toString().substring( lineStart ).isBlank();
+				boolean lineIsOnlyComment = out.substring( lineStart ).toString().isBlank();
 				if (lineIsOnlyComment){
-
 					out.setLength( lineStart );
+					//and take the line terminator with it, so the line is removed rather than emptied
+					if (end < n) i = end + 1;
+					else i = end;
+					lineStart = out.length();
+					continue;
 				}
 				i = end;
 				continue;

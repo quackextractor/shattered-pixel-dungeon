@@ -51,7 +51,6 @@ public class Policy {
 			if (cumulative >= target ) return i;
 		}
 
-
 		for (int i = logits.length - 1; i >= 0; i--){
 			if (mask[ i ] > 0.5f ) return i;
 		}
@@ -116,9 +115,7 @@ public class Policy {
 		float clippedRatio = ratio < low ? low : (ratio > high ? high : ratio);
 		boolean clipBinding = clippedRatio != ratio;
 
-
 		float dLogProbability = clipBinding ? 0f : advantage * ratio;
-
 
 		outGradient[ chosenIndex ] += dLogProbability * (1f - newProbability);
 

@@ -34,7 +34,6 @@ public class HeadlessSprite extends CharSprite {
 	public HeadlessSprite(){
 		super();
 
-
 	}
 
 	/**
@@ -75,8 +74,6 @@ public class HeadlessSprite extends CharSprite {
 		}
 		return headlessParentStore;
 	}
-
-
 
 	@Override
 	public void attack( int cell ){
@@ -136,22 +133,7 @@ public class HeadlessSprite extends CharSprite {
 	@Override
 	public void die(){
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 	}
-
-
 
 	@Override
 	public void move( int from, int to ){
@@ -185,7 +167,6 @@ public class HeadlessSprite extends CharSprite {
 
 	@Override
 	public void destroy(){
-
 
 		exists = false;
 	}

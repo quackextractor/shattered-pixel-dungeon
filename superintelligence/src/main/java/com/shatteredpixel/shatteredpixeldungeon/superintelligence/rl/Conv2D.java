@@ -80,7 +80,6 @@ public class Conv2D {
 
 		java.util.Arrays.fill( out.data, 0f );
 
-
 		for (int p = 0; p < outSize * outSize; p++){
 			int cOff = p * outChannels;
 			for (int q = 0; q < outChannels; q++){
@@ -138,14 +137,10 @@ public class Conv2D {
 
 		int planeSize = inSize * inSize;
 
-
-
-
 		int outLen = outputSize();
 		for (int i = 0; i < outLen; i++){
 			if (preAct[ i ] <= 0f ) gradOut.data[ i ] = 0f;
 		}
-
 
 		for (int p = 0; p < outSize * outSize; p++){
 			int cOff = p * outChannels;

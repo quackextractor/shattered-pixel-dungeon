@@ -23,11 +23,6 @@ public class Replay {
 	/** Header written at the top of every replay file. */
 	public static final String MAGIC = "SPD-REPLAY";
 
-
-
-
-
-
 	public static final int VERSION = 3;
 
 	public String seedText = "";

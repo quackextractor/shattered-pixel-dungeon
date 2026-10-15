@@ -139,8 +139,6 @@ public class MetricsHistory {
 				(float) s.turnsPerSecond, (float) s.workerCores, (float) s.trainerCores
 		} );
 
-
-
 		endReasons.add( s.endReasons.clone() );
 
 		write( s );
@@ -166,9 +164,6 @@ public class MetricsHistory {
 					.append( ',' ).append( fmt( s.turnsPerSecond ) )
 					.append( ',' ).append( fmt( s.workerCores ) ).append( ',' ).append( fmt( s.trainerCores ) );
 
-
-
-
 			RewardModel.TerminateReason[] reasons = RewardModel.TerminateReason.values();
 			int usable = Math.min( reasons.length, s.endReasons.length );
 			for (int i = 0; i < reasons.length; i++){
@@ -176,7 +171,6 @@ public class MetricsHistory {
 			}
 
 			out.write( row.append( '\n' ).toString() );
-
 
 			out.flush();
 		} catch (IOException e){
@@ -265,10 +259,7 @@ public class MetricsHistory {
 		line( "polcl ", 11, width );
 		line( "valcl ", 12, width );
 
-
 		printEndReasonTrend();
-
-
 
 		if (series.size() >= 8){
 			Graph.Row smoothed = Graph.bar( movingAverage( values( 5 ), 7 ), width );

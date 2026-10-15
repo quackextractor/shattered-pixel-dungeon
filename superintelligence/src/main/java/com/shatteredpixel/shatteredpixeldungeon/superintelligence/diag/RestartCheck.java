@@ -49,7 +49,6 @@ public class RestartCheck {
 
 		String first = signature();
 
-
 		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), SEED.hashCode() );
 		int[] slot = new int[ 1 ];
 		int played = 0;
@@ -88,10 +87,6 @@ public class RestartCheck {
 	private static void restart( LevelPipeline pipeline ){
 		Dungeon.hero = null;
 		Dungeon.init();
-
-
-
-
 
 		pipeline.attachSprites();
 

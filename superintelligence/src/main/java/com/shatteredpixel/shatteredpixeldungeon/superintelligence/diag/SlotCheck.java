@@ -52,10 +52,7 @@ public class SlotCheck {
 		EnvConfig config = new EnvConfig();
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 
-
 		env.reset( "SLOTCHECK-A", HeroClass.DUELIST );
-
-
 
 		restoreLeavesAloneABindingNoSlotIndexCanName();
 		capturedBindingsResolveTheSameSlotsAfterRestore();
@@ -177,8 +174,6 @@ public class SlotCheck {
 		}
 	}
 
-
-
 	/**
 	 * A binding on an equipped item is the game's to keep, not the recording's to overwrite.
 	 *
@@ -227,7 +222,6 @@ public class SlotCheck {
 		int equippedSlot = Dungeon.quickslot.getSlot( equipped );
 		int carriedSlot = Dungeon.quickslot.getSlot( carried );
 
-
 		Quickslots.restore( "" );
 
 		if (Dungeon.quickslot.getSlot( carried ) != -1){
@@ -248,7 +242,6 @@ public class SlotCheck {
 			return;
 		}
 
-
 		Dungeon.quickslot.setSlot( carriedSlot, carried );
 
 		System.out.println( "  restore leaves the equipped " + equipped.getClass().getSimpleName()
@@ -264,8 +257,6 @@ public class SlotCheck {
 	 */
 	private static void bindingsSurviveARoundTripThroughTheFileFormat(){
 		String where = "bindings survive a replay round trip";
-
-
 
 		String captured = "Waterskin:1,VelvetPouch:0";
 

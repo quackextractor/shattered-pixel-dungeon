@@ -56,8 +56,6 @@ final class ShardedUpdate {
 		this.ppo = ppo;
 	}
 
-
-
 	/**
 	 * Resolves the thread count and creates or tears down the pool to match.
 	 *
@@ -112,8 +110,6 @@ final class ShardedUpdate {
 		return out;
 	}
 
-
-
 	/**
 	 * Runs one minibatch across the pool and reduces the results into {@code network}.
 	 *
@@ -123,19 +119,12 @@ final class ShardedUpdate {
 	PPO.Minibatch run( int from, int to ){
 		int count = to - from;
 
-
 		int n = Math.min( ppo.threads, count );
 		if (n <= 1 || pool == null){
 			return null;
 		}
 
 		network().zeroGrad();
-
-
-
-
-
-
 
 		while (shards.size() < n) shards.add( new Shard( ppo.config, new Random( 1L + shards.size() )) );
 
@@ -144,10 +133,6 @@ final class ShardedUpdate {
 		float[] entropy = new float[ n ];
 		float[] kl = new float[ n ];
 		float[] clipped = new float[ n ];
-
-
-
-
 
 		CountDownLatch ready = new CountDownLatch( n );
 		for (int s = 0; s < n; s++){
@@ -180,8 +165,6 @@ final class ShardedUpdate {
 				ready.countDown();
 			} );
 		}
-
-
 
 		await( ready );
 

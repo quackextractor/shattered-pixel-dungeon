@@ -36,9 +36,6 @@ public class WorkerMain {
 
 	private static void serve( File workDir ){
 
-
-
-
 		if (workDir == null){
 			workDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-worker" );
 		}

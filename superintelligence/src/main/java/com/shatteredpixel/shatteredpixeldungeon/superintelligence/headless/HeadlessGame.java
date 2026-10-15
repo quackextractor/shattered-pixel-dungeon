@@ -42,11 +42,7 @@ public class HeadlessGame extends Game {
 	/** Idempotent; safe to call from every worker. */
 	public static HeadlessGame install(){
 
-
 		GameScene.headlessGameplay( true );
-
-
-
 
 		GameScene.headlessMobSprite(
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline::spriteFor );
@@ -72,18 +68,10 @@ public class HeadlessGame extends Game {
 		elapsed = 1f/60f;
 		timeTotal = 0f;
 
-
-
 		Camera.reset();
-
-
-
 
 		com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.headlessEmitter(
 				new com.watabou.noosa.particles.Emitter() );
-
-
-
 
 		if (com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene.uiCamera == null) {
 			com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene.uiCamera =
@@ -91,9 +79,6 @@ public class HeadlessGame extends Game {
 			Camera.add( com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene.uiCamera );
 		}
 	}
-
-
-
 
 	@Override
 	public void create(){
@@ -131,12 +116,8 @@ public class HeadlessGame extends Game {
 
 	}
 
-
-
 	@Override
 	protected void step(){
-
-
 
 		if (requestedReset){
 			requestedReset = false;
@@ -153,15 +134,12 @@ public class HeadlessGame extends Game {
 	@Override
 	protected void update(){
 
-
-
 		elapsed = 1f/60f;
 		timeTotal += elapsed;
 	}
 
 	@Override
 	protected void switchScene(){
-
 
 		scene = null;
 		elapsed = 0f;
@@ -171,7 +149,6 @@ public class HeadlessGame extends Game {
 
 	@Override
 	protected void logException(Throwable tr){
-
 
 		tr.printStackTrace();
 	}
@@ -185,8 +162,6 @@ public class HeadlessGame extends Game {
 	public static boolean renderStateRequired(){
 		return false;
 	}
-
-
 
 	/**
 	 * True once the game has been asked to switch scenes, until {@link #clearSwitchRequest}.

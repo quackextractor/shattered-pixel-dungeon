@@ -164,8 +164,6 @@ public class ResourceStats {
 		return new Interval();
 	}
 
-
-
 	/** One wide line, for a status row that already has a label. */
 	public static String render( String label, Interval t, long steps, double seconds ){
 		StringBuilder sb = new StringBuilder();

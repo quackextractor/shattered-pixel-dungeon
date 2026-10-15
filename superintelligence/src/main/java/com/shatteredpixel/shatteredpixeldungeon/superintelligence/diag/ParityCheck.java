@@ -124,8 +124,6 @@ public class ParityCheck {
 			for (HeroClass h : DEFAULT_HEROES) heroes.add( h );
 		}
 
-
-
 		if (full){
 			turnLimit = 1500;
 		}
@@ -143,8 +141,6 @@ public class ParityCheck {
 		System.out.println( "parity sweep: " + seeds.size() + " seed(s) x " + heroes.size()
 				+ " hero(es), " + turnLimit + " turns, one process" );
 
-
-
 		List< Case > recorded = new ArrayList<>();
 		for (String seed : seeds){
 			for (HeroClass hero : heroes){
@@ -152,9 +148,6 @@ public class ParityCheck {
 				recorded.add( c );
 			}
 		}
-
-
-
 
 		List<String> secondPass = new ArrayList<>();
 		for (Case c : recorded){
@@ -178,8 +171,6 @@ public class ParityCheck {
 			System.exit( 1 );
 		}
 	}
-
-
 
 	/** One seed/hero pair, recorded once and verified twice. */
 	private static class Case {
@@ -234,7 +225,6 @@ public class ParityCheck {
 		try {
 			ReplayIO.write( replay, file );
 
-
 			Replay read = ReplayIO.read( file );
 			c.replay = read;
 			c.steps = read.length();
@@ -259,8 +249,6 @@ public class ParityCheck {
 					+ " of " + c.steps + ": " + result.divergence + " - recording at "
 					+ file.getAbsolutePath() );
 		} else if (Math.abs( result.score - c.recordedScore ) > 1e-6){
-
-
 
 			failures.add( c.name() + " replayed step for step but scored " + result.score
 					+ " against a recorded " + c.recordedScore );

@@ -77,8 +77,6 @@ public class FallCheck {
 		}
 	}
 
-
-
 	private static SPDEnv env(){
 		EnvConfig config = new EnvConfig();
 		return new SPDEnv( config, HeadlessGame.install() );
@@ -123,8 +121,6 @@ public class FallCheck {
 		env.step( Action.WAIT, 0 );
 		return true;
 	}
-
-
 
 	/**
 	 * A fall is a floor.
@@ -265,7 +261,6 @@ public class FallCheck {
 			return;
 		}
 
-
 		InterlevelScene.mode = InterlevelScene.Mode.FALL;
 		env.reset( SEEDS[1], HeroClass.WARRIOR );
 
@@ -284,8 +279,6 @@ public class FallCheck {
 
 		Dungeon.hero.pos = exit.cell();
 		boolean accepted = Dungeon.level.activateTransition( Dungeon.hero, exit );
-
-
 
 		int destType = InterlevelScene.curTransition.destType.ordinal();
 		Dungeon.hero.ready = false;
@@ -443,7 +436,6 @@ public class FallCheck {
 			return;
 		}
 
-
 		SPDEnv churn = new SPDEnv( config, HeadlessGame.install() );
 		for (String other : SEEDS){
 			if (!other.equals( seed )) churn.reset( other, HeroClass.WARRIOR );
@@ -515,7 +507,6 @@ public class FallCheck {
 				continue;
 			}
 
-
 			Levitation lev = Dungeon.hero.buff( Levitation.class );
 			lev.detach();
 
@@ -569,17 +560,6 @@ public class FallCheck {
 			if (a.directional() && env.actionMask()[ a.index ] != 0f ){ mv = a; break; }
 		}
 		env.step( mv == null ? Action.WAIT : mv, 0 );
-
-
-
-
-
-
-
-
-
-
-
 
 		if (!env.running() || Dungeon.hero == null || !Dungeon.hero.isAlive()) return;
 		if (Dungeon.depth != 1 || !Dungeon.hero.flying) return;

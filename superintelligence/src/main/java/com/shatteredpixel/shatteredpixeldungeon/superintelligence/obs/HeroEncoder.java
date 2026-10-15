@@ -117,13 +117,11 @@ public class HeroEncoder {
 		out[ F_STRENGTH ] = (hero.STR() - 3) / 40f;
 		out[ F_DEFENSE ]  = defenseCeiling( hero ) / 60f;
 
-
 		out[ F_GOLD_LOG ] = (float) (Math.log( 1 + Dungeon.gold ) / Math.log( 1000 ) );
 
 		if (Dungeon.level != null){
 			out[ F_FLOOR_EXPLORED ] = Dungeon.level.levelExplorePercent( Dungeon.depth );
 		}
-
 
 		Hunger hunger = hero.buff( Hunger.class );
 		if (hunger != null){

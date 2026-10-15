@@ -69,8 +69,6 @@ public final class DropFixture {
 		recorder.begin( env.seedText(), HERO.name(), 0, config.turnLimitPerFloor, config );
 		Replay replay = recorder.replay();
 
-
-
 		env.mapper().refreshSlots();
 		int slot = -1;
 		for (int i = 0; i < env.mapper().slots().size(); i++){
@@ -85,7 +83,6 @@ public final class DropFixture {
 			throw new IllegalStateException( SEED + " carries nothing bound and unequipped, so the"
 					+ " fixture cannot drop an item whose slot resolution the bindings decide." );
 		}
-
 
 		step( env, recorder, Action.USE, 0, EnvMode.WORLD );
 		step( env, recorder, Action.DROP, slot, EnvMode.SLOT );

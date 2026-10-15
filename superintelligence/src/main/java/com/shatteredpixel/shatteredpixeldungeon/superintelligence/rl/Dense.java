@@ -68,7 +68,6 @@ public class Dense {
 
 		this.preAct = new Tensor( 1, out );
 
-
 		W.randomNormal( rng, weightScale / (float) Math.sqrt( in ) );
 		b.fill( 0f );
 	}
@@ -86,16 +85,12 @@ public class Dense {
 	/** Accumulates dL/dx given dL/dout, where out was produced by forward(x, out). */
 	public void backward( Tensor x, Tensor dout, Tensor dx ){
 
-
-
-
 		if (tanh){
 			for (int n = 0; n < out; n++){
 				float t = (float) Math.tanh( preAct.data[ n ] );
 				dout.data[ n ] *= (1f - t * t);
 			}
 		}
-
 
 		for (int m = 0; m < in; m++){
 			float xv = x.data[ m ];
@@ -107,7 +102,6 @@ public class Dense {
 		}
 
 		for (int n = 0; n < out; n++) gb.data[ n ] += dout.data[ n ];
-
 
 		for (int m = 0; m < in; m++){
 			float sum = 0;

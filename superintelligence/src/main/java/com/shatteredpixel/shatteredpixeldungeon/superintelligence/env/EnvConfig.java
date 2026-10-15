@@ -12,8 +12,6 @@ import java.io.IOException;
  */
 public class EnvConfig {
 
-
-
 	/** Inventory slots the slot head covers. Backpack capacity is 20 plus one per bag. */
 	public int maxSlots = 32;
 
@@ -31,8 +29,6 @@ public class EnvConfig {
 	public int spatialChannels(){
 		return com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.GridChannel.spatialCount();
 	}
-
-
 
 	/**
 	 * Hard cap on hero turns per floor.
@@ -103,8 +99,6 @@ public class EnvConfig {
 	 */
 	public int freeStepBudget = 250;
 
-
-
 	/** Clamp on hero.viewDistance when building the observation grid. */
 	public int maxViewDistance = 12;
 
@@ -121,8 +115,6 @@ public class EnvConfig {
 	 */
 	public boolean mimicsVisibleOutOfFog = true;
 
-
-
 	/** Allow the agent to equip and unequip from the inventory pane. */
 	public boolean allowEquipping = true;
 
@@ -131,8 +123,6 @@ public class EnvConfig {
 
 	/** Allow the agent to use the alchemy pot. */
 	public boolean allowAlchemy = true;
-
-
 
 	/** Curriculum stage 0..1. Drives the dense-to-sparse fade described in research.md. */
 	public float curriculumProgress = 0f;
@@ -343,7 +333,6 @@ public class EnvConfig {
 		out.writeBoolean( allowTrading );
 		out.writeBoolean( allowAlchemy );
 		out.writeBoolean( persistSaves );
-
 
 		out.writeUTF( rewardProfile.key() );
 	}

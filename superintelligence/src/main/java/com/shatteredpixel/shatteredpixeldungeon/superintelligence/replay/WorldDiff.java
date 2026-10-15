@@ -111,10 +111,6 @@ public class WorldDiff {
 			if (!diff.isEmpty()) return diff;
 		}
 
-
-
-
-
 		for (String name : got.keySet()){
 			if (oneSidedOnly( name )) continue;
 			if (!expected.containsKey( name )){
@@ -135,24 +131,9 @@ public class WorldDiff {
 	private static String compareFields( String label, String name,
 			List< String > expected, List< String > got ){
 
-
-
 		if (expected.size() == 1 && got.size() == 1){
 			return compareOneRow( label, name, expected.get( 0 ), got.get( 0 ));
 		}
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 		if (expected.size() == 1 && got.size() > 1){
 			return compareOneRow( label, name + " (settled)", expected.get( 0 ),

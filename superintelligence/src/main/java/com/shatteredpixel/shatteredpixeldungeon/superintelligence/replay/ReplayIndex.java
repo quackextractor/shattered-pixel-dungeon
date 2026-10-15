@@ -83,7 +83,6 @@ public class ReplayIndex {
 	/** Every directory recorded so far that still exists, in the order they were recorded. */
 	public static List<File> read(){
 
-
 		LinkedHashSet<File> found = new LinkedHashSet<>();
 
 		File index = indexFile();

@@ -65,9 +65,6 @@ public class WorkerPool {
 		for (int i = 0; i < count; i++){
 			WorkerHandle handle = new WorkerHandle( java, classpath, "worker" + i );
 
-
-
-
 			DataOutputStream out = handle.dataOut;
 			out.writeInt( Protocol.MSG_HELLO );
 			out.writeInt( Protocol.VERSION );
@@ -140,8 +137,6 @@ public class WorkerPool {
 					+ " alive=" + worker.process.isAlive() );
 		}
 
-
-
 		for (Thread t : Thread.getAllStackTraces().keySet()){
 			if (t.getName().startsWith( "dispatch-" )){
 				System.err.println( "  " + t.getName() + " " + t.getState() );
@@ -201,8 +196,6 @@ ProcessBuilder pb = new ProcessBuilder(
 				"-Xms256m", "-Xmx1536m",
 				"-XX:+UseParallelGC", "-XX:MaxGCPauseMillis=200",
 
-
-
 				"--enable-native-access=ALL-UNNAMED",
 				"-cp", classpath,
 					"com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerMain",
@@ -211,8 +204,6 @@ ProcessBuilder pb = new ProcessBuilder(
 					"--work-dir", new File( workerDir(), name ).getAbsolutePath() );
 
 			pb.redirectError( ProcessBuilder.Redirect.INHERIT );
-
-
 
 			File dir = new File( workerDir(), name );
 			if (!dir.isDirectory() && !dir.mkdirs()){

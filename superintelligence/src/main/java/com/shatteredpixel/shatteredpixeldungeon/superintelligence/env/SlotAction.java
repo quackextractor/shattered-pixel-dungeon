@@ -67,11 +67,6 @@ public static void clearPendingUseItem(){
 	 */
 public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 
-
-
-
-
-
 		boolean equippable = allowEquipping && item instanceof EquipableItem;
 
 		if (equippable && !item.usesTargeting){
@@ -82,13 +77,10 @@ public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 		String action = resolveAction( hero, item );
 		if (action == null){
 
-
-
 			if (equippable) toggleEquip( hero, (EquipableItem) item );
 			else hero.next();
 			return false;
 		}
-
 
 		GameScene.clearPendingCellListener();
 
@@ -101,8 +93,6 @@ public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 		}
 
 		hero.next();
-
-
 
 		return false;
 	}
@@ -131,10 +121,6 @@ public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 		} else {
 			changed = item.doEquip( hero );
 		}
-
-
-
-
 
 		hero.next();
 

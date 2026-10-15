@@ -51,7 +51,6 @@ public class CheckpointCheck {
 		try {
 			EnvConfig config = new EnvConfig();
 
-
 			EnvConfig small = new EnvConfig();
 			small.gridWidth = 12;
 			small.gridHeight = 12;
@@ -72,8 +71,6 @@ public class CheckpointCheck {
 			checkResumesIntoAnUntrainedNetwork( original, small, file );
 			checkReportsGenerationAndSteps( original, small, file, 7, 4242L );
 		checkAMissingFlagValueIsRefusedNamingItself();
-
-
 
 			Checkpoint.save( new File( dir, "default.bin" ),
 					new Network( config, new Random( 1L ) ), config, 1, 1L );
@@ -234,8 +231,6 @@ public class CheckpointCheck {
 			File file ) throws IOException {
 		Checkpoint.save( file, original, config, 1, 1L );
 
-
-
 		checkMismatchNames( config, file, "maxSlots", 6 );
 		checkMismatchNames( config, file, "gridWidth", 10 );
 		checkMismatchNames( config, file, "gridHeight", 10 );
@@ -390,8 +385,6 @@ public class CheckpointCheck {
 				message = "IO: " + e.getMessage();
 			} catch (RuntimeException e){
 
-
-
 				message = e.getClass().getSimpleName() + ": " + e.getMessage();
 			}
 
@@ -406,7 +399,6 @@ public class CheckpointCheck {
 				return;
 			}
 		}
-
 
 		try {
 			TrainOptions.parse( new String[]{ "--workers", "2", "--not-a-real-flag" });

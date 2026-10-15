@@ -118,7 +118,6 @@ public class ResetCheck {
 			@Override public String prompt(){ return "test"; }
 		} );
 
-
 		if (GameScene.pendingCellListener() == null){
 			fail( "GameScene.selectCell did not arm a pending listener, so the case cannot test whether"
 					+ " reset disarms one." );
@@ -167,7 +166,6 @@ public class ResetCheck {
 		GameScene.show( new WndOptions( "RESETCHECK", "dialog left open by the previous episode",
 				"Yes", "No" ) );
 
-
 		if (!WindowBridge.open()){
 			fail( "GameScene.show did not park an answerable window, so the case cannot test whether"
 					+ " reset clears one." );
@@ -175,12 +173,6 @@ public class ResetCheck {
 		}
 
 		env.reset( SEEDS[ 2 ], HeroClass.WARRIOR );
-
-
-
-
-
-
 
 		if (GameScene.headlessWindow() != null){
 			fail( "a dialog left open by the previous episode was still parked after reset ("
@@ -227,16 +219,9 @@ public class ResetCheck {
 	private static void checkARunDoesNotInheritRemains(){
 		EnvConfig config = new EnvConfig();
 
-
-
-
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ScriptedEpisode.Result first =
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ScriptedEpisode.record(
 						config, DYING_SEED, HeroClass.ROGUE, 0, 1 );
-
-
-
-
 
 		if (first.env.endReason() != com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
 				.RewardModel.TerminateReason.DEATH){
@@ -300,7 +285,6 @@ public class ResetCheck {
 	private static void checkTrajectoriesDoNotDependOnOrder( SPDEnv env, EnvConfig config ){
 		for (String seed : SEEDS){
 			String first = trace( env, config, seed );
-
 
 			for (String other : SEEDS){
 				if (!other.equals( seed )) trace( env, config, other );
@@ -366,13 +350,6 @@ public class ResetCheck {
 		env.config().turnLimitPerFloor = config.turnLimitPerFloor;
 		env.reset( seed, HeroClass.WARRIOR );
 
-
-
-
-
-
-
-
 		StringBuilder sb = new StringBuilder();
 		sb.append( "run=" );
 		for (Object room : com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.SpecialRoom
@@ -404,8 +381,6 @@ public class ResetCheck {
 	private static String nameOf( Object room ){
 		return room instanceof Class ? ((Class<?>) room).getSimpleName() : String.valueOf( room );
 	}
-
-
 
 	/** A seeded random policy, so the only thing that can differ between two traces is the environment. */
 	private static void play( SPDEnv env, int steps ){

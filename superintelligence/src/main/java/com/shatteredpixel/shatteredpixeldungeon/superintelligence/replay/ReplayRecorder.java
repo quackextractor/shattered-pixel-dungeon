@@ -63,7 +63,6 @@ public class ReplayRecorder {
 		if (!recording) return;
 		replay.add( action.name(), slot, mode.name(), -1, 0 );
 
-
 		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY){
 			replay.steps.get( replay.length() - 1 ).quickslots = Quickslots.capture();
 		}
@@ -77,8 +76,6 @@ public class ReplayRecorder {
 		Replay.Step step = replay.steps.get( last );
 		step.heroPos = heroPosition;
 		step.reward = reward;
-
-
 
 		step.heroHp = Dungeon.hero.HP;
 		step.turn = Actor.now();

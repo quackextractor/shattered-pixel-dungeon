@@ -190,13 +190,6 @@ public class ReplayCatalog {
 	 */
 	private static List<File> defaultDirectories(){
 
-
-
-
-
-
-
-
 		LinkedHashSet<File> dirs = new LinkedHashSet<>();
 
 		File repo = repositoryRoot();
@@ -244,8 +237,6 @@ public class ReplayCatalog {
 	private static File repositoryRoot(){
 		File dir = new File( System.getProperty( "user.dir" ) ).getAbsoluteFile();
 
-
-
 		for (int depth = 0; depth < 12 && dir != null; depth++){
 			if (new File( dir, "settings.gradle" ).isFile()) return dir;
 			dir = dir.getParentFile();
@@ -275,11 +266,6 @@ public class ReplayCatalog {
 		Map<String, Entry> bySeed = new LinkedHashMap<>();
 		Map<String, List<Entry>> all = new LinkedHashMap<>();
 
-
-
-
-
-
 		Set<String> seen = new LinkedHashSet<>();
 
 		for (int dirIndex = 0; dirIndex < directories.size(); dirIndex++){
@@ -292,16 +278,12 @@ File canonical = canonical( dir );
 		for (File file : recordingsUnder( canonical )){
 			String name = file.getName().toLowerCase();
 
-
-
-
 			if (!(name.endsWith( ".replay" ) || name.endsWith( ".dat" ))) continue;
 
 				Entry entry;
 				try {
 					entry = new Entry( file, ReplayIO.readHeader( file ) );
 				} catch (IOException e){
-
 
 					entry = new Entry( file, e.getMessage() );
 				}
@@ -317,11 +299,8 @@ File canonical = canonical( dir );
 		copies.clear();
 		copies.putAll( all );
 
-
-
 		allEntries.clear();
 		for (List<Entry> group : all.values()) allEntries.addAll( group );
-
 
 		for (Map.Entry<String, List<Entry>> pair : copies.entrySet()){
 			for (Entry entry : pair.getValue()) entry.copies = pair.getValue().size();
@@ -408,10 +387,7 @@ File canonical = canonical( dir );
 	private static Comparator<Entry> rankOrder(){
 		return Comparator
 
-
 				.comparing( ( Entry e ) -> e.error != null )
-
-
 
 				.thenComparingDouble( e -> e.error != null ? Double.MAX_VALUE : -e.score )
 				.thenComparingInt( e -> -e.depth )
@@ -434,7 +410,6 @@ File canonical = canonical( dir );
 
 		String needle = name.trim().toLowerCase();
 
-
 		File asPath = new File( name.trim() );
 		if (asPath.isFile()){
 			for (Entry entry : allEntries){
@@ -449,8 +424,6 @@ File canonical = canonical( dir );
 		int dot = stem.lastIndexOf( '.' );
 		if (dot > 0) stem = stem.substring( 0, dot );
 
-
-
 		for (Entry entry : allEntries){
 			boolean hit = entry.file.getName().equalsIgnoreCase( needle )
 					|| entry.label().equalsIgnoreCase( stem )
@@ -461,8 +434,6 @@ File canonical = canonical( dir );
 
 		return matches;
 	}
-
-
 
 	/**
 	 * The entries in listing order, numbered from 1.
@@ -519,7 +490,6 @@ File canonical = canonical( dir );
 		sections.put( SECTION_CORPUS, new LinkedHashMap<>() );
 		sections.put( SECTION_TRAINER, new LinkedHashMap<>() );
 
-
 		List<String> groups = new ArrayList<>( new LinkedHashSet<>( namedGroups() ));
 		groups.sort( String::compareTo );
 		for (String group : groups) sections.put( GROUP_PREFIX + group, new LinkedHashMap<>() );
@@ -575,14 +545,9 @@ File canonical = canonical( dir );
 		String wanted = name == null ? "" : name.trim();
 		if (wanted.isEmpty()) return null;
 
-
-
-
-
 		if (!ambiguous( wanted ).isEmpty()) return null;
 
 		String lower = wanted.toLowerCase();
-
 
 		for (Entry entry : allEntries){
 			if (entry.file.getName().toLowerCase().equals( lower )) return entry;
@@ -656,14 +621,6 @@ File canonical = canonical( dir );
 			int inSection = sectionCount( section.getValue() );
 			if (inSection == 0) continue;
 
-
-
-
-
-
-
-
-
 			String blurb = "  " + sectionBlurb( section.getKey(), section.getValue() );
 			if (!plain) blurb = Ansi.wrap( blurb, Ansi.DIM );
 
@@ -678,7 +635,6 @@ File canonical = canonical( dir );
 
 				for (Entry entry : group.getValue()){
 					shown++;
-
 
 					String note = note( entry );
 					if (!note.isEmpty() && !plain) note = Ansi.wrap( note, Ansi.DIM );
@@ -701,13 +657,6 @@ File canonical = canonical( dir );
 		out.append( "\n" ).append( shown ).append( " recording" ).append( shown == 1 ? "" : "s" )
 				.append( ", ranked by score within each section"
 				).append( ", numbered 1 to " ).append( shown ).append( "\n" );
-
-
-
-
-
-
-
 
 		List<Entry> shared = new ArrayList<>();
 		for (Entry entry : entries){
@@ -747,16 +696,10 @@ File canonical = canonical( dir );
 			return "recorded through ReplayRecorder directly - these reproduce";
 		}
 
-
-
-
-
 		int unwatchable = 0;
 		for (List<Entry> hero : groups.values()){
 			for (Entry entry : hero) if (!entry.watchable) unwatchable++;
 		}
-
-
 
 		String origin = section.startsWith( GROUP_PREFIX )
 				? "written by training run group " + section.substring( GROUP_PREFIX.length() ).toLowerCase( Locale.ROOT ) + " - these reproduce"
@@ -781,24 +724,12 @@ File canonical = canonical( dir );
 	private String note( Entry entry ){
 		if (entry.error != null) return "[WARN] unreadable: " + entry.error;
 
-
-
 		if (entry.copies > 1){
 			return "[WARN] " + entry.copies + " recordings share this seed - name the file"
 					+ ( entry.generation > 0 ? ", gen " + entry.generation : "" );
 		}
 
 		if (entry.truncatedAt >= 0) return "[WARN] truncated at " + entry.truncatedAt + " of " + entry.steps;
-
-
-
-
-
-
-
-
-
-
 
 		String watchable = entry.watchable ? "" : "not watchable ";
 
@@ -879,8 +810,6 @@ File canonical = canonical( dir );
 		return "--------------------------- ----------------------";
 	}
 
-
-
 	public static void main( String[] args ){
 		List<File> directories = new ArrayList<>();
 		boolean plain = false;
@@ -905,12 +834,6 @@ File canonical = canonical( dir );
 
 		ReplayCatalog catalog = new ReplayCatalog().scan( directories );
 
-
-
-
-
-
-
 		if (select != null){
 			int number;
 			try {
@@ -933,9 +856,6 @@ File canonical = canonical( dir );
 			return;
 		}
 
-
-
-
 		if (resolve != null){
 
 			File asPath = new File( resolve );
@@ -944,18 +864,12 @@ File canonical = canonical( dir );
 				return;
 			}
 
-
-
-
-
 			List<Entry> many = catalog.ambiguous( resolve );
 			if (!many.isEmpty()){
 				StringBuilder message = new StringBuilder();
 				message.append( resolve ).append( " is recorded " ).append( many.size() )
 						.append( " times; pass a file name to pick one:" ).append( System.lineSeparator() );
 				for (Entry entry : many){
-
-
 
 					message.append( "  " ).append( entry.file.getName() )
 							.append( String.format( Locale.ROOT, "  %-16s %6d steps, score %9.1f",

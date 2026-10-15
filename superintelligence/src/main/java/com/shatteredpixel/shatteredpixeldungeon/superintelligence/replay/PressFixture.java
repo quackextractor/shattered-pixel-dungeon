@@ -102,10 +102,6 @@ public final class PressFixture {
 		step( env, recorder, Action.USE, 0, EnvMode.WORLD );
 		step( env, recorder, Action.USE, slot, EnvMode.SLOT );
 
-
-
-
-
 		if (env.mode() != EnvMode.TARGETING) return null;
 
 		step( env, recorder, Action.USE, target, EnvMode.TARGETING );

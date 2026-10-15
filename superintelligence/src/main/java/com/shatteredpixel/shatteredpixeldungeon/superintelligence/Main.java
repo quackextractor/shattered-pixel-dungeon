@@ -159,14 +159,8 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "See superintelligence/superintelligence.properties for every key." );
 	}
 
-
-
 private static void rollout( String[] args ){
 		Options options = Options.parse( args );
-
-
-
-
 
 		if ( options.seedProvided && (options.seed == null || options.seed.trim().isEmpty()) ){
 			System.err.println( "[ERROR] --seed was given but empty. Omit the flag entirely for a "
@@ -174,8 +168,6 @@ private static void rollout( String[] args ){
 			System.exit( 1 );
 			return;
 		}
-
-
 
 		ResourceStats.Interval timing = ResourceStats.start();
 
@@ -186,8 +178,6 @@ private static void rollout( String[] args ){
 
 		HeadlessGame game = HeadlessGame.install();
 		SPDEnv env = new SPDEnv( config, game );
-
-
 
 		ResourceStats.Interval simulation = ResourceStats.start();
 		long start = System.nanoTime();
@@ -230,8 +220,6 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			}
 		}
 	}
-
-
 
 	/**
 	 * Records the {@code DROP}-in-{@code SLOT} fixture the viewer gates play, and verifies it.
@@ -290,9 +278,6 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			System.exit( 1 );
 			return;
 		}
-
-
-
 
 		int covered = witness.applyAsInt( replay );
 		if (covered < 0){
@@ -364,14 +349,11 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			return new EnvConfig();
 		} catch (IllegalArgumentException e){
 
-
 			System.err.println( "[ERROR] " + e.getMessage() );
 			System.exit( 1 );
 			return new EnvConfig();
 		}
 	}
-
-
 
 	/**
 	 * Replays a recording and reports how much randomness each step consumed.
@@ -401,7 +383,6 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			replay = ReplayIO.read( file );
 		} catch (IOException e){
 
-
 			System.err.println( "[ERROR] cannot read the replay " + file
 					+ " (" + e.getClass().getSimpleName() + ")" );
 			System.exit( 1 );
@@ -419,8 +400,6 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 
 		RngTrace trace = new RngTrace();
 		com.watabou.utils.RandomTrace.enable();
-
-
 
 		com.watabou.utils.RandomTrace.attribute();
 
@@ -492,11 +471,6 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 			return;
 		}
 
-
-
-
-
-
 		if ( replay.seedText == null || replay.seedText.trim().isEmpty() ){
 			System.err.println( "[ERROR] " + file.getName() + " records no seed (header field 'seed=' is empty)."
 					+ " Its world cannot be rebuilt, so it cannot be verified. Re-record with a seed." );
@@ -524,7 +498,6 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 
 		if (result.diverged){
 
-
 			System.err.println( "[ERROR] replay diverged at step " + result.divergedAt
 					+ " of " + replay.steps.size() );
 			System.err.println( "        " + result.divergence );
@@ -533,9 +506,6 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 					+ " mode " + replay.steps.get( result.divergedAt ).mode );
 			System.exit( 2 );
 		} else if (result.unwatchableAt >= 0){
-
-
-
 
 			System.err.println( "[ERROR] replay reproduced in " + result.stepsVerified
 					+ " steps but is not watchable:" );
@@ -552,8 +522,6 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 					+ (Math.abs( replay.score - result.score ) < 1e-6 ? "" : "  [WARN] differs") );
 		}
 	}
-
-
 
 	/**
 	 * Checks the network's analytic gradients against finite differences.
@@ -572,8 +540,6 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 
 		if (failures > 0) System.exit( 1 );
 	}
-
-
 
 	/**
 	 * Resets the env, reporting a bad seed as a message rather than a stack trace.

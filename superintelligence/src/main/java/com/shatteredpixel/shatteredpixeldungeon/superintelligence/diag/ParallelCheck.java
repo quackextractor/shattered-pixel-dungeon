@@ -138,8 +138,6 @@ public class ParallelCheck {
 		}
 	}
 
-
-
 	/** One gradient comparison's outcome. */
 	private static class Result {
 		/** The sharded accumulation, for cross-shard-count comparison. */
@@ -193,7 +191,6 @@ public class ParallelCheck {
 		}
 
 		float[][] a = straight.gradientTensors();
-
 
 		float[][] summed = new float[ a.length ][];
 		for (int i = 0; i < a.length; i++ ) summed[ i ] = new float[ a[ i ].length ];
@@ -307,7 +304,6 @@ public class ParallelCheck {
 
 	private static EnvConfig smallConfig(){
 		EnvConfig config = new EnvConfig();
-
 
 		config.gridWidth = 10;
 		config.gridHeight = 10;

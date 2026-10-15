@@ -86,8 +86,6 @@ public class ObserveCheck {
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		env.reset( "OBSERVECHECK-A", HeroClass.WARRIOR );
 
-
-
 		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), 11 );
 		int[] slot = new int[ 1 ];
 		for (int i = 0; i < 14 && env.running(); i++){

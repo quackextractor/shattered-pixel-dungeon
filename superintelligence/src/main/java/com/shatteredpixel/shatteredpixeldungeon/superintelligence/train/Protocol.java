@@ -40,7 +40,6 @@ public final class Protocol {
 	 */
 	public static final int VERSION = 3;
 
-
 	public static final int MSG_HELLO = 1;
 	/** Config, hyperparameters and the current weights. Acknowledged. */
 	public static final int MSG_PARAMS = 2;
@@ -49,7 +48,6 @@ public final class Protocol {
 	/** Reserved. Never sent; kept so a future drain signal is not renumbered onto it. */
 	public static final int MSG_DONE = 4;
 	public static final int MSG_BYE = 5;
-
 
 	/** Reserved for a standalone replay frame, split off the episode channel. */
 	public static final int MSG_REPLAY = 6;

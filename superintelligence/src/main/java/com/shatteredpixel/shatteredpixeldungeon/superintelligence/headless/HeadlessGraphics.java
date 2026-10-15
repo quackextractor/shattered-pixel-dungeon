@@ -41,8 +41,6 @@ public class HeadlessGraphics implements Graphics {
 		return graphics;
 	}
 
-
-
 	@Override public boolean isGL30Available(){ return false; }
 	@Override public boolean isGL31Available(){ return false; }
 	@Override public boolean isGL32Available(){ return false; }
@@ -56,8 +54,6 @@ public class HeadlessGraphics implements Graphics {
 	@Override public void setGL30( GL30 gl30 ){ }
 	@Override public void setGL31( GL31 gl31 ){ }
 	@Override public void setGL32( GL32 gl32 ){ }
-
-
 
 	@Override public int getWidth(){ return WIDTH; }
 	@Override public int getHeight(){ return HEIGHT; }
@@ -87,8 +83,6 @@ public class HeadlessGraphics implements Graphics {
 	@Override public Cursor newCursor( Pixmap pixmap, int hotspotX, int hotspotY ){ return null; }
 	@Override public void setCursor( Cursor cursor ){ }
 	@Override public void setSystemCursor( Cursor.SystemCursor cursor ){ }
-
-
 
 	@Override public long getFrameId(){ return 0L; }
 	@Override public float getDeltaTime(){ return 1f / 60f; }

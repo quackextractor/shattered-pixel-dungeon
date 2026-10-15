@@ -41,8 +41,6 @@ public class SeedPool {
 		locked.clear();
 		for (int i = 0; i < count; i++){
 
-
-
 			long seed = Math.floorMod( rng.nextLong(), DungeonSeed.TOTAL_SEEDS );
 			locked.add( DungeonSeedCodes.encode( seed ) );
 		}

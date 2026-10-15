@@ -22,17 +22,14 @@ public class LSTM {
 
 	public final int size;
 
-
 	final Tensor W;
 	final Tensor b;
 
 	final Tensor mW, vW, mb, vb;
 	final Tensor gW, gb;
 
-
 	private final Tensor gates;
 	private final Tensor scratch;
-
 
 	private final Tensor dCellGrad;
 	private final Tensor dGateGrad;
@@ -79,7 +76,6 @@ this.h = new Tensor( 1, size );
 		this.hPrev = new Tensor( 1, size );
 		this.cPrev = new Tensor( 1, size );
 		this.preAct = new Tensor( 1, cols );
-
 
 		for (int i = 0; i < size; i++) b.data[ i ] = 1f;
 
@@ -139,8 +135,6 @@ this.h = new Tensor( 1, size );
 
 		scratch.matmul( W, b, gates );
 
-
-
 		System.arraycopy( gates.data, 0, preAct.data, 0, gates.cols );
 		System.arraycopy( h.data, 0, hPrev.data, 0, size );
 		System.arraycopy( c.data, 0, cPrev.data, 0, size );
@@ -180,24 +174,18 @@ public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 			float g = (float) Math.tanh( preAct.data[ 2 * s + i ] );
 			float o = sigmoid( preAct.data[ 3 * s + i ] );
 
-
 			float ct = c.data[ i ];
 			float tanhCt = (float) Math.tanh( ct );
 
-
 			float dc = dCPrev.data[ i ] + dOut.data[ i ] * o * (1 - tanhCt * tanhCt);
-
 
 			gg[ i ]         = dc * cPrev.data[ i ] * f * (1 - f);
 			gg[ s + i ]     = dc * g * in * (1 - in);
 			gg[ 2 * s + i ] = dc * in * (1 - g * g);
 			gg[ 3 * s + i ] = dOut.data[ i ] * tanhCt * o * (1 - o);
 
-
-
 			gc[ i ] = dc * f;
 		}
-
 
 		for (int r = 0; r < scratch.cols; r++){
 			float xv = scratch.data[ r ];
@@ -206,7 +194,6 @@ public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 			for (int n = 0; n < W.cols; n++) gW.data[ row + n ] += xv * gg[ n ];
 		}
 		for (int n = 0; n < W.cols; n++) gb.data[ n ] += gg[ n ];
-
 
 		for (int r = 0; r < scratch.cols; r++){
 			int row = r * W.cols;
@@ -219,7 +206,6 @@ public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 				dHPrev.data[ r - x.cols ] += sum;
 			}
 		}
-
 
 		System.arraycopy( gc, 0, dCPrev.data, 0, s );
 	}

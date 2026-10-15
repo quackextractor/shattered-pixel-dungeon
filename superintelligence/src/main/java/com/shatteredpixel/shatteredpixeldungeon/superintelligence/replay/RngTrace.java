@@ -88,28 +88,13 @@ public class RngTrace {
 	 */
 	public void onReset(){
 
-
-
-
 		generationBaseDraws = RandomTrace.baseDraws();
 		generationBaseFingerprint = RandomTrace.baseFingerprint();
 
 		RandomTrace.reset();
 
-
-
-
 		previousSites.clear();
 		previousSites.putAll( RandomTrace.sites() );
-
-
-
-
-
-
-
-
-
 
 		StringBuilder window = new StringBuilder();
 		for (java.util.Map.Entry< String, Integer > e : RandomTrace.sites().entrySet()){
@@ -118,11 +103,6 @@ public class RngTrace {
 			window.append( e.getKey() ).append( '=' ).append( e.getValue() );
 		}
 		lines.add( "# generationSites=" + window );
-
-
-
-
-
 
 		dungeonSeed( com.shatteredpixel.shatteredpixeldungeon.Dungeon.seed );
 		lines.add( "# generationBaseDraws=" + generationBaseDraws

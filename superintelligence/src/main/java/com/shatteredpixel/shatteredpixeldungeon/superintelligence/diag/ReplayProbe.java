@@ -53,7 +53,6 @@ public class ReplayProbe {
 		List<Transition> transitions = new ArrayList<>();
 		float[] scratch = new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
 
-
 		for (int i = 0; i < n; i++){
 			Transition t = new Transition();
 			t.grid = new byte[ scratch.length ];
@@ -72,20 +71,16 @@ public class ReplayProbe {
 			t.actionIndex = 3;
 			t.oldLogProbability = -1.1f;
 
-
 			network.forward( scratchFrom( t, scratch ), t.inventory, t.hero );
 			t.value = network.value();
 
 			transitions.add( t );
 		}
 
-
-
 		double correctDrift = 0;
 		double staleDrift = 0;
 		double worstCorrect = 0;
 		double worstStale = 0;
-
 
 		network.resetState();
 		for (int i = 0; i < n; i++){
@@ -95,7 +90,6 @@ public class ReplayProbe {
 			correctDrift += d;
 			worstCorrect = Math.max( worstCorrect, d );
 		}
-
 
 		network.resetState();
 		for (int i = n - 1; i >= 0; i--){

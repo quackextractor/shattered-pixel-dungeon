@@ -80,15 +80,7 @@ private EnvConfig config;
 			config = new EnvConfig();
 		}
 
-
-
-
-
 		config.readFrom( in );
-
-
-
-
 
 		float gamma = in.readFloat();
 		float lambda = in.readFloat();
@@ -103,9 +95,6 @@ private EnvConfig config;
 		env = new SPDEnv( config, game );
 
 		network = new Network( config, policyRng );
-
-
-
 
 		collector = new EpisodeCollector( config, network, policyRng, new Random( policyRng.nextLong() ),
 				gamma, lambda, sampleRate, maxSampledPerEpisode );
@@ -128,14 +117,8 @@ private EnvConfig config;
 
 		ResourceStats.Interval work = ResourceStats.start();
 
-
-
-
-
-
 		collector.listener( new EpisodeCollector.Listener() {
 			@Override public void onEpisodeStart( String seedText, String hero ){
-
 
 				recorder.begin( seedText, hero, 0, config.turnLimitPerFloor, config );
 			}
@@ -171,9 +154,6 @@ private EnvConfig config;
 
 		out.writeInt( Protocol.MSG_EPISODE );
 
-
-
-
 		Episode summary = new Episode();
 		summary.score = env.ledger().total();
 		summary.depth = env.deepestDepth();
@@ -181,17 +161,10 @@ private EnvConfig config;
 		summary.endedNaturally = env.endedNaturally();
 		summary.reason = env.endReason().name();
 
-
-
-
-
 		summary.workerCpuTotal = ResourceStats.processCpuSecondsTotal();
 		summary.workerHeapMb = work.to().heapUsedMb();
 
 		Episode.write( out, summary );
-
-
-
 
 		out.writeInt( replay.length() );
 
@@ -199,14 +172,9 @@ private EnvConfig config;
 			writeReplay( replay );
 		}
 
-
-
-
 		TransitionCodec.write( out, record.sampledTransitions() );
 
 		out.flush();
-
-
 
 		record.release();
 	}
@@ -239,8 +207,6 @@ private EnvConfig config;
 	private void writeReplay( Replay replay ) throws IOException {
 		ReplayCodec.write( out, replay );
 	}
-
-
 
 	/** Sends the current policy to the worker. */
 	public static void writeWeights( DataOutputStream out, Network net ) throws IOException {

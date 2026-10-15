@@ -81,10 +81,6 @@ public class ScriptedEpisode {
 		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), policySeed );
 		ReplayRecorder recorder = new ReplayRecorder();
 
-
-
-
-
 		recorder.begin( env.seedText(), hero.name(), 0, config.turnLimitPerFloor, config );
 
 		RunReport report = new RunReport( env.ledger(), env.seedText() );

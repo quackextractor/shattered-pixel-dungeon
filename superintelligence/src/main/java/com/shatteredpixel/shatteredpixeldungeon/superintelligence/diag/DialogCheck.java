@@ -151,7 +151,6 @@ public class DialogCheck {
 				return;
 			}
 
-
 			int guard = 0;
 			while (env.mode() != EnvMode.WORLD && env.running() && guard++ < 20){
 				env.step( Action.CANCEL, 0 );
@@ -162,9 +161,6 @@ public class DialogCheck {
 						+ " MENU only while the dialog is open, so a closed dialog has to return control." );
 				return;
 			}
-
-
-
 
 			int depth = Dungeon.depth;
 			int moves = 0;
@@ -236,7 +232,6 @@ public class DialogCheck {
 			return;
 		}
 
-
 		WindowBridge.selectOption( 0 );
 
 		if (!WindowBridge.open()){
@@ -251,7 +246,6 @@ public class DialogCheck {
 					+ " duplicates is not in the fixture and the first half of it proves nothing." );
 			return;
 		}
-
 
 		for (int i = 0; i < 40 && WindowBridge.open(); i++) env.step( Action.WAIT, 0 );
 		WindowBridge.selectOption( 0 );
@@ -288,7 +282,6 @@ public class DialogCheck {
 	private static void checkADialogOpenedDuringATurnIsReportedInThatTurn(){
 		SPDEnv env = env();
 		env.reset( SEEDS[1], HeroClass.WARRIOR );
-
 
 		env.step( Action.WAIT, 0 );
 		if (!env.running()){
