@@ -62,9 +62,11 @@ public class StallBreakdown {
 			int n = 0;
 			while (env.running() && n < config.turnLimitTotal){
 				Action a = pickAction( env, rng );
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode before = env.mode();
 				env.step( a, pickSlot( env, rng ));
 				used.merge( a.name(), 1, Integer::sum );
-				if (!env.lastStepAdvancedClock()) freeByAction.merge( a.name(), 1, Integer::sum );
+				String key = a.name() + " from " + before.name();
+				if (!env.lastStepAdvancedClock()) freeByAction.merge( key, 1, Integer::sum );
 				n++;
 			}
 
@@ -93,12 +95,12 @@ public class StallBreakdown {
 			System.out.println( String.format( "  %-18s %4d", e.getKey(), e.getValue() ));
 		}
 		System.out.println();
-		System.out.println( "steps that advanced no engine time, by action (of all steps taken):" );
-		for (Map.Entry< String, Integer > e : used.entrySet()){
-			int free = freeByAction.getOrDefault( e.getKey(), 0 );
-			if (free == 0) continue;
-			System.out.println( String.format( "  %-14s %5d free / %5d used  = %4.1f%%", e.getKey(),
-					free, e.getValue(), 100.0 * free / e.getValue() ));
+		System.out.println( "steps that advanced no engine time, by action and the mode it was issued from:" );
+		for (Map.Entry< String, Integer > e : freeByAction.entrySet()){
+			String action = e.getKey().split( " from " )[ 0 ];
+			System.out.println( String.format( "  %-14s %5d free", e.getKey(), e.getValue() ));
+			if (!action.equals( "USE" )) continue;
+			System.out.println( String.format( "                 USE total %5d used", used.getOrDefault( action, 0 ) ));
 		}
 	}
 

@@ -1674,17 +1674,55 @@ And the policy cannot learn its way out even in principle while the only signal 
 already in the return, forty small charges do not compete with them. Which is why the three repeats in
 `issues.md` 27 stall 99% at **every** generation including generation 0, and why `bestDepth` never moved.
 
+### Which steps are actually free, by the mode they were issued from
+
+Splitting the same tally by mode says where the free steps go, and most of them are mode bookkeeping
+rather than a single broken action:
+
+```
+  OPEN_INVENTORY from WORLD    320
+  REST from WORLD              323
+  USE from WORLD               212      <- enters TARGETING, which costs nothing
+  CANCEL from INVENTORY        160
+  CANCEL from SLOT             156
+  USE from SLOT                134
+  USE from INVENTORY            55
+  CANCEL from TARGETING         16
+  DROP from WORLD              280
+```
+
+Across ~4,828 steps in 40 episodes, **about 570 advanced the clock: ~10%**. The rest is entering and
+leaving modes. `CANCEL`, `OPEN_INVENTORY` and the first half of `USE` are free because they are mode
+transitions and that is right; `USE` is free 88% of the time in total but only 212 of its 401 free steps
+are the TARGETING hand-off, and `REST` is free 100% of the time, which is a separate defect noted below.
+
+**So the constraint is arithmetic, not behavioural.** Moves are the only action that reliably advances
+time, and they are one of about a dozen choices. An agent that opens its inventory once every ten turns
+spends its whole 40-step free budget by turn ~120 against a `turnLimitPerFloor` of 1500, so **the
+episode ends at 8% of the time it was granted** however good its play is. Reaching the stairs on floor 1
+is not a policy problem at this budget; it is arithmetically out of reach.
+
 ### What is not settled
 
-- **Why `USE` is free 88% of the time** and `REST` 99.1%. `REST` was already known to advance no engine
-  time and was deferred when it broke `checkRestIsNotAOneWayDoor`; this puts a number on it. `USE` being
-  mostly a no-op is new and unexplained - it suggests `USE` on a slot the action mask allows frequently
-  has nothing to do.
+- **Why `REST` is free 100% of the time.** Already known that it advances no engine time and deferred
+  when it broke `checkRestIsNotAOneWayDoor`; this puts the number on it. Resting costs the engine
+  nothing in this harness, so a policy can wait indefinitely for free - which is the thing the free-step
+  budget was built to stop, going the other way.
+- **Why `USE` is free 88% of the time.** 212 of those are the `WORLD` -> `TARGETING` hand-off and are
+  legitimate. The remaining `SLOT` and `INVENTORY` cases are unexplained and suggest `USE` is offered by
+  the action mask when the item has nothing to do.
 - **Whether the fix is the guard, the truncation, or the mask.** Four candidates, all behaviour changes,
-  none attempted here: raise or repurpose `freeStepBudget`; stop bootstrapping `STALLED` (which reverts
-  `GaeCheck`); exclude `REST` from the free-step budget on the grounds that resting is not free in the
-  game; or stop `USE` on an empty slot from counting. Each changes what the numbers mean and none of them
-  can be picked from this evidence alone.
+  none attempted here:
+  1. **raise or rescale `freeStepBudget`** - the smallest change, and it attacks the arithmetic directly.
+     It also risks reintroducing the unbounded-free-action loop `EnvConfig` documents 120 was chosen to
+     stop, so it cannot just be raised without re-measuring.
+  2. **stop bootstrapping `STALLED`** - reverts `GaeCheck`, and makes the -3000 reach the policy. This is
+     the one that removes the reason the policy never learns to avoid the situation.
+  3. **exclude `REST`** from the free-step budget on the grounds that resting is not free in the game.
+  4. **stop `USE` counting when the item has nothing to do.**
+
+  Each changes what the numbers mean. (1) and (2) are independent and both are needed; (3) and (4) are
+  smaller and address waste rather than the mechanism.
 
 The instrumentation and the diagnostic have **no gate**. A gate-shaped version would assert that no
 non-menu action is free more than some fraction of the time, which needs episodes long enough to be
