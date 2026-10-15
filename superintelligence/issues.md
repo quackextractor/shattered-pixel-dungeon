@@ -1794,3 +1794,57 @@ made the check exit 1 with `[ERROR]` on that row. It was reverted both times and
 A first version of this check only failed when a row reported *no* guard, which does not catch a
 mislabelled one - a relabelled guard still reports a plausible guard. That was found by running the
 mutation, not by reading the check.
+
+### `REST` and `USE` are not the same kind of problem
+
+Both are free far more often than they should be, and they are **not** both defects.
+
+**`REST` is a known, documented gap.** `ActionMapper.java:244` already says it: *"Resting costs
+TIME_TO_REST, but Hero.act charges it only when the scheduler picks the hero again with curAction null
+and resting set - and the pipeline's rest backstop returns STALLED after 8 drain steps first... Measured:
+six rests in a row advanced no engine time, so REST is still charged as a free step. That is a real gap
+and it is not a one-line fix; it needs the drain's rest handling decided first."* This measurement scales
+it from six to **323 of 326** - essentially every rest, not an occasional one. The comment is still
+accurate about the cause and still right that it is not a one-line fix; what changed is how total it is.
+
+**`USE` is structural, not a bug.** `USE` is a two-step action: it always moves to `EnvMode#SLOT` first
+(documented at the `apply` javadoc), and only a `USE` issued from `SLOT` can execute. So of 456 `USE`
+steps:
+
+```
+  USE from WORLD      212   <- the mandatory WORLD -> SLOT transition; free by construction
+  USE from SLOT       134   <- entering TARGETING for a targeting item
+  USE from INVENTORY   55
+  advanced the clock   55   (of 456: 88% free)
+```
+
+212 of the 401 free steps are the mandated first half of the action. That is not a fault, but it is not
+free of consequence either: **using any item costs two agent steps and at least one of them is charged to
+the budget.** A policy that equips or throws often pays the budget in bookkeeping rather than in
+inaction. It is a second contributor to the same problem `FREE_STEP` is, and it disappears when the
+budget is rescaled.
+
+### Test status of the two viewer flags, stated precisely
+
+Both were tested by running them, and **neither is in `gates`**, for a reason worth naming rather than
+hiding behind.
+
+**`-Dspd.replayContinueOnDiverge`.** Measured on `duelist-death-last.replay`:
+
+```
+flag off   (viewcheck)          halts at step 95, 95 steps applied, 2600 frames
+flag on    (spd.fast=800)      100 steps applied, 23053 world records
+flag on    (spd.fast=40)       100 steps applied, 23060 world records
+```
+
+The default path is also evidenced: `viewcheck` still reports the same fixture diverging at the same step
+with the same message as before the change. **It is not automated**, because the flag is a `static final`
+read once at class initialisation, so a check cannot flip it inside the JVM that already loaded the class -
+it would need its own forked process, which is what `viewcheck` does.
+
+**`-PspdHidden`.** Observed `hidden=false` on the first traced run, which is when a window appeared
+mid-run, and `hidden=true` on every run after the forwarding was added. **Also not automated**: the
+assertion would be "the viewer reports `hidden=true`", which needs a launched viewer and a display.
+
+Both are honest one-line checks that could be added to `viewcheck`, which is the only harness that can
+run them. Neither is written, and neither should be claimed as gated.
