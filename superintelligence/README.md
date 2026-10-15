@@ -113,11 +113,16 @@ anything.** Five things were missing; four are fixed and the fifth is the milest
   six threads writing 3.5M parameters into one object were contending for the same cache lines.
   **`issues.md` 25, closed.** **No run has been measured since**, and
   [`PLAN-learning-measurement.md`](PLAN-learning-measurement.md) sets out why that cannot yet be said
-  either way: `SeedPool` leaks 10% random seeds by design, so no comparison in this project has an error
-  bar yet.
-- **What remains is neither a crash nor a stall.** Every episode runs the full 1500 turns with zero
-  stalls, and `meanScore` is falling (186 -> 59 across 6 generations) as the critic fits longer episodes.
-  But `bestDepth` is still 1 and nothing dies. `depthReward` of +10 against `turnCost` of 0.002 means
+  either way: `SeedPool` leaks 10% random seeds by design. **Measured now** - three repeats of one
+  15-generation config on a fixed seed, `issues.md` 27 - so the band is known: `gen0` agrees to 1.4
+  points, `meanScore` over 15 generations moves +/- 16, and `bestDepth` lands on 1 or 2 at chance.
+  **Judge on `meanScore` and require it to clear the band; `bestDepth` on its own is not evidence.**
+- **What remains is neither a crash nor a stall - and that was wrong.** This used to say every episode
+  runs the full 1500 turns with zero stalls. **Measured: 98-99% of every episode ends STALLED**, at
+  `meanTurns` 122-140 against `EnvConfig.stallLimit = 120`, and it is already 99% at generation 0. Three
+  repeats of one config put `bestDepth` at 2, 1 and 2 - so `bestDepth` is a coin flip and the 186 -> 59
+  `meanScore` fall is inside the noise. See `issues.md` 27. `depthReward` of +10 against `turnCost` of
+  0.002 means
   descending pays 5,000 turns of idling, and `KILL` / `GOLD_GAIN` / `ITEM_PICKUP` still never fire
   (`TODO.md` 1.8).
 - **The desktop viewer and the trainer now agree.** They did not, and it was not a viewer fault:

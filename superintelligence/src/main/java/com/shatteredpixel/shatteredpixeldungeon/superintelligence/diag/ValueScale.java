@@ -17,14 +17,18 @@ import java.util.Random;
  * <p>Not a gate: it answers a question whose answer decides a design change rather than a code
  * change, so it prints the distribution and leaves the decision visible.
  *
- * <p>The question: {@code Network.valueHead} is a {@code Dense}, which applies {@code tanh}, so the
- * critic's output is confined to {@code [-1, +1]}. Meanwhile {@code EnvConfig.deathPenalty} is 100 and
- * {@code victoryReward} is 1000. If the GAE return is left unnormalised — and it is; only
- * {@code advantage} is normalised — then the critic is being asked to fit targets it cannot represent,
- * and the squared error is dominated by a handful of samples rather than spread across the batch.
+ * <p>The question it was written to answer: {@code Network.valueHead} is a {@code Dense}, which applies
+ * {@code tanh}, so the critic's output is confined to {@code [-1, +1]} against a {@code deathPenalty} of
+ * 100 and a {@code victoryReward} of 1000 - targets it cannot represent. **That is fixed**;
+ * {@code Network.java:107} constructs the head with {@code tanh = false}, so this header described a
+ * fault that no longer exists and was corrected when the run it was read off was measured.
  *
- * <p>That would show up as a {@code valueLoss} that rises and then sits there. Measured on a 12-
- * generation run it did: 2.97 to 8.11, non-monotonic but clearly not falling.
+ * <p>It is kept because the question is still worth asking of the returns themselves. With a linear head
+ * the range is no longer the binding constraint, but the magnitude is: measured over three repeats of one
+ * 15-generation config, {@code valueLoss} spans **12,433 to 31,323** - a factor of 2.5 on identical
+ * config and seed - and sits in the tens of thousands rather than single digits. That is not a head that
+ * cannot represent its targets; it is a return distribution dominated by the terminal penalty.
+ * {@code issues.md} 27 has the measurement.
  *
  * <p>What this prints: the return targets' min, max and percentiles, and the head's reachable range.
  */
@@ -43,10 +47,13 @@ public class ValueScale {
 		PPO ppo = new PPO( config, new Random( 5L ) );
 
 		//synthetic targets spanning the plausible range a rollout produces: ordinary steps, a truncated
-		//episode, and the two large terms
+		//episode, and the two large terms. Written to match the constants above rather than the values
+		//they had when this was written - deathPenalty is 2500 and victoryReward 60000, so targets of
+		//-100 and +250 understate the distribution by more than an order of magnitude and made the
+		//head look adequate when the returns are what is large.
 		float[] targets = {
 				0.02f, -0.01f, 0.05f, 0.11f, 0.04f, -0.02f, 0.03f, 12.4f, 8.1f, -3.2f,
-				-100f, 250f, 0.07f, -0.04f, 0.9f
+				-config.deathPenalty, config.victoryReward, config.depthReward, 0.07f, -0.04f
 		};
 
 		List<Transition> batch = new ArrayList<>();
@@ -76,8 +83,9 @@ public class ValueScale {
 
 		double sumSq = 0;
 		for (float v : sorted) sumSq += (double) v * v;
+		double meanSquare = sumSq / sorted.length;
 		System.out.println( "  mean of target^2 (the loss a perfect critic would reach 0 from) "
-				+ fmt( sumSq / sorted.length ) );
+				+ fmt( meanSquare ) );
 		System.out.println();
 
 		//the head's reachable range, empirically: drive it hard and see where it saturates
@@ -91,20 +99,28 @@ public class ValueScale {
 			observed = network.value();
 		}
 
-		System.out.println( "value head: Dense, so tanh. Reachable output is [-1, +1]." );
+		//stale while the head was tanh-bound, and it printed a range the head could not reach while the
+		//real fault was elsewhere. Stated as what the head is rather than as a fixed interval, so the next
+		//change to it shows up here instead of contradicting this line.
+		System.out.println( "value head: linear (Network builds it with tanh = false), so unbounded." );
 		System.out.println( "  observed output " + fmt( observed ) );
 		System.out.println();
 
+		//The "head cannot reach it" argument was sound while the head was tanh-bound and is void now. What
+		//is left is scale: one terminal sample at victoryReward dominates the squared error, which is
+		//what valueLoss in the tens of thousands - and a 2.5x spread across identical repeats - is.
 		System.out.println( "The largest target is " + fmt( Math.abs( sorted[ sorted.length - 1 ] ) )
-				+ "x the head's maximum reach." );
-		System.out.println( "A target the head cannot reach contributes a squared error that no amount" );
-		System.out.println( "of training removes, so valueLoss floors out instead of falling to zero." );
+				+ ", and the mean of target^2 is " + fmt( meanSquare )
+				+ " - so a handful of terminal samples own the critic's loss." );
+		System.out.println( "A target far outside the rest contributes a squared error that crowds out the" );
+		System.out.println( "batch, so valueLoss is dominated by rare endings rather than by learning." );
 		System.out.println();
 		System.out.println( "  three ways out, in order of how much they change:" );
-		System.out.println( "    1. make the value head linear - it is a regression, not a classifier" );
+		System.out.println( "    1. scale the reward down - a death is " + fmt( config.deathPenalty )
+				+ " and a win " + fmt( config.victoryReward ) + ", against a turn cost of "
+				+ fmt( config.turnCost ) );
 		System.out.println( "    2. normalise the return targets as well as the advantages" );
-		System.out.println( "    3. scale the reward down so a death is not 100x a turn" );
-		System.out.println( "  (1) is the smallest and fixes the cause; (2) and (3) reshape the problem." );
+		System.out.println( "    3. make the value head linear - done, and it was not the cause" );
 	}
 
 	private static String fmt( double v ){

@@ -1517,3 +1517,98 @@ the run that would answer it has not been made.
 Evidence, with the full measurement chain: [`out/evidence/entropy-shard-diagnosis.txt`](out/evidence/entropy-shard-diagnosis.txt).
 The run the finding came from: [`out/evidence/default-60-run.txt`](out/evidence/default-60-run.txt) and
 [`out/evidence/default-60-full.csv`](out/evidence/default-60-full.csv).
+
+## 27. No comparison in this project has an error bar, and `bestDepth` is a coin flip - **OPEN, and it invalidates the headline metric**
+
+Found while trying to answer "did the `Network` and `WAIT` fixes help?" and discovering there is no way to
+tell. `SeedPool` returns `""` for a random seed on 10% of calls
+(`SeedPool.java:91`, `RANDOM_FRACTION = 0.1f`), which is deliberate: a policy that only ever sees the
+same seeds overfits them. The consequence was never measured.
+
+Three runs of one identical config - `--reward-profile default --generations 15 --episodes 4 --seed
+20261013 --update-threads 6` - which is what "the same run" means here, since the seed is fixed:
+
+```
+run       gen0       last mean   bestScore   bestDepth   valueLoss   advStd
+floor-1   -3114.60   -3154.40      -1552         2         12432.7    112.4
+floor-2   -3113.20   -3142.60      -3061         1         13363.2    112.4
+floor-3   -3113.70   -3117.50      -1466         2         31323.3    174.1
+```
+
+**The start is nearly deterministic and the end is not.** `gen0` agrees to within 1.4 points across three
+runs on a fixed seed. From there:
+
+- **`bestScore` spans 1,595 points** on identical config and seed. Two of the three runs reached a best
+  score twice as good as the third. Any before/after comparison of `bestScore` smaller than that is noise.
+- **`bestDepth` is 1 or 2 and which one is chance.** Two runs hit 2, one hit 1. **This is the project's
+  headline metric and it is a coin flip.** Every claim in this repository that a run "reached depth 2" -
+  including `README.md` and the 15-generation runs in `TODO.md` - is a coin landing, not progress.
+- **`valueLoss` spans 2.5x** (12,433 to 31,323) with no trend in any run.
+- `meanScore` over 15 generations is the stable one: -3134, -3166, -3139, so **+/- 16 points**.
+
+### What this retires
+
+`README.md` and `TODO.md` both record `bestDepth 2` as a result. With three repeats showing it at chance,
+**it is not evidence of anything** and should not be cited until a run clears the band. `meanScore` is
+the metric to judge on, and it has to clear +/- 16 to mean anything.
+
+### Why nothing has learned, stated plainly
+
+The same three runs, plus a 30-generation run, show what is actually happening at the episode level:
+
+```
+floor-1: episodes=1200 stalled=1188 (99.0%) meanTurns=123
+floor-2: episodes=1200 stalled=1187 (98.9%) meanTurns=140
+floor-3: episodes=1200 stalled=1171 (97.6%) meanTurns=122
+```
+
+**98-99% of every episode ends STALLED, and it is 99% at generation 0** - before the policy has learned
+anything. `meanTurns` of 122-140 against `EnvConfig.stallLimit = 120` says the hero is making 120
+consecutive steps with no change to HP, depth, position or inventory, from the first generation.
+
+`EnvConfig`'s own comment on `freeStepBudget` says 120 "was binding: four of ten recordings from the run
+that added it ended exactly on it", and `freeStepBudget = 40` was introduced to take over. **It is not
+firing.** The softer guard is binding again, at the same number, on 99% of episodes.
+
+That is the most likely reason nothing descends: with 99% of the data being STALLED terminations, the
+critic is fitting a bootstrap target on almost every sample and the policy is being trained mostly on
+"get stuck, get charged". **This is the next thing to establish, and it is worth more than any reward
+tuning.** Which of the four STALLED guards in `SPDEnv` is responsible is not yet determined - the
+candidates are the `actorStepLimit` guard, `settleLanding`'s pipeline `STALLED`/`STEP_LIMIT`, the
+`stallLimit` position guard, and `freeStepBudget`.
+
+This also contradicts `README.md`'s "Every episode runs the full 1500 turns with zero stalls". That line
+was true when written and is false now, and is corrected below.
+
+Evidence: [`out/evidence/floor-1.csv`](out/evidence/floor-1.csv), [`floor-2.csv`](out/evidence/floor-2.csv),
+[`floor-3.csv`](out/evidence/floor-3.csv), [`measure-30.csv`](out/evidence/measure-30.csv).
+
+## 28. The trainer dies at generation ~22 pushing weights to a worker pipe - **OPEN, blocks runs over ~21 generations**
+
+Found by the first 30-generation run this project has attempted. It gets to generation 22 of 30 and then:
+
+```
+[ERROR] training failed: Insufficient system resources exist to complete the requested service
+java.io.IOException: Insufficient system resources exist to complete the requested service
+	at java.base/java.io.FileOutputStream.writeBytes(Native Method)
+	at java.base/java.io.FileOutputStream.write(FileOutputStream.java:360)
+	at java.io.BufferedOutputStream.write(BufferedOutputStream.java:183)
+	at java.io.DataOutputStream.write(DataOutputStream.java:126)
+	at com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TrainerWorkers.lambda$pushWeights$0(TrainerWorkers.java:258)
+	at java.base/java.lang.Thread.run(Thread.java:1447)
+```
+
+`pushWeights` writes a **~14 MB** policy blob to each of 20 workers' stdin, one thread per worker, then
+blocks reading the ack. On Windows a pipe's system buffer is small and does not grow for an anonymous
+pipe, so a single 14 MB `write` fails this way when the reader is not draining fast enough at that
+moment. It is **timing-dependent, not deterministic** - three 15-generation runs never hit it, and the
+30-generation run hit it first at generation 22, with no worker OOM, no `OutOfMemoryError`, and no
+heartbeat loss anywhere in the log.
+
+**No fix is proposed here.** The obvious one - chunk the write into pieces smaller than the pipe buffer -
+has not been tested, and a concurrency fix shipped on a timing-dependent failure that no gate can
+reproduce is worse than the crash. What is needed first is a way to reproduce it in a test at all.
+
+**Workaround meanwhile:** segment long runs at 15-20 generations, which is where nothing has failed.
+
+Evidence: [`out/evidence/measure-30.log`](out/evidence/measure-30.log), [`out/evidence/measure-30.csv`](out/evidence/measure-30.csv).
