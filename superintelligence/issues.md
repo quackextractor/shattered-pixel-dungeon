@@ -1848,3 +1848,30 @@ assertion would be "the viewer reports `hidden=true`", which needs a launched vi
 
 Both are honest one-line checks that could be added to `viewcheck`, which is the only harness that can
 run them. Neither is written, and neither should be claimed as gated.
+
+### Fixed in code, and still not gated - because a gate cannot reach it
+
+`pushWeights` wrote a whole ~14MB policy to each worker's stdin in a single `write`. That is what died at
+generation 22:
+
+```
+java.io.IOException: Insufficient system resources exist to complete the requested service
+	at java.base/java.io.FileOutputStream.writeBytes(Native Method)
+	at ...TrainerWorkers.lambda$pushWeights$0(TrainerWorkers.java:258)
+```
+
+**Now chunked and retried.** 32KB per write, under a Windows anonymous pipe's 4KB system buffer with
+room to spare, with a quadratic backoff capped at 1s and eight attempts - about five seconds in total.
+The retry is for a *moment*, not a dead worker: a worker that has died fails every chunk, and that is
+reported once rather than looped on.
+
+**This is still not gated, and the reason is worth recording because it was expensive to find out.** A
+gate that pushes a real 13MB policy down a real `WorkerMain` pipe was written and thrown away. It failed
+with `worker alive=false`: a worker spawned from a gate's JVM dies during `HeadlessServices.install`,
+because the libGDX natives do not load outside the launcher's setup. So the subprocess the case needs
+cannot be started from a case, and the failure it would cover is a pipe refusal that only appears when a
+busy worker is part-way through a generation - a state a gate cannot arrange on demand.
+
+That is the same conclusion this entry reached before the fix, and it was right: **the mechanism cannot be
+reproduced in a test at all.** What has changed is that the code no longer depends on a single oversized
+write succeeding. That is a robustness argument, not a verification, and it should not be read as one.

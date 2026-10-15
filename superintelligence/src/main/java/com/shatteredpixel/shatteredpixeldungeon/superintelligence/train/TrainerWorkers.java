@@ -255,7 +255,7 @@ public class TrainerWorkers {
 		for (final WorkerHandle worker : pool.workers()){
 			Thread thread = new Thread( () -> {
 				try {
-					worker.dataOut.write( payload );
+					writeFully( worker.dataOut, worker.name, payload );
 					worker.dataOut.flush();
 					int reply = worker.dataIn.readInt();
 					if (reply != Protocol.MSG_PARAMS){
@@ -282,5 +282,70 @@ public class TrainerWorkers {
 		if (!failures.isEmpty()) throw failures.get( 0 );
 
 		pool.progress();
+	}
+
+	/**
+	 * How much of a policy push goes out per write.
+	 *
+	 * <p>32KB, chosen to sit under a Windows anonymous pipe's system buffer - 4KB by default, and it does
+	 * not grow - with room to spare. A policy is ~14MB, so a single write is three thousand times the
+	 * buffer.
+	 */
+	private static final int PUSH_CHUNK = 32 * 1024;
+
+	/** How many times one chunk may fail before the push is declared broken. */
+	private static final int PUSH_RETRIES = 8;
+
+	/** Longest wait between chunk retries. Grows quadratically, so a slow reader gets real time. */
+	private static final long PUSH_BACKOFF_MAX_MS = 1000L;
+
+	/**
+	 * Writes a whole policy blob to one worker, in chunks, retrying a transient refusal.
+	 *
+	 * <p>Fixed here and not merely noted: a single {@code write} of the full payload died at generation
+	 * 22 of a 30-generation run with {@code IOException: Insufficient system resources exist to complete
+	 * the requested service}, raised by {@code FileOutputStream.writeBytes} on the worker's stdin. That is
+	 * Windows refusing an oversized pipe write rather than blocking on one, and it is timing-dependent -
+	 * three 15-generation runs never hit it - so it could not be fixed by reasoning about the buffer size
+	 * and had to be made robust instead. See {@code issues.md} 28.
+	 *
+	 * <p>The worker drains its pipe while this runs, so a chunked write makes progress rather than
+	 * deadlocking. The retry is bounded and only for this call: a worker that has genuinely died fails
+	 * every chunk, and reporting that once is better than looping on it.
+	 */
+	public static void writeFully( DataOutputStream out, String name, byte[] payload ) throws IOException {
+		int sent = 0;
+		while (sent < payload.length){
+			int end = Math.min( payload.length, sent + PUSH_CHUNK );
+			boolean written = false;
+			IOException last = null;
+			for (int attempt = 0; attempt < PUSH_RETRIES && !written; attempt++){
+				if (attempt > 0){
+					//Quadratic and capped. A worker part-way through a generation is busy, and a refusal
+					//from it is a moment rather than a fault - but a worker that has died fails every
+					//chunk, and reporting that once beats looping on it. The budget is about five seconds
+					//in total, which is what a slow reader needs and what a dead one outlasts.
+					long wait = Math.min( PUSH_BACKOFF_MAX_MS, 50L * attempt * attempt );
+					try {
+						Thread.sleep( wait );
+					} catch (InterruptedException e){
+						Thread.currentThread().interrupt();
+						throw new IOException( name + " was interrupted pushing weights", e );
+					}
+				}
+				try {
+					out.write( payload, sent, end - sent );
+					written = true;
+				} catch (IOException e){
+					last = e;
+				}
+			}
+			if (!written){
+				throw new IOException( name + " refused " + (end - sent )
+						+ " bytes of a policy push at offset " + sent + " after " + PUSH_RETRIES
+						+ " attempts", last );
+			}
+			sent = end;
+		}
 	}
 }
