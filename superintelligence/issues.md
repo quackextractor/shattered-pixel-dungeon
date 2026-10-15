@@ -1655,24 +1655,61 @@ what made that reading plausible and it is wrong.
 spends 40 of them by turn ~120 against a floor budget of 1500 turns, so **the episode ends at 12% of the
 time it was given**.
 
-### The chain, and where it stops
+### The chain - corrected, because the middle of it was wrong
 
 The reward is not the problem and was checked first because it looked like it. `stallPenalty = 3000` is
 already above `deathPenalty = 2500`, deliberately, per `issues.md` 9. Stalling is priced *worse* than
 dying.
 
-It does not reach the policy. **`STALLED` is a truncation, not a terminal** - `GaeCheck` asserts it, and
-that is the design this project chose deliberately. So the -3000 goes into the reward and the critic is
-then free to fit `V(s_T)` at whatever value absorbs it, leaving the terminal step's advantage near zero.
-The policy gradient never feels the ending. That is the same mechanism as the bootstrap question raised
-and retracted earlier in this session, but arrived at from measurement rather than from a fixed-point
-calculation: **the critic can absorb a charged terminal penalty on a truncated ending, and here almost
-every ending is truncated.**
+**An earlier version of this entry claimed the -3000 never reaches the policy, because `STALLED` is a
+truncation and the critic can fit `V(s_T)` at whatever value absorbs it. That is wrong, and
+`gaecheck` now has a case that says so.** Read off `Policy.computeEpisodeAdvantages`, the delta is
 
-And the policy cannot learn its way out even in principle while the only signal is per-step: the
-`noProgressPenalty` is charged each time, but with `deathPenalty = 2500` and `depthReward = 1800`
-already in the return, forty small charges do not compete with them. Which is why the three repeats in
-`issues.md` 27 stall 99% at **every** generation including generation 0, and why `bestDepth` never moved.
+```
+delta = rewards[i] + gamma * nextValue * nonTerminal - values[i]
+```
+
+so the reward is in the delta on **both** paths. For a final step charged -3000 with `V(s) = 0` and
+`finalValue = 10`:
+
+```
+truncated   advantage -2990.1
+terminal    advantage -3000
+```
+
+Truncation adds the `gamma * V(s_T)` correction term. **It does not remove the penalty, and no critic
+value can make a large charged reward disappear from the delta.** The check is
+`checkAPenalisedTruncationStillCarriesItsPenalty`.
+
+This is the same claim, retracted for the third time on this topic, and the fact that it took three goes
+in the record: the first was a fixed-point calculation, the second a deduction from the truncation
+design, and neither was a measurement.
+
+**What is actually wrong is the size of the dataset, not the gradient.**
+
+```
+floor-1     episodes=1200 meanDepth=1.001  bestDepth>=2 in 1/15 generations
+floor-2     episodes=1200 meanDepth=1.000  bestDepth>=2 in 0/15 generations
+floor-3     episodes=1200 meanDepth=1.001  bestDepth>=2 in 1/15 generations
+measure-30  episodes=1760 meanDepth=1.000  bestDepth>=2 in 0/22 generations
+```
+
+**Across 5,360 episodes `meanDepth` is 1.001.** `depthReward` is +1800, the largest single term in the
+function, and it is paid in roughly five episodes out of five thousand. **The training set contains
+almost no example of the behaviour being rewarded.** There is nothing for the policy to imitate, and no
+amount of PPO finds a gradient through 5,360 mostly-identical stalling episodes.
+
+So the chain is:
+
+1. The free-step budget ends **100%** of episodes at turn ~120 of 1500 granted.
+2. Floor 1's stairs are therefore rarely reached: `meanDepth` 1.001.
+3. `depthReward` is paid in ~0.1% of episodes, so the only large positive signal in the reward function
+   has almost no support.
+4. The policy is correctly told that stalling costs 3000 - that part works - and is then asked to learn
+   an alternative it has essentially never seen.
+
+Fixing (2) is what makes (3) and (4) possible. Nothing downstream of it can be judged until the episodes
+are long enough to contain a descent.
 
 ### Which steps are actually free, by the mode they were issued from
 
@@ -1721,12 +1758,13 @@ is not a policy problem at this budget; it is arithmetically out of reach.
   3. **exclude `REST`** from the free-step budget on the grounds that resting is not free in the game.
   4. **stop `USE` counting when the item has nothing to do.**
 
-  Each changes what the numbers mean. (1) and (2) are independent and both are needed; (3) and (4) are
-  smaller and address waste rather than the mechanism.
+  Each changes what the numbers mean. **The measurement above picks (1) on its own**: the episode is too
+  short to contain a descent, so there is no data to learn from, and (2) is not needed - the penalty
+  already reaches the policy. (3) and (4) reduce waste inside an episode and are worth doing after (1),
+  because (1) is what limits how much of the floor the agent ever sees.
 
-The instrumentation and the diagnostic have **no gate**. A gate-shaped version would assert that no
-non-menu action is free more than some fraction of the time, which needs episodes long enough to be
-representative and is not written yet.
+The instrumentation and the diagnostic are gated by `stallcausecheck`, which drives each of the four
+guards to be the only one that can answer and asserts the name that comes back - see the entry below.
 
 ### The four guards are now reachable, and that is what makes this entry checkable
 

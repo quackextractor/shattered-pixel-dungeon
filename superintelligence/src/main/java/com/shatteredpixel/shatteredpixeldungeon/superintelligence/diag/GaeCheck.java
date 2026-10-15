@@ -51,15 +51,16 @@ public class GaeCheck {
 	 * A hardcoded count in one message and not the other is how a check suite ends up claiming to have
 	 * run more than it did.
 	 */
-	private static final int CHECKS = 12;
+	private static final int CHECKS = 13;
 
 	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
 		checkScalarMatchesTransitionList();
-		checkTerminalZerosTheTail();
+checkTerminalZerosTheTail();
 		checkTruncatedBootstraps();
 		checkTerminalAndTruncatedDifferOnlyAtTheEnd();
+		checkAPenalisedTruncationStillCarriesItsPenalty();
 		checkNoDiscountAcrossTerminal();
 		checkSamplingIsUniformAndSeeded();
 		checkTailIsAlwaysRetained();
@@ -582,6 +583,55 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 	 * constant wearing the label of a measurement. It is the single number that says the policy is
 	 * moving too far per update, and it could not be read.
 	 */
+	/**
+ * A truncation that was also charged a terminal penalty still puts that penalty in the advantage.
+ *
+ * <p>This exists because it was got wrong twice in this project and once in the entry that recorded it.
+ * The claim was that {@code STALLED} being a truncation lets the critic absorb the {@code -3000}, because
+ * it can fit {@code V(s_T)} wherever takes the edge off the charge, and the policy therefore never feels
+ * the ending. Read off {@link Policy#computeEpisodeAdvantages}, the delta is
+ * {@code rewards[i] + gamma * nextValue * nonTerminal - values[i]}, so the reward is in the delta on
+ * either path. Truncation adds the {@code gamma * V(s_T)} correction term; it does not remove the
+ * penalty, and no critic value can make a large charged reward disappear from it.
+ *
+ * <p>What truncation actually costs is the same thing it is meant to cost, and is checked above.
+ */
+private static void checkAPenalisedTruncationStillCarriesItsPenalty(){
+		int n = 4;
+		float[] rewards = new float[ n ];
+		float[] values = new float[ n ];
+		float[] terminal = new float[ n ];
+		float[] truncated = new float[ n ];
+		float[] scratch = new float[ n ];
+
+		//the last step is charged STALLED's terminal penalty, and nothing else in the episode is charged
+		rewards[ n - 1 ] = -3000f;
+
+		Policy.computeEpisodeAdvantages( rewards, values, terminal, n, 10f, GAMMA, LAMBDA, truncated, scratch );
+		float[] asTerminal = terminal.clone();
+		asTerminal[ n - 1 ] = 1f;
+		Policy.computeEpisodeAdvantages( rewards, values, asTerminal, n, 10f, GAMMA, LAMBDA, terminal, scratch );
+
+		float truncatedStep = truncated[ n - 1 ];
+		float terminalStep = terminal[ n - 1 ];
+
+		if (truncatedStep > -2900f){
+			fail( "a truncated step charged " + rewards[ n - 1 ] + " produced advantage "
+					+ truncatedStep + ", which is not carrying the penalty. Truncation must not be able to" );
+			fail( "erase a charged reward." );
+			return;
+		}
+		if (terminalStep > -2900f){
+			fail( "a terminal step charged " + rewards[ n - 1 ] + " produced advantage "
+					+ terminalStep + ", which is not carrying the penalty." );
+			return;
+		}
+		if (Math.abs( truncatedStep - terminalStep ) < 1e-4f){
+			fail( "truncated and terminal gave the same advantage (" + truncatedStep + ") for a penalised" );
+			fail( "final step. The bootstrap correction is supposed to be the only difference." );
+		}
+	}
+
 	private static void checkClipFractionIsNotAdvantageMagnitude(){
 		float epsilon = 0.2f;
 
