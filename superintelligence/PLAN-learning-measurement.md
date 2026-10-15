@@ -124,6 +124,18 @@ not carry, and **cells are the one channel that cannot be compared** - `ReplayPl
 `WorldSnapshot` with `.cells( false )` (frames would flood), so the viewer writes 0 cell records against
 headless's 100. The next instrument is cells on `step` records only.
 
+### Phase B and C - done, and they found more than the plan expected
+
+Phase B ran: three repeats of one 15-generation config on a fixed seed. The band is **meanScore +/- 16
+over 15 generations**, `bestScore` spans 1,595 points, and **`bestDepth` is 1 or 2 at chance**. Phase C
+then ran and **died at generation 22** of 30 - `TrainerWorkers.pushWeights` cannot write its 14 MB blob
+to a worker pipe - so the 30-generation measurement was never obtained. Both are `issues.md` 27 and 28.
+
+The measurement the plan wanted turned out to be the wrong next step. What the noise floor was for was to
+judge whether the fixes helped, and having it made a different number the important one: **98-99% of every
+episode ends STALLED**, at `meanTurns` 122-140 against `stallLimit = 120`, already 99% at generation 0.
+That is worth more than any before/after comparison, and it is now the next thing to establish.
+
 ### A1 - a continue-past-divergence affordance
 
 `-Dspd.replayContinueOnDiverge=1` in `ReplayPlayer`, alongside the six `spd.*` diagnostics already

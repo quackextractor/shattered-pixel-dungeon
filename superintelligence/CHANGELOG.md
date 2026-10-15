@@ -3693,3 +3693,49 @@ carried before the move pointed at `v4.0.1...v4.1.0`, a tag that has never exist
 game's by name; the fix is a separate namespace (`si-v0.4.0`) and is not worth doing for a module whose
 release cadence is its changelog.
 -->
+
+### Measured: the noise floor, and what it retires
+
+Three repeats of one identical config on a fixed seed, to answer whether the shared-`Network` and `WAIT`
+fixes helped. They cannot be said to have, because the band was not known:
+
+| run | gen0 | last mean | bestScore | bestDepth | valueLoss |
+| --- | --- | --- | --- | --- | --- |
+| floor-1 | -3114.60 | -3154.40 | -1552 | 2 | 12432.7 |
+| floor-2 | -3113.20 | -3142.60 | -3061 | 1 | 13363.2 |
+| floor-3 | -3113.70 | -3117.50 | -1466 | 2 | 31323.3 |
+
+`gen0` agrees to 1.4 points; `bestScore` spans 1,595 and `valueLoss` 2.5x. **`bestDepth` lands on 1 or 2
+at chance**, so every "reached depth 2" in this repository - README and TODO included - is a coin landing
+rather than progress. `meanScore` is the metric to judge on, at +/- 16 over 15 generations.
+
+**98-99% of all 3,600 episodes end STALLED**, already 99% at generation 0, at `meanTurns` 122-140 against
+`EnvConfig.stallLimit = 120`. The `freeStepBudget = 40` guard that was added to take over from that same
+number is not firing. This supersedes the README's "every episode runs the full 1500 turns with zero
+stalls", which was true when written.
+
+The first 30-generation run **dies at generation 22**: `TrainerWorkers.pushWeights` fails writing a
+14 MB policy blob to a worker pipe with `IOException: Insufficient system resources`. Timing-dependent,
+no worker OOM, no fix proposed - see `issues.md` 28.
+
+See `issues.md` 27 and 28. Evidence in `out/evidence/floor-{1,2,3}.csv` and `measure-30.{csv,log}`.
+
+### Fixed: keep tracing past a divergence, and forward `-PspdHidden`
+
+`ReplayPlayer` halted on the first divergence, so the steps after the fault - the only ones worth looking
+at - were never recorded. `-Dspd.replayContinueOnDiverge` keeps applying and tracing past it, off by
+default and never set by a gate, since such a run's trace describes the live game rather than the replay.
+`:desktop:replay` also never bound `-PspdHidden`, though `ReplayLauncher` reads `spd.hidden` and
+`ViewCheck` already passes it - the same gap as the `-PspdWorldTrace` forwarding before it.
+
+With that, `issues.md` 26 is **not** "the viewer is one engine turn behind". `turn` and `pos` agree at
+every step from 86 to 99; only `hp` differs, by 1 at steps 94, 95, 97 and 98, with the roster
+byte-identical. The earlier reading compared a record the viewer wrote mid-step against one written after
+it - the frame-versus-step granularity `viewdiff` warns about, one level up.
+
+### Fixed: `ValueScale` described a fault that no longer exists
+
+It claimed the value head is `tanh`-bounded and printed "the head's maximum reach". `Network.java:107`
+builds it with `tanh = false`. Its synthetic targets were stale by an order of magnitude (`deathPenalty`
+is 2500, `victoryReward` 60000), which is why it read as adequate while the real problem is scale: mean
+of target^2 is 2.4e8, so rare endings own `valueLoss`.
