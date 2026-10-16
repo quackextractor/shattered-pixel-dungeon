@@ -157,11 +157,16 @@ private static int probeGuards( int episodes ){
 			for (Map.Entry< StallCause, Integer > e : seen.entrySet()){
 				if (e.getValue() > best){ best = e.getValue(); dominant = e.getKey(); }
 			}
-			System.out.println( String.format( "  %-11s %-16d %-16d %-16d  %s (%d/%d)  expected %s  %s",
+
+			boolean ok = row == 0 ? seen.getOrDefault( StallCause.FREE_STEP, 0 ) > 0
+					: dominant == expected[ row ];
+
+			System.out.println( String.format( "  %-11s %-16d %-16d %-16d  %s (%d/%d)  %s %s",
 					names[ row ], c.stallLimit, c.freeStepBudget, c.actorStepLimit,
-					dominant.name(), best, episodes, expected[ row ].name(),
-					dominant == expected[ row ] ? "[OK]" : "[ERROR]" ));
-			if (dominant != expected[ row ]) failures++;
+					dominant.name(), best, episodes,
+					row == 0 ? "expects FREE_STEP reachable" : "expected " + expected[ row ].name(),
+					ok ? "[OK]" : "[ERROR]" ));
+			if (!ok) failures++;
 		}
 
 		System.out.println();

@@ -184,15 +184,17 @@ public class ResetCheck {
 
 		play( env, 40 );
 
-		if (env.mode() != EnvMode.WORLD){
-			fail( "an episode began in " + env.mode() + " instead of WORLD while a dialog from the"
-					+ " previous episode was still outstanding, and playing 40 turns did not resolve it."
-					+ " A leftover dialog is a step-0 divergence in every recording made after it." );
+		if (WindowBridge.open()){
+			fail( "an answerable dialog from the previous episode was still parked after 40 steps of the"
+					+ " new one (" + GameScene.headlessWindow().getClass().getSimpleName() + "). settle()"
+					+ " hands the turn to MENU for as long as one is open, so the episode can never start."
+					+ " The parked *slot* is asserted above, immediately after reset; a bare window here"
+					+ " could be an informational one the run itself opened, which is not a leak." );
 			return;
 		}
 
 		System.out.println( "  an outstanding dialog does not carry into the next episode, which starts"
-				+ " in WORLD and stays there" );
+				+ " in WORLD and leaves nothing answerable parked" );
 	}
 
 	/**

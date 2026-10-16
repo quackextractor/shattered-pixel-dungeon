@@ -715,3 +715,78 @@ original fault got through.
 cell, and `mage-mid` reporting two points of healing the recording did not, were both recorded as
 distinct signatures. Both were present before the fix and both are gone after it, so they were
 downstream of the same cause - but that was never shown. It is asserted from their absence.
+
+## 32. A free action could be repeated for ever, and a talent point could never be spent - **CLOSED, gated**
+Found by reading `review.md` against the code, and confirmed by measurement before anything was changed.
+
+`issues.md` 29 established that `FREE_STEP` ends 100% of episodes and that `REST` advances no engine
+time. Two distinct faults sat behind that, and only one of them is a reward-arithmetic question.
+
+### `REST` spent nothing, and the reason is not the one it looks like
+
+`ActionMapper.apply` set `hero.resting = true` and called `hero.next()`. The rest turn is taken by the
+rest branch of `Hero.act`, and `LevelPipeline.runToHeroReady` returns as soon as
+`curAction == null && hero.ready && !paralysed` - which is true immediately, because neither
+`spendConstant` nor `next()` clears readiness. So the hero is **never picked**, the rest branch never
+runs, and the turn is paid by whichever later step happens to pull `Actor.now` forward. Measured:
+**323 of 326 rests advanced zero engine time.**
+
+The obvious fix - `hero.spendConstant( Actor.TICK )` - is wrong, and measuring it is what showed why:
+
+```
+world before REST      40 used, 40 free (100.0% free)
+world before WAIT      79 used,  0 free (  0.0% free)
+```
+
+`Actor.now()` is set by `Actor.headlessStep()` from whichever actor it picks, so advancing the hero's
+own clock is not enough: the drain has to keep stepping until the hero has acted, and that needs
+readiness cleared. `Hero.spendAndNext` clears it (`busy()`), and `WAIT` already used it. So `REST` now
+does the same, and does not leave the hero resting: `Hero.act`'s rest branch never calls `ready()`, so a
+hero left resting is the one-way door `PLAN-reward-signals.md` 7 recorded, and it is the *drain*, not
+`REST`, that has to end it.
+
+### The menu loop, and why a mask rather than a price
+
+`OPEN_INVENTORY`, `USE` and `DROP` are the only entries into a sub-mode and all three cost nothing;
+`CANCEL` is the only way out of two of them and also costs nothing. The pair is a loop that advances no
+engine time at all, and **every step of it is charged against `env.free_step_budget`** - so an
+exploring policy spends its whole budget without the world moving once. This is the arithmetic
+`issues.md` 29 measured as "about 570 of 4,828 steps advanced the clock: ~10%".
+
+After a step that leaves a sub-mode without moving the clock, the next `WORLD` mask refuses all three
+entries **for exactly one step**. The actions stay legal, the agent just cannot chain them without
+spending a turn in between, which is what a player does too. Priced instead of masked was rejected:
+`OPEN_INVENTORY` is free in the real game as well, and `freeStepCostFactor` already charges it.
+
+### Measured, same config and seeds, defaults unchanged
+
+| | before | after |
+| --- | --- | --- |
+| `meanTurns` | 626.8 | **800.7** |
+| ended `STALLED` | 21 of 40 | **15 of 40** |
+| `REST` advancing no engine time | 323 of 326 | **1** |
+| longest run of consecutive free steps in the menu loop | unbounded | **2** |
+
+### `freeactioncheck`, seven cases, each mutation-tested
+
+| case | fails when |
+| --- | --- |
+| `REST` advances the engine clock | `spendAndNext( Actor.TICK )` is reverted to `next()` |
+| opening a menu costs no turn | `OPEN_INVENTORY` is made to spend time, which would hide a second defect behind the mask |
+| a zero-time menu exit masks the three entries | the mask block is disabled (2 of 7 go red) |
+| the refusal lasts exactly one step | the flag is never cleared |
+| the menu loop cannot run on free steps alone | the mask is disabled (2 of 7 go red, 0 of 240 steps advancing the clock) |
+| `TALENT` is offered only with a point to spend | the mask and `TalentPicker` disagree |
+| a talent point is spent and pays | any of the mode, the head mask, the choice or the reward emission is broken |
+
+The last case drives `SPDEnv.step` rather than `TalentPicker`, because "the picker is callable" and "the
+agent can reach it" are different claims: the mode, the action mask, the slot-head mask and the
+secondary choice all have to line up as well.
+
+### The talent point
+
+`RewardTerm.TALENT_UPGRADE` is wired, gated and was unearnable: spending is `TalentButton` ->
+`TalentsPane` -> `WndHero`, all of which need a renderer. `Action.TALENT` opens `EnvMode.TALENT`, where
+the slot head enumerates `env.TalentPicker.available(hero)` - the game's own order, tiers ascending and
+`LinkedHashMap` insertion order inside a tier, so a recorded index names the same talent in the trainer
+and in the viewer. The first point arrives at **level 2**: two rats on floor 1.

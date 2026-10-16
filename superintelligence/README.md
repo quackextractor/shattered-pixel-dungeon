@@ -313,10 +313,11 @@ something.
 | Terminal rewards are honest | Done, and ordered - `STALLED` was -5.0 (ending an episode beat losing and the agent learned to), then `-deathPenalty` (quitting and losing became one decision with two labels). Now stall -150 < death -100 < turn limit -25 < a cleared floor +25, asserted as an ordering rather than as constants. `rewardcheck` is a gate, 13 cases |
 | **Killing pays; approaching pays more** | Done - `KILL` was declared and never emitted, so fighting was worth nothing while being hit cost something. `reward.kill_reward` 12.0, and `reward.sneak_attack_reward` **22.0** above it, read from `Statistics.sneakAttacks` - the one combat outcome that costs no health, because `Mob.surprisedBy` skips the defender's defence outright |
 | **A free action is not free** | Done - equipping and unequipping advance no engine time at all, and a policy alternated them for 120 consecutive steps on one `Rapier`. `reward.no_progress_penalty` 0.05, **priced rather than prevented**, so the stall guard still ends recordings where it did and the corpus stays valid |
+| **A free action cannot be repeated for ever** | Done - `OPEN_INVENTORY`, `USE` and `DROP` are the only entries into a sub-mode and all three cost nothing, and `CANCEL` is the only way out of two of them, so the pair is a loop that advances no engine time at all while charging every step against `env.free_step_budget`. `REST` was the worst of it, at 323 free steps in 326. After a step that leaves a sub-mode without moving the clock, the next `WORLD` mask refuses all three **for exactly one step** - the actions stay legal, the agent just cannot chain them without spending a turn in between. Measured over 40 uniform-policy episodes: `meanTurns` 626.8 -> **800.7**, ended `STALLED` 21 of 40 -> **15 of 40**, `REST` free steps 323 of 326 -> **1**. `freeactioncheck` is the gate, 7 cases, mutation-tested both ways. `issues.md` 32 |
 | **A two-turn action is not a one-turn price** | Fixed - `TURN_COST` was charged per *step*, and `Hero.search` costs **two** engine turns, so a search was half price and the agent spent 189 of 940 steps and **half the run's engine time** on an action that finds nothing after the first sweep. Charged by the engine clock now, floored at one turn so idling cannot become free. `SEARCH` fell to 39 steps / 78 turns on the same seed |
 | **Drops are charged** | Fixed - the pickup/drop pair had been correct since `issues.md` 8, but **`IDENTIFIED` was still one-sided**: it paid +0.5 for carrying an already-identified item and refunded nothing when dropped, so `DROP`-then-`INTERACT` was a repeatable +0.5. Measured on `IPW-QMA-AFY`: `IDENTIFIED +27.50` against an inventory round trip that was itself **net -5.00**. Now a signed diff, and the gate checks that no *other* term pays for the round trip |
 | **A turn costs something** | Fixed - `reward.turn_cost` 0.002 → **1.0**, with every other term rescaled onto the same footing. A floor's 1500-turn budget had cost **-3.00** against a **+25** descent, so idling was nearly free. Same seed before and after: 1508 steps / deepest 1 → **392 steps / deepest 2**, the first depth-2 run in this project's history |
-| **The hero levels but cannot spend the point** | **Partial** - `TALENT_UPGRADE` at `reward.talent_reward` 20.0, wired from `Hero.talentPointsSpent` and gated. **No action reaches it**: spending is UI-only (`TalentButton` → `TalentsPane` → `WndHero`) and `WindowBridge` answers only `WndOptions`. The first point arrives at **level 2** — two rats on floor 1 — so this is not an endgame gap. `TODO.md` 1.10 |
+| **The hero levels but cannot spend the point** | **Done** - `TALENT_UPGRADE` at `reward.talent_reward` 400.0, wired from `Hero.talentPointsSpent` and gated. Spending is UI-only in the game (`TalentButton` -> `TalentsPane` -> `WndHero`), so there was no headless action at all and the point could never be spent. `Action.TALENT` opens `EnvMode.TALENT`, where the slot head enumerates `env.TalentPicker.available(hero)` in the game's own order, and `freeactioncheck` drives the whole path through `SPDEnv.step` and asserts the reward pays. The first point arrives at **level 2**: two rats on floor 1 |
 | Actions report what happened | Done - `WAIT`/`REST`/`SEARCH` were recorded as `INVALID_ACTION`, and the term carried no weight, so nothing observed it |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
 | Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included. `checkpointcheck` is a gate, 9 cases - one of them asserts that a flag with no value after it is **refused naming itself**, because every flag reads `args[i + 1]` and `train.ps1 -Resume` used to append a bare `--resume` |
@@ -379,7 +380,7 @@ something.
 -Generations 60 -Name depth-only-60`, `./train.ps1 -Resume`. It names the artefacts, prints the gradle
 command it is about to run, and passes `-Name` as the run's replay group.
 
-**twenty-four gates, one invocation.** Each has had the thing it guards deleted, and each has been
+**twenty-six gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives
@@ -396,7 +397,9 @@ chasm *unreachable*: the environment was handed the game's own "jump?" prompt an
 thrown away, so the agent could be told yes by the game and still never cross. A sixth, `presscheck`,
 covers a third fault on the same path with the same cause: `Level.drop` pressed the cell an item lands
 on only behind a scene test no headless run can satisfy, so every throw was inert and nothing in the
-project had ever thrown an item at a trap.
+project had ever thrown an item at a trap. A seventh, `freeactioncheck`, covers the arithmetic that
+ended 100% of episodes: a rest that spent no engine time, and a menu loop that could be repeated
+without the world moving.
 
 **A gate that passes because the thing it would catch is absent is the same failure as a gate that
 cannot fail**, and the corpus was one for a long time: 17 recordings, 310 SLOT-mode steps, and not one

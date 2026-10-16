@@ -12,6 +12,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayCat
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResetCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GraphCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.FreeActionCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ActionCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.EpisodeDiff;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RolloutCheck;
@@ -95,6 +96,7 @@ public class Main {
 			case "episodediff": EpisodeDiff.main( rest ); break;
 		case "checkpointcheck": CheckpointCheck.main( rest ); break;
 		case "statecheck": StateCheck.main( rest ); break;
+			case "freeactioncheck": FreeActionCheck.main( rest ); break;
 		case "valuescale": ValueScale.main( rest ); break;
 		case "parallelcheck": ParallelCheck.main( rest ); break;
 		case "rewardcheck": RewardCheck.main( rest ); break;
@@ -133,6 +135,7 @@ System.out.println( "  rollout [options]        play one run headlessly and repo
 		System.out.println( "  parallelcheck             fail if a parallel update differs from the serial one" );
 		System.out.println( "  statecheck                fail if a sample does not replay to its rollout's value" );
 		System.out.println( "  rewardcheck               fail if ending an episode can be cheaper than dying" );
+		System.out.println( "  freeactioncheck           fail if a free action can be repeated forever, or a talent point cannot be spent" );
 		System.out.println( "  transitioncheck           fail if descending ends the episode, or is worth nothing" );
 		System.out.println( "  fallcheck                fail if a chasm fall is dropped, or inherits an earlier episode" );
 		System.out.println( "  dialogcheck              fail if an answer cannot reach a dialog the game opened" );

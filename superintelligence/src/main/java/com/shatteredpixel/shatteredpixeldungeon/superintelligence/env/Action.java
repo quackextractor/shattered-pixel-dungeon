@@ -65,6 +65,14 @@ public enum Action {
 	/** Open the inventory pane, entering EnvMode.INVENTORY. */
 	OPEN_INVENTORY ( Kind.MENU, 0, 0 ),
 
+	/**
+	 * Open the talent pane, entering {@link EnvMode#TALENT}.
+	 *
+	 * Only offered while the hero has a point to spend, and it is the only route to
+	 * {@code RewardTerm.TALENT_UPGRADE}, which is one of the largest payouts in the reward function.
+	 */
+	TALENT ( Kind.MENU, 0, 0 ),
+
 	/** Answer the open dialog with option {@code slot} of the option head. */
 	MENU_SELECT ( Kind.MENU, 0, 0 ),
 

@@ -1562,22 +1562,21 @@ public class RewardCheck {
 			return;
 		}
 
-		if (!rest.rested ){
-			fail( "REST did not leave the hero resting, so the release below would pass vacuously."
-					+ " Either the action is not reaching the mapper or rest is engaged somewhere else." );
+		if (rest.rested ){
+			fail( "REST left the hero resting, and Hero.act()'s `curAction == null && resting` branch"
+					+ " never calls ready(), so control is never handed back: the drain runs to its stall"
+					+ " guard instead. REST pays Actor.TICK itself and hands control back." );
 			return;
 		}
 
 		if (!rest.released ){
-			fail( "after REST the hero was still resting when the next action arrived. REST sets"
-					+ " hero.resting without setting a curAction, so Hero.act() takes the"
-					+ " `curAction == null && resting` branch, spends time and calls next() but never"
-					+ " ready(), so control is never handed back. Movement escapes on its own by"
-					+ " setting a curAction; this fails only for the actions that set none." );
+			fail( "the action following REST was never applied, so this case measured nothing. REST now"
+					+ " spends its own turn and returns to WORLD, which is the property being asserted."
+					+ " Measured=false means the probe never reached a second WORLD turn." );
 			return;
 		}
 
-		System.out.println( "  REST is escapable: resting is engaged by REST and released by WAIT" );
+		System.out.println( "  REST is not a one-way door: it pays its turn and leaves the hero ready" );
 	}
 
 	/** Observes {@code hero.resting} across one REST and one following action. */

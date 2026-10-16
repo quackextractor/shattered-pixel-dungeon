@@ -4,6 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.NPC;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
@@ -14,6 +15,7 @@ import com.shatteredpixel.shatteredpixeldungeon.scenes.CellSelector;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Turns an {@link Action} plus a slot or target index into a game action, and reports which
@@ -61,6 +63,22 @@ public class ActionMapper {
 	/** Fixed-length view of the hero's inventory, refreshed once per step. */
 	private final ArrayList<Item> slots = new ArrayList<>();
 
+	/**
+	 * Set when the last step left a sub-mode without advancing the engine clock, and consumed by the
+	 * next WORLD mask.
+	 *
+	 * {@code OPEN_INVENTORY}, {@code USE} and {@code DROP} are the only entries into a sub-mode, and all
+	 * three cost nothing: the hero does not act, so {@code Actor.now()} does not move and the step is
+	 * charged as a free step. Paired with {@code CANCEL} - the only way out of a sub-mode that also costs
+	 * nothing - the pair is a loop that advances no time at all, and an exploring policy falls into it
+	 * because both halves are offered.
+	 *
+	 * Refusing them for exactly one step after a zero-time exit is what closes it: the agent has to spend
+	 * one step that moves the world before it can open a menu again. Measured over 4,828 steps in 40
+	 * uniform-policy episodes, roughly 90% of all steps advanced no engine time at all.
+	 */
+	private boolean zeroTimeModeExit;
+
 	public ActionMapper( EnvConfig config ){
 		this.config = config;
 		for (int i = 0; i < config.maxSlots; i++) slots.add( null );
@@ -95,6 +113,21 @@ public class ActionMapper {
 		return slots;
 	}
 
+	/**
+	 * Records that the step just taken left a sub-mode without advancing engine time.
+	 *
+	 * Called by {@link SPDEnv}, which is the only thing that can see both the mode it left and whether the
+	 * clock moved; the mapper only decides what to do about it.
+	 */
+	public void noteZeroTimeModeExit(){
+		zeroTimeModeExit = true;
+	}
+
+	/** Clears the pending refusal, so a new episode is not born with one. */
+	public void clearZeroTimeModeExit(){
+		zeroTimeModeExit = false;
+	}
+
 	public Item slot( int index ){
 		return (index >= 0 && index < slots.size()) ? slots.get( index ) : null;
 	}
@@ -117,6 +150,12 @@ public class ActionMapper {
 			mask[Action.CANCEL.index] = 1f;
 			if (hasUsableItem()) mask[Action.USE.index] = 1f;
 			if (hasDroppableItem()) mask[Action.DROP.index] = 1f;
+			return;
+		}
+
+		if (mode == EnvMode.TALENT){
+			mask[Action.CANCEL.index] = 1f;
+			if (!talentChoices().isEmpty()) mask[Action.MENU_SELECT.index] = 1f;
 			return;
 		}
 
@@ -152,6 +191,9 @@ public class ActionMapper {
 
 					mask[a.index] = 1f;
 					break;
+				case TALENT:
+					mask[a.index] = TalentPicker.spendableCount( hero() ) > 0 ? 1f : 0f;
+					break;
 				case MOVE_N: case MOVE_NE: case MOVE_E: case MOVE_SE:
 				case MOVE_S:  case MOVE_SW: case MOVE_W:  case MOVE_NW:
 					mask[a.index] = moveLegal( a ) ? 1f : 0f;
@@ -165,6 +207,18 @@ public class ActionMapper {
 		boolean any = false;
 		for (float f : mask) if (f != 0f){ any = true; break; }
 		if (!any) mask[Action.WAIT.index] = 1f;
+
+		if (zeroTimeModeExit){
+			zeroTimeModeExit = false;
+			mask[Action.OPEN_INVENTORY.index] = 0f;
+			mask[Action.USE.index] = 0f;
+			mask[Action.DROP.index] = 0f;
+			if (!any){
+				mask[Action.OPEN_INVENTORY.index] = 1f;
+				mask[Action.USE.index] = 1f;
+				mask[Action.DROP.index] = 1f;
+			}
+		}
 	}
 
 	/** Target mask: index 0 is always available, the eight neighbours when on the map. */
@@ -179,6 +233,30 @@ public class ActionMapper {
 		for (int i = 0; i < mask.length; i++){
 			mask[i] = (i < slots.size() && slots.get( i ) != null) ? 1f : 0f;
 		}
+	}
+
+	/**
+	 * Slot mask for whichever head is live in {@code mode}.
+	 *
+	 * The slot head names three different things depending on the mode: an inventory slot in
+	 * {@code SLOT}/{@code INVENTORY}, a dialog option in {@code MENU}, and a talent in {@code TALENT}.
+	 * Passing the mode in is what lets one head serve all three, which is the whole reason the heads are
+	 * not separate networks.
+	 */
+	public void slotMask( EnvMode mode, float[] mask ){
+		if (mode != EnvMode.TALENT){
+			slotMask( mask );
+			return;
+		}
+
+		for (int i = 0; i < mask.length; i++) mask[ i ] = 0f;
+		List<Talent> options = talentChoices();
+		for (int i = 0; i < options.size() && i < mask.length; i++) mask[ i ] = 1f;
+	}
+
+	/** The talents the hero could spend a point on, as the head indices into them. */
+	public List<Talent> talentChoices(){
+		return TalentPicker.available( hero() );
 	}
 
 	/**
@@ -214,9 +292,9 @@ public class ActionMapper {
 				return true;
 
 			case REST:
-
 				hero.resting = true;
-				hero.next();
+				hero.spendAndNext( Actor.TICK );
+				hero.resting = false;
 				return true;
 
 			case SEARCH:
@@ -261,6 +339,9 @@ public class ActionMapper {
 			case MENU:
 				if (action == Action.CANCEL) return WindowBridge.close();
 				return WindowBridge.selectOption( index );
+
+			case TALENT:
+				return action == Action.MENU_SELECT && TalentPicker.spend( hero(), index );
 
 			case SLOT:
 			case INVENTORY:

@@ -10,14 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- **`REST` advanced no engine time, 323 times out of 326.** The rest turn is taken by `Hero.act`'s rest
+  branch, and the drain can return before the hero is picked again, so a rest moved nothing. It now
+  spends exactly `Actor.TICK` and hands control back; the hero is not left resting, because the game's
+  own rest branch never calls `ready()` and so cannot be left to the supervisor.
+- **A menu could be opened and cancelled for ever without the world moving.** `OPEN_INVENTORY`, `USE`
+  and `DROP` cost nothing and `CANCEL` is the only way out of two of them, so the pair is a loop that
+  advances no engine time at all - and every step of it is charged against `env.free_step_budget`, so
+  100% of episodes ended `STALLED` at turn ~120 of the 1500 granted. After a zero-time exit the next
+  `WORLD` mask refuses all three for exactly one step.
 - **A run recorded one episode in three, so "best per seed" meant best of whatever happened to be sent.*
 - **`replay-batch.ps1` reported `total 0` over a directory full of recordings.**
 - **`replay-batch.ps1 -Parallel N`.**
 - **Every update thread shared one `Network`.**
 - **`train.ps1 -Resume` had never worked, and the parser turned it into a stack trace.**
-### Changed
-- **The scripts that configure, watch and rebuild this module now live in it.**
 ### Added
+- **`Action.TALENT` and `EnvMode.TALENT`**, so a talent point can be spent headlessly. Spending was
+  UI-only (`TalentButton` -> `TalentsPane` -> `WndHero`), so `RewardTerm.TALENT_UPGRADE` - one of the
+  largest payouts in the reward function - could never fire, and the first point arrives at level 2.
+  `env.TalentPicker` enumerates what the game would offer, in the game's order.
+- **`gradle :superintelligence:freeactioncheck`**, a gate, 7 cases, mutation-tested both ways.
 - **`--replay-group <id>`: a run's recordings are its own group, in the catalogue and on disk.**
 ### Fixed
 - **An item that creates a mob left it with no sprite, and killed the worker - now committed and gated.*
@@ -26,6 +38,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A run's artefacts go to `superintelligence/out/run/`, not to the system temp directory.**
 - **`env.free_step_budget`** (`SPD_ENV_FREE_STEP_BUDGET`), **40**.
 - **`mobspritecheck` is a gate**, so `gates` is now 24 checks.
+- **`gates` is now 26 checks**, and `README.md`'s "twenty-four" was already one behind.
+### Measured, after the free-action fixes
+- `stallbreakdown`, 40 episodes, uniform policy, fixed seed per episode, defaults unchanged:
+
+  | | before | after |
+  | --- | --- | --- |
+  | `meanTurns` | 120.6 (`issues.md` 29) / 626.8 (free-step budget at 250) | **800.7** |
+  | ended `STALLED` | 40 of 40 | **15 of 40** |
+  | which guard | 100% `FREE_STEP` | 37.5% `FREE_STEP`, 0% `POSITION`, 0% `PIPELINE` |
+  | `REST` steps advancing no engine time | 323 of 326 | **1** |
+  | longest run of consecutive free steps in an `OPEN_INVENTORY`/`CANCEL` loop | 240 of 240 | **2** |
+
+  Evidence: `superintelligence/out/evidence/stallbreakdown-after-fix1.txt`.
 ### Fixed
 - **A descent pays for a new floor, not for going down a stair.**
 - **A run now shows a progress bar, and a script means nobody types a path.**

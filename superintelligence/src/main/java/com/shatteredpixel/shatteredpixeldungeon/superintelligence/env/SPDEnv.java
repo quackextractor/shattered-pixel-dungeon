@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.env;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
@@ -63,6 +64,10 @@ public class SPDEnv {
 	 * against {@code stallLimit} of 120 - see {@code issues.md} 27.
 	 */
 	private StallCause stallCause = StallCause.NONE;
+
+	/** Mode the current step was decided in, and the engine clock at that moment. */
+	private EnvMode stepEntered = EnvMode.WORLD;
+	private float stepClock;
 
 	private boolean running;
 	private boolean terminated;
@@ -139,6 +144,7 @@ public class SPDEnv {
 		truncated = false;
 		endReason = RewardModel.TerminateReason.OTHER;
 		running = true;
+		mapper.clearZeroTimeModeExit();
 
 		encoder.resetExplored();
 		mapper.refreshSlots();
@@ -177,11 +183,18 @@ public class SPDEnv {
 
 		boolean acted = false;
 
+		stepEntered = mode;
+		stepClock = Actor.now();
+
 if (mode == EnvMode.WORLD){
 			acted = mapper.apply( action, slot );
 			if (action == Action.OPEN_INVENTORY){
 
 				mode = EnvMode.INVENTORY;
+				acted = true;
+			} else if (action == Action.TALENT){
+
+				mode = EnvMode.TALENT;
 				acted = true;
 			} else if (action == Action.USE || action == Action.DROP){
 
@@ -191,6 +204,10 @@ if (mode == EnvMode.WORLD){
 } else if (mode == EnvMode.MENU){
 			acted = mapper.applySecondary( mode, action, slot );
 
+			mode = EnvMode.WORLD;
+		} else if (mode == EnvMode.TALENT){
+
+			acted = (action == Action.CANCEL) || mapper.applySecondary( mode, action, slot );
 			mode = EnvMode.WORLD;
 		} else if (mode == EnvMode.SLOT){
 			boolean needsTarget = false;
@@ -232,7 +249,24 @@ if (mode == EnvMode.WORLD){
 			reward.noteEvent( RewardTerm.INVALID_ACTION );
 		}
 
-		return settle();
+		double accumulated = settle();
+
+		return accumulated;
+	}
+
+	/**
+	 * Marks a zero-time exit out of a sub-mode, then publishes the masks.
+	 *
+	 * <p>Ordered, not two calls at the two places it matters: the decision has to be made before the mask
+	 * is written, or the mask the agent reads for the next step is one step behind the step that earned
+	 * it, and the refusal lands after the agent has already taken the free action it was meant to block.
+	 */
+	private void refreshMasksAfterDrain(){
+		if (stepEntered != EnvMode.WORLD && mode == EnvMode.WORLD
+				&& Actor.now() == stepClock){
+			mapper.noteZeroTimeModeExit();
+		}
+		refreshMasks();
 	}
 
 	/**
@@ -277,7 +311,7 @@ if (++guard > config.actorStepLimit){
 				accumulated += reward.step( encoder.encode(), true );
 				checkFloorLimits();
 				mapper.refreshSlots();
-				refreshMasks();
+				refreshMasksAfterDrain();
 				break;
 			}
 			if (outcome == LevelPipeline.Outcome.HERO_DEAD){
@@ -300,7 +334,7 @@ if (++guard > config.actorStepLimit){
 			if (!running) break;
 
 			mapper.refreshSlots();
-			refreshMasks();
+			refreshMasksAfterDrain();
 
 			if (WindowBridge.open()){
 				WindowBridge.age();
@@ -384,7 +418,7 @@ if (++guard > config.actorStepLimit){
 			ledger.beginFloor( depth, branch );
 		}
 
-		refreshMasks();
+		refreshMasksAfterDrain();
 		return ledger.flushTurn();
 	}
 
@@ -567,7 +601,7 @@ public float[] actionMask(){ return actionMask; }
 
 	private void refreshMasks(){
 		mapper.actionMask( mode, actionMask );
-		mapper.slotMask( slotMask );
+		mapper.slotMask( mode, slotMask );
 		for (int i = 0; i < targetMask.length; i++){
 			targetMask[ i ] = mapper.targetMask( i ) ? 1f : 0f;
 		}
@@ -586,6 +620,7 @@ public float[] actionMask(){ return actionMask; }
 			case TARGETING: return "targeting";
 			case SLOT:      return "slot";
 			case INVENTORY: return "inventory";
+			case TALENT:    return "talent(" + talentChoices().size() + " choices)";
 			default:        return "world";
 		}
 	}
@@ -598,5 +633,10 @@ public float[] actionMask(){ return actionMask; }
 	/** Number of options the open dialog offers. */
 	public int windowOptionCount(){
 		return WindowBridge.optionCount();
+	}
+
+	/** The talents the hero could spend a point on, in the order the slot head indexes them. */
+	public java.util.List<com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent> talentChoices(){
+		return mapper.talentChoices();
 	}
 }

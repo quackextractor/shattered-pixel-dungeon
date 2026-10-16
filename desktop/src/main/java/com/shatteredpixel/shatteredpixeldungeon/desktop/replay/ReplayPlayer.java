@@ -893,7 +893,8 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 		boolean acted;
 
-		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY || mode == EnvMode.MENU){
+		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY || mode == EnvMode.MENU
+				|| mode == EnvMode.TALENT){
 			acted = mapper.applySecondary( mode, action, step.slot );
 		} else if (mode == EnvMode.TARGETING){
 			acted = mapper.applySecondary( mode, action, step.slot );

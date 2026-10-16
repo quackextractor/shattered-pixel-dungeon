@@ -331,7 +331,8 @@ public class EpisodeCollector {
 	private static int headFor( EnvMode mode ){
 		switch (mode) {
 			case SLOT:
-			case INVENTORY: return Policy.HEAD_SLOT;
+			case INVENTORY:
+			case TALENT: return Policy.HEAD_SLOT;
 			case TARGETING: return Policy.HEAD_TARGET;
 			default:        return Policy.HEAD_ACTION;
 		}

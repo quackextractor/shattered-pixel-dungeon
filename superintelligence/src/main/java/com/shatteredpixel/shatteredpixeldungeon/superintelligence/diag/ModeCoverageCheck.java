@@ -267,6 +267,17 @@ public class ModeCoverageCheck {
 		step( Action.MENU_SELECT, 0, EnvMode.WORLD, "selecting an option closes the dialog" );
 		if (WindowBridge.open()) failures.add( "the dialog was still open after MENU_SELECT" );
 
+		Dungeon.hero.lvl = 3;
+		env.step( Action.WAIT, 0 );
+
+		step( Action.TALENT, 0, EnvMode.TALENT, "spending a talent point" );
+
+		step( Action.MENU_SELECT, 0, EnvMode.WORLD, "choosing a talent spends the point" );
+		if (env.talentChoices().isEmpty()){
+			failures.add( "the talent pane closed but offers nothing, so either nothing was spent or"
+					+ " the picker is reading a hero that has no talents" );
+		}
+
 		if (!env.running()){
 			failures.add( "the episode ended early with " + env.endReason()
 					+ "; a mode check must not depend on the run surviving" );

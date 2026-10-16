@@ -98,11 +98,16 @@ heads".
       quoted ceiling of 96 slots is right and that bags are obtainable, but the env exposes
       fewer. Not closed, because the obvious fix is wrong: D7's claim that targeting and
       inventory share a head is what has to be revisited, not the slot count.
-- [ ] **`REST` advances no engine time.** Measured at 323 of 326 rests. `ActionMapper.java`
+- [x] **`REST` advances no engine time.** Measured at 323 of 326 rests. `ActionMapper.java`
       says it needs the drain's rest handling decided first, and that it is not a one-line
       fix. Undecided, and it is a design call rather than an oversight.
-- [ ] **The talent point can never be spent.** `talentReward` pays 400 and the level-up path
+      **Closed**: it is one line, and the reason it was not is that `Actor.now()` is set by
+      the scheduler rather than by the hero - see `issues.md` 32 for the measurement that
+      showed `spendConstant` alone does nothing.
+- [x] **The talent point can never be spent.** `talentReward` pays 400 and the level-up path
       works, but there is no action that spends the point. `rewardcheck` proves it pays.
+      **Closed**: `Action.TALENT` and `EnvMode.TALENT` reach `Hero.upgradeTalent`, and
+      `freeactioncheck` drives the whole path through `SPDEnv.step`. See section 8.
 - [ ] **`issues.md` 26**, the viewer spending 1 HP the recording does not contain. Cells are
       the one channel the viewer does not record, so the damage source is still unlocated.
 - [ ] **`issues.md` 28**, the policy push. Made chunked and retried, but with no gate: a
@@ -110,3 +115,13 @@ heads".
       be written as it stands.
 - [ ] **The viewer diagnostics are tested but not gated.** `-Dspd.replayContinueOnDiverge`
       and `-PspdHidden` were verified by running them; neither is in `viewcheck`.
+
+## 8. Closed since the last cycle
+
+Recorded so the next reader does not re-derive them. The measurements are in `issues.md`.
+
+- **A free action could be repeated for ever, and a talent point could never be spent.**
+      `REST` advanced no engine time, and `OPEN_INVENTORY` -> `CANCEL` was a loop that never
+      moved the world while charging every step against `env.free_step_budget`. Both closed;
+      `Action.TALENT` makes the talent point spendable. `freeactioncheck` is the gate.
+      `issues.md` 32.

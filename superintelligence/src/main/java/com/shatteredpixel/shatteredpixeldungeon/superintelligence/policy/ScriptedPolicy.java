@@ -89,6 +89,10 @@ case SLOT:
 				slotOut[ 0 ] = pick;
 				return Action.USE;
 
+			case TALENT:
+				slotOut[ 0 ] = random.nextInt( Math.max( 1, env.talentChoices().size() ));
+				return Action.MENU_SELECT;
+
 			default:
 				slotOut[ 0 ] = 0;
 				return chooseWorldAction( env );
