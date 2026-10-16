@@ -790,3 +790,105 @@ secondary choice all have to line up as well.
 the slot head enumerates `env.TalentPicker.available(hero)` - the game's own order, tiers ascending and
 `LinkedHashMap` insertion order inside a tier, so a recorded index names the same talent in the trainer
 and in the viewer. The first point arrives at **level 2**: two rats on floor 1.
+
+## 33. The recurrent gradient never crossed a timestep, and the critic was asked for thousands - **CLOSED, gated**
+
+Both were found by reading `review.md` against the code, and both had been hiding behind numbers that
+looked healthy: `policy=`, `value=`, `kl=` and `clip=` were all reported every generation, and none of
+them says anything about either.
+
+### The gradient was truncated at length one
+
+`PPO.update` shuffled the buffer and backpropagated each stored sample in isolation, with `dPrev` and
+`dCell` cleared between them. Two consequences, and the first is the one that matters:
+
+- Nothing crossed a timestep, so `LSTM.W_hh` received **no gradient at all** for retaining anything
+  forward. In a partially observed grid game that is the entire reason the recurrent layer is there:
+  the agent is asked to remember where the stairs were across dozens of turns it cannot see.
+- The samples were also coupled, sample *i* depending on sample *i-1*, which is why the parallel update
+  had once been blocked.
+
+The buffer now groups into contiguous runs and backpropagates each in reverse without clearing between
+steps. Contiguity cannot be recovered from a shuffled buffer, so the worker stamps an episode id and a
+step index onto every retained step and both travel the wire; a gap - the sampling rate dropping a step,
+a floor transition restarting the clock - starts a new run, because carrying a gradient through a state
+the agent never saw is worse than not carrying one.
+
+`bpttcheck` is the gate, 7 cases. Its first case is built so the answer cannot be argued with: the loss
+sits on the second step only, so the sum of the isolated steps is exactly that step's isolated gradient,
+and a length-one truncation reproduces the sum exactly. Measured **63.7% apart** with the fix and
+**0.00000** with the accumulation reverted.
+
+The first version of that case compared two gradient *norms* instead, and was measured to pass the
+mutation - two different steps have two different local gradients, so the norms differ under a
+truncation too. Recorded because it is the fifth time this repository has had a case that could not
+fail, and the fourth time the replacement was a construction rather than a comparison.
+
+### The critic's targets were three orders of magnitude out of range
+
+The reward function is priced for the agent, not the optimiser: a stall costs 3000, a death 2500, a
+descent pays 1800. The critic's output is linear so it can represent those, but the trunk is shared with
+the actor, and a squared error of 3000^2 produces a gradient two orders of magnitude above the policy
+gradient's. Global clipping then squashed the actor's update towards zero - which is why the policy was
+not moving and nothing said so.
+
+Value targets are normalised by a running estimate of the return's scale, the residual is clipped and
+the loss is Huber. A batch of -3000 and +1800 now normalises to at most 1.0. A three-generation run
+reports `value=0.62`, `1.06`, `0.56` where the old figures were 12,432 to 31,323.
+
+`gradcheck` caught a fault of its own on the way, which is the fourth counter-example in `testing-guide`
+and the same shape as the rest: it reported finite-difference noise as a wrong gradient, because the
+relative error was measured against a denominator that can be arbitrarily small. The noise is now
+measured - the same central difference at two step sizes, whose disagreement *is* the noise - and an
+entry passes when the analytic gradient agrees to within it. Removing a `tanh` derivative still fails
+five entries at relative errors of 0.23 to 0.50 against noise of 0.001 to 0.02.
+
+## 34. A descent was unreachable rather than unrewarded - **CLOSED, gated**
+
+`meanDepth` was 1.001 across 5,360 episodes, and `depth_reward` of +1800 is the largest single payout in
+the function, so it was paid in roughly five of them. Two things were wrong, and neither was the reward
+arithmetic.
+
+**Nothing pointed at the stairs.** A regular floor holds several hundred walkable tiles; a random walk
+onto the exit succeeds about 0.1% of the time. `RewardTerm.STAIR_POTENTIAL` now pays
+`gamma*Phi(s') - Phi(s)` with `Phi` the negative breadth-first distance to this floor's exit, so the
+objective has a gradient without becoming farmable: the term telescopes over an episode, and the only way
+to earn is to arrive. Measured by `rewardcheck`, which is 26 cases: 4 steps closing the gap pay
+**+8.12**, 4 steps opening it cost **-5.82**, and a closed round trip nets **2.30** where a per-distance
+reward would net the gross. `reward.stair_potential_weight` = 0 turns it off.
+
+**And nothing remembered them.** `GridChannel.TRANSITION` lights only while the stairs are in view, so a
+hero that walked past and away carried nothing about where they were - which is exactly what the agent
+needs and least often has in front of it, and exactly what the recurrent gradient now has to carry.
+`GridChannel.EXIT_BEACON` lights the cell the hero has already stood where the stairs could be seen. It
+is not lit from generation: that would hand over the objective for free and quietly change what a run
+measures.
+
+**The inventory, too.** `env.max_slots` was 32 against the game's ceiling of 96 - a 20-slot backpack plus
+four 19-slot bags. The truncation was invisible rather than refused, because the head is a fixed-width
+window and everything past it simply was not in the observation. `issues.md` 7 recorded the figure and
+left the fix open on the grounds that the obvious one was wrong; the obvious one was right, and what the
+gate needed was for the gap to be measured. It widens the network's input, so it invalidates
+checkpoints trained at 32.
+
+## 35. Twenty-six settings were Java literals, and `.env` was read by nothing - **CLOSED, gated**
+
+`review.md` §1.2 listed them: worker JVM heap and GC pause, the pipe and weight-push chunk sizes, the
+episode tail length, the gradient clip and Adam's three constants, the value loss weight and residual
+ceiling, the random-seed leak rate, the checkpoint and record intervals, and the dialog aging step. All
+are now settings, and `configcheck` is 10 cases over 63 keys.
+
+Two of them were worth more than the setting. **`train.random_seed_rate` at 0** is what makes two runs of
+one configuration comparable, which they otherwise are not - three repeats of one config and one fixed
+seed put `bestScore` 1,595 points apart and `bestDepth` on 1 or 2 at chance. And **`env.max_slots`** was
+the only field `EnvConfig` was truncating without saying so.
+
+`.env` now sits between the properties file and the process environment, which is where the
+documentation has always said it sits and where it never sat at all: the JVM does not read one, so the
+documented workflow was a shell one-liner, and a developer who skipped it ran with settings they did not
+believe they were using - silently, because nothing in the report said the file had been ignored.
+
+`.env.example` had drifted to the pre-rescaling values - `depth_reward` 25 against the compiled 1800,
+`turn_cost` 0.002 against 1.0, `max_slots` 32 against 96 - so copying it configured a run the module does
+not run. `configcheck` already compared the shipped properties file with the compiled defaults in both
+directions; the same check is what says every documented key changes the setting it names.

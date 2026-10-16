@@ -94,10 +94,8 @@ heads".
 
 ## 7. Open engine and harness faults
 
-- [ ] **The agent's inventory is narrower than the game's.** `issues.md` 7 confirms the
-      quoted ceiling of 96 slots is right and that bags are obtainable, but the env exposes
-      fewer. Not closed, because the obvious fix is wrong: D7's claim that targeting and
-      inventory share a head is what has to be revisited, not the slot count.
+- [ ] **The agent's inventory is narrower than the game's.** **Closed**: `env.max_slots` is 96,
+      the game's own ceiling, against 32. `issues.md` 34.
 - [x] **`REST` advances no engine time.** Measured at 323 of 326 rests. `ActionMapper.java`
       says it needs the drain's rest handling decided first, and that it is not a one-line
       fix. Undecided, and it is a design call rather than an oversight.
@@ -125,3 +123,22 @@ Recorded so the next reader does not re-derive them. The measurements are in `is
       moved the world while charging every step against `env.free_step_budget`. Both closed;
       `Action.TALENT` makes the talent point spendable. `freeactioncheck` is the gate.
       `issues.md` 32.
+- **The recurrent gradient was truncated at length one.** No gradient crossed a timestep and
+      `LSTM.W_hh` learned nothing. The update now backpropagates contiguous runs of up to 16
+      steps. `bpttcheck` is the gate. `issues.md` 33.
+- **The critic was asked to fit returns in the thousands,** and the gradient that produced
+      was squashed by clipping on the trunk the actor shares. Targets are normalised and the
+      loss is Huber. `issues.md` 33.
+- **A descent was unreachable rather than unrewarded.** Potential-based shaping towards this
+      floor's stairs, and a beacon channel that carries where the hero last saw them.
+      `issues.md` 34.
+- **The inventory was silently truncated at 32 of 96 slots.** `issues.md` 34.
+- **Twenty-six settings were Java literals**, and `.env` was read by nothing. `issues.md` 35.
+- **`INTERACT` could not name the cell it acted on.** The step's secondary index is now a
+      direction; index 0 keeps its old meaning, so the corpus reproduces unchanged.
+- **`Trainer.java` was over the project's own 500-line limit** at 1,021 lines, and the module
+      carried a javadoc comment on almost every declaration. `train/TrainerMain` took the entry
+      point and configuration loading (Trainer is 467), and `stripinlines --javadoc` removed
+      13,366 comment lines across 114 files in one reviewable change. Still over the limit:
+      `diag/RewardCheck` 1,354, `diag/ReplayCatalogCheck` 783, `diag/CollectCheck` 615,
+      `diag/ConfigCheck` 542, `Main` 506. `RewardCheck` is the one that matters.
