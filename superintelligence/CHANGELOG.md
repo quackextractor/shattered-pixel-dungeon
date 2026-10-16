@@ -92,6 +92,15 @@ ewardcheck is 26 cases**, from 23.
   6,336 at 22 planes over 48x48. Lossless, and gaecheck holds both halves - that it round-trips
   exactly, and that it is still eight times smaller, so a packing that quietly stopped compressing
   would fail.
+- **A depth-2 run, verified.** 20 generations, 8 workers, 4 update threads, seed 20261016, every
+  default unchanged: `bestDepth` 2 in **8 of 20 generations** and `meanDepth` 1.05, against `meanDepth`
+  1.001 across 5,360 episodes before. `trainer-replays/bptt-stairs/CLL-ZXD-MTZ.dat` (ROGUE,
+  generation 19, 438 steps, depth 2) **reproduces exactly**, so the descent is a real trajectory rather
+  than a reporting artefact. `valueLoss` runs 0.43 to 1.24 where it was 12,432 to 31,323, and the run
+  completes where the policy push used to kill it at generation ~22.
+  **This is one run and it does not clear the noise floor** - `TODO.md` 1 puts that at plus or minus 16
+  points of `meanScore` over fifteen generations - so it is a move in the right direction and not yet
+  a result. `issues.md` 36.
 - **A run's artefacts go to `superintelligence/out/run/`, not to the system temp directory.**
 - **`env.free_step_budget`** (`SPD_ENV_FREE_STEP_BUDGET`), **40**.
 - **`mobspritecheck` is a gate**, so `gates` is now 24 checks.

@@ -892,3 +892,46 @@ believe they were using - silently, because nothing in the report said the file 
 `turn_cost` 0.002 against 1.0, `max_slots` 32 against 96 - so copying it configured a run the module does
 not run. `configcheck` already compared the shipped properties file with the compiled defaults in both
 directions; the same check is what says every documented key changes the setting it names.
+
+
+## 36. The first depth-2 run that verifies - **measured, and it is one run, not a trend**
+
+Twenty generations, 8 workers, 2 episodes each, 4 update threads, seed 20261016, every default unchanged.
+
+| | generations 0-4 | generations 5-19 |
+| --- | --- | --- |
+| `bestDepth` | 1 in 5 | **2 in 8 of 15** |
+| `meanDepth` | 1.000 | 1.057 |
+| `valueLoss` | 0.86 to 1.24 | 0.43 to 0.86 |
+| `kl` | 0.005 to 0.09 | 0.003 to 0.025 |
+
+**Eight of twenty generations reached depth 2**, where `issues.md` 27 recorded `meanDepth` 1.001 across
+5,360 episodes and `bestDepth` landing on 1 or 2 at chance with three repeats of one config disagreeing.
+`meanDepth` over the run is 1.05 against 1.001.
+
+The run also completes, which it did not used to: `issues.md` 28's policy push killed runs at generation
+~22, and 20 generations is inside that window.
+
+**A depth-2 recording verifies exactly.** `trainer-replays/bptt-stairs/CLL-ZXD-MTZ.dat`, ROGUE,
+generation 19, 438 steps, depth 2, score -2025.74, reproduced to the last decimal. So the descent is a
+real trajectory and not a reporting artefact - which is the difference between this and the earlier
+"bestDepth 2" claims that `issues.md` 27 retired.
+
+### What this does not say
+
+It is one run, one seed, twenty generations, and `TODO.md` 1 is explicit that **the noise floor is
+plus or minus 16 points of `meanScore` over fifteen generations**, so nothing here clears it.
+`meanDepth` at 1.05 is a move in the right direction and not a measurement of learning. `bestDepth` on 2
+is what four runs in five would produce by chance on a run that sometimes descends.
+
+What *is* measured, and is not a matter of luck:
+
+- the free-step budget is no longer what ends every episode - `stallbreakdown` puts `FREE_STEP` at 37.5%
+  of uniform-policy episodes against 100%, and `meanTurns` 626.8 to 800.7;
+- the critic's loss is O(1) rather than O(10,000), so the shared trunk is no longer clipped flat;
+- the recurrent gradient crosses timesteps, which `bpttcheck` forces rather than infers;
+- a descent leaves a recording that reproduces.
+
+The next measurement is the one `TODO.md` 1 has always asked for: a run long enough to clear the band.
+Evidence: `out/evidence/train-20gen.log`, `out/evidence/depth2-run.dat`,
+`out/evidence/stallbreakdown-after-fix1.txt`, `out/evidence/viewcheck-final.txt`.

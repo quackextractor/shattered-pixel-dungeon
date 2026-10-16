@@ -97,7 +97,10 @@ public final class TransitionCodec {
 			int stateSize ) throws IOException {
 		int count = in.readInt();
 
-		int gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
+int gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		int gridCells = gridSize;
+		int packedGrid = com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition
+				.packedGridBytes( gridCells );
 		int inventorySize = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		int heroSize = HeroEncoder.FEATURES;
 
@@ -105,9 +108,8 @@ public final class TransitionCodec {
 
 		for (int i = 0; i < count; i++){
 			Transition t = new Transition();
-			t.gridCells = gridSize;
-				gridSize = com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition.packedGridBytes( gridSize );
-			t.grid = new byte[ gridSize ];
+			t.gridCells = gridCells;
+			t.grid = new byte[ packedGrid ];
 			t.inventory = new float[ inventorySize ];
 			t.hero = new float[ heroSize ];
 			t.actionMask = new float[ ActionCount.size ];

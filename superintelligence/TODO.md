@@ -69,6 +69,10 @@ measured against the band to say whether it is now improving.
 | --- | --- | --- |
 | 4.1 | Garbage collection and memory pooling | Unaddressed. The documents ask for an audit of the core game loop and pooling of volatile objects; not started. |
 | 4.2 | 1,000 simultaneous simulations | Never run at scale. The pool sizes to the machine at 20 workers. |
+- **A depth-2 run, verified.** 20 generations, 8 workers, 4 update threads, seed 20261016, every
+      default unchanged: estDepth 2 in **8 of 20 generations**, meanDepth 1.05, and
+      	rainer-replays/bptt-stairs/CLL-ZXD-MTZ.dat reproduces exactly. One run, and it does
+      not clear the noise floor, so it is a direction and not a result. issues.md 36.
 | 4.3 | IMPALA as the alternative learner | Not built. Listed as an option, not a plan. |
 
 ## 5. Known rough edges

@@ -9,8 +9,15 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeColl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TransitionCodec;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TransitionCodec;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.DataOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +31,7 @@ public class GaeCheck {
 	private static final float LAMBDA = 0.913f;
 
 
-	private static final int CHECKS = 15;
+	private static final int CHECKS = 16;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -43,6 +50,7 @@ checkTerminalZerosTheTail();
 		checkShortEpisodeRetainsItsTail();
 		checkThePackedGridSurvivesARoundTrip();
 		checkThePackedGridIsEightTimesSmaller();
+		checkAFrameOfManyTransitionsRoundTrips();
 		checkClipFractionIsNotAdvantageMagnitude();
 
 		if (failures.isEmpty()){
@@ -101,6 +109,84 @@ checkTerminalZerosTheTail();
 
 	private static String fmt( double v ){
 		return String.format( "%.3f", v );
+	}
+
+	private static void checkAFrameOfManyTransitionsRoundTrips(){
+		EnvConfig config = new EnvConfig();
+
+		int cells = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		int stateFloats = 2 * 128;
+		Network net = new Network( config, new java.util.Random( 5150L ));
+
+		int count = 5;
+		List<Transition> sent = new ArrayList<>();
+		for (int i = 0; i < count; i++){
+			Transition t = new Transition();
+			t.gridCells = cells;
+			t.grid = new byte[ Transition.packedGridBytes( cells ) ];
+			t.inventory = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
+			t.hero = new float[ HeroEncoder.FEATURES ];
+			t.actionMask = new float[ Action.size() ];
+			t.slotMask = new float[ config.maxSlots ];
+			t.targetMask = new float[ ActionMapper.TARGET_COUNT ];
+			t.recurrentState = new float[ stateFloats ];
+
+			java.util.Random rng = new java.util.Random( 1000L + i );
+			for (float[] a : new float[][]{ t.inventory, t.hero, t.actionMask, t.slotMask,
+					t.targetMask, t.recurrentState }){
+				for (int k = 0; k < a.length; k++) a[ k ] = rng.nextFloat();
+			}
+
+			float[] grid = new float[ cells ];
+			for (int k = 0; k < cells; k++) grid[ k ] = rng.nextBoolean() ? 1f : 0f;
+			t.packGrid( grid );
+
+			t.liveHead = i % 3;
+			t.episodeId = 7;
+			t.stepIndex = 100 + i;
+			t.actionIndex = i;
+			t.slotIndex = i * 2;
+			t.oldLogProbability = -0.5f * i;
+			t.advantage = 0.25f * i;
+			t.returnValue = -1.5f * i;
+			t.terminal = (i % 2 == 0);
+
+			sent.add( t );
+		}
+
+		try {
+			java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+			TransitionCodec.writeBody( new DataOutputStream( bytes ), sent );
+
+			List<Transition> back = TransitionCodec.readBody(
+					new DataInputStream( new java.io.ByteArrayInputStream( bytes.toByteArray() )),
+					config, net.stateSize() );
+
+			if (back.size() != count){
+				fail( "a frame of " + count + " transitions read back " + back.size() + ". A field"
+						+ " whose size depends on the previous transition is read correctly once and"
+						+ " wrong from then on, which is what a packing computed inside the read loop"
+						+ " looks like." );
+				return;
+			}
+
+			for (int i = 0; i < count; i++){
+				Transition a = sent.get( i );
+				Transition b = back.get( i );
+				if (!java.util.Arrays.equals( a.grid, b.grid ) || b.stepIndex != a.stepIndex
+						|| b.episodeId != a.episodeId || b.actionIndex != a.actionIndex ){
+					fail( "transition " + i + " came back as transition " + b.stepIndex
+							+ " with action " + b.actionIndex + ", so the frame desynchronised at"
+							+ " or before it." );
+					return;
+				}
+			}
+		} catch (java.io.IOException e){
+			fail( "a frame of " + count + " transitions threw: " + e.getMessage() );
+			return;
+		}
+
+		System.out.println( "  a frame of " + count + " transitions round-trips in order" );
 	}
 
 	private static void checkScalarMatchesTransitionList(){
