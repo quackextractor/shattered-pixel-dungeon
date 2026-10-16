@@ -151,11 +151,15 @@ heads".
       `freeactioncheck` drives the whole path through `SPDEnv.step`. See section 8.
 - [ ] **`issues.md` 26**, the viewer spending 1 HP the recording does not contain. Cells are
       the one channel the viewer does not record, so the damage source is still unlocated.
-- [ ] **`issues.md` 28**, the policy push. Made chunked and retried, but with no gate: a
-      worker spawned from a gate's JVM dies in `HeadlessServices.install`, so the case cannot
-      be written as it stands.
-- [ ] **The viewer diagnostics are tested but not gated.** `-Dspd.replayContinueOnDiverge`
-      and `-PspdHidden` were verified by running them; neither is in `viewcheck`.
+- [ ] **`issues.md` 28**, the policy push. Made chunked and retried, and **now gated** -
+      `pushcheck`, 6 cases, mutation-tested both ways. A gate cannot spawn a worker, so the case
+      holds the write loop's own contract rather than a spawned process's behaviour.
+- [ ] **The viewer diagnostics are tested but not in `gates`.** **Closed**: `viewcheck` runs
+      both, whether or not the corpus is green. `-Dspd.replayContinueOnDiverge` applies **100**
+      steps to `duelist-death-last.replay` against **95** without it; `spd.hidden` reads as
+      `false` without the property and `true` with it, checked without ever constructing a
+      window. `-PspdHidden` is still not how you set the latter: it lands on the supervisor,
+      and the children are what open the window.
 
 ## 8. Closed since the last cycle
 
@@ -204,3 +208,6 @@ Recorded so the next reader does not re-derive them. The measurements are in `is
 - **`pushcheck`**, 6 cases, the first gate to reach the policy push. A gate cannot spawn a
   worker - `HeadlessServices.install` is process-wide - so the case is written against the
   write loop's own contract rather than against a spawned process.
+- **The two viewer diagnostics are gated by `viewcheck`**, 2 checks: continue-on-divergence
+  measures 100 steps against 95 on the one recording that diverges, and `spd.hidden` is read
+  without constructing a window at all.

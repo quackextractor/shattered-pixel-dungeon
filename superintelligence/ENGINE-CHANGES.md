@@ -81,8 +81,8 @@ time ties on iteration order, which meant *who moved first* varied.
 - A second pass: `Char.buffs(Class)` handed callers a `HashSet`, `Random.chances(HashMap)` chose secret
   room contents off a `Class`-keyed map, `Mob.chooseEnemy` resolved ties by iteration order, and
   `CursingTrap` / `VaultLevel` / `Hero` used `Collections.shuffle`, which ignores the seeded generator
-  entirely. Insertion-ordered, or switched to `Random.shuffle`. `Mob.holdAllies` still uses
-  `Collections.shuffle` — see §7.
+  entirely. Insertion-ordered, or switched to `Random.shuffle`. One was missed - `Mob.holdAllies` -
+  and is proposed and applied uncommitted; see section 7.
 
 ## 4. Presentation draws moved to `PRandom`
 
@@ -194,12 +194,35 @@ reading exactly like a simulation that consumes no randomness at all.
   regression returns silently between manual runs.
 - **Sound pitch still draws from `Random`** at 11 sites, symmetric across both environments (§4).
 - **`Mob.holdAllies` still uses `Collections.shuffle`** (`Mob.java:1782`). §3 lists the sites that
-  ignored the seeded generator and were converted; this one was missed, so it is still unseeded. It does
-  not show up in the recorded corpus — nothing reachable by the scripted policy calls `holdAllies` — so
-  `paritycheck` cannot see it. `observecheck` does not look for it either, since it gates draw *paths*,
-  not call sites that bypass them.
-  `LevelPipeline.handleFall` also does not call it, for the same reason: `InterlevelScene.fall()` opens
-  with `Mob.holdAllies`, and copying that would put an unseeded draw into every fall in the trainer.
+  ignored the seeded generator and were converted; this one was missed, so it is still unseeded in the
+  committed tree. **A one-line change is proposed below and applied uncommitted** - see the entry at
+  the end of this section. It does not show up in the committed corpus - nothing reachable by the
+  scripted policy calls `holdAllies` - so `paritycheck` cannot see it either way. `observecheck` does
+  not look for it, since it gates draw *paths*, not call sites that bypass them.
+  `LevelPipeline.handleFall` also does not call it, for the same reason: `InterlevelScene.fall()`
+  opens with `Mob.holdAllies`, and copying that would put an unseeded draw into every fall in the
+  trainer.
+- **`Mob.holdAllies` used an unseeded shuffle - PROPOSED, applied, uncommitted.** `Mob.java` shuffled
+  `candidatePositions` with `Collections.shuffle`, which hands the generator to the JDK's own and
+  therefore ignores the game's seeded stream entirely. Every other site §3 lists was converted; this
+  one was missed. It is still unseeded in the committed tree, and the change below is one line:
+
+  ```java
+  Random.shuffle(candidatePositions);
+  ```
+
+  It is a logic change to `:core`, so under `instructions.md` §12.3 it is applied and **not
+  committed**. Measured on this change: `paritycheck` **32 recordings over 8 seeds replay exactly,
+  twice, in one process**, all 30 gates green, and `:desktop:viewcheck` unchanged at **19 of 20** with
+  the same single failure as before it - `duelist-death-last.replay`, which is `issues.md` 26 and has
+  nothing to do with this. No recording in the corpus reaches `holdAllies`, which is also why
+  nothing would have noticed it being wrong.
+
+  **What it changes in a game.** `Random.shuffle` draws from the gameplay stream, so every floor where
+  an ally is held consumes a different number of values than it did. That is the point - the order is
+  still random - but it is an RNG stream change to pre-existing game code, which is the class of edit
+  §12.3 names as risky. Any recording made before it that happens to hold an ally will not replay.
+  `LevelPipeline.handleFall` also deliberately does not call `holdAllies`, for the same reason.
 - **`observecheck` enumerates the draw paths that exist** - 17 of them, in `ObserveCheck.java:224-241`. An eighteenth added later does not appear in
   its list, so the gate protects what it knows about rather than what is added next.
 - **`Mob` and `Char` do not override `hashCode`.** Nothing found iterates them through a hash

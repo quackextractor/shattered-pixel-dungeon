@@ -81,6 +81,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`configcheck` reads `superintelligence/build.gradle`**, which is the one file in the module that
   decides a setting without being one. See the first entry under Fixed.
 
+### Not proposed for commit, and measured anyway
+- **`Mob.holdAllies` shuffles with `Collections.shuffle`**, which ignores the game's seeded generator.
+  It is the one site §3 of `ENGINE-CHANGES.md` records as missed. The fix is one line -
+  `Random.shuffle(candidatePositions)` - and it is **applied and uncommitted**, because
+  `instructions.md` §12.3 keeps engine *logic* changes out of a commit until they are proposed.
+  Measured on the change: `paritycheck` 32 recordings over 8 seeds replay exactly twice in one
+  process, all 30 gates green, and `:desktop:viewcheck` unchanged at **19 of 20** with the same single
+  failure as before - `duelist-death-last.replay`, which is `issues.md` 26. What it changes in a game
+  is the gameplay RNG stream on any floor that holds an ally, which is the risk §12.3 names.
+
 ### Fixed
 - **`shaping=` under the generation report was a constant with a label on it.** `Trainer.curriculumScale()`
   returned `1f`. The curriculum itself was wired - `SPDEnv.onFloorTransition` calls
