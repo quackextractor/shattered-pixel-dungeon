@@ -9,6 +9,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- **A dense signal for the objective: potential-based shaping towards this floor's stairs.**
+  gamma*Phi(s') - Phi(s) with Phi the negative breadth-first distance to the exit,
+  eward.stair_potential_weight 2.0. Floor 1 is several hundred walkable tiles and a random walk
+  onto the exit succeeds about 0.1% of the time, so across 5,360 episodes meanDepth was 1.001 -
+  a descent was not merely unrewarded but unreachable. The shaping term telescopes over an episode,
+  so a round trip pays nothing however many times it is repeated, and the only way to earn is to
+  arrive. Measured by ewardcheck, which is 26 cases: 4 steps closing the gap pay **+8.12** and 4
+  steps opening it cost **-5.82**, and a round trip nets **2.30** where a farmable reward would net
+  the gross. Zero turns it off.
+- **obs.GridChannel.EXIT_BEACON**, a memory plane that lights the floor's stairs once the hero has
+  stood where they can be seen. TRANSITION only lights while they are in view, so a hero that walked
+  past and away had no channel carrying the fact - which is exactly what the agent needs and least
+  often has in front of it, and exactly what the recurrent gradient now has to carry. Not lit from
+  generation: painting it immediately would hand over the objective for free.
+### Fixed
+- **gradcheck reported finite-difference noise as a wrong gradient.** The relative error was measured
+  against a denominator that can be arbitrarily small, so a gradient of 1.2e-4 read to an absolute
+  accuracy of 2.8e-5 was reported as 22% wrong. The noise is now **measured** - the same central
+  difference at two step sizes, whose disagreement is the noise - and an entry passes when the analytic
+  gradient agrees to within it. A genuine defect reproduces at every step size: removing a tanh
+  derivative fails 5 entries with relative errors of 0.23 to 0.50 against noise of 0.001 to 0.02.
+### Changed
+- **ewardcheck is 26 cases**, from 23.
 ### Fixed
 - **The recurrent gradient was truncated at length one.** Every sampled step was backpropagated in
   isolation with `dPrev` and `dCell` cleared, so no gradient crossed a timestep and `LSTM.W_hh`

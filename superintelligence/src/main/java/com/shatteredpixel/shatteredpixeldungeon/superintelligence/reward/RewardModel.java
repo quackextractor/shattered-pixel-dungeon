@@ -221,9 +221,24 @@ public class RewardModel {
 		}
 		if (tookAction) ledger.countTurn();
 
+		ledger.add( RewardTerm.STAIR_POTENTIAL,
+				config.stairPotentialWeight * stairShaping( hero ), false );
+
 		double reward = ledger.flushTurn();
 		snapshot();
 		return reward;
+	}
+
+	/**
+	 * {@code gamma * Phi(s') - Phi(s)} for this step, which is zero unless the hero actually moved.
+	 *
+	 * <p>See {@link StairPotential} for why this shape is the one that cannot be farmed: it telescopes, so
+	 * a round trip pays nothing and only closing the distance pays.
+	 */
+	private float stairShaping( Hero hero ){
+		if (config.stairPotentialWeight == 0f) return 0f;
+		if (hero.pos == prevHeroPos) return 0f;
+		return stairPotential.shaping( gamma, prevHeroPos, hero.pos );
 	}
 
 	/**
@@ -296,6 +311,15 @@ public class RewardModel {
 		ledger.noteEvent( term );
 	}
 
+	/** Where the hero stood when the last snapshot was taken, for the shaped reward. */
+	private int prevHeroPos = -1;
+
+	/** Distance field to this floor's stairs. See {@link StairPotential}. */
+	private final StairPotential stairPotential = new StairPotential();
+
+	/** Discount factor, which the shaped reward needs and the reward terms do not. */
+	private final float gamma = 0.99f;
+
 	private void snapshot(){
 		Hero hero = Dungeon.hero;
 		if (hero == null) return;
@@ -313,6 +337,8 @@ public class RewardModel {
 		prevDebuffCount = countDebuffs();
 		prevHunger = hungerLevel( hero );
 		prevKills = kills();
+		prevHeroPos = hero.pos;
+		stairPotential.reset();
 		prevSneaks = sneaks();
 		prevTalentsSpent = talentsSpent();
 		prevEngineTime = Actor.now();

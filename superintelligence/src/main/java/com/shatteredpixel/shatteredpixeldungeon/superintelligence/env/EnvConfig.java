@@ -176,6 +176,15 @@ public class EnvConfig {
 	 * wired and gated; the action that reaches it is {@code TODO.md} 1.10.
 	 */
 	public float talentReward = 400f;
+	/**
+	 * How much the shaped reward for closing the gap to the stairs is worth.
+	 *
+	 * <p>Potentially-based shaping rather than a reward, and the difference is the property: it
+	 * telescopes over an episode, so ping-ponging between two cells pays nothing and only genuinely
+	 * closing the distance pays. Zero turns it off, which is the honest way to measure whether it helped.
+	 */
+	public float stairPotentialWeight = 2f;
+
 	/** Reward per point of gold gained, scaled by the item's tier. */
 	public float goldReward = 0.05f;
 
@@ -334,6 +343,7 @@ public class EnvConfig {
 		out.writeFloat( turnCost );
 		out.writeFloat( depthReward );
 		out.writeFloat( exploreReward );
+		out.writeFloat( stairPotentialWeight );
 		out.writeFloat( maxHpReward );
 		out.writeFloat( talentReward );
 		out.writeFloat( goldReward );
@@ -371,6 +381,7 @@ public class EnvConfig {
 		turnCost = in.readFloat();
 		depthReward = in.readFloat();
 		exploreReward = in.readFloat();
+		stairPotentialWeight = in.readFloat();
 		maxHpReward = in.readFloat();
 		talentReward = in.readFloat();
 		goldReward = in.readFloat();
@@ -413,6 +424,7 @@ public class EnvConfig {
 		c.turnCost = turnCost;
 		c.depthReward = depthReward;
 		c.exploreReward = exploreReward;
+		c.stairPotentialWeight = stairPotentialWeight;
 		c.maxHpReward = maxHpReward;
 		c.talentReward = talentReward;
 		c.goldReward = goldReward;

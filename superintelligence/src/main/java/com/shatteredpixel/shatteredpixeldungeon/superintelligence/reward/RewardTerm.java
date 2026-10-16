@@ -25,6 +25,16 @@ public enum RewardTerm {
 	/** Revealed a never-before-seen tile. */
 	EXPLORE,
 
+	/**
+	 * Closed the gap to this floor's stairs: {@code gamma * Phi(s') - Phi(s)} for a negative-distance
+	 * potential.
+	 *
+	 * <p>Shaping rather than a reward, and the distinction is the whole point: it telescopes over an
+	 * episode to a bounded difference of the potential at its ends, so a round trip pays nothing and only
+	 * genuinely arriving pays. It changes where the agent goes without changing what arriving is worth.
+	 */
+	STAIR_POTENTIAL,
+
 	/** Gained maximum HP through a potion, scroll or level up. */
 	MAX_HP_GAIN,
 
@@ -157,7 +167,9 @@ public enum RewardTerm {
 	/** True for terms the curriculum fades out once the agent is competent. */
 	public boolean isShaping(){
 		switch (this) {
-			case EXPLORE:
+			case STAIR_POTENTIAL:
+
+		case EXPLORE:
 			case MAX_HP_GAIN:
 			case GOLD_GAIN:
 			case ITEM_PICKUP:

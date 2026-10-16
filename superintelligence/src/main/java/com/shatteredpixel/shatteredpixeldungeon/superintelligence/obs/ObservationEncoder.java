@@ -136,6 +136,55 @@ public class ObservationEncoder {
 		}
 
 		applyEdges();
+		applyExitBeacon( level, hero );
+	}
+
+	/**
+	 * Lights the beacon channel on the cell the hero has already seen the stairs on.
+	 *
+	 * <p>Written once per step rather than per cell, because the transition cell is a single cell and
+	 * scanning the whole grid for it every step would be the most expensive thing in the encoder.
+	 *
+	 * <p>Reads nothing from the gameplay RNG: it looks at {@code visited}, which the game's own field
+	 * of view already maintains, so the observation stays a pure function of the world - which is what
+	 * {@code observecheck} asserts.
+	 */
+	private void applyExitBeacon( Level level, Hero hero ){
+		if (level == null || hero == null) return;
+
+		int cell = seenTransitionCell;
+		if (cell < 0){
+			cell = level.getTransition( null ) != null ? level.getTransition( null ).cell() : -1;
+			if (cell < 0 ) return;
+			if (!level.visited[ cell ] ) return;
+			seenTransitionCell = cell;
+		}
+
+		if (!level.visited[ cell ]) return;
+
+		int p = gridIndex( level, hero, cell );
+		if (p >= 0) put( GridChannel.EXIT_BEACON, p, 1f );
+	}
+
+	/** Grid index of a cell, or -1 when it falls outside the encoded window. */
+	private int gridIndex( Level level, Hero hero, int cell ){
+		int width = level.width();
+		int cx = cell % width;
+		int cy = cell / width;
+
+		int hx = hero.pos % width;
+		int hy = hero.pos / width;
+
+		int spanX = gridWidth + MARGIN * 2;
+		int spanY = gridHeight + MARGIN * 2;
+		float stepX = Math.max( 1f, (float) spanX / gridWidth );
+		float stepY = Math.max( 1f, (float) spanY / gridHeight );
+
+		int gx = Math.round( (cx - ( hx - MARGIN )) / stepX );
+		int gy = Math.round( (cy - ( hy - MARGIN )) / stepY );
+
+		if (gx < 0 || gx >= gridWidth || gy < 0 || gy >= gridHeight ) return -1;
+		return gx + gy * gridWidth;
 	}
 
 	private void writeCell( Level level, Hero hero, int cell, int p ){
@@ -336,5 +385,9 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 	public void resetExplored(){
 		lastExplored = 0;
 		lastDepth = -1;
+		seenTransitionCell = -1;
 	}
+
+	/** The floor's stairs once the hero has stood where they can be seen. -1 until then. */
+	private int seenTransitionCell = -1;
 }

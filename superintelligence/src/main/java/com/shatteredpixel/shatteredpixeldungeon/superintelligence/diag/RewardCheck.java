@@ -18,6 +18,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardP
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardLedger;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.StairPotential;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -55,7 +56,210 @@ import java.util.List;
  */
 public class RewardCheck {
 
-	private static final int CHECKS = 23;
+	private static final int CHECKS = 26;
+
+	/** What one walk out from the stairs and back accumulated on the shaped term. */
+	private static class StairWalk {
+		double away;
+		double toward;
+		int awaySteps;
+		int towardSteps;
+
+		double net(){ return away + toward; }
+	}
+
+	/**
+	 * Walking towards this floor's stairs has to pay, and walking away has to cost.
+	 *
+	 * <p>Floor 1 is several hundred walkable tiles and a random walk onto the exit has a success rate
+	 * around 0.1%, so across 5,360 episodes {@code meanDepth} was 1.001. The shaped term is what gives
+	 * a sparse objective a gradient, and this is the property that makes it one.
+	 *
+	 * <p>Both halves are in one episode because the hero starts standing on this floor's up-stairs: the
+	 * potential is zero there and no move can improve on zero, so "walking towards the stairs" is only
+	 * a measurement after the hero has left them.
+	 */
+	private static void checkClosingTheGapToTheStairsPays( EnvConfig config ){
+		StairWalk walk = walkOutAndBack( config.copy(), 2f, 4 );
+
+		if (walk.awaySteps == 0 || walk.towardSteps == 0){
+			fail( "the walk away took " + walk.awaySteps + " step(s) and the walk back "
+					+ walk.towardSteps + ", so neither half was exercised and the case measured"
+					+ " nothing." );
+			return;
+		}
+
+		if (walk.toward <= 0){
+			fail( walk.towardSteps + " steps that closed the gap to the stairs paid "
+					+ fmt( walk.toward ) + " of STAIR_POTENTIAL. A descent is the objective and the agent"
+					+ " has to be able to see progress towards it." );
+			return;
+		}
+
+		if (walk.away >= 0){
+			fail( walk.awaySteps + " steps that opened the gap to the stairs paid " + fmt( walk.away )
+					+ " of STAIR_POTENTIAL, so moving away from the objective is not worse than standing"
+					+ " still. A shaping term with no downside is a reward." );
+			return;
+		}
+
+		System.out.println( "  " + walk.towardSteps + " steps closing the gap pay "
+				+ fmt( walk.toward ) + " and " + walk.awaySteps + " steps opening it cost "
+				+ fmt( walk.away ));
+	}
+
+	/**
+	 * And the round trip pays nothing, which is what makes this shaping rather than a reward.
+	 *
+	 * <p>A term paid for distance closed can be farmed by pacing back and forth across a doorway for as
+	 * long as the episode lasts. {@code gamma * Phi(s') - Phi(s)} telescopes, so a walk out and back
+	 * nets zero however many times it is repeated, and the only way to earn is to actually arrive.
+	 */
+	private static void checkStairShapingCannotBeFarmed( EnvConfig config ){
+		StairWalk walk = walkOutAndBack( config.copy(), 2f, 4 );
+
+		double allowed = 0.5 * Math.max( 1, Math.abs( walk.toward ) );
+		if (Math.abs( walk.net() ) > allowed){
+			fail( "walking " + walk.awaySteps + " steps away from the stairs and "
+					+ walk.towardSteps + " back nets " + fmt( walk.net() ) + " of STAIR_POTENTIAL ("
+					+ fmt( walk.away ) + " then " + fmt( walk.toward ) + "). Potential-based shaping"
+					+ " telescopes, so a round trip pays nothing however many times it is repeated -"
+					+ " which is the whole difference between shaping and a farmable reward." );
+			return;
+		}
+
+		System.out.println( "  a round trip away from the stairs and back nets " + fmt( walk.net() )
+				+ " of STAIR_POTENTIAL, so it cannot be farmed" );
+	}
+
+	/** Zero turns it off, which is the honest way to measure what it was worth. */
+	private static void checkStairShapingIsOffAtZero( EnvConfig config ){
+		EnvConfig local = config.copy();
+		local.stairPotentialWeight = 0f;
+
+		StairWalk walk = walkOutAndBack( local, 0f, 4 );
+
+		if (walk.net() != 0){
+			fail( "with reward.stair_potential_weight = 0 the term still paid " + fmt( walk.net() )
+					+ ", so the switch is not reachable and the two cases above prove nothing about"
+					+ " which path a run takes." );
+			return;
+		}
+
+		System.out.println( "  reward.stair_potential_weight = 0 pays nothing" );
+	}
+
+	/**
+	 * Walks the hero away from the stairs and then back towards them, in one episode, and reports what
+	 * each half paid.
+	 *
+	 * <p>Driven through {@link SPDEnv#step} rather than by calling the potential directly, because the
+	 * claim is about what a run is paid rather than about what a function returns.
+	 */
+	private static StairWalk walkOutAndBack( EnvConfig config, float weight, int each ){
+		config.stairPotentialWeight = weight;
+		config.turnLimitPerFloor = 800;
+
+		final StairWalk result = new StairWalk();
+		final StairPotential potential = new StairPotential();
+		final java.util.List< Action > outward = new ArrayList<>();
+		final boolean[] returning = { false };
+
+		play( config, each * 3 + 8, "SHAPEWALK", turn -> {
+			Action step = null;
+
+			if (!returning[ 0 ] && outward.size() >= each) returning[ 0 ] = true;
+
+			boolean outwardPhase = !returning[ 0 ];
+
+			if (outwardPhase){
+				step = bestStepTowards( turn.env, potential, false );
+				if (step == null) returning[ 0 ] = true;
+			} else if (result.towardSteps < outward.size()){
+				step = stepBackTowards( turn.env, outward,
+						outward.size() - result.towardSteps - 1 );
+			}
+
+			if (step == null) return;
+
+			double before = turn.env.ledger().termTotal( RewardTerm.STAIR_POTENTIAL );
+			turn.env.step( step, 0 );
+			double paid = turn.env.ledger().termTotal( RewardTerm.STAIR_POTENTIAL ) - before;
+
+			if (outwardPhase){
+				outward.add( step );
+				result.away += paid;
+				result.awaySteps++;
+			} else {
+				result.toward += paid;
+				result.towardSteps++;
+			}
+		} );
+
+		return result;
+	}
+
+	/**
+	 * The legal move that undoes the outward walk's {@code index}th step.
+	 *
+	 * <p>Walking the recorded path backwards rather than greedily towards the stairs, because the
+	 * property being measured is that a closed loop pays nothing - and a greedy return can wander, which
+	 * measures a different thing.
+	 */
+	private static Action stepBackTowards( SPDEnv env, java.util.List< Action > outward, int index ){
+		if (index < 0 || index >= outward.size()) return null;
+
+		Action taken = outward.get( index );
+		int here = Dungeon.hero.pos;
+		int back = here - taken.dx - taken.dy * Dungeon.level.width();
+
+		for (Action a : Action.values()){
+			if (!a.directional()) continue;
+			if (env.actionMask()[ a.index ] == 0f ) continue;
+			if (here + a.dx + a.dy * Dungeon.level.width() != back) continue;
+			return a;
+		}
+
+		return null;
+	}
+
+	/**
+	 * The legal move that most changes the distance to the stairs in the wanted direction.
+	 *
+	 * <p>Ties are broken towards whichever move is legal first, so the walk is a function of the seed
+	 * rather than of iteration order.
+	 */
+	private static Action bestStepTowards( SPDEnv env, StairPotential potential, boolean toward ){
+		if (Dungeon.level == null || Dungeon.hero == null) return null;
+		if (Dungeon.level.getTransition( null ) == null) return null;
+
+		int here = Dungeon.hero.pos;
+		int width = Dungeon.level.width();
+		int from = potential.distanceFrom( here );
+		if (from == StairPotential.UNREACHABLE) return null;
+
+		Action best = null;
+		int bestDistance = from;
+
+		for (Action a : Action.values()){
+			if (!a.directional()) continue;
+			if (env.actionMask()[ a.index ] == 0f ) continue;
+
+			int cell = here + a.dx + a.dy * width;
+			if (cell < 0 || cell >= Dungeon.level.length()) continue;
+
+			int d = potential.distanceFrom( cell );
+			if (d == StairPotential.UNREACHABLE) continue;
+
+			boolean improves = toward ? d < bestDistance : d > bestDistance;
+			if (!improves) continue;
+
+			bestDistance = d;
+			best = a;
+		}
+
+		return best;
+	}
 
 	/** How many heaps to try before calling a floor that offers none a failure. */
 	private static final int MAX_HEAP_TRIES = 12;
@@ -88,6 +292,10 @@ public class RewardCheck {
 		checkAMultiTurnActionPaysForEveryTurn( config );
 		checkSearchingIsNotCheaperThanActing( config );
 		checkSpendingATalentIsWorthALot( config );
+
+		checkClosingTheGapToTheStairsPays( config );
+		checkStairShapingCannotBeFarmed( config );
+		checkStairShapingIsOffAtZero( config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reward signals: " + CHECKS + " checks passed" );

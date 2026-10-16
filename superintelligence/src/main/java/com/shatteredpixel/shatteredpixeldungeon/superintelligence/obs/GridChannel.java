@@ -61,6 +61,20 @@ public enum GridChannel {
 	/** Stairs or another level transition currently visible. */
 	TRANSITION( Kind.VISIBLE ),
 
+	/**
+	 * Where the stairs were, once the hero has seen them.
+	 *
+	 * <p>{@link #TRANSITION} only lights while they are in view, so a hero that walked past them and away
+	 * has no channel carrying the fact - which is exactly the thing the agent most needs and least often
+	 * has in front of it. A player remembers where the stairs were; this is that memory, and it is what
+	 * gives the recurrent layer something to carry across the dozens of turns between seeing them and
+	 * standing on them.
+	 *
+	 * <p>Not lit from generation. Painting it immediately would hand the agent the whole objective for
+	 * free and quietly change what a run measures.
+	 */
+	EXIT_BEACON( Kind.MEMORY ),
+
 	/** Locked door or locked exit currently visible. */
 	LOCKED_DOOR( Kind.VISIBLE ),
 

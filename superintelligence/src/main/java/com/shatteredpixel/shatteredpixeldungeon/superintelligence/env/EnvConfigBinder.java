@@ -82,6 +82,7 @@ public class EnvConfigBinder {
 			"reward.turn_cost",
 			"reward.depth_reward",
 			"reward.explore_reward",
+		 "reward.stair_potential_weight",
 			"reward.max_hp_reward",
 			"reward.talent_reward",
 			"reward.gold_reward",
@@ -301,6 +302,8 @@ public class EnvConfigBinder {
 			case "reward.turn_cost":         config.turnCost = decimal( key, value, origin ); break;
 			case "reward.depth_reward":      config.depthReward = decimal( key, value, origin ); break;
 			case "reward.explore_reward":    config.exploreReward = decimal( key, value, origin ); break;
+		 case "reward.stair_potential_weight":
+		 	config.stairPotentialWeight = decimal( key, value, origin ); break;
 			case "reward.max_hp_reward":     config.maxHpReward = decimal( key, value, origin ); break;
 			case "reward.talent_reward":     config.talentReward = decimal( key, value, origin ); break;
 			case "reward.gold_reward":       config.goldReward = decimal( key, value, origin ); break;
