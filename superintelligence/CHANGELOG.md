@@ -230,7 +230,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Lwjgl3Application` constructed. A gate that took over the desktop to prove a flag was wired is a
   gate nobody runs. Both run whether or not the corpus is green, so a corpus failure cannot hide one.
 - **A gate for the policy push that issues.md 28 fixed and could not gate.** It asserts that no
-  single write carries more than `train.push_chunk_bytes`, that the bytes arrive identical, that a
+  single write carries more than `ipc.push_chunk_bytes`, that the bytes arrive identical, that a
   payload of exactly one chunk is one write, that an empty payload writes nothing, that a stream
   failing twice is retried rather than abandoned, and that a stream failing for ever is refused
   naming what failed and how much. Reinstating the unchunked write fails the first case with the

@@ -372,7 +372,7 @@ something.
 | LSTM state with each transition | Fixed - the replay ran under an unrelated sample's state |
 | Trained anything yet | **No.** Never left floor 1; milestone is depth 5 (`research.md:40`). **The update path was itself faulty** - all N update threads shared one `Network` - and that is fixed and gated as of `CHANGELOG.md`; no run has been measured since |
 | Parallel worker processes, seed schedule | Running; exercised to 8 workers x 25 generations |
-| The policy push survives a Windows pipe | **Gated** - a whole 14.3 MB blob in one `write` killed runs at generation ~22 with `Insufficient system resources exist to complete the requested service`. The write is chunked (`train.push_chunk_bytes`), retried (`trainer.push_retries`), and `pushcheck` holds the loop's contract: 6 cases, mutation-tested both ways. The gate asserts the write loop, not a spawned worker - a worker cannot be spawned inside a gate's JVM, but it never needed to be |
+| The policy push survives a Windows pipe | **Gated** - a whole 14.3 MB blob in one `write` killed runs at generation ~22 with `Insufficient system resources exist to complete the requested service`. The write is chunked (`ipc.push_chunk_bytes`), retried (`trainer.push_retries`), and `pushcheck` holds the loop's contract: 6 cases, mutation-tested both ways. The gate asserts the write loop, not a spawned worker - a worker cannot be spawned inside a gate's JVM, but it never needed to be |
 | Graphical trainer UI, desktop replay viewer | Replay viewer done; trainer UI not started |
 | Garbage collection / object pooling audit (research.md:60) | Not started |
 
