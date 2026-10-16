@@ -201,7 +201,7 @@ private EnvConfig config;
 	 * <p>Written as a private static pair of methods rather than inline at the call site so that the
 	 * encoder and the decoder are one change and cannot drift the way they did. They are still a third
 	 * implementation of "write a replay" alongside {@code ReplayIO.write} and the text format, which is
-	 * the duplication {@code PLAN-replay-parity.md} warns about; the version byte below is what makes
+	 * the duplication {@code issues.md 31} warns about; the version byte below is what makes
 	 * that survivable.
 	 */
 	private void writeReplay( Replay replay ) throws IOException {

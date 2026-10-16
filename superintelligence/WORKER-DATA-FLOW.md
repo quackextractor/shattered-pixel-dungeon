@@ -1,8 +1,12 @@
 # Worker data flow — decision
 
-Status: **decided — Option C.** Nothing built yet; the engineering plan is
-[`PLAN-data-flow.md`](PLAN-data-flow.md). Everything below is measured on this repo, not estimated
-from theory, except where marked.
+Status: **decided — Option C, and built.** The engineering plan was
+[`PLAN-data-flow.md`](PLAN-data-flow.md) and its steps are resolved. This file is the record of *why*,
+kept because the costs and the rejected options are the part that cannot be recovered from the code: if
+the pool is ever sized differently, the reasoning for Option C is here and nowhere else.
+
+Everything below is measured on this repo, not estimated from theory, except where marked. Figures
+predate the fix in `issues.md` 25, which moved the update onto one `Network` per shard.
 
 Written to make one choice: **where does a worker's training data go, and who computes the gradient.**
 It is made in §10.

@@ -29,7 +29,7 @@ import java.io.IOException;
  *
  * <p><b>Still a third implementation of "write a replay",</b> alongside {@code ReplayIO.write} for the
  * text format and the recorder itself for collection. That duplication is what
- * {@code PLAN-replay-parity.md} §3 names, and it is not resolved here — but it is now one class rather
+ * {@code issues.md 31} §3 names, and it is not resolved here — but it is now one class rather
  * than two methods, which is the difference between a format and a convention, and it is public so
  * that {@code diag.ReplayCodecCheck} can test it. A wire format that cannot be reached from outside its
  * own package is a wire format that cannot be tested.

@@ -23,7 +23,7 @@ guard's answer is bit-for-bit what it was, because the new term is only ever set
 no scene — but it does change what a *headless* run does, and that is the whole point of it.
 
 `superintelligence/README.md` lists these under "Changes to the game" without the reasoning, and
-`superintelligence/FINDINGS-viewer-fidelity.md` holds the measurements.
+`issues.md` 31 holds the measurements, recovered from the findings record that has since been removed.
 
 ---
 
@@ -156,7 +156,7 @@ Two instrument changes, both of which are the reason the fault above survived as
 **`Random.Int(int, boolean)` now records its draws.** It did not, and neither did
 `Random.shuffle(List)`, which handed the generator straight to `Collections.shuffle` and let it drive.
 Only `Float()` and `Long()` were counted. So `RngTrace` reported identical base-draw counts at every
-step of every recording while the streams were sixteen values apart, and `PLAN-replay-parity.md` §1.4
+step of every recording while the streams were sixteen values apart, and `issues.md` 31 §1.4
 concluded from that — correctly, given the instrument — that the stream was not offset.
 
 `shuffle` is routed through `Int` with its permutation **unchanged**: `Collections.shuffle` walks the
