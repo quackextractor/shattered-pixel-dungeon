@@ -23,9 +23,12 @@ points over fifteen generations to mean anything. `bestDepth` on its own is not 
       and the alchemy pot is reachable with two of `docs.md`'s terms paying. **None of them has been
       measured on a training run, and the claim that the objective now moves is untested.**
 - [ ] Close `issues.md` 37 and 18 together. Both are "a recording the trainer wrote does not replay",
-      and both now carry the evidence that would locate one: every step records `baseDraws` and
-      `baseFingerprint`, and `verify` names the step and the delta before it compares anything else.
-      Neither is diagnosed, and `18` is still the one that makes `gates` flaky.
+      and both now carry the evidence that would locate one. **37 is localised and not diagnosed**:
+      a fresh 2-generation run reproduced it - one of two worker recordings diverges at step 1421 of
+      1422 with `rng baseDraws: replayed 745, recorded 747 (delta -2)` on a `SEARCH`, identically on
+      both runs, so the streams parted in the generator and the recording drew *more*. `18` is still
+      1 in 8 and now reports the same way. Both need `rngtrace` with `-Dspd.rngTrace`, whose tally
+      names the call site; neither is guessed at. Evidence in `out/evidence/issue-37-smoke/`.
 - [ ] Confirm the free-step budget is now the binding constraint rather than `stallLimit`. It was
       chosen from a 10-generation run, and the mask underneath it has changed.
 

@@ -408,6 +408,46 @@ Recorded rather than guessed at, for the reason `issues.md` 18 gives: a hypothes
 story about a turn cost, and `issues.md` 33's own measurement - 189 searches taking half a
 940-step run's engine time - is the shape of the last confident answer to that question.
 
+### Reproduced again, and now localised - **a fresh 2-generation run, after the draw count landed**
+
+A two-worker, two-episode, two-generation run (`--max-turns 40 --update-threads 1
+--replay-group smoke-rl`, `train.record_every=1`, the default `random_seed_rate`) wrote two
+recordings. One reproduces, twice, identically:
+
+```
+ZVI-KMW-HKC.dat   [OK]  replay reproduced in 634 steps, 470 ms   (and again, 477 ms)
+```
+
+The other does not, and it does not in the same place every time it is run:
+
+```
+NRF-TFY-RXG.dat   [ERROR] replay diverged at step 1421 of 1422
+                 rng baseDraws diverged at step 1421: replayed 745, recorded 747 (delta -2)
+                 action SEARCH slot 0 mode WORLD
+```
+
+Both runs of it give the same step, the same delta and the same action, so this is deterministic —
+the one thing the original entry already ruled out, re-confirmed on a different seed and a
+different network shape.
+
+**What the new field adds.** Before it, this recording reported a position, health or clock
+divergence and nothing about the stream. Now it says that at the last step the *replay consumed two
+fewer draws than the recording did*, on a `SEARCH`. That is three things the entry above could not
+state:
+
+- the divergence is in the **generator**, not only in the accounting for it;
+- its **direction** — the recording drew **more**, so the worker is the side that made the extra
+  draws rather than the replay;
+- and it is reached by a **`SEARCH`**, which `issues.md` 33 has already measured as the most
+  engine-time-expensive action in the game.
+
+**What it does not do is say which call site.** `baseDraws` is cumulative. `rngtrace` with
+`-Dspd.rngTrace` records the draws-by-site tally over the same window, and that is the next
+measurement; it is not taken here because this entry has already recorded once what happens when a
+turn-cost story is asserted ahead of the measurement.
+
+Evidence: `out/evidence/issue-37-smoke/`, holding both recordings and both `verify` outputs.
+
 Evidence: `out/evidence/gen29-divergence.txt`, `out/evidence/gen29-LZJ-LNO-HLE.dat`,
 `out/evidence/gen29-LZJ-LNO-HLE-r2.dat`, `out/evidence/noise-floor-30.csv`,
 `out/evidence/train-noise-floor-30.log`.

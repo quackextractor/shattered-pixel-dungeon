@@ -21,6 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gaps**, over 20,000 steps. The retained fraction converges on `rate / (1 + rate)` and can never
   exceed the rate, which the gate asserts as a band rather than a tolerance. The collector's chunk
   length travels with the params frame — **`Protocol.VERSION` is 5** — so a trainer and its workers
+- **`./gradlew :superintelligence:verify --args="<file>"` did not work**, and `README.md`
+  documents that exact form. `withSubcommand` prepended the task name only when the first argument
+  began with `--`, so a bare path reached `Main` as the *command* and printed the usage. It now
+  prepends unless the first argument already **is** the command, which is what its own comment said
+  it did - so `--args="<file>"`, `--args="verify <file>"` and `--args="--seed x"` all work.
+- **The pickup trace moved out of `ActionMapper`.** It was 537 lines against a 500-line rule for
+  production code, and the block that took it over was `spd.pickupTrace` instrumentation. It is now
+  `env.PickupTrace` with one predicate, `ActionMapper` is 468, and no other production file in
+  `:superintelligence` is over 500. `diag/GaeCheck` is 580 and is left alone: test code, where the
+  same rule allows 600.
   cannot disagree about it.
 - **`gradcheck` no longer fails a parameter whose gradient is below the noise floor.** The noise
   band is the measured disagreement between two step sizes, and a gradient whose magnitude is
@@ -138,6 +148,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`README.md`'s stale counts corrected against the code:** `configcheck` 14 cases and 87 keys (was
   11/64 in one place and 10/63 in another), `rewardcheck` 29 (was 13), the properties file 87 keys
   (was 35), `reward.kill_reward` 150.0 and `reward.sneak_attack_reward` 300.0 (were 12.0 and 22.0).
+
+### Measured
+- **`issues.md` 37 reproduced on a fresh run, and localised.** A two-worker, two-episode,
+  two-generation run with `train.record_every=1` wrote two recordings. One reproduces twice,
+  identically. The other does not, identically on both runs:
+
+  ```
+  [ERROR] replay diverged at step 1421 of 1422
+          rng baseDraws diverged at step 1421: replayed 745, recorded 747 (delta -2)
+          action SEARCH slot 0 mode WORLD
+  ```
+
+  Before this cycle that recording would have reported a position, health or clock divergence and
+  nothing about the stream. It now says the two sides had already parted in the generator, that
+  **the recording drew more** - so the worker is the side making the extra draws - and that the
+  step reaching it is a `SEARCH`, which `issues.md` 33 has already measured as the most
+  engine-time-expensive action in the game. `baseDraws` is cumulative and does not say which call
+  site, so nothing is diagnosed; `rngtrace` with `-Dspd.rngTrace` is the next measurement and is
+  not taken. Evidence in `out/evidence/issue-37-smoke/`.
 
 ### Not done
 - **`rolloutcheck` is still the one flaky gate, re-measured at 1 in 8 with the new comparison and unchanged.**"n"n  Seven of eight consecutive runs green, so recording `baseDraws` has not made it flakier. The one"n  failure now reports `rng baseDraws diverged at step 57: replayed 290, recorded 298 (delta -8)`"n  instead of a different cell at step 54, because `ReplayIO.verify` checks the stream first. That is"n  a direction and not a diagnosis: the count is cumulative and says nothing about which call site made"n  the extra draws. `issues.md` 18 records it.

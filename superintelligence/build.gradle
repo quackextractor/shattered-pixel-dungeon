@@ -34,7 +34,7 @@ tasks.register('probeClasspath') {
 }
 def withSubcommand = { task, String command ->
     task.doFirst {
-        if (!args || args[0].startsWith('--')) args = [command] + args
+        if (!args || args[0] != command) args = [command] + args
     }
 }
 tasks.register('train', JavaExec) {
