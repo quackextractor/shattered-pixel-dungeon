@@ -12,11 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **A dense signal for the objective: potential-based shaping towards this floor's stairs.**
   gamma*Phi(s') - Phi(s) with Phi the negative breadth-first distance to the exit,
-  eward.stair_potential_weight 2.0. Floor 1 is several hundred walkable tiles and a random walk
+  
+eward.stair_potential_weight 2.0. Floor 1 is several hundred walkable tiles and a random walk
   onto the exit succeeds about 0.1% of the time, so across 5,360 episodes meanDepth was 1.001 -
   a descent was not merely unrewarded but unreachable. The shaping term telescopes over an episode,
   so a round trip pays nothing however many times it is repeated, and the only way to earn is to
-  arrive. Measured by ewardcheck, which is 26 cases: 4 steps closing the gap pay **+8.12** and 4
+  arrive. Measured by 
+ewardcheck, which is 26 cases: 4 steps closing the gap pay **+8.12** and 4
   steps opening it cost **-5.82**, and a round trip nets **2.30** where a farmable reward would net
   the gross. Zero turns it off.
 - **obs.GridChannel.EXIT_BEACON**, a memory plane that lights the floor's stairs once the hero has
@@ -32,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gradient agrees to within it. A genuine defect reproduces at every step size: removing a tanh
   derivative fails 5 entries with relative errors of 0.23 to 0.50 against noise of 0.001 to 0.02.
 ### Changed
-- **ewardcheck is 26 cases**, from 23.
+- **
+ewardcheck is 26 cases**, from 23.
 ### Fixed
 - **The recurrent gradient was truncated at length one.** Every sampled step was backpropagated in
   isolation with `dPrev` and `dCell` cleared, so no gradient crossed a timestep and `LSTM.W_hh`
@@ -84,6 +87,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **An item that creates a mob left it with no sprite, and killed the worker - now committed and gated.*
 - **A free-action loop was charged and not bounded, and the charge did not stop it.**
 ### Changed
+- **The spatial grid is bit-packed on the wire.** Every plane is 0 or 1, so a byte per cell held eight
+  times the information it carried, and the grid was 90% of a transition: 50,688 bytes down to
+  6,336 at 22 planes over 48x48. Lossless, and gaecheck holds both halves - that it round-trips
+  exactly, and that it is still eight times smaller, so a packing that quietly stopped compressing
+  would fail.
 - **A run's artefacts go to `superintelligence/out/run/`, not to the system temp directory.**
 - **`env.free_step_budget`** (`SPD_ENV_FREE_STEP_BUDGET`), **40**.
 - **`mobspritecheck` is a gate**, so `gates` is now 24 checks.

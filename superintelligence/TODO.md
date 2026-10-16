@@ -134,6 +134,9 @@ Recorded so the next reader does not re-derive them. The measurements are in `is
       `issues.md` 34.
 - **The inventory was silently truncated at 32 of 96 slots.** `issues.md` 34.
 - **Twenty-six settings were Java literals**, and `.env` was read by nothing. `issues.md` 35.
+- **The spatial grid was a byte per cell for one bit of information,** which made it 90% of every
+      transition and therefore of the buffer and the pipe. Bit-packed now: 50,688 bytes to 6,336,
+      lossless, and gaecheck holds both the round trip and the ratio.
 - **`INTERACT` could not name the cell it acted on.** The step's secondary index is now a
       direction; index 0 keeps its old meaning, so the corpus reproduces unchanged.
 - **`Trainer.java` was over the project's own 500-line limit** at 1,021 lines, and the module
