@@ -198,7 +198,7 @@ buy; `.env` itself is git-ignored, and a run with neither file uses the compiled
 ### The reward, and the one ratio that decides it
 
 Reward is measured by diffing observable state across a turn rather than by hooking the item tree
-(see `superintelligence/TODO.md` §D2 for why, and what that costs). Two numbers carry most of the
+(see `superintelligence/REJECTED.md` for why, and what that costs). Two numbers carry most of the
 objective:
 
 | Key | Default | What it decides |
@@ -231,7 +231,7 @@ the replay header, so a run's score and a recording's score cannot disagree abou
 `rewardcheck` asserts it in both directions.
 
 **`depth_reward` against `explore_reward` is the objective.** A regular floor holds several hundred
-walkable tiles (`TODO.md` §0.8 measured 419 of 1040 sampled floors exceeding 48 on at least one side,
+walkable tiles (`CHANGELOG.md` measured 419 of 1040 sampled floors exceeding 48 on at least one side,
 up to 81), so exploration is a large number by the time a floor is finished. At the ratio this project
 shipped for most of its life - 10 against 0.05 - mapping a floor without ever taking the stairs paid
 *more* than descending, and every run learned to wander. Which is what `bestDepth` being 1 in every
@@ -272,7 +272,7 @@ defence and speed rolls.
 The reward is wired and gated anyway, so that the action has something to pay when it lands. The gate
 drives it by spending points through the engine directly — the same technique the death case uses to
 produce a death without waiting for the mob cluster — which is what distinguishes "wired and proven"
-from `KILL`'s "declared, plumbed and never emitted". `TODO.md` 1.10 is the missing action.
+from `KILL`'s "declared, plumbed and never emitted". `TODO.md` §2 is the missing action.
 
 ## Gates
 
@@ -321,7 +321,7 @@ Plus `playbackcheck` in `:desktop`, which drives the rendered viewer with no win
 `presscheck` was deliberately outside that list while its divergence was open — a thrown item did not
 trigger the trap it landed on, because `Level.drop` pressed the cell only behind a
 `scene() instanceof GameScene` test no headless run could satisfy. It is fixed and in `gates`;
-`issues.md` 17 has the measurement, and `duelist-throw.replay` is the recording that carries a recorded
+`CHANGELOG.md` has the measurement, and `duelist-throw.replay` is the recording that carries a recorded
 press through both environments.
 
 `playbackcheck` also plays **the committed corpus** headlessly, which is the headless half of
@@ -360,7 +360,7 @@ APR-SLJ-DXM                -80.6  d1   1,500   gen 1
 The nine cannot be repaired: they carry `hp=-1 turn=-1.0 inventory=""` on every step, so the data was
 never written and only a new run records it. `trainer-replays/` is now **empty and untracked** - it is
 gitignored and a training run writes there by default - so what the wire dropped is recorded here, in
-`issues.md` 15 and in `CHANGELOG.md` 0.7.0 rather than only in the files.
+`CHANGELOG.md` and in `CHANGELOG.md` 0.7.0 rather than only in the files.
 
 Three of them are worth singling out, because they reach faults the others structurally cannot:
 

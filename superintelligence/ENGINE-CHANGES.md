@@ -261,7 +261,7 @@ reading exactly like a simulation that consumes no randomness at all.
   grass changes its terrain 15 → 2.
 
   `presscheck` is the gate, is **in `gates`**, and is green on three cases. `duelist-throw.replay` is
-  the recording that makes a *recorded* press reproducible in both environments — see `issues.md` 17.
+  the recording that makes a *recorded* press reproducible in both environments — see `CHANGELOG.md`.
 
 
 ## 8. An item that creates a mob leaves it with no sprite - **COMMITTED, GATED**

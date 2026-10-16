@@ -6,7 +6,7 @@ kept because the costs and the rejected options are the part that cannot be reco
 the pool is ever sized differently, the reasoning for Option C is here and nowhere else.
 
 Everything below is measured on this repo, not estimated from theory, except where marked. Figures
-predate the fix in `issues.md` 25, which moved the update onto one `Network` per shard.
+predate the fix in `CHANGELOG.md`, which moved the update onto one `Network` per shard.
 
 Written to make one choice: **where does a worker's training data go, and who computes the gradient.**
 It is made in §10.

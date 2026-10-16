@@ -37,7 +37,7 @@ default and it is in `.gitignore`, so a run's output lands in one place the cata
 reboot does not take it - while nothing accumulates in version control. The seven recordings that were
 committed there once are untracked, the 185 that earlier runs had scattered across temp directories are
 deleted, and every claim this file made about what that directory contains has been corrected below.
-See `issues.md` 15 and [`CHANGELOG.md`](CHANGELOG.md) 0.9.0.
+See [`CHANGELOG.md`](CHANGELOG.md) 0.9.0.
 
 **A run's recordings are its own group, and it keeps every episode.** `--replay-group <id>` puts a run's
 output in a subdirectory of `trainer-replays/`, stamps `group=<id>` into every header, and gives the
@@ -133,7 +133,7 @@ And the five things:
   entropy that is arithmetically impossible. **Fixed and gated** (`parallelcheck` is 5 cases; reinstating
   the fault fails the new one with *"4 shards hold 1 distinct networks"*). It is also **13% faster** -
   six threads writing 3.5M parameters into one object were contending for the same cache lines.
-  **`issues.md` 25, closed.** It could not be said whether the fixes helped, because `SeedPool` leaks
+  **`CHANGELOG.md`, closed.** It could not be said whether the fixes helped, because `SeedPool` leaks
   10% random seeds by design and a repeat of the same config is therefore not the same run.
   **Measured** - three repeats of one
   15-generation config on a fixed seed, `issues.md` 27 - so the band is known: `gen0` agrees to 1.4
@@ -146,7 +146,7 @@ And the five things:
   `meanScore` fall is inside the noise. See `issues.md` 27. `depthReward` of +10 against `turnCost` of
   0.002 means
   descending pays 5,000 turns of idling, and `KILL` / `GOLD_GAIN` / `ITEM_PICKUP` still never fire
-  (`TODO.md` 1.8).
+  (`TODO.md` §2).
 - **The desktop viewer and the trainer now agree.** They did not, and it was not a viewer fault:
   four presentation draws — a sprite's random facing, the attack overlay's highlight target, and two
   Mages Staff particle effects — were spending the gameplay RNG stream, which only the rendered game
@@ -157,17 +157,17 @@ And the five things:
   counted — so the instrument that was supposed to catch it was blind to the draws that caused it.
 `gradle :desktop:viewcheck` is now **green on all 17**, and stable across repeated runs. The four
    fixes are engine changes under `instructions.md` §12.3; the proposal record is
-   `ENGINE-CHANGES.md` and they are committed. See `issues.md` 25.
+   `ENGINE-CHANGES.md` and they are committed. See `CHANGELOG.md`.
 - **Descending now survives the whole journey, including climbing back up.** A hero who walks down the
   stairs was ending the episode on the spot: `Game.switchScene(...)` raises a request and returns, and
   the acknowledgement that turns it into "a scene wants to take over" is raised in `Game.step()`,
   reached from `Game.render()` — which never runs headlessly. That is why `bestDepth` was 1 in every
   generation of every run: the one action that would have moved the agent was ending it.
   Four more faults were only reachable because nothing descended. The last of them was the mirror image
-  of the first, and `issues.md` 10: the environment never gave the hero a turn on the new floor, so a
+  of the first, and `CHANGELOG.md`: the environment never gave the hero a turn on the new floor, so a
   mob waking up and seeing him for the first time interrupted the agent's first action there — the
   agent's first move on every new floor was spent being noticed by a rat. Both environments now agree,
-  and `viewcheck` is 17 of 17 with `verifyall` green. See `TODO.md` §0.1 and §0.5.
+  and `viewcheck` is 17 of 17 with `verifyall` green. See `CHANGELOG.md`.
 - **A chasm fall was being dropped on the floor.** A fall is the only transition that carries no
   `LevelTransition` — `Chasm.heroFall` writes `InterlevelScene.mode` and asks for a scene switch, and
   nothing else — and `LevelPipeline.handleTransition` tested for a transition before it tested the
@@ -183,7 +183,7 @@ And the five things:
   step (once per frame, the approximation `ReplayPlayer` already makes about a recorded step) and the
   game's own `hide()` closes it, so the agent asks, answers, and ends up a floor down — for 13 steps and
   -15.00, against a descent at +1800.00. And a levitation expiring over a chasm now drops the hero, which the
-   game's `Levitation.detach` does not do without a renderer. `issues.md` 16; `fallcheck` and
+   game's `Levitation.detach` does not do without a renderer. `CHANGELOG.md`; `fallcheck` and
    `dialogcheck` gate it, 6 and 3 cases.
 - **A thrown item did not trigger what it landed on, and nothing had ever found out** — the third fault
    on this path, filed as its own issue and now closed. `Level.drop` presses the cell an item lands on,
@@ -196,12 +196,12 @@ And the five things:
    `InterlevelScene.resurrect` onto the cell he died on) both need a renderer and cannot exist headlessly.
    A dropped item now fires a trap and tramples grass, and level generation still presses nothing.
    `presscheck` gates it — 3 cases, in `gates` — and `test-replays/duelist-throw.replay` is the recording
-   that makes a recorded press reproducible on both sides. `issues.md` 17.
+   that makes a recorded press reproducible on both sides. `CHANGELOG.md`.
 
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
-(`TODO.md` 1.4). See [`PLAN-data-flow.md`](PLAN-data-flow.md), whose steps are all resolved.
+(`TODO.md` §1). See [`PLAN-data-flow.md`](PLAN-data-flow.md), whose steps are all resolved.
 
 **The reward now prices the objective, and the price of giving up is above the price of dying.** Three
 things were wrong with it, and each was a property rather than a size:
@@ -321,7 +321,7 @@ something.
 | **The catalog was wrong about which files play** | **Fixed** - the trainer resolved its default replay directory to `superintelligence/./trainer-replays` and the catalog's own default spelled the same directory without the `.`, so every trainer recording was scanned twice and **the duplication decided the `not watchable` marker**: the listing called 1 of 9 unwatchable, the other 8 clean. Deduplication is now by canonical path, gated by a case that spells one directory two ways. `replaycheck`, 19 cases |
 | **A run's recordings are its own group** | **Done** - `--replay-group <id>` writes `trainer-replays/<id>/`, stamps `group=` into every header and gives the catalogue a `GROUP <ID>` section. The group is read from the **header**, not the folder, so a moved recording still says which run wrote it; the scan now walks subdirectories, which is the half that matters, because without it a grouped run writes into a directory the picker reads as empty. `rejected/` is the one directory skipped - it holds what a rebuild could not reproduce. `train.ps1 -Name` supplies it |
 | **A file name did not resolve** | **Fixed** - the listing refused a bare seed several runs had recorded and said "pass a full path"; it now says type the file name, and that works too. `byName` searched the seed-deduplicated list, and a file is not a seed, so `IPW-QMA-AFY-r3.dat` answered *no such recording*. Both the search list and the footer are gated |
-| **A thrown item does what it lands on** | **Verified** - `Level.drop` pressed the landing cell only behind a `scene() instanceof GameScene` test no headless run can satisfy, so every throw landed inert: an armed `WornDartTrap` was still armed after a `Food` was dropped on it on four seeds out of four. `Level.drop` is the only chokepoint - `Item.onThrow` and `Item.doDrop` both call it - so the fix is one added term and the scene test survives. A dropped item now fires a trap and tramples grass, level generation still presses nothing, `presscheck` is a gate with 3 cases, and `duelist-throw.replay` is the recording that carries a recorded press through both environments. `issues.md` 17 |
+| **A thrown item does what it lands on** | **Verified** - `Level.drop` pressed the landing cell only behind a `scene() instanceof GameScene` test no headless run can satisfy, so every throw landed inert: an armed `WornDartTrap` was still armed after a `Food` was dropped on it on four seeds out of four. `Level.drop` is the only chokepoint - `Item.onThrow` and `Item.doDrop` both call it - so the fix is one added term and the scene test survives. A dropped item now fires a trap and tramples grass, level generation still presses nothing, `presscheck` is a gate with 3 cases, and `duelist-throw.replay` is the recording that carries a recorded press through both environments. `CHANGELOG.md` |
 | Rendered viewer reproduces a recording | **19 of 20** - `:desktop:viewcheck` requires every step to have played rather than merely "did not diverge", and the one that fails is `duelist-death-last.replay`, which is `issues.md` 26 and was already open before this work: the viewer applies 1 HP the recording does not contain, at step 95, and nothing locates the source. The other nineteen play every step |
 | Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate, **11 cases and 64 keys**. Every documented key is compared against its compiled default *and* proven to change the setting it names; an unmapped key is a failure, not a skip. **The trainer JVM's own heap and GC pause come from `SPD_WORKER_HEAP_MIN`, `SPD_WORKER_HEAP_MAX` and `SPD_WORKER_GC_PAUSE_MS`** rather than literals in `build.gradle`, which was the one file deciding a setting without being one |
 | A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation - and the viewer does the same at both ends of a playback, so watching a recording no longer leaves `bones.dat` in the player's profile |
@@ -336,9 +336,9 @@ something.
 | Terminal rewards are honest | Done, and ordered - `STALLED` was -5.0 (ending an episode beat losing and the agent learned to), then `-deathPenalty` (quitting and losing became one decision with two labels). Now stall -150 < death -100 < turn limit -25 < a cleared floor +25, asserted as an ordering rather than as constants. `rewardcheck` is a gate, 13 cases |
 | **Killing pays; approaching pays more** | Done - `KILL` was declared and never emitted, so fighting was worth nothing while being hit cost something. `reward.kill_reward` 12.0, and `reward.sneak_attack_reward` **22.0** above it, read from `Statistics.sneakAttacks` - the one combat outcome that costs no health, because `Mob.surprisedBy` skips the defender's defence outright |
 | **A free action is not free** | Done - equipping and unequipping advance no engine time at all, and a policy alternated them for 120 consecutive steps on one `Rapier`. `reward.no_progress_penalty` 0.05, **priced rather than prevented**, so the stall guard still ends recordings where it did and the corpus stays valid |
-| **A free action cannot be repeated for ever** | Done - `OPEN_INVENTORY`, `USE` and `DROP` are the only entries into a sub-mode and all three cost nothing, and `CANCEL` is the only way out of two of them, so the pair is a loop that advances no engine time at all while charging every step against `env.free_step_budget`. `REST` was the worst of it, at 323 free steps in 326. After a step that leaves a sub-mode without moving the clock, the next `WORLD` mask refuses all three **for exactly one step** - the actions stay legal, the agent just cannot chain them without spending a turn in between. Measured over 40 uniform-policy episodes: `meanTurns` 626.8 -> **800.7**, ended `STALLED` 21 of 40 -> **15 of 40**, `REST` free steps 323 of 326 -> **1**. `freeactioncheck` is the gate, 7 cases, mutation-tested both ways. `issues.md` 32 |
+| **A free action cannot be repeated for ever** | Done - `OPEN_INVENTORY`, `USE` and `DROP` are the only entries into a sub-mode and all three cost nothing, and `CANCEL` is the only way out of two of them, so the pair is a loop that advances no engine time at all while charging every step against `env.free_step_budget`. `REST` was the worst of it, at 323 free steps in 326. After a step that leaves a sub-mode without moving the clock, the next `WORLD` mask refuses all three **for exactly one step** - the actions stay legal, the agent just cannot chain them without spending a turn in between. Measured over 40 uniform-policy episodes: `meanTurns` 626.8 -> **800.7**, ended `STALLED` 21 of 40 -> **15 of 40**, `REST` free steps 323 of 326 -> **1**. `freeactioncheck` is the gate, 7 cases, mutation-tested both ways. `CHANGELOG.md` |
 | **A two-turn action is not a one-turn price** | Fixed - `TURN_COST` was charged per *step*, and `Hero.search` costs **two** engine turns, so a search was half price and the agent spent 189 of 940 steps and **half the run's engine time** on an action that finds nothing after the first sweep. Charged by the engine clock now, floored at one turn so idling cannot become free. `SEARCH` fell to 39 steps / 78 turns on the same seed |
-| **Drops are charged** | Fixed - the pickup/drop pair had been correct since `issues.md` 8, but **`IDENTIFIED` was still one-sided**: it paid +0.5 for carrying an already-identified item and refunded nothing when dropped, so `DROP`-then-`INTERACT` was a repeatable +0.5. Measured on `IPW-QMA-AFY`: `IDENTIFIED +27.50` against an inventory round trip that was itself **net -5.00**. Now a signed diff, and the gate checks that no *other* term pays for the round trip |
+| **Drops are charged** | Fixed - the pickup/drop pair had been correct since `issues.md` (closed; see CHANGELOG.md), but **`IDENTIFIED` was still one-sided**: it paid +0.5 for carrying an already-identified item and refunded nothing when dropped, so `DROP`-then-`INTERACT` was a repeatable +0.5. Measured on `IPW-QMA-AFY`: `IDENTIFIED +27.50` against an inventory round trip that was itself **net -5.00**. Now a signed diff, and the gate checks that no *other* term pays for the round trip |
 | **A turn costs something** | Fixed - `reward.turn_cost` 0.002 → **1.0**, with every other term rescaled onto the same footing. A floor's 1500-turn budget had cost **-3.00** against a **+25** descent, so idling was nearly free. Same seed before and after: 1508 steps / deepest 1 → **392 steps / deepest 2**, the first depth-2 run in this project's history |
 | **The hero levels but cannot spend the point** | **Done** - `TALENT_UPGRADE` at `reward.talent_reward` 400.0, wired from `Hero.talentPointsSpent` and gated. Spending is UI-only in the game (`TalentButton` -> `TalentsPane` -> `WndHero`), so there was no headless action at all and the point could never be spent. `Action.TALENT` opens `EnvMode.TALENT`, where the slot head enumerates `env.TalentPicker.available(hero)` in the game's own order, and `freeactioncheck` drives the whole path through `SPDEnv.step` and asserts the reward pays. The first point arrives at **level 2**: two rats on floor 1 |
 | Actions report what happened | Done - `WAIT`/`REST`/`SEARCH` were recorded as `INVALID_ACTION`, and the term carried no weight, so nothing observed it |
@@ -357,7 +357,7 @@ eward.stair_potential_weight = 0 turns it off |
 | Cross-sample gradient leak | Fixed - `dCell` was not cleared, so every gradient depended on the previous sample |
 | Value head range | Fixed - was tanh-bounded to [-1,+1] against a death penalty of 100 |
 | LSTM state with each transition | Fixed - the replay ran under an unrelated sample's state |
-| Trained anything yet | **No.** Never left floor 1; milestone is depth 5 (`research.md:40`). **The update path was itself faulty** - all N update threads shared one `Network` - and that is fixed and gated as of `issues.md` 25; no run has been measured since |
+| Trained anything yet | **No.** Never left floor 1; milestone is depth 5 (`research.md:40`). **The update path was itself faulty** - all N update threads shared one `Network` - and that is fixed and gated as of `CHANGELOG.md`; no run has been measured since |
 | Parallel worker processes, seed schedule | Running; exercised to 8 workers x 25 generations |
 | The policy push survives a Windows pipe | **Gated** - a whole 14.3 MB blob in one `write` killed runs at generation ~22 with `Insufficient system resources exist to complete the requested service`. The write is chunked (`train.push_chunk_bytes`), retried (`trainer.push_retries`), and `pushcheck` holds the loop's contract: 6 cases, mutation-tested both ways. The gate asserts the write loop, not a spawned worker - a worker cannot be spawned inside a gate's JVM, but it never needed to be |
 | Graphical trainer UI, desktop replay viewer | Replay viewer done; trainer UI not started |

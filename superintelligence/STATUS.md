@@ -31,7 +31,7 @@ change silently.
 
 ### The one engine logic change this project has needed since
 
-`issues.md` 17, and it is the first case where the two halves of the rule had to be read together.
+`CHANGELOG.md`, and it is the first case where the two halves of the rule had to be read together.
 `Level.drop` presses the cell a thrown or dropped item lands on, behind a `scene() instanceof GameScene`
 test that a renderer-bypassed process can never satisfy, so every throw landed inert. The fix is one
 widened term plus a new `GameScene` static that **only `HeadlessGame.install()` sets** — so a game with
@@ -41,7 +41,7 @@ That is the shape worth naming: the change is a logic change to `:core`, so it s
 the owner decides, and it is safe to propose because in the game it is a no-op by construction rather
 than by argument. The version that was tried before — deleting the scene test — *was* a behaviour change
 to alchemy and resurrection in a game that is not this module's, which is what the boundary exists to
-prevent. The proposal record is `ENGINE-CHANGES.md` §7 and `issues.md` 17.
+prevent. The proposal record is `ENGINE-CHANGES.md` §7 and `CHANGELOG.md`.
 
 ## 12.4 — the loop is not yet closed
 
@@ -52,11 +52,11 @@ recorded in that document's "As Implemented" section. One genuine gap it found w
 (`paritycheck`), and that gate in turn found a real replay bug — a dead hero's remains reaching the
 next run — which was fixed and gated. `testing-guide.md`'s procedures all pass.
 
-That review has since been removed, because every finding in it was implemented and `issues.md` 32-36
+That review has since been removed, because every finding in it was implemented and `CHANGELOG.md`-36
 is where they and their measurements now live. The loop it drove now runs against `issues.md` and
 `TODO.md`; see `AGENTS.md` **Workflow**.
 
-What remains open is `TODO.md` §1.4: nothing has been trained and the agent has never left floor 1.
+What remains open is `TODO.md` §1: nothing has been trained and the agent has never left floor 1.
 That is not reachable by repeating the review loop, and the honest state of it is written down there.
 
 ## 12.2 — one deviation to declare
