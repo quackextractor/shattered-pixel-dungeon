@@ -323,7 +323,7 @@ public class ActionMapper {
 
 			case SLOT:
 			case INVENTORY:
-				if (PICKUP_TRACE && action == Action.DROP) traceDrop( hero(), this, index );
+				if (PickupTrace.enabled() && action == Action.DROP) PickupTrace.drop( hero(), this, index );
 				return SlotAction.execute( hero(), slot( index ), action, config.allowEquipping );
 
 			default:
@@ -419,7 +419,7 @@ public class ActionMapper {
 	}
 
 	private int pickInteractCell(){
-		StringBuilder dbg = PICKUP_TRACE ? new StringBuilder() : null;
+		StringBuilder dbg = PickupTrace.enabled() ? new StringBuilder() : null;
 
 		for (int o = 1; o < TARGET_COUNT; o++){
 			int cell = targetCell( o );
@@ -444,7 +444,7 @@ public class ActionMapper {
 			int cell = targetCell( o );
 			Heap h = insideMap( cell ) ? Dungeon.level.heaps.get( cell ) : null;
 			if (h != null) {
-				if (PICKUP_TRACE) tracePickup( cell, h );
+				if (PickupTrace.enabled()) PickupTrace.pickup( cell, h );
 				if (dbg != null){
 					System.err.println( "[interact] picked heap at " + cell + " size=" + h.size()
 							+ " type=" + h.type + " peek=" + (h.peek() == null ? "null" : h.peek().getClass().getSimpleName())
@@ -473,89 +473,8 @@ public class ActionMapper {
 		return hero().pos;
 	}
 
-
-	private static final boolean PICKUP_TRACE = System.getProperty( "spd.pickupTrace" ) != null;
-
-
-	private static String quickslotState( Hero hero ){
-		StringBuilder sb = new StringBuilder();
-		for (Item it : hero.belongings.backpack){
-			int slot = Dungeon.quickslot.getSlot( it );
-			sb.append( it.getClass().getSimpleName() ).append( "->" ).append( slot ).append( " " );
-		}
-		return sb.toString().trim();
-	}
-
-
-	private static void traceDrop( Hero hero, ActionMapper mapper, int slot ){
-		ArrayList<Item> slots = mapper.slots();
-		Item inSlot = slot >= 0 && slot < slots.size() ? slots.get( slot ) : null;
-		StringBuilder order = new StringBuilder();
-		for (Item it : hero.belongings.backpack){
-			order.append( it.getClass().getSimpleName() )
-					.append( "(cat=" ).append( com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.order( it ) )
-					.append( ",img=" ).append( it.image() ).append( ") " );
-		}
-		System.err.println( "[drop] slot=" + slot
-				+ " item=" + (inSlot == null ? "null" : inSlot.getClass().getSimpleName())
-				+ " equipped=" + (inSlot != null && inSlot.isEquipped( hero ))
-				+ " bagRoom=" + bagRoom( hero.belongings.backpack )
-				+ " order=" + order
-				+ " qs=" + quickslotState( hero )
-				+ " bags=" + bagList() );
-	}
-
-	private static void tracePickup( int cell, Heap h ){
-		StringBuilder items = new StringBuilder();
-		h.items.forEach( i -> items.append( i.getClass().getSimpleName() ).append( " " ) );
-		Hero hero = Dungeon.hero;
-		System.err.println( "[pickup] cell=" + cell + " size=" + h.size()
-				+ " backpack=" + bagRoom( hero.belongings.backpack )
-				+ " bags=" + bagList()
-				+ " heroClass=" + hero.heroClass
-				+ " challenges=" + Dungeon.challenges
-				+ " velvetDropped=" + Dungeon.LimitedDrops.VELVET_POUCH.dropped()
-				+ " heroIdentity=" + System.identityHashCode( hero )
-				+ " hero.belongings=" + System.identityHashCode( hero.belongings )
-				+ " backpack=" + System.identityHashCode( hero.belongings.backpack )
-				+ " pouch=" + System.identityHashCode( pouchOf( hero ) )
-				+ " heapPouchIsSame=" + (heapPouch( h ) == pouchOf( hero ))
-				+ " [" + items.toString().trim() + "]" );
-	}
-
-	private static Object heapPouch( Heap h ){
-		for (Item i : h.items){
-			if (i.getClass().getSimpleName().equals( "VelvetPouch" )) return i;
-		}
-		return null;
-	}
-
-	private static Object pouchOf( Hero hero ){
-		for (com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag b : hero.belongings.getBags()){
-			if (b.getClass().getSimpleName().equals( "VelvetPouch" )) return b;
-		}
-		return null;
-	}
-
-
-	private static String bagRoom( com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag bag ){
-		int used = 0;
-		for (Item i : bag) used++;
-		return bag.getClass().getSimpleName() + " " + used + "/" + bag.capacity();
-	}
-
-
-	private static String bagList(){
-		StringBuilder sb = new StringBuilder( "[" );
-		for (com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag bag : Dungeon.hero.belongings.getBags()){
-			sb.append( bag.getClass().getSimpleName() ).append( "{" );
-			for (Item i : bag) sb.append( i.getClass().getSimpleName() ).append( "," );
-			sb.append( "} " );
-		}
-		return sb.append( "]" ).toString();
-	}
-
 	private boolean moveLegal( Action action ){
+
 		int cell = offsetCell( action.dx, action.dy );
 		if (!insideMap( cell )) return false;
 
