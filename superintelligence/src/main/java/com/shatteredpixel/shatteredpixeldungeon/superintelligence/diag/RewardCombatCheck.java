@@ -304,6 +304,171 @@ public final class RewardCombatCheck {
 	}
 
 
+	public static void checkRemovingACursePays( EnvConfig config ){
+		final Item[] cursed = { null };
+		final int[] removedAt = { -1 };
+
+		Outcome o = play( config, 120, "CURSEOFF", turn -> {
+			SPDEnv env = turn.env;
+			Hero hero = Dungeon.hero;
+			if (hero == null || !hero.isAlive()) return;
+
+			if (cursed[ 0 ] == null){
+				cursed[ 0 ] = new com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Sword();
+				cursed[ 0 ].cursed = true;
+				cursed[ 0 ].cursedKnown = true;
+				cursed[ 0 ].identify();
+				cursed[ 0 ].collect( hero.belongings.backpack );
+				env.step( Action.WAIT, 0 );
+				return;
+			}
+
+			if (removedAt[ 0 ] < 0){
+				double before = env.ledger().termTotal( RewardTerm.CURSE_REMOVED );
+				cursed[ 0 ].cursed = false;
+				env.step( Action.WAIT, 0 );
+				double paid = env.ledger().termTotal( RewardTerm.CURSE_REMOVED ) - before;
+				if (paid != 0) removedAt[ 0 ] = turn.step;
+			} else {
+				env.step( Action.WAIT, 0 );
+			}
+		} );
+
+		if (cursed[ 0 ] == null){
+			fail( "the hero was never built, so no cursed item could be carried and this case"
+					+ " measured nothing" );
+			return;
+		}
+		if (removedAt[ 0 ] < 0){
+			fail( "a carried item stopped being cursed and CURSE_REMOVED was recorded "
+					+ o.notes( RewardTerm.CURSE_REMOVED ) + " time(s) paying "
+					+ o.termTotal( RewardTerm.CURSE_REMOVED ) + ". docs.md asks for removing a curse to"
+					+ " pay, and this is the state that has to move for it to." );
+			return;
+		}
+
+		System.out.println( "  removing a curse pays " + fmt( o.termTotal( RewardTerm.CURSE_REMOVED ) )
+				+ ", recorded at step " + removedAt[ 0 ] );
+	}
+
+
+	public static void checkWearingSomethingTooStrongIsPaidFor( EnvConfig config ){
+		final com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor[] heavy = { null };
+		final boolean[] worn = { false };
+		final double[] paid = { 0 };
+
+		Outcome o = play( config, 120, "ENCUMBER", turn -> {
+			SPDEnv env = turn.env;
+			Hero hero = Dungeon.hero;
+			if (hero == null || !hero.isAlive()) return;
+
+			if (!worn[ 0 ]){
+				heavy[ 0 ] = new com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor( 5 );
+				env.step( Action.WAIT, 0 );
+				double before = env.ledger().termTotal( RewardTerm.EQUIP_TOO_STRONG );
+				hero.belongings.armor = heavy[ 0 ];
+				worn[ 0 ] = true;
+				env.step( Action.WAIT, 0 );
+				paid[ 0 ] = env.ledger().termTotal( RewardTerm.EQUIP_TOO_STRONG ) - before;
+				return;
+			}
+
+			env.step( Action.WAIT, 0 );
+		} );
+
+		if (heavy[ 0 ] == null || !worn[ 0 ]){
+			fail( "the fixture never equipped anything, so the encumbrance state it exists to reach was"
+					+ " never created and this case measured nothing" );
+			return;
+		}
+		if (heroStrength() >= heavy[ 0 ].STRReq()){
+			fail( "the hero's strength is " + heroStrength() + " against a requirement of "
+					+ heavy[ 0 ].STRReq() + ", so the item was not too strong to wear and this case"
+					+ " measured nothing. A stronger hero, or a higher tier, would do it." );
+			return;
+		}
+		if (o.termTotal( RewardTerm.EQUIP_TOO_STRONG ) >= 0 ){
+			fail( "equipping an item the hero is too weak to wear paid "
+					+ o.termTotal( RewardTerm.EQUIP_TOO_STRONG ) + " (step " + (paid[ 0 ] ) + "). The"
+					+ " game does not refuse the equip - STRReq is an encumbrance and Hero.drRoll"
+					+ " charges two points per point of shortfall - so this is the state to punish."
+					+ " docs.md lists it under what the agent should be punished for." );
+			return;
+		}
+
+		System.out.println( "  wearing something too strong pays "
+				+ fmt( o.termTotal( RewardTerm.EQUIP_TOO_STRONG ) ) + " (hero strength "
+				+ heroStrength() + ", requirement " + heavy[ 0 ].STRReq() + ")" );
+	}
+
+
+	private static int heroStrength(){
+		return Dungeon.hero == null ? 0 : Dungeon.hero.STR();
+	}
+
+
+	/** A slot index inside the head that holds nothing, so pressing it cannot do anything. */
+	private static int emptySlot( SPDEnv env ){
+		List< Item > slots = env.mapper().slots();
+		for (int i = slots.size() - 1; i >= 0; i--){
+			if (slots.get( i ) == null) return i;
+		}
+		return 0;
+	}
+
+
+	/**
+	 * Whether a menu no-op exists yet, which is why {@code MENU_NOOP} has no emission site.
+	 *
+	 * <p>The term was declared for "pressing something in a menu and having nothing happen". Measured
+	 * over 121 turns of sub-mode actions: every one either advanced the engine clock or left the
+	 * sub-mode. A refused slot action falls back to {@code WORLD} rather than sitting in the mode it
+	 * was issued from, so the state the term names does not exist in this environment - and an
+	 * emission site that can never fire is {@code KILL}'s original sin, declared and plumbed and never
+	 * emitted. If this case ever goes red, the state has appeared and the term can be wired.
+	 */
+	public static void checkAMenuNoOpIsUnreachable( EnvConfig config ){
+		final int[] inSubMode = { 0 };
+		final int[] advanced = { 0 };
+		final int[] leftTheMode = { 0 };
+
+		Outcome o = play( config, 200, "MENUNOOP", turn -> {
+			SPDEnv env = turn.env;
+
+			if (env.mode() != EnvMode.WORLD){
+				EnvMode before = env.mode();
+				float clock = Actor.now();
+				inSubMode[ 0 ]++;
+				env.step( Action.USE, emptySlot( env ));
+				if (Actor.now() > clock) advanced[ 0 ]++;
+				else if (env.mode() != before) leftTheMode[ 0 ]++;
+				return;
+			}
+
+			env.step( Action.USE, 0 );
+		} );
+
+		if (inSubMode[ 0 ] == 0){
+			fail( "no step was issued from a sub-mode over " + o.turns + " turns, so this case"
+					+ " measured nothing" );
+			return;
+		}
+
+		int noOps = inSubMode[ 0 ] - advanced[ 0 ] - leftTheMode[ 0 ];
+		if (noOps > 0 ){
+			fail( noOps + " of " + inSubMode[ 0 ] + " sub-mode steps changed neither the engine clock"
+					+ " nor the mode (" + advanced[ 0 ] + " advanced, " + leftTheMode[ 0 ]
+					+ " left the mode). A menu no-op now exists, so MENU_NOOP has a reachable state and"
+					+ " its emission site can be written." );
+			return;
+		}
+
+		System.out.println( "  a sub-mode action always either advances the clock (" + advanced[ 0 ]
+				+ ") or leaves the mode (" + leftTheMode[ 0 ] + ") across " + inSubMode[ 0 ]
+				+ " steps, so MENU_NOOP has no reachable state yet" );
+	}
+
+
 	private static com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent firstTalent( Hero hero ){
 		if (hero.talents.isEmpty()) return null;
 		for (com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent t : hero.talents.get( 0 ).keySet()){

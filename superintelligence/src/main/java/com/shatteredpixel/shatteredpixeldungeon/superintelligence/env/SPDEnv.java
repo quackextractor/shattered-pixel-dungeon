@@ -253,7 +253,7 @@ if (++guard > config.actorStepLimit){
 				turnsTotal++;
 				settleLanding();
 				if (!running) break;
-				accumulated += reward.step( encoder.encode(), true );
+				accumulated += reward.step( encoder.encode(), true, menuNoop() );
 				checkFloorLimits();
 				mapper.refreshSlots();
 				refreshMasksAfterDrain();
@@ -273,7 +273,7 @@ if (++guard > config.actorStepLimit){
 			turnsTotal++;
 
 			int newlyExplored = encoder.encode();
-			accumulated += reward.step( newlyExplored, true );
+			accumulated += reward.step( newlyExplored, true, menuNoop() );
 
 			checkFloorLimits();
 			if (!running) break;
@@ -430,6 +430,17 @@ public float[] actionMask(){ return actionMask; }
 	public boolean lastStepAdvancedClock(){ return reward.lastStepAdvancedClock(); }
 	public float[] slotMask(){ return slotMask; }
 	public float[] targetMask(){ return targetMask; }
+
+	/**
+	 * A step pressed inside a menu that left the menu exactly where it was and moved no engine time.
+	 *
+	 * <p>The three halves are what make it a no-op rather than a cheap action: the step was issued in
+	 * a sub-mode, the sub-mode is the same one afterwards, and the engine clock did not move. A
+	 * {@code CANCEL} out of a menu changes the mode; an action that succeeds changes the clock.
+	 */
+	private boolean menuNoop(){
+		return stepEntered != EnvMode.WORLD && mode == stepEntered && Actor.now() <= stepClock;
+	}
 
 	private final float[] actionLogits = new float[ Action.size() ];
 	private final float[] slotLogits = new float[ 128 ];

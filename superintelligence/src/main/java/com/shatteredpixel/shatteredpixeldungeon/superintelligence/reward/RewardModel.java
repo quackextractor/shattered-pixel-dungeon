@@ -25,6 +25,9 @@ public class RewardModel {
 	private float prevItemValue;
 	private int prevIdentified;
 	private int prevCursedEquipped;
+	private int prevCarried;
+	private int prevCursedCarried;
+	private int prevEquippedOverStrength;
 	private int prevDebuffCount;
 	private int prevKills;
 	private int prevSneaks;
@@ -67,6 +70,10 @@ public class RewardModel {
 
 
 	public double step( int newlyExplored, boolean tookAction ){
+		return step( newlyExplored, tookAction, false );
+	}
+
+	public double step( int newlyExplored, boolean tookAction, boolean menuNoop ){
 		Hero hero = Dungeon.hero;
 		if (hero == null || !snapshotValid){
 			snapshot();
@@ -157,6 +164,23 @@ public class RewardModel {
 		int cursedEquipped = countCursedEquipped();
 		if (cursedEquipped > prevCursedEquipped){
 			ledger.add( RewardTerm.CURSE_EQUIPPED, -5f * (cursedEquipped - prevCursedEquipped), false );
+		}
+
+		int stillCarried = countCarried();
+		int cursedCarried = countCursedCarried();
+		if (cursedCarried < prevCursedCarried && stillCarried == prevCarried){
+			ledger.add( RewardTerm.CURSE_REMOVED,
+					1.5f * (prevCursedCarried - cursedCarried), false );
+		}
+
+		int overStrong = countEquippedOverStrength();
+		if (overStrong > prevEquippedOverStrength){
+			ledger.add( RewardTerm.EQUIP_TOO_STRONG,
+					-2f * (overStrong - prevEquippedOverStrength), false );
+		}
+
+		if (menuNoop){
+			ledger.add( RewardTerm.MENU_NOOP, -1f, false );
 		}
 
 		float hunger = hungerLevel( hero );
@@ -264,6 +288,9 @@ public class RewardModel {
 		prevItemValue = inventoryValue();
 		prevIdentified = countIdentified();
 		prevCursedEquipped = countCursedEquipped();
+		prevCarried = countCarried();
+		prevCursedCarried = countCursedCarried();
+		prevEquippedOverStrength = countEquippedOverStrength();
 		prevDebuffCount = countDebuffs();
 		prevHunger = hungerLevel( hero );
 		prevKills = kills();
@@ -324,6 +351,53 @@ public class RewardModel {
 		Item[] worn = { b.weapon(), b.armor(), b.artifact(), b.misc(), b.ring(), b.secondWep() };
 		for (Item item : worn){
 			if (item != null && item.cursed && item.cursedKnown) n++;
+		}
+		return n;
+	}
+
+
+	private int countCarried(){
+		int n = 0;
+		for (Item item : Dungeon.hero.belongings){
+			if (item != null) n++;
+		}
+		return n;
+	}
+
+
+	private int countCursedCarried(){
+		int n = 0;
+		for (Item item : Dungeon.hero.belongings){
+			if (item != null && item.cursed && item.cursedKnown) n++;
+		}
+		return n;
+	}
+
+
+	/**
+	 * Equipped items the hero is too weak to wear properly.
+	 *
+	 * <p>The game does not refuse the equip: {@code Armor.STRReq()} and {@code Weapon.STRReq()} are an
+	 * encumbrance, and {@code Hero.drRoll} charges two points per point of shortfall. So the state to
+	 * count is the shortfall itself, which is also what {@code docs.md} asks to be punished for.
+	 */
+	private int countEquippedOverStrength(){
+		Hero hero = Dungeon.hero;
+		if (hero == null) return 0;
+
+		Belongings b = hero.belongings;
+		Item[] worn = { b.weapon(), b.armor(), b.artifact(), b.misc(), b.ring() };
+		int n = 0;
+		for (Item item : worn){
+			int required;
+			if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor){
+				required = ((com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor) item).STRReq();
+			} else if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon){
+				required = ((com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon) item).STRReq();
+			} else {
+				continue;
+			}
+			if (required > hero.STR()) n++;
 		}
 		return n;
 	}

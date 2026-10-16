@@ -92,6 +92,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is the gameplay RNG stream on any floor that holds an ally, which is the risk §12.3 names.
 
 ### Fixed
+- **Three reward terms that were declared, plumbed and never emitted now fire.** `docs.md` asks
+  for two of them and `RewardTerm` declared five.
+  - **`CURSE_REMOVED`** pays **1.50** when a carried, known-cursed item stops being cursed *without*
+    leaving the backpack. The "without leaving" half is what separates it from a drop: the diff
+    compares the cursed-carried count against the carried count, and a drop moves both while an
+    uncurse moves only the first.
+  - **`EQUIP_TOO_STRONG`** pays **-2.00**. The game does **not** refuse an equip for insufficient
+    strength - `Armor.STRReq` and `Weapon.STRReq` are an encumbrance and `Hero.drRoll` charges two
+    points per point of shortfall - so the state to count is the shortfall itself, which is also
+    exactly what `docs.md` lists under what the agent should be punished for.
+  - **`MENU_NOOP` is left unwired, and the reason is measured rather than guessed.** A gate drives
+    sub-mode actions and records that **every one either advanced the engine clock (0 of 60) or
+    left the sub-mode (60 of 60)** - a refused slot action falls back to `WORLD` rather than sitting
+    in the mode it was issued from. The state the term names does not exist in this environment, and
+    an emission site that can never fire is `KILL`'s original sin. The case goes red the day a
+    sub-mode action does nothing, which is the day the term can be written.
+  - **`CRAFTED` and `CRAFTED_MEAT_PIE` are left unwired for the same reason.** Brewing is
+    `AlchemyScene.craftItem`, which needs a renderer, and the headless environment has none -
+    `ENGINE-CHANGES.md` records the same fact for `AlchemyScene`'s item drop. There is no state diff
+    to take, so there is no emission site to take.
+  `rewardcheck` is **29 cases** and both new sites are mutation-tested: zeroing `CURSE_REMOVED`
+  fails with *"recorded 1 time(s) paying 0.0"*, zeroing `EQUIP_TOO_STRONG` fails with *"paid 0.0"*.
 - **`shaping=` under the generation report was a constant with a label on it.** `Trainer.curriculumScale()`
   returned `1f`. The curriculum itself was wired - `SPDEnv.onFloorTransition` calls
   `curriculum.observe(depth)` and pushes the result into the ledger - so the dashboard reported a
@@ -176,7 +198,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The viewer catalogue no longer goes through gradle.**
 
 ### Changed
-- **`rewardcheck` is 26 cases**, from 23.
+- **`rewardcheck` is 29 cases**, from 23.
 - **The spatial grid is bit-packed on the wire.** Every plane is 0 or 1, so a byte per cell held eight
   times the information it carried, and the grid was 90% of a transition: 50,688 bytes down to
   6,336 at 22 planes over 48x48. Lossless, and `gaecheck` holds both halves - that it round-trips

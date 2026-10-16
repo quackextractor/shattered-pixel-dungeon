@@ -66,7 +66,7 @@ measured against the band to say whether it is now improving.
 
 ## 2. Reward signals
 
-- [ ] **Terms that never fire.** `KILL`, `GOLD_GAIN` and `ITEM_PICKUP` have never been
+- [ ] **Terms that never fire in a run.** `KILL`, `GOLD_GAIN` and `ITEM_PICKUP` have never been
       observed paying in a *run*. `KILL` is wired and gated - `rewardcheck` places a
       level-appropriate mob, fights it and requires the payout - so the question is whether an
       untrained policy ever gets there, not whether the term can move.
@@ -115,13 +115,15 @@ Small things that are wrong but not blocking.
   depth 3, and no run in this project's history has passed floor 2, so every episode has priced
   every shaping term at 1.0. The fix, if there is one, is an agent that descends; retuning the fade
   would change what is being faded rather than make anything fade.
-- **Five reward terms still have no emission site:** `CRAFTED`, `CRAFTED_MEAT_PIE`, `CURSE_REMOVED`,
-  `EQUIP_TOO_STRONG` and `MENU_NOOP`. `docs.md` asks for the first two, the third and the fourth;
-  `MENU_NOOP` is the suite's own. All are state-diffs rather than hooks, per `docs.md`'s own note
-  that a state diff cannot see an item created in the alchemist - the alchemy pot is a terrain tile
-  and its result is one item delta indistinguishable from a pickup. That is the reason and it is
-  still true; the honest fix is a diff on *what appears on the hero's own cell*, which a pickup
-  cannot do, rather than pretending the term was never wanted.
+- **Three reward terms had no emission site; two still do, and both for a measured reason.**
+  `CRAFTED`, `CRAFTED_MEAT_PIE` and `MENU_NOOP` are declared and unwired. Brewing is
+  `AlchemyScene.craftItem`, which needs a renderer; and a gate measured that **every** sub-mode
+  action either advances the engine clock or leaves the sub-mode, so the state `MENU_NOOP` names
+  does not exist. An emission site that can never fire is `KILL`'s original sin, so the case is a
+  gate on the *absence* instead: it goes red the day a sub-mode action does nothing.
+  `CURSE_REMOVED` and `EQUIP_TOO_STRONG` are wired, mutation-tested, and pay 1.50 and -2.00.
+  What is still true is that **their weights are Java literals**, like `CURSE_EQUIPPED` and
+  `CURED_DEBUFF` beside them, rather than keys in `superintelligence.properties`.
 - **Five files were over the project's own 500-line limit.** **Closed.** Every file in
   `:superintelligence` is under 600 logical lines. See section 8.
 
