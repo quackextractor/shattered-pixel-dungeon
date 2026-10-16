@@ -46,11 +46,15 @@ prevent. The proposal record is `ENGINE-CHANGES.md` §7 and `issues.md` 17.
 ## 12.4 — the loop is not yet closed
 
 The "repeat the whole process" clause has not terminated, and the reason is recorded rather than
-papered over. Re-reading `review.md` after the work showed its three critical issues and its PPO
-gradient-buffer item were **already fixed** in the code, with the file and line for each recorded in
-that document's "As Implemented" section. One genuine gap it found was closed (`paritycheck`), and
-that gate in turn found a real replay bug — a dead hero's remains reaching the next run — which was
-fixed and gated. `testing-guide.md`'s procedures all pass.
+papered over. Re-reading the external code review after the work showed its three critical issues and
+its PPO gradient-buffer item were **already fixed** in the code, with the file and line for each
+recorded in that document's "As Implemented" section. One genuine gap it found was closed
+(`paritycheck`), and that gate in turn found a real replay bug — a dead hero's remains reaching the
+next run — which was fixed and gated. `testing-guide.md`'s procedures all pass.
+
+That review has since been removed, because every finding in it was implemented and `issues.md` 32-36
+is where they and their measurements now live. The loop it drove now runs against `issues.md` and
+`TODO.md`; see `AGENTS.md` **Workflow**.
 
 What remains open is `TODO.md` §1.4: nothing has been trained and the agent has never left floor 1.
 That is not reachable by repeating the review loop, and the honest state of it is written down there.

@@ -89,6 +89,10 @@ Added at the user's request. Reproduced **exactly as given** and not paraphrased
 summarised — they were originally given in conversation, and paraphrasing a constraint is how a
 constraint quietly stops meaning what it said. The blockquotes are the instructions themselves.
 
+One document they name no longer exists: `review.md` has been removed, because every finding in it was
+implemented and its measurements now live in `issues.md` 32-36 and `TODO.md` §8. The quotes below are
+left as written because they are a record of what was asked, not a description of what exists.
+
 **12.1 Scope of the task**
 > Fully read and follow links in superintelligence/instructions.md. Fully implement each fix and suggestion made in superintelligence/review.md.
 

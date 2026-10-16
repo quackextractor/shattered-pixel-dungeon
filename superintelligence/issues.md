@@ -717,7 +717,8 @@ distinct signatures. Both were present before the fix and both are gone after it
 downstream of the same cause - but that was never shown. It is asserted from their absence.
 
 ## 32. A free action could be repeated for ever, and a talent point could never be spent - **CLOSED, gated**
-Found by reading `review.md` against the code, and confirmed by measurement before anything was changed.
+Found by reading a code review against the code, and confirmed by measurement before anything was
+changed.
 
 `issues.md` 29 established that `FREE_STEP` ends 100% of episodes and that `REST` advances no engine
 time. Two distinct faults sat behind that, and only one of them is a reward-arithmetic question.
@@ -793,7 +794,7 @@ and in the viewer. The first point arrives at **level 2**: two rats on floor 1.
 
 ## 33. The recurrent gradient never crossed a timestep, and the critic was asked for thousands - **CLOSED, gated**
 
-Both were found by reading `review.md` against the code, and both had been hiding behind numbers that
+Both were found by reading a code review against the code, and both had been hiding behind numbers that
 looked healthy: `policy=`, `value=`, `kl=` and `clip=` were all reported every generation, and none of
 them says anything about either.
 
@@ -873,10 +874,11 @@ checkpoints trained at 32.
 
 ## 35. Twenty-six settings were Java literals, and `.env` was read by nothing - **CLOSED, gated**
 
-`review.md` §1.2 listed them: worker JVM heap and GC pause, the pipe and weight-push chunk sizes, the
-episode tail length, the gradient clip and Adam's three constants, the value loss weight and residual
-ceiling, the random-seed leak rate, the checkpoint and record intervals, and the dialog aging step. All
-are now settings, and `configcheck` is 10 cases over 63 keys.
+A code review listed them as hardcoded values that should have been settings: worker JVM heap and GC
+pause, the pipe and weight-push chunk sizes, the episode tail length, the gradient clip and Adam's three
+constants, the value loss weight and residual ceiling, the random-seed leak rate, the checkpoint and
+record intervals, and the dialog aging step. All are now settings, and `configcheck` is 10 cases over
+63 keys.
 
 Two of them were worth more than the setting. **`train.random_seed_rate` at 0** is what makes two runs of
 one configuration comparable, which they otherwise are not - three repeats of one config and one fixed

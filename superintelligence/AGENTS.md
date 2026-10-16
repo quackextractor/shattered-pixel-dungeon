@@ -86,7 +86,8 @@ not copied out afterwards on the assumption someone will remember.
 
 - Track progress in `todo.md`. No `Fix x:` / `plan x:` / `item x:` markers in source comments.
 - Update `changelog.md`, `README.md`, and `docs/documentation.md` alongside the code.
-- After a cycle completes, re-read `review.md` and repeat until nothing in it is outstanding. `testing-guide.md` must report no issues.
+- After a cycle completes, re-read `issues.md` and `TODO.md` and repeat until nothing in either is
+  outstanding. `testing-guide.md` must report no issues.
 
 ## Response format
 
