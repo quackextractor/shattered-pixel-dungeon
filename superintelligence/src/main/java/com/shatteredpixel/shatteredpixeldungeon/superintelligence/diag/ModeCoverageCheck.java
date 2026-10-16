@@ -327,9 +327,6 @@ public class ModeCoverageCheck {
 			return;
 		}
 
-		// One WAIT, because the masks are published when a step ends and this check placed the heap
-		// itself - a world change no real run can make between steps, so the published mask is a step
-		// behind the fixture rather than behind the game.
 		env.step( Action.WAIT, 0 );
 
 		float[] mask = env.targetMask();
