@@ -605,6 +605,7 @@ public float[] actionMask(){ return actionMask; }
 		for (int i = 0; i < targetMask.length; i++){
 			targetMask[ i ] = mapper.targetMask( i ) ? 1f : 0f;
 		}
+		if (mode == EnvMode.WORLD) mapper.interactMask( targetMask );
 	}
 
 	/** Ends the current episode without scoring, used when a worker is shutting down. */

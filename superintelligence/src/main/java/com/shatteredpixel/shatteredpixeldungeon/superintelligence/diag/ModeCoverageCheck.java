@@ -216,6 +216,7 @@ public class ModeCoverageCheck {
 	private void run(){
 
 		checkInventoryEntryDoesNotTouchTheWorld();
+		checkInteractCanAimAtACell();
 		checkCancelDoesNotTouchTheWorld();
 
 		env.reset( SEED, HeroClass.WARRIOR );
@@ -290,6 +291,94 @@ public class ModeCoverageCheck {
 	 * The mode is sampled before stepping as well, because that is the mode a recording stores for
 	 * this step.
 	 */
+	/**
+	 * {@code INTERACT} has to be able to name the cell it acts on.
+	 *
+	 * <p>One action covers fight, loot, unlock, take the stairs and talk, and {@code Hero.handle} resolves
+	 * which by the cell. Which cell was previously a heuristic that always preferred the mob - so a rat
+	 * and a coin both adjacent meant the coin was unreachable while the rat lived, and the agent could
+	 * not express "not that one".
+	 *
+	 * <p>Index 0 stays "let the environment choose", which is what every existing recording names - all of
+	 * them record {@code INTERACT 0} - so this is additive rather than a redefinition.
+	 */
+	private void checkInteractCanAimAtACell(){
+		env.reset( SEED, HeroClass.WARRIOR );
+
+		int heroPos = env.heroPosition();
+		int heapCell = adjacentPassableCell( heroPos );
+		if (heapCell < 0){
+			failures.add( "no passable cell adjacent to the hero at " + heroPos + ", so the aimed"
+					+ " INTERACT cannot be tested." );
+			return;
+		}
+
+		Dungeon.level.drop( new Gold( 3 ), heapCell );
+		if (Dungeon.level.heaps.get( heapCell ) == null ){
+			failures.add( "could not place an item heap on cell " + heapCell + ", so the aimed"
+					+ " INTERACT cannot be tested." );
+			return;
+		}
+
+		int direction = directionOf( heroPos, heapCell );
+		if (direction < 0){
+			failures.add( "cell " + heapCell + " is not one of the eight neighbours of " + heroPos
+					+ ", so it cannot be named as an aim direction." );
+			return;
+		}
+
+		// One WAIT, because the masks are published when a step ends and this check placed the heap
+		// itself - a world change no real run can make between steps, so the published mask is a step
+		// behind the fixture rather than behind the game.
+		env.step( Action.WAIT, 0 );
+
+		float[] mask = env.targetMask();
+		if (mask[ 0 ] == 0f ){
+			failures.add( "index 0 is not admitted by the aim mask, so \"let the environment choose\""
+					+ " is not expressible and every recording that names it would be refused." );
+			return;
+		}
+		if (mask[ direction ] == 0f ){
+			failures.add( "a heap sits on cell " + heapCell + ", which is direction " + direction
+					+ " from the hero, and the aim mask does not admit it. The agent is told to aim"
+					+ " somewhere and then cannot." );
+			return;
+		}
+
+		int gold = Dungeon.gold;
+		env.step( Action.INTERACT, direction );
+
+		if (Dungeon.level.heaps.get( heapCell ) != null ){
+			failures.add( "INTERACT aimed at the heap's own direction left the heap on cell "
+					+ heapCell + ". The direction is ignored and the heuristic ran instead." );
+			return;
+		}
+
+		if (Dungeon.gold <= gold ){
+			failures.add( "INTERACT aimed at a heap of 3 gold collected nothing: gold went from "
+					+ gold + " to " + Dungeon.gold + "." );
+			return;
+		}
+
+		System.out.println( "  INTERACT acts on the cell it is aimed at, and index 0 still means"
+				+ " \"let the environment choose\"" );
+	}
+
+	/** Which of {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper#TARGET_OFFSETS} points from one cell to another, or -1. */
+	private int directionOf( int from, int to ){
+		int width = Dungeon.level.width();
+		int dx = ( to % width ) - ( from % width );
+		int dy = ( to / width ) - ( from / width );
+
+		int[][] offsets = com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper
+				.TARGET_OFFSETS;
+
+		for (int i = 1; i < offsets.length; i++){
+			if (offsets[ i ][ 0 ] == dx && offsets[ i ][ 1 ] == dy ) return i;
+		}
+		return -1;
+	}
+
 	private void step( Action action, int slot, EnvMode next, String what ){
 		EnvMode from = env.mode();
 		seen.add( from );

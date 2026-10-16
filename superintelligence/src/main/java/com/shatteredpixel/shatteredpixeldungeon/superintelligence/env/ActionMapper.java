@@ -317,7 +317,7 @@ public class ActionMapper {
 				return true;
 
 			case INTERACT:
-				return handleCell( pickInteractCell() );
+				return interact( slotOrTarget );
 
 			default:
 				break;
@@ -439,6 +439,60 @@ public class ActionMapper {
 	 * Which one is a heuristic, so the agent does not have to. What it does decide is whether to
 	 * interact at all, which is the decision worth learning.
 	 */
+	/**
+	 * Acts on the cell the agent named, or lets the environment pick one.
+	 *
+	 * <p>{@link Action#INTERACT} is one action covering fight, loot, unlock, take the stairs and talk,
+	 * and {@code Hero.handle} resolves which by the cell. Naming the cell is what lets the agent decide
+	 * <em>which</em>: a rat and a heap can both be adjacent, and a heuristic that always prefers the rat
+	 * makes looting a coin roll.
+	 *
+	 * <p>Index 0 is the hero's own cell, which is how "no direction chosen" is spelled. It falls back to
+	 * the heuristic, which is what every recording written before this names - all of them record
+	 * {@code INTERACT 0} - so the committed corpus keeps reproducing unchanged while the agent gains the
+	 * ability to be specific.
+	 */
+	private boolean interact( int direction ){
+		if (direction > 0 && direction < TARGET_COUNT){
+			int cell = targetCell( direction );
+			if (interactive( cell )) return handleCell( cell );
+		}
+		return handleCell( pickInteractCell() );
+	}
+
+	/** Whether a cell holds something {@link Hero#handle} would act on. */
+	private boolean interactive( int cell ){
+		if (!insideMap( cell )) return false;
+		if (cell == hero().pos) return false;
+
+		Char ch = Actor.findChar( cell );
+		if (ch instanceof Mob) return hero().canAttack( (Mob)ch );
+		if (ch instanceof NPC) return true;
+		if (Dungeon.level.heaps.get( cell ) != null) return true;
+		if (Dungeon.level.getTransition( cell ) != null) return true;
+
+		int terrain = Dungeon.level.map[ cell ];
+		for (int t : LOCKED_DOOR_TERRAINS) if (terrain == t) return true;
+		return terrain == Terrain.ALCHEMY;
+	}
+
+	/**
+	 * Which of the eight neighbours {@link Action#INTERACT} can be aimed at, index 0 first.
+	 *
+	 * <p>Published on the target head, which carries nothing in {@link EnvMode#WORLD} - a cell choice
+	 * only exists while aiming, and the target mask is free otherwise. Index 0 is always legal because it
+	 * means "let the environment choose".
+	 */
+	public void interactMask( float[] mask ){
+		for (int i = 0; i < mask.length; i++) mask[ i ] = 0f;
+		if (mask.length == 0) return;
+
+		mask[ 0 ] = 1f;
+		for (int o = 1; o < TARGET_COUNT && o < mask.length; o++){
+			if (interactive( targetCell( o ) )) mask[ o ] = 1f;
+		}
+	}
+
 	private int pickInteractCell(){
 		StringBuilder dbg = PICKUP_TRACE ? new StringBuilder() : null;
 
