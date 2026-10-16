@@ -71,6 +71,8 @@ public class EnvConfigBinder {
 			"reward.item_value_equip_level",
 			"reward.item_value_other",
 			"reward.boss_slain_factor",
+			"reward.craft_reward",
+			"reward.craft_meat_pie_reward",
 			"reward.max_hp_gain_cap",
 			"reward.curriculum_fade_start_depth",
 			"reward.curriculum_fade_end_depth",
@@ -307,6 +309,10 @@ public class EnvConfigBinder {
 				config.itemValueOther = decimal( key, value, origin ); break;
 			case "reward.boss_slain_factor":
 				config.bossSlainFactor = decimal( key, value, origin ); break;
+			case "reward.craft_reward":
+				config.craftReward = decimal( key, value, origin ); break;
+			case "reward.craft_meat_pie_reward":
+				config.craftMeatPieReward = decimal( key, value, origin ); break;
 			case "reward.max_hp_gain_cap":
 				config.maxHpGainCap = decimal( key, value, origin ); break;
 			case "reward.curriculum_fade_start_depth":

@@ -145,20 +145,24 @@ public class SPDEnv {
 
 if (mode == EnvMode.WORLD){
 			acted = mapper.apply( action, slot );
-			if (action == Action.OPEN_INVENTORY){
+			if (action == Action.OPEN_INVENTORY ){
 
 				mode = EnvMode.INVENTORY;
 				acted = true;
-			} else if (action == Action.TALENT){
+			} else if (action == Action.TALENT ){
 
 				mode = EnvMode.TALENT;
 				acted = true;
-			} else if (action == Action.USE || action == Action.DROP){
+			} else if (action == Action.ALCHEMY ){
+
+				mode = EnvMode.ALCHEMY;
+				acted = true;
+			} else if (action == Action.USE || action == Action.DROP ){
 
 				mode = EnvMode.SLOT;
 				if (WindowBridge.open()) mode = EnvMode.MENU;
 			}
-} else if (mode == EnvMode.MENU){
+		} else if (mode == EnvMode.MENU){
 			acted = mapper.applySecondary( mode, action, slot );
 
 			mode = EnvMode.WORLD;
@@ -166,6 +170,14 @@ if (mode == EnvMode.WORLD){
 
 			acted = (action == Action.CANCEL) || mapper.applySecondary( mode, action, slot );
 			mode = EnvMode.WORLD;
+		} else if (mode == EnvMode.ALCHEMY ){
+
+			acted = (action == Action.CANCEL) || mapper.applySecondary( mode, action, slot );
+			mode = EnvMode.WORLD;
+			if (mapper.craftedMeatPie()){
+				mapper.clearCraftedMeatPie();
+				reward.note( RewardTerm.CRAFTED_MEAT_PIE, config.craftMeatPieReward );
+			}
 		} else if (mode == EnvMode.SLOT){
 			boolean needsTarget = false;
 			if (action == Action.USE){

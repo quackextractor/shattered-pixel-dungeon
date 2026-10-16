@@ -12,7 +12,9 @@ public enum EnvMode {
 
 	INVENTORY,
 
-	TALENT;
+	TALENT,
+
+	ALCHEMY;
 
 	public boolean slotIsTarget(){
 		return this == TARGETING;

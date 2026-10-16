@@ -50,6 +50,16 @@ public class ActionMapper {
 
 	private boolean zeroTimeModeExit;
 
+	private boolean craftedMeatPie;
+
+	public boolean craftedMeatPie(){
+		return craftedMeatPie;
+	}
+
+	public void clearCraftedMeatPie(){
+		craftedMeatPie = false;
+	}
+
 	public ActionMapper( EnvConfig config ){
 		this.config = config;
 		for (int i = 0; i < config.maxSlots; i++) slots.add( null );
@@ -116,6 +126,12 @@ public class ActionMapper {
 			return;
 		}
 
+		if (mode == EnvMode.ALCHEMY){
+			mask[Action.CANCEL.index] = 1f;
+			if (!alchemyChoices().isEmpty()) mask[Action.MENU_SELECT.index] = 1f;
+			return;
+		}
+
 		if (mode == EnvMode.TARGETING){
 			mask[Action.CANCEL.index] = 1f;
 			return;
@@ -151,6 +167,9 @@ public class ActionMapper {
 					break;
 				case TALENT:
 					mask[a.index] = TalentPicker.spendableCount( hero() ) > 0 ? 1f : 0f;
+					break;
+				case ALCHEMY:
+					mask[a.index] = (config.allowAlchemy && !alchemyChoices().isEmpty()) ? 1f : 0f;
 					break;
 				case MOVE_N: case MOVE_NE: case MOVE_E: case MOVE_SE:
 				case MOVE_S:  case MOVE_SW: case MOVE_W:  case MOVE_NW:
@@ -195,6 +214,13 @@ public class ActionMapper {
 
 
 	public void slotMask( EnvMode mode, float[] mask ){
+		if (mode == EnvMode.ALCHEMY ){
+			for (int i = 0; i < mask.length; i++) mask[ i ] = 0f;
+			int options = alchemyChoices().size();
+			for (int i = 0; i < options && i < mask.length; i++) mask[ i ] = 1f;
+			return;
+		}
+
 		if (mode != EnvMode.TALENT){
 			slotMask( mask );
 			return;
@@ -208,6 +234,13 @@ public class ActionMapper {
 
 	public List<Talent> talentChoices(){
 		return TalentPicker.available( hero() );
+	}
+
+
+	public List<com.shatteredpixel.shatteredpixeldungeon.items.Recipe> alchemyChoices(){
+		if (!config.allowAlchemy) return java.util.List.of();
+		if (AlchemyAction.adjacentPot( hero(), ActionMapper.TARGET_COUNT ) < 0) return java.util.List.of();
+		return AlchemyAction.recipes( hero() );
 	}
 
 
@@ -276,6 +309,17 @@ public class ActionMapper {
 
 			case TALENT:
 				return action == Action.MENU_SELECT && TalentPicker.spend( hero(), index );
+
+			case ALCHEMY:
+				if (action != Action.MENU_SELECT) return false;
+				if (!AlchemyAction.adjacent( hero(), AlchemyAction.adjacentPot( hero(), TARGET_COUNT ))) {
+					return false;
+				}
+				boolean meatPie = AlchemyAction.isMeatPie(
+						alchemyChoices().get( Math.min( index, alchemyChoices().size() - 1 )));
+				boolean brewed = AlchemyAction.craft( hero(), index );
+				if (brewed && meatPie) craftedMeatPie = true;
+				return brewed;
 
 			case SLOT:
 			case INVENTORY:

@@ -96,6 +96,10 @@ public final class ConfigDefaults {
 				return String.valueOf( config.itemValueOther );
 			case "reward.boss_slain_factor":
 				return String.valueOf( config.bossSlainFactor );
+			case "reward.craft_reward":
+				return String.valueOf( config.craftReward );
+			case "reward.craft_meat_pie_reward":
+				return String.valueOf( config.craftMeatPieReward );
 			case "reward.max_hp_gain_cap":
 				return String.valueOf( config.maxHpGainCap );
 			case "reward.curriculum_fade_start_depth":
@@ -220,6 +224,8 @@ public final class ConfigDefaults {
 			case "reward.item_value_equip_level": return "0.25";
 			case "reward.item_value_other": return "0.75";
 			case "reward.boss_slain_factor": return "3.5";
+			case "reward.craft_reward": return "3.5";
+			case "reward.craft_meat_pie_reward": return "3.5";
 			case "reward.max_hp_gain_cap": return "7.0";
 			case "reward.curriculum_fade_start_depth": return "4";
 			case "reward.curriculum_fade_end_depth": return "9";

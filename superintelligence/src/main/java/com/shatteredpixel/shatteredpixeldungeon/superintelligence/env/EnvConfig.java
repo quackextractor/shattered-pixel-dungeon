@@ -59,6 +59,12 @@ public class EnvConfig {
 	public boolean recordRngFingerprint = true;
 
 
+	public float craftReward = 25f;
+
+
+	public float craftMeatPieReward = 100f;
+
+
 	public float curriculumProgress = 0f;
 
 
@@ -222,6 +228,8 @@ public class EnvConfig {
 		out.writeBoolean( allowAlchemy );
 		out.writeBoolean( subModeProgressOnly );
 		out.writeBoolean( recordRngFingerprint );
+		out.writeFloat( craftReward );
+		out.writeFloat( craftMeatPieReward );
 		out.writeBoolean( persistSaves );
 
 		out.writeUTF( rewardProfile.key() );
@@ -280,6 +288,8 @@ public class EnvConfig {
 		allowAlchemy = in.readBoolean();
 		subModeProgressOnly = in.readBoolean();
 		recordRngFingerprint = in.readBoolean();
+		craftReward = in.readFloat();
+		craftMeatPieReward = in.readFloat();
 		persistSaves = in.readBoolean();
 		rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
 				.parse( in.readUTF() );
@@ -303,6 +313,8 @@ public class EnvConfig {
 		c.allowAlchemy = allowAlchemy;
 		c.subModeProgressOnly = subModeProgressOnly;
 		c.recordRngFingerprint = recordRngFingerprint;
+		c.craftReward = craftReward;
+		c.craftMeatPieReward = craftMeatPieReward;
 		c.curriculumProgress = curriculumProgress;
 		c.turnCost = turnCost;
 		c.depthReward = depthReward;

@@ -37,6 +37,9 @@ public enum Action {
 	TALENT ( Kind.MENU, 0, 0 ),
 
 
+	ALCHEMY ( Kind.MENU, 0, 0 ),
+
+
 	MENU_SELECT ( Kind.MENU, 0, 0 ),
 
 

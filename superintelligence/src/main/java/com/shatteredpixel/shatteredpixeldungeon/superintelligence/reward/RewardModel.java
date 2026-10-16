@@ -30,6 +30,7 @@ public class RewardModel {
 	private int prevEquippedOverStrength;
 	private int prevDebuffCount;
 	private int prevKills;
+	private int prevCrafted;
 	private int prevSneaks;
 	private int prevTalentsSpent;
 	private float prevHunger;
@@ -179,7 +180,13 @@ public class RewardModel {
 					config.equipTooStrongPenalty * (overStrong - prevEquippedOverStrength), false );
 		}
 
-		if (menuNoop){
+		int crafted = Statistics.itemsCrafted;
+		if (crafted > prevCrafted ){
+			ledger.add( RewardTerm.CRAFTED,
+					config.craftReward * (crafted - prevCrafted), false );
+		}
+
+		if (menuNoop ){
 			ledger.add( RewardTerm.MENU_NOOP, config.menuNoopPenalty, false );
 		}
 
@@ -294,6 +301,7 @@ public class RewardModel {
 		prevDebuffCount = countDebuffs();
 		prevHunger = hungerLevel( hero );
 		prevKills = kills();
+		prevCrafted = Statistics.itemsCrafted;
 		prevHeroPos = hero.pos;
 		stairPotential.reset();
 		prevSneaks = sneaks();

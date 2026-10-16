@@ -1,11 +1,18 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.Statistics;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.items.Recipe;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.Food;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.MysteryMeat;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.Pasty;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.items.Gold;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.AlchemyAction;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
@@ -230,10 +237,102 @@ public class ModeCoverageCheck {
 					+ " the picker is reading a hero that has no talents" );
 		}
 
+		checkTheAlchemyPotIsReachable();
+
 		if (!env.running()){
 			failures.add( "the episode ended early with " + env.endReason()
 					+ "; a mode check must not depend on the run surviving" );
 		}
+	}
+
+	private void checkTheAlchemyPotIsReachable(){
+		env.reset( SEED + "-ALCHEMY", HeroClass.WARRIOR );
+
+		int pot = plantAlchemyPotBeside( Dungeon.hero );
+		if (pot < 0){
+			failures.add( "no cell beside the hero could be turned into an alchemy pot on "
+					+ ( SEED + "-ALCHEMY" ) + ", so the pot path could not be reached at all" );
+			return;
+		}
+
+		giveIngredients();
+		Dungeon.energy = 20;
+		env.step( Action.WAIT, 0 );
+
+		if (env.actionMask()[ Action.ALCHEMY.index ] == 0f ){
+			failures.add( "the hero is beside an alchemy pot carrying a Pasty, a plain Food and a"
+					+ " MysteryMeat, with 20 energy, and ALCHEMY is still masked. The pot is"
+					+ " unreachable from the world mask, so CRAFTED cannot fire in a real run." );
+			return;
+		}
+
+		int craftedBefore = Statistics.itemsCrafted;
+		int energyBefore = Dungeon.energy;
+
+		List< Recipe > available = AlchemyAction.recipes( Dungeon.hero );
+		int index = -1;
+		for (int i = 0; i < available.size(); i++){
+			if (AlchemyAction.isMeatPie( available.get( i ) )){ index = i; break; }
+		}
+
+		if (index < 0){
+			failures.add( "the fixture carries a Pasty, a plain Food and a MysteryMeat, which is"
+					+ " exactly the meat pie recipe, and the pot offers " + available.size()
+					+ " recipe(s) without it. The case that would prove CRAFTED_MEAT_PIE fires proved"
+					+ " nothing." );
+			return;
+		}
+
+		step( Action.ALCHEMY, 0, EnvMode.ALCHEMY, "standing at the pot" );
+		step( Action.MENU_SELECT, index, EnvMode.WORLD, "brewing the meat pie" );
+
+		if (Statistics.itemsCrafted <= craftedBefore ){
+			failures.add( "the meat pie recipe was chosen and nothing was brewed" );
+			return;
+		}
+		if (Dungeon.energy >= energyBefore ){
+			failures.add( "the pot brewed an item without spending energy ("
+					+ energyBefore + " -> " + Dungeon.energy + ")" );
+			return;
+		}
+		if (env.ledger().termTotal( RewardTerm.CRAFTED ) <= 0 ){
+			failures.add( "an item was brewed and CRAFTED paid nothing, so the term docs.md asks for"
+					+ " cannot fire in a real run" );
+			return;
+		}
+		if (env.ledger().termTotal( RewardTerm.CRAFTED_MEAT_PIE ) <= 0 ){
+			failures.add( "the meat pie was brewed and CRAFTED_MEAT_PIE paid nothing on top of"
+					+ " CRAFTED. The game has no counter for a meat pie specifically, so this term is"
+					+ " the only place that can say one was made, and docs.md asks for it by name." );
+			return;
+		}
+
+		System.out.println( "  a meat pie is brewed at the pot: energy " + energyBefore + " -> "
+				+ Dungeon.energy + ", CRAFTED paid "
+				+ env.ledger().termTotal( RewardTerm.CRAFTED )
+				+ ", CRAFTED_MEAT_PIE paid "
+				+ env.ledger().termTotal( RewardTerm.CRAFTED_MEAT_PIE ) );
+	}
+
+	private static int plantAlchemyPotBeside( Hero hero ){
+		int[][] offsets = { { 0, 1 }, { 1, 0 }, { 0, -1 }, { -1, 0 }, { 1, 1 }, { -1, -1 } };
+
+		for (int[] o : offsets){
+			int cell = hero.pos + o[ 0 ] + o[ 1 ] * Dungeon.level.width();
+			if (cell < 0 || cell >= Dungeon.level.length()) continue;
+			if (!Dungeon.level.passable[ cell ]) continue;
+			Dungeon.level.map[ cell ] = com.shatteredpixel.shatteredpixeldungeon.levels.Terrain.ALCHEMY;
+			Dungeon.level.discover( cell );
+			return cell;
+		}
+		return -1;
+	}
+
+	private static void giveIngredients(){
+		Dungeon.hero.belongings.backpack.items.clear();
+		Dungeon.hero.belongings.backpack.items.add( new Pasty() );
+		Dungeon.hero.belongings.backpack.items.add( new Food() );
+		Dungeon.hero.belongings.backpack.items.add( new MysteryMeat() );
 	}
 
 	private void checkInteractCanAimAtACell(){
