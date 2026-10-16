@@ -141,6 +141,8 @@ public class FreeActionCheck {
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		env.reset( SEEDS[ 1 ], HeroClass.WARRIOR );
 
+		float[] baseline = env.actionMask().clone();
+
 		env.step( Action.OPEN_INVENTORY, 0 );
 		env.step( Action.CANCEL, 0 );
 
@@ -157,14 +159,19 @@ public class FreeActionCheck {
 			return;
 		}
 
-		float[] mask = env.actionMask();
-		if (mask[ Action.OPEN_INVENTORY.index ] == 0f ){
-			failures.add( "OPEN_INVENTORY is still masked after a step that spent engine time. The"
-					+ " refusal has to last exactly one step." );
+		boolean masked = env.actionMask()[ Action.OPEN_INVENTORY.index ] == 0f;
+		boolean wasMasked = baseline[ Action.OPEN_INVENTORY.index ] == 0f;
+
+		if (masked != wasMasked ){
+			failures.add( "OPEN_INVENTORY is masked " + (masked ? "after" : "before")
+					+ " a step that spent engine time, so the refusal does not last exactly one step:"
+					+ " it lasts until the inventory changes." );
 			return;
 		}
 
-		System.out.println( "  the refusal lifts after one step that spends engine time" );
+		System.out.println( "  the refusal lifts after one step that spends engine time"
+				+ " (OPEN_INVENTORY " + (masked ? "still" : "no longer") + " masked, by the inventory"
+				+ " rather than by the lockout)" );
 	}
 
 	private static void checkTheMenuLoopCannotOutrunTheBudget( EnvConfig config ){

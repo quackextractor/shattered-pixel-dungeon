@@ -23,6 +23,7 @@ public class StallBreakdown {
 
 		EnvConfig config = new EnvConfig();
 		int episodes = args.length > 0 ? Integer.parseInt( args[ 0 ] ) : 40;
+		if (args.length > 1 && args[ 1 ].equals( "loose" )) config.subModeProgressOnly = false;
 
 		if (episodes < 0){
 			int bad = probeGuards( 6 );
@@ -32,7 +33,8 @@ public class StallBreakdown {
 		System.out.println( "guards, at the default thresholds:" );
 		System.out.println( "  stallLimit " + config.stallLimit + "   freeStepBudget "
 				+ config.freeStepBudget + "   actorStepLimit " + config.actorStepLimit
-				+ "   turnLimitPerFloor " + config.turnLimitPerFloor );
+				+ "   turnLimitPerFloor " + config.turnLimitPerFloor
+				+ "   subModeProgressOnly " + config.subModeProgressOnly );
 		System.out.println();
 
 		Map< StallCause, Integer > causes = new EnumMap<>( StallCause.class );
@@ -95,14 +97,15 @@ public class StallBreakdown {
 
 
 private static int probeGuards( int episodes ){
-		String[] names = { "defaults", "position", "freeStep", "actorStep" };
+		String[] names = { "loose", "position", "freeStep", "actorStep", "tight" };
 		StallCause[] expected = { StallCause.FREE_STEP, StallCause.POSITION,
-				StallCause.ACTOR_STEP_LIMIT, StallCause.PIPELINE };
+				StallCause.ACTOR_STEP_LIMIT, StallCause.PIPELINE, StallCause.NONE };
 		int[][] settings = {
 				{ -1, -1, -1 },
 				{ 1, 1_000_000, -1 },
 				{ -1, -1, 0 },
-				{ -1, -1, 1 }
+				{ -1, -1, 1 },
+				{ -1, -1, -1 }
 		};
 
 		int failures = 0;
@@ -115,6 +118,7 @@ private static int probeGuards( int episodes ){
 			if (settings[ row ][ 0 ] > 0 || settings[ row ][ 0 ] == 1) c.stallLimit = settings[ row ][ 0 ];
 			if (settings[ row ][ 1 ] == 1_000_000 ) c.freeStepBudget = settings[ row ][ 1 ];
 			if (settings[ row ][ 2 ] >= 0 ) c.actorStepLimit = settings[ row ][ 2 ];
+			if (row == 0) c.subModeProgressOnly = false;
 
 			Map< StallCause, Integer > seen = new EnumMap<>( StallCause.class );
 			for (int i = 0; i < episodes; i++){
@@ -135,20 +139,30 @@ private static int probeGuards( int episodes ){
 				if (e.getValue() > best){ best = e.getValue(); dominant = e.getKey(); }
 			}
 
-			boolean ok = row == 0 ? seen.getOrDefault( StallCause.FREE_STEP, 0 ) > 0
-					: dominant == expected[ row ];
+			boolean ok;
+			String want;
+			if (row == 4 ){
+				ok = seen.getOrDefault( StallCause.FREE_STEP, 0 ) == 0;
+				want = "expects FREE_STEP unreachable";
+			} else if (row == 0 ){
+				ok = seen.getOrDefault( StallCause.FREE_STEP, 0 ) > 0;
+				want = "expects FREE_STEP reachable";
+			} else {
+				ok = dominant == expected[ row ];
+				want = "expected " + expected[ row ].name();
+			}
 
 			System.out.println( String.format( "  %-11s %-16d %-16d %-16d  %s (%d/%d)  %s %s",
 					names[ row ], c.stallLimit, c.freeStepBudget, c.actorStepLimit,
-					dominant.name(), best, episodes,
-					row == 0 ? "expects FREE_STEP reachable" : "expected " + expected[ row ].name(),
-					ok ? "[OK]" : "[ERROR]" ));
+					dominant.name(), best, episodes, want, ok ? "[OK]" : "[ERROR]" ));
 			if (!ok) failures++;
 		}
 
 		System.out.println();
 		if (failures == 0){
-			System.out.println( "  all four guards reachable, and each reports its own name." );
+			System.out.println( "  all four guards reachable, and each reports its own name."
+					+ " FREE_STEP is reachable only with the loose sub-mode mask, which is what"
+					+ " env.sub_mode_progress_only is for." );
 		} else {
 			System.out.println( "  " + failures + " row(s) named the wrong guard, or none at all." );
 			System.out.println( "  A mislabelled StallCause constant compiles and passes every other gate," );

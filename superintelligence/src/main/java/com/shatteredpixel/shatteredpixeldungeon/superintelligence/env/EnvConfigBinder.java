@@ -33,6 +33,7 @@ public class EnvConfigBinder {
 			"env.allow_equipping",
 			"env.allow_trading",
 			"env.allow_alchemy",
+			"env.sub_mode_progress_only",
 			"env.persist_saves",
 			"env.dialog_age_seconds",
 
@@ -237,6 +238,8 @@ public class EnvConfigBinder {
 			case "env.allow_equipping":      config.allowEquipping = bool( key, value, origin ); break;
 			case "env.allow_trading":        config.allowTrading = bool( key, value, origin ); break;
 			case "env.allow_alchemy":        config.allowAlchemy = bool( key, value, origin ); break;
+			case "env.sub_mode_progress_only":
+				config.subModeProgressOnly = bool( key, value, origin ); break;
 			case "env.persist_saves":        config.persistSaves = bool( key, value, origin ); break;
 			case "env.dialog_age_seconds":   config.dialogAgeSeconds = decimal( key, value, origin ); break;
 

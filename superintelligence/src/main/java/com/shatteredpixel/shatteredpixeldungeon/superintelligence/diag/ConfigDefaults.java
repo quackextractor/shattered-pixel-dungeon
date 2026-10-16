@@ -42,6 +42,7 @@ public final class ConfigDefaults {
 			case "env.allow_equipping":       return String.valueOf( config.allowEquipping );
 			case "env.allow_trading":         return String.valueOf( config.allowTrading );
 			case "env.allow_alchemy":         return String.valueOf( config.allowAlchemy );
+			case "env.sub_mode_progress_only":   return String.valueOf( config.subModeProgressOnly );
 			case "env.persist_saves":         return String.valueOf( config.persistSaves );
 
 			case "reward.profile":            return config.rewardProfile.key();
@@ -158,6 +159,7 @@ public final class ConfigDefaults {
 			case "env.allow_equipping":
 			case "env.allow_trading":
 			case "env.allow_alchemy":
+			case "env.sub_mode_progress_only":
 			case "env.persist_saves":
 			case "rl.normalise_values":
 			case "rl.huber_values":

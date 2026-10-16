@@ -121,6 +121,7 @@ public class ActionMapper {
 			return;
 		}
 
+		boolean progressUse = hasProgressItem();
 		boolean interactable = adjacentMob()
 				|| adjacentHeap()
 				|| adjacentDoor()
@@ -136,7 +137,7 @@ public class ActionMapper {
 					mask[a.index] = 1f;
 					break;
 				case USE:
-					mask[a.index] = hasUsableItem() ? 1f : 0f;
+					mask[a.index] = progressUse ? 1f : 0f;
 					break;
 				case DROP:
 					mask[a.index] = hasDroppableItem() ? 1f : 0f;
@@ -146,7 +147,7 @@ public class ActionMapper {
 					break;
 				case OPEN_INVENTORY:
 
-					mask[a.index] = 1f;
+					mask[a.index] = (config.subModeProgressOnly && !progressUse) ? 0f : 1f;
 					break;
 				case TALENT:
 					mask[a.index] = TalentPicker.spendableCount( hero() ) > 0 ? 1f : 0f;
@@ -574,6 +575,23 @@ public class ActionMapper {
 	private boolean hasUsableItem(){
 		for (Item item : slots){
 			if (item == null) continue;
+			if (item instanceof Wand) return true;
+			String action = item.defaultAction();
+			if (action != null
+					&& !action.equals( Item.AC_DROP )
+					&& !action.equals( Item.AC_THROW )) return true;
+		}
+		return false;
+	}
+
+
+	private boolean hasProgressItem(){
+		if (!config.subModeProgressOnly) return hasUsableItem();
+
+		Hero hero = hero();
+		for (Item item : slots){
+			if (item == null) continue;
+			if (SlotAction.isBareEquipToggle( hero, item, config.allowEquipping )) continue;
 			if (item instanceof Wand) return true;
 			String action = item.defaultAction();
 			if (action != null

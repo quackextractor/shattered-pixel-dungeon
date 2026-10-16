@@ -43,7 +43,14 @@ public static void clearPendingUseItem(){
 	}
 
 
-public static boolean use( Hero hero, Item item, boolean allowEquipping ){
+public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEquipping ){
+		if (item == null) return false;
+		if (!(allowEquipping && item instanceof EquipableItem)) return false;
+		return !item.usesTargeting;
+	}
+
+
+	public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 
 		boolean equippable = allowEquipping && item instanceof EquipableItem;
 

@@ -120,6 +120,7 @@ checkOutputPathsFollowTheWorkingDirectory();
 		probe.allowEquipping = false;
 		probe.allowTrading = false;
 		probe.allowAlchemy = false;
+		probe.subModeProgressOnly = false;
 		probe.persistSaves = true;
 		probe.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
 				.parse( "depth_only" );
@@ -177,7 +178,7 @@ checkOutputPathsFollowTheWorkingDirectory();
 		"depthReward", "exploreReward", "maxHpReward", "talentReward", "goldReward", "damagePenalty",
 		"killReward", "sneakAttackReward", "freeStepCostFactor", "deathPenalty", "stallPenalty",
 		"turnLimitPenalty", "victoryReward", "honourVisionBuffs", "mimicsVisibleOutOfFog",
-		"allowEquipping", "allowTrading", "allowAlchemy", "persistSaves", "rewardProfile",
+		"allowEquipping", "allowTrading", "allowAlchemy", "subModeProgressOnly", "persistSaves", "rewardProfile",
 		"dialogAgeSeconds", "stairPotentialWeight",
 		"identifiedReward", "curseEquippedPenalty", "curseRemovedReward", "equipTooStrongPenalty",
 		"curedDebuffReward", "eatenEarlyPenalty", "menuNoopPenalty", "levelUpReward",
