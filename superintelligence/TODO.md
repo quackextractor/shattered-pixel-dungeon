@@ -38,8 +38,14 @@ points over fifteen generations to mean anything. `bestDepth` on its own is not 
       every sub-mode action either advances the clock or leaves the sub-mode, and `modecheck` now
       covers all seven modes and the claim still holds.
 - [ ] **Terms that never fire in a run.** `KILL`, `GOLD_GAIN` and `ITEM_PICKUP` have never been
-      observed paying in a run. `KILL` is wired and gated, so the question is whether an untrained
-      policy ever gets there, not whether the term can move.
+      observed paying in a run. **All three are now proven to fire**: `rewardcheck` drives
+      `Action.INTERACT` over a heap beside the hero and measures `ITEM_PICKUP` at 0.50 and
+      `GOLD_GAIN` at 1.25, and a 2-generation trainer run reported 6-9 kills and 100-188 pickups
+      per generation. What is left is the *coverage* question - does an untrained policy get there on
+      its own - and the reason it cannot is `issues.md` 38: the hero cannot pick an item up off the
+      cell it is standing on, because `ActionMapper.pickInteractCell` scans offsets 1..8 and
+      `handleCell` refuses a non-adjacent cell. Fixing that turns `paritycheck` red
+      deterministically, which is why it is filed as 38 rather than done.
 - [ ] **Exploration is not separable from descent.** `reward.profile=depth_only` exists for this and
       has not been run since the free-step budget changed. `issues.md` 20 and 22 are the last two
       measurements of it, and both say it is a diagnostic rather than a training setting.

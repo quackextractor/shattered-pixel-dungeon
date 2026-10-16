@@ -5,10 +5,12 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.ReplayCodec;
@@ -22,6 +24,69 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Co
 public final class CollectWireCheck {
 
 	private CollectWireCheck(){}
+
+	public static void checkTheEpisodeFrameCarriesEveryReportedField(){
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Episode sent
+				= new com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Episode();
+		sent.score = -3521.5;
+		sent.depth = 2;
+		sent.turns = 811;
+		sent.endedNaturally = false;
+		sent.reason = "STALLED";
+		sent.stallCause = StallCause.FREE_STEP.ordinal();
+		sent.objectiveScore = -2903.25;
+		sent.termTotals[ RewardTerm.DEPTH_ADVANCE.ordinal() ] = 1800.0;
+		sent.termTotals[ RewardTerm.TURN_COST.ordinal() ] = -811.0;
+		sent.termCounts[ RewardTerm.DEPTH_ADVANCE.ordinal() ] = 1;
+		sent.termCounts[ RewardTerm.TURN_COST.ordinal() ] = 811;
+		sent.termCounts[ RewardTerm.KILL.ordinal() ] = 3;
+
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Episode back;
+		try {
+			java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Episode.write(
+					new java.io.DataOutputStream( bytes ), sent );
+			back = com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Episode.read(
+					new java.io.DataInputStream( new java.io.ByteArrayInputStream( bytes.toByteArray() )));
+		} catch (java.io.IOException e){
+			fail( "the episode frame could not round-trip: " + e.getMessage() );
+			return;
+		}
+
+		if (back.stallCause != sent.stallCause){
+			fail( "the stall cause did not survive the pipe: " + StallCause.values()[ sent.stallCause ]
+					+ " -> " + StallCause.values()[ back.stallCause ] + ". Every STALLED episode reads as"
+					+ " the same one, so a run cannot say which guard is binding." );
+			return;
+		}
+
+		if (back.objectiveScore != sent.objectiveScore){
+			fail( "the objective score did not survive the pipe: " + sent.objectiveScore + " -> "
+					+ back.objectiveScore + ". Without it a run's descent cannot be separated from the"
+					+ " exploration shaping it is measured against." );
+			return;
+		}
+
+		for (int i = 0; i < sent.termTotals.length; i++){
+			if (back.termTotals[ i ] == sent.termTotals[ i ] ) continue;
+			fail( "term total " + RewardTerm.at( i ) + " did not survive the pipe: "
+					+ sent.termTotals[ i ] + " -> " + back.termTotals[ i ]
+					+ ". The generation report prints type subtotals built from these, so a field that"
+					+ " falls off the wire reports a score the run did not earn." );
+			return;
+		}
+
+		for (int i = 0; i < sent.termCounts.length; i++){
+			if (back.termCounts[ i ] == sent.termCounts[ i ] ) continue;
+			fail( "term count " + RewardTerm.at( i ) + " did not survive the pipe: "
+					+ sent.termCounts[ i ] + " -> " + back.termCounts[ i ] );
+			return;
+		}
+
+		System.out.println( "  the episode frame carries the stall cause, the objective score and every"
+				+ " term total and count across the pipe" );
+	}
+
 
 	public static void checkWorkerWireCarriesEveryStepField( EnvConfig config ){
 		Replay sample = new Replay();

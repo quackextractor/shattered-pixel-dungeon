@@ -9,6 +9,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
@@ -132,6 +133,13 @@ private EnvConfig config;
 		summary.turns = env.turnsTotal();
 		summary.endedNaturally = env.endedNaturally();
 		summary.reason = env.endReason().name();
+		summary.stallCause = env.stallCause().ordinal();
+
+		summary.objectiveScore = env.ledger().objectiveScore();
+		for (RewardTerm term : RewardTerm.values()){
+			summary.termTotals[ term.ordinal() ] = env.ledger().termTotal( term );
+			summary.termCounts[ term.ordinal() ] = env.ledger().notes( term );
+		}
 
 		summary.workerCpuTotal = ResourceStats.processCpuSecondsTotal();
 		summary.workerHeapMb = work.to().heapUsedMb();

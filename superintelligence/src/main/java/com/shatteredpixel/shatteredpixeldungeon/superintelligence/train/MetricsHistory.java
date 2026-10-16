@@ -22,6 +22,7 @@ public class MetricsHistory {
 			"meanScore", "bestScore", "worstScore", "meanDepth", "bestDepth", "meanTurns",
 			"policyLoss", "valueLoss", "entropy", "clipFraction", "klDivergence",
 			"advantageMean", "advantageStd", "shapingScale",
+			"meanObjectiveScore", "depth2PlusEpisodes",
 			"wallSeconds", "ppoSeconds", "barrierSeconds", "turnsPerSecond",
 			"workerCores", "trainerCores"
 	};
@@ -87,6 +88,7 @@ public class MetricsHistory {
 				(float) s.meanDepth, s.bestDepth, (float) s.meanTurns,
 				s.policyLoss, s.valueLoss, s.entropy, s.clipFraction, s.klDivergence,
 				(float) s.advantageMean, (float) s.advantageStd, s.shaping,
+				(float) s.meanObjectiveScore, s.depth2PlusEpisodes,
 				(float) s.wallSeconds, (float) s.ppoSeconds, (float) s.barrierSeconds,
 				(float) s.turnsPerSecond, (float) s.workerCores, (float) s.trainerCores
 		} );
@@ -112,6 +114,8 @@ public class MetricsHistory {
 					.append( ',' ).append( fmt( s.klDivergence ) )
 					.append( ',' ).append( fmt( s.advantageMean ) ).append( ',' ).append( fmt( s.advantageStd ) )
 					.append( ',' ).append( fmt( s.shaping ) )
+					.append( ',' ).append( fmt( s.meanObjectiveScore ) )
+					.append( ',' ).append( s.depth2PlusEpisodes )
 					.append( ',' ).append( fmt( s.wallSeconds ) ).append( ',' ).append( fmt( s.ppoSeconds ) )
 					.append( ',' ).append( fmt( s.barrierSeconds ) )
 					.append( ',' ).append( fmt( s.turnsPerSecond ) )
@@ -164,6 +168,9 @@ public class MetricsHistory {
 
 	private static final int COL_MEAN_SCORE = 5;
 	private static final int COL_BEST_DEPTH = 9;
+	private static final int COL_OBJECTIVE = 19;
+	private static final int COL_DEPTH2PLUS = 20;
+	private static final int COL_EPISODES = 1;
 
 	public static class Snapshot {
 		public final double meanScore;
@@ -196,6 +203,8 @@ public class MetricsHistory {
 		line( "polcl ", 11, width );
 		line( "valcl ", 12, width );
 
+		printWindowSummary();
+
 		printEndReasonTrend();
 
 		if (series.size() >= 8){
@@ -203,6 +212,54 @@ public class MetricsHistory {
 			System.out.println( "  score7 " + Ansi.wrap( "[7-gen mean] ", Ansi.DIM )
 					+ smoothed.text + "  " + Ansi.wrap( smoothed.axis(), Ansi.DIM ) );
 		}
+	}
+
+
+	private void printWindowSummary(){
+		int n = series.size();
+		if (n < 4) return;
+
+		int split = n / 2;
+		double[] firstScore = window( COL_MEAN_SCORE, 0, split );
+		double[] secondScore = window( COL_MEAN_SCORE, split, n );
+		double[] firstDepth = window( COL_DEPTH2PLUS, 0, split );
+		double[] secondDepth = window( COL_DEPTH2PLUS, split, n );
+		double[] firstEpisodes = window( COL_EPISODES, 0, split );
+		double[] secondEpisodes = window( COL_EPISODES, split, n );
+
+		System.out.println( "  windows " + Ansi.wrap( "first " + split + " generations against the last "
+				+ (n - split), Ansi.DIM ) );
+
+		printWindow( "score    ", firstScore, secondScore );
+		printWindow( "objective", window( COL_OBJECTIVE, 0, split ), window( COL_OBJECTIVE, split, n ) );
+
+		System.out.println( "  depth>=2 " + String.format( "%.1f%% -> %.1f%%",
+				100 * WindowStatistics.rate( firstDepth, firstEpisodes ),
+				100 * WindowStatistics.rate( secondDepth, secondEpisodes ) )
+				+ Ansi.wrap( "  (share of episodes reaching floor 2 or deeper)", Ansi.DIM ) );
+	}
+
+
+	private void printWindow( String label, double[] first, double[] second ){
+		double delta = WindowStatistics.mean( second ) - WindowStatistics.mean( first );
+		double error = WindowStatistics.differenceError( first, second );
+
+		System.out.println( "  " + label + "   " + Ansi.signed( WindowStatistics.mean( first ) )
+				+ " sd=" + String.format( "%.1f", WindowStatistics.sampleStdDev( first ) )
+				+ " sem=" + String.format( "%.1f", WindowStatistics.standardError( first ) )
+				+ "   ->   " + Ansi.signed( WindowStatistics.mean( second ) )
+				+ " sd=" + String.format( "%.1f", WindowStatistics.sampleStdDev( second ) )
+				+ " sem=" + String.format( "%.1f", WindowStatistics.standardError( second ) )
+				+ "   delta=" + Ansi.signed( delta ) + " +/- " + String.format( "%.1f", error ) );
+	}
+
+
+	private double[] window( int column, int from, int to ){
+		double[] out = new double[ Math.max( 0, to - from ) ];
+		for (int i = from; i < to && i < series.size(); i++){
+			out[ i - from ] = series.get( i )[ column ];
+		}
+		return out;
 	}
 
 	private void printEndReasonTrend(){

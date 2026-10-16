@@ -12,6 +12,7 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
 | 27 | no comparison in this project has an error bar, and `bestDepth` is a coin flip |
 | 31 | open items recovered from the viewer-fidelity and parity documents |
 | 37 | one recording in two does not reproduce, and it is the trainer's half |
+| 38 | a recording verifies in a fresh JVM and not in a process that has played an episode |
 
 ---
 
@@ -457,3 +458,70 @@ Evidence: `out/evidence/gen29-divergence.txt`, `out/evidence/gen29-LZJ-LNO-HLE.d
 `out/evidence/gen29-LZJ-LNO-HLE-r2.dat`, `out/evidence/noise-floor-30.csv`,
 `out/evidence/train-noise-floor-30.log`.
 
+## 38. A recording verifies in a fresh JVM and not in a process that has played an episode - **OPEN, and it reproduces in one command**
+
+Found while implementing the `INTERACT`-underfoot fix `TODO.md` 2.2 asks for. It is not filed as a
+variation of 37 or 18 because it is a **reproduction** rather than a signature: one command, every
+time, on this tree.
+
+### What it is
+
+```
+./gradlew :superintelligence:paritycheck -PparityArgs="--seeds 1 --heroes 1 --turns 400" --rerun-tasks
+
+  PARITY-ALPHA  WARRIOR  357  303  -315.340  DIVERGED at 256: position: replayed 500, recorded 1301
+```
+
+One seed, one hero, record then verify twice in one process. The same file, in two fresh JVMs,
+**reproduces in 357 steps both times** with the score to the last decimal. The recording is sound
+and the process is not, which is what `paritycheck` exists to catch and what 37 and 18 both describe
+without a reproduction this cheap.
+
+### What makes it reachable
+
+`ActionMapper.pickInteractCell()` scans offsets 1..8 only and `handleCell()` refuses a cell the hero is
+not adjacent to, so an item on the hero's own cell is unreachable - and `GOLD_GAIN` and `ITEM_PICKUP`
+have therefore never been seen paying in a run. Teaching `INTERACT` to take `hero.pos` when there is
+a heap there is the fix `TODO.md` 2.2 names, and **it is what exposes this**. A/B on one tree:
+
+| variant | `paritycheck` |
+| --- | --- |
+| `pickInteractCell` checks the hero's own cell, `handleCell` still requires adjacency | green, 32 of 32 |
+| both changed | red at step 256 |
+| both changed, own cell admitted only when a heap is there | red, same step |
+
+**The pickup completing is the cause, not the cell the action resolves to.**
+
+### Where the streams part
+
+```
+  254  INTERACT 0 WORLD 1222 1801.80  23  0.0  <- the descent; the reward is 1800 and the clock restarts
+  255  MOVE_S   0 WORLD 1261  -2.63   23  1.0
+  256  INTERACT 0 WORLD 1301  -3.91   23  3.0  <- recording 1301, replay 500
+```
+
+Both sides agree through 255 **including the per-step RNG draw count**, which `ReplayIO.verify`
+compares before position, so the generator was still level at the divergence. **A position 761 cells
+from the one before it is not a move**, so one side changed depth or floor without the recording
+showing it.
+
+### What is not concluded
+
+Not a named static. `Dungeon.init()` already clears `Statistics`, `Notes`, `gold`,
+`generatedLevels`, `LimitedDrops`, the four quest states and `Badges`, and `RunState` already clears
+the armed aim, the parked dialog, the pending item and a dead hero's remains. Picking one of those as
+the culprit without a measurement is what `issues.md` 33 records as the reason these entries are
+written the way they are.
+
+The measurement that would locate it is `RandomTrace.attribute()` over the window between the two
+verifies. `TODO.md` 1.2's `rngtrace` work is that measurement, and this is the deterministic fixture
+to run it on.
+
+### Not shipped
+
+The `ActionMapper` change is not in the commit this sits beside: `paritycheck` is red without it and
+green with it reverted. The reward cases it asked for now drop the heap on an adjacent cell, which
+proves both terms fire without the own-cell path - so the terms are proven live and the
+underfoot-priority work stays open with a reproduction attached.
+
+Evidence: `out/evidence/issue-38-underfoot-pickup/`.

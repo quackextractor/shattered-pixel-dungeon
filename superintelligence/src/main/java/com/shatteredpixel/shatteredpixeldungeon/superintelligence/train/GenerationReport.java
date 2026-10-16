@@ -1,17 +1,32 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 
 
 public final class GenerationReport {
 
-	public static class Snapshot {
+public static class Snapshot {
 		public int generation;
 	public int episodes;
 	public int activeSeeds;
 	public int totalSeeds;
 	public float shaping;
+
+	public double meanObjectiveScore;
+
+		public int depth2PlusEpisodes;
+
+	public int kills;
+	public int goldGains;
+	public int itemPickups;
+	public int talentsSpent;
+	public int itemsCrafted;
+
+	public final double[] typeTotals = new double[RewardTerm.Type.values().length];
+	public final int[] stallCauses = new int[StallCause.values().length];
 
 
 	public int[] endReasons = new int[RewardModel.TerminateReason.values().length];
@@ -69,9 +84,15 @@ public final class GenerationReport {
 				+ "  shaping=" + String.format( "%.2f", s.shaping ) );
 		System.out.println( "  score   mean=" + Ansi.signed( s.meanScore )
 				+ "  best=" + Ansi.signed( s.bestScore )
-				+ "  worst=" + Ansi.signed( s.worstScore ) );
+				+ "  worst=" + Ansi.signed( s.worstScore )
+				+ "  objective=" + Ansi.signed( s.meanObjectiveScore ) );
 		System.out.println( "  depth   mean=" + String.format( "%.1f", s.meanDepth )
 				+ "  best=" + s.bestDepth );
+		System.out.println( "  events  kills=" + s.kills + "  gold=" + s.goldGains
+				+ "  pickups=" + s.itemPickups + "  talents=" + s.talentsSpent
+				+ "  crafted=" + s.itemsCrafted );
+		System.out.println( "  stalls  " + stallCauses( s ) );
+		System.out.println( "  types   " + typeTotals( s ) );
 		System.out.println( "  turns   mean=" + String.format( "%.0f", s.meanTurns )
 				+ "  total=" + String.format( "%,d", s.totalTurns ) );
 		System.out.println( "  ended   " + endReasons( s ) );
@@ -103,6 +124,41 @@ public final class GenerationReport {
 						: String.format( "%.1f cores busy (worker-reported)", s.workerCores ) )
 				+ "  pool " + s.poolSize + " x " + s.episodesPerWorker + " episodes"
 				+ String.format( "  workers %.1f cores, trainer %.2f", s.workerCores, s.trainerCores ) );
+	}
+
+
+	private static String stallCauses( Snapshot s ){
+		StringBuilder sb = new StringBuilder();
+		int stalled = 0;
+		for (StallCause cause : StallCause.values()){
+			if (cause == StallCause.NONE || s.stallCauses[ cause.ordinal() ] == 0) continue;
+			stalled += s.stallCauses[ cause.ordinal() ];
+		}
+		if (stalled == 0) return "none";
+
+		for (StallCause cause : StallCause.values()){
+			int count = s.stallCauses[ cause.ordinal() ];
+			if (count == 0 || cause == StallCause.NONE) continue;
+			if (sb.length() > 0) sb.append( "  " );
+			sb.append( cause.name().toLowerCase( java.util.Locale.ROOT ) );
+			sb.append( " " ).append( count );
+			sb.append( String.format( " (%.0f%%)", pct( count, s.episodes ) ));
+		}
+		return sb + " of " + stalled + " stalled episodes";
+	}
+
+
+	private static String typeTotals( Snapshot s ){
+		StringBuilder sb = new StringBuilder();
+		for (RewardTerm.Type type : RewardTerm.Type.values()){
+			double perEpisode = s.typeTotals[ type.ordinal() ] / Math.max( 1, s.episodes );
+			if (perEpisode == 0) continue;
+			if (sb.length() > 0) sb.append( "  " );
+			sb.append( type.name().toLowerCase( java.util.Locale.ROOT ) );
+			sb.append( " " ).append( Ansi.signed( perEpisode ) );
+		}
+		if (sb.length() == 0) return "none";
+		return sb + "  (mean per episode)";
 	}
 
 

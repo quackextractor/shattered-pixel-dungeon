@@ -1,7 +1,9 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
 import java.io.DataInputStream;
@@ -10,16 +12,24 @@ import java.io.IOException;
 import java.util.List;
 
 
-class Episode {
+public class Episode {
+
+
+
+	public static final int TERM_COUNT = RewardTerm.count();
 
 	String seed = "";
 	String heroClass = "WARRIOR";
-	double score;
-	int depth;
-	int turns;
-	boolean endedNaturally;
-	String reason = "";
-	Replay replay;
+	public double score;
+	public int depth;
+	public int turns;
+	public boolean endedNaturally;
+	public String reason = "";
+	public int stallCause = StallCause.NONE.ordinal();
+	public double objectiveScore;
+	public final double[] termTotals = new double[ TERM_COUNT ];
+	public final int[] termCounts = new int[ TERM_COUNT ];
+	public Replay replay;
 
 
 	List<Transition> transitions;
@@ -33,7 +43,7 @@ class Episode {
 
 	String workerName = "";
 
-	static void write( DataOutputStream out, Episode e ) throws IOException {
+	public static void write( DataOutputStream out, Episode e ) throws IOException {
 		out.writeDouble( e.score );
 		out.writeInt( e.depth );
 		out.writeInt( e.turns );
@@ -41,6 +51,11 @@ class Episode {
 		out.writeUTF( e.reason );
 		out.writeDouble( e.workerCpuTotal );
 		out.writeDouble( e.workerHeapMb );
+
+		out.writeInt( e.stallCause );
+		out.writeDouble( e.objectiveScore );
+		for (double total : e.termTotals) out.writeDouble( total );
+		for (int count : e.termCounts) out.writeInt( count );
 	}
 
 
@@ -55,7 +70,7 @@ class Episode {
 		return TransitionCodec.read( in, config, stateSize );
 	}
 
-	static Episode read( DataInputStream in ) throws IOException {
+	public static Episode read( DataInputStream in ) throws IOException {
 		Episode e = new Episode();
 		e.score = in.readDouble();
 		e.depth = in.readInt();
@@ -64,6 +79,16 @@ class Episode {
 		e.reason = in.readUTF();
 		e.workerCpuTotal = in.readDouble();
 		e.workerHeapMb = in.readDouble();
+
+		e.stallCause = in.readInt();
+		e.objectiveScore = in.readDouble();
+		if (e.stallCause < 0 || e.stallCause >= StallCause.values().length){
+			throw new IOException( "a worker reported stall cause " + e.stallCause + ", which this"
+					+ " build does not know; the trainer and its workers are probably from different"
+					+ " versions" );
+		}
+		for (int i = 0; i < TERM_COUNT; i++) e.termTotals[ i ] = in.readDouble();
+		for (int i = 0; i < TERM_COUNT; i++) e.termCounts[ i ] = in.readInt();
 		return e;
 	}
 }

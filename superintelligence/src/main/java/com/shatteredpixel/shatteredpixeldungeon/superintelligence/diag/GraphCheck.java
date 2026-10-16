@@ -1,13 +1,14 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.ProgressBar;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WindowStatistics;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class GraphCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 7;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -17,6 +18,8 @@ public class GraphCheck {
 		checkFlatSeriesIsNotBlank();
 		checkVaryingSeriesStillReportsItsRealRange();
 		checkTheProgressBarReportsWhatItMeasured();
+		checkTheWindowStatisticsAreWhatTheyClaim();
+		checkTheDepthRateCountsEpisodesNotGenerations();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     graph honesty: " + CHECKS + " checks passed" );
@@ -26,6 +29,66 @@ public class GraphCheck {
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}
+	}
+
+	private static void checkTheWindowStatisticsAreWhatTheyClaim(){
+		double[] window = { -3500, -3400, -3600, -3300, -3500, -3400 };
+
+		if (Math.abs( WindowStatistics.mean( window ) + 3450 ) > 1e-9){
+			fail( "a window of six scores whose mean is -3450 reports "
+					+ WindowStatistics.mean( window ) );
+			return;
+		}
+
+		double sd = WindowStatistics.sampleStdDev( window );
+		if (Math.abs( sd - Math.sqrt( 55000.0 / 5 ) ) > 1e-9){
+			fail( "the sample standard deviation of " + java.util.Arrays.toString( window ) + " is "
+					+ sd + " where the n-1 form gives " + Math.sqrt( 55000.0 / 5 )
+					+ ". A population deviation understates the spread of a small window and makes every"
+					+ " error bar here too narrow." );
+			return;
+		}
+
+		double sem = WindowStatistics.standardError( window );
+		if (Math.abs( sem - sd / Math.sqrt( 6 ) ) > 1e-9){
+			fail( "the standard error of a six-generation window is " + sem + " rather than s/sqrt(6) = "
+					+ sd / Math.sqrt( 6 ) );
+			return;
+		}
+
+		double[] other = { -3200, -3100, -3300, -3200 };
+		double deltaError = WindowStatistics.differenceError( window, other );
+		double expected = Math.sqrt( sem * sem + WindowStatistics.standardError( other ) * WindowStatistics.standardError( other ) );
+		if (Math.abs( deltaError - expected ) > 1e-9){
+			fail( "the error on the difference of two windows is " + deltaError + " rather than the"
+					+ " quadrature sum " + expected + ". Adding the two standard errors instead would"
+					+ " overstate it by about 40% on windows of this size." );
+			return;
+		}
+
+		System.out.println( "  window statistics: mean -3450, sd " + String.format( "%.2f", sd )
+				+ ", sem " + String.format( "%.2f", sem ) + ", difference error "
+				+ String.format( "%.2f", deltaError ) + " on a deterministic fixture" );
+	}
+
+
+	private static void checkTheDepthRateCountsEpisodesNotGenerations(){
+		double[] reached = { 1, 0, 3, 2 };
+		double[] episodes = { 4, 4, 4, 4 };
+
+		if (Math.abs( WindowStatistics.rate( reached, episodes ) - 0.375 ) > 1e-9){
+			fail( "six episodes across four generations reached floor 2 and the rate reports "
+					+ WindowStatistics.rate( reached, episodes ) + " rather than 0.375. Counting"
+					+ " generations instead of episodes is how bestDepth became a coin flip." );
+			return;
+		}
+
+		if (WindowStatistics.rate( new double[]{ 0, 0 }, new double[]{ 0, 0 } ) != 0){
+			fail( "a window with no episodes reports a rate other than 0" );
+			return;
+		}
+
+		System.out.println( "  depth rate counts episodes: 6 of 16 -> 0.375, and an empty window is 0" );
 	}
 
 	private static void checkFlatSeriesReportsItselfAsFlat(){

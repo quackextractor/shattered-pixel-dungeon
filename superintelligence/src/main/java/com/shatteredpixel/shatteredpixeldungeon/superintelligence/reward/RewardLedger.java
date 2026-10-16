@@ -129,6 +129,16 @@ public class RewardLedger {
 		return runTotals[ term.ordinal() ];
 	}
 
+	public double objectiveScore(){
+		double sum = 0;
+		for (RewardTerm term : RewardTerm.values()){
+			if (!RewardProfile.DEPTH_ONLY.allows( term )) continue;
+			sum += runTotals[ term.ordinal() ];
+		}
+		return sum;
+	}
+
+
 	public java.util.EnumMap<RewardTerm.Type, Double> typeTotals(){
 		java.util.EnumMap<RewardTerm.Type, Double> out
 				= new java.util.EnumMap<>( RewardTerm.Type.class );

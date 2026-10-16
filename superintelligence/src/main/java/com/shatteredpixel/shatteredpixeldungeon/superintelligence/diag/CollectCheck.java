@@ -47,14 +47,15 @@ public class CollectCheck {
 		checkScriptedPathStillAgrees( config );
 		checkRandomSeedEpisodeIsReplayable( config );
 		CollectWireCheck.checkWorkerWireCarriesEveryStepField( config );
+		CollectWireCheck.checkTheEpisodeFrameCarriesEveryReportedField();
 		checkDropRecordsTheBindingsItsSlotIndexWasChosenAgainst( config );
 		checkTheCollectorAnnouncesADecisionBeforeItIsApplied( config );
 		checkTheKeeperKeepsTheEpisodesWorthWatching( config );
 
 		if (failures.isEmpty()){
-			System.out.println( "[OK]     collection: 8 checks passed" );
+			System.out.println( "[OK]     collection: 9 checks passed" );
 		} else {
-			System.out.println( "[ERROR]  collection: " + failures.size() + " of 8 checks failed" );
+			System.out.println( "[ERROR]  collection: " + failures.size() + " of 9 checks failed" );
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}

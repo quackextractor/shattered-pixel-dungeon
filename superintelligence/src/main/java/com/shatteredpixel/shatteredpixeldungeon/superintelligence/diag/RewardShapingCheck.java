@@ -22,6 +22,80 @@ public final class RewardShapingCheck {
 
 	private RewardShapingCheck(){}
 
+
+	public static void checkPickingUpAnItemPays(){
+		Outcome outcome = pickup(
+				new com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing() );
+
+		if (outcome.notes( RewardTerm.ITEM_PICKUP ) == 0){
+			fail( "the hero walked over a potion and picked it up through Action.INTERACT and"
+					+ " ITEM_PICKUP never fired. The emission site exists and pays on a diff of carried"
+					+ " value, so either the item never reached the backpack or the diff is read against"
+					+ " the wrong snapshot." );
+			return;
+		}
+
+		if (outcome.termTotal( RewardTerm.ITEM_PICKUP ) <= 0){
+			fail( "ITEM_PICKUP fired " + outcome.notes( RewardTerm.ITEM_PICKUP ) + " time(s) and paid "
+					+ fmt( outcome.termTotal( RewardTerm.ITEM_PICKUP ) ) + ". Picking something up has to"
+					+ " be worth something or the agent is better off leaving it on the floor." );
+			return;
+		}
+
+		System.out.println( "  picking an item up fires ITEM_PICKUP " + outcome.notes( RewardTerm.ITEM_PICKUP )
+				+ " time(s) paying " + fmt( outcome.termTotal( RewardTerm.ITEM_PICKUP ) ) );
+	}
+
+
+	public static void checkPickingUpGoldPays(){
+		Outcome outcome = pickup( new com.shatteredpixel.shatteredpixeldungeon.items.Gold( 25 ) );
+
+		if (outcome.notes( RewardTerm.GOLD_GAIN ) == 0){
+			fail( "the hero walked over 25 gold and picked it up through Action.INTERACT and"
+					+ " GOLD_GAIN never fired. TODO.md 2 records it as a term that has never been seen"
+					+ " paying in a run, and this is the emission site it would have to come from."
+					+ " The heap was dropped at " + outcome.deepest + " with the run reaching depth "
+					+ outcome.deepest + ", so the fixture is the question rather than the run." );
+			return;
+		}
+
+		if (outcome.termTotal( RewardTerm.GOLD_GAIN ) <= 0){
+			fail( "GOLD_GAIN fired " + outcome.notes( RewardTerm.GOLD_GAIN ) + " time(s) and paid "
+					+ fmt( outcome.termTotal( RewardTerm.GOLD_GAIN ) ) );
+			return;
+		}
+
+		System.out.println( "  picking gold up fires GOLD_GAIN " + outcome.notes( RewardTerm.GOLD_GAIN )
+				+ " time(s) paying " + fmt( outcome.termTotal( RewardTerm.GOLD_GAIN ) ) );
+	}
+
+
+	private static Outcome pickup( com.shatteredpixel.shatteredpixeldungeon.items.Item item ){
+		return play( new EnvConfig(), 12, "PICKUPCHECK", turn -> {
+			if (turn.step == 1){
+				Dungeon.level.drop( item, cellBesideHero() );
+				Dungeon.observe();
+				turn.env.step( Action.INTERACT, 0 );
+				return;
+			}
+			turn.env.step( Action.WAIT, 0 );
+		} );
+	}
+
+
+	private static int cellBesideHero(){
+		int width = Dungeon.level.width();
+		for (int off : new int[]{ -width, width, -1, 1 }){
+			int cell = Dungeon.hero.pos + off;
+			if (cell < 0 || cell >= Dungeon.level.length()) continue;
+			if (!Dungeon.level.insideMap( cell )) continue;
+			if (!Dungeon.level.passable[ cell ]) continue;
+			if (Actor.findChar( cell ) != null) continue;
+			return cell;
+		}
+		return Dungeon.hero.pos;
+	}
+
 	private static class StairWalk {
 		double away;
 		double toward;

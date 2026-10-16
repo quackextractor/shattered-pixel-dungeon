@@ -10,6 +10,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **The generation report says what a generation earned, not only what one episode did.** Every
+  episode now crosses the worker pipe carrying its **stall cause**, its **objective score** - the
+  part of the reward restricted to `depth_only`'s terms, computed regardless of which profile is
+  active - and **every term total and event count**. `GenerationReport` prints the objective mean
+  beside the score mean, a `stalls` line naming which of the four guards bound, a `types` line of
+  colour-coded type subtotals per episode, and an `events` line carrying generation-wide `kills`,
+  `gold`, `pickups`, `talents` and `crafted` totals rather than the two recordings that survive.
+  `metrics.csv` gains `meanObjectiveScore` and `depth2PlusEpisodes`. **`Protocol.VERSION` is 6**, and
+  `collectcheck` is **9 cases** with a new one that round-trips the whole episode frame.
+- **`GOLD_GAIN` and `ITEM_PICKUP` are proven to fire.** `TODO.md` 2.2 records both as terms never
+  observed paying in a run, and the question was whether an untrained policy ever gets there or
+  whether the term can move. It can: `rewardcheck` now drops a heap beside the hero and drives
+  `Action.INTERACT` over it, and measures **`ITEM_PICKUP` paying 0.50 and `GOLD_GAIN` paying 1.25**.
+  `rewardcheck` is **33 cases**.
+- **Every comparison a run makes now carries an error bar.** `train.WindowStatistics` answers the
+  window mean, the sample standard deviation, the standard error and the quadrature error on the
+  difference of two windows; `MetricsHistory` splits a run's generations in half and prints both
+  windows' `meanScore` and `meanObjectiveScore` with `sd`, `sem` and `delta +/- error`, plus a
+  `depth>=2` share of **episodes** rather than generations - which is what `bestDepth` got wrong.
+  `graphcheck` is **7 cases**; the new two assert the arithmetic on a deterministic fixture, where
+  six scores with mean -3450 give `sd 104.88` and `sem 42.82`, and six of sixteen episodes reaching
+  floor 2 gives `0.375`.
 - **`RewardTerm.Type`, and a colour-coded type table in the run report.** `docs.md` asks the summary
   interface for "floor-by-floor point gains and losses, type totals/subtotals, and the overall run
   score"; the report printed floors and then thirty individual terms with nothing grouping them.
@@ -195,6 +217,23 @@ uncommitted. The external code review that asked for it to be committed found it
   not taken. Evidence in `out/evidence/issue-37-smoke/`.
 
 ### Not done
+- **`INTERACT` still cannot pick an item up off the cell the hero is standing on**, and the attempt
+  to fix it produced a better reproduction than either open divergence entry has.
+  `ActionMapper.pickInteractCell()` scans offsets 1..8 and `handleCell()` refuses a non-adjacent cell,
+  so `review.md`'s Plan 4.2 is only half implementable. Making both accept the hero's own cell turns
+  `paritycheck` **red, deterministically**:
+
+  ```
+  ./gradlew :superintelligence:paritycheck -PparityArgs="--seeds 1 --heroes 1 --turns 400" --rerun-tasks
+    PARITY-ALPHA  WARRIOR  357  303  -315.340  DIVERGED at 256: position: replayed 500, recorded 1301
+  ```
+
+  One seed, one hero, record then verify twice - and the same file reproduces in 357 steps in two
+  fresh JVMs. **The pickup completing is the cause, not the cell the action resolves to**: admitting
+  the own cell only when a heap is there still fails, and checking the own cell while `handleCell`
+  still requires adjacency is green. `issues.md` 38, with the recorded trajectory and an A/B table.
+  The `ActionMapper` change is **not committed**, because `paritycheck` is red without it and green
+  with it reverted, and a committed tree has to be green.
 - **`rolloutcheck` is still the one flaky gate, re-measured at 1 in 8 with the new comparison and unchanged.**"n"n  Seven of eight consecutive runs green, so recording `baseDraws` has not made it flakier. The one"n  failure now reports `rng baseDraws diverged at step 57: replayed 290, recorded 298 (delta -8)`"n  instead of a different cell at step 54, because `ReplayIO.verify` checks the stream first. That is"n  a direction and not a diagnosis: the count is cumulative and says nothing about which call site made"n  the extra draws. `issues.md` 18 records it.
 
 - **`Dense.matvec` is not vectorised with `jdk.incubator.vector`.** The incubator module works on
