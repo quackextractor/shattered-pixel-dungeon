@@ -45,6 +45,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerPo
 public class Trainer {
 
 	private final EnvConfig config;
+	private final PpoHyperparameters hyper;
 	private final Random rng;
 	private final SeedPool seeds;
 	private final File workDir;
@@ -217,8 +218,15 @@ public class Trainer {
 		this.replayDirOverride = replayDir;
 		this.replayGroup = replayGroup == null ? "" : replayGroup;
 		this.recordEvery = Math.max( 1, recordEvery );
+		this.hyper = hyper;
 		this.ppo = new PPO( config, rng );
 		this.pool = new TrainerWorkers( config, ppo );
+		WorkerPool.bufferBytes = hyper.pipeBufferBytes;
+		WorkerPool.heapMin = hyper.workerHeapMin;
+		WorkerPool.heapMax = hyper.workerHeapMax;
+		WorkerPool.gcPauseMs = hyper.workerGcPauseMs;
+		TrainerWorkers.pushChunkBytes = hyper.pushChunkBytes;
+		this.seeds.randomFraction = (float) hyper.randomSeedRate;
 		learning( hyper );
 	}
 
@@ -290,6 +298,18 @@ public class Trainer {
 		ppo.entropyCoeff = hyper.entropyCoeff;
 		ppo.learningRate = hyper.learningRate;
 		ppo.network.learningRate = hyper.learningRate;
+
+		ppo.chunkLength = hyper.chunkLength;
+		ppo.normaliseValues = hyper.normaliseValues;
+		ppo.valueNorm.momentum = hyper.valueNormMomentum;
+		ppo.valueLossCoefficient = hyper.valueLossCoefficient;
+		ppo.valueGradientClip = hyper.valueGradientClip;
+		ppo.huberValues = hyper.huberValues;
+
+		ppo.network.gradClip = hyper.maxGradNorm;
+		ppo.network.beta1 = hyper.adamBeta1;
+		ppo.network.beta2 = hyper.adamBeta2;
+		ppo.network.adamEps = hyper.adamEps;
 	}
 
 	/**
@@ -388,7 +408,8 @@ public class Trainer {
 		}
 
 Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
-				options.replayDir, options.traceWorld, options.replayGroup, options.recordEvery );
+				options.replayDir, options.traceWorld, options.replayGroup,
+				options.recordEverySet ? options.recordEvery : options.hyper.recordEvery );
 
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
@@ -398,7 +419,8 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,
 					options.maxSamplesPerGeneration );
 			trainer.history( new MetricsHistory( options.metricsCsv ));
-			trainer.checkpointing( options.save, options.checkpointEvery );
+			trainer.checkpointing( options.save,
+					options.checkpointEverySet ? options.checkpointEvery : options.hyper.checkpointEvery );
 
 			trainer.resume( options.resume );
 
@@ -435,6 +457,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 		out.writeFloat( (float) sampleRate() );
 		out.writeInt( (int) maxSampledPerEpisode() );
+		out.writeInt( hyper.tailSteps );
 
 		out.writeLong( rng.nextLong() );
 		Worker.writeWeights( out, ppo.network );

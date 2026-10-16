@@ -173,6 +173,31 @@ public class Network {
 		return dGrid.length;
 	}
 
+	/** Floats the trunk's input costs, which is the convolution's output plus the flat extras. */
+	public int concatLength(){
+		return concat.cols;
+	}
+
+	/** Floats the trunk's output costs, which is the LSTM's input width. */
+	public int trunkOut(){
+		return trunk.out;
+	}
+
+	/** Floats the LSTM's output costs, which every head reads. */
+	public int memoryOut(){
+		return memoryOut.cols;
+	}
+
+	/** Floats {@link LSTM#saveCache} writes. */
+	public int lstmCacheLength(){
+		return memory.cacheLength();
+	}
+
+	/** One timestep's backward state, allocated here so a chunk can hold several. */
+	public StepCache takeCache(){
+		return new StepCache( this );
+	}
+
 	public void resetState(){
 		memory.reset();
 	}
@@ -201,6 +226,34 @@ public class Network {
 
 	/** Forward pass. Logits and value stay valid until the next call. */
 	public void forward( float[] grid, float[] inventory, float[] heroFeatures ){
+		runForward( grid, inventory, heroFeatures );
+	}
+
+	/**
+	 * Forward pass, keeping this step's backward state.
+	 *
+	 * Same code as {@link #forward}: the cache is written after the layers have already cached their
+	 * own pre-activations, so a chunk's backward can restore them instead of re-running the forward.
+	 */
+	public void forwardCached( float[] grid, float[] inventory, float[] heroFeatures,
+			StepCache cache ){
+		runForward( grid, inventory, heroFeatures );
+
+		System.arraycopy( grid, 0, cache.grid, 0,
+				Math.min( grid.length, cache.grid.length ) );
+		System.arraycopy( concat.data, 0, cache.concat, 0, concat.cols );
+		System.arraycopy( hidden.data, 0, cache.hidden, 0, hidden.cols );
+		System.arraycopy( memoryOut.data, 0, cache.memoryOut, 0, memoryOut.cols );
+
+		trunk.savePreAct( cache.trunkPreAct );
+		actionHead.savePreAct( cache.actionPreAct );
+		slotHead.savePreAct( cache.slotPreAct );
+		targetHead.savePreAct( cache.targetPreAct );
+		valueHead.savePreAct( cache.valuePreAct );
+		memory.saveCache( cache.lstm );
+	}
+
+	private void runForward( float[] grid, float[] inventory, float[] heroFeatures ){
 		System.arraycopy( grid, 0, gridSnapshot, 0,
 				Math.min( grid.length, gridSnapshot.length ) );
 
@@ -212,7 +265,7 @@ public class Network {
 		off += config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		System.arraycopy( heroFeatures, 0, concat.data, off, heroFeatures.length );
 
-trunk.forward( concat, hidden );
+		trunk.forward( concat, hidden );
 
 		memory.forward( hidden, memoryOut );
 
@@ -227,20 +280,41 @@ trunk.forward( concat, hidden );
 	public float[] targetLogits(){ return targetLogits.data; }
 	public float value(){ return value.data[ 0 ]; }
 
-	/**
-	 * Backpropagates one timestep.
-	 *
-	 * The caller supplies gradients with respect to each head's output, which keeps the PPO loss
-	 * outside the network where it belongs and lets the same backward serve PPO and IMPALA.
+/**
+	 * Backpropagates one timestep, discarding any gradient into the previous recurrent state.
 	 *
 	 * @param dActionLogits dL/d(action logits), or null for zero
 	 * @param dSlotLogits   dL/d(slot logits), or null
 	 * @param dTargetLogits dL/d(target logits), or null
 	 * @param dCritic       dL/d(critic output)
-	 * @param dPrevState    gradient into the previous recurrent state, accumulated into
 	 */
-	public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
-			float dCritic, float[] dPrevState ){
+public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
+			float dCritic ){
+		beginBackward();
+		backwardStep( dActionLogits, dSlotLogits, dTargetLogits, dCritic, null );
+	}
+
+	/**
+	 * Clears the gradient into the previous recurrent state, so a new chunk starts from nothing.
+	 *
+	 * Separate from {@link #backward} because a chunk backpropagates several timesteps into one
+	 * running {@code dPrev}/{@code dCell}: each step's contribution has to accumulate into the one the
+	 * earlier step will read.
+	 */
+	public void beginBackward(){
+		dPrev.fill( 0f );
+		dCell.fill( 0f );
+	}
+
+	/**
+	 * Backpropagates one timestep, <b>accumulating</b> into the previous recurrent state.
+	 *
+	 * @param cache this step's saved forward state, or null to use whatever the last forward left
+	 */
+	public void backwardStep( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
+			float dCritic, StepCache cache ){
+
+		if (cache != null) restore( cache );
 
 		Tensor dHiddenT = new Tensor( 1, memoryOut.cols );
 
@@ -261,15 +335,6 @@ trunk.forward( concat, hidden );
 
 		copyInto( dHidden.data, dHiddenT );
 
-		dPrev.fill( 0f );
-
-		dCell.fill( 0f );
-
-		if (dPrevState != null){
-			System.arraycopy( dPrevState, 0, dPrev.data, 0,
-					Math.min( dPrevState.length, dPrev.cols ) );
-		}
-
 		memory.backward( hidden, dHiddenT, dPrev, dCell );
 
 		dLstmIn.fill( 0f );
@@ -281,6 +346,21 @@ trunk.forward( concat, hidden );
 
 		java.util.Arrays.fill( dGrid, 0f );
 		conv.backward( gridSnapshot, dConv, dGrid );
+	}
+
+	/** Puts every layer back into the state a cached forward left it in. */
+	private void restore( StepCache cache ){
+		System.arraycopy( cache.concat, 0, concat.data, 0, concat.cols );
+		System.arraycopy( cache.hidden, 0, hidden.data, 0, hidden.cols );
+		System.arraycopy( cache.memoryOut, 0, memoryOut.data, 0, memoryOut.cols );
+		System.arraycopy( cache.grid, 0, gridSnapshot, 0, gridSnapshot.length );
+
+		trunk.loadPreAct( cache.trunkPreAct );
+		actionHead.loadPreAct( cache.actionPreAct );
+		slotHead.loadPreAct( cache.slotPreAct );
+		targetHead.loadPreAct( cache.targetPreAct );
+		valueHead.loadPreAct( cache.valuePreAct );
+		memory.loadCache( cache.lstm );
 	}
 
 	/** dL/d(prev recurrent state) accumulated by the last backward. */

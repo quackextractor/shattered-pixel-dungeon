@@ -43,10 +43,23 @@ public class WorkerPool {
 		return workers;
 	}
 
-	/** Root of the per-worker scratch directories. */
+/** Root of the per-worker scratch directories. */
 	private static File workerDir(){
 		return Trainer.outDirDefault();
 	}
+
+	/** Pipe buffer requested per worker. 1 MB, not the 4 KB a Windows pipe reports. */
+	public static int bufferBytes = 1 << 20;
+
+	/**
+	 * Worker JVM heap and GC settings, from the configuration rather than from literals here.
+	 *
+	 * <p>A heap too small for the machine shows up as an out-of-memory twenty generations in rather than
+	 * as an error at launch, and 1536 MB on a machine with 8 GB of it is four workers at most.
+	 */
+	public static String heapMin = "256m";
+	public static String heapMax = "1536m";
+	public static int gcPauseMs = 200;
 
 	/**
 	 * Starts {@code count} worker JVMs and hands each the current policy.
@@ -63,7 +76,8 @@ public class WorkerPool {
 				: join( javaHome, "bin", "java" );
 
 		for (int i = 0; i < count; i++){
-			WorkerHandle handle = new WorkerHandle( java, classpath, "worker" + i );
+			WorkerHandle handle = new WorkerHandle( java, classpath, "worker" + i,
+					heapMin, heapMax, gcPauseMs );
 
 			DataOutputStream out = handle.dataOut;
 			out.writeInt( Protocol.MSG_HELLO );
@@ -179,25 +193,24 @@ public class WorkerPool {
 	 * 8 KB default. A policy push is ~14 MB and a generation's transitions are tens of MB; the
 	 * default turns those into thousands of syscalls per worker per generation.
 	 */
-	public static class WorkerHandle {
-
-		private static final int BUFFER = 1 << 20;
+public static class WorkerHandle {
 
 		final Process process;
-		final DataInputStream dataIn;
-		final DataOutputStream dataOut;
-		final String name;
+	final DataInputStream dataIn;
+	final DataOutputStream dataOut;
+	final String name;
 
-		WorkerHandle( String java, String classpath, String name ) throws IOException {
+		WorkerHandle( String java, String classpath, String name,
+				String heapMin, String heapMax, int gcPauseMs ) throws IOException {
 			this.name = name;
 
-ProcessBuilder pb = new ProcessBuilder(
-				java,
-				"-Xms256m", "-Xmx1536m",
-				"-XX:+UseParallelGC", "-XX:MaxGCPauseMillis=200",
+			ProcessBuilder pb = new ProcessBuilder(
+					java,
+					"-Xms" + heapMin, "-Xmx" + heapMax,
+					"-XX:+UseParallelGC", "-XX:MaxGCPauseMillis=" + gcPauseMs,
 
-				"--enable-native-access=ALL-UNNAMED",
-				"-cp", classpath,
+					"--enable-native-access=ALL-UNNAMED",
+					"-cp", classpath,
 					"com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerMain",
 					"--worker",
 
@@ -212,8 +225,8 @@ ProcessBuilder pb = new ProcessBuilder(
 			pb.directory( dir );
 
 			this.process = pb.start();
-			this.dataOut = new DataOutputStream( new BufferedOutputStream( process.getOutputStream(), BUFFER ) );
-			this.dataIn = new DataInputStream( new BufferedInputStream( process.getInputStream(), BUFFER ) );
+			this.dataOut = new DataOutputStream( new BufferedOutputStream( process.getOutputStream(), bufferBytes ) );
+			this.dataIn = new DataInputStream( new BufferedInputStream( process.getInputStream(), bufferBytes ) );
 		}
 	}
 }

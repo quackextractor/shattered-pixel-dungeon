@@ -273,7 +273,8 @@ public class TrainerWorkers {
 	 * not grow - with room to spare. A policy is ~14MB, so a single write is three thousand times the
 	 * buffer.
 	 */
-	private static final int PUSH_CHUNK = 32 * 1024;
+	/** Bytes per write when pushing weights. Under the 4 KB system buffer a Windows pipe really has. */
+	public static int pushChunkBytes = 32 * 1024;
 
 	/** How many times one chunk may fail before the push is declared broken. */
 	private static final int PUSH_RETRIES = 8;
@@ -298,7 +299,7 @@ public class TrainerWorkers {
 	public static void writeFully( DataOutputStream out, String name, byte[] payload ) throws IOException {
 		int sent = 0;
 		while (sent < payload.length){
-			int end = Math.min( payload.length, sent + PUSH_CHUNK );
+			int end = Math.min( payload.length, sent + pushChunkBytes );
 			boolean written = false;
 			IOException last = null;
 			for (int attempt = 0; attempt < PUSH_RETRIES && !written; attempt++){

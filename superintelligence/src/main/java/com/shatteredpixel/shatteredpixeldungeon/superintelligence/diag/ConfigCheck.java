@@ -58,7 +58,7 @@ import java.util.Properties;
  */
 public class ConfigCheck {
 
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 10;
 
 	private static final List<String> failures = new ArrayList<>();
 
@@ -93,6 +93,8 @@ public class ConfigCheck {
 		checkUnknownKeysWarn();
 		checkBadValuesAreRefused();
 		checkOutputPathsFollowTheWorkingDirectory();
+		checkDotEnvIsRead();
+		checkDotEnvBeatsThePropertiesFile();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     configuration binding: " + CHECKS + " checks passed" );
@@ -519,6 +521,79 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 
 		System.out.println( "  --out moves the checkpoint and the metrics history, and an explicit"
 				+ " --save still wins" );
+	}
+
+	/**
+	 * {@code .env} beside the properties file is read, the way a shell would read it.
+	 *
+	 * <p>It used to be read by nothing: the JVM does not load one, so the documented workflow was to pipe
+	 * it into the shell by hand, and a developer who skipped that step ran with settings they did not
+	 * believe they were using - silently, because nothing in the report said the file had been ignored.
+	 */
+	private static void checkDotEnvIsRead() throws IOException {
+		java.io.File dir = new java.io.File( scratch, "dotenv" );
+		dir.mkdirs();
+
+		java.nio.file.Path file = new java.io.File( dir, "run.properties" ).toPath();
+		java.nio.file.Files.writeString( file, "env.turn_limit_per_floor=1500\n" );
+
+		java.nio.file.Files.writeString( new java.io.File( dir, ".env" ).toPath(),
+				"# a comment\n"
+				+ "SPD_ENV_TURN_LIMIT_PER_FLOOR=321\n"
+				+ "SPD_RL_GAMMA=\"0.5\"\n"
+				+ "NOT_OURS=1\n"
+				+ "malformed line\n" );
+
+		EnvConfigBinder.Loaded loaded = EnvConfigBinder.load( file );
+
+		if (loaded.config.turnLimitPerFloor != 321){
+			fail( ".env beside the properties file was not read: turn_limit_per_floor is "
+					+ loaded.config.turnLimitPerFloor + ", not the 321 it names." );
+			return;
+		}
+
+		if (Math.abs( loaded.hyper.gamma - 0.5f ) > 1e-6){
+			fail( "a quoted .env value was not unquoted: gamma is " + loaded.hyper.gamma + ", not 0.5." );
+			return;
+		}
+
+		boolean sawForeign = false;
+		boolean sawMalformed = false;
+		for (String warning : loaded.warnings){
+			if (warning.contains( "NOT_OURS" )) sawForeign = true;
+			if (warning.contains( "malformed line" )) sawMalformed = true;
+		}
+
+		if (!sawForeign || !sawMalformed){
+			fail( "a .env entry that is not SPD_ prefixed, and a line with no '=', should both warn."
+					+ " sawForeign=" + sawForeign + " sawMalformed=" + sawMalformed );
+			return;
+		}
+
+		System.out.println( "  .env is read beside the properties file: quoted values unquoted, foreign"
+				+ " and malformed entries warned about" );
+	}
+
+	/** And it sits above the properties file, which is where the documentation has always said it sits. */
+	private static void checkDotEnvBeatsThePropertiesFile() throws IOException {
+		java.io.File dir = new java.io.File( scratch, "dotenv-order" );
+		dir.mkdirs();
+
+		java.nio.file.Path file = new java.io.File( dir, "run.properties" ).toPath();
+		java.nio.file.Files.writeString( file, "env.stall_limit=111\n" );
+		java.nio.file.Files.writeString( new java.io.File( dir, ".env" ).toPath(),
+				"SPD_ENV_STALL_LIMIT=222\n" );
+
+		EnvConfigBinder.Loaded loaded = EnvConfigBinder.load( file );
+
+		if (loaded.config.stallLimit != 222){
+			fail( ".env names stall_limit 222 and the properties file names 111, but the run used "
+					+ loaded.config.stallLimit + ". The documented order is defaults, file, .env,"
+					+ " process environment." );
+			return;
+		}
+
+		System.out.println( "  .env outranks the properties file" );
 	}
 
 	private static void expectUnder( String what, java.io.File actual, java.io.File dir, String name ){

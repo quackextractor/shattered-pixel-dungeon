@@ -49,6 +49,32 @@ public class PPO {
 	public int epochs = 4;
 
 	/**
+	 * Consecutive steps per backpropagated run.
+	 *
+	 * <p>One is the length-one truncation this replaced: each sample's backward starts from a cleared
+	 * {@code dPrev}/{@code dCell}, so nothing flows between timesteps and {@code LSTM.W_hh} receives no
+	 * gradient at all for retaining anything across them. Sixteen is roughly the span an advantage is
+	 * meaningfully supported over ({@code 1/(1-gamma*lambda)} is about 17 at the defaults), so a chunk of
+	 * that length is the smallest run that carries the signal the advantage is computed from.
+	 */
+	public int chunkLength = 16;
+
+	/** Running return scale, so the critic fits O(1) instead of thousands. See {@link ValueNormalizer}. */
+	public final ValueNormalizer valueNorm = new ValueNormalizer();
+
+	/** False asks the critic for the raw return, which is the pre-normalisation behaviour. */
+	public boolean normaliseValues = true;
+
+	/** Ceiling on the value residual, so one terminal outlier cannot dominate a minibatch. */
+	public float valueGradientClip = 10f;
+
+	/** Weight of the value loss relative to the policy's. */
+	public float valueLossCoefficient = 0.5f;
+
+	/** Whether the value residual is Huber rather than squared. */
+	public boolean huberValues = true;
+
+	/**
 	 * Threads for the update. Zero or one selects the serial path exactly.
 	 *
 	 * <p>One means the untouched original, not a one-threaded pool: the parameter copies and the
@@ -113,6 +139,8 @@ public class PPO {
 	private final float[] scratchGradSlot;
 	private final float[] scratchGradTarget;
 
+	private StepCache[] chunkCaches;
+
 	private final int gridSize;
 	private final int inventorySize;
 	private final int heroSize;
@@ -175,6 +203,21 @@ public float lastClipFraction;
 		this.scratchGradSlot = new float[ config.maxSlots ];
 		this.scratchGradTarget = new float[
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.TARGET_COUNT ];
+
+		resizeCaches();
+	}
+
+	/**
+	 * Sizes the per-step backward cache to {@link #chunkLength}, allocating once.
+	 *
+	 * One cache is about 250 KB at the default shapes - dominated by the grid the convolution's backward
+	 * needs - so sixteen of them is 4 MB per update thread, and reallocating them every minibatch would
+	 * dominate an update that costs about 11 ms a sample.
+	 */
+	private void resizeCaches(){
+		if (chunkCaches != null && chunkCaches.length == chunkLength) return;
+		chunkCaches = new StepCache[ Math.max( 1, chunkLength ) ];
+		for (int i = 0; i < chunkCaches.length; i++) chunkCaches[ i ] = network.takeCache();
 	}
 
 	public int bufferSize(){
@@ -215,6 +258,7 @@ public float lastClipFraction;
 		if (buffer.isEmpty()) return;
 
 		threadCount();
+		resizeCaches();
 
 		network.zeroGrad();
 
@@ -229,16 +273,18 @@ public float lastClipFraction;
 
 		normaliseAdvantages();
 
-		int n = buffer.size();
+		if (normaliseValues) valueNorm.update( buffer );
+
+		List< List< Transition > > chunks = chunks();
 
 		for (int epoch = 0; epoch < epochs; epoch++){
-			shuffle( buffer );
+			shuffleChunks( chunks );
 
 			network.resetState();
 
-			for (int start = 0; start < n; start += minibatchSize){
-				int end = Math.min( n, start + minibatchSize );
-				oneMinibatch( start, end );
+			for (int start = 0; start < chunks.size(); start += minibatchSize){
+				int end = Math.min( chunks.size(), start + minibatchSize );
+				oneMinibatch( chunks, start, end );
 				network.step( 1f );
 				lastMinibatches++;
 			}
@@ -260,6 +306,56 @@ public float lastClipFraction;
 	}
 
 	/**
+	 * Groups the buffer into contiguous runs of at most {@link #chunkLength} steps.
+	 *
+	 * <p>Contiguity comes from the sequence metadata the worker stamped, so it survives the shuffle: two
+	 * steps are chained when they carry the same episode id and consecutive indices. A gap - the sampling
+	 * rate dropping a step between them, or a floor transition restarting the clock - starts a new chunk,
+	 * because backpropagating across a gap would carry a gradient through a state the agent never saw.
+	 *
+	 * <p>A step with no episode id is a singleton, which is the old per-step path. That is what makes the
+	 * synthetic transitions in the checks behave as they always did instead of being chained into a
+	 * sequence nobody built.
+	 */
+	List< List< Transition > > chunks(){
+		List< List< Transition > > out = new ArrayList<>( buffer.size() );
+
+		List< Transition > current = new ArrayList<>();
+
+		int episode = Integer.MIN_VALUE;
+		int step = Integer.MIN_VALUE;
+
+		for (Transition t : buffer){
+			boolean adjacent = t.episodeId >= 0
+					&& current.size() > 0
+					&& t.episodeId == episode
+					&& t.stepIndex == step + 1;
+
+			if (!adjacent || current.size() >= chunkLength){
+				if (!current.isEmpty()) out.add( current );
+				current = new ArrayList<>();
+			}
+
+			current.add( t );
+			episode = t.episodeId;
+			step = t.stepIndex;
+		}
+
+		if (!current.isEmpty()) out.add( current );
+
+		return out;
+	}
+
+	private void shuffleChunks( List< List< Transition > > chunks ){
+		for (int i = chunks.size() - 1; i > 0; i--){
+			int j = rng.nextInt( i + 1 );
+			List< Transition > tmp = chunks.get( i );
+			chunks.set( i, chunks.get( j ) );
+			chunks.set( j, tmp );
+		}
+	}
+
+	/**
 	 * One minibatch, whichever way it is going to be run, plus the shared bookkeeping over it.
 	 *
 	 * <p><b>One accumulation, not two.</b> The serial and sharded paths used to each carry their own copy
@@ -268,11 +364,11 @@ public float lastClipFraction;
 	 * null when it declines a minibatch - fewer samples than threads, say - and the serial path runs it
 	 * instead, so a run that asked for threads still produces the same result.
 	 */
-	private void oneMinibatch( int from, int to ){
+	private void oneMinibatch( List< List< Transition > > chunks, int from, int to ){
 		int count = Math.max( 1, to - from );
 
-		Minibatch m = threads > 1 ? sharded.run( from, to ) : null;
-		accumulate( m != null ? m : processMinibatch( from, to ), count );
+		Minibatch m = threads > 1 ? sharded.run( chunks, from, to ) : null;
+		accumulate( m != null ? m : processMinibatch( chunks, from, to ), count );
 	}
 
 	private void accumulate( Minibatch m, int count ){
@@ -384,66 +480,124 @@ public float lastClipFraction;
 	 * checks have no network to snapshot. A real transition always carries one, so a missing field is a
 	 * codec bug rather than a supported case, and {@code statecheck} is what holds that line.
 	 */
-	Stats oneSample( Network net, Transition t, float[] grid,
+Stats oneSample( Network net, Transition t, float[] grid,
 			float[] slotProbs, float[] targetProbs, float[] actionProbs,
 			float[] slotGrad, float[] targetGrad, float[] actionGrad ){
 
+		StepCache[] caches = new StepCache[]{ net.takeCache() };
+
+		return oneChunk( net, java.util.Collections.singletonList( t ), grid,
+				slotProbs, targetProbs, actionProbs, slotGrad, targetGrad, actionGrad,
+				caches, 1 );
+	}
+
+	/**
+	 * One contiguous run of steps: forward in order, backpropagate in reverse.
+	 *
+	 * <p><b>This is where the recurrent gradient comes from.</b> The forward pass runs the chunk in order
+	 * carrying the LSTM state, each step restoring nothing, and the backward pass then walks it backwards
+	 * <em>without</em> clearing {@code dPrev}/{@code dCell} between steps - so step {@code t} accumulates
+	 * into the running gradient that step {@code t-1} then reads. Clearing between steps is what truncated
+	 * the gradient at length one: nothing crossed a timestep boundary and {@code LSTM.W_hh} never received
+	 * a gradient for holding information forward.
+	 *
+	 * <p>The first step's state comes from the rollout, which is what makes the whole chunk replay to the
+	 * trajectory the behaviour policy saw. Every later step's state comes from the forward pass just run,
+	 * so the chain is the network's own rather than the recording's - the recording's is the same at
+	 * generation 0 and stale from generation 1 onwards, since the weights have moved since.
+	 *
+	 * @param caches   step caches, one per step, owned by the caller so a shard allocates them once
+	 * @param maxSteps how many of {@code caches} this call may use
+	 */
+	Stats oneChunk( Network net, List< Transition > chunk, float[] grid,
+			float[] slotProbs, float[] targetProbs, float[] actionProbs,
+			float[] slotGrad, float[] targetGrad, float[] actionGrad,
+			StepCache[] caches, int maxSteps ){
+
 		Stats s = new Stats();
+		int steps = Math.min( chunk.size(), maxSteps );
+		if (steps <= 0) return s;
 
-		if (t.recurrentState != null) net.loadState( t.recurrentState );
+		List< float[] > dValues = new ArrayList<>( steps );
+		List< float[] > dHead = new ArrayList<>( steps );
+		List< float[] > headProbs = new ArrayList<>( steps );
 
-		t.unpackGrid( grid );
-		net.forward( grid, t.inventory, t.hero );
+		net.beginBackward();
 
-		float[] probabilities;
-		float[] mask;
-		float[] logits;
-		float[] gradient;
-		int chosen;
+		for (int i = 0; i < steps; i++){
+			Transition t = chunk.get( i );
 
-		switch (t.liveHead) {
-			case Policy.HEAD_SLOT:
-				logits = net.slotLogits();
-				mask = t.slotMask;
-				chosen = t.slotIndex;
-				probabilities = slotProbs;
-				gradient = slotGrad;
-				break;
-			case Policy.HEAD_TARGET:
-				logits = net.targetLogits();
-				mask = t.targetMask;
-				chosen = t.slotIndex;
-				probabilities = targetProbs;
-				gradient = targetGrad;
-				break;
-			default:
-				logits = net.actionLogits();
-				mask = t.actionMask;
-				chosen = t.actionIndex;
-				probabilities = actionProbs;
-				gradient = actionGrad;
-				break;
+			if (i == 0 && t.recurrentState != null) net.loadState( t.recurrentState );
+
+			t.unpackGrid( grid );
+			net.forwardCached( grid, t.inventory, t.hero, caches[ i ] );
+
+			float[] probabilities;
+			float[] mask;
+			float[] logits;
+			float[] gradient;
+			int chosen;
+
+			switch (t.liveHead) {
+				case Policy.HEAD_SLOT:
+					logits = net.slotLogits();
+					mask = t.slotMask;
+					chosen = t.slotIndex;
+					probabilities = slotProbs;
+					gradient = slotGrad;
+					break;
+				case Policy.HEAD_TARGET:
+					logits = net.targetLogits();
+					mask = t.targetMask;
+					chosen = t.slotIndex;
+					probabilities = targetProbs;
+					gradient = targetGrad;
+					break;
+				default:
+					logits = net.actionLogits();
+					mask = t.actionMask;
+					chosen = t.actionIndex;
+					probabilities = actionProbs;
+					gradient = actionGrad;
+					break;
+			}
+
+			java.util.Arrays.fill( gradient, 0f );
+
+			Policy.probabilities( logits, mask, probabilities );
+
+			s.clipBinding |= Policy.accumulatePolicyGradient( probabilities, mask, chosen,
+					t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
+
+			float target = valueTarget( t );
+			dValues.add( new float[]{ Policy.valueGradient( net.value(), target, valueGradientClip )
+					* valueLossCoefficient });
+			dHead.add( gradient.clone() );
+			headProbs.add( probabilities.clone() );
+
+			s.policyLoss += -t.advantage;
+			s.valueLoss += Policy.valueLoss( net.value(), target, huberValues );
+			s.entropy += Policy.entropy( probabilities );
+			s.kl += approximateKL( t, t.oldLogProbability, mask, probabilities );
 		}
 
-		java.util.Arrays.fill( gradient, 0f );
+		for (int i = steps - 1; i >= 0; i--){
+			Transition t = chunk.get( i );
+			float[] gradient = dHead.get( i );
 
-		Policy.probabilities( logits, mask, probabilities );
+			net.backwardStep( t.liveHead == Policy.HEAD_ACTION ? gradient : null,
+					t.liveHead == Policy.HEAD_SLOT ? gradient : null,
+					t.liveHead == Policy.HEAD_TARGET ? gradient : null,
+					dValues.get( i )[ 0 ], caches[ i ] );
+		}
 
-		s.clipBinding = Policy.accumulatePolicyGradient( probabilities, mask, chosen,
-				t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
-
-		float dValue = Policy.valueGradient( net.value(), t.returnValue );
-
-		net.backward( t.liveHead == Policy.HEAD_ACTION ? gradient : null,
-				t.liveHead == Policy.HEAD_SLOT ? gradient : null,
-				t.liveHead == Policy.HEAD_TARGET ? gradient : null,
-				dValue, null );
-
-		s.policyLoss = -t.advantage;
-		s.valueLoss = Policy.valueLoss( net.value(), t.returnValue );
-		s.entropy = Policy.entropy( probabilities );
-		s.kl = approximateKL( t, t.oldLogProbability, mask, probabilities );
 		return s;
+	}
+
+	/** The value the critic is asked to predict: normalised when normalisation is on. */
+	public float valueTarget( Transition t ){
+		return normaliseValues && valueNorm.ready() ? valueNorm.normalize( t.returnValue )
+				: t.returnValue;
 	}
 
 	/** One sample's contribution to the reported figures. */
@@ -455,21 +609,22 @@ public float lastClipFraction;
 		boolean clipBinding;
 	}
 
-	/** The serial path: one minibatch on this thread. Returns what it produced. */
-	private Minibatch processMinibatch( int from, int to ){
+	/** The serial path: one minibatch of chunks on this thread. Returns what it produced. */
+	private Minibatch processMinibatch( List< List< Transition > > chunks, int from, int to ){
 		Minibatch result = new Minibatch();
 		float policyLoss = 0;
 		float valueLoss = 0;
 		float entropy = 0;
 		float kl = 0;
 		float clipped = 0;
+		int count = Math.max( 1, to - from );
 
 		network.zeroGrad();
 
 		for (int i = from; i < to; i++){
-			Transition t = buffer.get( i );
-			Stats s = oneSample( network, t, scratchGrid, slotProbs, targetProbs, actionProbs,
-					scratchGradSlot, scratchGradTarget, scratchGradAction );
+			List< Transition > chunk = chunks.get( i );
+			Stats s = oneChunk( network, chunk, scratchGrid, slotProbs, targetProbs, actionProbs,
+					scratchGradSlot, scratchGradTarget, scratchGradAction, chunkCaches, chunkLength );
 
 			policyLoss += s.policyLoss;
 			valueLoss += s.valueLoss;
@@ -478,16 +633,14 @@ public float lastClipFraction;
 			clipped += s.clipBinding ? 1 : 0;
 		}
 
-		int count = Math.max( 1, to - from );
-
 		network.scaleGradients( 1f / count );
 		float norm = network.clipGradients( network.gradClip );
 
-		result.policyLoss = policyLoss;
-		result.valueLoss = valueLoss;
-		result.entropy = entropy;
-		result.kl = kl;
-		result.clipped = clipped;
+		result.policyLoss = policyLoss / count;
+		result.valueLoss = valueLoss / count;
+		result.entropy = entropy / count;
+		result.kl = kl / count;
+		result.clipped = clipped / count;
 		result.gradNorm = norm;
 		if (norm > network.gradClip) result.gradClipped = 1;
 
@@ -502,14 +655,5 @@ public float lastClipFraction;
 		float ratio = (float) Math.exp( newLog - behaviourLogProbability );
 
 		return (ratio - 1f) - (float) Math.log( Math.max( ratio, 1e-8f ) );
-	}
-
-	private void shuffle( ArrayList<Transition> list ){
-		for (int i = list.size() - 1; i > 0; i--){
-			int j = rng.nextInt( i + 1 );
-			Transition tmp = list.get( i );
-			list.set( i, list.get( j ) );
-			list.set( j, tmp );
-		}
 	}
 }

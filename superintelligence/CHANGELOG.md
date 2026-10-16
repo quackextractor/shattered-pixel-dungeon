@@ -10,26 +10,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
-- **`REST` advanced no engine time, 323 times out of 326.** The rest turn is taken by `Hero.act`'s rest
-  branch, and the drain can return before the hero is picked again, so a rest moved nothing. It now
-  spends exactly `Actor.TICK` and hands control back; the hero is not left resting, because the game's
-  own rest branch never calls `ready()` and so cannot be left to the supervisor.
+- **The recurrent gradient was truncated at length one.** Every sampled step was backpropagated in
+  isolation with `dPrev` and `dCell` cleared, so no gradient crossed a timestep and `LSTM.W_hh`
+  received nothing at all for holding information forward - the whole point of a recurrent layer in a
+  partially observed grid game. The update now groups the batch into contiguous runs of up to
+  `rl.chunk_length` (16) steps and backpropagates each run in reverse without clearing between steps.
+  Measured on the gate's fixture: a two-step chunk's LSTM gradient differs from the sum of its steps'
+  by **63.7%**, and reverting the accumulation drops that to **0.00000**.
+- **The critic was asked to fit returns in the thousands.** Raw returns ran to -3000 for a stall and
+  +1800 for a descent, `valueLoss` measured 12,432-31,323, and the gradient that produced flowed into
+  the trunk the actor shares - where global clipping then squashed the policy's update. Value targets
+  are now normalised by a running scale (`rl.normalise_values`), the residual is clipped, and the loss
+  is Huber. A batch of -3000 and +1800 now normalises to at most 1.0.
+- **A stale recurrent state in the replay.** Each transition carried the state the *rollout* decided
+  under, and the update replayed it through weights that have moved since generation 0. A chunk now
+  replays its own forward pass in order, so the chain is the network's own.
+- **`REST` advanced no engine time, 323 times out of 326.** The rest turn is taken by the rest branch
+  of `Hero.act`, and the drain can return before the hero is picked again, so a rest moved nothing. It
+  now spends `Actor.TICK` through `spendAndNext`, which clears readiness, and hands control back rather
+  than leaving the hero resting, because that branch never calls `ready()`.
 - **A menu could be opened and cancelled for ever without the world moving.** `OPEN_INVENTORY`, `USE`
-  and `DROP` cost nothing and `CANCEL` is the only way out of two of them, so the pair is a loop that
-  advances no engine time at all - and every step of it is charged against `env.free_step_budget`, so
-  100% of episodes ended `STALLED` at turn ~120 of the 1500 granted. After a zero-time exit the next
-  `WORLD` mask refuses all three for exactly one step.
-- **A run recorded one episode in three, so "best per seed" meant best of whatever happened to be sent.*
-- **`replay-batch.ps1` reported `total 0` over a directory full of recordings.**
-- **`replay-batch.ps1 -Parallel N`.**
-- **Every update thread shared one `Network`.**
-- **`train.ps1 -Resume` had never worked, and the parser turned it into a stack trace.**
+  and `DROP` are the only entries into a sub-mode and all three cost nothing, and `CANCEL` is the only
+  way out of two of them, so the pair is a loop that advances no engine time at all - and every step of
+  it is charged against `env.free_step_budget`, so 100% of episodes ended `STALLED` at turn ~120 of
+  the 1500 granted. After a zero-time exit the next `WORLD` mask refuses all three for exactly one step.
 ### Added
 - **`Action.TALENT` and `EnvMode.TALENT`**, so a talent point can be spent headlessly. Spending was
-  UI-only (`TalentButton` -> `TalentsPane` -> `WndHero`), so `RewardTerm.TALENT_UPGRADE` - one of the
-  largest payouts in the reward function - could never fire, and the first point arrives at level 2.
-  `env.TalentPicker` enumerates what the game would offer, in the game's order.
+  UI-only (`TalentButton` -> `TalentsPane` -> `WndHero`), so `RewardTerm.TALENT_UPGRADE` - 400.0, one
+  of the largest payouts in the reward function - could never fire, and the first point arrives at
+  level 2. `env.TalentPicker` enumerates what the game would offer, in the game's order.
 - **`gradle :superintelligence:freeactioncheck`**, a gate, 7 cases, mutation-tested both ways.
+- **`gradle :superintelligence:bpttcheck`**, a gate, 7 cases. Its first case is constructed so the
+  answer is forced: the loss sits on the second step only, so the sum of the isolated steps is exactly
+  the isolated gradient of the second. Comparing two gradient *norms* was tried first and was measured
+  to let the mutation through.
+- **A `.env` file is read by the module.** It sits between the properties file and the process
+  environment, which is where the documentation has always said it sits; it used to sit nowhere, so a
+  developer who skipped the shell one-liner ran with settings they did not believe they were using.
+- **Twenty-six settings that were Java literals.** Worker JVM heap and GC pause, the pipe and weight
+  push chunk sizes, the episode tail length, the gradient clip and Adam's three constants, the value
+  loss weight and residual ceiling, the random-seed leak rate, the checkpoint and record intervals, and
+  the dialog aging step. `configcheck` is now 10 cases and 63 keys.
+- **`env.max_slots` is 96, the game's own ceiling.** It was 32, which silently truncated two thirds of
+  what the hero can carry; the truncation was invisible rather than refused, because the head is a
+  fixed-width window and everything past it simply was not in the observation. This widens the network's
+  input, so it invalidates checkpoints trained at 32.
 - **`--replay-group <id>`: a run's recordings are its own group, in the catalogue and on disk.**
 ### Fixed
 - **An item that creates a mob left it with no sprite, and killed the worker - now committed and gated.*
@@ -38,7 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A run's artefacts go to `superintelligence/out/run/`, not to the system temp directory.**
 - **`env.free_step_budget`** (`SPD_ENV_FREE_STEP_BUDGET`), **40**.
 - **`mobspritecheck` is a gate**, so `gates` is now 24 checks.
-- **`gates` is now 26 checks**, and `README.md`'s "twenty-four" was already one behind.
+- **`gates` is now 27 checks**, and `README.md`'s "twenty-four" was already one behind.
+- **`Protocol.VERSION` is 4.** The transition frame carries the episode id and step index, and the
+  params frame carries the tail length; a version-3 pair would read the episode id as an action index,
+  which is a plausible action on every step and so trains on noise rather than throwing.
+- **`.env.example` was describing pre-rescaling values** - `depth_reward` 25 against the compiled
+  1800, `turn_cost` 0.002 against 1.0, `death_penalty` 100 against 2500, `max_slots` 32 against 96 -
+  so copying it configured a run the module does not run. Every value now matches the compiled default.
 ### Measured, after the free-action fixes
 - `stallbreakdown`, 40 episodes, uniform policy, fixed seed per episode, defaults unchanged:
 

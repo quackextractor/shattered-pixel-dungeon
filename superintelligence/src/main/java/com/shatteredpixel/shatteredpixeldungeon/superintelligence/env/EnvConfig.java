@@ -12,8 +12,15 @@ import java.io.IOException;
  */
 public class EnvConfig {
 
-	/** Inventory slots the slot head covers. Backpack capacity is 20 plus one per bag. */
-	public int maxSlots = 32;
+	/**
+	 * Inventory slots the slot head covers.
+	 *
+	 * <p>96 is the game's own ceiling: a 20-slot backpack plus four 19-slot bags. It was 32, which
+	 * silently truncated a third of what the hero can carry - and the truncation was invisible rather
+	 * than refused, because the head is a fixed-width window over the bags and everything past the
+	 * window simply was not in the observation.
+	 */
+	public int maxSlots = 96;
 
 	/** Board size fed to the CNN. Covers the widest floors plus the hero's 8-tile view radius. */
 	public int gridWidth = 48;
@@ -290,6 +297,17 @@ public class EnvConfig {
 	public boolean persistSaves = false;
 
 	/**
+	 * How far an open dialog is aged per environment step, in the game's own seconds.
+	 *
+	 * <p>The gate is the game's: {@code Chasm}'s "jump?" prompt refuses to act until its own
+	 * {@code elapsed} counter passes 0.2 s, and that counter is advanced by {@code PixelScene.update},
+	 * which only a rendered frame loop calls. The environment ages a parked dialog once per step, which is
+	 * once per frame - the same approximation {@code ReplayPlayer} already makes - so the price is the
+	 * game's own, and the answer takes about twelve steps.
+	 */
+	public float dialogAgeSeconds = 0.2f;
+
+	/**
 	 * Writes every field this class owns, for shipping the configuration to a worker process.
 	 *
 	 * <p>This exists because two hand-maintained lists - {@code Trainer.writeParams} and
@@ -327,6 +345,7 @@ public class EnvConfig {
 		out.writeFloat( stallPenalty );
 		out.writeFloat( turnLimitPenalty );
 		out.writeFloat( victoryReward );
+		out.writeFloat( dialogAgeSeconds );
 		out.writeBoolean( honourVisionBuffs );
 		out.writeBoolean( mimicsVisibleOutOfFog );
 		out.writeBoolean( allowEquipping );
@@ -363,6 +382,7 @@ public class EnvConfig {
 		stallPenalty = in.readFloat();
 		turnLimitPenalty = in.readFloat();
 		victoryReward = in.readFloat();
+		dialogAgeSeconds = in.readFloat();
 		honourVisionBuffs = in.readBoolean();
 		mimicsVisibleOutOfFog = in.readBoolean();
 		allowEquipping = in.readBoolean();
@@ -404,6 +424,7 @@ public class EnvConfig {
 		c.stallPenalty = stallPenalty;
 		c.turnLimitPenalty = turnLimitPenalty;
 		c.victoryReward = victoryReward;
+		c.dialogAgeSeconds = dialogAgeSeconds;
 		c.rewardProfile = rewardProfile;
 		c.persistSaves = persistSaves;
 		return c;

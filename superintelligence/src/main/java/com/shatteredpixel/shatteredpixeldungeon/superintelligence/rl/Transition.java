@@ -54,6 +54,22 @@ public class Transition {
 	/** Which head produced this step's decision; see Policy.HEAD_*. */
 	public int liveHead;
 
+	/**
+	 * Which episode this step came from, and its index within it.
+	 *
+	 * <p>The update backpropagates <em>contiguous</em> runs of steps, because a recurrent gradient
+	 * truncated at length one leaves {@code LSTM.W_hh} without any gradient for retaining information
+	 * across steps - and remembering where the stairs were is the whole point of the recurrent layer in a
+	 * partially observed grid game. Contiguity cannot be recovered from a shuffled buffer, so it travels
+	 * with the sample.
+	 *
+	 * <p>{@code -1} means "unknown", which is what a synthetic transition from a check carries. Unknown
+	 * steps are never treated as adjacent, so a buffer of them chunks into singletons and behaves exactly
+	 * as the old per-step path did rather than silently inventing a sequence.
+	 */
+	public int episodeId = -1;
+	public int stepIndex = -1;
+
 	public int actionIndex;
 	public int slotIndex;
 
@@ -112,6 +128,8 @@ public class Transition {
 		t.advantage = 0;
 		t.terminal = false;
 		t.liveHead = Policy.HEAD_ACTION;
+		t.episodeId = -1;
+		t.stepIndex = -1;
 		t.actionIndex = 0;
 		t.slotIndex = 0;
 		t.pooled = false;

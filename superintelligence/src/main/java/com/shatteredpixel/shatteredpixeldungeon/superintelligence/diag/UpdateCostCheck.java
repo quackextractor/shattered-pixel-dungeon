@@ -77,7 +77,7 @@ public class UpdateCostCheck {
 
 		java.util.Arrays.fill( headGrad, 0f );
 		headGrad[ 0 ] = 1f;
-		network.backward( headGrad, null, null, 1f, null );
+		network.backward( headGrad, null, null, 1f );
 	}
 
 	/**

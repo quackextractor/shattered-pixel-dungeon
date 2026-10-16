@@ -50,7 +50,8 @@ public final class TransitionCodec {
 
 		return grid
 				+ 4L * (inventory + hero + ActionCount.size + config.maxSlots + TargetCount.value)
-				+ 4L * 3
+				+ 4L * 5
+				+ 4L * 2
 				+ 3L * 4
 				+ 1L;
 	}
@@ -90,6 +91,8 @@ public final class TransitionCodec {
 			writeFloats( out, t.targetMask );
 
 			out.writeInt( t.liveHead );
+			out.writeInt( t.episodeId );
+			out.writeInt( t.stepIndex );
 			out.writeInt( t.actionIndex );
 			out.writeInt( t.slotIndex );
 
@@ -174,6 +177,8 @@ public final class TransitionCodec {
 			readFloats( in, t.targetMask );
 
 			t.liveHead = in.readInt();
+			t.episodeId = in.readInt();
+			t.stepIndex = in.readInt();
 			t.actionIndex = in.readInt();
 			t.slotIndex = in.readInt();
 

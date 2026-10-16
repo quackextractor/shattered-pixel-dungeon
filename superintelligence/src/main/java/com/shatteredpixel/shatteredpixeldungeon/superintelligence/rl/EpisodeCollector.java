@@ -54,6 +54,15 @@ public class EpisodeCollector {
 	 */
 	public static final int TAIL_STEPS = 20;
 
+	/** Overridden from l.tail_steps, which is what the configuration layer reaches. */
+	public int tailSteps = TAIL_STEPS;
+
+	/** Sets the tail length, and returns this collector so a construction site reads as one expression. */
+	public EpisodeCollector tailSteps( int steps ){
+		this.tailSteps = steps;
+		return this;
+	}
+
 	/** Ceiling on retained observations for one episode, ~98 MB at the current observation size. */
 	public static final int DEFAULT_MAX_SAMPLED = 2048;
 
@@ -140,6 +149,9 @@ public class EpisodeCollector {
 
 	private final EpisodeRecord record = new EpisodeRecord();
 
+	/** Episode counter, stamped onto every retained step so the trainer can regroup a shuffled batch. */
+	private int episodes;
+
 	/**
 	 * The last {@link #TAIL_STEPS} steps' transitions, held speculatively.
 	 *
@@ -193,6 +205,7 @@ public class EpisodeCollector {
 
 		env.reset( seed, heroClass );
 		network.resetState();
+		record.episode( ++episodes );
 
 		if (listener != null){
 			listener.onEpisodeStart( env.seedText(), heroClass.name() );
@@ -231,7 +244,7 @@ public class EpisodeCollector {
 			if (wantsByDraw( stepIndex )) record.retain( stepIndex, snapshot );
 
 			tail.addLast( new Tail( stepIndex, snapshot ) );
-			while (tail.size() > TAIL_STEPS){
+			while (tail.size() > tailSteps ){
 				Transition dropped = tail.removeFirst().transition;
 				if (!record.isRetained( dropped )) dropped.release();
 			}

@@ -290,7 +290,7 @@ if (++guard > config.actorStepLimit){
 
 			if (WindowBridge.open()){
 
-				WindowBridge.age();
+				WindowBridge.age( config );
 				mode = EnvMode.MENU;
 				break;
 			}
@@ -337,7 +337,7 @@ if (++guard > config.actorStepLimit){
 			refreshMasksAfterDrain();
 
 			if (WindowBridge.open()){
-				WindowBridge.age();
+				WindowBridge.age( config );
 				mode = EnvMode.MENU;
 			}
 			break;

@@ -201,6 +201,7 @@ cliTask('transitioncheck', 'Fails if descending ends the episode, or is worth no
   cliTask('dialogcheck', 'Fails if an answer cannot reach a dialog the game opened.')
 cliTask('statecheck', 'Fails if a sampled observation does not replay to the value the rollout saw.')
 cliTask('freeactioncheck', 'Fails if a free action can be repeated forever, or a talent point cannot be spent.')
+cliTask('bpttcheck', 'Fails if the recurrent gradient does not cross a timestep, or the critic is asked for thousands.')
 cliTask('updatecost', 'Measures what a PPO update costs and projects it across sample rates.')
 
 cliTask('gaecheck', 'Fails if the two advantage implementations disagree, or sampling misbehaves.')
@@ -237,7 +238,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 tasks.register('gates') {
     dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck', 'transitioncheck', 'fallcheck', 'dialogcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
-		'observecheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck', 'freeactioncheck'
+		'observecheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck', 'freeactioncheck', 'bpttcheck'
     group = 'verification'
     description = 'Runs every correctness gate in one invocation.'
     doLast { println "all gates passed" }

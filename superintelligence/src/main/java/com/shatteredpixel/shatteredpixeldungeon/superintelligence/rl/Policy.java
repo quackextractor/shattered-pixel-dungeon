@@ -143,10 +143,40 @@ public class Policy {
 		return predicted - target;
 	}
 
+	/**
+	 * The same residual, bounded.
+	 *
+	 * <p>A terminal penalty of -3000 is a legitimate target and is one of the few samples in a batch that
+	 * say anything about dying. Squared, its gradient is two orders of magnitude above every other
+	 * sample's, and after the trunk is shared with the actor that is what global clipping then squashes
+	 * everything else to fit. Clipping the residual keeps the sample's direction and caps its magnitude,
+	 * which is the property the loss needs - a sample that is far from the target should pull harder, but
+	 * not without limit.
+	 */
+	public static float valueGradient( float predicted, float target, float maxResidual ){
+		float delta = predicted - target;
+		if (maxResidual > 0f) return Math.max( -maxResidual, Math.min( maxResidual, delta ));
+		return delta;
+	}
+
 	/** Squared TD error, logged so the critic's convergence is visible. */
 	public static float valueLoss( float predicted, float target ){
 		float delta = predicted - target;
 		return 0.5f * delta * delta;
+	}
+
+	/**
+	 * TD error, Huber when {@code huber} is set.
+	 *
+	 * <p>Quadratic near zero and linear beyond one unit of normalised error, which is what keeps a batch
+	 * of returns spanning thousands from being dominated by whichever episode happened to end badly.
+	 */
+	public static float valueLoss( float predicted, float target, boolean huber ){
+		float delta = predicted - target;
+		if (!huber) return 0.5f * delta * delta;
+
+		float magnitude = Math.abs( delta );
+		return magnitude <= 1f ? 0.5f * delta * delta : magnitude - 0.5f;
 	}
 
 /**

@@ -113,6 +113,22 @@ public class Dense {
 		}
 	}
 
+	/**
+	 * Copies the pre-activation out, for a chunk's backward to restore it.
+	 *
+	 * The activation derivative is the only thing backward needs that the input argument does not
+	 * already carry, and a contiguous chunk backpropagates out of order, so a later step's forward would
+	 * otherwise overwrite it.
+	 */
+	public void savePreAct( float[] into ){
+		System.arraycopy( preAct.data, 0, into, 0, preAct.cols );
+	}
+
+	/** Restores what {@link #savePreAct} took. See it. */
+	public void loadPreAct( float[] from ){
+		System.arraycopy( from, 0, preAct.data, 0, preAct.cols );
+	}
+
 	public void zeroGrad(){
 		gW.fill( 0f );
 		gb.fill( 0f );

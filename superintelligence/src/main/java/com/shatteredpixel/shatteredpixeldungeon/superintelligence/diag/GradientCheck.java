@@ -115,7 +115,7 @@ public class GradientCheck {
 		loss(); 
 
 		network.zeroGrad();
-		network.backward( actionGradient(), slotGradient(), targetGradient(), VALUE_W, null );
+		network.backward( actionGradient(), slotGradient(), targetGradient(), VALUE_W );
 
 		String[] layers = { "conv", "trunk", "memory", "actionHead", "slotHead", "targetHead", "valueHead" };
 		Random picker = new Random( 0xC0FFEE );

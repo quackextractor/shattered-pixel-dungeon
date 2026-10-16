@@ -88,6 +88,7 @@ private EnvConfig config;
 		String traceWorld = in.readUTF();
 		float sampleRate = in.readFloat();
 		int maxSampledPerEpisode = in.readInt();
+		int tailSteps = in.readInt();
 
 		Random policyRng = new Random( in.readLong() );
 
@@ -98,6 +99,7 @@ private EnvConfig config;
 
 		collector = new EpisodeCollector( config, network, policyRng, new Random( policyRng.nextLong() ),
 				gamma, lambda, sampleRate, maxSampledPerEpisode );
+		collector.tailSteps( tailSteps );
 		if (traceWorld != null && !traceWorld.isEmpty()) collector.trace( traceWorld );
 		readWeights( in, network );
 

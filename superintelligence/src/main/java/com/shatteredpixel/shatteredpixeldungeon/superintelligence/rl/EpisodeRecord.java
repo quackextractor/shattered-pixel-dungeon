@@ -42,6 +42,9 @@ public class EpisodeRecord {
 	/** Value of the state the last step led to, so a truncated episode can bootstrap. */
 	private float finalValue;
 
+	/** Which episode the retained steps belong to, so the trainer can group them back into runs. */
+	private int episodeId = -1;
+
 	public int stepCount(){
 		return steps;
 	}
@@ -67,6 +70,21 @@ public class EpisodeRecord {
 	}
 
 	public float advantageAt( int i ){ return advantages[ i ]; }
+
+	/**
+	 * Stamps every retained step with the episode it belongs to and its index within it.
+	 *
+	 * <p>Set once, before collection starts, because the whole point is that the trainer can regroup a
+	 * shuffled batch into contiguous runs. A worker that stamped nothing would leave every step
+	 * "unknown", which chunks into singletons - correct, but the length-one gradient this replaced.
+	 */
+	public void episode( int id ){
+		this.episodeId = id;
+		for (int i = 0; i < sampled.size(); i++){
+			sampled.get( i ).episodeId = id;
+			sampled.get( i ).stepIndex = sampledSteps[ i ];
+		}
+	}
 
 	/**
 	 * Appends one step's scalars.
@@ -133,6 +151,8 @@ public class EpisodeRecord {
 			t.advantage = advantages[ step ];
 			t.returnValue = returns[ step ];
 			t.liveHead = liveHead[ step ];
+			t.episodeId = episodeId;
+			t.stepIndex = step;
 			t.actionIndex = actionIndex[ step ];
 			t.slotIndex = slotIndex[ step ];
 			t.oldLogProbability = oldLogProbability[ step ];
@@ -149,6 +169,7 @@ public class EpisodeRecord {
 		for (Transition t : sampled) t.release();
 		sampled.clear();
 		steps = 0;
+		episodeId = -1;
 	}
 
 	/** Grows every per-step array together, so the GAE pass can index them in lockstep. */

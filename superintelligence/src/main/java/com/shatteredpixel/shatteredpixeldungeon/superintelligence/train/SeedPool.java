@@ -75,18 +75,24 @@ public class SeedPool {
 	public String next(){
 		if (locked.isEmpty()) return "";
 
-		if (activeSeeds >= locked.size() && rng.nextFloat() < RANDOM_FRACTION){
+		if (activeSeeds >= locked.size() && rng.nextFloat() < randomFraction){
 			return "";
 		}
-		if (rng.nextFloat() < RANDOM_FRACTION){
+		if (rng.nextFloat() < randomFraction){
 
 			return "";
 		}
 		return locked.get( rng.nextInt( activeSeeds ) );
 	}
 
-	/** Fraction of rollouts that use a fully random seed regardless of phase. */
-	private static final float RANDOM_FRACTION = 0.1f;
+	/**
+	 * Fraction of rollouts that use a fully random seed regardless of phase.
+	 *
+	 * <p>Exposed because it is what makes two runs of one configuration comparable, and they otherwise
+	 * are not: three repeats of one config and one fixed seed put {@code bestScore} 1,595 points apart
+	 * and {@code bestDepth} on 1 or 2 at chance. Zero is a real setting rather than "off".
+	 */
+	public float randomFraction = 0.10f;
 
 	/** Every seed currently locked, for diagnostics. */
 	public java.util.List<String> seeds(){

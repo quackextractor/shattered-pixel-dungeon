@@ -37,8 +37,13 @@ public final class Protocol {
 	 *
 	 * <p>3 added the reward profile to the params frame. A version-2 worker would read that UTF as the
 	 * sampling float that now follows it, which is the same silent desync rather than a loud failure.
+	 *
+	 * <p>4 added the sequence metadata - episode id and step index - to the transition frame, so the
+	 * trainer can group a shuffled batch back into contiguous runs and backpropagate through time. A
+	 * version-3 trainer reading a version-4 frame would read the episode id as the action index, which
+	 * is a plausible action on every step and so trains a policy on noise rather than throwing.
 	 */
-	public static final int VERSION = 3;
+	public static final int VERSION = 4;
 
 	public static final int MSG_HELLO = 1;
 	/** Config, hyperparameters and the current weights. Acknowledged. */

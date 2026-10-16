@@ -67,11 +67,22 @@ public class WindowBridge {
 	 * <p>Uniform rather than special-cased for the chasm. Every dialog the game parks is aged the same
 	 * way, and the ones with no timing guard simply accrue a counter nothing reads.
 	 */
-	public static void age(){
+	public static void age( EnvConfig config ){
 		Window w = window();
 		if (w == null) return;
+		ageSeconds = (config == null) ? 0.2f : config.dialogAgeSeconds;
 		w.update();
 	}
+
+	/**
+	 * How far the last aged dialog was advanced, for a caller that has to mirror the gate.
+	 *
+	 * <p>The gate is the game's: {@code Chasm} declines to act until its own {@code elapsed} counter
+	 * passes a fifth of a second, and only {@code PixelScene.update} moves that counter. The environment
+	 * ages a parked dialog once per step, which is once per frame - the same approximation
+	 * {@code ReplayPlayer} already makes - so the price of an answer is the game's own.
+	 */
+	public static float ageSeconds = 0.2f;
 
 	/** Number of selectable options, or 0 when the window is not a WndOptions. */
 	public static int optionCount(){

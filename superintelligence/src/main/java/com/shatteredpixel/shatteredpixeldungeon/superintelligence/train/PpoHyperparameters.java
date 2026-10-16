@@ -106,6 +106,82 @@ public class PpoHyperparameters {
 	public long stallSeconds = 180;
 
 	/**
+	 * Consecutive steps per backpropagated run.
+	 *
+	 * <p>One is a length-one truncation: no gradient crosses a timestep and {@code LSTM.W_hh} learns
+	 * nothing the trunk could not. Sixteen is about the span an advantage is supported over
+	 * ({@code 1/(1-gamma*lambda)} is 17 at the defaults), so it is the smallest run that carries the
+	 * signal the advantage is computed from.
+	 */
+	public int chunkLength = 16;
+
+	/**
+	 * Steps at the end of every episode that are retained whatever the sample rate says.
+	 *
+	 * <p>The death penalty and the depth reward each land on a single step, and under uniform sampling
+	 * that step survives with probability equal to the sample rate - so most episodes would contribute no
+	 * terminal signal at all.
+	 */
+	public int tailSteps = 20;
+
+	/** Whether the critic is asked for a normalised return rather than the raw one. */
+	public boolean normaliseValues = true;
+
+	/** How much of each generation's return scale replaces what is already believed. */
+	public float valueNormMomentum = 0.01f;
+
+	/** Weight of the value loss relative to the policy's. */
+	public float valueLossCoefficient = 0.5f;
+
+	/** Ceiling on one sample's value residual, so a terminal outlier cannot dominate a minibatch. */
+	public float valueGradientClip = 10f;
+
+	/** Whether the value loss is Huber rather than squared. */
+	public boolean huberValues = true;
+
+	/** Global gradient norm ceiling, applied before every Adam step. */
+	public float maxGradNorm = 0.5f;
+
+	/** Adam's first moment decay. */
+	public float adamBeta1 = 0.9f;
+
+	/** Adam's second moment decay. */
+	public float adamBeta2 = 0.999f;
+
+	/** Adam's denominator offset, which is what keeps it finite at zero gradient. */
+	public float adamEps = 1e-8f;
+
+	/**
+	 * Fraction of episodes handed a random seed even when one was asked for.
+	 *
+	 * <p>Zero is a real setting and not "off": it is what makes two runs of one configuration comparable,
+	 * which they otherwise are not - three repeats of one config and one fixed seed put {@code bestScore}
+	 * 1,595 points apart and {@code bestDepth} on 1 or 2 at chance.
+	 */
+	public double randomSeedRate = 0.10;
+
+	/** Generations between checkpoints. */
+	public int checkpointEvery = 25;
+
+	/** Episodes between recordings. One keeps every episode. */
+	public int recordEvery = 1;
+
+	/** Pipe buffer requested per worker, against the OS default of 4 KB on Windows. */
+	public int pipeBufferBytes = 1024 * 1024;
+
+	/** Bytes per write when pushing weights, under the 4 KB system buffer a Windows pipe really has. */
+	public int pushChunkBytes = 32 * 1024;
+
+	/** Worker JVM initial heap, as the JVM spells it. */
+	public String workerHeapMin = "256m";
+
+	/** Worker JVM maximum heap, as the JVM spells it. */
+	public String workerHeapMax = "1536m";
+
+	/** Worker JVM GC pause target, in milliseconds. */
+	public int workerGcPauseMs = 200;
+
+	/**
 	 * Rejects values that would make the update meaningless or the process unstable.
 	 *
 	 * <p>Called once, after every source has been merged, rather than at each assignment. A value that
@@ -129,6 +205,29 @@ public class PpoHyperparameters {
 		require( maxSamplesPerGeneration >= 1,
 				"rl.max_samples_per_generation must be at least 1, was " + maxSamplesPerGeneration );
 		require( stallSeconds > 0, "rl.stall_seconds must be positive, was " + stallSeconds );
+		require( chunkLength >= 1, "rl.chunk_length must be at least 1, was " + chunkLength );
+		require( tailSteps >= 0, "rl.tail_steps must be zero or more, was " + tailSteps );
+		require( valueNormMomentum >= 0f && valueNormMomentum <= 1f,
+				"rl.value_norm_momentum must be in [0, 1], was " + valueNormMomentum );
+		require( valueLossCoefficient >= 0f,
+				"rl.value_loss_coefficient must be non-negative, was " + valueLossCoefficient );
+		require( valueGradientClip > 0f,
+				"rl.value_gradient_clip must be positive, was " + valueGradientClip );
+		require( maxGradNorm > 0f, "rl.max_grad_norm must be positive, was " + maxGradNorm );
+		require( adamBeta1 >= 0f && adamBeta1 < 1f,
+				"rl.adam_beta1 must be in [0, 1), was " + adamBeta1 );
+		require( adamBeta2 >= 0f && adamBeta2 < 1f,
+				"rl.adam_beta2 must be in [0, 1), was " + adamBeta2 );
+		require( adamEps > 0f, "rl.adam_eps must be positive, was " + adamEps );
+		require( randomSeedRate >= 0.0 && randomSeedRate <= 1.0,
+				"train.random_seed_rate must be in [0, 1], was " + randomSeedRate );
+		require( checkpointEvery >= 1, "train.checkpoint_every must be at least 1, was " + checkpointEvery );
+		require( recordEvery >= 1, "train.record_every must be at least 1, was " + recordEvery );
+		require( pipeBufferBytes > 0, "ipc.pipe_buffer_bytes must be positive, was " + pipeBufferBytes );
+		require( pushChunkBytes > 0, "ipc.push_chunk_bytes must be positive, was " + pushChunkBytes );
+		require( workerGcPauseMs > 0, "worker.gc_pause_ms must be positive, was " + workerGcPauseMs );
+		require( !workerHeapMin.isBlank(), "worker.heap_min must not be blank" );
+		require( !workerHeapMax.isBlank(), "worker.heap_max must not be blank" );
 	}
 
 	private static void require( boolean condition, String message ){
@@ -151,6 +250,25 @@ public class PpoHyperparameters {
 		p.maxSampledPerEpisode = maxSampledPerEpisode;
 		p.maxSamplesPerGeneration = maxSamplesPerGeneration;
 		p.stallSeconds = stallSeconds;
+		p.chunkLength = chunkLength;
+		p.tailSteps = tailSteps;
+		p.normaliseValues = normaliseValues;
+		p.valueNormMomentum = valueNormMomentum;
+		p.valueLossCoefficient = valueLossCoefficient;
+		p.valueGradientClip = valueGradientClip;
+		p.huberValues = huberValues;
+		p.maxGradNorm = maxGradNorm;
+		p.adamBeta1 = adamBeta1;
+		p.adamBeta2 = adamBeta2;
+		p.adamEps = adamEps;
+		p.randomSeedRate = randomSeedRate;
+		p.checkpointEvery = checkpointEvery;
+		p.recordEvery = recordEvery;
+		p.pipeBufferBytes = pipeBufferBytes;
+		p.pushChunkBytes = pushChunkBytes;
+		p.workerHeapMin = workerHeapMin;
+		p.workerHeapMax = workerHeapMax;
+		p.workerGcPauseMs = workerGcPauseMs;
 		return p;
 	}
 }

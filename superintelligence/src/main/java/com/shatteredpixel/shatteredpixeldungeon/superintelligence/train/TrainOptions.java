@@ -125,6 +125,12 @@ public class TrainOptions {
 	 */
 	public int recordEvery = 1;
 
+	/** Whether {@code --record-every} was typed, as against taking the configured default. */
+	public boolean recordEverySet = false;
+
+	/** Whether {@code --checkpoint-every} was typed. See {@link #recordEverySet}. */
+	public boolean checkpointEverySet = false;
+
 	/** A group id this module is willing to turn into a directory name and a section heading. Empty is one. */
 	public static boolean validGroup( String group ){
 		if (group == null || group.isEmpty()) return true;

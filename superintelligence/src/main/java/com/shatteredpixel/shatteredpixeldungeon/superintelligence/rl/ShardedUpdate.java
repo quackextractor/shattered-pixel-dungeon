@@ -116,7 +116,7 @@ final class ShardedUpdate {
 	 * <p>Scales and clips before returning, exactly where the serial path does, so that the number
 	 * reported is the norm of the gradient that was actually applied.
 	 */
-	PPO.Minibatch run( int from, int to ){
+	PPO.Minibatch run( List< List< Transition > > chunks, int from, int to ){
 		int count = to - from;
 
 		int n = Math.min( ppo.threads, count );
@@ -126,7 +126,8 @@ final class ShardedUpdate {
 
 		network().zeroGrad();
 
-		while (shards.size() < n) shards.add( new Shard( ppo.config, new Random( 1L + shards.size() )) );
+		while (shards.size() < n) shards.add( new Shard( ppo.config, new Random( 1L + shards.size() ),
+				ppo.chunkLength ));
 
 		float[] policy = new float[ n ];
 		float[] value = new float[ n ];
@@ -147,9 +148,9 @@ final class ShardedUpdate {
 
 				float p = 0, v = 0, e = 0, k = 0, c = 0;
 				for (int i = lo; i < hi; i++){
-					PPO.Stats s2 = ppo.oneSample( w.network, ppo.buffer().get( i ), w.grid,
+					PPO.Stats s2 = ppo.oneChunk( w.network, chunks.get( i ), w.grid,
 							w.slotProbs, w.targetProbs, w.actionProbs,
-							w.slotGrad, w.targetGrad, w.actionGrad );
+							w.slotGrad, w.targetGrad, w.actionGrad, w.caches, w.maxChunk );
 					p += s2.policyLoss;
 					v += s2.valueLoss;
 					e += s2.entropy;
@@ -218,8 +219,10 @@ final class ShardedUpdate {
 		final float[] slotGrad;
 		final float[] targetGrad;
 		final float[] actionGrad;
+		final StepCache[] caches;
+		final int maxChunk;
 
-		Shard( EnvConfig config, Random rng ){
+		Shard( EnvConfig config, Random rng, int maxChunk ){
 			this.network = new Network( config, rng );
 			this.grid = new float[ network.gridLength() ];
 			this.slotProbs = new float[ network.slotCount() ];
@@ -228,6 +231,9 @@ final class ShardedUpdate {
 			this.slotGrad = new float[ network.slotCount() ];
 			this.targetGrad = new float[ network.targetCount() ];
 			this.actionGrad = new float[ network.actionCount() ];
+			this.maxChunk = Math.max( 1, maxChunk );
+			this.caches = new StepCache[ this.maxChunk ];
+			for (int i = 0; i < this.maxChunk; i++) this.caches[ i ] = network.takeCache();
 		}
 	}
 }

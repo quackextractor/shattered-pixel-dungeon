@@ -127,6 +127,47 @@ this.h = new Tensor( 1, size );
 		h.copyFrom( other );
 	}
 
+	/**
+	 * Floats {@link #saveCache} writes, in the order it writes them.
+	 *
+	 * Everything backward needs that is not passed in: the gate pre-activations, the two carried
+	 * states this step started from, the cell state it produced, and the concatenated {@code [x | h]}
+	 * it formed the gates from.
+	 */
+	public int cacheLength(){
+		return preAct.cols + hPrev.cols + cPrev.cols + c.cols + scratch.cols;
+	}
+
+	/** Copies the step's backward state out. See {@link #cacheLength()}. */
+	public void saveCache( float[] into ){
+		int at = 0;
+		at = copy( preAct.data, into, at );
+		at = copy( hPrev.data, into, at );
+		at = copy( cPrev.data, into, at );
+		at = copy( c.data, into, at );
+		copy( scratch.data, into, at );
+	}
+
+	/** Restores what {@link #saveCache} took. See it. */
+	public void loadCache( float[] from ){
+		int at = 0;
+		at = load( preAct.data, from, at );
+		at = load( hPrev.data, from, at );
+		at = load( cPrev.data, from, at );
+		at = load( c.data, from, at );
+		load( scratch.data, from, at );
+	}
+
+	private static int copy( float[] src, float[] dst, int at ){
+		System.arraycopy( src, 0, dst, at, src.length );
+		return at + src.length;
+	}
+
+	private static int load( float[] dst, float[] src, int at ){
+		System.arraycopy( src, at, dst, 0, dst.length );
+		return at + dst.length;
+	}
+
 /** out = LSTM(x, h_prev, c_prev). Advances the carried state. */
 	public void forward( Tensor x, Tensor out ){
 
