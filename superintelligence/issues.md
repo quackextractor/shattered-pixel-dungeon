@@ -190,6 +190,39 @@ The fifth fall case is `issues.md` 16's question asked directly: the same seed, 
     **What is not broken, and is worth being precise about:** traps still fire when a hero *walks* onto
 ---
 18. `rolloutcheck` fails about one run in thirty, and the recording it made verifies on the next
+
+    **Re-measured 2026-10-16: the rate and the signature both moved.** Eight consecutive runs of
+    `rolloutcheck` alone, `--rerun-tasks` each time:
+
+    ```
+    run 1 ok    run 2 ok    run 3 ok    run 4 FAILED    run 5 ok    run 6 ok    run 7 ok    run 8 ok
+
+          a recording made from a random-seed episode does not verify: position: replayed 135, recorded 103 at step 54
+          verification covered 55 of 60 steps; a short match is not a reproduction
+    ```
+
+    Three things are worth stating precisely.
+
+    - **It is `checkRandomSeedRecordingVerifies`, and not one of the four cases added to this gate
+      since.** `checkAnAbsentSeedFlagIsAccepted` also runs a random-seed episode but only asserts that
+      steps came back, so it cannot fail on a divergence. The failing case is the original one.
+    - **The divergence is on position, not on engine time.** `issues.md` 26 and 37 are both a
+      one-turn or one-point deficit; this is the hero at a different **cell** from step 54 of 60, so
+      the world itself differs rather than the accounting for it. That makes it a different fault from
+      37 even though both are "a recording the trainer wrote does not replay".
+    - **1 in 8 is not 1 in 30, and 8 runs cannot tell the two apart** - the 95% interval on one
+      failure in eight runs runs from about 1 in 25 to 1 in 3. What can be said is that the original
+      figure was measured on a gate that ran one random-seed episode and this one runs two, so the
+      exposure is at least double.
+
+    **This makes `gates` itself flaky**, which is a cost the fix has to weigh and this entry now
+    records. A gate that goes red for a real reason beats one that hides it, and `rolloutcheck` was
+    kept inside `gates` on that basis; but a red `verifyall` a ninth of the time trains people to
+    re-run it, and a re-run that comes back green is the exact habit this repository's gates exist to
+    break. **Until this is diagnosed a green `gates` is a claim about the run it just did, not about
+    the next one.**
+
+    The original entry follows, kept for the A/B against the base tree and for what was ruled out.
     Found while closing 17, and unrelated to it. `rolloutcheck` is in `gates`, and `gates` failed on one
     ```
     **It is not caused by the change that was in flight.** A/B'd against the base tree, the same

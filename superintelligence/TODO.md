@@ -151,6 +151,14 @@ heads".
       works, but there is no action that spends the point. `rewardcheck` proves it pays.
       **Closed**: `Action.TALENT` and `EnvMode.TALENT` reach `Hero.upgradeTalent`, and
       `freeactioncheck` drives the whole path through `SPDEnv.step`. See section 8.
+- [ ] **`issues.md` 18** is now the one gate that makes `gates` flaky, and it moved when it was
+      re-measured: **1 failure in 8 runs** rather than 1 in 30, and the divergence is **on
+      position** - the hero at a different cell from step 54 of 60 - rather than on engine time.
+      It is the original random-seed case, not one of the four added since, though the gate now runs
+      two random-seed episodes rather than one. A red `verifyall` a ninth of the time trains people
+      to re-run it, and a re-run that comes back green is what these gates exist to break. **This
+      is the highest-value open fault in the module**: it is a recording the trainer wrote that does
+      not replay, which is also what `issues.md` 37 is, and `37` is deterministic.
 - [ ] **`issues.md` 26**, the viewer spending 1 HP the recording does not contain. Cells are
       the one channel the viewer does not record, so the damage source is still unlocated.
 - [ ] **`issues.md` 28**, the policy push. Made chunked and retried, and **now gated** -

@@ -217,6 +217,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so copying it configured a run the module does not run. Every value now matches the compiled default.
 
 ### Measured
+- **`rolloutcheck` is flaky, and re-measuring it moved both the rate and the signature.**
+  Eight consecutive runs: **1 failure in 8**, against the 1-in-30 this entry recorded before. The
+  failing case is the original random-seed one, not one of the four added since, and the divergence
+  is **on position** - the hero at a different cell from step 54 of 60 - where `issues.md` 26 and 37
+  are both one-turn or one-point deficits. `checkAnAbsentSeedFlagIsAccepted` also runs a random-seed
+  episode but only asserts steps came back, so it cannot fail this way; the exposure is nonetheless
+  at least double what it was, because the gate now runs two random-seed episodes rather than one.
+  **This makes `gates` itself flaky**, which is recorded rather than smoothed over: a red `verifyall`
+  a ninth of the time trains people to re-run it, and a re-run that comes back green is what these
+  gates exist to break. Until it is diagnosed a green `gates` is a claim about the run it just did.
+  Eight runs cannot separate 1-in-8 from 1-in-30 anyway - the interval runs from 1 in 25 to 1 in 3.
 - **The 30-generation run `TODO.md` 1 has asked for since the beginning.** 8 workers x 4 episodes,
   4 update threads, seed 20261016, `train.random_seed_rate=0`, every other default unchanged,
   12 min 41 s, **and it completes** - past the generation ~22 where `issues.md` 28's policy push

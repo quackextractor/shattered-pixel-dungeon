@@ -1779,7 +1779,7 @@ public abstract class Mob extends Char {
 
 			//gravitate pos sets a preferred location for allies to be closer to
 			if (gravitatePos == -1) {
-				Collections.shuffle(candidatePositions);
+				Random.shuffle(candidatePositions);
 			} else {
 				Collections.sort(candidatePositions, new Comparator<Integer>() {
 					@Override
