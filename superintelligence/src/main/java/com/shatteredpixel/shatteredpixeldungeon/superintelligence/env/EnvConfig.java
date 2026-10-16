@@ -56,6 +56,9 @@ public class EnvConfig {
 	public boolean subModeProgressOnly = true;
 
 
+	public boolean recordRngFingerprint = true;
+
+
 	public float curriculumProgress = 0f;
 
 
@@ -218,6 +221,7 @@ public class EnvConfig {
 		out.writeBoolean( allowTrading );
 		out.writeBoolean( allowAlchemy );
 		out.writeBoolean( subModeProgressOnly );
+		out.writeBoolean( recordRngFingerprint );
 		out.writeBoolean( persistSaves );
 
 		out.writeUTF( rewardProfile.key() );
@@ -275,6 +279,7 @@ public class EnvConfig {
 		allowTrading = in.readBoolean();
 		allowAlchemy = in.readBoolean();
 		subModeProgressOnly = in.readBoolean();
+		recordRngFingerprint = in.readBoolean();
 		persistSaves = in.readBoolean();
 		rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
 				.parse( in.readUTF() );
@@ -297,6 +302,7 @@ public class EnvConfig {
 		c.allowTrading = allowTrading;
 		c.allowAlchemy = allowAlchemy;
 		c.subModeProgressOnly = subModeProgressOnly;
+		c.recordRngFingerprint = recordRngFingerprint;
 		c.curriculumProgress = curriculumProgress;
 		c.turnCost = turnCost;
 		c.depthReward = depthReward;

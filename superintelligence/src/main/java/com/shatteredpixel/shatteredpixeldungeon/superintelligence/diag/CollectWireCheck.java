@@ -49,6 +49,8 @@ public final class CollectWireCheck {
 		s.heroHp = 17;
 		s.turn = 42.5f;
 		s.inventory = "Food:1,Waterskin:2";
+		s.baseDraws = 918273L;
+		s.baseFingerprint = 0x0123456789ABCDEFL;
 		sample.steps.add( s );
 
 		Replay back;
@@ -95,6 +97,14 @@ public final class CollectWireCheck {
 		if (!s.quickslots.equals( r.quickslots )){
 			fail( "quickslot bindings did not survive the wire: '" + s.quickslots + "' -> '"
 					+ r.quickslots + "'. A recorded slot index means nothing without them." );
+			return;
+		}
+		if (r.baseDraws != s.baseDraws || r.baseFingerprint != s.baseFingerprint ){
+			fail( "the RNG fingerprint did not survive the wire: " + s.baseDraws + "/"
+					+ s.baseFingerprint + " -> " + r.baseDraws + "/" + r.baseFingerprint
+					+ ". ReplayIO.verify skips the comparison on a negative count, so a lost field"
+					+ " means a recording that diverged for want of one draw reports nothing about the"
+					+ " stream." );
 			return;
 		}
 		if (back.maxSlots != sample.maxSlots || back.allowEquipping != sample.allowEquipping ){
@@ -147,11 +157,12 @@ public final class CollectWireCheck {
 			return;
 		}
 
-		int noHp = 0, noTurn = 0;
+		int noHp = 0, noTurn = 0, noRng = 0;
 		Set< String > inventories = new LinkedHashSet<>();
 		for (Replay.Step step : recorded.steps){
 			if (step.heroHp < 0) noHp++;
 			if (step.turn < 0) noTurn++;
+			if (step.baseDraws < 0) noRng++;
 			inventories.add( step.inventory );
 		}
 
@@ -165,6 +176,12 @@ public final class CollectWireCheck {
 		if (noTurn == n ){
 			fail( n + " of " + n + " recorded steps carry no engine time, so a run one turn adrift"
 					+ " would verify clean." );
+			return;
+		}
+		if (noRng == n ){
+			fail( n + " of " + n + " recorded steps carry no RNG draw count, so the recording says"
+					+ " nothing about whether the two sides had consumed the same randomness - which is"
+					+ " the question issues.md 18 and 37 both turn on." );
 			return;
 		}
 
@@ -181,6 +198,7 @@ public final class CollectWireCheck {
 		}
 
 		System.out.println( "  worker wire carries every step field over " + n + " recorded steps;"
-				+ " " + inventories.size() + " distinct inventories, hp and turn on every step" );
+				+ " " + inventories.size() + " distinct inventories, hp, turn and the RNG draw count"
+				+ " on every step" );
 	}
 }

@@ -382,4 +382,10 @@ public class WorldSnapshot {
 		s.lines.addAll( Files.readAllLines( path, StandardCharsets.UTF_8 ) );
 		return s;
 	}
+
+	public static WorldSnapshot capture( int stepIndex, String phase, boolean includeCells ){
+		WorldSnapshot snapshot = new WorldSnapshot().cells( includeCells );
+		snapshot.dungeonSeed( Dungeon.seed );
+		return snapshot.sample( phase, stepIndex );
+	}
 }

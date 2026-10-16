@@ -10,7 +10,7 @@ public final class ReplayCodec {
 
 	private ReplayCodec() {}
 
-	public static final int VERSION = 3;
+	public static final int VERSION = 4;
 
 	public static final int LEGACY_4_FIELD_VERSION = 1;
 
@@ -40,6 +40,8 @@ public final class ReplayCodec {
 			out.writeInt( step.heroHp );
 			out.writeFloat( step.turn );
 			out.writeUTF( step.inventory );
+			out.writeLong( step.baseDraws );
+			out.writeLong( step.baseFingerprint );
 		}
 	}
 
@@ -89,6 +91,8 @@ public final class ReplayCodec {
 			step.heroHp = in.readInt();
 			step.turn = in.readFloat();
 			step.inventory = in.readUTF();
+			step.baseDraws = in.readLong();
+			step.baseFingerprint = in.readLong();
 			replay.steps.add( step );
 		}
 		replay.declaredSteps = declared;

@@ -14,8 +14,9 @@ import java.util.List;
 
 public class ReplayRecorder {
 
-	private final Replay replay = new Replay();
+private final Replay replay = new Replay();
 	private boolean recording;
+	private boolean rngFingerprint;
 
 	public ReplayRecorder() {}
 
@@ -36,7 +37,18 @@ public class ReplayRecorder {
 			replay.maxSlots = config.maxSlots;
 			replay.allowEquipping = config.allowEquipping;
 			replay.rewardProfile = config.rewardProfile;
+			rngFingerprint = config.recordRngFingerprint;
+		} else {
+			rngFingerprint = false;
 		}
+
+		if (rngFingerprint ){
+			com.watabou.utils.RandomTrace.reset();
+			com.watabou.utils.RandomTrace.enable();
+		} else {
+			com.watabou.utils.RandomTrace.disable();
+		}
+
 		recording = true;
 	}
 
@@ -62,6 +74,11 @@ public class ReplayRecorder {
 		step.heroHp = Dungeon.hero.HP;
 		step.turn = Actor.now();
 		step.inventory = inventoryOf();
+
+		if (rngFingerprint ){
+			step.baseDraws = com.watabou.utils.RandomTrace.baseDraws();
+			step.baseFingerprint = com.watabou.utils.RandomTrace.baseFingerprint();
+		}
 	}
 
 

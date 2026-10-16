@@ -195,7 +195,7 @@ public class ReplayPlayer {
 		if (worldPath != null && !worldPath.trim().isEmpty()){
 			worldTracePath = worldPath;
 			worldSnapshot = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot()
-					.cells( false );
+					.cells( true );
 		} else {
 			worldTracePath = null;
 			worldSnapshot = null;
@@ -219,7 +219,7 @@ public class ReplayPlayer {
 	private boolean rngTraceArmed = false;
 
 	/**
-	 * Per-frame record of the world, and per-step alongside it.
+	 * Per-frame record of the world, and per-step alongside it, including the cells.
 	 *
 	 * <p>Off unless {@code -Dspd.worldTrace} names a file. It exists because {@link #rngTrace} and the
 	 * viewer trace are both keyed to a settled step, so neither can see a turn taken on a frame that

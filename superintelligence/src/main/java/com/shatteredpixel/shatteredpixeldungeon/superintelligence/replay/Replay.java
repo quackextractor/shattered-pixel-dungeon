@@ -6,7 +6,7 @@ public class Replay {
 
 	public static final String MAGIC = "SPD-REPLAY";
 
-	public static final int VERSION = 3;
+	public static final int VERSION = 4;
 
 	public String seedText = "";
 	public String heroClass = "WARRIOR";
@@ -55,6 +55,10 @@ public class Replay {
 
 		public String inventory = "";
 
+		public long baseDraws = -1;
+
+		public long baseFingerprint = 0;
+
 		public Step( String action, int slot, String mode, int heroPos, double reward ){
 			this.action = action;
 			this.slot = slot;
@@ -83,6 +87,14 @@ public class Replay {
 	}
 
 	public boolean stepFieldsDropped = false;
+
+	public boolean recordsRngFingerprint(){
+		if (steps.isEmpty()) return false;
+		for (Step step : steps){
+			if (step.baseDraws >= 0) return true;
+		}
+		return false;
+	}
 
 	public boolean recordsQuickslots(){
 		if (steps.isEmpty()) return quickslotsRecorded;

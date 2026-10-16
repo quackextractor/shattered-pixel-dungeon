@@ -16,7 +16,7 @@ import java.util.List;
 
 public class VerifyCheck {
 
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 9;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -34,6 +34,7 @@ public class VerifyCheck {
 		checkARecordingThatCannotResolveItsSlotsIsNotVerified( good );
 		checkAHeroWithNothingBoundIsNotRefused( good );
 		checkAWatchableRecordingIsNotRefused( good );
+		checkAnAlteredDrawCountIsCaughtAndNamed( good );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     verification detects divergence: " + CHECKS + " checks passed" );
@@ -52,7 +53,7 @@ public class VerifyCheck {
 		env.reset( "VERIFYCHECK-A", HeroClass.WARRIOR );
 
 		ReplayRecorder recorder = new ReplayRecorder();
-		recorder.begin( "VERIFYCHECK-A", "WARRIOR", 0, 200 );
+		recorder.begin( "VERIFYCHECK-A", "WARRIOR", 0, 200, config );
 		Replay replay = recorder.replay();
 
 		int[] slot = new int[ 1 ];
@@ -109,6 +110,52 @@ public class VerifyCheck {
 		checkAlterationIsCaught( source, "inventory",
 				step -> { if (!step.inventory.isEmpty()) step.inventory = step.inventory + ",Ghost:1"; } );
 	}
+
+	private static void checkAnAlteredDrawCountIsCaughtAndNamed( Replay source ){
+		String where = "an altered RNG draw count is caught and named";
+
+		if (!source.recordsRngFingerprint()){
+			fail( where, "the fixture recorded no draw counts, so there is nothing to alter and the"
+					+ " case proved nothing. env.record_rng_fingerprint has to be on for a recording to"
+					+ " say anything about the stream." );
+			return;
+		}
+
+		Replay copy = copyOf( source );
+		int altered = -1;
+		for (int i = 0; i < copy.steps.size() - 1; i++){
+			if (copy.steps.get( i ).baseDraws >= 0){
+				copy.steps.get( i ).baseDraws += 3;
+				altered = i;
+				break;
+			}
+		}
+
+		if (altered < 0){
+			fail( where, "no step carries a draw count" );
+			return;
+		}
+
+		ReplayIO.Verification result = verify( copy );
+
+		if (result.passed()){
+			fail( where, "a recording whose draw count disagrees with its own replay by three"
+					+ " verified clean. The comparison is skipped, so a stream divergence reports"
+					+ " nothing more specific than whatever field happened to move first." );
+			return;
+		}
+		if (!result.divergence.contains( "baseDraws" )){
+			fail( where, "the divergence reported was '" + result.divergence + "' at step "
+					+ result.divergedAt + ", and it does not name the draw count. A report that says"
+					+ " only where the two sides parted does not say whether they had already parted in"
+					+ " the generator." );
+			return;
+		}
+
+		System.out.println( "  an altered draw count is caught at step " + result.divergedAt
+				+ " and named: " + result.divergence );
+	}
+
 
 	private static void checkARecordingThatCannotResolveItsSlotsIsNotVerified( Replay source ){
 		String where = "a recording that cannot resolve its slots is refused";
@@ -255,8 +302,10 @@ public class VerifyCheck {
 			s.quickslots = step.quickslots;
 			s.heroHp = step.heroHp;
 			s.turn = step.turn;
-			s.inventory = step.inventory;
-			copy.steps.add( s );
+s.inventory = step.inventory;
+		s.baseDraws = step.baseDraws;
+		s.baseFingerprint = step.baseFingerprint;
+		copy.steps.add( s );
 		}
 		return copy;
 	}

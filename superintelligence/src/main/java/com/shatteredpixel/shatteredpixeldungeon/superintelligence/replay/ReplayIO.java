@@ -81,6 +81,12 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				out.write( Float.toString( step.turn ));
 				out.write( ' ' );
 				out.write( step.inventory );
+
+				out.write( ' ' );
+				out.write( Long.toString( step.baseDraws ));
+
+				out.write( ' ' );
+				out.write( Long.toString( step.baseFingerprint ));
 				out.newLine();
 			}
 		}
@@ -118,6 +124,8 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			if (parts.length > 6) step.heroHp = Integer.parseInt( parts[ 6 ] );
 			if (parts.length > 7) step.turn = Float.parseFloat( parts[ 7 ] );
 			if (parts.length > 8) step.inventory = parts[ 8 ];
+			if (parts.length > 9) step.baseDraws = Long.parseLong( parts[ 9 ] );
+			if (parts.length > 10) step.baseFingerprint = Long.parseLong( parts[ 10 ] );
 			replay.steps.add( step );
 		}
 
@@ -287,6 +295,14 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		env.reset( replay.seedText, heroClass );
 		if (observer != null) observer.onReset();
 
+		boolean traceStream = replay.recordsRngFingerprint();
+		if (traceStream ){
+			com.watabou.utils.RandomTrace.reset();
+			com.watabou.utils.RandomTrace.enable();
+		} else {
+			com.watabou.utils.RandomTrace.disable();
+		}
+
 		boolean wireDroppedFields = replay.wireDroppedStepFields();
 
 		for (int i = 0; i < replay.steps.size(); i++){
@@ -305,6 +321,19 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 
 			env.step( action, step.slot );
 			result.stepsVerified++;
+
+			String rng = StepRngAssertion.checkRngParity( i, step.baseDraws,
+					com.watabou.utils.RandomTrace.baseDraws() );
+			if (rng == null ){
+				rng = StepRngAssertion.checkFingerprintParity( i, step.baseDraws,
+						step.baseFingerprint, com.watabou.utils.RandomTrace.baseFingerprint() );
+			}
+			if (rng != null ){
+				result.diverged = true;
+				result.divergedAt = i;
+				result.divergence = rng;
+				break;
+			}
 
 			if (step.heroPos >= 0 && env.heroPosition() != step.heroPos ){
 				result.diverged = true;
