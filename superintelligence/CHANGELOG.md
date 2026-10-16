@@ -9,7 +9,154 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- **Sampling no longer defeats the recurrent chunk it is supposed to feed.**
+  `EpisodeCollector` drew an independent 5% Bernoulli sample per step while `PPO.update` groups
+  samples into contiguous runs of `rl.chunk_length` and resets the recurrent state at a gap. At
+  p = 0.05 two adjacent steps survive with probability 0.0025 and a 16-step chunk with 0.05^16, so
+  outside the 20-step tail every sampled step was backpropagated as a chunk of one and `LSTM.W_hh`
+  learned nothing across a timestep. `rl.ContiguousChunkSampler` now draws a block start at
+  `rate / chunkLength` and retains `chunkLength` consecutive steps per draw. Measured by
+  `samplercheck`: **1,113 retained steps group into 70 contiguous runs, longest 16, no interior
+  gaps**, over 20,000 steps. The retained fraction converges on `rate / (1 + rate)` and can never
+  exceed the rate, which the gate asserts as a band rather than a tolerance. The collector's chunk
+  length travels with the params frame — **`Protocol.VERSION` is 5** — so a trainer and its workers
+  cannot disagree about it.
+- **`gradcheck` no longer fails a parameter whose gradient is below the noise floor.** The noise
+  band is the measured disagreement between two step sizes, and a gradient whose magnitude is
+  smaller than that band cannot be judged by relative error at all. The band now also carries an
+  absolute floor, `8 x |loss| x 2^-23 / step`, which is the error a central difference inherits
+  from a float32 loss. Measured: **128 parameters across 8 layers, 48 within 0.02, 80 in the noise
+  band**. Removing the `tanh` derivative still fails 13 entries at relative errors of 0.24 to 1.50.
+- **A resumed run replays generation 0's seed sequence.** `Checkpoint` restored the generation, the
+  Adam moments and the optimiser step count; `SeedPool` was built fresh from the trainer seed, so
+  the second half of a run replayed the first half's seeds. A draw is now a pure function of
+  `(schedule seed, draw index)` — the pool is filled from one derived seed and each draw seeds a
+  local generator from the other mixed with its own index — and a checkpoint carries four more
+  fields: the pool seed, the schedule seed, the draws made and the pool size. **`Checkpoint.FORMAT`
+  is 2**, so a checkpoint written before this is refused by name rather than half-read. Gated by
+  `seedcheck`, 5 cases.
+- **`.env.example` described a run the module does not run.** `SPD_RL_UPDATE_THREADS=4` against a
+  compiled default of 1, and seven `env.*` keys missing entirely. `configcheck` now reads the
+  example file: every documented key must appear as an `SPD_` variable **and** every value in it
+  must match the compiled default.
+- **`replayprobe` did not work.** It is registered through `cliTask`, which prepends the task name
+  and relies on `Main` knowing it, and `Main` had no case for it — the task printed the usage and
+  exited non-zero.
+- **`README.md` could not be read as text.** Two control bytes (0x08 and 0x00) sat where backticked
+  names should have been, so `grep` treated the file as binary, the pre-commit hook's badge check
+  skipped it and reported *"Binary file ... matches"* without fixing anything, and the surrounding
+  prose read `l.chunk_length`, `pttcheck`, `alueLoss` and `eward.stair_potential_weight` with
+  their first characters gone.
+- **`ENGINE-CHANGES.md` §7 and this changelog were wrong about `Mob.holdAllies`.**
+  `Random.shuffle(candidatePositions)` is what the tree has, and it landed in commit `b4f717992`,
+  whose message is about `rolloutcheck`. Both documents recorded the change as applied and
+  uncommitted. `review.md` §3 asks for it to be committed; it already was.
+
 ### Added
+- **A second, strided convolution between the grid and the dense trunk.** The trunk's input was the
+  12,696 features the first convolution produced, flattened, so **3.25M of a 3.58M-parameter
+  network sat in one matrix** and every parallel update reduced 14.3 MB per thread per minibatch to
+  add them up. `Network` now runs a 32-filter stride-2 convolution over the first one's output,
+  taking the trunk's grid input to **3,200** features. Measured by `updatecost`: **1,403,316
+  parameters**, forward 4.95 ms, forward+backward 11.07 ms per sample. `StepCache` carries both
+  convolutions' pre-activations, so a chunked backward pass uses each step's own ReLU mask rather
+  than the last one computed.
+- **`env.sub_mode_progress_only`.** `USE` and `OPEN_INVENTORY` were offered whenever the hero
+  carried anything whose default action was not drop or throw, and an equip toggle satisfies that
+  test while spending no engine time at all. A hero whose backpack held one unequipped weapon could
+  reach the sub-mode, toggle, leave and do it again, every step charged against
+  `env.free_step_budget`. Measured on 40 uniform-policy episodes at fixed seeds, same code, only
+  the flag differing: **ended `STALLED` 14 of 40 → 2 of 40**, `deepestDepth` 1 → 2. `DROP` is
+  untouched and setting the key false restores the previous mask exactly. `stallcausecheck` proves
+  both halves: `FREE_STEP` is reachable with the loose mask and unreachable with the shipped one.
+- **The alchemy pot is reachable headlessly, and `CRAFTED` and `CRAFTED_MEAT_PIE` fire.** The
+  blocker had been recorded as "brewing is `AlchemyScene.craftItem`, which needs a renderer" — true
+  of the scene, false of the outcome. Everything `craftItem` does to the *world* is detach the
+  ingredients, spend the pot's energy, brew, collect or drop the result, bump
+  `Statistics.itemsCrafted` and restore the quantity; the rest is emitters, a sound, a save and a
+  widget refresh. `env.AlchemyAction` does exactly that over the game's own `Recipe.findRecipes` and
+  `Recipe.cost`. `Action.ALCHEMY` and `EnvMode.ALCHEMY` expose it: the world mask offers the pot
+  only when the hero is adjacent to it and something is brewable, and the slot head enumerates the
+  recipes in the game's own order. `CRAFTED` is diffed off `Statistics.itemsCrafted` like `KILL`
+  and `SNEAK_ATTACK`; `CRAFTED_MEAT_PIE` is noted by the pot itself, because the game has no
+  counter for a meat pie and there is no state to diff. Measured by `modecheck` on a fixture that
+  turns a cell beside the hero into a pot and gives it a `Pasty`, a plain `Food` and a
+  `MysteryMeat`: **energy 20 → 14, CRAFTED paid 25.0, CRAFTED_MEAT_PIE paid 100.0**.
+  `Action.size()` is 19, so a checkpoint trained before this does not load into it.
+- **A recording says how much randomness each step consumed.** `Replay.Step` carries `baseDraws`
+  and `baseFingerprint` from `RandomTrace`, under `env.record_rng_fingerprint` (default on: one
+  increment and two multiply-xors inside a record call every draw path already makes).
+  **`Replay.VERSION` is 4** and **`ReplayCodec.VERSION` is 4**. `ReplayIO.verify` compares them
+  first, before position, and names the step and the delta; a second check catches a stream that
+  re-converged on the count. A recording written before this carries -1 and is not compared, so the
+  committed corpus still verifies.
+- **The viewer records cells.** `ReplayPlayer` built its `WorldSnapshot` with `.cells(false)`, so a
+  rendered trace carried no terrain, trap, plant, heap, transition, fog, visited-set or
+  line-of-sight record. `replay.ViewerWorldSnapshotBuilder` owns the decision now. Measured on
+  `duelist-death-last.replay`: **1,003 cell records per step on both sides, 0 differing at steps
+  93, 94, 95 and 96** — so `issues.md` 26's extra 1 HP is neither the terrain nor a trap, a plant,
+  a heap, a transition, the fog, the visited set nor a mob. Evidence in `out/evidence/issue-26/`.
+- **Forty-seven reward weights and curriculum bounds are settings rather than Java literals.**
+  `reward.curse_removed_reward` 1.5, `reward.equip_too_strong_penalty` -2.0,
+  `reward.identified_reward` 0.5, `reward.curse_equipped_penalty`, `reward.cured_debuff_reward`,
+  `reward.eaten_early_penalty`, `reward.menu_noop_penalty`, `reward.level_up_reward`,
+  `reward.strength_gain_reward`, `reward.gold_lost_factor`, the four `reward.item_value_*`,
+  `reward.boss_slain_factor`, `reward.max_hp_gain_cap`, `reward.curriculum_fade_start_depth` 3,
+  `reward.curriculum_fade_end_depth` 10, `reward.craft_reward`, `reward.craft_meat_pie_reward`,
+  `trainer.push_retries`, and the boolean `env.sub_mode_progress_only` and
+  `env.record_rng_fingerprint`. Every value is unchanged; what changed is that a run can be told
+  what they are and a config file can change them.
+- **Three gates, all in `gates`:**
+  - `samplercheck`, 7 cases. Contiguous block sampling that hits the rate, a tail retained whatever
+    the rate, a cap honoured exactly, 0 and 1 as real settings, the trunk downsampled, and a
+    collector that keeps whole blocks at 16 while one built at 1 keeps none.
+  - `seedcheck`, 5 cases. A draw is a function of its index, the same seed draws the same sequence,
+    two trainer seeds differ, a resumed pool continues the interrupted sequence, and a checkpoint's
+    `Meta` carries the schedule.
+  - `doccheck`, 3 cases. No markdown under the module carries a control byte, every gate is
+    reachable either through `Main`'s dispatch or a `mainClass` of its own and every `cliTask` has a
+    case in `Main`, and `README.md`'s gate count matches the `gates` task.
+
+### Changed
+- **`gates` is 33 checks and `verifyall` is 34**, from 30 and 31. `configcheck` is 14 cases and 86
+  keys. `verifycheck` is 9. `collectcheck`'s wire case carries the RNG fingerprint and requires it
+  on every recorded step.
+- **The module carries no comments at all.** The post-commit hook has stripped `//` since it was
+  installed; 18 block and javadoc comments across 15 files, the GPL header copied into
+  `replay/WorldSnapshot.java`, and every `//` in `build.gradle` are now gone as well — **1,086 lines
+  removed, 10 added**. Game files under `:core` and `:SPD-classes` keep their licence headers:
+  those are upstream's legal notice rather than this module's prose.
+- **`README.md` says one thing about depth.** It carried "Nothing has reached depth 2" beside
+  "`bestDepth 2` in 9 of 30 generations" beside "the first depth-2 run in this project's history".
+  It now says depth 2 is reached, that three repeats of one identical config put `bestDepth` at 2, 1
+  and 2, and that `bestDepth` on its own is a coin flip.
+- **`README.md`'s "Known approximation" is about what it is actually truncated on.** It said the
+  recurrent gradient is truncated at length one while the status table two screens above said it is
+  not. It now states the window: `rl.chunk_length` steps against an advantage support of
+  `1/(1-gamma*lambda) ≈ 17`, plus the fixed-width observation window and the state-diffing reward.
+- **`README.md`'s stale counts corrected against the code:** `configcheck` 14 cases and 87 keys (was
+  11/64 in one place and 10/63 in another), `rewardcheck` 29 (was 13), the properties file 87 keys
+  (was 35), `reward.kill_reward` 150.0 and `reward.sneak_attack_reward` 300.0 (were 12.0 and 22.0).
+
+### Not done
+- **`rolloutcheck` is still the one flaky gate, re-measured at 1 in 8 with the new comparison and unchanged.**"n"n  Seven of eight consecutive runs green, so recording `baseDraws` has not made it flakier. The one"n  failure now reports `rng baseDraws diverged at step 57: replayed 290, recorded 298 (delta -8)`"n  instead of a different cell at step 54, because `ReplayIO.verify` checks the stream first. That is"n  a direction and not a diagnosis: the count is cumulative and says nothing about which call site made"n  the extra draws. `issues.md` 18 records it.
+
+- **The eleven sound-pitch draws stay on `Random`.** Ten of them, counted; the eleventh is a
+  `Random.oneOf` over sound ids and not a pitch. One line each, and moving them changes how many
+  values a footstep consumes, which invalidates all twenty committed recordings — including
+  `duelist-death-last.replay`, the fixture `issues.md` 26 is diagnosed against. They are symmetric
+  across both environments, so they cannot separate them and cannot cause a divergence. See
+  `REJECTED.md`.
+- **`MENU_NOOP` stays unwired**, for the reason already measured rather than a new one: every
+  sub-mode action either advances the engine clock or leaves the sub-mode, and `modecheck` now
+  covers all seven modes and the claim still holds.
+- **The observation grid is still a fixed 48x48 window**, so 419 of 1,040 measured floors are
+  clipped on at least one axis. Ego-centring it is an encoder change that invalidates every
+  checkpoint and belongs with the next measurement.
+
+### Not proposed for commit, and measured anyway
+- Nothing. `Mob.holdAllies` was the only such entry and it is committed — see Fixed.
 - **A dense signal for the objective: potential-based shaping towards this floor's stairs.**
   `gamma*Phi(s') - Phi(s)` with `Phi` the negative breadth-first distance to the exit,
   `reward.stair_potential_weight` 2.0. Floor 1 is several hundred walkable tiles and a random walk

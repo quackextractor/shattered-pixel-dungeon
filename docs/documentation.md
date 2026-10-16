@@ -36,7 +36,7 @@ scored by a configurable reward function, with the best run per seed recorded an
 
 **Nothing has won a run, and nothing has reached floor 5.** The machinery is correct - the network's
 gradients check against central differences, the environment is reproducible across processes,
-recordings replay exactly, and every one of the thirty gates is green - and the reward function now
+recordings replay exactly, and every one of the thirty-three gates is green - and the reward function now
 asks for the right thing. **The 30-generation measurement is done and it does not clear the noise
 floor:** `meanScore` moved **+1.6 points** between the first and last fifteen generations against a
 per-generation standard deviation of **98 to 138**. `bestDepth 2` appeared in **9 of 30** generations.
@@ -276,7 +276,7 @@ from `KILL`'s "declared, plumbed and never emitted". `TODO.md` §2 is the missin
 
 ## Gates
 
-thirty gates, one invocation:
+thirty-three gates, one invocation:
 
 ```sh
 ./gradlew :superintelligence:gates
@@ -306,11 +306,14 @@ thirty gates, one invocation:
 | `slotcheck` | A recorded slot index resolving to a different item, or a restore wiping a binding no index can name |
 | `verifycheck` | Verification that cannot detect an altered recording, **or** verification that certifies one that cannot be played |
 | `observecheck` | Reading the world drawing from the gameplay RNG, **or** a draw path the RNG trace cannot see |
-| `configcheck` | A configuration binder that ignores its input |
+| `configcheck` | A configuration binder that ignores its input, **or** an example file that names a different value from the compiled default |
 | `paritycheck` | A recording that will not replay exactly, across seeds in one process |
 | `freeactioncheck` | A rest that spends no engine time, or a menu loop that can be repeated with the world standing still |
 | `bpttcheck` | A recurrent gradient that never crosses a timestep, or a critic asked for returns in the thousands |
 | `curriculumcheck` | A shaping fade that is written and wired but inert, or a `shaping=` column that reports a constant |
+| `samplercheck` | Sampling that shatters the recurrent chunk, or a grid flattened straight into the dense trunk |
+| `seedcheck` | A resumed run that replays generation 0's seed sequence from the top |
+| `doccheck` | Documentation that is unreadable as text, a gate that is not reachable, or a gate count that disagrees with the list |
 | `stallcausecheck` | A stall guard that is unreachable or that reports the wrong guard |
 | `pushcheck` | A policy push written in one call rather than chunked, retried, and refused by name |
 | `javaclint` | Any compiler warning at all, under `-Xlint:all -Werror` |

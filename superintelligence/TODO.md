@@ -16,23 +16,31 @@ magnitude smaller than the noise.
 different configuration and is 6 to 8 times too tight for this one.** Any change has to clear ~100
 points over fifteen generations to mean anything. `bestDepth` on its own is not evidence either way.
 
+- [ ] **Re-measure, and this is the first run that can.** Four things the 30-generation run lacked
+      are now in: the recurrent chunk is actually reached (`samplercheck` measures 1,113 retained
+      steps in 70 contiguous runs of up to 16 rather than 70 singletons), the trunk is 2.55x smaller,
+      sub-mode entry is masked unless the hero has something to use (`STALLED` 14 of 40 -> 2 of 40),
+      and the alchemy pot is reachable with two of `docs.md`'s terms paying. **None of them has been
+      measured on a training run, and the claim that the objective now moves is untested.**
 - [ ] Close `issues.md` 37 and 18 together. Both are "a recording the trainer wrote does not replay",
-      both are in the recording path, and `18` is the one that makes `gates` flaky. Nothing else in
-      this file can be judged until a green `gates` means the same thing twice.
+      and both now carry the evidence that would locate one: every step records `baseDraws` and
+      `baseFingerprint`, and `verify` names the step and the delta before it compares anything else.
+      Neither is diagnosed, and `18` is still the one that makes `gates` flaky.
 - [ ] Confirm the free-step budget is now the binding constraint rather than `stallLimit`. It was
-      chosen from a 10-generation run and the guard behind it has never been re-measured.
-- [ ] Once 18 and 37 are closed, re-measure. The run above is the first one long enough to say
-      anything, and it says the objective is not moving.
+      chosen from a 10-generation run, and the mask underneath it has changed.
 
 ## 2. Reward signals
 
-- [ ] **`CRAFTED`, `CRAFTED_MEAT_PIE` and `MENU_NOOP` have no emission site**, for measured reasons:
-      brewing is `AlchemyScene.craftItem`, which needs a renderer, and `rewardcheck` measures that
-      every sub-mode action either advances the clock or leaves the mode. The gate on the second is a
-      gate on the *absence*, so it goes red the day a no-op exists.
-- [ ] **Three reward terms have weights that are Java literals** - `CURSE_REMOVED` 1.50,
-      `EQUIP_TOO_STRONG` -2.00 and the rest of the family - where every other weight is a key in
-      `superintelligence.properties`. `configcheck` would hold them the moment they are.
+- [x] **`CRAFTED` and `CRAFTED_MEAT_PIE` have emission sites.** `env.AlchemyAction` brews over the
+      game's own `Recipe.findRecipes` and `Action.ALCHEMY` reaches it, so `AlchemyScene` and its
+      renderer are not on the path. Measured: a meat pie is brewed with energy 20 -> 14,
+      `CRAFTED` 25.0 and `CRAFTED_MEAT_PIE` 100.0.
+- [x] **The weights that were Java literals are settings.** Forty-seven of them, including
+      `CURSE_REMOVED` 1.50, `EQUIP_TOO_STRONG` -2.00 and the curriculum fade depths.
+      `configcheck` is 14 cases and 87 keys, and its new case reads `.env.example` as well.
+- [ ] **`MENU_NOOP` has no emission site**, for the reason already measured rather than a new one:
+      every sub-mode action either advances the clock or leaves the sub-mode, and `modecheck` now
+      covers all seven modes and the claim still holds.
 - [ ] **Terms that never fire in a run.** `KILL`, `GOLD_GAIN` and `ITEM_PICKUP` have never been
       observed paying in a run. `KILL` is wired and gated, so the question is whether an untrained
       policy ever gets there, not whether the term can move.
@@ -63,16 +71,19 @@ points over fifteen generations to mean anything. `bestDepth` on its own is not 
 
 ## 5. Open engine and harness faults
 
-- [ ] **`issues.md` 26**, the viewer spending 1 HP the recording does not contain. Cells are the one
-      channel the viewer does not record, so the damage source is still unlocated.
-- [ ] **`Mob.holdAllies` uses an unseeded `Collections.shuffle`.** One line, applied and measured,
-      and **uncommitted** because `instructions.md` §12.3 keeps engine logic changes out of a commit
-      until they are proposed. What it changes in a game is the gameplay RNG stream on any floor that
-      holds an ally.
-- [ ] **Sound pitch still draws from `Random`** at 11 sites. Symmetric across both environments, so
-      nothing separates them today. Worth moving on its own merits.
+- [ ] **`issues.md` 26**, the viewer spending 1 HP the recording does not contain. **Narrowed, not
+      closed.** `ReplayPlayer` records cells now, and all 1,003 of them are identical on both sides at
+      every step around the divergence, so it is neither the terrain, a trap, a plant, a heap, a
+      transition, the fog, the visited set nor a mob. Evidence in `out/evidence/issue-26/`.
 - [ ] **A native or ONNX runtime for the learner.** Not attempted, and the numbers say the learner
       is not yet the binding constraint. See `REJECTED.md`.
+- [ ] **The sound-pitch draws.** **Declined, not deferred** - ten sites, and moving them invalidates
+      every committed recording including the one `issues.md` 26 is diagnosed against. The reason and
+      the trigger are in `REJECTED.md`.
+
+`Mob.holdAllies` is closed: `Random.shuffle(candidatePositions)` is what the tree has and it landed
+in commit `b4f717992`. `ENGINE-CHANGES.md` §7 and `CHANGELOG.md` both recorded it as uncommitted and
+are corrected.
 
 ## 6. Stale references in the source documents
 

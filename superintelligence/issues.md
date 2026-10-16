@@ -5,7 +5,7 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
 
 | # | |
 | --- | --- |
-| 18 | `rolloutcheck` is the one flaky gate, and it moved when it was re-measured |
+| 18 | `rolloutcheck` is the one flaky gate. Re-measured twice: 1 in 8 both times, and the signature now names the RNG stream rather than a cell |
 | 20 | under `depth_only` the run converges on dying early rather than on descending |
 | 22 | with the ping-pong closed, nothing the policy does pays |
 | 26 | the viewer spends 1 HP on a step the recording does not |
@@ -40,6 +40,32 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
       failure in eight runs runs from about 1 in 25 to 1 in 3. What can be said is that the original
       figure was measured on a gate that ran one random-seed episode and this one runs two, so the
       exposure is at least double.
+
+    **Re-measured again once every step records its RNG draw count: the rate is unchanged and the
+    signature now names the stream.** Eight consecutive runs of `rolloutcheck` alone, `--rerun-tasks`
+    each time: **7 of 8 green**, the same 1-in-8 this entry recorded above, so the new comparison has
+    not made the gate flakier. The one failure reports:
+
+    ```
+    a recording made from a random-seed episode does not verify: rng baseDraws diverged at step 57:
+      replayed 290, recorded 298 (delta -8)
+    ```
+
+    and a second run gave `step 57: replayed 397, recorded 401 (delta -4)`. Both are the *same* case —
+    `checkRandomSeedRecordingVerifies` — and both are reported before any position, health, clock or
+    inventory comparison, because `ReplayIO.verify` now checks `baseDraws` first.
+
+    **What that buys is a direction.** A negative delta means the replay consumed **fewer** draws
+    than the recording did, by a multiple of four, at a step late in a sixty-step episode. The old
+    signature — a different cell at step 54 — said the world differed and nothing about which side
+    moved. This one says the two sides had already parted in the generator, and that the recording
+    drew more.
+
+    **What it does not do is diagnose it.** The count is cumulative and says nothing about which
+    call site made the extra draws; `RandomTrace.attribute()` answers that and is a separate tool.
+    The two deltas being multiples of four is suggestive and is not a conclusion — four and eight are
+    also what a single mob's `attackDelay`-sized decision costs, and this entry records
+    `issues.md` 33's own lesson that a turn-cost story is the shape of the last confident wrong answer.
 
     **This makes `gates` itself flaky**, which is a cost the fix has to weigh and this entry now
     records. A gate that goes red for a real reason beats one that hides it, and `rolloutcheck` was
@@ -174,16 +200,40 @@ step  action      headless hp   viewer hp
 ```
 **Each `USE/* SLOT` costs exactly 1 HP, and each `USE/* WORLD` costs none.** The viewer applies the
 **Not a speed artefact.** Measured identically at `spd.fast=800` (2600 frames) and at the gate's
-### Where the damage comes from is still open, and cells are the missing channel
-The damage leaves **no trace in the roster** - every mob's hp, state, energy and buffs is identical -
-**The viewer writes zero `cells` records.** `ReplayPlayer` constructs its `WorldSnapshot` with
+### Where the damage comes from: cells are no longer the missing channel
+
+`ReplayPlayer` built its `WorldSnapshot` with `.cells(false)`, so the rendered side carried no
+terrain, trap, plant, heap, transition, fog, visited-set or line-of-sight record. It records them now,
+and `replay.ViewerWorldSnapshotBuilder` owns the decision rather than the desktop module.
+
+Measured on `duelist-death-last.replay` with cells on both sides for the first time, comparing every
+cell record at each step around the divergence:
+
+```
+  step 93   headless 1003 cells, viewer 1003 cells, differing 0
+  step 94   headless 1003 cells, viewer 1003 cells, differing 0
+  step 95   headless 1003 cells, viewer 1003 cells, differing 0
+  step 96   headless 1003 cells, viewer 1003 cells, differing 0
+
+  roster at step 94 identical field for field: 3 Sleeping Rats, 2 Hunting Snakes
+  hero at step 94 differs only in turn=92.0 vs 91.0, ready, Haste 18.0 vs 19.0,
+                                Recharging 29.0 vs 30.0
+```
+
+So the extra 1 HP leaves **no trace in a cell and no trace in the roster**, and the hero's own buff
+set is identical on both sides. What remains is narrower than this entry said it was: whatever spends
+the hit is neither the terrain, a trap, a plant, a heap, a transition, the fog, the visited set nor
+a mob. The channel is exhausted rather than absent, which is a different place to stop from.
+
+Evidence: `out/evidence/issue-26/`, with the three commands to reproduce it in its `README.txt`.
+
 ### Why 20 of 20 recordings played clean until now
 **The corpus had no scroll to read.** The previous `duelist-death-last` used `USE` on food, a
 ### What is not established
 - **What deals the extra HP.** Not the scroll read, not its animation, not the RNG, not the engine
-  clock, not the speed - all five measured. The roster is identical, so it is not a mob. Cells are the
-- **A fix.** The one that looked obvious - the read animation - was implemented and makes no
-  difference, and was reverted.
+  clock, not the speed - all five measured. Not the roster, and now not the cells either: with
+  `ReplayPlayer` recording them, all 1,003 differ by nothing at every step around the divergence, and
+  the hero's own buff set is identical on both sides. Not established.
 - **A gate.** This is the ninth recording in this shape and `playbackcheck` passed it, because
   `ReplayPlayer` headless agrees with `verify` - the divergence needs the **renderer**, so only
 ### The two tools that were broken, and what fixing them bought
