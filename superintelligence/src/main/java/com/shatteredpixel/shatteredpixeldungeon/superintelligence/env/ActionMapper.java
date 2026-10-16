@@ -17,26 +17,10 @@ import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Turns an {@link Action} plus a slot or target index into a game action, and reports which
- * choices are legal.
- *
- * Nothing here goes through input handling. Movement is expressed as a cell and handed to
- * {@code Hero.handle}, which is what the game's own cell selector calls, so all of the game's
- * action resolution - attack versus loot versus unlock versus stairs - applies unchanged.
- *
- * Masking is how menus are handled: an illegal action gets a -inf logit, so no gradient can push
- * probability onto it and the policy cannot walk north while standing in a shop.
- */
+
 public class ActionMapper {
 
-	/**
-	 * Candidate aim cells, as offsets from the hero, with self first.
-	 *
-	 * Eight neighbours is enough because shots resolve against a Ballistica collision cell, and
-	 * anything further away has to be fired through one of these directions anyway. Keeping the
-	 * aiming head this small is what makes it cheap to learn.
-	 */
+
 	public static final int[][] TARGET_OFFSETS = {
 			{  0,  0 },
 			{  0, -1 },
@@ -60,23 +44,10 @@ public class ActionMapper {
 
 	private final EnvConfig config;
 
-	/** Fixed-length view of the hero's inventory, refreshed once per step. */
+
 	private final ArrayList<Item> slots = new ArrayList<>();
 
-	/**
-	 * Set when the last step left a sub-mode without advancing the engine clock, and consumed by the
-	 * next WORLD mask.
-	 *
-	 * {@code OPEN_INVENTORY}, {@code USE} and {@code DROP} are the only entries into a sub-mode, and all
-	 * three cost nothing: the hero does not act, so {@code Actor.now()} does not move and the step is
-	 * charged as a free step. Paired with {@code CANCEL} - the only way out of a sub-mode that also costs
-	 * nothing - the pair is a loop that advances no time at all, and an exploring policy falls into it
-	 * because both halves are offered.
-	 *
-	 * Refusing them for exactly one step after a zero-time exit is what closes it: the agent has to spend
-	 * one step that moves the world before it can open a menu again. Measured over 4,828 steps in 40
-	 * uniform-policy episodes, roughly 90% of all steps advanced no engine time at all.
-	 */
+
 	private boolean zeroTimeModeExit;
 
 	public ActionMapper( EnvConfig config ){
@@ -88,13 +59,7 @@ public class ActionMapper {
 		return Dungeon.hero;
 	}
 
-	/**
-	 * Rebuilds the fixed inventory view.
-	 *
-	 * Quickslot-assigned items take their bound slot, everything else fills from the front. The
-	 * mapping is stable within a step so the mask, the observation encoder and the agent's slot
-	 * index all agree on what "slot 3" means.
-	 */
+
 	public void refreshSlots(){
 		for (int i = 0; i < slots.size(); i++) slots.set( i, null );
 
@@ -113,17 +78,12 @@ public class ActionMapper {
 		return slots;
 	}
 
-	/**
-	 * Records that the step just taken left a sub-mode without advancing engine time.
-	 *
-	 * Called by {@link SPDEnv}, which is the only thing that can see both the mode it left and whether the
-	 * clock moved; the mapper only decides what to do about it.
-	 */
+
 	public void noteZeroTimeModeExit(){
 		zeroTimeModeExit = true;
 	}
 
-	/** Clears the pending refusal, so a new episode is not born with one. */
+
 	public void clearZeroTimeModeExit(){
 		zeroTimeModeExit = false;
 	}
@@ -132,10 +92,7 @@ public class ActionMapper {
 		return (index >= 0 && index < slots.size()) ? slots.get( index ) : null;
 	}
 
-	/**
-	 * @param mask output of {@link Action#size()} floats, 1 for legal and 0 for illegal.
-	 *             Reused across turns to keep rollout allocation flat.
-	 */
+
 	public void actionMask( EnvMode mode, float[] mask ){
 		for (int i = 0; i < mask.length; i++) mask[i] = 0f;
 
@@ -221,28 +178,21 @@ public class ActionMapper {
 		}
 	}
 
-	/** Target mask: index 0 is always available, the eight neighbours when on the map. */
+
 	public boolean targetMask( int index ){
 		if (index < 0 || index >= TARGET_COUNT) return false;
 		if (index == 0) return true;
 		return insideMap( targetCell( index ) );
 	}
 
-	/** Slot mask: 1 where a slot holds an item. */
+
 	public void slotMask( float[] mask ){
 		for (int i = 0; i < mask.length; i++){
 			mask[i] = (i < slots.size() && slots.get( i ) != null) ? 1f : 0f;
 		}
 	}
 
-	/**
-	 * Slot mask for whichever head is live in {@code mode}.
-	 *
-	 * The slot head names three different things depending on the mode: an inventory slot in
-	 * {@code SLOT}/{@code INVENTORY}, a dialog option in {@code MENU}, and a talent in {@code TALENT}.
-	 * Passing the mode in is what lets one head serve all three, which is the whole reason the heads are
-	 * not separate networks.
-	 */
+
 	public void slotMask( EnvMode mode, float[] mask ){
 		if (mode != EnvMode.TALENT){
 			slotMask( mask );
@@ -254,29 +204,12 @@ public class ActionMapper {
 		for (int i = 0; i < options.size() && i < mask.length; i++) mask[ i ] = 1f;
 	}
 
-	/** The talents the hero could spend a point on, as the head indices into them. */
+
 	public List<Talent> talentChoices(){
 		return TalentPicker.available( hero() );
 	}
 
-	/**
-	 * Applies a WORLD or TIME action.
-	 *
-	 * <p><b>Returns whether the environment accepted the action</b>, which {@link SPDEnv#step} reads to
-	 * decide whether to note {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm#INVALID_ACTION}.
-	 * It used to be documented as "needs a follow-up choice", and that description was load-bearing in
-	 * the wrong direction: {@code WAIT}, {@code REST} and {@code SEARCH} were doing exactly what they
-	 * were asked and still returned {@code false}.
-	 *
-	 * <p>That misclassification is not cosmetic. {@code WAIT} costs a turn, leaves the hero where he
-	 * was, and changes no HP — which is precisely what {@code SPDEnv}'s stall guard tests. So
-	 * {@code WAIT} × {@code stallLimit} was the cheapest route to a terminal episode, and the agent
-	 * found it: a 20-generation run ended 100% of its episodes by stalling. See
-	 * {@code PLAN-reward-signals.md}.
-	 *
-	 * <p>Follow-up is decided separately and unconditionally by the caller — {@code USE} and
-	 * {@code DROP} always move to {@link EnvMode#SLOT} — so nothing here needs to signal it.
-	 */
+
 	public boolean apply( Action action, int slotOrTarget ){
 		if (action == null) return false;
 		Hero hero = hero();
@@ -326,7 +259,7 @@ public class ActionMapper {
 		return handleCell( offsetCell( action.dx, action.dy ));
 	}
 
-	/** Applies the agent's choice for the mode's secondary input. */
+
 	public boolean applySecondary( EnvMode mode, Action action, int index ){
 		switch (mode) {
 			case TARGETING:
@@ -353,13 +286,7 @@ public class ActionMapper {
 		}
 	}
 
-	/**
-	 * Feeds the chosen aim cell to whatever the game asked to be aimed at.
-	 *
-	 * The game stashes its aiming listener in GameScene.pendingCellListener - see Wand.execute,
-	 * Item.doThrow and the armor abilities. Invoking that listener means ballistics, charge
-	 * consumption and collision handling remain the game's own code.
-	 */
+
 	private boolean resolveTarget( int index ){
 		CellSelector.Listener aim = GameScene.pendingCellListener();
 		GameScene.clearPendingCellListener();
@@ -377,30 +304,7 @@ public class ActionMapper {
 		return false;
 	}
 
-	/**
-	 * Applies a cell the agent chose.
-	 *
-	 * <p><b>Adjacency is required, and it is the whole reason this method exists in this shape.</b>
-	 * {@code Hero.handle} does not check it. It sets {@code HeroAction.Move} for an ordinary cell, and
-	 * {@code Hero.actMove} then calls {@code getCloser}, which branches on exactly this: adjacent
-	 * target means step onto it, and <b>anything else means pathfind there and walk</b>. So a
-	 * non-adjacent cell does not fail - it becomes a multi-tile journey the agent never chose.
-	 *
-	 * <p>That is not hypothetical, and the real game is what proved it. Replaying a recording in the
-	 * desktop viewer diverged from the trainer on a plain {@code MOVE_SW}: the trainer put the hero one
-	 * step south-west, the viewer put him 30 cells away. Same action, same seed, same cell arithmetic -
-	 * {@code offsetCell} is {@code pos + dx + dy * width}, identical in both.
-	 *
-	 * <p>Which means one of them passed a cell that was not adjacent, and only one of them could get
-	 * away with it. A player cannot: {@code CellSelector.select} only ever passes a cell the player
-	 * clicked, which is on or beside the hero. The mask was checking adjacency to decide whether to
-	 * *offer* the action, but the execution path did not enforce it, and a mask is a hint to the policy
-	 * rather than a guarantee about the environment.
-	 *
-	 * <p>Refused here rather than papered over, because a refusal is visible: {@code SPDEnv} counts it
-	 * as {@code INVALID_ACTION}, and an agent that chose an unreachable cell learns that it was
-	 * unreachable. Silently walking it there would credit the agent for a decision it never made.
-	 */
+
 	private boolean handleCell( int cell ){
 		if (!insideMap( cell )) return false;
 
@@ -432,26 +336,8 @@ public class ActionMapper {
 				&& Dungeon.level.insideMap( cell );
 	}
 
-	/**
-	 * Chooses the cell for {@link Action#INTERACT}: adjacent mob first, then heap, then locked
-	 * door, then stairs.
-	 *
-	 * Which one is a heuristic, so the agent does not have to. What it does decide is whether to
-	 * interact at all, which is the decision worth learning.
-	 */
-	/**
-	 * Acts on the cell the agent named, or lets the environment pick one.
-	 *
-	 * <p>{@link Action#INTERACT} is one action covering fight, loot, unlock, take the stairs and talk,
-	 * and {@code Hero.handle} resolves which by the cell. Naming the cell is what lets the agent decide
-	 * <em>which</em>: a rat and a heap can both be adjacent, and a heuristic that always prefers the rat
-	 * makes looting a coin roll.
-	 *
-	 * <p>Index 0 is the hero's own cell, which is how "no direction chosen" is spelled. It falls back to
-	 * the heuristic, which is what every recording written before this names - all of them record
-	 * {@code INTERACT 0} - so the committed corpus keeps reproducing unchanged while the agent gains the
-	 * ability to be specific.
-	 */
+
+
 	private boolean interact( int direction ){
 		if (direction > 0 && direction < TARGET_COUNT){
 			int cell = targetCell( direction );
@@ -460,7 +346,7 @@ public class ActionMapper {
 		return handleCell( pickInteractCell() );
 	}
 
-	/** Whether a cell holds something {@link Hero#handle} would act on. */
+
 	private boolean interactive( int cell ){
 		if (!insideMap( cell )) return false;
 		if (cell == hero().pos) return false;
@@ -476,13 +362,7 @@ public class ActionMapper {
 		return terrain == Terrain.ALCHEMY;
 	}
 
-	/**
-	 * Which of the eight neighbours {@link Action#INTERACT} can be aimed at, index 0 first.
-	 *
-	 * <p>Published on the target head, which carries nothing in {@link EnvMode#WORLD} - a cell choice
-	 * only exists while aiming, and the target mask is free otherwise. Index 0 is always legal because it
-	 * means "let the environment choose".
-	 */
+
 	public void interactMask( float[] mask ){
 		for (int i = 0; i < mask.length; i++) mask[ i ] = 0f;
 		if (mask.length == 0) return;
@@ -548,24 +428,10 @@ public class ActionMapper {
 		return hero().pos;
 	}
 
-	/**
-	 * TEMP DIAGNOSTIC: enabled with {@code -Dspd.pickupTrace}.
-	 *
-	 * <p>Reports, for one DROP, which item each inventory slot resolves to and what each carried item is
-	 * bound to in {@link Dungeon#quickslot}. A recorded slot index only means something relative to those
-	 * bindings: {@link #refreshSlots()} places bound items first, so one dropped item can become another
-	 * purely by a binding appearing or disappearing between runs.
-	 *
-	 * <p>This is how the divergence where the trainer and the viewer dropped different items from the
-	 * same slot was traced to a quickslot binding. Remove once slot resolution is covered by a gate.
-	 *
-	 * <p>Prints what each adjacent cell offered and which was chosen, and what a heap held at the time.
-	 * Used to find a divergence where the same recorded action resolved differently in the trainer and
-	 * the viewer. Remove once that class of fault is closed.
-	 */
+
 	private static final boolean PICKUP_TRACE = System.getProperty( "spd.pickupTrace" ) != null;
 
-	/** Which item each quickslot holds, and the reverse binding for every carried item. */
+
 	private static String quickslotState( Hero hero ){
 		StringBuilder sb = new StringBuilder();
 		for (Item it : hero.belongings.backpack){
@@ -575,12 +441,7 @@ public class ActionMapper {
 		return sb.toString().trim();
 	}
 
-	/**
-	 * TEMP DIAGNOSTIC: prints slot 0 and the bag list on every DROP.
-	 *
-	 * <p>A recorded DROP is where the trainer and the viewer first disagree about the hero's bags, so the
-	 * slot contents have to be visible at that moment.
-	 */
+
 	private static void traceDrop( Hero hero, ActionMapper mapper, int slot ){
 		ArrayList<Item> slots = mapper.slots();
 		Item inSlot = slot >= 0 && slot < slots.size() ? slots.get( slot ) : null;
@@ -631,14 +492,14 @@ public class ActionMapper {
 		return null;
 	}
 
-	/** Free slots in one bag. */
+
 	private static String bagRoom( com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag bag ){
 		int used = 0;
 		for (Item i : bag) used++;
 		return bag.getClass().getSimpleName() + " " + used + "/" + bag.capacity();
 	}
 
-	/** Every bag the hero owns, with its contents, so an unexpected bag is visible. */
+
 	private static String bagList(){
 		StringBuilder sb = new StringBuilder( "[" );
 		for (com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag bag : Dungeon.hero.belongings.getBags()){
@@ -730,7 +591,7 @@ public class ActionMapper {
 		return false;
 	}
 
-	/** True when a shop-like heap is adjacent, which is what makes trading reachable. */
+
 	public boolean adjacentForSale(){
 		for (int o = 1; o < TARGET_COUNT; o++){
 			int cell = targetCell( o );

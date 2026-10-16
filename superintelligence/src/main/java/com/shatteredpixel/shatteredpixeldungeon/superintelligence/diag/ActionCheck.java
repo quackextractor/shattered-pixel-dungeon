@@ -13,37 +13,14 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A direction must move the way it is named.
- *
- * <pre>gradle :superintelligence:actioncheck</pre>
- *
- * <p>{@code MOVE_N} carried {@code dy = +1}, and every vertical direction was inverted because of it:
- * north walked south, and south-east walked north. The horizontal pair was always correct, which is
- * what made it survive - the two axes were written from opposite assumptions and neither was checked
- * against the game's.
- *
- * <p>The convention is the game's, not this module's: {@code Level.pointToCell} is
- * {@code x + y * width} and {@code CellSelector.directionFromAction} returns {@code (0,-1)} for north,
- * so north is a decrease in row index. Asserted against that, rather than against a table written here
- * that could drift from the enum it is meant to check.
- *
- * <p><b>Why this was not obvious.</b> The action space is complete and every cell is reachable, so an
- * agent trained from scratch still learns to navigate - it just learns that the action it believes is
- * north goes south. Nothing about learning is broken, and no metric moves. It corrupts every north or
- * south claim made about a recorded run, which is exactly the kind of thing that is believed rather
- * than checked.
- */
+
 public class ActionCheck {
 
 	private static final int CHECKS = 3;
 
 	private static final List< String > failures = new ArrayList<>();
 
-	/**
-	 * Seeds chosen so each direction has somewhere to go. A move into a wall does nothing and proves
-	 * nothing, so a seed where the hero is boxed in would report "did not move" for a correct action.
-	 */
+
 	private static final String[] SEEDS = {
 		"ACTIONCHECK-A", "ACTIONCHECK-B", "ACTIONCHECK-C", "ACTIONCHECK-D"
 	};
@@ -66,13 +43,7 @@ public class ActionCheck {
 		}
 	}
 
-	/**
-	 * Drive each direction on a seed where it can move, and compare against the name.
-	 *
-	 * <p>Tries every seed for every direction and keeps the first that moved cleanly, so a single
-	 * awkward floor cannot make a correct action look broken. Also compares the horizontal component,
-	 * because a diagonal that goes the right way vertically but the wrong way sideways is still wrong.
-	 */
+
 	private static void checkEveryDirectionMovesTheWayItIsNamed(){
 		EnvConfig config = new EnvConfig();
 		config.turnLimitPerFloor = 400;
@@ -125,14 +96,7 @@ public class ActionCheck {
 		System.out.println( "  all eight directions move the way they are named" );
 	}
 
-	/**
-	 * The offsets must match the game's, checked without trusting the enum.
-	 *
-	 * <p>The first case is empirical - it watches a hero walk - and this one is the literal table. Two
-	 * checks of the same thing from different sides, because the empirical one can only test directions
-	 * that happen to be walkable on the seeds available, and this one cannot tell whether the *game*
-	 * ever changed its convention.
-	 */
+
 	private static void checkDirectionOffsetsMatchTheGamesConvention(){
 		int[] dx = { 0, 1, 1, 1, 0, -1, -1, -1 };
 		int[] dy = { -1, -1, 0, 1, 1, 1, 0, -1 };
@@ -157,7 +121,7 @@ public class ActionCheck {
 		System.out.println( "  direction offsets match Level.pointToCell and CellSelector" );
 	}
 
-	/** The eight movements must stay mutually opposite, or a "go back" would be a lie. */
+
 	private static void checkTheActionSpaceIsStillComplete(){
 		Action[] opposite = {
 			Action.MOVE_S, Action.MOVE_SW, Action.MOVE_W, Action.MOVE_NW,
@@ -193,16 +157,7 @@ public class ActionCheck {
 		return moves;
 	}
 
-	/**
-	 * The compass direction a signed grid offset actually went in.
-	 *
-	 * <p>Deliberately not the enum's own {@link #direction(Action)} - that would compare the action
-	 * against itself. This reads the hero's before and after cell and works out which way he went, so
-	 * the two are genuinely independent.
-	 *
-	 * @param dx signed column change, -1 west and +1 east
-	 * @param dy signed row change, -1 north and +1 south
-	 */
+
 	private static String observedDirection( int dx, int dy ){
 		if (dy == 0 ) return dx < 0 ? "W" : "E";
 		if (dx == 0 ) return dy < 0 ? "N" : "S";
@@ -210,7 +165,7 @@ public class ActionCheck {
 		return dx < 0 ? "SW" : "SE";
 	}
 
-	/** The direction an action is named for. */
+
 	private static String direction( Action a ){
 		switch (a){
 			case MOVE_N:  return "N";

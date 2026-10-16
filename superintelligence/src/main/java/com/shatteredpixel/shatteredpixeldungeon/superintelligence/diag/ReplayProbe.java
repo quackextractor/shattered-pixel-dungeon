@@ -11,32 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Reports what the update's replay of a sampled observation depends on.
- *
- * <pre>gradle :superintelligence:replayprobe</pre>
- *
- * Not a gate. It exists to put numbers on a specific question, because the answer decides how the
- * parallel update has to be built:
- *
- * <p><b>Does replaying a stored observation reproduce the value the rollout saw?</b> {@code PPO.update}
- * shuffles the buffer and then calls {@code network.forward} once per sample, carrying the LSTM's
- * {@code h}/{@code c} across samples. Two consequences follow, and only one of them is obvious:
- *
- * <ol>
- *   <li>The hidden state a sample is replayed under is whatever the *previously processed* sample left
- *       behind — a different timestep of a different episode. So the value and logits the update
- *       computes are not the ones the behaviour policy acted on, and {@code oldLogProbability} is
- *       compared against a ratio produced under the wrong state.
- *   <li>It also means samples are <em>coupled</em>: sample <i>i</i>'s result depends on sample
- *       <i>i-1</i>. That is the reason a parallel update is not a thread pool over minibatches, and
- *       it is invisible from the code alone.
- * </ol>
- *
- * <p>This prints, for a set of synthetic transitions: the rollout value, the replayed value under a
- * correct state, and the replayed value under a stale one. If the first two agree and the third does
- * not, then the state has to travel with the transition — which decides the fix.
- */
 public class ReplayProbe {
 
 	public static void main( String[] args ){

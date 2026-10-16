@@ -7,21 +7,10 @@ import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 
-/**
- * Applies {@link Action#USE} and {@link Action#DROP} to a chosen inventory slot.
- *
- * Uses go through {@code Item.execute(hero, action)}, the same entry point {@code WndUseItem}
- * uses, so energy cost, hunger cost, identification and buff application stay the game's own code.
- *
- * Two cases need handling around that call. Aiming items do not resolve the aim themselves, they
- * request one through {@code GameScene.selectCell}; that request is left pending for
- * {@link ActionMapper} to service with the agent's cell. And potions that can be both drunk and
- * thrown default to a CHOOSE action that opens another dialog, so DRINK is chosen directly -
- * throwing a potion is rare and the sub-dialog would otherwise sit on every one of them.
- */
+
 public class SlotAction {
 
-	/** The item whose USE is waiting for a slot or an aim. */
+
 	private static Item pendingUseItem = null;
 
 	private SlotAction() {}
@@ -34,13 +23,7 @@ public static void clearPendingUseItem(){
 		pendingUseItem = null;
 	}
 
-	/**
-	 * Abandons an aim in progress.
-	 *
-	 * Throwing only installs a cell listener, so nothing has left the backpack yet and cancelling
-	 * costs nothing but the turn. The hero still has to be released: the throw had already put him
-	 * mid-action, and without {@code next()} he never became ready again and the episode stalled.
-	 */
+
 	public static boolean cancelPendingUse( Hero hero ){
 		pendingUseItem = null;
 		GameScene.clearPendingCellListener();
@@ -48,7 +31,7 @@ public static void clearPendingUseItem(){
 		return true;
 	}
 
-	/** Handles the agent's choice while in EnvMode.SLOT or EnvMode.INVENTORY. */
+
 	public static boolean execute( Hero hero, Item item, Action action, boolean allowEquipping ){
 		if (action == Action.CANCEL){
 			clearPendingUseItem();
@@ -59,12 +42,7 @@ public static void clearPendingUseItem(){
 		return use( hero, item, allowEquipping );
 	}
 
-	/**
-	 * Uses, throws or equips {@code item}.
-	 *
-	 * @return true when the use needs an aim, in which case the caller enters
-	 *         {@link EnvMode#TARGETING}
-	 */
+
 public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 
 		boolean equippable = allowEquipping && item instanceof EquipableItem;
@@ -97,7 +75,7 @@ public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 		return false;
 	}
 
-/** Casts or throws {@code item}, mirroring Item.cast minus the missile sprite. */
+
 	public static void castAt( Hero hero, Item item, int cell ){
 		item.throwAt( hero, cell );
 		hero.sprite.zap( item.throwPos( hero, cell ) );
@@ -111,7 +89,7 @@ public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 		return true;
 	}
 
-/** Equips or unequips, going through the game's own strength and curse checks. */
+
 	private static boolean toggleEquip( Hero hero, EquipableItem item ){
 		boolean changed;
 
@@ -127,12 +105,7 @@ public static boolean use( Hero hero, Item item, boolean allowEquipping ){
 		return changed;
 	}
 
-	/**
-	 * Picks the action string to execute.
-	 *
-	 * Walks the item's declared actions rather than assuming a usable default, so unidentified
-	 * consumables - whose default is DRINK but which also offer IDENTIFY - still resolve.
-	 */
+
 	private static String resolveAction( Hero hero, Item item ){
 		String def = item.defaultAction();
 

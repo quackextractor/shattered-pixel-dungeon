@@ -12,33 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Fails if a policy cannot survive a trip through disk.
- *
- * <pre>gradle :superintelligence:checkpointcheck</pre>
- *
- * A checkpoint is the only thing standing between a training run and being thrown away, and it is the
- * one artefact whose failure mode is silence. A weight file that loads with the wrong shape produces a
- * network that runs, reports plausible losses, and learns nonsense; a moment file that loads as zeros
- * produces a run that resumes and quietly trains worse, with nothing in the output to say why.
- *
- * <p>So every case here is one of "refuse loudly" rather than "produce a number":
- *
- * <ul>
- *   <li>weights survive a round trip exactly, bit for bit
- *   <li>Adam moments survive, which {@code Network.layers()} alone would not carry
- *   <li>the optimiser step count survives, without which Adam's bias correction restarts near 0.1x
- *   <li>a file that is not a checkpoint is refused
- *   <li>a truncated file is refused
- *   <li>a file with trailing bytes is refused
- *   <li>a checkpoint from a different {@code EnvConfig} is refused, naming the field
- *   <li>saving twice leaves no temporary files behind
- * </ul>
- *
- * <p>Written against a real {@link Network} rather than a stub, because the thing worth checking is
- * that the moments are laid out the way the layers are - a stub would agree with a broken
- * implementation.
- */
 public class CheckpointCheck {
 
 	private static final int CHECKS = 9;
@@ -93,13 +66,6 @@ public class CheckpointCheck {
 		}
 	}
 
-	/**
-	 * Every weight and every moment must come back bit-identical.
-	 *
-	 * <p>Compared exactly rather than within a tolerance. This is a copy through a stream, so anything
-	 * less than exact means a field was widened, narrowed or transposed - which is the class of bug
-	 * that a tolerance would hide, and that produces a network which trains.
-	 */
 	private static void checkRoundTripIsExact( Network original, EnvConfig config, File file,
 			int generation, long seed ) throws IOException {
 		Checkpoint.save( file, original, config, generation, seed );
@@ -162,7 +128,6 @@ public class CheckpointCheck {
 		return new float[ 0 ];
 	}
 
-	/** A file that is not a checkpoint must be refused, not parsed as weights. */
 	private static void checkRefusesForeignFile( EnvConfig config, File file ) throws IOException {
 		java.nio.file.Files.write( file.toPath(),
 				"this is a text file, not a policy".getBytes( java.nio.charset.StandardCharsets.UTF_8 ) );
@@ -178,12 +143,6 @@ public class CheckpointCheck {
 		}
 	}
 
-	/**
-	 * A short file must be refused.
-	 *
-	 * <p>The case this format exists to prevent: a checkpoint half-written by a power cut is newer than
-	 * the last good one and would be resumed from, so the atomic rename is not belt and braces.
-	 */
 	private static void checkRefusesTruncatedFile( Network original, EnvConfig config,
 			File file, File truncated ) throws IOException {
 		Checkpoint.save( file, original, config, 1, 1L );
@@ -202,7 +161,6 @@ public class CheckpointCheck {
 		}
 	}
 
-	/** A valid checkpoint with extra bytes is not what this build wrote, and must be refused. */
 	private static void checkRefusesTrailingBytes( Network original, EnvConfig config,
 			File file, File trailing ) throws IOException {
 		Checkpoint.save( file, original, config, 1, 1L );
@@ -221,12 +179,6 @@ public class CheckpointCheck {
 		}
 	}
 
-	/**
-	 * A checkpoint from a different config must be refused, naming the field that changed.
-	 *
-	 * <p>The naming is the point. "Incompatible" tells the reader nothing; "gridWidth=32, this run has
-	 * 48" tells them which flag to change.
-	 */
 	private static void checkRefusesDifferentConfig( Network original, EnvConfig config,
 			File file ) throws IOException {
 		Checkpoint.save( file, original, config, 1, 1L );
@@ -236,7 +188,6 @@ public class CheckpointCheck {
 		checkMismatchNames( config, file, "gridHeight", 10 );
 	}
 
-	/** Loads into a config with one field changed, and requires the refusal to name that field. */
 	private static void checkMismatchNames( EnvConfig config, File file,
 			String field, int newValue ) throws IOException {
 		EnvConfig changed = new EnvConfig();
@@ -274,13 +225,6 @@ public class CheckpointCheck {
 		}
 	}
 
-	/**
-	 * The atomic write must not leave a temporary file behind.
-	 *
-	 * <p>A {@code weights-*.tmp} left in the work directory is 43 MB of the run's disk, and a run that
-	 * crashes repeatedly accumulates one per crash - on a machine with a 2 GB pagefile, the wrong place
-	 * to accumulate.
-	 */
 	private static void checkLeavesNoTemporaryFiles( Network original, EnvConfig config,
 			File file, File dir ) throws IOException {
 		Checkpoint.save( file, original, config, 1, 1L );
@@ -293,13 +237,6 @@ public class CheckpointCheck {
 		}
 	}
 
-	/**
-	 * Loading into a fresh network must replace it, not merge into it.
-	 *
-	 * <p>Distinct from the round-trip check: that proves values arrive, this proves the values that
-	 * were already there are gone. A copy that appended, or only overwrote non-zero entries, would
-	 * pass the round trip when the source was the same network.
-	 */
 	private static void checkResumesIntoAnUntrainedNetwork( Network original, EnvConfig config,
 			File file ) throws IOException {
 		Checkpoint.save( file, original, config, 1, 1L );
@@ -330,7 +267,6 @@ public class CheckpointCheck {
 		}
 	}
 
-	/** The header has to report what it recorded, or a resumed run cannot say where it resumed from. */
 	private static void checkReportsGenerationAndSteps( Network original, EnvConfig config,
 			File file, int generation, long seed ) throws IOException {
 		Checkpoint.save( file, original, config, generation, seed );
@@ -356,24 +292,6 @@ public class CheckpointCheck {
 		}
 	}
 
-	/**
-	 * A flag with nothing after it is refused, naming itself.
-	 *
-	 * <p>{@code --resume} is where this was found, and it is the flag most likely to be emitted bare:
-	 * the natural reading of "resume this run" is a switch, and {@code train.ps1 -Resume} appended
-	 * exactly that. Every flag in the switch reads {@code args[i + 1]} with nothing checking there is
-	 * one, so the answer was
-	 *
-	 * <pre>ArrayIndexOutOfBoundsException: Index 19 out of bounds for length 19</pre>
-	 *
-	 * <p>which names neither the flag nor what was missing, from a stack trace inside a parser - and it
-	 * only ever appeared once, in a 60-generation run stopped at generation 55 by an external timeout,
-	 * which is the worst time to discover it.
-	 *
-	 * <p>The positive control is the other direction, and it matters: an unknown option still only
-	 * warns. A parser that refused every unrecognised token would not have caught anything here; it
-	 * would have moved the failure.
-	 */
 	private static void checkAMissingFlagValueIsRefusedNamingItself(){
 		for (String flag : new String[]{ "--resume", "--workers", "--replay-group", "--save" }){
 			String message = null;
@@ -410,12 +328,6 @@ public class CheckpointCheck {
 		}
 	}
 
-	/**
-	 * Loads and returns the failure message, or {@code null} if the load succeeded.
-	 *
-	 * <p>Every refusal check goes through this, so they all assert the same thing: that loading fails.
-	 * Asserting on the message separately, where there is one to assert on.
-	 */
 	private static String refusal( File file, EnvConfig config ){
 		try {
 			Checkpoint.load( file, new Network( config, new Random( 6L ) ), config );
@@ -425,12 +337,6 @@ public class CheckpointCheck {
 		}
 	}
 
-	/**
-	 * Gives a network non-zero moments and a step count.
-	 *
-	 * <p>Without this the moment tensors are all zeros, and a round trip that silently wrote nothing
-	 * would compare equal. The bug this check exists for would be invisible against zero moments.
-	 */
 	private static void touch( Network net ){
 		for (Network.Moments m : net.moments()){
 			for (int i = 0; i < m.mW.length; i++) m.mW[ i ] = (i % 17) * 1e-4f;

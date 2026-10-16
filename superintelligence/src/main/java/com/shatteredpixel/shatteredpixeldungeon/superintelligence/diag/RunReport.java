@@ -3,26 +3,13 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardLedger;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 
-/**
- * The run summary docs.md describes.
- *
- * "a summary interface should display floor-by-floor point gains and losses, type totals/subtotals,
- * and the overall run score. Numbers should be color-coded in green or red, accompanied by graphs
- * depicting score over turns (annotated with floor transitions) or score over floors."
- *
- * Every number here comes from {@link RewardLedger}, which accumulates per term per floor. That is
- * what makes the breakdown possible at all - a single run score cannot be attributed to a cause,
- * and an unattributed score is not something an agent can be trained against.
- */
 public class RunReport {
 
 	private final RewardLedger ledger;
 	private final String seedText;
 
-	/** Score after each turn, for the score-over-turns graph. */
 	private final java.util.ArrayList<Float> scoreByTurn = new java.util.ArrayList<>();
 
-	/** Depth at the end of each turn, so floor transitions can be annotated on that graph. */
 	private final java.util.ArrayList<Integer> depthByTurn = new java.util.ArrayList<>();
 
 	public RunReport( RewardLedger ledger, String seedText ){
@@ -30,7 +17,6 @@ public class RunReport {
 		this.seedText = seedText;
 	}
 
-	/** Records one turn's cumulative score and the depth it happened on. */
 	public void sample( float cumulativeScore, int depth ){
 		scoreByTurn.add( cumulativeScore );
 		depthByTurn.add( depth );
@@ -52,11 +38,6 @@ public class RunReport {
 		return ledger;
 	}
 
-	/**
-	 * Renders the full report.
-	 *
-	 * @param graphWidth columns to use for the score-over-turns graph
-	 */
 	public String render( int graphWidth ) {
 		StringBuilder sb = new StringBuilder();
 
@@ -123,12 +104,6 @@ public class RunReport {
 		}
 	}
 
-	/**
-	 * Score over turns, with floor transitions marked.
-	 *
-	 * docs.md asks for the transitions to be annotated on the graph, because a reward spike that
-	 * lines up with a floor change is usually just the depth bonus and not learning.
-	 */
 	private void renderGraph( StringBuilder sb, int width ){
 		float[] series = scoreSeries();
 		if (series.length == 0) return;
@@ -163,7 +138,6 @@ public class RunReport {
 		sb.append( Ansi.wrap( "  range " + row.axis(), Ansi.DIM ) ).append( '\n' );
 	}
 
-	/** Score against floor number, for the "score over floors" view. */
 	public String renderScoreOverFloors( int width ){
 		StringBuilder sb = new StringBuilder();
 		java.util.ArrayList<RewardLedger.FloorTotals> floors = ledger.floors();

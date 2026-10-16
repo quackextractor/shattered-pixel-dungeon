@@ -19,42 +19,24 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-/**
- * A policy that needs no network.
- *
- * Two jobs. It is the smoke test for the environment: if a heuristic walk can loot, fight, take a
- * stair and die, then every seam between the agent and the game is wired correctly. And it is the
- * fallback when a worker is asked to roll out before the trainer has produced a checkpoint, which
- * is how the first sweeps get bootstrapped.
- *
- * It only ever picks actions the environment's mask allows, so it cannot exercise the illegal-action
- * path by accident and mask a real bug.
- */
+
 public class ScriptedPolicy {
 
 	private final Random random;
 
-	/** Consecutive turns with no progress, used to break out of a local loop. */
+
 	private int stuck;
 
-/** The direction last chosen, avoided while looking for somewhere new to go. */
+
 	private Action lastMove;
 
-	/** Hero position at the previous choose, so a move straight back into it can be refused. */
+
 	private int prevChoosePos = -1;
 
-	/**
-	 * Transition cells that were used and did nothing.
-	 *
-	 * Floor one's exit sits next to the entrance and can be stood on from turn zero, but using it
-	 * is quest-gated, so INTERACT is legal and silently does nothing. Without this set the policy
-	 * loops forever: interact, step off, interact, step off. That is exactly what every recording
-	 * made so far looks like - 1499 turns of movement around the stairs with no pickup, no slot and
-	 * no menu - and it is the stall guard, not the turn limit, that finally stops some of them.
-	 */
+
 	private final Set< Integer > deadTransitions = new HashSet<>();
 
-	/** Transition cell whose use is waiting to be judged, and the depth it was used at. */
+
 	private int pendingCell = -1;
 	private int pendingDepth = -1;
 
@@ -62,9 +44,7 @@ public class ScriptedPolicy {
 		this.random = new Random( seed );
 	}
 
-	/**
-	 * @param slotOut receives the secondary choice: a slot index, an option index or an aim offset
-	 */
+
 	public Action choose( SPDEnv env, int[] slotOut ){
 		EnvMode mode = env.mode();
 
@@ -99,14 +79,7 @@ case SLOT:
 		}
 	}
 
-	/**
-	 * A dialog is open.
-	 *
-	 * Picks the first selectable option, which for a shop is "buy" and for a prompt is the
-	 * affirmative. Shop buying is a documented exploit risk, but leaving every dialog unanswered
-	 * would wedge the episode instead, so the option is taken and the reward model is what keeps
-	 * a loop from paying.
-	 */
+
 	private Action windowChoice( SPDEnv env ){
 		for (int i = 0; i < 32; i++){
 			if (env.windowOptionSelectable( i )) return Action.MENU_SELECT;
@@ -114,12 +87,7 @@ case SLOT:
 		return Action.CANCEL;
 	}
 
-	/**
-	 * Aims at the nearest visible enemy among the eight neighbours, otherwise anywhere on the map.
-	 *
-	 * Only neighbours are offered as aim points, which is enough because shots resolve against a
-	 * Ballistica collision cell and a shot further away has to start from one of these directions.
-	 */
+
 	private int chooseTarget( SPDEnv env ){
 		int best = -1;
 		int bestDistance = Integer.MAX_VALUE;
@@ -138,15 +106,7 @@ case SLOT:
 		return best >= 0 ? best : 0;
 	}
 
-/**
- * One-shot exercises of the modes ordinary play rarely visits.
- *
- * A recording is only worth keeping if it reaches the parts of the step loop that rarely happen, and
- * these two actions are the only routes in: {@code OPEN_INVENTORY} is the sole entry to INVENTORY,
- * and a use started from WORLD is the sole entry to SLOT. Separate flags rather than one shared
- * budget, because sharing it let the first exercise consume the whole allowance and leave the second
- * one unreachable - which is how a recording ended up with INVENTORY and TARGETING but no SLOT.
- */
+
 private boolean inventoryExercised;
 private boolean useExercised;
 
@@ -258,7 +218,7 @@ Action fallback = null;
 		return Action.WAIT;
 	}
 
-	/** True when a visible hostile is adjacent. */
+
 	private boolean hasAdjacentEnemy(){
 		for (Mob mob : Dungeon.hero.getVisibleEnemies()){
 			if (mob.isAlive() && Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return true;
@@ -266,15 +226,7 @@ Action fallback = null;
 		return false;
 	}
 
-/**
-	 * True when {@code move} would walk straight back to where the hero stood two turns ago.
-	 *
-	 * Refusing the immediate backtrack is what breaks the classic two-cell cycle: a heap that is
-	 * diagonal, or one whose grass cannot be cleared from where the hero stands, leaves no step that
-	 * makes progress, and every heuristic answer points back the way it came. The hero then oscillated
-	 * between two tiles until the stall guard ended the run - which is how several recordings ended
-	 * after under ten steps.
-	 */
+
 	private boolean backtrack( Action move ){
 		if (prevChoosePos < 0) return false;
 		int cell = Dungeon.hero.pos + move.dx + move.dy * Dungeon.level.width();
@@ -291,15 +243,9 @@ Action fallback = null;
 		return false;
 	}
 
-	/** True where a heap can actually be collected, rather than needing grass cleared first. */
 
-	/**
-	 * True when any item is close enough to be worth walking to.
-	 *
-	 * A short leash on purpose: the goal is to make the recording exercise every mode once, not to
-	 * clear a floor. Grabbing whatever is nearby is enough to reach the slot, inventory and menu
-	 * branches; chasing distant loot would spend the whole turn budget walking.
-	 */
+
+
 	private boolean itemInReach(){
 		int hero = Dungeon.hero.pos;
 		for (Heap heap : Dungeon.level.heaps.valueList()){
@@ -313,7 +259,7 @@ Action fallback = null;
 				&& Dungeon.level.map[ cell ] != Terrain.FURROWED_GRASS;
 	}
 
-	/** True when a high-grass heap is adjacent and still needs its grass trampled. */
+
 	private boolean adjacentGrassItem(){
 		int hero = Dungeon.hero.pos;
 		for (Heap heap : Dungeon.level.heaps.valueList()){
@@ -322,7 +268,7 @@ Action fallback = null;
 		return false;
 	}
 
-	/** The move that steps onto the adjacent high-grass heap, if there is one. */
+
 	private Action stepOntoGrassItem( SPDEnv env, Action[] moves ){
 		int hero = Dungeon.hero.pos;
 		for (Heap heap : Dungeon.level.heaps.valueList()){
@@ -336,17 +282,7 @@ Action fallback = null;
 		return null;
 	}
 
-/**
-	 * Takes one step along a real path to the nearest item.
-	 *
-	 * This replaced a greedy Manhattan walk, which could not get around a wall. That version drove
-	 * the hero into a corner on floor 1 and the run ended STALLED within two turns - the stall guard
-	 * in the environment fires the moment nothing changes for its limit, and standing still against
-	 * a wall changes nothing forever. A distance map from each candidate, walked greedily over real
-	 * distances, gets around obstacles because the distances already account for them.
-	 *
-	 * @return the move to take, or null when there is nothing reachable
-	 */
+
 	private Action moveTowardItem( SPDEnv env, Action[] moves ){
 		List<Heap> heaps = Dungeon.level.heaps.valueList();
 		if (heaps.isEmpty()) return null;
@@ -396,12 +332,7 @@ Action fallback = null;
 		return best;
 	}
 
-/**
-	 * The nearest adjacent transition cell, or -1 when there is none.
-	 *
-	 * Checked separately from the generic INTERACT because descending early is how the run ends:
-	 * research.md's main goal is depth, so reaching the exit immediately beats clearing the floor.
-	 */
+
 	private int adjacentTransitionCell( SPDEnv env ){
 		int hero = Dungeon.hero.pos;
 		int width = Dungeon.level.width();
@@ -414,12 +345,7 @@ Action fallback = null;
 		return -1;
 	}
 
-	/**
-	 * Judges the transition use issued on the previous turn.
-	 *
-	 * A transition that works changes depth. One that does nothing leaves the depth alone, which is
-	 * how a quest-locked exit is told apart from a usable stair without hardcoding either case.
-	 */
+
 	private void settlePendingTransition(){
 		if (pendingCell < 0) return;
 
@@ -442,13 +368,7 @@ private int firstOccupiedSlot( SPDEnv env ){
 		return -1;
 	}
 
-	/**
-	 * The slot to act on.
-	 *
-	 * Prefers something whose use needs an aim, because that is the only way to reach TARGETING.
-	 * Falling back to the first occupied slot still drinks a potion or swaps equipment, so the
-	 * common case stays sensible once the deliberate coverage is spent.
-	 */
+
 	private int pickItemWorthUsing( SPDEnv env ){
 		float[] mask = env.slotMask();
 
@@ -476,13 +396,7 @@ private int firstOccupiedSlot( SPDEnv env ){
 	private int lastPos = -1;
 	private int lastHp = -1;
 
-	/**
-	 * Tracks whether the last few actions actually did anything.
-	 *
-	 * Without this a heuristic can settle into a cycle - interact, rest, interact - that consumes
-	 * the turn budget without progressing. The environment's stall guard catches it, but only by
-	 * ending the episode, which wastes a rollout. Here it just breaks the cycle.
-	 */
+
 	private void noteProgress( SPDEnv env ){
 		int pos = Dungeon.hero.pos;
 		int hp = Dungeon.hero.HP;

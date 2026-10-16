@@ -5,30 +5,6 @@ import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.watabou.noosa.MovieClip;
 import com.watabou.utils.Callback;
 
-/**
- * A {@link CharSprite} that resolves animations instantly instead of over time.
- *
- * This is the single most important seam in the headless build. In the real game an attack, a
- * door unlock and a chest open all resolve when the sprite animation finishes, via
- * {@code CharSprite.onComplete}. {@code Actor.process()} additionally blocks on
- * {@code CharSprite.isMoving} until movement animation completes. Both halves of that contract
- * are removed here:
- *
- * <ul>
- *   <li>{@code attack}/{@code operate}/{@code zap}/{@code jump} invoke their callback
- *       synchronously, so {@code Char.onAttackComplete}/{@code onOperateComplete} - which apply
- *       damage, consume keys and spend turns - run before the actor yields.</li>
- *   <li>{@code move} and {@code play} do nothing and never set {@code isMoving}, so the
- *       scheduler never has to wait.</li>
- * </ul>
- *
- * Turn semantics are unchanged: {@code Hero.actAttack} still returns false and still spends
- * {@code attackDelay()} from inside {@code Hero.onAttackComplete}, exactly as it would once the
- * animation finished. Only the wall-clock time the animation occupied is removed.
- *
- * No GL object is ever created. See {@link #link} for the second half of the story - linking
- * normally pulls shadow, aura and health-bar visuals out of {@code Assets}.
- */
 public class HeadlessSprite extends CharSprite {
 
 	public HeadlessSprite(){
@@ -36,12 +12,6 @@ public class HeadlessSprite extends CharSprite {
 
 	}
 
-	/**
-	 * The real implementation instantiates a shadow, an aura and a health bar out of
-	 * {@code Assets}. Headlessly we only need the back-reference, because {@code ch.sprite}
-	 * must be non-null: {@code Hero.ready()} calls {@code sprite.looping()}/{@code idle()} and
-	 * several Char paths dereference it.
-	 */
 	@Override
 	public void link( Char ch ){
 		this.ch = ch;
@@ -55,17 +25,6 @@ public class HeadlessSprite extends CharSprite {
 
 	}
 
-	/**
-	 * A real group, so that code adding to {@code sprite.parent} works.
-	 *
-	 * <p>{@code parent} is an inherited field rather than a method, so it cannot be overridden and is set
-	 * here instead. Game logic adds tweens straight to it without a null check -
-	 * {@code ScrollOfTeleportation.appear} does {@code ch.sprite.parent.add(new AlphaTweener(...))} -
-	 * and with no scene there is no parent, so reading a teleport scroll headless died with an NPE.
-	 *
-	 * <p>An orphaned Group: nothing draws, but tweens are added and removed as normal, so an
-	 * animation's effect on actor state still happens.
-	 */
 	private com.watabou.noosa.Group headlessParentStore = null;
 
 	private com.watabou.noosa.Group headlessParent(){
@@ -194,11 +153,6 @@ public class HeadlessSprite extends CharSprite {
 	@Override public void hideLost(){ }
 	@Override public void hideEmo(){ }
 
-	/**
-	 * {@code CharSprite.kill()} calls {@code super.kill()} and then walks the effect fields.
-	 * Headless we only need the actor to leave the scene graph, so the Gizmo flags are set
-	 * directly and the effect walk is skipped.
-	 */
 	@Override
 	public void kill(){
 		exists = false;
@@ -206,25 +160,6 @@ public class HeadlessSprite extends CharSprite {
 		visible = false;
 	}
 
-	/**
-	 * A stand-in emitter for the particle system.
-	 *
-	 * <p>It exists because 150 call sites chain through the emitter - {@code sprite.emitter().burst(...)}
-	 * - so returning null, as this class used to, dereferenced it instead of reaching this class's own
-	 * no-op {@code burst}. Equipping a cursed item, burning, imbues and healing all reached one, and a
-	 * run died with a NullPointerException on the first cursed equip.
-	 *
-	 * <p>It has to draw, though. {@code Emitter.start} takes {@code Random.Float(interval)} as its
-	 * emission delay, so every one of those call sites consumes the game's randomness in a real
-	 * playthrough. A stand-in that drew nothing left the two RNG streams permanently apart - the same
-	 * fault the observation encoder had - and no recording made headlessly could ever replay in the
-	 * game.
-	 *
-	 * <p>What it must not do is remember. A live {@code Emitter} keeps the factory, interval and count
-	 * of the last request, and that state outlived a floor boundary, so the same seed stopped
-	 * rebuilding the same floor - {@code restartcheck} caught exactly that. Every method here is
-	 * therefore a no-op apart from the draw.
-	 */
 	private static final class Inert extends com.watabou.noosa.particles.Emitter {
 
 		@Override public void start( com.watabou.noosa.particles.Emitter.Factory factory,

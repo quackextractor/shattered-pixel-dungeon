@@ -39,31 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-/**
- * Runs a seed, runs other seeds, then runs it again, and reports the first step where the two runs of
- * the same seed stopped agreeing - with enough of the world attached to say <em>why</em>.
- *
- * <p>{@code resetcheck} reports that two runs of a seed differ and where. It does not say what differed,
- * and that is the whole question. A failing isolation gate with no mechanism behind it is a rumour.
- *
- * <p>Each step's row carries, on both sides:
- * <ul>
- * <li>the hero's own state - mode, position, turn, pending action, readiness, invisibility</li>
- * <li>the gameplay randomness consumed so far - base draws and an order-sensitive fingerprint</li>
- * <li>the call sites that drew during that step, so "the streams diverged" and "the world diverged" are
- * distinguishable from "the streams agreed and the world still differed"</li>
- * <li>the full mob roster - every mob's position, health and AI state - so a difference in which mobs
- * are awake or where they stand is visible rather than inferred</li>
- * </ul>
- *
- * <p>The three-way split matters. Randomness first points at a generator or seeding problem. World
- * first on identical randomness points somewhere else entirely - state that outlives {@code reset()}.
- * That is the case this was written for: the first divergence found here was identical RNG and identical
- * hero state with a mob that could see the hero in one run and not the other.
- *
- * <p>The policy is uniformly random, as in {@code resetcheck}, because a scripted policy never reaches
- * half the engine and would not trip the failure it exists to explain.
- */
 public class EpisodeDiff {
 
 	private static final int TRACE_STEPS = 320;
@@ -182,22 +157,6 @@ public class EpisodeDiff {
 		return rows;
 	}
 
-	/**
-	 * Every mob, sorted, as {@code #id Name@cell:hp:state[:sees]}.
-	 *
-	 * <p>Sorted because a list order is not meaningful and an unsorted roster would report a difference
-	 * whenever two runs happened to spawn the same mobs in a different order.
-	 *
-	 * <p>The actor id is in there on purpose. {@code Actor.nextID} is a static counter that
-	 * {@code reset()} does not clear, so the same mob has a different id in a second episode in the same
-	 * process. Anything that breaks a tie by id - and the scheduler does, when two actors come due on the
-	 * same turn - then resolves differently for reasons that have nothing to do with the seed. A roster
-	 * without ids cannot tell that apart from a genuine behavioural difference.
-	 *
-	 * <p>{@code fieldOfView} is allocated lazily, so a mob that has never been seen is marked
-	 * distinctly rather than being treated as one that cannot see; the two are opposite facts and
-	 * conflating them would hide the very thing being looked for.
-	 */
 	private static String flat( Map< Integer, String > roster ){
 		List< String > entries = new ArrayList<>();
 		for (Map.Entry< Integer, String > e : roster.entrySet()){
@@ -207,7 +166,6 @@ public class EpisodeDiff {
 		return String.join( " ", entries );
 	}
 
-	/** Which mobs stood somewhere else than they did last step, as {@code #id from->to}. */
 	private static String moved( Map< Integer, String > last, Map< Integer, String > now ){
 		if (last == null) return "base";
 		List< String > moved = new ArrayList<>();
@@ -221,7 +179,6 @@ public class EpisodeDiff {
 		return moved.isEmpty() ? "-" : String.join( " ", moved );
 	}
 
-	/** Which mobs were scheduled differently from last step, as {@code #id cdA->cdB}. */
 	private static String rescheduled( Map< Integer, String > last, Map< Integer, String > now ){
 		if (last == null) return "";
 		List< String > out = new ArrayList<>();

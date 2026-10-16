@@ -18,23 +18,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The two actions that cost nothing must stop being able to cost nothing forever, and the talent point
- * must be spendable at all.
- *
- * <pre>gradle :superintelligence:freeactioncheck</pre>
- *
- * <p>Measured over 4,828 steps in 40 uniform-policy episodes, roughly 90% of all steps advanced no
- * engine time: {@code OPEN_INVENTORY} and {@code CANCEL} 100%, {@code REST} 99.1%, {@code USE} 87.9%,
- * {@code DROP} 50%. Every one of those is charged as a free step, and {@code env.freeStepBudget} ends
- * the episode as {@code STALLED} when it is reached - so 100% of episodes ended at turn ~120 of the
- * 1500 granted, with floor 1's stairs arithmetically out of reach.
- *
- * <p>The loop is structural rather than behavioural. {@code OPEN_INVENTORY}, {@code USE} and
- * {@code DROP} are the only ways into a sub-mode and all three cost nothing; {@code CANCEL} is the only
- * way out of two of them and also costs nothing. An exploring policy falls in because both halves are
- * offered, and neither half is wrong on its own.
- */
 public class FreeActionCheck {
 
 	private static final int CHECKS = 7;
@@ -72,13 +55,6 @@ public class FreeActionCheck {
 		}
 	}
 
-	/**
-	 * {@code REST} has to spend a turn, or it is a free step that also traps the hero.
-	 *
-	 * <p>It used to set {@code resting} and call {@code next()}, which leaves the clock where it was:
-	 * the rest turn is taken by {@code Hero.act}'s rest branch, and the drain can return before the hero
-	 * is picked again. Measured, 323 of 326 rests advanced zero engine time.
-	 */
 	private static void checkRestAdvancesTheEngineClock( EnvConfig config ){
 		int rested = 0;
 		int advanced = 0;
@@ -106,13 +82,6 @@ public class FreeActionCheck {
 		System.out.println( "  REST advanced the engine clock on " + advanced + " of " + rested );
 	}
 
-	/**
-	 * The menu entry itself still costs nothing, because that is true in the real game too.
-	 *
-	 * <p>Asserted rather than assumed: the fix must mask the loop, not price an action the player can
-	 * perform for free. If {@code OPEN_INVENTORY} started advancing the clock, this would fail and the
-	 * mask would be hiding a second defect.
-	 */
 	private static void checkOpeningAMenuCostsNoTurn( EnvConfig config ){
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
@@ -140,12 +109,6 @@ public class FreeActionCheck {
 		System.out.println( "  OPEN_INVENTORY enters INVENTORY without spending a turn" );
 	}
 
-	/**
-	 * Leaving a sub-mode for free must close the way back in.
-	 *
-	 * <p>The refusal is a mask rather than a prohibition: the actions are legal, the agent just cannot
-	 * chain them without spending a turn in between, which is what a player does too.
-	 */
 	private static void checkAZeroTimeModeExitIsMaskedOut( EnvConfig config ){
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
@@ -174,12 +137,6 @@ public class FreeActionCheck {
 		System.out.println( "  a zero-time menu exit masks OPEN_INVENTORY, USE and DROP" );
 	}
 
-	/**
-	 * The refusal is one step, not a prohibition.
-	 *
-	 * <p>A mask that never lifts would be a different defect: the agent would be unable to use an item
-	 * at all after a single cancelled menu.
-	 */
 	private static void checkTheRefusalLastsExactlyOneStep( EnvConfig config ){
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		env.reset( SEEDS[ 1 ], HeroClass.WARRIOR );
@@ -210,15 +167,6 @@ public class FreeActionCheck {
 		System.out.println( "  the refusal lifts after one step that spends engine time" );
 	}
 
-	/**
-	 * The whole loop, driven, must not be able to run on free steps alone.
-	 *
-	 * <p>The property is the run of consecutive free steps, not the share. Before the mask, opening and
-	 * cancelling a menu were both free, so an exploring policy could spend an entire floor's turn budget
-	 * and its whole {@code env.free_step_budget} without the world moving once, and 100% of episodes ended
-	 * {@code STALLED} at turn ~120. After it, one real step is forced between the two free halves, so the
-	 * run of free steps is bounded no matter how long the agent keeps trying.
-	 */
 	private static void checkTheMenuLoopCannotOutrunTheBudget( EnvConfig config ){
 		EnvConfig local = config.copy();
 		local.turnLimitPerFloor = 4000;
@@ -278,15 +226,8 @@ public class FreeActionCheck {
 				+ " time; the longest free run was " + worstRun + " step(s)" );
 	}
 
-	/**
-	 * How many free steps may follow each other after a zero-time menu exit.
-	 *
-	 * <p>Two: {@code OPEN_INVENTORY} is free, {@code CANCEL} out of the pane is free, and the mask then
-	 * forces one step that spends engine time. Any larger and the mask is not doing its job.
-	 */
 	private static final int MAX_CONSECUTIVE_FREE = 2;
 
-	/** {@code TALENT} must be offered exactly when there is a point to spend, and never otherwise. */
 	private static void checkTalentIsOfferedOnlyWithAPointToSpend( EnvConfig config ){
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
@@ -322,13 +263,6 @@ public class FreeActionCheck {
 				+ " talent to spend them on." );
 	}
 
-	/**
-	 * The whole path: open the pane, pick from what the game offers, and be paid.
-	 *
-	 * <p>Driven through {@link SPDEnv#step} rather than through the picker, because the picker being
-	 * callable is not the same claim as the agent being able to reach it: the mode, the mask and the
-	 * secondary choice all have to line up as well.
-	 */
 	private static void checkTalentPointCanBeSpentAndPays( EnvConfig config ){
 		EnvConfig local = config.copy();
 		local.turnLimitPerFloor = 400;
@@ -402,13 +336,6 @@ public class FreeActionCheck {
 				+ notes + " note(s))" );
 	}
 
-	/**
- * Engine time bought per action, over a fixed number of steps per seed.
- *
- * Printed rather than asserted, because it is the measurement every other case here is arguing about:
- * {@code env.freeStepBudget} charges a step for advancing no engine time, so an action's share of the
- * budget is exactly its share of this table.
- */
 	private static void reportEngineTimePerAction( EnvConfig config ){
 		EnvConfig local = config.copy();
 		local.turnLimitPerFloor = 200;
@@ -457,7 +384,6 @@ public class FreeActionCheck {
 		}
 	}
 
-	/** The time-consuming actions, in turn, so every one of them is measured on every seed. */
 	private static Action rotate( int i ){
 		Action[] all = {
 			Action.MOVE_E, Action.MOVE_W, Action.MOVE_S, Action.MOVE_N,
@@ -467,7 +393,6 @@ public class FreeActionCheck {
 		return all[ i % all.length ];
 	}
 
-	/** Any legal move the mask offers, or {@code WAIT} when it offers none. */
 	private static Action move( SPDEnv env ){
 		float[] mask = env.actionMask();
 		for (Action a : Action.values()){

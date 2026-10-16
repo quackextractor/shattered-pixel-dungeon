@@ -11,38 +11,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The transition frame: what a worker sends back for an episode.
- *
- * One frame per episode, not per transition, so the trainer's read is a single loop bounded by a
- * count rather than a message header per sample. At ~48.5 KB a step, a frame is a few MB and the
- * worker writes it in one pass.
- *
- * What is in it is chosen by what the update actually needs. The advantage and return arrive
- * computed, so the worker no longer needs to send {@code reward}, {@code value} or {@code nextValue}:
- * the gradient needs an observation, the decision that was taken from it, and how well that decision
- * turned out. Everything else would be 12 bytes a step of pure overhead. The reasoning for
- * {@code oldLogProbability} not travelling with the value is the same as in {@link Transition}: an
- * exact recurrent gradient would need every timestep's activations retained, so the update replays
- * the observation instead.
- */
-/**
- * Public so {@code diag.GaeCheck} can round-trip a transition through it.
- *
- * The class is internal to the trainer, but the codec is the one place where a dropped or transposed
- * field would not fail loudly - it would arrive as a plausible advantage and quietly train the policy
- * on noise. That is worth a public entry point for a check, and nothing else should call it.
- */
 public final class TransitionCodec {
 
 	private TransitionCodec() {}
 
-	/**
-	 * Bytes one sampled transition costs, from the config rather than from a decoded sample.
-	 *
-	 * Used to size {@code --max-samples} against the memory it will actually take. The report measures
-	 * the real figure off what arrived; this is the prediction, and the two agreeing is the point.
-	 */
 	public static long wireBytesPerStep( EnvConfig config ){
 		int grid = config.spatialChannels() * config.gridWidth * config.gridWidth;
 		int inventory = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
@@ -56,14 +28,6 @@ public final class TransitionCodec {
 				+ 1L;
 	}
 
-	/**
-	 * Bytes one sampled transition costs, including its recurrent state.
-	 *
-	 * <p>The state is 1KB at the default 128-wide LSTM, so it adds about 2% to a step's cost. That is
-	 * the price of the update replaying each observation under the state the behaviour policy actually
-	 * used, and it is cheap next to being wrong: the alternative cost the same 1KB's worth of gradient
-	 * signal.
-	 */
 	public static long wireBytesPerStep( EnvConfig config, int stateSize ){
 		return wireBytesPerStep( config ) + 4L + 4L * stateSize;
 	}
@@ -73,12 +37,6 @@ public final class TransitionCodec {
 		writeBody( out, sampled );
 	}
 
-	/**
-	 * The frame's contents, without its message header.
-	 *
-	 * Separate so a check can round-trip a transition without having to write a plausible message
-	 * header in front of it, and so the two halves are visibly the same code path.
-	 */
 	public static void writeBody( DataOutputStream out, List<Transition> sampled ) throws IOException {
 		out.writeInt( sampled.size() );
 
@@ -105,7 +63,6 @@ public final class TransitionCodec {
 		}
 	}
 
-	/** Writes a recurrent state, or a zero length if there is none. */
 	private static void writeState( DataOutputStream out, float[] state ) throws IOException {
 		if (state == null){
 			out.writeInt( 0 );
@@ -115,7 +72,6 @@ public final class TransitionCodec {
 		for (float v : state) out.writeFloat( v );
 	}
 
-	/** Reads a recurrent state, or returns {@code null} for a zero length. */
 	private static float[] readState( DataInputStream in, int expected ) throws IOException {
 		int length = in.readInt();
 		if (length == 0) return null;
@@ -131,25 +87,11 @@ public final class TransitionCodec {
 		return state;
 	}
 
-	/**
-	 * Reads a transition frame into fresh transitions, appended to {@code into}.
-	 *
-	 * Deliberately not {@link Transition#take}: pooled objects are recycled across generations, so a
-	 * decode that missed a field would silently read the previous generation's value instead of
-	 * failing. This buffer is large and cold - 2,400 steps is ~118 MB - which is precisely the case
-	 * the pool is wrong for.
-	 */
 	public static List<Transition> read( DataInputStream in, EnvConfig config,
 			int stateSize ) throws IOException {
 		return readBody( in, config, stateSize );
 	}
 
-	/**
-	 * The frame's contents, without its message header. See {@link #writeBody}.
-	 *
-	 * @param stateSize floats the LSTM state must be, so a frame from a differently sized worker is
-	 *                  refused rather than read into a network it does not belong to
-	 */
 	public static List<Transition> readBody( DataInputStream in, EnvConfig config,
 			int stateSize ) throws IOException {
 		int count = in.readInt();
@@ -207,13 +149,6 @@ public final class TransitionCodec {
 		in.readFully( into );
 	}
 
-	/**
-	 * Sizes the wire format's fixed widths.
-	 *
-	 * Read from the real classes rather than restated, because a hardcoded action or target count
-	 * here would desynchronise the codec from the network the trainer will build against - and a
-	 * desync here reads a plausible number rather than throwing.
-	 */
 	private static final class ActionCount {
 		static final int size =
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action.size();

@@ -10,25 +10,6 @@ import com.badlogic.gdx.graphics.GL32;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.glutils.GLVersion;
 
-/**
- * A {@link Graphics} that reports a fixed screen size and no GL support.
- *
- * Two things depend on {@code Gdx.graphics} being non-null, and both are needed for the
- * simulation to run:
- *
- * <ul>
- *   <li>Layout maths. {@code DeviceCompat.getRealPixelScaleX} and {@code PixelScene} read the
- *       back buffer size and DPI to convert between pixel and game units. Window construction,
- *       text layout and menu sizing all go through this.</li>
- *   <li>Texture loading. {@code Chrome.get} and {@code ShadowBox} branch on
- *       {@code Gdx.graphics == null} to decide whether a renderer exists. Reporting a graphics
- *       device that supports no GL means they take their normal path, and the resulting
- *       {@code UnsatisfiedLinkError} surfaces honestly rather than being masked.</li>
- * </ul>
- *
- * A fixed 480x320 at 160dpi is the game's own minimum pixel resolution, so the numbers the layout
- * code derives are the same ones it would use on a small real window.
- */
 public class HeadlessGraphics implements Graphics {
 
 	private static final int WIDTH = 480;

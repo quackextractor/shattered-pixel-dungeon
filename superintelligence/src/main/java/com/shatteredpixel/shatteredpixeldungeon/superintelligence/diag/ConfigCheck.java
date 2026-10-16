@@ -37,45 +37,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-/**
- * Asserts that the configuration binder does what it says, and refuses to be the reason a run is
- * misconfigured.
- *
- * <pre>gradle :superintelligence:configcheck</pre>
- *
- * <p><b>Why this is a gate.</b> Every other check asserts on behaviour - a gradient matches a finite
- * difference, a replay reproduces, a reset isolates. This one asserts on the layer that feeds all of them,
- * and that layer fails in the worst possible way: silently. A misspelled key tunes nothing and the run
- * looks fine at a learning rate nobody chose. An unparseable value silently defaulted is worse still,
- * because it is a confident number that does not mean what the operator wrote.
- *
- * <p><b>Every other check here is a positive control first.</b> All of them assert that a configuration
- * value <em>changed something</em>. A binder that ignored its input entirely would leave every assertion
- * satisfied by the defaults alone, and would pass with a perfect score while being incapable of
- * configuring anything - which is the failure this gate most needs to be unable to have. So the first
- * check requires that a deliberately wrong value is visibly wrong, and only then are the defaults
- * compared.
- */
 public class ConfigCheck {
 
 	private static final int CHECKS = 10;
 
 	private static final List<String> failures = new ArrayList<>();
 
-	/** Scratch directory for the fixture files this check writes. */
 	private static File scratch;
 
-	/** Prints each warning the binder emits, so a passing run still shows what it had to say. */
 	private static boolean verbose = false;
 
-	/**
-	 * No arguments, by design.
-	 *
-	 * <p>This check needs fixtures on disk and, for the environment-variable half, values that cannot be
-	 * set from inside a running JVM. Both are awkward to express as flags and neither belongs on a CLI a
-	 * user might reasonably try to drive, so the gradle task calls this directly. Everything it needs, it
-	 * builds.
-	 */
 	public static void main( String[] args ) throws IOException {
 		if (args.length > 0 && (args[ 0 ].equals( "--verbose" ) || args[ 0 ].equals( "-v" ) )){
 			verbose = true;
@@ -106,14 +77,6 @@ public class ConfigCheck {
 		}
 	}
 
-	/**
-	 * The positive control: a wrong value in a file has to produce a wrong setting.
-	 *
-	 * <p>Everything below compares against the compiled defaults, so without this a binder that parsed
-	 * nothing at all would pass every one of them. Asserted across both halves - the environment config
-	 * and the learning hyperparameters - because they are separate objects with separate key spaces and
-	 * either could be wired up while the other is not.
-	 */
 	private static void checkTheBinderActuallyBinds() throws IOException {
 		Path file = write( "positive.properties",
 				"env.max_slots=7",
@@ -147,33 +110,6 @@ public class ConfigCheck {
 				+ " configuration" );
 	}
 
-	/**
-	 * The shipped file may only name keys the binder implements.
-	 *
-	 * <p>The failure this catches is a key added to the properties file and spelled slightly wrong - or
-	 * spelled for a version of the code that no longer exists. It tunes nothing, it is not reported as
-	 * unknown because the binder accepts it, and the operator has no way to find out short of noticing
-	 * that their learning rate never changed.
-	 */
-	/**
- * Every field of {@code EnvConfig} reaches a worker process, and the two lists cannot drift.
- *
- * <p>This is the check that was missing while twenty fields did not travel. {@code Trainer.writeParams}
- * and {@code Worker.readParams} were two hand-kept lists, they agreed with each other, and both were
- * tested only against their own counterpart - so nothing noticed that twenty of thirty fields were
- * simply absent. The worker built its own {@code EnvConfig} and kept its own defaults, which meant a
- * {@code .env} override of {@code freeStepBudget}, {@code damagePenalty} or {@code stallPenalty} was
- * applied to the trainer, reported as applied, and had no effect on the process running the episodes.
- *
- * <p>Three assertions, because they fail for different reasons:
- *
- * <ul>
- * <li>the wire round trip preserves every field - catches a field added to neither list, or to one;</li>
- * <li>the set of fields {@code writeTo} writes is the set {@code copy()} copies - catches a field added
- * to one of them and forgotten in the other, which is how the original twenty happened;</li>
- * <li>the reflection-visible field count matches - catches a brand new field nobody routed anywhere.</li>
- * </ul>
- */
 private static void checkEveryConfigFieldTravelsToAWorker() throws IOException {
 	EnvConfig source = new EnvConfig();
 
@@ -281,17 +217,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 				+ " are keys the binder implements" );
 	}
 
-	/**
-	 * Every value in the shipped file must equal the compiled default.
-	 *
-	 * <p>The file documents the defaults and nothing else, so a value that differs is a comment in
-	 * properties-file clothing: it says the default is one thing and the code uses another, and a reader
-	 * tuning from the file is tuning from the wrong number. This is the assertion that keeps the two from
-	 * drifting, which is the whole reason the file exists.
-	 *
-	 * <p>Both directions matter, and both are checked: a key in the file whose value has moved away from
-	 * the code, and a key the code changed whose value in the file was not updated.
-	 */
 	private static void checkTheShippedFileMatchesTheCompiledDefaults() throws IOException {
 		Path shipped = shippedFile();
 		Map<String, String> values = read( shipped );
@@ -338,18 +263,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		}
 	}
 
-	/**
-	 * Every key the binder accepts must actually change something.
-	 *
-	 * <p>{@link EnvConfigBinder#KEYS} is a list, and {@code apply}'s switch is a second list. A key
-	 * added to the first and forgotten in the second would throw - which is why {@code apply}'s default
-	 * branch throws rather than ignoring - but only when it is <em>present in a file</em>. This drives all
-	 * of them, so a key that is accepted, documented and dead is caught here instead of by an operator
-	 * who tuned it.
-	 *
-	 * <p>Each key gets a value deliberately unlike its default, so "changed" is a real assertion rather
-	 * than a comparison that happens to hold.
-	 */
 	private static void checkEveryKnownKeyIsReachable() throws IOException {
 		EnvConfigBinder.Loaded base = EnvConfigBinder.load( null );
 
@@ -387,21 +300,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 				+ " they name" );
 	}
 
-	/**
-	 * An unrecognised key warns, names itself, and does not disturb the keys around it.
-	 *
-	 * <p>A warning rather than an error, because a shared properties file may legitimately carry keys for
-	 * other tools, and refusing to start over one would be worse than the problem. But it has to say
-	 * <em>which</em> key and <em>which</em> file, or it is not actionable - and that is the only observable
-	 * difference between a binder that warns and one that silently ignores. So the warning is asserted as
-	 * data, through {@link EnvConfigBinder.Loaded#warnings}, rather than by capturing stderr: capturing a
-	 * process's output would make the check assert on its own harness, and the collection exists precisely
-	 * so this assertion can be made on the value.
-	 *
-	 * <p>Both halves are needed. A binder that aborted the load would be equally silent about the mistake
-	 * from the operator's side - the run would use defaults and no warning would name the bad key - so the
-	 * known key beside the unknown one has to survive.
-	 */
 	private static void checkUnknownKeysWarn() throws IOException {
 		Path file = write( "unknown-key.properties",
 				"env.max_slots=11",
@@ -436,17 +334,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 				+ " keys around it" );
 	}
 
-	/**
-	 * A value that cannot be read is refused, and the message names the key, the file and the text.
-	 *
-	 * <p>The single most important property of this layer. Defaulting an unparseable value hands back a
-	 * configuration nobody asked for, in a system whose entire value is that its settings are the ones it
-	 * reports - and it fails silently, which is the worst combination available.
-	 *
-	 * <p>Checked for the numeric, boolean and out-of-range classes separately, because they are three
-	 * different code paths and a binder that catches only {@code NumberFormatException} still lets
-	 * {@code rl.gamma=2.0} through to a discount factor that never decays.
-	 */
 	private static void checkBadValuesAreRefused() throws IOException {
 		expectRefusal( "a non-numeric integer", "env.max_slots=wide", "env.max_slots" );
 		expectRefusal( "a non-numeric float", "rl.learning_rate=fast", "rl.learning_rate" );
@@ -478,23 +365,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		}
 	}
 
-	/**
-	 * {@code --out} must move every default output, not just some of them.
-	 *
-	 * <p>The checkpoint and the metrics history are derived from the working directory, and both used to
-	 * be derived in the constructor - before the command line is read. So {@code --out D} put the
-	 * replays in D while leaving a 43 MB checkpoint and a metrics history in the old directory, and the
-	 * run reported saving to a path nobody had named. Half a run's output in the place that was asked
-	 * for and half somewhere else is worse than none of it in either.
-	 *
-	 * <p>Asserted on the parsed options rather than on a real run: this is about where a path points,
-	 * and a run that had to actually write a checkpoint to prove it would take a minute and write tens of
-	 * megabytes to do it. The arithmetic is the whole of the behaviour.
-	 *
-	 * <p>Both halves matter, and the second is the reason this is not simply "the default follows
-	 * {@code --out}": an explicit {@code --save} is a deliberate path and must not move. A fix that
-	 * re-derived it unconditionally would pass the first assertion and quietly break the second.
-	 */
 	private static void checkOutputPathsFollowTheWorkingDirectory() throws IOException {
 		File dir = new File( scratch, "outdir" );
 
@@ -523,13 +393,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 				+ " --save still wins" );
 	}
 
-	/**
-	 * {@code .env} beside the properties file is read, the way a shell would read it.
-	 *
-	 * <p>It used to be read by nothing: the JVM does not load one, so the documented workflow was to pipe
-	 * it into the shell by hand, and a developer who skipped that step ran with settings they did not
-	 * believe they were using - silently, because nothing in the report said the file had been ignored.
-	 */
 	private static void checkDotEnvIsRead() throws IOException {
 		java.io.File dir = new java.io.File( scratch, "dotenv" );
 		dir.mkdirs();
@@ -574,7 +437,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 				+ " and malformed entries warned about" );
 	}
 
-	/** And it sits above the properties file, which is where the documentation has always said it sits. */
 	private static void checkDotEnvBeatsThePropertiesFile() throws IOException {
 		java.io.File dir = new java.io.File( scratch, "dotenv-order" );
 		dir.mkdirs();
@@ -603,13 +465,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 				+ " of its output somewhere else, and nothing reports where the rest went." );
 	}
 
-	/**
-	 * The value of one key in a loaded configuration, or null if the binder has no such key.
-	 *
-	 * <p>A third list, and deliberately not reflection: reflection would make the check pass for any key
-	 * the binder happens to handle and silently skip any it does not, which is exactly the bug being
-	 * looked for. Written out, it fails to compile when a setting is added and this is not updated.
-	 */
 	private static String compiledValue( String key, EnvConfig config, PpoHyperparameters hyper ){
 		switch (key ) {
 			case "env.max_slots":             return String.valueOf( config.maxSlots );
@@ -666,19 +521,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		}
 	}
 
-	/**
-	 * A value for each key that is valid, and unlike its default.
-	 *
-	 * <p>Valid, because an invalid one would be refused before the "did it change anything" question could
-	 * be asked - and {@link #checkBadValuesAreRefused()} would then be the only thing testing it, which is
-	 * the wrong place to discover that the reachability of a key depends on its range being wide.
-	 *
-	 * <p>Unlike its default, and that is why the defaults are passed in rather than hardcoded: the first
-	 * version of this returned {@code false} for every boolean, which is the opposite of every boolean
-	 * default except one - so {@code env.persist_saves} looked inert and the check reported a key as dead
-	 * that is not. A sentinel chosen by assumption about the default is the same bug as one written out by
-	 * hand, only harder to see.
-	 */
 	private static String sentinelFor( String key, String current ){
 		if (isBooleanKey( key )){
 			return current.equals( "true" ) ? "false" : "true";
@@ -700,14 +542,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		}
 	}
 
-	/**
-	 * A valid in-range value for every non-boolean key.
-	 *
-	 * <p>Distinct from its default is not checked here - {@link #sentinelFor} handles that by falling
-	 * through to the boolean rule or by the reachability check noticing no change - but every value below
-	 * is chosen to sit inside the range {@link PpoHyperparameters#validate()} and the binder's own type
-	 * checks accept, so a key cannot look dead merely because its sentinel was rejected.
-	 */
 	private static String numericSentinelFor( String key ){
 		switch ( key ) {
 
@@ -756,17 +590,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		}
 	}
 
-	/**
-	 * Whether two recorded values are the same setting.
-	 *
-	 * <p>Numerically for numbers, not by their printed text. {@code 3e-4f} prints as {@code 3.0E-4} and
-	 * the properties file says {@code 0.0003}, and string comparison reported a disagreement between two
-	 * spellings of the same float - which would have made this check fail on any key whose default is
-	 * written in exponent form, for no reason at all. Comparing as doubles with a tolerance relative to
-	 * the magnitude is what the assertion actually means.
-	 *
-	 * <p>Falls back to string equality for anything not parseable as a number, which is the booleans.
-	 */
 	private static boolean sameValue( String a, String b ){
 		if (a == null || b == null) return a == null && b == null;
 
@@ -779,7 +602,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 		}
 	}
 
-	/** The shipped properties file, found relative to the module rather than the working directory. */
 	private static Path shippedFile(){
 		Path direct = new File( "superintelligence/superintelligence.properties" ).toPath();
 		if (Files.isReadable( direct )) return direct;
@@ -792,7 +614,6 @@ private static void checkTheShippedFileUsesOnlyKnownKeys() throws IOException {
 				+ ". It is a committed file next to build.gradle; this check cannot pass without it." );
 	}
 
-	/** A properties file's keys and values, in file order, with comments and blanks dropped. */
 	private static Map<String, String> read( Path file ) throws IOException {
 		Properties props = new Properties();
 		try (java.io.InputStream in = Files.newInputStream( file )){

@@ -21,34 +21,12 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Fails if a chasm fall is dropped, lands the hero somewhere the game would not, or inherits an
- * earlier episode.
- *
- * <pre>gradle :superintelligence:fallcheck</pre>
- *
- * <p>A fall is the one floor transition the game does not route through a {@code LevelTransition}.
- * {@code Chasm.heroFall} writes {@code InterlevelScene.mode}, asks for a scene switch, and writes
- * nothing else - no {@code curTransition}, no destination, no cell. Everything after that is the
- * receiving end's problem, and the receiving end here is {@link
- * com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline}, so this gate is
- * about what it does with a request that arrives with nothing in it.
- *
- * <p><b>What it was.</b> {@code handleTransition} tested {@code curTransition == null} before it
- * tested {@code mode == FALL}, and on a fall {@code curTransition} is null <i>by construction</i> — so
- * the null test fired first, the method answered "not a level transition", cleared the switch request
- * and dropped the fall, and {@code Transition.FALL} and {@code LevelPipeline.handleFall} were
- * unreachable code. Measured on three seeds: a hero put on a chasm cell and stepped stayed on depth 1
- * with the switch acknowledged.
- *
- * <p>Nothing in the suite drove one, and {@code transitioncheck}'s nine cases are all stair
- * transitions, which do carry a {@code curTransition}.
- */
+
 public class FallCheck {
 
 	private static final int CHECKS = 6;
 
-	/** Seeds searched for a floor with a chasm the hero can be put next to. */
+
 	static final String[] SEEDS = {
 			"FALLCHECK-A", "FALLCHECK-B", "FALLCHECK-C", "FALLCHECK-D",
 			"FALLCHECK-E", "FALLCHECK-F", "FALLCHECK-G", "FALLCHECK-H"
@@ -82,7 +60,7 @@ public class FallCheck {
 		return new SPDEnv( config, HeadlessGame.install() );
 	}
 
-	/** A chasm cell with a plain floor cell beside it, or -1 when this floor has no chasm. */
+
 	private static int pitBeside( int[] beside ){
 		for (int c = 0; c < Dungeon.level.length(); c++){
 			if (!Dungeon.level.pit[c] || Dungeon.level.solid[c]) continue;
@@ -99,14 +77,7 @@ public class FallCheck {
 		return -1;
 	}
 
-	/**
-	 * Drops the hero onto a chasm the way the engine does.
-	 *
-	 * <p>Placed on the cell and handed to {@code Level.occupyCell}, which is the call {@code
-	 * Char.move} makes and the one {@code Chasm.heroLand} makes. Going through the engine rather than
-	 * through {@code Chasm.heroFall} directly is what makes this a test of the fall and not of a
-	 * method the gate itself called.
-	 */
+
 	private static boolean drop( SPDEnv env ){
 		int[] beside = new int[1];
 		int pit = pitBeside( beside );
@@ -122,14 +93,7 @@ public class FallCheck {
 		return true;
 	}
 
-	/**
-	 * A fall is a floor.
-	 *
-	 * <p>Asserted on the world rather than on a return value: {@code handleTransition}'s verdict was
-	 * the thing that was wrong, so asserting on it would pass against the fault it was written for.
-	 * Depth, a living hero and a clock that restarted with the floor are what a fall costs when it
-	 * does not happen.
-	 */
+
 	private static void checkAFallIsServiced(){
 		SPDEnv env = env();
 
@@ -181,14 +145,7 @@ public class FallCheck {
 				+ " most of them." );
 	}
 
-	/**
-	 * Landing hurts.
-	 *
-	 * <p>{@code InterlevelScene.fall} opens with {@code Buff.affect(hero, Chasm.Falling.class)}, whose
-	 * act is {@code Chasm.heroLand} - fall damage, cripple, bleeding, and a press of the landing cell.
-	 * The headless path skipped all of it, so a fall was the cheapest way to lose a floor: strictly
-	 * better than the stairs, which cost nothing here but cost a hero's health in the game.
-	 */
+
 	private static void checkTheFallHurts(){
 		SPDEnv env = env();
 
@@ -217,25 +174,7 @@ public class FallCheck {
 		fail( "no seed produced a survivable fall, so this case measured nothing." );
 	}
 
-	/**
-	 * One run must not inherit the last one's fall.
-	 *
-	 * <p>{@code InterlevelScene.mode} is a process static, and nothing headless ever resets it - a real
-	 * game gets a fresh {@code InterlevelScene} per descent, which is where its mode comes from. Once
-	 * {@code handleTransition} reads the mode before the null transition, it becomes load-bearing: a
-	 * {@code Mode.FALL} left behind by one episode is read by the next episode's first ordinary
-	 * descent, which is then serviced as a fall - one floor down and a random cell, for a hero who
-	 * walked down the stairs.
-	 *
-	 * <p>Asserted twice, because the two halves fail differently. The first is that a serviced fall
-	 * leaves nothing behind, which is the property and the mutation. The second stages the leftover
-	 * directly, because a process can arrive holding one by other means and a reset still has to drop
-	 * it.
-	 *
-	 * <p>This is the shape {@code issues.md} 16 measured and could not attribute - "the divergence is
-	 * not seed-determined, it needs a worker that has already run other episodes" - on the one field
-	 * that decides how a transition is serviced.
-	 */
+
 	private static void checkAnEpisodeDoesNotInheritTheLastEpisodesFall(){
 		SPDEnv env = env();
 		env.reset( SEEDS[0], HeroClass.WARRIOR );
@@ -313,17 +252,7 @@ public class FallCheck {
 				+ expectedType + " (" + Dungeon.hero.pos + ")" );
 	}
 
-	/**
-	 * Walking toward a chasm asks a question, and asking it must not take the process down.
-	 *
-	 * <p>Measured before the fix: {@code NullPointerException} from
-	 * {@code new Image(Dungeon.level.tilesTex(), 176, 16, 16, 16)}. {@code Level.tilesTex} names a
-	 * texture, {@code TextureCache} returns nothing for it with no renderer, and the five-argument
-	 * {@code Image} constructor derived its frame rectangle from the texture without the guard
-	 * {@code frame(RectF)} had carried since the bypass landed. It is thrown from inside
-	 * {@code Actor.headlessStep}, and nothing between there and {@code Worker.serve} catches it, so one
-	 * hero stepping at a chasm ended a worker's episode.
-	 */
+
 	private static void checkWalkingIntoAChasmDoesNotTakeTheProcessDown(){
 		SPDEnv env = env();
 
@@ -396,19 +325,7 @@ public class FallCheck {
 		System.out.println( "  walking toward a chasm asks the game's question instead of ending the process" );
 	}
 
-	/**
-	 * The same fall twice, in one process, is the same fall.
-	 * <p>This is the property {@code issues.md} 16 is about and the one nothing above it can establish:
-	 * that where a hero lands is a function of the seed he fell from and of the floor he fell through,
-	 * rather than of whatever the process did before. {@code Level.fallCell} draws from the base
-	 * generator, so a fall is one of the few places where the landing cell depends on the RNG stream's
-	 * position - and {@code SpecialRoom.runSpecials}, the pool the destination floor draws its rooms
-	 * from, is itself consumed as floors are generated.
-	 *
-	 * <p>Driven by a trace rather than by a recording, because what is at stake is the two halves of one
-	 * event: the floor the hero left and the floor he landed on. Asserted on depth, cell, health and
-	 * the engine clock together, so a difference in any of them is a difference in the fall.
-	 */
+
 	private static void checkTheSameFallTwiceIsTheSameFall(){
 		EnvConfig config = new EnvConfig();
 		SPDEnv first = new SPDEnv( config, HeadlessGame.install() );
@@ -462,25 +379,7 @@ public class FallCheck {
 
 		System.out.println( "  the same fall twice is the same fall: " + after );
 	}
-	/**
-	 * A levitation that expires over a chasm drops the hero.
-	 *
-	 * <p>The state is reached the way the game reaches it: {@code Hero.getCloser} lets a flying hero
-	 * step onto a pit while {@code Levitation.detachesWithinDelay} is false, and {@code Char.move}'s
-	 * {@code Level.occupyCell} skips the pit branch behind {@code if (!ch.flying)}. So the hero is
-	 * standing on a chasm cell with {@code flying} true, and the only thing that ever presses that
-	 * cell again is {@code Levitation.detach()} - which asks for a {@code GameScene} and so never runs
-	 * headlessly.
-	 *
-	 * <p>Reached by giving the buff its full duration, walking the hero onto the pit, then grounding
-	 * him the way the expiry grounds him - clearing {@code flying} and detaching. Both halves are the
-	 * game's. Neither {@code Chasm.heroFall} nor {@code handleFall} is called here: the fall has to
-	 * come out of the pipeline noticing the state, which is the whole point of the case. Everything
-	 * after it is the environment reacting on its own.
-	 *
-	 * <p>Mutation-tested by reverting the pipeline's check, which leaves the hero on depth 1 at full
-	 * health on the chasm cell.
-	 */
+
 	private static void checkLevitationEndingOverAChasmDropsTheHero(){
 		SPDEnv env = env();
 
@@ -541,19 +440,7 @@ public class FallCheck {
 		fail( "no seed let a hero fly onto a chasm and keep flying, so this case measured nothing." );
 	}
 
-	/**
-	 * Burns one turn of engine time with the hero on {@code pit}.
-	 *
-	 * <p>The hero has to keep moving for the buff to tick — {@code WAIT} costs him nothing — so this
-	 * cannot hold him still. It spends a real turn and then puts him back on the chasm, which is the
-	 * state the buff expiring over a chasm is supposed to produce.
-	 *
-	 * <p>An earlier version tried to do this with movement alone, by walking back and forth. Measured,
-	 * it did not work: the mask offers eight directions and the hero drifted further from the pit every
-	 * few turns, so he was somewhere else entirely by the time the buff ran out — 20 turns on, 85
-	 * cells from where he started. Pinning is honest here because the state under test is exactly
-	 * "standing on a chasm when levitation ends", and how he got there is covered by the first case.
-	 */
+
 	private static void burnTurnOnPit( SPDEnv env, int pit ){
 		Action mv = null;
 		for (Action a : Action.values()){
@@ -569,7 +456,7 @@ public class FallCheck {
 		Dungeon.hero.move( pit, false );
 	}
 
-	/** The one action that walks from {@code from} onto {@code to}, or null if they are not adjacent. */
+
 	private static Action toward( int from, int to ){
 		for (Action a : Action.values()){
 			if (a.directional() && from + a.dx + a.dy * Dungeon.level.width() == to) return a;
@@ -577,7 +464,7 @@ public class FallCheck {
 		return null;
 	}
 
-	/** Depth, cell, health, clock and floor shape, as one comparable string. */
+
 	private static String state(){
 		StringBuilder sb = new StringBuilder();
 		sb.append( "depth " ).append( Dungeon.depth )

@@ -9,39 +9,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * One minibatch processed across N threads, with their gradients reduced before the Adam step.
- *
- * <p>The threading and reduction half of {@link PPO#update}. It lives apart because it is a separate
- * responsibility with a separate failure mode - it is the only place in the framework that touches
- * threads the trainer does not own - and because the learner it drives should be readable without
- * first reading a thread pool.
- *
- * <p><b>What it owns.</b> A fixed pool, and one {@link Shard} per thread holding a copy of the parameters
- * and its own scratch. Nothing else in the framework allocates per-thread state.
- *
- * <p><b>What it deliberately does not own.</b> The per-sample forward and backward. Those stay in
- * {@link PPO#oneSample}, and this calls that method rather than a copy of it - the alternative is a
- * serial and a parallel implementation of the same objective, which is how two implementations come to
- * compute different things while both look correct. That duplication already happened once in this
- * file, when the two paths each grew their own copy of the scale-clip-step tail.
- *
- * <p><b>Why a pool rather than threads per minibatch.</b> There are {@code n / minibatchSize}
- * minibatches per epoch and each is a barrier - nothing can proceed until every thread's gradients are
- * reduced and one Adam step has run. Handing minibatches to a fixed pool avoids creating
- * {@code epochs * n / minibatchSize} threads, which at 2 epochs over 2400 samples is 150 threads per
- * update.
- *
- * <p><b>Why per-thread networks rather than shared tensors.</b> A thread's network is a copy of the
- * parameters, so no thread can observe another's writes even if the reduction is wrong. The cost is one
- * 14.3 MB copy per minibatch, about 2 ms against 32 samples of forward and backward at 11.3 ms each -
- * 0.5%. Sharing the tensors would save that and reintroduce exactly the aliasing this avoids.
- *
- * <p><b>Correctness depends on a fix made elsewhere, and it is worth naming.</b> Before each sample came
- * to restore its own recurrent state, sample <i>i</i>'s forward depended on sample <i>i-1</i>'s leftover
- * {@code h}/{@code c}, so the samples were coupled and no split across threads could reproduce the serial
- * result. That was the real reason the parallel update was "not actionable" - not a threading problem.
- */
+
 final class ShardedUpdate {
 
 	private final PPO ppo;
@@ -56,14 +24,7 @@ final class ShardedUpdate {
 		this.ppo = ppo;
 	}
 
-	/**
-	 * Resolves the thread count and creates or tears down the pool to match.
-	 *
-	 * <p>One thread is the untouched serial path, not a one-threaded pool: the parameter copies and the
-	 * gradient reduction would both be pure overhead, and the serial path is the reference
-	 * {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ParallelCheck} compares
-	 * against, so it has to stay exactly what it was.
-	 */
+
 	int resolveThreads( int requested ){
 		if (requested <= 1){
 			threadCount = 1;
@@ -88,7 +49,7 @@ final class ShardedUpdate {
 		return threadCount;
 	}
 
-	/** Releases the pool and the per-thread networks. Safe when there was none. */
+
 	void close(){
 		if (pool != null){
 			pool.shutdown();
@@ -97,25 +58,14 @@ final class ShardedUpdate {
 		shards.clear();
 	}
 
-	/**
-	 * The networks the shards own, in shard order, for {@code ParallelCheck}.
-	 *
-	 * <p>Empty until an update has run. The property that matters is that no two entries are the same
-	 * object and none is the master - object identity, not parameter values, because the parameters are
-	 * copied in per minibatch and are equal by design.
-	 */
+
 	List< Network > shardNetworks(){
 		List< Network > out = new ArrayList<>( shards.size() );
 		for (Shard shard : shards) out.add( shard.network );
 		return out;
 	}
 
-	/**
-	 * Runs one minibatch across the pool and reduces the results into {@code network}.
-	 *
-	 * <p>Scales and clips before returning, exactly where the serial path does, so that the number
-	 * reported is the norm of the gradient that was actually applied.
-	 */
+
 	PPO.Minibatch run( List< List< Transition > > chunks, int from, int to ){
 		int count = to - from;
 
@@ -199,17 +149,7 @@ final class ShardedUpdate {
 		}
 	}
 
-	/**
-	 * Per-epoch scratch a parallel shard owns, and its own copy of the parameters.
-	 *
-	 * <p>Sized from the network rather than from a config, because they are the same numbers by
-	 * construction and a second derivation of "how wide is the action head" would be a second thing to
-	 * keep in step.
-	 *
-	 * <p>The initialisation is thrown away: every minibatch copies the master's parameters in before
-	 * the shard does any work. Distinct seeds anyway, so that two shards cannot be the same object by
-	 * accident if this ever changes - the property {@code ParallelCheck} asserts is object identity.
-	 */
+
 	private static class Shard {
 		final Network network;
 		final float[] grid;

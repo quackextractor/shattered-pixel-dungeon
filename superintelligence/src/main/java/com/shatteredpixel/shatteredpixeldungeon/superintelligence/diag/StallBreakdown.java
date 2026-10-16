@@ -14,23 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
 
-/**
- * Runs episodes under a uniform policy and names which of the four stall guards ended each one.
- *
- * <p><pre>gradle :superintelligence:stallbreakdown --args="40"</pre>
- *
- * <p>The question. A run reports {@code endSTALLED} as one column, but four guards raise that same
- * reason, and they are not interchangeable - one is the engine refusing to yield, one is a pipeline that
- * could not settle the hero, one is the hero standing still, and one is the agent spending actions that
- * cost nothing. Three repeats of one training config put 98-99% of all episodes at STALLED
- * ({@code issues.md} 27), which makes the guard that fires the difference between a tuning problem and
- * a harness bug.
- *
- * <p>Not a gate. It runs whole episodes and reports a distribution; what counts as too many of which
- * guard is a judgement about the reward function rather than a fact about the code. It also uses a fixed
- * seed per episode, so the distribution is reproducible but is one policy, not the policy a run's
- * checkpoint holds.
- */
+
 public class StallBreakdown {
 
 	public static void main( String[] args ){
@@ -109,14 +93,7 @@ public class StallBreakdown {
 		}
 	}
 
-	/**
- * Forces each guard in turn by moving its threshold, and reports which one actually answered.
- *
- * <p>The point is reachability. Three of the four assignments never run under the default thresholds -
- * a uniform policy ends every episode on {@code FREE_STEP} and the other three sit at zero - so a
- * mislabelled constant on any of them would compile, pass every gate and be wrong. Each row here drives
- * the thresholds until that guard is the only one left that can fire.
- */
+
 private static int probeGuards( int episodes ){
 		String[] names = { "defaults", "position", "freeStep", "actorStep" };
 		StallCause[] expected = { StallCause.FREE_STEP, StallCause.POSITION,

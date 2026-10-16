@@ -14,35 +14,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Fails if the environment drops an item somewhere the game would not have pressed the cell.
- *
- * <pre>gradle :superintelligence:presscheck</pre>
- *
- * <p><b>This is {@code issues.md} 17 and the gate for it.</b> {@code Level.occupyCell} presses a cell on
- * every step, which is how the game's traps, doors, wells and plants fire - but it only presses a cell
- * somebody <em>enters</em>. {@code Level.drop} has to press the landing cell itself, and every thrown
- * and every dropped item reaches it there ({@code Item.onThrow} and {@code Item.doDrop} both call it),
- * so it is the one chokepoint for the whole item tree.
- *
- * <p>The guard it sat behind separated gameplay drops from <em>scene</em> drops: {@code AlchemyScene}
- * crafts onto the cell the hero is standing on and {@code InterlevelScene.resurrect} drops the
- * LostBackpack on the cell he died on, and neither should press. A renderer-bypassed process has no
- * scene at all, so the test was false and every thrown item landed inert - measured on four seeds, an
- * armed {@code WornDartTrap} was still armed after a {@code Food} was dropped on it in all four.
- *
- * <p>Neither scene can exist headlessly, so every drop made here is a gameplay drop, and
- * {@code GameScene.headlessGameplay} is what says so. It is false unless something sets it, which only a
- * renderer-bypassed process does, so the guard's answer in a real game is unchanged.
- *
- * <p>The second case is the half of the guard that has to survive any fix. With {@code Dungeon.level}
- * nulled - the state {@code RegularLevel.createItems} places starting items in, because
- * {@code Dungeon.newLevel()} nulls it for the duration of {@code create()} - a dropped item must leave
- * the trap armed. That is what stops the obvious fix from quietly becoming a loosening.
- *
- * <p>Third case covers the other branch of the press that a trap does not reach, and the reason
- * {@code AlchemyScene} is a special case at all: dropping an item on high grass tramples it.
- */
+
 public class PressCheck {
 
 	private static final int CHECKS = 3;
@@ -71,17 +43,7 @@ public class PressCheck {
 		}
 	}
 
-	/**
-	 * An item landing on a trap fires it.
-	 *
-	 * <p>Asserted on the trap's own state, and driven through {@code Level.drop} - the call the item tree
-	 * actually makes - rather than by calling {@code pressCell} directly, which would test the press but
-	 * not the wiring that skipped it.
-	 *
-	 * <p>{@code Trap.trigger()} disarms, so {@code active} going false is the game having fired it and is
-	 * the one observable that says so. Visibility is not part of the assertion: a hidden trap still fires
-	 * on a hard press, and dropping an item is one.
-	 */
+
 	private static void checkDroppingAnItemPressesTheCell(){
 		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );
 
@@ -112,17 +74,7 @@ public class PressCheck {
 		fail( "no seed generated an armed trap on floor 1, so this case measured nothing." );
 	}
 
-	/**
-	 * An item landing on high grass tramples it.
-	 *
-	 * <p>The other half of what a press does, on the one cell type that is not a trap, and the reason
-	 * {@code AlchemyScene} cannot be dropped from the guard: crafting puts an item on the cell the hero
-	 * is standing on, and if that pressed, every craft would flatten the grass under him.
-	 *
-	 * <p>Asserted on {@code level.map}, because trampling is a terrain change rather than a state flag.
-	 * {@code Level.set} is the static helper {@code HighGrass.trample} uses, so this reads the map the
-	 * game's own write produced.
-	 */
+
 	private static void checkDroppingAnItemTramplesGrass(){
 		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );
 
@@ -157,20 +109,7 @@ public class PressCheck {
 		fail( "no seed generated high grass on floor 1, so this case measured nothing." );
 	}
 
-	/**
-	 * Placing an item during level generation must not press its cell.
-	 *
-	 * <p>The reason the guard exists, and the case that makes widening it safe rather than a loosening.
-	 * {@code RegularLevel.createItems} calls {@code Level.drop} for every starting item, and the map is
-	 * not finished - traps are placed by the painter after the items are chosen - so a press during
-	 * generation can fire a trap, enter a door or fill a well on a floor nobody has entered.
-	 *
-	 * <p>What prevents it is not the scene test but the {@code Dungeon.level != null} half: {@code
-	 * Dungeon.newLevel} sets {@code Dungeon.level = null} before calling {@code level.create()} and
-	 * assigns it on return, so generation runs with no current level and the press is skipped. That is
-	 * the whole of what is carrying the load, so it is asserted directly - the same drop, the same trap,
-	 * with {@code Dungeon.level} nulled, must leave the trap armed.
-	 */
+
 	private static void checkGenerationDoesNotPressCells(){
 		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );
 
@@ -208,7 +147,7 @@ public class PressCheck {
 		fail( "no seed generated an armed trap on floor 1, so this case measured nothing." );
 	}
 
-	/** An armed trap on the current level, or null. */
+
 	private static Trap armedTrap(){
 		for (Trap t : Dungeon.level.traps.values()){
 			if (t.active && Dungeon.level.map[ t.pos ] == Terrain.TRAP) return t;

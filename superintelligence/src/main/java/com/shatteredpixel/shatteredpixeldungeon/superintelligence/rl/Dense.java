@@ -2,42 +2,17 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
 import java.util.Random;
 
-/**
- * A fully connected layer with tanh activation and its Adam state.
- *
- * Adam rather than plain SGD because the observation feeds this layer a mix of very differently
- * scaled quantities (normalised vitals, raw item upgrade counts, a type embedding index). Plain
- * SGD with one learning rate either crawls on the small features or diverges on the large ones.
- *
- * Gradients accumulate into a caller-owned buffer so the same layer instance can be reused across
- * a whole minibatch without reallocating.
- */
 public class Dense {
 
 	public final Tensor W;
 	public final Tensor b;
 
-	/**
-	 * Whether to apply tanh. Off for the value head, which is a regression and not a classifier.
-	 *
-	 * <p>A tanh output is confined to {@code [-1, +1]}, and {@code EnvConfig.deathPenalty} is 100 with
-	 * {@code victoryReward} 1000. So the critic was being asked to fit targets up to 250x outside the only
-	 * range it could express: those samples contribute a squared error no amount of training removes,
-	 * and {@code valueLoss} floors out instead of falling. Measured over 12 generations it sat at
-	 * 2.97 to 8.11 and did not trend down.
-	 *
-	 * <p>The loss changes with it. For a linear output the squared-error gradient is
-	 * {@code dL/dpreAct = (pred - target) * feature}; the {@code 1 - tanh'} factor is the tanh case alone.
-	 */
 	private final boolean tanh;
 
-	/** Adam moments. */
 	final Tensor mW, vW, mb, vb;
 
-	/** Gradient accumulators for the current minibatch. */
 	final Tensor gW, gb;
 
-	/** Pre-activation from the last forward, needed for the tanh derivative in backward. */
 	private final Tensor preAct;
 
 	public final int in;
@@ -47,9 +22,6 @@ public class Dense {
 		this( in, out, rng, weightScale, true );
 	}
 
-	/**
-	 * @param tanh whether to squash the output into [-1, 1]. False for a linear head.
-	 */
 	public Dense( int in, int out, Random rng, float weightScale, boolean tanh ){
 		this.in = in;
 		this.out = out;
@@ -72,7 +44,6 @@ public class Dense {
 		b.fill( 0f );
 	}
 
-	/** out = tanh(x * W + b), or {@code x * W + b} when this layer is linear. */
 	public void forward( Tensor x, Tensor out ){
 		x.matmul( W, b, out );
 		System.arraycopy( out.data, 0, preAct.data, 0, out.cols );
@@ -82,7 +53,6 @@ public class Dense {
 		}
 	}
 
-	/** Accumulates dL/dx given dL/dout, where out was produced by forward(x, out). */
 	public void backward( Tensor x, Tensor dout, Tensor dx ){
 
 		if (tanh){
@@ -113,18 +83,10 @@ public class Dense {
 		}
 	}
 
-	/**
-	 * Copies the pre-activation out, for a chunk's backward to restore it.
-	 *
-	 * The activation derivative is the only thing backward needs that the input argument does not
-	 * already carry, and a contiguous chunk backpropagates out of order, so a later step's forward would
-	 * otherwise overwrite it.
-	 */
 	public void savePreAct( float[] into ){
 		System.arraycopy( preAct.data, 0, into, 0, preAct.cols );
 	}
 
-	/** Restores what {@link #savePreAct} took. See it. */
 	public void loadPreAct( float[] from ){
 		System.arraycopy( from, 0, preAct.data, 0, preAct.cols );
 	}
@@ -134,11 +96,6 @@ public class Dense {
 		gb.fill( 0f );
 	}
 
-	/**
-	 * Applies one Adam step.
-	 *
-	 * @param step the global step count, used for the bias correction
-	 */
 	public void adamStep( float lr, float beta1, float beta2, float eps, float gradScale, int step ){
 		adam( W, gW, mW, vW, lr, beta1, beta2, eps, gradScale, step );
 		adam( b, gb, mb, vb, lr, beta1, beta2, eps, gradScale, step );

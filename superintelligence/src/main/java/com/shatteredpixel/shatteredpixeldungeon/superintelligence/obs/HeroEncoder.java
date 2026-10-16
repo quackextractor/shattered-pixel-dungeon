@@ -15,18 +15,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfForce;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
 
-/**
- * Encodes the hero's scalars: vitals, progression, and the status effects that gate which actions
- * are worth taking.
- *
- * Every value is normalised into roughly [-1, 1]. These feed the LSTM concatenated with the
- * spatial features, so an unbounded quantity like gold would otherwise dominate the activations
- * and wash out the spatial signal.
- *
- * Buff strength is read through {@code Buff.cooldown()}, which is time remaining. Duration buffs
- * are normalised by a typical maximum rather than their own total, so that a Poison at 200 turns
- * reads consistently the same way whether it was applied as Poison or a resist-adjusted variant.
- */
+
 public class HeroEncoder {
 
 	public static final int FEATURES = 23;
@@ -55,30 +44,15 @@ public class HeroEncoder {
 	public static final int F_ARMOR_TIER      = 21;
 	public static final int F_WEAPON_TIER     = 22;
 
-	/** Hero.MAX_LEVEL, used to normalise experience progress. */
+
 	private static final float MAX_LEVEL = 30f;
 
-	/** Hunger.HUNGRY is the point at which the hero becomes hungry; the full bar runs further. */
+
 	private static final float HUNGER_SCALE = 600f;
 
 	private HeroEncoder() {}
 
-	/**
-	 * The largest damage reduction this hero could roll, which is what {@code Hero.drRoll} is a draw
-	 * from.
-	 *
-	 * <p>{@code drRoll} is not a property of the hero - it is a fresh {@code Random.NormalIntRange} on
-	 * every call, and {@code Hero.drRoll} draws once for Barkskin, once for armour and once for the
-	 * weapon. Calling it to build an observation was therefore wrong twice over. It perturbed the
-	 * game's own randomness on every encode - twice per agent step, once from {@code reset} and once
-	 * from {@code settle} - which is what offset the trainer's RNG stream from the rendered game's
-	 * from the very first floor, and no recording made since could ever replay. And the feature itself
-	 * was noise: two identical worlds encoded to different vectors, so the agent was shown a number
-	 * that carried no information about the state it had to act on.
-	 *
-	 * <p>Taking each component's maximum instead yields the roll's ceiling, which is deterministic,
-	 * is a real property of the loadout, and leaves the game's randomness alone.
-	 */
+
 	private static int defenseCeiling( Hero hero ){
 		int dr = Barkskin.currentLevel( hero );
 
@@ -144,13 +118,13 @@ public class HeroEncoder {
 				? weaponTier( hero ) / 6f : 0f;
 	}
 
-	/** Weapon tier, normalised. KindOfWeapon has no tier field of its own, so it is read off the item level. */
+
 	private static float weaponTier( Hero hero ){
 		if (hero.belongings.weapon() == null) return 0f;
 		return Math.max( 0, hero.belongings.weapon().level() );
 	}
 
-	/** Turns remaining on a duration buff, scaled by a typical maximum. */
+
 	private static float buffRemaining( Hero hero, Class<? extends Buff> type, float scale ){
 		Buff buff = hero.buff( type );
 		if (buff == null) return 0f;

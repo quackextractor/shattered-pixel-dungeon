@@ -36,15 +36,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-/**
- * The headless half of the world snapshot: replays a recording through the environment and writes what
- * the world contained at every step.
- *
- * <p>Written to be diffed against the same recording played in the rendered viewer, which is the only
- * comparison in the suite where the two sides do not share a code path. Everything else - verify,
- * playbackcheck, episodediff, paritycheck - compares a headless run against another headless run, so a
- * fault in the render loop cannot show up in any of them. This is the producer for the one that can.
- */
 public class WorldTrace {
 
 	private WorldTrace(){

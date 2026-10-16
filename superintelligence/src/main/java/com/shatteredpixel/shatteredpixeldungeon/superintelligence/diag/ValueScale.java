@@ -9,29 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Reports the range of the critic's targets against the range the critic can reach.
- *
- * <pre>gradle :superintelligence:valuescale</pre>
- *
- * <p>Not a gate: it answers a question whose answer decides a design change rather than a code
- * change, so it prints the distribution and leaves the decision visible.
- *
- * <p>The question it was written to answer: {@code Network.valueHead} is a {@code Dense}, which applies
- * {@code tanh}, so the critic's output is confined to {@code [-1, +1]} against a {@code deathPenalty} of
- * 100 and a {@code victoryReward} of 1000 - targets it cannot represent. **That is fixed**;
- * {@code Network.java:107} constructs the head with {@code tanh = false}, so this header described a
- * fault that no longer exists and was corrected when the run it was read off was measured.
- *
- * <p>It is kept because the question is still worth asking of the returns themselves. With a linear head
- * the range is no longer the binding constraint, but the magnitude is: measured over three repeats of one
- * 15-generation config, {@code valueLoss} spans **12,433 to 31,323** - a factor of 2.5 on identical
- * config and seed - and sits in the tens of thousands rather than single digits. That is not a head that
- * cannot represent its targets; it is a return distribution dominated by the terminal penalty.
- * {@code issues.md} 27 has the measurement.
- *
- * <p>What this prints: the return targets' min, max and percentiles, and the head's reachable range.
- */
 public class ValueScale {
 
 	public static void main( String[] args ){

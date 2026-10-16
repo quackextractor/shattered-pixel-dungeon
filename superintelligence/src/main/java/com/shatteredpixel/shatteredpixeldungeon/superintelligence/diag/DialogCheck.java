@@ -17,43 +17,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Fails if the environment cannot give an answer back to a dialog the game opened.
- *
- * <pre>gradle :superintelligence:dialogcheck</pre>
- *
- * <p>A dialog is the one place where the game asks the agent something. {@code WindowBridge} is the
- * whole surface: it reports what is open, what it offers, and what the agent pressed. Nothing about it
- * was ever asserted, and three things about it were wrong.
- *
- * <p><b>The dialog was never aged.</b> Some of the game's own dialogs refuse to do anything until they
- * have been on screen a while - {@code Chasm}'s "you are about to jump into a chasm, are you sure"
- * gates both its option and its hide on an {@code elapsed} counter its own {@code update()} increments,
- * and {@code PixelScene.update()} is the only thing that ever called it. There is no
- * {@code PixelScene} headlessly, so the counter never moved: the environment was offered the game's own
- * question, pressed its button, and the game's own code threw the answer away. Measured on
- * {@code FALLCHECK-A} before the fix - option 0 pressed, {@code Chasm.jumpConfirmed} still false, the
- * hero still standing where he was.
- *
- * <p><b>The dialog was then taken away.</b> {@code WindowBridge.selectOption} cleared the parked window
- * on <i>any</i> press, so a dialog whose handler declined the click was reported as answered and removed
- * anyway - and declining is exactly what {@code Chasm} does for the first fifth of a second. A parked
- * window now lives in a {@code Group} rather than in a bare field, so the game's own
- * {@code Window#hide()} erases itself from its parent and closes the slot, and a handler that declines
- * leaves the dialog up. Which is what a rendered game does: a window leaves the scene when it hides.
- *
- * <p><b>A dialog opened mid-turn was reported a turn late.</b> {@code SPDEnv.settle} only tested for one
- * at the top of its loop, and the jump prompt is raised from inside {@code Hero.act()} - so the agent
- * was handed the world for one more turn with a modal question already up, and could spend it walking
- * away from the chasm it had just asked about. A rendered game blocks cell input the instant the window
- * appears.
- *
- * <p><b>The cost of the fix is the game's own.</b> {@code WindowBridge.age()} runs once per environment
- * step, which is once per frame - the same approximation {@code ReplayPlayer} already makes about a
- * recorded step - so the gate is the game's own 0.2 s and the answer takes 13 steps. Those steps cost
- * nothing the environment scores: {@code settle} reports a dialog before it scores a turn, so a step
- * spent answering a question does not advance {@code turnsThisFloor}.
- */
 public class DialogCheck {
 
 	private static final int CHECKS = 3;
@@ -82,16 +45,6 @@ public class DialogCheck {
 		}
 	}
 
-	/**
-	 * The game's own dialog reaches the agent and the agent's answer reaches the game.
-	 *
-	 * <p>Driven through the chasm because that is the one dialog the game raises that depends on
-	 * something the environment supplies - time - and it is therefore the one that could not work. The
-	 * assertions are about the round trip, not about the flag: {@code Chasm.jumpConfirmed} is a one-shot
-	 * that {@code Chasm.heroFall} clears on the very step that acts on it, so it reads false again by the
-	 * time anything could look. What has to hold is that the game asks, that the answer arrives, that the
-	 * dialog closes itself, and that the agent is then a floor down.
-	 */
 	private static void checkTheGamesOwnDialogIsAgedAndAnswered(){
 		SPDEnv env = env();
 
@@ -184,21 +137,6 @@ public class DialogCheck {
 		fail( "no seed produced a chasm the hero could be asked about, so this case measured nothing." );
 	}
 
-	/**
-	 * A dialog closes when the <i>game</i> closes it, and not before.
-	 *
-	 * <p>The general form of what {@code Chasm} exposed, and asserted here against a fixture that has
-	 * {@code Chasm}'s shape rather than against the chasm: a dialog whose {@code hide()} and whose
-	 * {@code onSelect} are both gated on its own elapsed clock, which is exactly how the game's "jump?"
-	 * prompt refuses a click for its first fifth of a second.
-	 *
-	 * <p>Both halves matter and they fail differently. While the dialog is too young the answer must
-	 * <i>not</i> be taken away - that was {@code WindowBridge.selectOption} clearing the parked window
-	 * on any press. Once it is old enough, the same press must close it - through the game's own
-	 * {@code Window#hide()}, which now works because a parked window lives in a {@code Group} and the
-	 * accessor reads that. The second half is the positive control: without it, "no dialog" would be
-	 * true of every press and the case would pass on a build where nothing closes a dialog at all.
-	 */
 	private static void checkADialogClosesWhenTheGameClosesIt(){
 		SPDEnv env = env();
 		env.reset( SEEDS[0], HeroClass.WARRIOR );
@@ -268,17 +206,6 @@ public class DialogCheck {
 				+ " accepts" );
 	}
 
-	/**
-	 * A dialog raised *during* a turn is reported in that turn.
-	 *
-	 * <p>{@code settle} only tested for one at the top of its loop, and the jump prompt is raised from
-	 * inside {@code Hero.act()} - so the agent got the world for one more turn with a modal question
-	 * already up, and could spend it walking away from the chasm it had just asked about. A rendered game
-	 * blocks cell input the instant the window appears.
-	 *
-	 * <p>Asserted on a dialog this case opens itself, one turn after the reset, so it is about the
-	 * report and not about the chasm.
-	 */
 	private static void checkADialogOpenedDuringATurnIsReportedInThatTurn(){
 		SPDEnv env = env();
 		env.reset( SEEDS[1], HeroClass.WARRIOR );

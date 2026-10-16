@@ -11,48 +11,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-/**
- * Fails if the parallel update computes a different gradient from the serial one.
- *
- * <pre>gradle :superintelligence:parallelcheck</pre>
- *
- * <p>{@code gradcheck} runs single-threaded by construction, so it proves the maths is right and proves
- * nothing about concurrent access. This is the check that closes that gap. It exists because the
- * alternative failure is not a crash: a race here looks like a policy that converges slightly worse,
- * forever, with no error anywhere.
- *
- * <p><b>The comparison is per-shard-batch, not per-minibatch.</b> An earlier version of this file drove
- * the whole of {@code PPO.update} twice and compared the gradients left over afterwards. That measures
- * the wrong thing twice over: the buffer is <em>shuffled</em>, so two runs with the same seed still
- * walk the samples in the same order but the surviving gradient is only the final minibatch's, after
- * two Adam steps have moved the weights underneath everything. Diagnosing that failure took four wrong
- * probes, the worst of which added the shard sums into the serial accumulation's own tensors and so
- * compared {@code sum(shards)} against zero — which agrees for any input whatsoever. The lesson is in
- * the code because it is the more useful half: when a check disagrees with an implementation, suspect
- * the check before rewriting the implementation.
- *
- * <p>What is asserted here is narrow and unambiguous. One minibatch, no shuffle, no Adam step, no
- * clipping: the gradient a set of samples produces accumulated on one network, against the same
- * samples split across several networks and summed. Nothing else is in the path.
- *
- * <p><b>The tolerance is not laziness.</b> Floating-point addition is not associative, so summing four
- * partial gradients in a different order will not be bit-identical. Asserting exact equality would
- * fail a correct implementation. The claim is "the same gradient up to rounding", and the observed
- * disagreement is around 1e-7 relative — far inside the bound, which leaves five orders of magnitude
- * for a real bug. The figure is printed so the slack is visible rather than assumed.
- */
 public class ParallelCheck {
 
 	private static final int CHECKS = 5;
 
-	/**
-	 * Relative tolerance, measured against each tensor's own L2 norm.
-	 *
-	 * <p>Against the tensor rather than each element: an entry whose true gradient is ~1e-9 through
-	 * cancellation carries no information, and dividing by it turns float rounding into an unbounded
-	 * "relative" error. That mistake made an earlier version of this check report differences of 1800x
-	 * on a correct reduction.
-	 */
 	private static final float TOLERANCE = 1e-4f;
 
 	private static final List< String > failures = new ArrayList<>();
@@ -76,16 +38,6 @@ public class ParallelCheck {
 		}
 	}
 
-	/**
-	 * One minibatch accumulated two ways must agree.
-	 *
-	 * <p>Deliberately not {@code PPO.update}: the shuffle, the Adam steps and the per-minibatch weight
-	 * push all sit between the samples and the gradient this compares, and each of them moves the
-	 * weights mid-comparison. Driving the reduction on its own is the only way the number means what it
-	 * says.
-	 *
-	 * @param shards how many networks to split the samples across
-	 */
 	private static void checkShardsAgreeWithOneNetwork( EnvConfig config, int shards ){
 		Result r = reduce( config, 32, shards );
 
@@ -107,13 +59,6 @@ public class ParallelCheck {
 				+ " relative, " + r.worstAbs + " absolute, " + r.samplesAccumulated + " samples" );
 	}
 
-	/**
-	 * The answer must not depend on how many shards it was computed in.
-	 *
-	 * <p>Stronger than the check above in the way that matters: a reduction that happened to agree with
-	 * the serial path at one particular shard count would still pass that one. Requiring agreement
-	 * across 2, 4 and 8 catches a scaling factor or an off-by-one that only bites at some sizes.
-	 */
 	private static void checkThreadCountDoesNotChangeTheAnswer( EnvConfig config ){
 		Result two = reduce( config, 32, 2 );
 		Result eight = reduce( config, 32, 8 );
@@ -138,9 +83,7 @@ public class ParallelCheck {
 		}
 	}
 
-	/** One gradient comparison's outcome. */
 	private static class Result {
-		/** The sharded accumulation, for cross-shard-count comparison. */
 		float[][] sharded;
 
 		double worst;
@@ -149,16 +92,6 @@ public class ParallelCheck {
 		int samplesAccumulated;
 	}
 
-	/**
-	 * Accumulates {@code n} samples two ways and compares them.
-	 *
-	 * <p>The serial way: one network, every sample, in order. The parallel way: {@code shards} separate
-	 * networks, each given a contiguous slice, with the results summed into a fresh set of tensors.
-	 *
-	 * <p>The sum goes somewhere that is neither input. Writing it into either side would compare a
-	 * quantity against itself plus something, which agrees trivially — the mistake that cost most of
-	 * the time spent on this bug.
-	 */
 	private static Result reduce( EnvConfig config, int n, int shards ){
 
 		PPO ppo = new PPO( config, new Random( 20261007L ) );
@@ -227,36 +160,6 @@ public class ParallelCheck {
 		return r;
 	}
 
-	/**
-	 * Every shard must own a Network of its own, and none of them may be the master's.
-	 *
-	 * <p><b>This is the check {@code parallelcheck} was believed to be and was not.</b> Every case above
-	 * builds its own {@code Network[]} and calls {@code oneSample} on each in a serial loop, so it
-	 * proves the reduction and never asks {@code ShardedUpdate} where its shards' networks come from.
-	 *
-	 * <p>They all came from the master. {@code ShardedUpdate.run} built its shards as
-	 * {@code new Shard( ppo.network )} and {@code Shard} stored that reference rather than copying it,
-	 * so every update thread ran on one Network - sharing its parameters, its gradient accumulators, and
-	 * its forward scratch. Found by a training run whose metrics reported a <em>negative entropy</em>,
-	 * which no distribution over [0, 1] can produce: {@code Policy.probabilities} was handed a logit
-	 * array that changed value between two reads of the same function. {@code issues.md} 25.
-	 *
-	 * <p>Two kinds of assertion are available here and only one of them works, which was measured rather
-	 * than assumed:
-	 *
-	 * <ul>
-	 * <li><b>Identity - asserted.</b> No two shards' networks are the same object, and none is the
-	 * master's. Deterministic; it does not wait for a race to happen; and it is what makes one thread's
-	 * {@code clearGradients()} and layer scratch unreachable from another.
-	 * <li><b>Entropy - <em>reported</em>, not asserted.</b> The symptom the fault was found by is a
-	 * negative entropy, and it is tempting to assert {@code lastEntropy >= 0} here. Measured with the
-	 * fault reinstated and only these identity assertions silenced: **64 samples reported 1.4649 and the
-	 * check passed.** A race does not reliably corrupt anything in one update of one minibatch-sized
-	 * batch - it corrupted roughly one sample in ten thousand over a real run. So that assertion would
-	 * have been a check that cannot fail, which is the same failure as no check. It is printed instead,
-	 * and saying so is the point: a reader who assumed it was covered would be wrong.
-	 * </ul>
-	 */
 	private static void checkShardsOwnTheirOwnNetwork( EnvConfig config ){
 		PPO ppo = new PPO( config, new Random( 20261013L ) );
 		ppo.threads = 4;

@@ -8,47 +8,15 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import java.lang.reflect.Field;
 import java.util.Random;
 
-/**
- * Finite-difference check of the analytic gradients in {@link Network}.
- *
- * Every layer here was written by hand, and a hand-written backward pass fails in a specific way:
- * it runs, it returns plausible numbers, and it silently trains the wrong function. A missing
- * activation derivative, a gradient copied one step too early, a buffer cleared after it was
- * filled - none of them throw. They all produce a network that converges to nothing.
- *
- * So this compares the analytic gradient against central differences on randomly chosen
- * parameters. The network is small enough to perturb a few dozen entries directly, and a full
- * sweep over all 3.5M would cost more than it is worth.
- *
- * Two details matter for the comparison to mean anything:
- *
- * <ul>
- *   <li>The LSTM carries {@code h} and {@code c} between calls to {@code forward}, so every
- *       evaluation has to start from {@link Network#resetState()}. Without that, each probe
- *       measures a different function and every entry looks wrong.</li>
- *   <li>The loss weights each head differently, so a gradient that reaches only one head, or
- *       reaches the trunk but not the convolution, shows up as a failure rather than cancelling
- *       out.</li>
- * </ul>
- */
+
 public class GradientCheck {
 
-	/** Relative error below which an entry is reported as exact enough to ignore. */
+
 	private static final double TOLERANCE = 0.02;
-	/**
-	 * Relative error above which an entry is reported as a failure.
-	 *
-	 * The band between the two thresholds is dominated by finite-difference noise rather than by a
-	 * wrong gradient. ReLU is discontinuous, so a perturbation of eps can flip a unit that was
-	 * sitting exactly on zero and move the measured slope by O(eps) regardless of how correct the
-	 * analytic side is; the effect is proportionally worst on the smallest gradients, where it
-	 * shows up as a few percent. A genuinely wrong derivative does not look like that: the missing
-	 * activation terms and misordered copies that this check was written to catch came out at a
-	 * relative error near 1.0, which is unambiguous.
-	 */
+
 	private static final double FAILURE_TOLERANCE = 0.2;
 
-	/** Loss weights. Distinct so a head's gradient cannot be confused with another's. */
+
 	private static final float ACTION_W = 1f;
 	private static final float SLOT_W = 2f;
 	private static final float TARGET_W = 3f;
@@ -85,7 +53,7 @@ public class GradientCheck {
 		}
 	}
 
-	/** dL/d(head outputs) matching {@link #loss}. */
+
 	private float[] actionGradient(){ return filled( network.actionCount(), ACTION_W ); }
 	private float[] slotGradient(){ return filled( network.slotCount(), SLOT_W ); }
 	private float[] targetGradient(){ return filled( network.targetCount(), TARGET_W ); }
@@ -109,7 +77,7 @@ public class GradientCheck {
 		return sum;
 	}
 
-	/** Runs the check, printing one line per parameter and returning the number of failures. */
+
 	public int run( boolean verbose ){
 		loss(); 
 
@@ -153,7 +121,7 @@ public class GradientCheck {
 		return 0;
 	}
 
-	/** Central difference of the loss with respect to one entry of one tensor. */
+
 	private double central( float[] param, int index, float original, double eps ){
 		param[ index ] = (float) (original + eps );
 		double up = loss();
@@ -176,30 +144,14 @@ public class GradientCheck {
 
 		double scale = Math.max( Math.abs( numeric ), Math.abs( analytic ) );
 
-		/**
-		 * The finite-difference noise, measured rather than assumed.
-		 *
-		 * <p>Two step sizes over the same loss should agree to within the noise; how far apart they land
-		 * <em>is</em> the noise, and it is a different quantity for a large gradient than for a tiny one.
-		 * Comparing the analytic gradient against that is a claim about the analytic side, which is the
-		 * only side this check is about, and it is what a wrong derivative fails: a missing activation
-		 * term or a misordered copy reproduces identically at every step size.
-		 *
-		 * <p>Without it, a relative error is measured against a denominator that can be arbitrarily small,
-		 * and a gradient of 1e-4 read to an absolute accuracy of 3e-5 is reported as 22% wrong. That entry
-		 * was measured at {@code numeric -1.27e-4, analytic -9.90e-5}, and the two step sizes put it inside
-		 * the noise band - so it was never a disagreement.
-		 */
+
 		double noise = Math.abs( central( param, index, original, eps * 2 )
 				- central( param, index, original, eps * 0.5 ) );
 
 		double disagreement = Math.abs( numeric - analytic );
 		double relative = disagreement / scale;
 
-		/**
-		 * Confirmed to within the noise the measurement itself carries, or within a relative
-		 * tolerance on an entry big enough for that to mean something.
-		 */
+
 		boolean ok = disagreement <= Math.max( FAILURE_TOLERANCE * scale, noise );
 
 		if (!ok) failures++;
@@ -220,13 +172,7 @@ public class GradientCheck {
 		return relative;
 	}
 
-	/**
-	 * Reaches into a layer's weight and gradient buffers.
-	 *
-	 * Both are package-private in the rl package and deliberately so; the network owns them and
-	 * nothing outside it should write to them. Reflection keeps them that way while still letting
-	 * a diagnostic read them.
-	 */
+
 	private static class LayerAccess {
 		final float[] weights;
 		final float[] weightGrad;
@@ -261,7 +207,7 @@ public class GradientCheck {
 			return f.get( target );
 		}
 
-		/** Unwraps a layer's float[] out of the Tensor that holds it. */
+
 		private static float[] data( Object layer, String name ) throws ReflectiveOperationException {
 			return (float[]) field( field( layer, name ), "data" );
 		}

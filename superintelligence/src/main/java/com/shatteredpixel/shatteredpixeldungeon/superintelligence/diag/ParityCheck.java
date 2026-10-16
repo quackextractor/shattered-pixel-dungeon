@@ -35,56 +35,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Records runs across many seeds in one process, then proves each recording replays exactly.
- *
- * <pre>gradle :superintelligence:paritycheck</pre>
- * <pre>gradle :superintelligence:paritycheck -PparityArgs="--seeds 10 --heroes 5"</pre>
- *
- * <p><b>Why this is a gate when {@code verifycheck} and {@code collectcheck} already exist.</b> Both of
- * those prove that verification can fail: they alter a recording and require the altered step to be
- * caught. Neither proves that a recording made <em>now</em> replays. And the gap is not academic - it is
- * where the worst bug in this project lived for weeks. {@code GameScene.pendingCellListener} is a static
- * belonging to the process, so an episode that ended mid-aim left it armed, and the next episode's first
- * settle read every one of the agent's actions as a target choice. One run per process showed nothing at
- * all, because one process one episode has nothing to leak from. It took recordings verified
- * <em>in sequence</em> to see it: 4 of 10 diverged, and each of those four verified perfectly well on its
- * own.
- *
- * <p>So the sweep is deliberately sequential and in a single JVM, and each recording is written to disk
- * and read back before it is verified. Writing and reading is not ceremony: a recorder that keeps a
- * {@code Replay} in memory and one that produces a parseable file are not the same code, and the file is
- * what every other tool consumes.
- *
- * <p><b>What it compares against.</b> The recorded state, not a second run of this code - position, HP,
- * engine time and inventory per step, which is what {@link ReplayIO.Verification} already does. Replaying
- * twice and comparing the two replays would only prove the engine is deterministic; both sides would share
- * every headless-specific fault.
- *
- * <p><b>Two rounds per seed.</b> The first pass records and verifies in order; the second re-verifies
- * every recording again at the end, after all of them have run in between. A leak that only shows up on
- * the second visit to a seed cannot be caught by recording and immediately verifying, because nothing has
- * happened in between to leak.
- */
 public class ParityCheck {
 
-	/** Seeds used by the default sweep. Fixed strings, so a failure is reproducible. */
 	private static final String[] DEFAULT_SEEDS = {
 			"PARITY-ALPHA", "PARITY-BRAVO", "PARITY-CHARLIE", "PARITY-DELTA",
 			"PARITY-ECHO", "PARITY-FOXTROT", "PARITY-GOLF", "PARITY-HOTEL"
 	};
 
-	/** Heroes used by the default sweep: one melee, one ranged, one that fights at range. */
 	private static final HeroClass[] DEFAULT_HEROES = {
 			HeroClass.WARRIOR, HeroClass.MAGE, HeroClass.HUNTRESS, HeroClass.ROGUE
 	};
 
-	/** Turn budget per run. Sized so the default sweep stays inside the gates time budget. */
 	private static int turnLimit = 400;
 
 	private static final List<String> failures = new ArrayList<>();
 
-	/** Where recordings are written, so a failing one can be inspected rather than only reported. */
 	private static File outDir;
 
 	public static void main( String[] args ) throws IOException {
@@ -172,15 +137,7 @@ public class ParityCheck {
 		}
 	}
 
-	/** One seed/hero pair, recorded once and verified twice. */
 	private static class Case {
-		/**
-		 * The recording as it came back off disk, which is the one verified.
-		 *
-		 * <p>Not the object {@code ScriptedEpisode} returned: verifying in-memory state would skip the
-		 * entire write/read round trip, and a header that does not survive serialisation is a different
-		 * fault from a replay that does not reproduce.
-		 */
 		Replay replay;
 		final File file;
 		final String seed;
@@ -207,13 +164,6 @@ public class ParityCheck {
 		}
 	}
 
-	/**
-	 * Records one run, writes it, reads it back, and verifies what came back.
-	 *
-	 * <p>The policy is seeded from the seed text, so a failure is reproducible by naming the case - a
-	 * random policy would make the sweep's own result irreproducible, which for a determinism check would
-	 * be a contradiction.
-	 */
 	private static Case recordAndVerify( EnvConfig config, String seed, HeroClass hero ){
 		ScriptedEpisode.Result episode = ScriptedEpisode.record( config, seed, hero, 0, seed.hashCode() );
 
@@ -260,13 +210,6 @@ public class ParityCheck {
 		return c;
 	}
 
-	/**
-	 * Verifies a recording in its own environment.
-	 *
-	 * <p>A fresh {@link SPDEnv} per verification rather than a shared one: the whole point is that a
-	 * recording replays in a process that has done something else, so reusing an environment would hide
-	 * the thing being tested.
-	 */
 	private static ReplayIO.Verification verify( Replay replay ){
 		EnvConfig config = ReplayIO.configFor( replay );
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );

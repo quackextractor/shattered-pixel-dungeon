@@ -14,27 +14,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Verification has to be able to fail, and has to compare against the recording rather than itself.
- *
- * <pre>gradle :superintelligence:verifycheck</pre>
- *
- * <p>Replaying a recording re-runs it through the same headless code that made it, so agreement between
- * two such runs proves the engine is deterministic and nothing else. Both sides share every
- * headless-specific fault, so a systematic difference between the trainer and the rendered game is
- * invisible to it by construction. That is not hypothetical: a run whose hunger clock was frozen by the
- * intro setting replayed perfectly - identical position at every one of 1500 steps - while the hero was
- * dying of starvation in the real game, because a starving hero stands exactly where a fed one does.
- *
- * <p>So the recorded state, not a second run, is the authority, and each field catches a class the
- * others cannot: position catches a wrong path, health catches a frozen or un-ticked mechanic, engine
- * time catches a step that costs a different amount of time, and inventory catches an action applied to
- * the wrong item.
- *
- * <p>This asserts both halves of that. That a faithful replay passes, so the checks are not simply
- * rejecting everything; and that a replay altered in each of those four fields fails at the step that was
- * altered, naming the field. Without the second half the checks could be inert and still look healthy.
- */
 public class VerifyCheck {
 
 	private static final int CHECKS = 8;
@@ -66,7 +45,6 @@ public class VerifyCheck {
 		}
 	}
 
-	/** Records a short run with the scripted policy, which is the cheapest source of a real replay. */
 	private static Replay recordAShortRun(){
 		EnvConfig config = new EnvConfig();
 		config.turnLimitPerFloor = 200;
@@ -132,32 +110,6 @@ public class VerifyCheck {
 				step -> { if (!step.inventory.isEmpty()) step.inventory = step.inventory + ",Ghost:1"; } );
 	}
 
-	/**
-	 * A recording whose slot index cannot be resolved is not a verified recording.
-	 *
-	 * <p><b>This is the case the sentinel guards could never be.</b> Every comparison in
-	 * {@code ReplayIO.verify} is wrapped in a guard that skips it when the field says <i>not recorded</i>
-	 * - {@code step.heroPos >= 0}, {@code !step.inventory.isEmpty()} - and an empty quickslots field is
-	 * such a sentinel. So a recording whose bindings were never written verified on whatever else it
-	 * carried and printed {@code [OK] replay reproduced in 655 steps}, while the viewer refused to play it
-	 * at step 1. Nine of the ten recordings the trainer had written were in that state and every one of
-	 * them reported success.
-	 *
-	 * <p>A guard written to let an unrecorded field pass cannot tell <i>not applicable</i> from
-	 * <i>lost</i>, so something has to assert that the sentinel is absent. This is that something, and it
-	 * is the same shape as {@code TODO.md} 1.12's warning about the sentinel itself.
-	 *
-	 * <p><b>The bindings are blanked <em>together with</em> health, turn and inventory</b>, and that is
-	 * the shape the question needs. An empty binding set on its own is not evidence of anything: it is
-	 * equally true of a run in which the hero had nothing bound at every slot step, which resolves
-	 * perfectly from backpack order. What identifies a recording nobody can play is the whole signature
-	 * of the four-field wire — bindings, health, engine time and inventory all absent together.
-	 *
-	 * <p>Getting that wrong was not hypothetical. The first version of this case refused any recording
-	 * with no bindings anywhere, which refused working runs, and `rolloutcheck` caught it by failing
-	 * intermittently — because it depends on what a random episode happened to be carrying. The converse
-	 * case below is what pins it now.
-	 */
 	private static void checkARecordingThatCannotResolveItsSlotsIsNotVerified( Replay source ){
 		String where = "a recording that cannot resolve its slots is refused";
 
@@ -199,18 +151,6 @@ public class VerifyCheck {
 				+ index + " instead of verifying: " + result.unwatchable );
 	}
 
-	/**
-	 * A hero carrying nothing bound is a state, not a gap.
-	 *
-	 * <p>The converse of the case above, and the one that was wrong first. Blank the bindings and refuse
-	 * the recording, and every run that drops its only bound item becomes unplayable — which is a false
-	 * positive about a real state rather than a detection.
-	 *
-	 * <p>The discriminator is not the bindings but the fields the same wire would have dropped alongside
-	 * them. This builds a recording whose every slot step has no bindings while keeping real health and
-	 * real engine time, which is a run in which the hero simply carried nothing bound, and requires it to
-	 * verify.
-	 */
 	private static void checkAHeroWithNothingBoundIsNotRefused( Replay source ){
 		String where = "an empty binding set is a state, not a missing field";
 
@@ -250,14 +190,6 @@ public class VerifyCheck {
 				+ " and engine time stay real - the hero carried nothing, which is a state" );
 	}
 
-	/**
-	 * The converse: a recording that <em>can</em> be watched must not be refused.
-	 *
-	 * <p>Added with the case above and for the same reason. A refusal that fires on everything is a
-	 * refusal that reports nothing, and {@code MSU-OTL-OAT} is the file that has to keep passing: it is
-	 * the post-fix trainer recording, so it is the one thing on disk that says whether the wire fix
-	 * actually produces watchable output.
-	 */
 	private static void checkAWatchableRecordingIsNotRefused( Replay source ){
 		String where = "a watchable recording is not refused";
 
@@ -273,7 +205,6 @@ public class VerifyCheck {
 		}
 	}
 
-	/** The first step that resolves a slot index, or -1 when the run has none. */
 	private static int firstSlotBearingStep( Replay source ){
 		for (int i = 0; i < source.steps.size(); i++){
 			Replay.Step step = source.steps.get( i );
@@ -286,13 +217,6 @@ public class VerifyCheck {
 		void apply( Replay.Step step );
 	}
 
-	/**
-	 * Alters one step and requires verification to fail at that step, naming the field.
-	 *
-	 * <p>Both halves matter: failing somewhere proves the check is live, but failing <em>at the altered
-	 * step and for the right reason</em> is what proves it is comparing what it claims to. A check that
-	 * failed on the final step for an unrelated reason would otherwise pass this.
-	 */
 	private static void checkAlterationIsCaught( Replay source, String field, Alteration alteration ){
 		String where = "an altered " + field + " is caught";
 

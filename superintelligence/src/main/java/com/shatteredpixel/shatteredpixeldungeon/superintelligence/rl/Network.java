@@ -8,22 +8,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryE
 
 import java.util.Random;
 
-/**
- * The actor-critic network: CNN over the grid, LSTM for memory, one head per kind of choice.
- *
- * research.md: "The Network Architecture: CNN + LSTM... This flattened inventory vector will bypass
- * the CNN and be concatenated directly with the spatial data before entering the LSTM memory
- * layer."
- *
- * Concatenation order follows research.md: spatial features, then the inventory vector, then the
- * hero scalars, all into one LSTM cell. The inventory is flat by necessity - a grid has no notion
- * of "which slot" - so it is concatenated rather than pooled.
- *
- * Three action heads plus a value head, because the environment has three kinds of decision and a
- * critic. All three action heads are evaluated every step even though only one is live. That costs
- * one small matmul and removes an entire category of "which head was live" bookkeeping from the
- * rollout loop, which is where such bugs hide.
- */
+
 public class Network {
 
 	public final EnvConfig config;
@@ -43,7 +28,7 @@ public class Network {
 	public float beta2 = 0.999f;
 	public float adamEps = 1e-8f;
 
-	/** Global gradient norm clipping, applied by the caller before step(). */
+
 	public float gradClip = 0.5f;
 
 	private int adamStep = 0;
@@ -69,16 +54,10 @@ public class Network {
 	private final Tensor dConv;
 	private final float[] dGrid;
 
-	/** Retained so backward can walk the same im2col layout forward used. */
+
 	private final float[] gridSnapshot;
 
-	/**
-	 * Every gradient accumulator, in a fixed order.
-	 *
-	 * The gradient tensors live inside the layers, which is right while only one minibatch is in
-	 * flight. Global-norm clipping needs to walk all of them at once, and it should not have to know
-	 * that Conv2D has two and LSTM has two with different names, so they are gathered here once.
-	 */
+
 	private final Tensor[] gradients;
 
 	public Network( EnvConfig config, Random rng ){
@@ -133,29 +112,19 @@ public class Network {
 		};
 	}
 
-	/**
-	 * L2 norm of every gradient currently accumulated.
-	 *
-	 * Returned rather than applied so a caller can log it: a norm that climbs without bound is the
-	 * earliest signal that an update is about to diverge, and it is invisible after clipping.
-	 */
+
 	public float gradientNorm(){
 		double sum = 0;
 		for (Tensor g : gradients) sum += g.sumOfSquares();
 		return (float) Math.sqrt( sum );
 	}
 
-	/** Scales every accumulated gradient. Used to average a minibatch before clipping it. */
+
 	public void scaleGradients( float scale ){
 		for (Tensor g : gradients) g.scale( scale );
 	}
 
-	/**
-	 * Rescales the accumulated gradient so its L2 norm is at most {@code maxNorm}.
-	 *
-	 * @param maxNorm the ceiling, or a non-positive value to disable clipping
-	 * @return the norm before clipping
-	 */
+
 	public float clipGradients( float maxNorm ){
 		float norm = gradientNorm();
 		if (maxNorm > 0f && norm > maxNorm && norm > 0f){
@@ -168,32 +137,32 @@ public class Network {
 	public int slotCount(){ return slotHead.out; }
 	public int targetCount(){ return targetHead.out; }
 
-	/** Floats one grid observation costs, so a worker can size its own unpack buffer. */
+
 	public int gridLength(){
 		return dGrid.length;
 	}
 
-	/** Floats the trunk's input costs, which is the convolution's output plus the flat extras. */
+
 	public int concatLength(){
 		return concat.cols;
 	}
 
-	/** Floats the trunk's output costs, which is the LSTM's input width. */
+
 	public int trunkOut(){
 		return trunk.out;
 	}
 
-	/** Floats the LSTM's output costs, which every head reads. */
+
 	public int memoryOut(){
 		return memoryOut.cols;
 	}
 
-	/** Floats {@link LSTM#saveCache} writes. */
+
 	public int lstmCacheLength(){
 		return memory.cacheLength();
 	}
 
-	/** One timestep's backward state, allocated here so a chunk can hold several. */
+
 	public StepCache takeCache(){
 		return new StepCache( this );
 	}
@@ -202,39 +171,27 @@ public class Network {
 		memory.reset();
 	}
 
-	/** Floats one recurrent-state snapshot costs: the hidden and cell states, concatenated. */
+
 	public int stateSize(){
 		return 2 * memory.size;
 	}
 
-	/**
-	 * Copies the carried recurrent state out, {@code [h | c]}.
-	 *
-	 * <p>Both halves, because {@code c} holds the forget gate's accumulated memory and cannot be
-	 * recovered from {@code h}. Restoring only {@code h} — which is what {@code state()} used to do —
-	 * yields a state the network has never been in, and a value that is merely plausible rather than
-	 * wrong-looking.
-	 */
+
 	public void saveState( float[] into ){
 		memory.snapshot( into );
 	}
 
-	/** Restores a state taken by {@link #saveState}. */
+
 	public void loadState( float[] from ){
 		memory.restore( from );
 	}
 
-	/** Forward pass. Logits and value stay valid until the next call. */
+
 	public void forward( float[] grid, float[] inventory, float[] heroFeatures ){
 		runForward( grid, inventory, heroFeatures );
 	}
 
-	/**
-	 * Forward pass, keeping this step's backward state.
-	 *
-	 * Same code as {@link #forward}: the cache is written after the layers have already cached their
-	 * own pre-activations, so a chunk's backward can restore them instead of re-running the forward.
-	 */
+
 	public void forwardCached( float[] grid, float[] inventory, float[] heroFeatures,
 			StepCache cache ){
 		runForward( grid, inventory, heroFeatures );
@@ -280,37 +237,20 @@ public class Network {
 	public float[] targetLogits(){ return targetLogits.data; }
 	public float value(){ return value.data[ 0 ]; }
 
-/**
-	 * Backpropagates one timestep, discarding any gradient into the previous recurrent state.
-	 *
-	 * @param dActionLogits dL/d(action logits), or null for zero
-	 * @param dSlotLogits   dL/d(slot logits), or null
-	 * @param dTargetLogits dL/d(target logits), or null
-	 * @param dCritic       dL/d(critic output)
-	 */
+
 public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
 			float dCritic ){
 		beginBackward();
 		backwardStep( dActionLogits, dSlotLogits, dTargetLogits, dCritic, null );
 	}
 
-	/**
-	 * Clears the gradient into the previous recurrent state, so a new chunk starts from nothing.
-	 *
-	 * Separate from {@link #backward} because a chunk backpropagates several timesteps into one
-	 * running {@code dPrev}/{@code dCell}: each step's contribution has to accumulate into the one the
-	 * earlier step will read.
-	 */
+
 	public void beginBackward(){
 		dPrev.fill( 0f );
 		dCell.fill( 0f );
 	}
 
-	/**
-	 * Backpropagates one timestep, <b>accumulating</b> into the previous recurrent state.
-	 *
-	 * @param cache this step's saved forward state, or null to use whatever the last forward left
-	 */
+
 	public void backwardStep( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
 			float dCritic, StepCache cache ){
 
@@ -348,7 +288,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		conv.backward( gridSnapshot, dConv, dGrid );
 	}
 
-	/** Puts every layer back into the state a cached forward left it in. */
+
 	private void restore( StepCache cache ){
 		System.arraycopy( cache.concat, 0, concat.data, 0, concat.cols );
 		System.arraycopy( cache.hidden, 0, hidden.data, 0, hidden.cols );
@@ -363,12 +303,12 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		memory.loadCache( cache.lstm );
 	}
 
-	/** dL/d(prev recurrent state) accumulated by the last backward. */
+
 	public float[] prevStateGradient(){
 		return dPrev.data;
 	}
 
-	/** dL/d(grid), accumulated by the last backward. */
+
 	public float[] gridGradient(){
 		return dGrid;
 	}
@@ -378,7 +318,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		System.arraycopy( src, 0, into.data, 0, Math.min( src.length, into.cols ) );
 	}
 
-	/** Accumulates one head's gradient into dHidden, without allocating. */
+
 	private void headGradient( Dense head, Tensor dOut ){
 		head.backward( memoryOut, dOut, dHeadScratch );
 		dHidden.addScaled( dHeadScratch, 1f );
@@ -394,11 +334,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		valueHead.zeroGrad();
 	}
 
-	/**
-	 * Applies one optimiser step.
-	 *
-	 * @param gradScale normalisation the caller applied, eg. 1/minibatchSize
-	 */
+
 	public void step( float gradScale ){
 		adamStep++;
 		float s = gradScale;
@@ -415,19 +351,12 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		return adamStep;
 	}
 
-	/**
-	 * Restores the optimiser step count, which a resumed run needs to be the same run.
-	 *
-	 * <p>Not a detail. Adam's bias correction divides by {@code 1 - beta^step}, so restarting the count
-	 * at 1 makes the first steps after a resume use a correction of ~0.1 rather than ~1 — the optimiser
-	 * takes a full-size step on a barely-warmed gradient average. A checkpoint that saved weights but
-	 * not this count would resume looking like it trained, and would not be.
-	 */
+
 	public void adamSteps( int step ){
 		this.adamStep = Math.max( 0, step );
 	}
 
-/** Scalar parameter count, for diagnostics. */
+
 	public long parameterCount(){
 		return (long) conv.W.size() + conv.b.size()
 				+ trunk.W.size() + trunk.b.size()
@@ -438,7 +367,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 				+ valueHead.W.size() + valueHead.b.size();
 	}
 
-	/** One layer's weights, as a flat pair of tensors plus its shape. */
+
 	public static class Layer {
 		public final String name;
 		public final int in;
@@ -455,14 +384,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		}
 	}
 
-	/**
-	 * Every trainable tensor, in a fixed order.
-	 *
-	 * Exposed as data rather than as live references so the checkpoint format is defined by this
-	 * one method. A trainer can then serialise a policy without knowing anything about the layers
-	 * that make it up, and a checkpoint written by an older build fails loudly on a shape mismatch
-	 * instead of silently loading into the wrong parameters.
-	 */
+
 	public Layer[] layers(){
 		return new Layer[] {
 				new Layer( "conv.W", conv.W.rows, conv.W.cols, conv.W.data, conv.b.data ),
@@ -475,7 +397,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		};
 	}
 
-	/** Copies weights from a checkpoint entry, or reports why it does not fit. */
+
 	public void loadLayer( Layer layer ) throws java.io.IOException {
 		if (layer.weights.length != layer.in * layer.out){
 			throw new java.io.IOException( "checkpoint layer " + layer.name
@@ -503,14 +425,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		return map;
 	}
 
-	/**
-	 * One layer's Adam moments, in the same shape as {@link Layer}.
-	 *
-	 * <p>Separate from {@link Layer} because the two travel for different reasons. Weights go to the
-	 * workers on every generation, and a worker only runs forward passes, so sending it four times the
-	 * floats would buy nothing. Moments are trainer-side only and never leave the process — but they
-	 * have to reach disk, because without them a resumed run's optimiser starts cold.
-	 */
+
 	public static class Moments {
 		public final String name;
 		public final float[] mW, vW, mb, vb;
@@ -524,12 +439,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		}
 	}
 
-	/**
-	 * Every Adam moment, in the same order as {@link #layers()}.
-	 *
-	 * <p>{@code W} and {@code b} keep their own moments because {@link Dense#adamStep} updates them
-	 * separately, and the bias tensors are a different length from the weight tensors.
-	 */
+
 	public Moments[] moments(){
 		return new Moments[] {
 				momentsOf( "conv.W", conv.mW, conv.vW, conv.mb, conv.vb ),
@@ -546,7 +456,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		return new Moments( name, mW.data, vW.data, mb.data, vb.data );
 	}
 
-	/** Copies Adam moments from a checkpoint entry, or reports why they do not fit. */
+
 	public void loadMoments( Moments m ) throws java.io.IOException {
 		java.util.Map<String, Moments> mine = new java.util.HashMap<>();
 		for (Moments other : moments()) mine.put( other.name, other );
@@ -570,7 +480,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		System.arraycopy( m.vb, 0, target.vb, 0, target.vb.length );
 	}
 
-	/** Copies every parameter out of this network into {@code target}. */
+
 	public void copyParametersTo( Network target ){
 		Layer[] src = layers();
 		Layer[] dst = target.layers();
@@ -580,36 +490,12 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		}
 	}
 
-	/**
-	 * Copies every parameter from {@code source} into this one, for use as a read-only mirror.
-	 *
-	 * <p>This is how the parallel update gives each thread its own forward/backward scratch without
-	 * sharing any of it. The thread's network is a <em>copy</em> of the parameters, not a view onto
-	 * them, which means it cannot corrupt them even if the reduction is wrong — the worst a bad
-	 * reduction can do is produce a bad gradient, not a corrupt model.
-	 *
-	 * <p>The cost is one parameter copy per minibatch: 14.3 MB, about 2 ms. Against 32 samples of
-	 * forward and backward at 11.3 ms each, that is 0.5% — and it buys the property that no thread
-	 * can observe another's writes. Sharing the tensors directly would save that and reintroduce
-	 * exactly the aliasing bug this design exists to make impossible.
-	 */
+
 	public void copyParametersFrom( Network source ){
 		source.copyParametersTo( this );
 	}
 
-	/**
-	 * Adds this network's accumulated gradients into {@code target}'s.
-	 *
-	 * <p>The reduction step. Adds rather than assigns, because each thread contributes a shard of one
-	 * minibatch's gradient and the caller scales by {@code 1 / minibatchSize} afterwards — the same
-	 * place the serial path scales, so the two produce the same number rather than merely a similar one.
-	 *
-	 * <p><b>Floating-point addition is not associative</b>, so an N-thread reduction sums in a
-	 * different order than the serial accumulation and will not be bit-identical. That is why
-	 * {@code ParallelCheck} asserts agreement to a tolerance rather than exactly: the claim being made
-	 * is that the parallel update computes the same gradient up to rounding, not that it is the same
-	 * bits. A difference larger than rounding indicates a real bug.
-	 */
+
 	public void addGradientsTo( Network target ){
 		for (int i = 0; i < gradients.length; i++){
 			float[] from = gradients[ i ].data;
@@ -618,18 +504,12 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		}
 	}
 
-	/** Erases this network's accumulated gradients, ready for the next minibatch. */
+
 	public void clearGradients(){
 		for (Tensor g : gradients) g.fill( 0f );
 	}
 
-	/**
-	 * The accumulated gradients, live, for a caller that wants to compare them.
-	 *
-	 * <p>Exists for {@code diag.ParallelCheck}, which asserts that a parallel update computes the same
-	 * gradient as the serial one. Read-only in practice: the arrays are the network's own, so a caller
-	 * that wrote to them would corrupt the next Adam step.
-	 */
+
 	public float[][] gradientTensors(){
 		float[][] out = new float[ gradients.length ][];
 		for (int i = 0; i < gradients.length; i++) out[ i ] = gradients[ i ].data;

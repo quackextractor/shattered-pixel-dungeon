@@ -3,18 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 
-/**
- * Renders one generation's console block.
- *
- * A {@link Snapshot} of plain numbers rather than a reference to the trainer, so the formatting can be
- * changed or tested without a live pool of workers. {@link Trainer} fills one snapshot per generation
- * from whatever it measured.
- *
- * Every figure here is something a decision could rest on. If it is not printed it cannot be used to
- * decide anything, which is why the sampled-step count is a field rather than something derived on
- * demand: the whole sampled-transition design rests on that number being where the arithmetic says it
- * should be.
- */
+
 public final class GenerationReport {
 
 	public static class Snapshot {
@@ -24,46 +13,20 @@ public final class GenerationReport {
 	public int totalSeeds;
 	public float shaping;
 
-	/**
-	 * Episodes per termination reason, keyed by {@code RewardModel.TerminateReason} ordinal.
-	 *
-	 * <p><b>The single most useful number in this report, and it took a 20-generation run to discover
-	 * it was missing.</b> The run converged {@code meanScore} on exactly -5.0 with turns collapsing
-	 * 62 → 8, and -5.0 is {@code STALLED}'s terminal reward. That diagnosis was reached by arithmetic
-	 * on the score rather than by reading the reason, because the reason was never reported. A
-	 * converged mean score is the visible symptom of an agent that has found a cheap way to end an
-	 * episode; which way is the question, and it was one subtraction too indirect.
-	 *
-	 * <p>Indexed by ordinal rather than a map so the report and the CSV can both iterate it in a fixed
-	 * order. Length is {@code TerminateReason.values().length}; a count outside that range would be an
-	 * array bounds error, so the length is asserted where the array is built rather than trusted.
-	 */
+
 	public int[] endReasons = new int[RewardModel.TerminateReason.values().length];
 
-		/** Transitions retained for the update across the whole generation. */
+
 		public int sampledSteps;
 
-		/** Transitions the memory cap discarded. Non-zero means the cap, not the rate, is binding. */
+
 		public int droppedSteps;
 
-		/**
-		 * Bytes the sampled transitions occupy in the trainer, and how much of that is the packed grid.
-		 *
-		 * The grid share is the number the deferred bit-packing would attack, so it is measured rather
-		 * than quoted. Resident and wire are the same size here and deliberately not reported twice:
-		 * the frame is fp32 for everything except the grid, which is already one byte per cell in
-		 * memory too.
-		 */
+
 		public long sampledBytes;
 		public long gridBytes;
 
-		/**
-		 * Mean and standard deviation of the raw advantages as they arrived.
-		 *
-		 * Printed before normalisation, and that is the point: a batch whose advantages are all
-		 * identical has nothing to learn a direction from, and after normalisation it would look like a
-		 * healthy mean of zero and standard deviation of one. These are the numbers that catch it.
-		 */
+
 		public double advantageMean;
 		public double advantageStd;
 
@@ -87,7 +50,7 @@ public final class GenerationReport {
 		public double turnsPerSecond;
 		public double episodesPerSecond;
 
-		/** System-wide CPU load in 0..1, or -1 when the JVM will not report it. */
+
 		public double systemLoad;
 		public int logicalProcessors;
 		public double workerCores;
@@ -142,14 +105,7 @@ public final class GenerationReport {
 				+ String.format( "  workers %.1f cores, trainer %.2f", s.workerCores, s.trainerCores ) );
 	}
 
-	/**
-	 * Renders the end-reason breakdown, most frequent first.
-	 *
-	 * <p>Sorted by count so the dominant reason is first, and zero counts omitted so a run whose
-	 * episodes mostly end one way reads as one line rather than seven. Every count is shown as a
-	 * fraction of the generation's episodes, because the absolute count moves with worker count and the
-	 * fraction is what says whether the policy has changed.
-	 */
+
 	private static String endReasons( Snapshot s ){
 		RewardModel.TerminateReason[] reasons = RewardModel.TerminateReason.values();
 		Integer[] order = new Integer[ reasons.length ];
@@ -170,7 +126,7 @@ public final class GenerationReport {
 		return sb.toString();
 	}
 
-	/** Cores the machine is using, derived from the system load where the JVM reports one. */
+
 	private static double cores( Snapshot s ){
 		return s.systemLoad * s.logicalProcessors;
 	}

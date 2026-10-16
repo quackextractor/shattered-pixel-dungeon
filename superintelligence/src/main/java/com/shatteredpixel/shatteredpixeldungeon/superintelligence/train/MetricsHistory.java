@@ -15,34 +15,8 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Accumulates one row per generation, so a run's history outlives the process that produced it.
- *
- * <p>Until this existed, {@link Trainer} kept {@code lastEpisodes} - one generation - and discarded
- * it. A run printed a block per generation into console scrollback and threw it away, which meant
- * "is generation 200 better than generation 100" had to be believed rather than checked. That matters
- * more than usual here, because {@code clip=} used to report a constant (see {@link
- * com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO}) and the losses are the only
- * remaining evidence the update is doing anything.
- *
- * <p><b>CSV and terminal both, because they answer different questions.</b> CSV is how two runs are
- * compared - it survives, it can be diffed, and a plotting tool can read it. The graph is how one run
- * reads at a glance in a terminal, and {@link Graph} already existed unused for it. Writing only one
- * would have left a real use unserved: the CSV cannot be read without leaving the terminal, and the
- * graph cannot be compared across runs.
- *
- * <p>Appended rather than rewritten so a crashed or resumed run keeps what it reached. The header is
- * written once, when the file is new or empty; {@link #HEADER} and {@link #columns()} are the single
- * source of truth for the shape, so the row cannot drift from the header.
- */
 public class MetricsHistory {
 
-	/**
-	 * Column names, in the order {@link #row} emits them.
-	 *
-	 * <p>Additive only. Reordering or renaming a column silently breaks every CSV a previous run
-	 * wrote, and there is no version column to catch it.
-	 */
 	private static final String[] HEADER = {
 			"generation", "episodes", "activeSeeds", "sampledSteps", "droppedSteps",
 			"meanScore", "bestScore", "worstScore", "meanDepth", "bestDepth", "meanTurns",
@@ -52,13 +26,6 @@ public class MetricsHistory {
 			"workerCores", "trainerCores"
 	};
 
-	/**
-	 * End-reason columns, appended after {@link #HEADER}.
-	 *
-	 * <p>Named columns rather than one packed column, so a spreadsheet can chart "what fraction of
-	 * episodes died" without a formula. The set is derived from the enum so a new reason cannot be
-	 * added without its column appearing.
-	 */
 	private static final String[] REASON_COLUMNS = reasonColumns();
 
 	private static String[] reasonColumns(){
@@ -68,13 +35,11 @@ public class MetricsHistory {
 		return names;
 	}
 
-	/** The rows of the current run, oldest first, for the end-of-run graph. */
 	private final List< float[] > series = new ArrayList<>();
 
 	private final File csv;
 	private Writer out;
 
-	/** True once a header has been written, so an appended file does not get a second one. */
 	private boolean headerWritten;
 
 	public MetricsHistory( File csv ){
@@ -85,13 +50,6 @@ public class MetricsHistory {
 		return HEADER.length + REASON_COLUMNS.length;
 	}
 
-	/**
-	 * Opens the file, creating parent directories.
-	 *
-	 * <p>A failure here is reported and swallowed rather than thrown: losing the metrics must not
-	 * abort a run that is otherwise learning. The alternative - refuse to train unless a CSV can be
-	 * written - would mean a full disk stops the only thing that matters.
-	 */
 	public void open(){
 		if (csv == null) return;
 
@@ -120,12 +78,6 @@ public class MetricsHistory {
 		}
 	}
 
-	/**
-	 * Records one generation, appending a CSV row and keeping it for the graph.
-	 *
-	 * <p>Called after {@link GenerationReport#print} so the console still leads and the file catches
-	 * up. A row is kept even if the write fails, so the end-of-run graph is still complete.
-	 */
 	public void record( GenerationReport.Snapshot s ){
 		if (s == null) return;
 
@@ -180,10 +132,6 @@ public class MetricsHistory {
 		}
 	}
 
-	/**
-	 * A double with {@code Locale.ROOT}, because a comma decimal separator would shift every
-	 * column after it.
-	 */
 	private static String fmt( double v ){
 		return String.format( java.util.Locale.ROOT, "%.6f", v );
 	}
@@ -206,7 +154,6 @@ public class MetricsHistory {
 		return series.size();
 	}
 
-	/** The last generation recorded, or null before the first one. */
 	public Snapshot latest(){
 		if (series.isEmpty()) return null;
 
@@ -217,8 +164,6 @@ public class MetricsHistory {
 	private static final int COL_MEAN_SCORE = 5;
 	private static final int COL_BEST_DEPTH = 9;
 
-	/** The two numbers a progress bar shows. Read from the row rather than recomputed, so the bar and
-	 * the block above it cannot disagree. */
 	public static class Snapshot {
 		public final double meanScore;
 		public final int bestDepth;
@@ -229,7 +174,6 @@ public class MetricsHistory {
 		}
 	}
 
-	/** One series as a float array, for a caller that wants to plot or compare it. */
 	public float[] values( int column ){
 		float[] result = new float[ series.size() ];
 		if (column < 0 || column >= HEADER.length) return result;
@@ -237,14 +181,6 @@ public class MetricsHistory {
 		return result;
 	}
 
-	/**
-	 * Renders the end-of-run trend.
-	 *
-	 * <p>Deliberately only the four series that answer "is it learning", each with its axis range
-	 * printed: score and depth are the goal, and the two losses say whether the optimiser is working
-	 * at all. Everything else is in the CSV, where it can be examined properly rather than squinted at
-	 * in a terminal.
-	 */
 	public void printTrend(){
 		if (series.isEmpty()) return;
 
@@ -268,13 +204,6 @@ public class MetricsHistory {
 		}
 	}
 
-	/**
-	 * Prints how the share of each end reason moved over the run.
-	 *
-	 * <p>First versus last third, rather than a per-generation dump, because the question this answers
-	 * is whether the distribution is *changing* — and a converged agent produces one flat row. A
-	 * training run whose episodes all end the same way looks identical in every other column.
-	 */
 	private void printEndReasonTrend(){
 		if (series.size() < 4) return;
 
@@ -316,7 +245,6 @@ public class MetricsHistory {
 				+ Ansi.wrap( "  (first third -> last third)", Ansi.DIM ) );
 	}
 
-	/** Per-generation end-reason counts, indexed by {@code TerminateReason} ordinal. */
 	private final List< int[] > endReasons = new ArrayList<>();
 
 	private void line( String label, int column, int width ){
@@ -325,7 +253,6 @@ public class MetricsHistory {
 				+ Ansi.wrap( row.axis(), Ansi.DIM ) );
 	}
 
-	/** Centred moving average; the ends are averaged over what exists rather than padded. */
 	private static float[] movingAverage( float[] values, int window ){
 		if (window <= 1 || values.length == 0) return values;
 

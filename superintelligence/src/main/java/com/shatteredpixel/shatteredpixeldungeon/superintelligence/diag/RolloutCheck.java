@@ -33,23 +33,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Asserts what a recorded episode records, on the path the {@code rollout} command actually uses.
- *
- * <p>{@code collectcheck} already covers the collector path that training runs on. This covers the
- * command, and it exists because two faults lived there and neither was reachable from any gate: an
- * empty-seed guard that rejected the flag <em>and</em> its absence, making random seeds unreachable
- * outright, and a recording that stored the seed it was asked for rather than the one the environment
- * resolved. On a random episode that second one produces a replay nothing can ever verify - verify
- * draws a different random world and reports a step-0 divergence that reads like a broken seed lock.
- *
- * <p>{@code SeedPool} releases 10% of episodes onto random seeds deliberately, so a random-seed episode
- * is the common case rather than an edge case.
- *
- * <p>Both halves are asserted: that a random episode records a usable seed, and that what it records
- * verifies. The first alone would pass against a recording carrying a seed that cannot rebuild the
- * world, which is the actual failure.
- */
 public class RolloutCheck {
 
 	private static final int CHECKS = 3;
@@ -86,7 +69,6 @@ public class RolloutCheck {
 		return ScriptedEpisode.record( config, "", HeroClass.WARRIOR, 60, 3 );
 	}
 
-	/** An episode asked for no seed must still say which seed it ran on. */
 	private static void checkRandomSeedIsRecorded( EnvConfig config ){
 		ScriptedEpisode.Result episode = randomEpisode( config );
 
@@ -103,13 +85,6 @@ public class RolloutCheck {
 		}
 	}
 
-	/**
-	 * A recording from a random episode must actually verify.
-	 *
-	 * <p>Round-tripped through the file rather than checked in memory, because the header is what a
-	 * verifier reads, and a field that never reaches the file is indistinguishable from one that was
-	 * written wrongly until someone tries to use it.
-	 */
 	private static void checkRandomSeedRecordingVerifies( EnvConfig config ){
 		ScriptedEpisode.Result episode = randomEpisode( config );
 
@@ -151,7 +126,6 @@ public class RolloutCheck {
 		}
 	}
 
-	/** An explicit seed must be stored as asked, not replaced by something derived. */
 	private static void checkAnExplicitSeedIsRecordedVerbatim( EnvConfig config ){
 		ScriptedEpisode.Result episode =
 				ScriptedEpisode.record( config, "ROLLOUTCHECK-A", HeroClass.WARRIOR, 60, 3 );

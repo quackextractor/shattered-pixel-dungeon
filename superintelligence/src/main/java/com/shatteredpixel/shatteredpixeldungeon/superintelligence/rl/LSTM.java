@@ -2,22 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
 import java.util.Random;
 
-/**
- * A single LSTM cell, one recurrent step.
- *
- * research.md: "Pixel Dungeon is a Partially Observable Markov Decision Process. Because of the
- * Fog of War, the AI cannot see the whole map. A recurrent layer like an LSTM allows the AI to
- * maintain a hidden state or 'memory'. This is strictly necessary so the AI can remember that it
- * left a health potion three rooms behind, or remember the location of the stairs after exploring
- * a dead end."
- *
- * Gate order matches the usual formulation: forget, input, candidate, output. Hidden state is
- * carried across steps of an episode and reset by {@link #reset} between episodes.
- *
- * Consecutive timesteps are batched: an episode of T steps becomes one row of T per layer, and the
- * loop over T is what happens. That keeps the GEMMs large, which is the only way a hand-written
- * LSTM in Java is fast enough to train on.
- */
+
 public class LSTM {
 
 	public final int size;
@@ -34,11 +19,11 @@ public class LSTM {
 	private final Tensor dCellGrad;
 	private final Tensor dGateGrad;
 
-/** Carried between timesteps. */
+
 	private final Tensor h;
 	private final Tensor c;
 
-	/** Cached by forward, read by backward: everything backward needs from before the step. */
+
 	private final Tensor hPrev;
 	private final Tensor cPrev;
 	private final Tensor preAct;
@@ -88,35 +73,24 @@ this.h = new Tensor( 1, size );
 		c.fill( 0f );
 	}
 
-	/**
-	 * The carried hidden state, live.
-	 *
-	 * <p>Exposed as a live tensor so a caller can snapshot it without a copy. {@link #snapshot} is the
-	 * safe way to take one; this is for the update's in-place restore.
-	 */
+
 	public Tensor state(){
 		return h;
 	}
 
-	/** The cell state, live. See {@link #state}. */
+
 	public Tensor cellState(){
 		return c;
 	}
 
-	/**
-	 * Copies both carried states out into {@code into}, {@code [h | c]}.
-	 *
-	 * <p>Both halves, because the cell state is not derivable from the hidden one — the forget gate's
-	 * accumulated memory lives only in {@code c}, and restoring {@code h} with a zeroed {@code c} gives
-	 * a state that has never existed and produces a value that looks merely plausible.
-	 */
+
 	public void snapshot( float[] into ){
 		if (into == null || into.length < 2 * size) return;
 		System.arraycopy( h.data, 0, into, 0, size );
 		System.arraycopy( c.data, 0, into, size, size );
 	}
 
-	/** Restores both carried states from a {@link #snapshot}. */
+
 	public void restore( float[] from ){
 		if (from == null || from.length < 2 * size) return;
 		System.arraycopy( from, 0, h.data, 0, size );
@@ -127,18 +101,12 @@ this.h = new Tensor( 1, size );
 		h.copyFrom( other );
 	}
 
-	/**
-	 * Floats {@link #saveCache} writes, in the order it writes them.
-	 *
-	 * Everything backward needs that is not passed in: the gate pre-activations, the two carried
-	 * states this step started from, the cell state it produced, and the concatenated {@code [x | h]}
-	 * it formed the gates from.
-	 */
+
 	public int cacheLength(){
 		return preAct.cols + hPrev.cols + cPrev.cols + c.cols + scratch.cols;
 	}
 
-	/** Copies the step's backward state out. See {@link #cacheLength()}. */
+
 	public void saveCache( float[] into ){
 		int at = 0;
 		at = copy( preAct.data, into, at );
@@ -148,7 +116,7 @@ this.h = new Tensor( 1, size );
 		copy( scratch.data, into, at );
 	}
 
-	/** Restores what {@link #saveCache} took. See it. */
+
 	public void loadCache( float[] from ){
 		int at = 0;
 		at = load( preAct.data, from, at );
@@ -168,7 +136,7 @@ this.h = new Tensor( 1, size );
 		return at + dst.length;
 	}
 
-/** out = LSTM(x, h_prev, c_prev). Advances the carried state. */
+
 	public void forward( Tensor x, Tensor out ){
 
 		System.arraycopy( x.data, 0, scratch.data, 0, x.cols );
@@ -193,14 +161,7 @@ this.h = new Tensor( 1, size );
 		}
 	}
 
-	/**
-	 * Accumulates gradients through one step.
-	 *
-	 * @param x      the input that was fed to forward
-	 * @param dOut   dL/dh_t
-	 * @param dHPrev dL/dh_{t-1}, accumulated into
-	 * @param dCPrev dL/dc_{t-1}, accumulated into
-	 */
+
 public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 		int s = size;
 
@@ -251,21 +212,14 @@ public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 		System.arraycopy( gc, 0, dCPrev.data, 0, s );
 	}
 
-/**
- * Scratch the input gradient is written into.
- *
- * The cell owns this buffer rather than taking one as a parameter, because it has to match the
- * input width and threading it through the caller's forward order would leak LSTM internals out.
- * backward() clears and refills it every call, so a caller that reads it straight after backward
- * always sees the gradient for that one step.
- */
+
 	private final float[] inputGrad;
 
 	public float[] inputGrad(){
 		return inputGrad;
 	}
 
-	/** Number of leading entries of {@link #inputGrad()} that backward() wrote. */
+
 	public int inputGradLen(){
 		return inputGrad.length;
 	}

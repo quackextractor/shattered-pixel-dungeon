@@ -14,25 +14,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 
 import java.io.File;
 
-/**
- * Checks that a restart rebuilds the run the recording was made from.
- *
- * The desktop viewer's restart re-enters {@code InterlevelScene}, which with a null hero calls
- * {@code Dungeon.init()} and builds floor 1 again. The whole feature depends on that producing the
- * same level the recording starts from; if it does not, the very first step diverges and playback
- * stops dead, which is what "R restarts on floor 2 and dies immediately" looked like from the outside.
- *
- * The worry is the random-number plumbing. {@code Dungeon.init()} pushes a generator seeded from the
- * run seed and reseeds the base, so a *first* init is reproducible by construction. A restart happens
- * long after the first one, with the generator stack and the base generator already churned by every
- * mob turn, combat roll and item drop since. Nothing in the code guarantees the stack is back where
- * it started, so this compares the two directly rather than reasoning about it.
- *
- * The comparison deliberately churns the generators with real turns before restarting, because an
- * untouched generator stack would prove nothing.
- *
- * Run with {@code gradle :superintelligence:restartcheck}.
- */
+
 public class RestartCheck {
 
 	private static final String SEED = "RESTART-CHECK";
@@ -77,13 +59,7 @@ public class RestartCheck {
 		System.exit( 1 );
 	}
 
-	/**
-	 * The restart path, mirroring {@code InterlevelScene.descend()} with a null hero.
-	 *
-	 * That branch is the one the viewer relies on: it calls {@code Dungeon.init()}, which resets
-	 * depth to 1, and then builds the level. Leaving a hero in place instead takes the transition
-	 * branch, which lands on the next floor.
-	 */
+
 	private static void restart( LevelPipeline pipeline ){
 		Dungeon.hero = null;
 		Dungeon.init();
@@ -94,7 +70,7 @@ public class RestartCheck {
 		Dungeon.switchLevel( level, -1 );
 	}
 
-	/** A cheap fingerprint of everything a replay's first step depends on. */
+
 	private static String signature(){
 		Level level = Dungeon.level;
 

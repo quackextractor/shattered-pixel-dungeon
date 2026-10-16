@@ -30,24 +30,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Reads two {@link WorldSnapshot} files and reports where and how they differ.
- *
- * <p>This is the reader half of the only two-sided comparison in the project. Every other check -
- * {@code verify}, {@code playbackcheck}, {@code episodediff}, {@code paritycheck} - compares a headless
- * run against another headless run, so a fault in the render loop cannot appear in any of them by
- * construction. {@code worldtrace} produces the headless side and {@code ReplayPlayer} behind
- * {@code -Dspd.worldTrace} produces the rendered side; this is what says whether they agree.
- *
- * <p>It exists as a program rather than as a paragraph in a document because the finding it exists to
- * settle was reached four times by reading the source and was wrong three times. The measurements that
- * settled it were two files and a diff, and having to reconstruct them by hand each time is what let a
- * refuted hypothesis stand.
- *
- * <pre>
- *   viewdiff &lt;headless.txt&gt; &lt;rendered.txt&gt;
- * </pre>
- */
 public class WorldCompare {
 
 	private WorldCompare(){
@@ -87,15 +69,6 @@ public class WorldCompare {
 		if (!stepDiff.isEmpty()) System.exit( 1 );
 	}
 
-	/**
-	 * Frames on which the world moved while no recorded step was applied.
-	 *
-	 * <p>The question neither side can answer alone. A headless run has no frames, so a two-sided step
-	 * diff cannot see it; a rendered run has frames but no second run to compare them against, so
-	 * nothing marks them. Within one file, a frame whose state differs from the previous frame's is
-	 * exactly a change the recording never authorised - and every one of them is a candidate cause for
-	 * whatever the step diff found.
-	 */
 	private static void reportFrames( WorldSnapshot snapshot ){
 		Map< String, Map< String, List< String > > > parsed =
 				WorldSnapshot.parse( snapshot.lines() );

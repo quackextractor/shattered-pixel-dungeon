@@ -12,19 +12,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardL
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 
-/**
- * A single headless dungeon run, exposed with a reset/step interface.
- *
- * The shape follows the usual RL convention: {@link #reset} starts an episode, {@link #step}
- * consumes one action and returns the transition, and observation buffers plus masks are read from
- * the env itself and stay valid until the next step. Buffers are reused rather than reallocated,
- * which matters because a training sweep runs millions of steps and the garbage collector would
- * otherwise dominate the wall clock.
- *
- * One env owns one run, and because the game's state is almost entirely static - Dungeon.hero,
- * Actor.now, Level.visited all live in statics - a JVM can only host one run at a time. Parallel
- * rollouts are therefore separate worker JVMs. See {@code train.WorkerProcess}.
- */
+
 public class SPDEnv {
 
 	public static final int MAX_FLOOR_DEPTH = 26;
@@ -50,22 +38,15 @@ public class SPDEnv {
 	private int lastBranch = 0;
 	private int stallCount;
 
-	/** Steps on this floor that advanced no engine time, for the third stall guard. */
+
 	private int freeStepsThisFloor;
 	private int lastStallPos = -1;
 	private float lastStallHp;
 
-	/**
-	 * Which guard ended the episode as STALLED, or {@link StallCause#NONE}.
-	 *
-	 * <p>Observation only. Four different guards raise the same {@code TerminateReason}, so a run that
-	 * reports "99% STALLED" cannot say which of them did it, and the fix is different for each. Measured
-	 * over three repeats of one config, 98-99% of all episodes end STALLED at {@code meanTurns} 122-140
-	 * against {@code stallLimit} of 120 - see {@code issues.md} 27.
-	 */
+
 	private StallCause stallCause = StallCause.NONE;
 
-	/** Mode the current step was decided in, and the engine clock at that moment. */
+
 	private EnvMode stepEntered = EnvMode.WORLD;
 	private float stepClock;
 
@@ -74,7 +55,7 @@ public class SPDEnv {
 	private boolean truncated;
 	private RewardModel.TerminateReason endReason = RewardModel.TerminateReason.OTHER;
 
-	/** Seed the current episode is locked to, as text. Empty means a random seed. */
+
 	private String seedText = "";
 
 	private HeroClass heroClass = HeroClass.WARRIOR;
@@ -92,26 +73,12 @@ public class SPDEnv {
 		this.slotMask = new float[ config.maxSlots ];
 	}
 
-	/**
-	 * The level pipeline this environment drives.
-	 *
-	 * <p>Exposed so a check can mirror the pipeline's own start-of-floor sequence exactly, rather than
-	 * approximating it. Restarting without {@code attachSprites} leaves the hero without a sprite while
-	 * the floor is built, which changes how much randomness generation consumes and so produced a
-	 * different floor from the same seed.
-	 */
+
 	public LevelPipeline pipeline(){
 		return pipeline;
 	}
 
-	/**
-	 * Starts an episode.
-	 *
-	 * @param seed     seed text; empty or null means a fresh random seed
-	 * @param heroClass which hero to play
-	 * @return total reward accumulated by the previous episode, so a caller running a sweep can
-	 *         attribute scores without inspecting the ledger
-	 */
+
 	public double reset( String seed, HeroClass heroClass ){
 		double previous = ledger.total();
 
@@ -159,17 +126,7 @@ public class SPDEnv {
 		return previous;
 	}
 
-	/**
-	 * Applies one agent decision.
-	 *
-	 * A step is not necessarily one game turn. Choosing USE or DROP costs one step and then the
-	 * environment waits a second step for the slot, and an aiming item waits a third for the
-	 * target. That is the deliberate cost of keeping the whole interface discrete.
-	 *
-	 * @param action the chosen action
-	 * @param slot   slot index, option index, or target offset depending on {@link #mode()}
-	 * @return the reward for the game turns this step consumed, which may be a sum over several
-	 */
+
 	public double step( Action action, int slot ){
 		if (!running) throw new IllegalStateException( "step() after the episode ended" );
 
@@ -254,13 +211,7 @@ if (mode == EnvMode.WORLD){
 		return accumulated;
 	}
 
-	/**
-	 * Marks a zero-time exit out of a sub-mode, then publishes the masks.
-	 *
-	 * <p>Ordered, not two calls at the two places it matters: the decision has to be made before the mask
-	 * is written, or the mask the agent reads for the next step is one step behind the step that earned
-	 * it, and the refusal lands after the agent has already taken the free action it was meant to block.
-	 */
+
 	private void refreshMasksAfterDrain(){
 		if (stepEntered != EnvMode.WORLD && mode == EnvMode.WORLD
 				&& Actor.now() == stepClock){
@@ -269,13 +220,7 @@ if (mode == EnvMode.WORLD){
 		refreshMasks();
 	}
 
-	/**
-	 * Runs the actor scheduler until the next agent decision point, scoring every game turn along
-	 * the way.
-	 *
-	 * research.md: "It must yield control to the game engine's internal queue and only return the
-	 * new state to the AI when the Hero is explicitly queried for its next action."
-	 */
+
 	private double settle(){
 		double accumulated = 0;
 		int guard = 0;
@@ -346,26 +291,7 @@ if (++guard > config.actorStepLimit){
 		return accumulated;
 	}
 
-	/**
-	 * Gives the hero the one turn the game gives him on arrival at a new floor.
-	 *
-	 * <p>Separate from {@link #settle} because it must not score a turn. The hero arrives at time 0 on a
-	 * floor where every other actor is also at time 0, so the scheduler picks him first and
-	 * {@code Hero.act()} - with no action pending - calls {@code ready()} and returns without spending
-	 * anything. The loop then finds him waiting for input and stops on its first iteration, which is
-	 * what makes "one act" and "a drain" different things here rather than the same thing at different
-	 * sizes.
-	 *
-	 * <p>What the act carries is the point. {@code Hero.act()} runs {@code checkVisibleMobs()}, and
-	 * that is where the new floor's sleeping mobs notice a hero standing among them; a mob seeing the
-	 * hero for the first time calls {@code Hero.interrupt()}, which discards the pending action. Handing
-	 * control to the agent before this happens means the agent's first action on every new floor is
-	 * spent being interrupted by a rat waking up, and the recording says so while the real game does not.
-	 *
-	 * <p>Terminates on the same outcomes the rest of {@code settle} does, so a hero that dies in the
-	 * landing act - a chasm fall is the case that exists - ends the episode rather than being handed
-	 * back with no hero.
-	 */
+
 	private void settleLanding(){
 		LevelPipeline.Outcome landed = pipeline.runToHeroReady( config.actorStepLimit );
 
@@ -462,19 +388,7 @@ if (!reward.lastStepAdvancedClock()){
 		}
 	}
 
-	/**
-	 * Ends the episode, once.
-	 *
-	 * <p>Idempotent, and that is the fix rather than a tidy-up. Two of this method's callers could
-	 * reach it twice for the same episode: {@code settle}'s {@code actorStepLimit} guard did exactly
-	 * that, charging {@code STALLED}'s terminal reward -5.0 twice over for -10.0. Removing the duplicate
-	 * call fixed that instance; making the method refuse a second termination fixes the class, because
-	 * every future caller gets the same protection for free.
-	 *
-	 * <p>The guard is also what makes the reason authoritative. Without it, a second call could
-	 * overwrite {@code endReason} with a less specific one, so an episode that died would report
-	 * whatever the last caller said — and the end-reason breakdown added for this would lie.
-	 */
+
 	private double terminate( RewardModel.TerminateReason reason ){
 		if (terminated) return 0;
 
@@ -485,13 +399,7 @@ if (!reward.lastStepAdvancedClock()){
 		return reward.terminate( reason );
 	}
 
-	/**
-	 * Whether a reason cut the episode short rather than deciding it.
-	 *
-	 * <p>A truncation is bootstrapped by GAE — the episode stopped early and the value carries on past
-	 * it. The complement of {@link #isNaturalEnding}, and the pair is exhaustive over the reasons that
-	 * can end an episode, which is why both are named rather than inlined at their one call site.
-	 */
+
 	public static boolean isTruncation( RewardModel.TerminateReason reason ){
 		return !isNaturalEnding( reason );
 	}
@@ -502,25 +410,12 @@ if (!reward.lastStepAdvancedClock()){
 	public boolean truncated(){ return truncated; }
 	public RewardModel.TerminateReason endReason(){ return endReason; }
 
-	/** True when the episode ended by dying or winning, rather than running out of budget. */
+
 	public boolean endedNaturally(){
 		return isNaturalEnding( endReason );
 	}
 
-	/**
-	 * Whether a reason counts as the game ending the episode, rather than the harness cutting it short.
-	 *
-	 * <p>Static and taking the reason rather than reading a field, so a check can assert the
-	 * classification for every reason without having to produce an episode that ends each way. Floor 1
-	 * is survivable by wandering and beating the boss is not something a test can play out, so the only
-	 * way to cover the whole set is to ask the predicate directly — and asking it is what keeps this
-	 * from becoming a restatement of itself, which is the failure mode a table of expected values here
-	 * would have.
-	 *
-	 * <p>DEATH and VICTORY are the game's own outcomes. STALLED and TURN_LIMIT are guards that fired
-	 * because the harness stopped feeding the episode, and both are marked truncated so GAE bootstraps
-	 * through them: the episode was cut short, and the value carries on past it.
-	 */
+
 	public static boolean isNaturalEnding( RewardModel.TerminateReason reason ){
 		return reason == RewardModel.TerminateReason.DEATH
 				|| reason == RewardModel.TerminateReason.VICTORY;
@@ -528,10 +423,10 @@ if (!reward.lastStepAdvancedClock()){
 
 public float[] actionMask(){ return actionMask; }
 
-	/** Which guard ended the episode as STALLED, or {@link StallCause#NONE}. See the field. */
+
 	public StallCause stallCause(){ return stallCause; }
 
-	/** Whether the last step advanced engine time. A step that did not counts against the free budget. */
+
 	public boolean lastStepAdvancedClock(){ return reward.lastStepAdvancedClock(); }
 	public float[] slotMask(){ return slotMask; }
 	public float[] targetMask(){ return targetMask; }
@@ -540,16 +435,16 @@ public float[] actionMask(){ return actionMask; }
 	private final float[] slotLogits = new float[ 128 ];
 	private final float[] targetLogits = new float[ ActionMapper.TARGET_COUNT ];
 
-	/** Logits the policy is considering on the action head. Only valid before a step. */
+
 	public float[] actionLogitsPreview(){ return actionLogits; }
 
-	/** Logits the policy is considering on the slot head. Only valid before a step. */
+
 	public float[] slotLogitsPreview(){ return slotLogits; }
 
-	/** Logits the policy is considering on the target head. Only valid before a step. */
+
 	public float[] targetLogitsPreview(){ return targetLogits; }
 
-	/** Lets the policy publish its current head outputs for the coming step. */
+
 	public void setPolicyOutputs( float[] actions, float[] slots, float[] targets ){
 		System.arraycopy( actions, 0, actionLogits, 0,
 				Math.min( actions.length, actionLogits.length ) );
@@ -570,33 +465,15 @@ public float[] actionMask(){ return actionMask; }
 	public ActionMapper mapper(){ return mapper; }
 	public EnvConfig config(){ return config; }
 
-	/**
-	 * The seed this run actually used.
-	 *
-	 * The resolved seed, not the requested one: an empty request means the game drew one, and this is
-	 * that draw's code. Naming it is what makes a random-seed episode replayable and verifiable.
-	 */
+
 	public String seedText(){ return seedText; }
 	public int turnsTotal(){ return turnsTotal; }
 	public int depth(){ return Dungeon.depth; }
 
-	/**
-	 * The deepest floor this run has been on.
-	 *
-	 * <p>Not the same as {@link #depth()}, and the difference is not cosmetic. {@code depth()} is where
-	 * the hero is standing now, so a run that descends and then walks back up to die on floor 1 reports
-	 * 1 - which is what {@code duelist-mid} did, on a recording that reaches floor 2 and is the only
-	 * corpus file that does. Every report, chart and milestone in this project means "depth" as
-	 * <i>progress</i>, and {@code TODO.md} has spent several entries reasoning about a corpus where
-	 * "every recording is depth=1"; a header that can say 1 for a run that went down would keep saying it.
-	 *
-	 * <p>{@code Statistics.deepestFloor} is the game's own figure for this, updated by
-	 * {@code Dungeon.newLevel} and reset by {@code Dungeon.init}, so it is per-run and it is not a second
-	 * opinion this module had to form.
-	 */
+
 	public int deepestDepth(){ return com.shatteredpixel.shatteredpixeldungeon.Statistics.deepestFloor; }
 
-	/** Hero cell, for replay divergence checks. */
+
 	public int heroPosition(){ return Dungeon.hero.pos; }
 
 	private void refreshMasks(){
@@ -608,13 +485,13 @@ public float[] actionMask(){ return actionMask; }
 		if (mode == EnvMode.WORLD) mapper.interactMask( targetMask );
 	}
 
-	/** Ends the current episode without scoring, used when a worker is shutting down. */
+
 	public void abandon(){
 		running = false;
 		terminated = true;
 	}
 
-/** Description of what the environment is waiting for, for diagnostics. */
+
 	public String describeMode(){
 		switch (mode) {
 			case MENU:      return "menu(" + WindowBridge.describe() + ")";
@@ -626,17 +503,17 @@ public float[] actionMask(){ return actionMask; }
 		}
 	}
 
-	/** True when the open dialog's option can be chosen, for scripted policies. */
+
 	public boolean windowOptionSelectable( int index ){
 		return WindowBridge.optionSelectable( index );
 	}
 
-	/** Number of options the open dialog offers. */
+
 	public int windowOptionCount(){
 		return WindowBridge.optionCount();
 	}
 
-	/** The talents the hero could spend a point on, in the order the slot head indexes them. */
+
 	public java.util.List<com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent> talentChoices(){
 		return mapper.talentChoices();
 	}

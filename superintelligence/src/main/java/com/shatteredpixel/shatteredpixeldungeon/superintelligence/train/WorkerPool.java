@@ -12,21 +12,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Owns the worker processes: launching them, the pipes to them, and the stall watchdog.
- *
- * Split out of {@link Trainer} because process lifetime is a separate concern from the learning loop,
- * and because the watchdog is the one piece of the trainer that touches threads it does not own.
- *
- * Workers speak a length-prefixed binary protocol on stdin/stdout; their human-readable log goes to
- * stderr, inherited, so a stray print to stdout cannot desynchronise the stream.
- */
 public class WorkerPool {
 
-	/** Bumped by the trainer whenever a worker message completes. Watched by the watchdog. */
 	private volatile long lastProgressNanos = System.nanoTime();
 
-	/** Quiet period before the watchdog declares a stall. */
 	private long stallTimeoutMs = 180_000;
 
 	private final List<WorkerHandle> workers = new ArrayList<>();
@@ -43,31 +32,20 @@ public class WorkerPool {
 		return workers;
 	}
 
-/** Root of the per-worker scratch directories. */
+
 	private static File workerDir(){
 		return Trainer.outDirDefault();
 	}
 
-	/** Pipe buffer requested per worker. 1 MB, not the 4 KB a Windows pipe reports. */
+
 	public static int bufferBytes = 1 << 20;
 
-	/**
-	 * Worker JVM heap and GC settings, from the configuration rather than from literals here.
-	 *
-	 * <p>A heap too small for the machine shows up as an out-of-memory twenty generations in rather than
-	 * as an error at launch, and 1536 MB on a machine with 8 GB of it is four workers at most.
-	 */
+
 	public static String heapMin = "256m";
 	public static String heapMax = "1536m";
 	public static int gcPauseMs = 200;
 
-	/**
-	 * Starts {@code count} worker JVMs and hands each the current policy.
-	 *
-	 * The handshake is per worker and must complete before the next one starts: a worker that cannot
-	 * be reached is a configuration error, and finding out at generation 40 with 20 live processes is
-	 * far worse than finding out at launch.
-	 */
+
 	public void launch( int count, String javaHome, String classpath, ParamWriter params )
 			throws IOException {
 
@@ -100,12 +78,10 @@ public class WorkerPool {
 				+ " worker processes" );
 	}
 
-	/** Called from the dispatch threads whenever a worker message completes. */
 	public void progress(){
 		lastProgressNanos = System.nanoTime();
 }
 
-	/** Quiet period before the watchdog declares a stall. */
 	public void stallTimeoutMs( long ms ){
 		stallTimeoutMs = ms;
 	}
@@ -114,17 +90,6 @@ public class WorkerPool {
 		return stallTimeoutMs;
 	}
 
-	/**
-	 * Fails the run if a worker goes quiet for too long.
-	 *
-	 * A desynchronised protocol does not crash: the trainer blocks reading a pipe the worker will
-	 * never write to, both processes sit at zero CPU, and the run looks like it is still working.
-	 * That is the worst possible failure mode for a job that is meant to take hours, so a stalled
-	 * worker is turned into a loud error with a stack dump rather than silence.
-	 *
-	 * This is the one timer in the trainer. It costs nothing - it checks a volatile long once a
-	 * second - and it exists precisely so that nothing else has to.
-	 */
 	public void startWatchdog(){
 		Thread watchdog = new Thread( () -> {
 			while (true){
@@ -183,16 +148,6 @@ public class WorkerPool {
 		return sb.toString();
 	}
 
-	/**
-	 * One worker process and the pipes to it.
-	 *
-	 * The worker reads its commands from stdin and writes its results to stdout. Worker stderr is
-	 * inherited so its warnings land in the trainer's log.
-	 *
-	 * The stream buffers are sized for the frames that actually cross them rather than left at the
-	 * 8 KB default. A policy push is ~14 MB and a generation's transitions are tens of MB; the
-	 * default turns those into thousands of syscalls per worker per generation.
-	 */
 public static class WorkerHandle {
 
 		final Process process;

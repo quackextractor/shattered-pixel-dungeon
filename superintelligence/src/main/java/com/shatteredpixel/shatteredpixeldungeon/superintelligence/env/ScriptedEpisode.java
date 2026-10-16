@@ -27,22 +27,8 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.Scripte
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
 
-/**
- * One scripted headless episode, recorded.
- *
- * <p>Extracted from {@code Main.rollout} so that {@code rolloutcheck} can assert on what the command
- * actually records without invoking a command line. Two real faults lived in that wiring and neither was
- * reachable from a gate: an empty-seed guard that rejected the flag and its absence alike, making random
- * seeds unreachable, and a recording that stored the seed it was <em>asked</em> for rather than the seed
- * the environment resolved - which on a random episode is a replay nothing can ever verify.
- *
- * <p>The point of extracting rather than duplicating is the whole reason the viewer and the trainer came
- * to disagree in the first place: a second implementation of "run an episode and record it" is a second
- * thing to keep in step. There is now one, and the command is a caller of it.
- */
 public class ScriptedEpisode {
 
-	/** What an episode produced. */
 	public static class Result {
 		public final SPDEnv env;
 		public final Replay replay;
@@ -54,7 +40,6 @@ public class ScriptedEpisode {
 			this.report = report;
 		}
 
-		/** The seed this episode actually ran on, which is not the one that was requested. */
 		public String seedText(){
 			return env.seedText();
 		}
@@ -62,15 +47,6 @@ public class ScriptedEpisode {
 
 	private ScriptedEpisode() {}
 
-	/**
-	 * Runs one episode under the scripted policy and records it.
-	 *
-	 * @param config      environment settings; {@code turnLimitPerFloor} bounds the episode
-	 * @param seedText    the seed to ask for; empty or null means the environment draws one
-	 * @param hero        hero class
-	 * @param stepLimit   hard cap on agent steps, or 0 for the per-floor cap alone
-	 * @param policySeed  seed for the scripted policy's own choices
-	 */
 	public static Result record( EnvConfig config, String seedText, HeroClass hero, int stepLimit,
 			int policySeed ){
 		SPDEnv env = new SPDEnv( config, com.shatteredpixel.shatteredpixeldungeon.superintelligence

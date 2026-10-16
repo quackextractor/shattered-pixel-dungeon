@@ -16,35 +16,24 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapp
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.watabou.utils.PathFinder;
 
-/**
- * Builds the agent's observation: a cropped spatial tensor plus flat feature vectors.
- *
- * The spatial tensor is a window centred on the hero, resampled to a fixed size regardless of the
- * real floor dimensions. Floors range from roughly 33x33 to 64x64, and a CNN needs a constant
- * input, so rather than padding to the largest floor the window is scaled to fit. Costs a little
- * spatial precision on big floors and buys an input shape that does not change per floor, which
- * matters far more over a long curriculum.
- *
- * All buffers are allocated once and reused. A rollout runs millions of turns; allocating a grid
- * per turn is exactly the kind of pressure research.md's memory-pooling note warns about.
- */
+
 public class ObservationEncoder {
 
-	/** Extra tiles of padding around the hero, in board cells, before scaling. */
+
 	private static final int MARGIN = 2;
 
 	private final EnvConfig config;
 
-	/** planes * width * height, channel-major so a plane is contiguous. */
+
 	private final float[] grid;
 
 	private final int gridWidth;
 	private final int gridHeight;
 
-	/** Per-slot features, see InventoryEncoder.FEATURES_PER_SLOT. */
+
 	private final float[] inventory;
 
-	/** Hero and run scalars, see HeroEncoder.FEATURES. */
+
 	private final float[] heroFeatures;
 
 	private final ActionMapper mapper;
@@ -69,17 +58,12 @@ public class ObservationEncoder {
 	public int gridHeight(){ return gridHeight; }
 	public int spatialChannels(){ return GridChannel.spatialCount(); }
 
-	/** Total spatial elements, for allocating convolution outputs. */
+
 	public int gridSize(){
 		return grid.length;
 	}
 
-	/**
-	 * Recomputes every observation buffer from current game state.
-	 *
-	 * @return the number of newly explored tiles, which the reward model needs and which is
-	 *         cheaper to measure here than to diff two grids.
-	 */
+
 	public int encode(){
 		Level level = Dungeon.level;
 		Hero hero = Dungeon.hero;
@@ -139,16 +123,7 @@ public class ObservationEncoder {
 		applyExitBeacon( level, hero );
 	}
 
-	/**
-	 * Lights the beacon channel on the cell the hero has already seen the stairs on.
-	 *
-	 * <p>Written once per step rather than per cell, because the transition cell is a single cell and
-	 * scanning the whole grid for it every step would be the most expensive thing in the encoder.
-	 *
-	 * <p>Reads nothing from the gameplay RNG: it looks at {@code visited}, which the game's own field
-	 * of view already maintains, so the observation stays a pure function of the world - which is what
-	 * {@code observecheck} asserts.
-	 */
+
 	private void applyExitBeacon( Level level, Hero hero ){
 		if (level == null || hero == null) return;
 
@@ -166,7 +141,7 @@ public class ObservationEncoder {
 		if (p >= 0) put( GridChannel.EXIT_BEACON, p, 1f );
 	}
 
-	/** Grid index of a cell, or -1 when it falls outside the encoded window. */
+
 	private int gridIndex( Level level, Hero hero, int cell ){
 		int width = level.width();
 		int cx = cell % width;
@@ -252,13 +227,7 @@ public class ObservationEncoder {
 		}
 	}
 
-	/**
-	 * Mirrors the game's own fog behaviour for mimics.
-	 *
-	 * docs.md: "it will always be able to spot regular mimics since they animate even when the
-	 * player is idle". GameScene.afterObserve keeps a mimic's sprite visible once its tile has been
-	 * visited, so a mimic on explored-but-unseen terrain stays in the ENEMY channel.
-	 */
+
 	private boolean mimicStillVisible( Char ch, boolean visible ){
 		if (visible) return true;
 		if (!config.mimicsVisibleOutOfFog) return false;
@@ -272,7 +241,7 @@ public class ObservationEncoder {
 		return heap.seen;
 	}
 
-	/** True when a heap holds something the hero can act on: gold, ammo, a curse remover. */
+
 	private boolean groundItem( Heap heap ){
 		for (Item item : heap.items){
 			if (item.value() > 0) return true;
@@ -281,12 +250,7 @@ public class ObservationEncoder {
 		return false;
 	}
 
-	/**
-	 * True when a mob is winding up an attack on the hero.
-	 *
-	 * Mirrors the danger indicator's logic so the agent gets the same warning a player does
-	 * rather than having to infer it from the mob's facing and intent from scratch.
-	 */
+
 	private boolean isThreatening( Mob mob ){
 		if (!mob.isAlive() || mob.alignment == Char.Alignment.ALLY) return false;
 		if (mob.invisible > 0) return false;
@@ -294,14 +258,7 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 		return mob.state == mob.HUNTING;
 	}
 
-	/**
-	 * Edge strength between this tile and its neighbours.
-	 *
-	 * A plain wall/no-wall plane cannot express where a doorway is, because the CNN's stride
-	 * blurs a one-tile gap away. Emitting an edge plane - 1 where a visible passable tile touches
-	 * another visible passable tile - restores the shape information the policy needs to
-	 * navigate corridors and find gaps in walls.
-	 */
+
 	private float edgeStrength( Level level, int cell, int width ){
 		boolean visible = cell < level.heroFOV.length && level.heroFOV[ cell ];
 		if (!visible || !level.passable[ cell ]) return 0f;
@@ -322,11 +279,11 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 		System.arraycopy( edges, 0, grid, plane * PLANE_AREA, edges.length );
 	}
 
-	/** Precomputed channel -> plane offset, so encoding does no enum lookups per tile. */
+
 	private static final int[] PLANE_INDEX = new int[ GridChannel.count() ];
 	private static final int PLANE_SIZE;
 
-	/** Elements in one plane, ie. the stride between planes. */
+
 	private final int PLANE_AREA;
 
 	static {
@@ -337,7 +294,7 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 		PLANE_SIZE = n;
 	}
 
-	/** Scratch for the edge pass, allocated once. */
+
 	private final float[] edges;
 
 	private void put( GridChannel channel, int p, boolean value ){
@@ -351,12 +308,7 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 		grid[ plane * PLANE_AREA + p] = value;
 	}
 
-	/**
-	 * Counts tiles explored on this floor.
-	 *
-	 * Tracked as a running total on the encoder rather than by diffing grids, because a full diff
-	 * would need the previous grid retained and compared on every turn.
-	 */
+
 	private int lastExplored = 0;
 	private int lastDepth = -1;
 
@@ -376,18 +328,18 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 		return Math.max( 0, delta );
 	}
 
-	/** Absolute count of explored tiles on the current floor. */
+
 	public int exploredOnFloor(){
 		return lastExplored;
 	}
 
-	/** Forgets the explored total, used when a floor is regenerated. */
+
 	public void resetExplored(){
 		lastExplored = 0;
 		lastDepth = -1;
 		seenTransitionCell = -1;
 	}
 
-	/** The floor's stairs once the hero has stood where they can be seen. -1 until then. */
+
 	private int seenTransitionCell = -1;
 }

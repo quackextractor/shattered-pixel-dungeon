@@ -14,30 +14,10 @@ import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
 
 import java.util.List;
 
-/**
- * Encodes the fixed-length inventory vector.
- *
- * research.md: "the player's Belongings require a fixed size vector. Because neural networks
- * require consistent input sizes, you must create a flat, fixed length array representing the
- * inventory slots. Each slot must encode the specific Item, its upgrade count, and whether it is
- * a CursedWand or has other curses. This flattened inventory vector will bypass the CNN and be
- * concatenated directly with the spatial data before entering the LSTM memory layer."
- *
- * The item *type* is encoded by identity, not by one-hot over every class in the game. One-hot
- * over ~500 item classes would dominate the parameter count and would need to be rebuilt whenever
- * an item is added, so instead each slot gets its own type embedding index plus a small set of
- * shared numeric features. The embedding is learned, which means a newly added item is usable
- * immediately instead of needing a vocabulary rebuild.
- *
- * identification state is reported exactly as the game models it: {@code levelKnown} and
- * {@code cursedKnown} are separate flags, so the agent can know an item is level +3 without
- * knowing it is cursed, which is the normal situation before using it.
- */
 public class InventoryEncoder {
 
 	public static final int FEATURES_PER_SLOT = 14;
 
-	/** Offsets within one slot's feature block. */
 	private static final int F_PRESENT      = 0;
 	private static final int F_TYPE_EMBED  = 1;
 	private static final int F_CATEGORY    = 2;
@@ -55,11 +35,6 @@ public class InventoryEncoder {
 
 	private InventoryEncoder() {}
 
-	/**
-	 * @param slots  the hero's inventory, positionally stable, see ActionMapper.refreshSlots
-	 * @param out    destination of maxSlots * FEATURES_PER_SLOT floats
-	 * @param maxSlots number of slots to write
-	 */
 	public static void encode( List<Item> slots, float[] out, int maxSlots ){
 		Hero hero = Dungeon.hero;
 
@@ -90,20 +65,10 @@ public class InventoryEncoder {
 		}
 	}
 
-	/**
-	 * Stable integer identity for an item class.
-	 *
-	 * Resolved through a persistent map rather than a class hashcode, so the index only changes if
-	 * the item set does. A checkpoint trained before an item is added still loads.
-	 */
 	private static float typeIndex( Item item ){
 		return TypeRegistry.indexOf( item.getClass() );
 	}
 
-	/**
-	 * Coarse kind, so the network can learn "this heals" or "this is a weapon" without having to
-	 * separate hundreds of individual item identities first.
-	 */
 	private static float category( Item item ){
 		if (item instanceof Wand)         return 1;
 		if (item instanceof Potion)       return 2;
@@ -115,12 +80,6 @@ public class InventoryEncoder {
 		return 0;
 	}
 
-	/**
-	 * Index of the item's kind within its own sprite sheet, for unidentified items.
-	 *
-	 * This is what lets the agent tell an unidentified crimson potion from an unidentified amber
-	 * one, which is the entire basis of the identify-and-drink strategy in docs.md.
-	 */
 	private static float knownKindIndex( Item item ){
 		if (item.isIdentified()) return 0f;
 		if (item instanceof Potion) return item.icon;
@@ -138,7 +97,6 @@ public class InventoryEncoder {
 				|| item == b.secondWep();
 	}
 
-	/** Number of distinct item type embeddings the network must allocate. */
 	public static int typeCount(){
 		return TypeRegistry.size();
 	}

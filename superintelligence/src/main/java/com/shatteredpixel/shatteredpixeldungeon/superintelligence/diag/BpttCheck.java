@@ -17,33 +17,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-/**
- * The recurrent gradient has to cross a timestep boundary, and the critic has to be asked for a number
- * it can represent.
- *
- * <pre>gradle :superintelligence:bpttcheck</pre>
- *
- * <p>Two faults that no loss curve names. The update backpropagated each stored sample in isolation with
- * {@code dPrev} and {@code dCell} cleared between steps, so nothing crossed a timestep and
- * {@code LSTM.W_hh} received no gradient at all for holding information forward - which in a partially
- * observed grid game is the entire reason the recurrent layer is there. And the critic was asked to fit
- * raw returns in the thousands while sharing its trunk with the actor, so {@code valueLoss} ran to
- * 12,432-31,323 and the shared gradient it produced was then squashed by global clipping, taking the
- * policy's update with it.
- *
- * <p>The first case here is the decisive one and it is constructed rather than compared: the loss is
- * <b>zero at the first step and non-zero at the second</b>, so the sum of the isolated steps is exactly
- * the isolated gradient of the second. Under a length-one truncation the chunk produces precisely that
- * sum. Under a through-time gradient it produces strictly more, because the second step's gradient flows
- * back into the first step's LSTM. Reverting the accumulation makes the difference zero and the check
- * red - which a first attempt at this assertion, comparing two gradient <em>norms</em>, was measured to
- * let through.
- */
 public class BpttCheck {
 
 	private static final int CHECKS = 7;
 
-	/** Index of {@code memory.gW} in {@link Network#gradientTensors()}. */
 	private static final int LSTM_GRADIENT = 4;
 
 	private static final List<String> failures = new ArrayList<>();
@@ -69,13 +46,6 @@ public class BpttCheck {
 		}
 	}
 
-	/**
-	 * The chunk's gradient is not the sum of its steps' gradients.
-	 *
-	 * <p>Constructed so the answer is forced: the loss sits on step 1 only, and step 0's local
-	 * contribution is zeroed in every part of the objective - advantage, entropy and critic residual - so
-	 * the sum of the isolated steps is exactly step 1's isolated gradient.
-	 */
 	private static void checkTheChunkIsNotTheSumOfItsSteps( EnvConfig config ){
 		PPO ppo = new PPO( config, new Random( 4242L ));
 		ppo.entropyCoeff = 0f;
@@ -110,13 +80,6 @@ public class BpttCheck {
 				+ fmt( difference * 100 ) + "% of its norm on the LSTM weights" );
 	}
 
-	/**
-	 * A loss on the first step alone still reaches the recurrent weights.
-	 *
-	 * <p>The complement of the case above, and what makes that comparison a measurement rather than a
-	 * tautology: the recurrent gradient is non-zero from either end, so a difference cannot be explained
-	 * by one of the two steps contributing nothing at all.
-	 */
 	private static void checkALossOnTheFirstStepReachesTheRecurrentWeights( EnvConfig config ){
 		PPO ppo = new PPO( config, new Random( 4242L ));
 		ppo.entropyCoeff = 0f;
@@ -138,13 +101,6 @@ public class BpttCheck {
 				+ fmt( firstStep ));
 	}
 
-	/**
-	 * A one-step chunk must produce what the old per-step path produced.
-	 *
-	 * <p>The equivalence the whole change rests on: a single sample is not a special case, it is a chunk
-	 * of length one. If this drifts, every number measured against the old path is measuring a different
-	 * update.
-	 */
 	private static void checkASingleStepChunkIsTheOldPath( EnvConfig config ){
 		PPO ppo = new PPO( config, new Random( 99L ));
 
@@ -170,13 +126,6 @@ public class BpttCheck {
 		System.out.println( "  a single-step chunk and the old per-step path agree to " + fmt( difference ));
 	}
 
-	/**
-	 * Only strictly consecutive steps of one episode may be chained.
-	 *
-	 * <p>A gap is not a detail. Backpropagating across a step the agent never saw would carry a gradient
-	 * through a state that never happened, and uniform sampling drops steps routinely, so most chunks in a
-	 * real batch would be wrong if a gap did not split.
-	 */
 	private static void checkOnlyContiguousStepsAreChained( EnvConfig config ){
 		PPO ppo = new PPO( config, new Random( 7L ));
 
@@ -205,12 +154,6 @@ public class BpttCheck {
 		System.out.println( "  a gap or a new episode starts a new run: " + shapes( chunks ));
 	}
 
-	/**
-	 * A transition with no episode must never be chained to anything.
-	 *
-	 * <p>What a check's own synthetic transitions carry, and the reason they behave exactly as they did
-	 * before rather than being sorted into a sequence nobody built.
-	 */
 	private static void checkSyntheticStepsAreNeverChained( EnvConfig config ){
 		PPO ppo = new PPO( config, new Random( 11L ));
 
@@ -230,7 +173,6 @@ public class BpttCheck {
 		System.out.println( "  unsequenced steps each stand alone: " + shapes( chunks ));
 	}
 
-	/** The critic is asked for an O(1) target even when returns are in the thousands. */
 	private static void checkValueTargetsAreNormalised( EnvConfig config ){
 		PPO ppo = new PPO( config, new Random( 5L ));
 		ppo.normaliseValues = true;
@@ -254,7 +196,6 @@ public class BpttCheck {
 		System.out.println( "  returns of -3000 and +1800 normalise to at most " + fmt( worst ));
 	}
 
-	/** And normalisation is genuinely off when asked, which is what makes the case above a comparison. */
 	private static void checkNormalisationIsOffWhenAsked( EnvConfig config ){
 		PPO ppo = new PPO( config, new Random( 5L ));
 		ppo.normaliseValues = false;
@@ -274,7 +215,6 @@ public class BpttCheck {
 		System.out.println( "  normaliseValues=false asks the critic for the raw return" );
 	}
 
-	/** Runs an update over {@code batch} and returns the LSTM weight gradient it produced. */
 	private static float[] updateAndKeep( PPO ppo, List< Transition > batch ){
 		ppo.threads = 1;
 		ppo.epochs = 1;
@@ -284,7 +224,6 @@ public class BpttCheck {
 		return ppo.network.gradientTensors()[ LSTM_GRADIENT ].clone();
 	}
 
-	/** The recurrent gradient for a chunk, every objective term zeroed except its returns. */
 	private static float[] recurrentGradient( PPO ppo, List< Transition > chunk ){
 		for (Transition t : chunk){
 			t.oldLogProbability = 0f;
@@ -300,7 +239,6 @@ public class BpttCheck {
 		return ppo.network.gradientTensors()[ LSTM_GRADIENT ].clone();
 	}
 
-	/** {@code n} transitions from one episode, consecutive, each carrying the state it was decided in. */
 	private static List< Transition > chunkOf( EnvConfig config, PPO ppo, int n ){
 		List< Transition > out = new ArrayList<>();
 		Random rng = new Random( 20261016L );
@@ -321,7 +259,6 @@ Transition t = transition( config, ppo, 3, i );
 		return out;
 	}
 
-	/** {@code n} unsequenced transitions with random observations. */
 	private static List< Transition > batchOf( EnvConfig config, PPO ppo, int n ){
 		List< Transition > out = new ArrayList<>();
 		Random rng = new Random( 3141592L );
@@ -364,7 +301,6 @@ Transition t = transition( config, ppo, 3, i );
 		return dst;
 	}
 
-	/** Calls {@code PPO.oneChunk} by its real signature, so a rename fails here rather than silently. */
 	private static void oneChunk( PPO ppo, Network net, List< Transition > chunk, StepCache[] caches ){
 		Method m = method( "oneChunk", Network.class, List.class, float[].class, float[].class,
 				float[].class, float[].class, float[].class, float[].class, float[].class,
@@ -377,7 +313,6 @@ Transition t = transition( config, ppo, 3, i );
 				caches, caches.length } );
 	}
 
-	/** Calls {@code PPO.oneSample} by its real signature. */
 	private static void oneSample( PPO ppo, Network net, Transition t ){
 Method m = method( "oneSample", Network.class, Transition.class, float[].class, float[].class,
 				float[].class, float[].class, float[].class, float[].class, float[].class );
@@ -408,7 +343,6 @@ Method m = method( "oneSample", Network.class, Transition.class, float[].class, 
 		}
 	}
 
-	/** Calls {@code PPO.chunks()} by its real signature. */
 	private static List< List< Transition > > chunks( PPO ppo ){
 		try {
 			@SuppressWarnings("unchecked")

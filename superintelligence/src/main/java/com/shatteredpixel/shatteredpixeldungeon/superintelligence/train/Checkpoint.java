@@ -13,49 +13,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
-/**
- * A trained policy on disk, so a run can be stopped, inspected, and continued.
- *
- * <p>Until this existed, {@link Trainer} started from {@code Network}'s random initialisation every
- * time and threw the result away at exit. Every run so far was therefore a smoke test that could not
- * be extended: no way to run 50 generations and continue, and no way to compare two runs, because only
- * one line of training could exist at a time.
- *
- * <p><b>What a checkpoint has to contain, and what it deliberately does not.</b> Weights are obvious.
- * The Adam moments and the optimiser step count are the parts that are easy to omit and turn a resume
- * into a different run:
- *
- * <ul>
- *   <li><b>Moments.</b> Dropping them restarts Adam's averages from zero, so the first update after a
- *       resume divides by a near-empty gradient mean. It would still train, and it would train worse,
- *       with nothing in the output to say why.
- *   <li><b>Step count.</b> Adam's bias correction divides by {@code 1 - beta^step}, so restarting at 1
- *       makes that correction ~0.1 instead of ~1 — a full-size step on a barely-warmed average.
- * </ul>
- *
- * <p>Adam moments are therefore saved but <b>not</b> sent to workers. A worker runs forward passes
- * only; pushing four times the floats per generation would cost ~57 MB per worker per push for nothing.
- *
- * <p><b>The config is written and checked</b> rather than assumed. A checkpoint from a different
- * {@link EnvConfig} has different tensor shapes, and loading it into the wrong parameters produces a
- * network that runs and learns nonsense. Every shape-affecting field is stored and compared, with the
- * offending name in the message — which is the difference between "IllegalArgumentException" and
- * "your grid is 48x48, this checkpoint is 32x32".
- *
- * <p><b>Written to a temporary file and renamed.</b> A checkpoint half-written by a power cut is worse
- * than none: it exists, it is newer, and resuming from it fails on a short read. The rename is atomic
- * on every filesystem worth training on, so the file at the target path is always a complete previous
- * checkpoint or a complete new one.
- */
 public final class Checkpoint {
 
-	/** File magic and format version, so a truncated or foreign file is refused rather than parsed. */
 	private static final int MAGIC = 0x53504431; 
 	private static final int FORMAT = 1;
 
 	private Checkpoint() {}
 
-	/** What a resumed run needs to know about where it left off, for logging and the CSV. */
 	public static class Meta {
 		public int generation;
 		public int adamSteps;
@@ -72,15 +36,6 @@ public final class Checkpoint {
 		}
 	}
 
-	/**
-	 * Writes the policy, its optimiser state, and the config that produced it.
-	 *
-	 * @param file      destination; replaced atomically
-	 * @param network   the policy to save
-	 * @param config    the config whose shape the weights depend on
-	 * @param generation progress marker, so a resumed run can say where it resumed from
-	 * @param trainSeed the trainer's seed, recorded for provenance; it is not restored
-	 */
 	public static void save( File file, Network network, EnvConfig config,
 			int generation, long trainSeed ) throws IOException {
 
@@ -131,13 +86,6 @@ public final class Checkpoint {
 		}
 	}
 
-	/**
-	 * Reads a checkpoint into {@code network}.
-	 *
-	 * @throws IOException on anything that would make the resumed run a different run: a foreign or
-	 *                     truncated file, a config mismatch, or a tensor of the wrong length. Never
-	 *                     partially — the network is only mutated once every layer has been validated.
-	 */
 	public static Meta load( File file, Network network, EnvConfig config ) throws IOException {
 		try (DataInputStream in = new DataInputStream(
 				new BufferedInputStream( Files.newInputStream( file.toPath() ) ))){
@@ -203,14 +151,6 @@ public final class Checkpoint {
 		}
 	}
 
-	/**
-	 * Refuses a checkpoint whose shapes cannot belong to this config.
-	 *
-	 * <p>Reported per field rather than as one "incompatible" so the fix is obvious. Loading anyway
-	 * would be caught by {@link Network#loadLayer}'s shape check for the tensors, but only after the
-	 * moments had already been read, and the message would be about a layer rather than about the
-	 * setting the user actually changed.
-	 */
 	private static void checkConfig( File file, Meta meta, EnvConfig config ) throws IOException {
 		mismatch( file, "maxSlots", meta.maxSlots, config.maxSlots );
 		mismatch( file, "gridWidth", meta.gridWidth, config.gridWidth );

@@ -21,31 +21,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Fails when the environment cannot reach one of its own modes.
- *
- * Six real bugs shipped through this module while every recording was WORLD-only:
- * {@code EnvMode.INVENTORY} was never assigned anywhere, {@code OPEN_INVENTORY} was missing from
- * the action mask, throwing stones were equipped instead of thrown, a "needs an aim" answer was
- * fabricated from an "equipped OK" boolean, a refused equip never released the hero so the episode
- * stalled, and the pending use item was cleared on the very step that needed it. Every one of them
- * was invisible to a suite that only ever walked around, because none of them touch movement.
- *
- * A replay fixture alone does not prevent that. Nothing failed when a mode quietly stopped being
- * reachable - the fixture would just quietly stop covering it. This asserts reachability directly, so
- * a regression is a red build rather than a gap discovered much later.
- *
- * Written as an explicit script rather than a policy loop. The point is to visit each mode once and
- * say precisely which hop failed; a policy that wanders would report "INVENTORY missing" when the real
- * fault was three steps earlier. It also covers the two things a mode merely appearing does not
- * prove: a real throw through {@code TARGETING}, and a drop, which is legal for an agent to choose
- * and had never been executed.
- *
- * Run with {@code gradle :superintelligence:modecheck}.
- */
 public class ModeCoverageCheck {
 
-	/** Chosen because the warrior's starting kit includes a throwing stone, so an aim is reachable. */
 	private static final String SEED = "MODE-CHECK";
 
 	private SPDEnv env;
@@ -66,24 +43,6 @@ public class ModeCoverageCheck {
 		check.report();
 	}
 
-	/**
-	 * Opening the inventory must not also act on the world.
-	 *
-	 * <p>{@code OPEN_INVENTORY} and {@code CANCEL} were not listed in {@code ActionMapper.apply}'s
-	 * switch, so both fell through to {@code pickInteractCell()} and {@code handleCell()} - the path
-	 * {@code INTERACT} takes. Choosing to look in your backpack therefore also moved the hero, attacked
-	 * an adjacent mob, picked up a heap, opened a locked door or took a transition.
-	 *
-	 * <p><b>This went into training.</b> Every episode that opened its inventory did something else as
-	 * well, and the recorded runs show it plainly: on one {@code OPEN_INVENTORY} step the hero moved a
-	 * cell, and on the next it moved back. The bug was documented in place as a "no-op", which is how
-	 * it survived - {@code pickInteractCell} finds something and {@code handleCell} acts on it, so the
-	 * fall-through was never nothing.
-	 *
-	 * <p>Checked over several consecutive steps rather than one, because the damage is intermittent by
-	 * nature: it only shows when something interesting happens to be adjacent, which on a given seed
-	 * may be the fortieth step and not the first.
-	 */
 	private void checkInventoryEntryDoesNotTouchTheWorld(){
 		env.reset( SEED, HeroClass.WARRIOR );
 
@@ -169,7 +128,6 @@ public class ModeCoverageCheck {
 		}
 	}
 
-	/** The first passable cell among the eight neighbours of {@code pos}, or -1. */
 	private int adjacentPassableCell( int pos ){
 		int w = Dungeon.level.width();
 		int[] offsets = { 1, w, -1, -w, w + 1, w - 1, -w + 1, -w - 1 };
@@ -185,13 +143,6 @@ public class ModeCoverageCheck {
 		return -1;
 	}
 
-	/**
-	 * {@code CANCEL} with nothing to cancel is an answer, not a refusal and not an action.
-	 *
-	 * <p>It shares the fall-through with {@code OPEN_INVENTORY}, so it acted on an adjacent cell too.
-	 * And returning false would be wrong in the other direction: {@code SPDEnv} counts a false as
-	 * {@code INVALID_ACTION}, which tells the agent it chose badly when it chose correctly.
-	 */
 	private void checkCancelDoesNotTouchTheWorld(){
 		env.reset( SEED, HeroClass.WARRIOR );
 
@@ -285,23 +236,6 @@ public class ModeCoverageCheck {
 		}
 	}
 
-	/**
-	 * Applies one action and asserts the mode it leads to.
-	 *
-	 * The mode is sampled before stepping as well, because that is the mode a recording stores for
-	 * this step.
-	 */
-	/**
-	 * {@code INTERACT} has to be able to name the cell it acts on.
-	 *
-	 * <p>One action covers fight, loot, unlock, take the stairs and talk, and {@code Hero.handle} resolves
-	 * which by the cell. Which cell was previously a heuristic that always preferred the mob - so a rat
-	 * and a coin both adjacent meant the coin was unreachable while the rat lived, and the agent could
-	 * not express "not that one".
-	 *
-	 * <p>Index 0 stays "let the environment choose", which is what every existing recording names - all of
-	 * them record {@code INTERACT 0} - so this is additive rather than a redefinition.
-	 */
 	private void checkInteractCanAimAtACell(){
 		env.reset( SEED, HeroClass.WARRIOR );
 
@@ -361,7 +295,6 @@ public class ModeCoverageCheck {
 				+ " \"let the environment choose\"" );
 	}
 
-	/** Which of {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper#TARGET_OFFSETS} points from one cell to another, or -1. */
 	private int directionOf( int from, int to ){
 		int width = Dungeon.level.width();
 		int dx = ( to % width ) - ( from % width );
@@ -441,7 +374,6 @@ public class ModeCoverageCheck {
 		return -1;
 	}
 
-	/** Stack size of whatever occupies a slot, which is how a throw is detected. */
 	private int quantityAt( int slot ){
 		Item item = env.mapper().slot( slot );
 		return (item != null) ? item.quantity() : 0;

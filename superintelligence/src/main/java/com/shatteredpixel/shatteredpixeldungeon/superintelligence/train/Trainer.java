@@ -23,25 +23,7 @@ import java.util.Random;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerPool.WorkerHandle;
 
-/**
- * The training loop: launches worker JVMs, pools their episodes, and applies PPO updates.
- *
- * research.md: "Parallel Scaling: Since you plan to run up to 1,000 simulations at once, PPO can
- * effectively pool the gradients from all these simultaneous runs to make steady, reliable updates to
- * the policy without catastrophic forgetting."
- *
- * Workers are separate JVMs because the game's simulation state is entirely static - see
- * {@link Worker}. They speak a length-prefixed binary protocol over stdin and stdout; their human
- * readable log goes to stderr, so a stray print to stdout cannot desynchronise the stream. See
- * {@link Protocol}.
- *
- * The seed schedule from research.md's "Generalizing Across Seeds" is implemented here: one locked
- * seed until the agent clears the first boss, then ten, then a hundred, then fully random. See
- * {@link SeedPool}.
- *
- * Process lifetime, the stall watchdog and the console block are in {@link WorkerPool} and
- * {@link GenerationReport}; this class is the loop itself.
- */
+
 public class Trainer {
 
 	private final EnvConfig config;
@@ -50,131 +32,74 @@ public class Trainer {
 	private final SeedPool seeds;
 	private final File workDir;
 
-	/** Where {@code --trace-world} asks the workers to write their recording-side trace. */
+
 	private final String traceWorldPath;
 
-	/**
-	 * Where this run's recordings go, when {@code --replay-dir} says so.
-	 *
-	 * <p>Null means {@code <--out>/replays}, which is where they went for the whole of this project's
-	 * history and why a training run's output was nowhere the catalogue looks.
-	 */
+
 	private final File replayDirOverride;
 
-	/**
-	 * {@code --replay-group}: this run's recordings are written into a directory of this name, carry it
-	 * in their header, and the catalogue lists them as a section of their own. Empty writes no
-	 * subdirectory, which is where every recording made before groups existed lives.
-	 */
+
 	private final String replayGroup;
 
 	private final PPO ppo;
 
-	/**
-	 * The channel to the worker processes.
-	 *
-	 * <p>Constructed after {@link #ppo} and {@link #config} because it carries the policy frame and
-	 * decodes transitions against them; declared here rather than assigned in the constructor so the
-	 * field order and the dependency agree.
-	 */
-	private final TrainerWorkers pool;
+
+	final TrainerWorkers pool;
 
 	private final ReplayKeeper keeper = new ReplayKeeper();
 
-	/**
-	 * Send one episode's replay in every {@code recordEvery} jobs.
-	 *
-	 * <p>One, so every episode the worker plays is available to {@link ReplayKeeper}. The worker builds
-	 * the whole replay regardless - {@code Worker.runEpisode} records every step and calls
-	 * {@code recorder.end} - and this only decides whether the frame carries it, so a value above 1
-	 * saves pipe traffic and nothing else. It used to be fixed at 3, which is a blind sample: the run
-	 * whose one floor-2 episode scored -1,276 against a run-best of -2,778 did not have that episode in
-	 * the catalog at all.
-	 */
+
 	private final int recordEvery;
 
-	/** Epoch of the difficulty schedule, exposed so the logs can show progress. */
+
 	private int epoch = 0;
 
-	/** Episodes from the previous generation, which is what the seed gate reads. */
+
 	private final List<Episode> lastEpisodes = new ArrayList<>();
 
-	/**
-	 * Per-generation metrics, or {@code null}.
-	 *
-	 * Until this existed the trainer kept one generation of episodes and nothing else, so a run's
-	 * history had to be read out of console scrollback. See {@link MetricsHistory}.
-	 */
-	private MetricsHistory metrics;
 
-	/** Whether a progress bar is currently on the last line without a newline after it. */
+	MetricsHistory metrics;
+
+
 	private boolean barDrawn;
 
-	/**
-	 * Where the policy is checkpointed to, or {@code null} to save nothing.
-	 *
-	 * {@link #resumeFrom} is where a continued run reads from, which is deliberately the same file:
-	 * a run overwrites its own checkpoint in place, so resuming is "run it again with
-	 * {@code --resume}", with no path juggling.
-	 */
+
 	private File saveFile;
 	private int checkpointEvery = 25;
 
-	/** Progress restored from a checkpoint, or {@code null}. Reported, never acted on beyond the epoch. */
+
 	private Checkpoint.Meta resumedFrom;
 
-	/** Absolute generation number this run ends at, so the last generation always checkpoints. */
+
 	private int lastGeneration;
 
-	/** Highest generation already written to {@link #saveFile}, so a clean exit does not rewrite it. */
+
 	private int lastSavedGeneration = -1;
 
-	/** The trainer's seed, recorded in the checkpoint for provenance. */
+
 	private long rngSeed;
 
-	/** Wall time of the PPO update that ran after the previous generation, for the time split. */
+
 	private ResourceStats.Interval lastUpdate;
 
-	/**
-	 * Summed CPU seconds the workers burned during the previous generation.
-	 *
-	 * Reported rather than measured locally because the trainer's own cores are almost idle while the
-	 * workers run, so its process CPU time says nothing about how busy the machine is.
-	 */
+
 	private double lastWorkerSeconds;
 
-	/** Episodes each worker was asked for, for the usage line. */
+
 	private int episodesPerWorker;
 
-	/** Per-worker cumulative CPU totals, differenced between reports. */
+
 	private final Map<String, Double> lastCpuByWorker = new HashMap<>();
 
-	/**
-	 * Fraction of each worker's steps whose observation reaches the trainer.
-	 *
-	 * 5% of a generation is ~2,400 steps and about 118 MB. See PLAN-data-flow.md for why the bound
-	 * that matters is the trainer's memory, not the pipe.
-	 */
+
 	public double sampleRate = 0.05;
 
-	/**
-	 * The rate actually sent to workers.
-	 *
-	 * Clamped below 1, and that is not a formality: {@link EpisodeCollector#TAIL_STEPS} always keeps
-	 * an episode's last 20 steps, so on the short episodes an untrained policy produces - tens of turns,
-	 * not the ~150 the arithmetic assumes - the tail alone is most of the episode. A requested 5% came
-	 * out as 100% sampled before this, which is not a bug in the sampler but a real property of the
-	 * tail policy interacting with short episodes, and silently sending the unclamped value would have
-	 * made the sampled count drift for a reason no report would explain.
-	 *
-	 * Episodes are expected to get longer as the policy learns to survive, at which point the clamp
-	 * stops binding and the requested rate is what applies.
-	 */
+
 	double sampleRate(){
 		return Math.min( 1.0, Math.max( 0.0, sampleRate ) );
 	}
 
-	/** Hard ceiling on one episode's retained observations, ~98 MB. */
+
 	public double maxSampledPerEpisode = 2048;
 
 	int maxSampledPerEpisode(){
@@ -182,12 +107,7 @@ public class Trainer {
 				Math.min( Integer.MAX_VALUE, (int) maxSampledPerEpisode ) );
 	}
 
-	/**
-	 * Hard ceiling on one generation's transitions in the update buffer, ~397 MB at 48.5 KB a step.
-	 *
-	 * This is the number that has to fit alongside the trainer's own heap and the workers'. See
-	 * {@link #enforceGenerationCap}.
-	 */
+
 	public int maxSamplesPerGeneration = 8192;
 
 	private static final int BOSS_DEPTH = 5;
@@ -198,15 +118,7 @@ public class Trainer {
 				new File( replayDirDefault(), "trainer-replays" ), null, "", 1 );
 	}
 
-	/**
-	 * With the learning hyperparameters supplied up front, so a run cannot start with one set of values
-	 * and apply another mid-flight.
-	 *
-	 * @param replayDir where recordings go, or null for {@code <workDir>/replays}
-	 * @param traceWorldPath where workers write a recording-side world trace, or null for none
-	 * @param replayGroup id the run's recordings are filed and listed under, or empty for none
-	 * @param recordEvery send one episode's replay in every N jobs; 1 sends every episode
-	 */
+
 	public Trainer( EnvConfig config, PpoHyperparameters hyper, long seed, File workDir,
 			File replayDir, String traceWorldPath, String replayGroup, int recordEvery ){
 		this.config = config;
@@ -230,35 +142,9 @@ public class Trainer {
 		learning( hyper );
 	}
 
-	/**
-	 * The environment settings this run is using, taken from the configuration file and the environment.
-	 *
-	 * <p>On the trainer rather than in {@link TrainOptions}, because {@code Trainer} is what actually
-	 * builds the environment: the flags in {@code TrainOptions} govern the trainer's own machinery -
-	 * workers, generations, checkpoints - and none of them describe the world the workers simulate.
-	 * Keeping the two apart means a file can tune the reward function without touching the run schedule
-	 * and vice versa, which is the separation a sweep needs.
-	 *
-	 * @param configFile the file named on the command line, or null for the compiled defaults
-	 */
-	static EnvConfig loadedConfig( java.nio.file.Path configFile ) throws IOException {
-		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder.Loaded loaded =
-				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder
-						.load( configFile );
-		System.out.println( com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder
-				.describe( configFile, loaded.keysApplied ));
-		return loaded.config;
-	}
 
-	/**
-	 * The {@code --config} value, read before the full parse.
-	 *
-	 * <p>{@link TrainOptions#parse} finds this too, and reading it twice would mean a file loaded twice
-	 * - with a warning printed twice, and a window in which the file could have changed. Duplicated
-	 * because the environment config is needed before the options are parsed at all, and threading a
-	 * partially-parsed object through to satisfy that would be worse. Four lines of argv scanning, not a
-	 * second source of truth.
-	 */
+
+
 	private static java.nio.file.Path configFileIn( String[] args ){
 		for (int i = 0; i < args.length - 1; i++){
 			if (args[ i ].equals( "--config" )){
@@ -268,29 +154,18 @@ public class Trainer {
 		return null;
 	}
 
-	/** Batch shape, from the command line. Set before {@link #train}. */
+
 	public void batch( int epochs, int minibatchSize ){
 		ppo.epochs = epochs;
 		ppo.minibatchSize = minibatchSize;
 	}
 
-	/** Update threads, from the command line. Set before {@link #train}. */
+
 	public void updateThreads( int threads ){
 		ppo.threads = threads;
 	}
 
-	/**
-	 * Applies the learning hyperparameters, from the configuration file or the environment.
-	 *
-	 * <p>Only the values {@link PPO} reads but nothing on the command line can reach: gamma, lambda, the
-	 * clip range and the entropy coefficient. The rest - epochs, minibatch, threads, sampling - are
-	 * still applied separately, because each has a flag that must win over a file.
-	 *
-	 * <p>The learning rate is set on the network as well as the learner. It is one value with two
-	 * consumers, and {@code PPO.update} copies it onto the network before stepping - so setting it here
-	 * would be redundant if the network were not also constructed with it, which it is. This exists so
-	 * that a configured learning rate cannot be accepted and then ignored.
-	 */
+
 	public void learning( PpoHyperparameters hyper ){
 		ppo.gamma = hyper.gamma;
 		ppo.lambda = hyper.lambda;
@@ -312,44 +187,26 @@ public class Trainer {
 		ppo.network.adamEps = hyper.adamEps;
 	}
 
-	/**
-	 * Releases the update's thread pool.
-	 *
-	 * <p>Called on the way out of a run. The threads are daemons, so they would not hold the JVM open,
-	 * but each holds a whole {@code Network} - 14.3 MB of parameters plus scratch - and on a machine
-	 * with a 2 GB pagefile that is not left to the garbage collector's discretion.
-	 */
+
+	public MetricsHistory metrics(){ return metrics; }
+
 	public void closeUpdate(){
 		ppo.close();
 	}
 
-	/** Sampling knobs, from the command line. Set before {@link #train}. */
+
 	public void sampling( double rate, int perEpisode, int perGeneration ){
 		this.sampleRate = rate;
 		this.maxSampledPerEpisode = perEpisode;
 		this.maxSamplesPerGeneration = perGeneration;
 	}
 
-	/**
-	 * Per-generation metrics, or {@code null} to keep the old behaviour of discarding them.
-	 *
-	 * Set before {@link #train}. This is what a run's history is written to; without it a run's
-	 * figures exist only in console scrollback, which is why {@link MetricsHistory} exists.
-	 */
+
 	public void history( MetricsHistory metrics ){
 		this.metrics = metrics;
 	}
 
-	/**
-	 * Loads a policy before any worker is launched.
-	 *
-	 * <p>Before {@link #train}, and deliberately not inside it: a worker must never see a policy the
-	 * trainer has not finished reading, and the read has to fail the run before a pool of processes
-	 * is holding 1.2 GB each.
-	 *
-	 * @return what the checkpoint recorded, for the console line, or {@code null} if {@code file} is
-	 *         {@code null}
-	 */
+
 	public Checkpoint.Meta resume( File file ) throws IOException {
 		if (file == null) return null;
 
@@ -371,81 +228,14 @@ public class Trainer {
 		return meta;
 	}
 
-	/**
-	 * Where the policy is checkpointed to, and how often.
-	 *
-	 * {@code saveFile} of {@code null} disables checkpointing entirely, which is the right default for
-	 * a smoke test and the wrong one for anything else — a run that saves nothing cannot be resumed
-	 * or compared, which is why this is set explicitly rather than defaulted to a location.
-	 */
+
 	public void checkpointing( File saveFile, int everyGenerations ){
 		this.saveFile = saveFile;
 		this.checkpointEvery = Math.max( 1, everyGenerations );
 	}
 
-	public static void main( String[] args ){
-		TrainOptions options;
-		EnvConfig config;
-		try {
 
-			config = loadedConfig( configFileIn( args ) );
-			options = TrainOptions.parse( args );
-		} catch (IOException | IllegalArgumentException e){
-
-			System.err.println( "[ERROR] " + e.getMessage() );
-			System.exit( 1 );
-			return;
-		}
-
-		HeadlessServices.install( options.workDir );
-		HeadlessServices.disableSaving( true );
-
-		if (options.rewardProfile() != null){
-			config.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
-					.RewardProfile.parse( options.rewardProfile() );
-			System.out.println( "reward   profile " + config.rewardProfile.key()
-					+ " (--reward-profile)" );
-		}
-
-Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
-				options.replayDir, options.traceWorld, options.replayGroup,
-				options.recordEverySet ? options.recordEvery : options.hyper.recordEvery );
-
-		try {
-			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
-
-			trainer.batch( options.epochs, options.minibatchSize );
-			trainer.updateThreads( options.updateThreads );
-			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,
-					options.maxSamplesPerGeneration );
-			trainer.history( new MetricsHistory( options.metricsCsv ));
-			trainer.checkpointing( options.save,
-					options.checkpointEverySet ? options.checkpointEvery : options.hyper.checkpointEvery );
-
-			trainer.resume( options.resume );
-
-			trainer.pool.launch( options.workers, options.javaHome, options.classpath,
-					out -> trainer.writeParams( out ) );
-			trainer.train( options.generations, options.episodes );
-		} catch (IOException e){
-			System.err.println( "[ERROR] training failed: " + e.getMessage() );
-
-			e.printStackTrace();
-			System.exit( 1 );
-		} finally {
-
-			try {
-				trainer.saveOnExit();
-			} catch (RuntimeException ignored){
-
-			}
-			trainer.pool.shutdown();
-			trainer.closeUpdate();
-			if (trainer.metrics != null) trainer.metrics.close();
-		}
-	}
-
-	private void writeParams( DataOutputStream out ) throws IOException {
+	void writeParams( DataOutputStream out ) throws IOException {
 		out.writeInt( Protocol.MSG_PARAMS );
 
 		config.writeTo( out );
@@ -463,17 +253,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		Worker.writeWeights( out, ppo.network );
 	}
 
-	/**
-	 * Refuses to grow the update buffer past {@link #maxSamplesPerGeneration}.
-	 *
-	 * The per-episode cap bounds one worker; this bounds the generation. At 20 workers the two are a
-	 * factor of 320 apart, and an episode that runs long enough to hit its cap is enough on its own to
-	 * put the trainer into swap - the machine's pagefile is 2 GB, so that does not degrade gracefully,
-	 * it thrashes.
-	 *
-	 * The oldest are dropped, so the tail of the generation survives: those are the truncated episodes
-	 * and the terminal ones, which carry the termination signal that an episode cut short does not.
-	 */
+
 	private void enforceGenerationCap(){
 		int over = ppo.bufferSize() - maxSamplesPerGeneration;
 		if (over <= 0) return;
@@ -487,21 +267,14 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 				+ "." );
 	}
 
-	/** Transitions discarded by {@link #enforceGenerationCap} this generation, for the report. */
+
 	private int droppedThisGeneration;
 
 	private int lastSampledSteps;
 	private double lastAdvantageMean;
 	private double lastAdvantageStd;
 
-	/**
-	 * Runs {@code generations} rounds of rollout-then-update.
-	 *
-	 * Each generation asks every worker for one episode, pools them into one update, and pushes the
-	 * new policy back out. Asking for exactly one episode per worker per generation keeps the
-	 * buffer's composition predictable, which matters because an episode can end anywhere from
-	 * fifty to several thousand steps.
-	 */
+
 	public void train( int generations, int workerCount ) throws IOException {
 		seeds.fill( SEED_POOL_SIZE );
 		pool.startWatchdog();
@@ -569,14 +342,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		if (metrics != null) metrics.printTrend();
 	}
 
-	/**
-	 * Rewrites one line in place, so a run of an hour looks like a run and not like a hang.
-	 *
-	 * <p>No flushing per generation: {@code System.out} is line-buffered when it is a terminal and block
-	 * buffered when it is a log file, and a bar that flushes twice a minute is not what anyone is reading.
-	 * A log file therefore holds the last bar rather than every bar, which is the right loss - the
-	 * per-generation block {@code report} prints is the record, and that is flushed as it goes.
-	 */
+
 	private void drawProgressBar( int done, int total, long startedAt ){
 		double meanScore = Double.NaN;
 		int bestDepth = 0;
@@ -595,30 +361,14 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		barDrawn = true;
 	}
 
-	/**
-	 * Ends the bar's line, once, before anything else is printed.
-	 *
-	 * <p>The bar is rewritten in place with a carriage return, so whatever prints next would otherwise
-	 * land on top of it - which is what a log file records, and it is unreadable. Called from the places
-	 * that print outside the generation's own block rather than from {@code System.out}, which cannot
-	 * know.
-	 */
+
 	private void clearProgressBar(){
 		if (!barDrawn) return;
 		System.out.println();
 		barDrawn = false;
 	}
 
-	/**
-	 * Writes the policy if this generation is a checkpoint generation, and always on the last one.
-	 *
-	 * <p>The last generation is unconditional on purpose. Checkpointing every N generations means a
-	 * run whose length is not a multiple of N ends holding a policy several generations stale, which
-	 * is the case that actually gets resumed.
-	 *
-	 * <p>A failure here is reported and does not stop the run. The policy is a derived artefact — it
-	 * can always be retrained — whereas losing the process over a full disk would cost the whole run.
-	 */
+
 	private void maybeCheckpoint( int generation ){
 		if (saveFile == null) return;
 		if (generation % checkpointEvery != 0 && generation != lastGeneration) return;
@@ -626,20 +376,14 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		writeCheckpoint( generation );
 	}
 
-	/**
-	 * Writes the final policy when the run ends, however it ended.
-	 *
-	 * <p>Guarded so it cannot overwrite a checkpoint with the same policy: after a clean periodic
-	 * checkpoint the last generation is already saved, and writing again would be a redundant 43 MB
-	 * and a confusing extra line in the log.
-	 */
+
 	public void saveOnExit(){
 		if (saveFile == null) return;
 		if (lastSavedGeneration >= lastGeneration) return;
 		writeCheckpoint( lastGeneration );
 	}
 
-	/** Writes the policy and says so, with the path, because a silent save is indistinguishable from no save. */
+
 	void writeCheckpoint( int generation ){
 		if (saveFile == null) return;
 
@@ -655,13 +399,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		}
 	}
 
-	/**
-	 * Builds the generation's job list, round-robin so every worker gets the same count.
-	 *
-	 * <p>The schedule is the trainer's, not the channel's: which seed, which hero and which of these
-	 * is worth keeping a replay of are all decisions about what the agent should be asked to do. The
-	 * resulting {@link TrainerWorkers.Job}s are opaque to the channel, which only carries them.
-	 */
+
 	private List<TrainerWorkers.Job> planGeneration( int workerCount ){
 		List<TrainerWorkers.Job> jobs = new ArrayList<>();
 
@@ -678,12 +416,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		return jobs;
 	}
 
-	/**
-	 * Advances research.md's seed schedule.
-	 *
-	 * One locked seed until the agent clears floor 5, then ten, then a hundred. The gate is
-	 * measured depth rather than elapsed generations so it tracks actual progress.
-	 */
+
 	private void advanceSchedule(){
 		int best = 0;
 		for (Episode e : lastEpisodes) best = Math.max( best, e.depth );
@@ -699,21 +432,10 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		seeds.activeSeeds( target );
 	}
 
-	/** Seconds the last generation spent on the update and the weight push, where no worker runs. */
+
 	private double lastBarrierSeconds;
 
-	/**
-	 * Tally one episode's termination reason into the report.
-	 *
-	 * <p>The worker sends {@code env.endReason().name()}, and the ordinal is recovered here rather
-	 * than sent across the wire: adding a reason to the enum would otherwise silently renumber the
-	 * array and every historical CSV row would shift meaning.
-	 *
-	 * <p>An unrecognised name is counted under {@code OTHER} and warned about once per generation.
-	 * Silently dropping it would make a broken worker's episodes vanish from the breakdown, which is
-	 * worse than showing them in the wrong bucket — and this number is what a future regression is
-	 * going to be read from.
-	 */
+
 	private void countEndReason( GenerationReport.Snapshot s, String reason ){
 		if (reason == null || reason.isEmpty()){
 			s.endReasons[ RewardModel.TerminateReason.OTHER.ordinal() ]++;
@@ -828,7 +550,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 		return 1f;
 	}
 
-	/** Offers an episode to the keeper: the best per seed, plus the run's single worst. */
+
 	private void keepBest( Episode episode ){
 		keeper.consider( episode.replay );
 	}
@@ -863,23 +585,8 @@ private void saveBestReplays(){
 				+ ( replayGroup.isEmpty() ? "" : "  (group " + replayGroup + ")" ) );
 	}
 
-	/**
-	 * Where a run's recordings go.
-	 *
-	 * <p>{@code <--out>/replays} unless told otherwise. {@code --out} is the run's working directory -
-	 * checkpoints, metrics and the weight file all live under it - and a recording written into it is
-	 * then somewhere the catalogue does not read, which is how 142 of 147 recordings on this machine were
-	 * invisible. {@code --replay-dir} says where the recordings specifically go, and defaults to the
-	 * repository's {@code trainer-replays}, which is a directory the catalogue already reads.
-	 */
-	/**
-	 * The module directory, found by walking up from here.
-	 *
-	 * <p>Used as the parent of the default replay destination, so a training run writes where the
-	 * catalogue reads without being told. Resolved by walking rather than by a relative path because the
-	 * working directory is the module's for a gradle task and the repository root for a direct launch, and
-	 * the two disagree.
-	 */
+
+
 	static File replayDirDefault(){
 		File here = new File( "." ).getAbsoluteFile();
 		for (int i = 0; i < 6 && here != null; i++){
@@ -894,38 +601,17 @@ private void saveBestReplays(){
 		return tidy( new File( "." ).getAbsoluteFile() );
 	}
 
-	/**
-	 * Where a run's weights, checkpoints and metrics go when nobody says otherwise.
-	 *
-	 * <p>{@code <module>/out/run}, not the system temp directory. Temp is emptied on a schedule nobody
-	 * controls, and a run's evidence - the metrics CSV that says what a run learned, the checkpoint that
-	 * lets it be resumed - is worth exactly nothing after that. The directory is gitignored, so an
-	 * artefact there costs the repository nothing.
-	 */
+
 	public static File outDirDefault(){
 		return new File( replayDirDefault(), "out/run" );
 	}
 
-	/**
-	 * Where a measurement worth keeping goes: the per-generation metrics CSV.
-	 *
-	 * <p>Separate from {@link #outDirDefault()} because the two are read by different people at different
-	 * times - a checkpoint to resume from, a CSV to answer "what did that run learn" - and because the
-	 * rule in {@code AGENTS.md} asks for evidence in one directory rather than beside whatever produced it.
-	 */
+
 	public static File evidenceDirDefault( String name ){
 		return new File( new File( replayDirDefault(), "out/evidence" ), name );
 	}
 
-	/**
-	 * The path without a {@code .} in it.
-	 *
-	 * <p>{@code getAbsoluteFile} leaves the {@code .} from {@code new File( "." )} in, so the resolved
-	 * destination was {@code superintelligence/./trainer-replays} while the catalogue's own default spelled
-	 * the same directory {@code superintelligence/trainer-replays}. The two are the same directory and two
-	 * different strings, and the catalogue's deduplication compares strings — so every trainer recording
-	 * was listed twice. Canonicalisation touches the filesystem and can fail, hence the fallback.
-	 */
+
 	private static File tidy( File dir ){
 		try {
 			return dir.getCanonicalFile();
@@ -938,17 +624,12 @@ private void saveBestReplays(){
 		return replayDirOverride != null ? replayDirOverride : new File( workDir, "replays" );
 	}
 
-	/** The base, plus a directory named after the group when one was given. */
+
 	private File replayDir(){
 		return replayGroup.isEmpty() ? replayDirBase() : new File( replayDirBase(), replayGroup );
 	}
 
-	/**
-	 * A free filename for {@code seed}, never one that already exists.
-	 *
-	 * <p>Appended {@code -r2}, {@code -r3} and so on. The empty seed - a random-seed episode, which
-	 * {@code SeedPool} releases 10% of the time - writes {@code random} and gets the same treatment.
-	 */
+
 	private static File uniqueFile( File dir, String seed ){
 		String stem = seed.isEmpty() ? "random" : seed;
 		File file = new File( dir, stem + ".dat" );
@@ -960,14 +641,7 @@ private void saveBestReplays(){
 		return file;
 	}
 
-	/**
-	 * CPU seconds the pool burned during the previous generation.
-	 *
-	 * Workers report a cumulative total rather than a per-episode cost, and the trainer differences
-	 * consecutive reports per worker. Summed deltas, this is the honest measure of how much of the
-	 * machine the simulation occupied; the trainer's own counters are near zero throughout, because
-	 * its cores are idle while the workers run.
-	 */
+
 	private double sumWorkerCpuSeconds( List<Episode> episodes ){
 		double total = 0;
 		for (Episode e : episodes){

@@ -13,37 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Fails if replaying a sampled observation does not reproduce the value the rollout saw.
- *
- * <pre>gradle :superintelligence:statecheck</pre>
- *
- * <p>This is the check that the parallel update depends on, and it is here because the bug it guards
- * against was live for the whole of the first implementation of the update.
- *
- * <p>{@code PPO.update} replays each stored observation through the current weights. The weights are
- * available; the <em>state</em> was not, because the LSTM's {@code h}/{@code c} were whatever the
- * previously processed sample left behind — and the buffer is shuffled, so that was a different
- * timestep of a different episode. Measured with {@code replayprobe}: exact to 0.000000 in collection
- * order, drifting up to 0.20 in shuffled order.
- *
- * <p>Two things were wrong at once, and they are the same fact seen from two sides:
- *
- * <ol>
- *   <li><b>The objective was wrong.</b> The ratio {@code pi_new / pi_old} was formed across two
- *       different states. This is not a perturbation of PPO, it is a different objective — and it is
- *       why the clip fraction sat at 0.84 on the first update, a value that happened to be
- *       indistinguishable from {@code P(|N(0,1)| > 0.2)} and so read as a plausible measurement.
- *   <li><b>The samples were coupled.</b> Sample <i>i</i> depended on sample <i>i-1</i>. That is why
- *       "parallelise the minibatch" was blocked: not by anything to do with threads, but by a
- *       correctness bug that would have been *solved* by the parallelisation, had anyone tried.
- * </ol>
- *
- * <p>So the assertions are behavioural. A transition that carries its state must replay to the
- * rollout's value regardless of what is processed before it, and an update must be
- * order-independent. Both are properties of the arithmetic, checked by running it rather than by
- * reading the field assignments.
- */
 public class StateCheck {
 
 	private static final int CHECKS = 4;
@@ -68,13 +37,6 @@ public class StateCheck {
 		}
 	}
 
-	/**
-	 * A sample replayed in any order must produce the value the rollout recorded.
-	 *
-	 * <p>This is the property the whole update rests on. If it holds, the behaviour policy's
-	 * {@code oldLogProbability} and the update's ratio describe the same state, and the policy
-	 * gradient is the gradient of the objective that was intended.
-	 */
 	private static void checkReplayMatchesRolloutInAnyOrder( EnvConfig config ){
 		Network network = new Network( config, new Random( 31337L ) );
 		List<Transition> transitions = collect( network, config, 8, 99L );
@@ -96,14 +58,6 @@ public class StateCheck {
 		}
 	}
 
-	/**
-	 * The replayed value must not depend on processing order at all.
-	 *
-	 * <p>Distinct from the check above, and stronger in the way that matters for the parallel update:
-	 * this one asserts *order independence* directly, which is the precondition for handing minibatches
-	 * to different threads. A field that is carried but restored in the wrong order passes nothing
-	 * else.
-	 */
 	private static void checkReplayIsOrderIndependent( EnvConfig config ){
 		Network network = new Network( config, new Random( 31337L ) );
 		List<Transition> transitions = collect( network, config, 10, 99L );
@@ -121,14 +75,6 @@ public class StateCheck {
 		}
 	}
 
-	/**
-	 * The cell state has to travel too, not only the hidden state.
-	 *
-	 * <p>{@code Network.state()} used to return {@code h} alone, and restoring only {@code h} gives
-	 * the network a cell state of zeros with a hidden state of its own — a state it has never been in.
-	 * The result is finite, plausible, and wrong, which is the worst combination available. The
-	 * assertion here is that restoring {@code h} without {@code c} moves the value measurably.
-	 */
 	private static void checkCellStateIsCarriedToo( EnvConfig config ){
 		Network network = new Network( config, new Random( 555L ) );
 		Transition t = collect( network, config, 6, 99L ).get( 4 );
@@ -156,14 +102,6 @@ public class StateCheck {
 		}
 	}
 
-	/**
-	 * A transition arriving without a state must be distinguishable from one carrying a real one.
-	 *
-	 * <p>{@code readState} maps a zero length to {@code null}, and {@code PPO} skips the restore for a
-	 * {@code null}. That is the one legal way to have no state, and it has to be visible: if it were
-	 * indistinguishable from an all-zero state, a worker that failed to write the field would produce
-	 * a run that trains on silently wrong values rather than refusing.
-	 */
 	private static void checkMissingStateIsDetectable( EnvConfig config ){
 		Network network = new Network( config, new Random( 31337L ) );
 		Transition t = collect( network, config, 6, 99L ).get( 4 );
@@ -205,7 +143,6 @@ public class StateCheck {
 		return config;
 	}
 
-	/** Collects transitions the way a rollout does: forward, snapshot the state, keep going. */
 	private static List<Transition> collect( Network network, EnvConfig config, int n, long seed ){
 		Random rng = new Random( seed );
 		List<Transition> out = new ArrayList<>();
@@ -251,7 +188,6 @@ public class StateCheck {
 		return values;
 	}
 
-	/** Puts the network into the state {@code t} was decided under, then hands that state back. */
 	private static void replayTo( Network network, Transition t, float[] out ){
 		network.loadState( t.recurrentState );
 		System.arraycopy( t.recurrentState, 0, out, 0, out.length );

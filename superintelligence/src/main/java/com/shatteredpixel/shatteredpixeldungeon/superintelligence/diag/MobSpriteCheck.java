@@ -18,38 +18,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Fails if an item that creates a mob leaves it unusable with no renderer.
- *
- * <pre>gradle :superintelligence:mobspritecheck</pre>
- *
- * <p>Found by a training run, not by a gate. Under {@code reward.profile=depth_only} the agent used a
- * <b>Scroll of Mirror Image</b> and two workers died:
- *
- * <pre>
- * java.lang.NullPointerException: Cannot assign field "visible" because "this.sprite" is null
- *   at Char.move(Char.java:1334)
- *   at ScrollOfTeleportation.appear(ScrollOfTeleportation.java:296)
- *   at ScrollOfMirrorImage.spawnImages(ScrollOfMirrorImage.java:85)
- * </pre>
- *
- * <p>{@code GameScene.add( Mob, float )} adds to {@code level.mobs} and then, only
- * {@code if (scene != null)}, gives the mob a sprite and a place in {@code Actor.chars}. With no scene
- * an item-created mob has neither, and {@code Char.move} assigns {@code sprite.visible} unconditionally
- * for any {@code Char} that is not the hero. {@code add( Heap )} already answers this shape for heaps and
- * says why in its own comment; the mob branch did not, which is why nothing had found it - a
- * hand-written policy never read a scroll, and this module's own had not until now.
- *
- * <p>The second half was found by the first: with only the scene-less branch the NPE becomes a
- * {@code ClassCastException}, because {@code MirrorImage.act} casts its sprite when the hero's armour tier
- * changes, and {@code MirrorSprite} cannot be built without a renderer at all - measured,
- * {@code new MirrorSprite()} dies reading a null texture width. So the guard is the honest shape, and it
- * is the one {@code SentryRoom.act} already carries for the same reason.
- *
- * <p>Every case is driven through the game's own path. Nothing here builds the mob: the scroll is used
- * through {@code SlotAction.use}, so a case that cannot reach the code it guards fails rather than
- * passing vacuously.
- */
 public class MobSpriteCheck {
 
 	private static final int CHECKS = 3;
@@ -71,13 +39,6 @@ public class MobSpriteCheck {
 		}
 	}
 
-	/**
-	 * Reading the scroll must not kill the process, and every image must come out with a sprite.
-	 *
-	 * <p>The assertion is on the world's own answer rather than on the absence of an exception: a case
-	 * that caught the throw would pass on a mob that was created and then left inert, which is the other
-	 * half of this fault.
-	 */
 	private static void checkMirrorImageIsUsable(){
 		List< MirrorImage > images = readTheScroll( "MOBSPROUT-A" );
 
@@ -113,14 +74,6 @@ public class MobSpriteCheck {
 				+ " sprite" );
 	}
 
-	/**
-	 * An image with no sprite but no presence either would pass the case above.
-	 *
-	 * <p>{@code GameScene.add( Mob, float )} only calls {@code Actor.add} inside the same branch, so a
-	 * sprite without an actor is possible and would be a mob that never acts and that
-	 * {@code Actor.findChar} - which {@code Hero.handle} reads to decide whether a cell holds a mob -
-	 * cannot see. Both halves are asserted on the same list.
-	 */
 	private static void checkTheImagesTakePart(){
 		List< MirrorImage > images = readTheScroll( "MOBSPROUT-B" );
 
@@ -151,14 +104,6 @@ public class MobSpriteCheck {
 				+ " hero can walk into it" );
 	}
 
-	/**
-	 * The scene-less branch must be unreachable in a game that has a renderer.
-	 *
-	 * <p>The whole reason this is safe to ship is {@code headlessGameplay}, a static nothing sets when a
-	 * renderer is present - the same argument {@code ENGINE-CHANGES.md} §7 makes for {@code Level.drop}'s
-	 * {@code pressCell}. Asserted rather than argued: a recording factory is installed and the flag is
-	 * turned off, and the factory must not be consulted.
-	 */
 	private static void checkARenderedGameNeverReachesTheBranch(){
 		final int[] consulted = { 0 };
 
@@ -197,20 +142,8 @@ public class MobSpriteCheck {
 				+ " factory" );
 	}
 
-	/** What the last scroll use threw, so a crash is a reported failure rather than a dead JVM. */
 	private static Throwable lastThrown;
 
-	/**
-	 * Reads a Scroll of Mirror Image through the real environment, and returns the images it left.
-	 *
-	 * <p>Three turns first so the mapper has refreshed its slot list since the scroll went into the
-	 * backpack - a slot index is chosen against the world of that moment, which is the same reason
-	 * {@code ReplayRecorder.record} captures bindings before the step rather than after it.
-	 *
-	 * <p>A throw is caught rather than propagated, because the fault this gate exists for <em>is</em> a
-	 * throw from engine code that the gate cannot make name itself. Letting it out would take the JVM
-	 * with it and lose the two other cases.
-	 */
 	private static List< MirrorImage > readTheScroll( String seed ){
 		lastThrown = null;
 		try {
@@ -266,7 +199,6 @@ public class MobSpriteCheck {
 		failures.add( message );
 	}
 
-	/** The first frame inside this project's code, which is what a reader needs and the stack's own top is not. */
 	private static String topFrame( Throwable t ){
 		for (StackTraceElement frame : t.getStackTrace()){
 			if (frame.getClassName().startsWith( "com.shatteredpixel." )){

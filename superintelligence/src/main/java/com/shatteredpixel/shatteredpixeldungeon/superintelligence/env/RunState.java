@@ -5,77 +5,10 @@ import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.badlogic.gdx.Gdx;
 
-/**
- * The process-scoped static state a new run must not inherit.
- *
- * <p>The game's simulation state is almost entirely static - {@code Dungeon.hero}, {@code Dungeon.level},
- * {@code Actor.now}, the whole actor registry - which is why one JVM hosts one run. Three statics are
- * worse than that: they belong to no run at all. {@code GameScene.pendingCellListener} and
- * {@code GameScene}'s headless dialog slot are where the engine parks a request the game expects the
- * *player* to answer, and {@code SlotAction.pendingUseItem} is where this framework parks the item an
- * agent chose to aim. All three are written during an episode, survive it, and are read by whatever
- * runs next in the same process.
- *
- * <p><b>What that cost.</b> An episode that ended while an item was mid-aim left the listener armed.
- * {@code SPDEnv.reset} did not clear it, so the new episode's first {@code settle} - which tests for a
- * pending cell before it runs a single turn - reported {@code TARGETING} and read every one of the
- * agent's actions as a target choice. The hero never moved, and every recording made in that state
- * diverged at step 0. Measured: 4 of 10 recorded runs diverged when verified in sequence, and the same
- * files verified cleanly one at a time. See {@link #clearRunStatics()} and {@code diag.ResetCheck}.
- *
- * <p><b>Why this is one method rather than a list to follow.</b> {@code SPDEnv.reset} and the desktop
- * replay viewer are two implementations of "begin a run in this process", and the fault was precisely
- * that one of them cleared a subset of the statics the other cleared. One method cannot be half
- * implemented by a caller who forgets a line: a caller either calls it or does not, and the set is
- * reviewable in one place. The viewer still needs its own conditional per-step handling - it must keep
- * the aim request alive across the step that consumes it - so it calls this at run boundaries only and
- * keeps the per-step preamble where it belongs.
- *
- * <p>Remains are the fourth, and the one that is not obviously a "pending request". A hero who dies
- * leaves their belongings and one class-specific remnant behind, and the next run picks them up where
- * they fell - which is the feature working as designed for a player returning to a dungeon, and
- * contamination for an environment playing thousands of independent runs in one process. It arrives two
- * ways: {@link com.shatteredpixel.shatteredpixeldungeon.Bones}' cached statics, and a {@code bones.dat}
- * the death wrote to the process's file root. Both are cleared here, and both are needed: clearing only
- * the statics leaves the file for the next run to read, and clearing only the file leaves the statics
- * this process already loaded.
- *
- * <p><b>What it cost, measured.</b> A parity sweep over 8 seeds and 4 hero classes recorded 32 runs and
- * replayed each one, and 2 of the 32 diverged - both on inventory, both on a remnant item. The recording
- * carried one hero class's remains and the replay carried its own, because the recording run died first
- * and left them behind. The divergence was not one step late: the heap appeared on a floor the hero had
- * not visited yet, so every step from floor generation onwards described a different dungeon. No earlier
- * gate could see it, because every one of them either plays a single episode per process or never lets
- * the hero die.
- *
- * <p><b>Two more, and they are the chasm.</b> {@code InterlevelScene.fallIntoPit} and
- * {@code Chasm.jumpConfirmed} are process-scoped the same way, and the second decides whether stepping
- * toward a pit opens the game's "jump?" prompt or drops the hero a floor with no prompt at all. Both are
- * written during an episode and read by whatever runs next. {@code InterlevelScene.mode} is a third, and
- * is cleared by the pipeline's own {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline#clearSwitchRequest}
- * rather than here: it and {@code curTransition} are one pending hand-off rather than one run's
- * history, so they are dropped together when the hand-off is acknowledged.
- *
- * <p><b>Deliberately not here: {@code Actor.clear()} and the RNG reseed.</b> Both are reached through
- * {@code Dungeon.init()}, which {@link LevelPipeline#startRun} calls: {@code Actor.clear()} empties the
- * actor registry and {@code Random.reseedBase(seed)} reseeds the gameplay generator, reseeding
- * {@code PRandom} with it. Calling either from here would reseed from the wrong value - the caller has
- * not resolved the run seed yet at the point a caller would naturally reach for this - and would clear
- * actors that {@code Dungeon.init()} is about to clear anyway. If a static is not reachable from the
- * calls below, it belongs in {@code Dungeon.init}, not here, and finding that out is a question for the
- * game's own source rather than something to work around from here.
- */
 public class RunState {
 
 	private RunState() {}
 
-	/**
-	 * Drops every pending-request static, so the next run starts from a process that owes it nothing.
-	 *
-	 * <p>Order is not significant - these are independent fields on independent owners - and the
-	 * per-line comments below name what each one is, because a reader who has to grep for
-	 * {@code pendingCellListener} to learn why a reset method exists is reading the wrong thing.
-	 */
 	public static void clearRunStatics(){
 
 		GameScene.clearPendingCellListener();
@@ -91,47 +24,8 @@ public class RunState {
 		forgetPreviousRemains();
 	}
 
-	/**
-	 * The file the game writes a dead hero's belongings to.
-	 *
-	 * <p>A literal rather than a reference, because {@code Bones.BONES_FILE} is private and adding a getter
-	 * to expose it would be a change to the game for no benefit: this is the only file of the game's save
-	 * data that is read during level generation rather than written during a save, and {@code
-	 * HeadlessServices} redirects every other one into scratch.
-	 */
 	private static final String BONES_FILE = "bones.dat";
 
-	/**
-	 * Forgets any remains a previous run left behind.
-	 *
-	 * <p>Both halves, or neither works: {@code Bones.clear()} drops what this process has cached, and the
-	 * file is dropped because {@code Bones.get} reads it on its first call after a clear. A run that died
-	 * in this process writes the file as it dies, so a statics-only fix would be undone by the next run's
-	 * own death.
-	 *
-	 * <p><b>The two backends keep it in different places, and reading only one of them was the bug.</b>
-	 * With saving disabled - how every rollout and every check runs - saves are redirected into a sink
-	 * directory, so the obvious {@code root/bones.dat} is not where the file is and deleting that path
-	 * reports success having removed nothing. Under the desktop viewer there is no sink, and the path is
-	 * not {@code Gdx.files.local} either: {@code ReplayLauncher} calls
-	 * {@code FileUtils.setDefaultFileProperties}, so {@code Bones} writes through {@code FileUtils}, which
-	 * resolves to {@code External} on a normal Windows launch and to {@code Absolute} whenever
-	 * {@code -Dspd.fileRoot} is set. The delete used to be guarded on {@code instanceof HeadlessFiles},
-	 * which meant the one caller running against a real file root silently deleted nothing - and deleting
-	 * {@code Gdx.files.local} instead would have been wrong for the same reason, which is why it goes
-	 * through {@code FileUtils.getFileHandle}, the same resolver {@code Bones} writes with.
-	 *
-	 * <p>Measured by the file, not by a claim: playing {@code duelist-mid} in the viewer left a
-	 * {@code bones.dat} in {@code %APPDATA%/.shatteredpixel/Shattered Pixel Dungeon} belonging to a hero
-	 * who had died inside a recording. Three recordings in the corpus end in death, and the file is read
-	 * during level generation, so the player's next real run would open on a heap of a scripted policy's
-	 * belongings.
-	 *
-	 * <p>The delete is best-effort and silent. Under the trainer it removes a file in a scratch directory
-	 * this module owns; under the viewer it removes one the viewer itself wrote. A failure in either has
-	 * no bearing on the run - which is worth saying rather than logging, because a warning nobody can act
-	 * on is noise and this file is not one.
-	 */
 	private static void forgetPreviousRemains(){
 		Bones.clear();
 
@@ -148,15 +42,6 @@ public class RunState {
 		}
 	}
 
-	/**
-	 * Forgets a dead hero's remains, statics and file, wherever this process keeps them.
-	 *
-	 * <p>Separate from {@link #clearRunStatics()} because the viewer needs it at the <i>end</i> of a
-	 * session as well as at the start, and the other three statics are not its business. A recording that
-	 * ends in death kills the hero for real, the game writes {@code bones.dat} into the player's profile
-	 * as it does, and nothing else in the viewer ever removes it - so watching a recording left debris in
-	 * the player's game.
-	 */
 	public static void clearRemains(){
 		forgetPreviousRemains();
 	}

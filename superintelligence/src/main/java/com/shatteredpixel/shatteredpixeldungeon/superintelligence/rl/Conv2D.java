@@ -2,22 +2,6 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
 import java.util.Random;
 
-/**
- * A 2D convolution over the observation planes, with stride, ReLU and Adam state.
- *
- * research.md: "Spatial Vision (CNN): A Convolutional Neural Network is the best way to process
- * the dungeon grid."
- *
- * Only the first layer is convolutional. Deeper convolutions buy translation invariance that this
- * problem does not want: dungeon rooms are not the same shape, and what matters is the relationship
- * between the hero, the walls and the stairs rather than a reusable local motif. A single
- * convolution that mixes every plane locally, followed by a fully connected stack over the
- * flattened result, gives the network local spatial features and global reasoning without the
- * parameter cost of a real conv backbone.
- *
- * Implemented as an im2col GEMM rather than nested loops over input windows, so the hot path is a
- * single matrix multiply per sample.
- */
 public class Conv2D {
 
 	public final Tensor W;
@@ -33,10 +17,8 @@ public class Conv2D {
 	public final int outSize;
 	public final int outChannels;
 
-	/** im2col scratch: (kernel*kernel*inChannels) x (outSize*outSize). */
 	private final Tensor col;
 
-	/** Pre-activation from the last forward, needed for the ReLU derivative in backward. */
 	private final float[] preAct;
 
 	public Conv2D( int inChannels, int inSize, int outChannels, int kernel, int stride, Random rng ){
@@ -71,10 +53,6 @@ public class Conv2D {
 		return outSize * outSize * outChannels;
 	}
 
-	/**
-	 * @param input plane-major grid: channel * inSize * inSize
-	 * @param out   output, size {@link #outputSize()}
-	 */
 	public void forward( float[] input, Tensor out ){
 		im2col( input );
 
@@ -126,12 +104,6 @@ public class Conv2D {
 		}
 	}
 
-	/**
-	 * Accumulates dL/dW, dL/db and dL/dinput.
-	 *
-	 * @param gradOut dL/dout, size {@link #outputSize()}
-	 * @param gradIn  dL/dinput, cleared and filled by this method
-	 */
 	public void backward( float[] input, Tensor gradOut, float[] gradIn ){
 		java.util.Arrays.fill( gradIn, 0f );
 

@@ -1,21 +1,5 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
-/**
- * One timestep's forward pass, kept so its backward pass can run after later timesteps.
- *
- * Every layer caches what its own backward needs - the pre-activation for the activation derivative,
- * and the LSTM additionally the carried states and the concatenated input - in fields that a second
- * forward pass overwrites. Backpropagating a contiguous chunk therefore means holding one of these per
- * step and restoring it before each step's backward, in reverse order.
- *
- * Without it the recurrent gradient is truncated at length one: the update backpropagates each sample
- * in isolation with {@code dPrev} and {@code dCell} cleared, so {@code LSTM.W_hh} never receives a
- * gradient for retaining anything across steps - which for a partially observable grid game is the
- * whole point of the recurrent layer.
- *
- * Sized from the network's own shapes rather than restated, because a restated width would read a
- * plausible neighbouring array instead of failing.
- */
 public class StepCache {
 
 	final float[] grid;

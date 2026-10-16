@@ -7,25 +7,23 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Removes {@code //} comments from Java source, leaving every other comment alone.
- *
- * <p>Invoked by the post-commit hook. Javadoc and block comments are preserved on purpose: they document
- * the contract of a type or a method, where an inline comment documents a line that should already say
- * what it does.
- *
- * <p>A regex cannot do this and a careless one is worse than none. A file here contains string literals
- * with {@code //} in them, and a file anywhere contains a URL. So this lexes properly and tracks three
- * things at once - block comments, string literals and character literals - and only treats {@code //} as
- * a comment when none of the other three is open.
- *
- * <pre>gradle :superintelligence:stripinlines</pre>
- */
+
 public class InlineCommentStripper {
 
 	public static void main( String[] args ) throws IOException {
-		List< Path > files = new ArrayList<>();
+		boolean javadoc = false;
+		List< String > targets = new ArrayList<>();
+
 		for (String arg : args){
+			if (arg.equals( "--javadoc" )){
+				javadoc = true;
+				continue;
+			}
+			targets.add( arg );
+		}
+
+		List< Path > files = new ArrayList<>();
+		for (String arg : targets){
 			Path p = Path.of( arg );
 			if (Files.isDirectory( p )) files.addAll( javaFiles( p ));
 			else files.add( p );
@@ -35,7 +33,7 @@ public class InlineCommentStripper {
 		int removed = 0;
 		for (Path file : files){
 			String before = Files.readString( file, StandardCharsets.UTF_8 );
-			String after = strip( before );
+			String after = strip( before, javadoc );
 			if (after.equals( before )) continue;
 
 			Files.writeString( file, after, StandardCharsets.UTF_8 );
@@ -44,7 +42,8 @@ public class InlineCommentStripper {
 		}
 
 		System.out.println( "[stripinlines] " + files.size() + " file(s) scanned, " + changed
-				+ " rewritten, " + removed + " comment line(s) removed" );
+				+ " rewritten, " + removed + " comment line(s) removed"
+				+ (javadoc ? ", javadoc included" : "") );
 
 	}
 
@@ -55,18 +54,13 @@ public class InlineCommentStripper {
 		}
 	}
 
-/**
-	 * Removes line comments. A line that is only a comment disappears entirely, newline and all.
-	 *
-	 * <p>The whole line goes rather than its contents. An earlier version rewound the output to the
-	 * start of the line and carried on, which emptied the comment and left the newline - so a
-	 * twelve-line comment became twelve blank lines. Across this module that left 619 runs of two or
-	 * more consecutive blank lines where there had been 7, the longest being 32.
-	 *
-	 * <p>A {@code //} that trails real code keeps its line and loses only the comment, so
-	 * {@code foo(); // why} becomes {@code foo();} rather than disappearing.
-	 */
-	static String strip( String source ){
+
+static String strip( String source ){
+		return strip( source, false );
+	}
+
+
+	static String strip( String source, boolean javadoc ){
 		StringBuilder out = new StringBuilder( source.length() );
 		int lineStart = 0;
 		int i = 0;
@@ -75,13 +69,23 @@ public class InlineCommentStripper {
 		while (i < n){
 			char c = source.charAt( i );
 
-			if (c == '/' && i + 1 < n && source.charAt( i + 1 ) == '/'){
-				int end = source.indexOf( '\n', i );
-				if (end < 0) end = n;
+			boolean javadocHere = javadoc && c == '/' && i + 2 < n
+					&& source.charAt( i + 1 ) == '*' && source.charAt( i + 2 ) == '*';
+
+			if (javadocHere || (c == '/' && i + 1 < n && source.charAt( i + 1 ) == '/')){
+				int end;
+				if (javadocHere){
+					int close = source.indexOf( "*/", i + 2 );
+					end = close < 0 ? n : close + 2;
+				} else {
+					end = source.indexOf( '\n', i );
+					if (end < 0) end = n;
+				}
+
 				boolean lineIsOnlyComment = out.substring( lineStart ).toString().isBlank();
 				if (lineIsOnlyComment){
 					out.setLength( lineStart );
-					if (end < n) i = end + 1;
+					if (end < n ) i = end + 1;
 					else i = end;
 					lineStart = out.length();
 					continue;
@@ -112,7 +116,7 @@ public class InlineCommentStripper {
 		return out.toString();
 	}
 
-	/** Copies a string or character literal through untouched, honouring backslash escapes. */
+
 	private static int skipLiteral( StringBuilder out, String source, int i, char quote ){
 		int n = source.length();
 		while (i < n){

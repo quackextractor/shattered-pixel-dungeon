@@ -24,41 +24,12 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Fails if there is a cheaper way to end an episode than dying.
- *
- * <pre>gradle :superintelligence:rewardcheck</pre>
- *
- * <p>Written because the agent found one. A 20-generation training run converged {@code meanScore} on
- * exactly -5.0 with {@code meanTurns} collapsing from 62 to 8, and -5.0 was {@code STALLED}'s terminal
- * reward. The path was {@code WAIT} x {@code stallLimit}: waiting costs a turn, leaves the hero where
- * he was and changes no HP, which is exactly what the stall guard tests. Ending an episode that way
- * cost -5.24 against {@code deathPenalty} of -100 — twenty times cheaper than losing — and the agent
- * converged on it in twenty generations without ever leaving floor 1.
- *
- * <p><b>Corrected later the same day, by this same file.</b> The {@code WAIT} diagnosis above was a
- * plausible story that measurement refuted: instrumenting the two stall guards showed {@code STALLED}
- * arriving 36 times from {@code LevelPipeline} and <b>zero</b> times from the idle guard. The real cause
- * was that {@code REST} was a one-way door — {@link #checkRestIsNotAOneWayDoor} documents it. The -5.0
- * was still wrong and the cases below are still the right assertions, but the agent was not choosing to
- * wait; it was being trapped. See {@code PLAN-reward-signals.md} §7.
- *
- * <p><b>Why this is a gate and not a note.</b> Every loss metric looked healthy through that run:
- * {@code valueLoss} flat, {@code clipFraction} settling 0.73 → 0.05, entropy steady. The update was
- * working and the objective was wrong, and the only evidence was a mean score converging on a
- * constant. A reward function whose cheapest strategy is "stop" will find it again, and the constant
- * will not look wrong to a loss curve.
- *
- * <p><b>Every case is a property, not a constant.</b> {@code deathPenalty} is not compared against a
- * literal -5.0; the degenerate episode is replayed through the real environment and its score compared
- * against what it actually cost. Change any of the numbers in any order and the ordering this asserts
- * still holds.
- */
+
 public class RewardCheck {
 
 	private static final int CHECKS = 26;
 
-	/** What one walk out from the stairs and back accumulated on the shaped term. */
+
 	private static class StairWalk {
 		double away;
 		double toward;
@@ -68,17 +39,7 @@ public class RewardCheck {
 		double net(){ return away + toward; }
 	}
 
-	/**
-	 * Walking towards this floor's stairs has to pay, and walking away has to cost.
-	 *
-	 * <p>Floor 1 is several hundred walkable tiles and a random walk onto the exit has a success rate
-	 * around 0.1%, so across 5,360 episodes {@code meanDepth} was 1.001. The shaped term is what gives
-	 * a sparse objective a gradient, and this is the property that makes it one.
-	 *
-	 * <p>Both halves are in one episode because the hero starts standing on this floor's up-stairs: the
-	 * potential is zero there and no move can improve on zero, so "walking towards the stairs" is only
-	 * a measurement after the hero has left them.
-	 */
+
 	private static void checkClosingTheGapToTheStairsPays( EnvConfig config ){
 		StairWalk walk = walkOutAndBack( config.copy(), 2f, 4 );
 
@@ -108,13 +69,7 @@ public class RewardCheck {
 				+ fmt( walk.away ));
 	}
 
-	/**
-	 * And the round trip pays nothing, which is what makes this shaping rather than a reward.
-	 *
-	 * <p>A term paid for distance closed can be farmed by pacing back and forth across a doorway for as
-	 * long as the episode lasts. {@code gamma * Phi(s') - Phi(s)} telescopes, so a walk out and back
-	 * nets zero however many times it is repeated, and the only way to earn is to actually arrive.
-	 */
+
 	private static void checkStairShapingCannotBeFarmed( EnvConfig config ){
 		StairWalk walk = walkOutAndBack( config.copy(), 2f, 4 );
 
@@ -132,7 +87,7 @@ public class RewardCheck {
 				+ " of STAIR_POTENTIAL, so it cannot be farmed" );
 	}
 
-	/** Zero turns it off, which is the honest way to measure what it was worth. */
+
 	private static void checkStairShapingIsOffAtZero( EnvConfig config ){
 		EnvConfig local = config.copy();
 		local.stairPotentialWeight = 0f;
@@ -149,13 +104,7 @@ public class RewardCheck {
 		System.out.println( "  reward.stair_potential_weight = 0 pays nothing" );
 	}
 
-	/**
-	 * Walks the hero away from the stairs and then back towards them, in one episode, and reports what
-	 * each half paid.
-	 *
-	 * <p>Driven through {@link SPDEnv#step} rather than by calling the potential directly, because the
-	 * claim is about what a run is paid rather than about what a function returns.
-	 */
+
 	private static StairWalk walkOutAndBack( EnvConfig config, float weight, int each ){
 		config.stairPotentialWeight = weight;
 		config.turnLimitPerFloor = 800;
@@ -199,13 +148,7 @@ public class RewardCheck {
 		return result;
 	}
 
-	/**
-	 * The legal move that undoes the outward walk's {@code index}th step.
-	 *
-	 * <p>Walking the recorded path backwards rather than greedily towards the stairs, because the
-	 * property being measured is that a closed loop pays nothing - and a greedy return can wander, which
-	 * measures a different thing.
-	 */
+
 	private static Action stepBackTowards( SPDEnv env, java.util.List< Action > outward, int index ){
 		if (index < 0 || index >= outward.size()) return null;
 
@@ -223,12 +166,7 @@ public class RewardCheck {
 		return null;
 	}
 
-	/**
-	 * The legal move that most changes the distance to the stairs in the wanted direction.
-	 *
-	 * <p>Ties are broken towards whichever move is legal first, so the walk is a function of the seed
-	 * rather than of iteration order.
-	 */
+
 	private static Action bestStepTowards( SPDEnv env, StairPotential potential, boolean toward ){
 		if (Dungeon.level == null || Dungeon.hero == null) return null;
 		if (Dungeon.level.getTransition( null ) == null) return null;
@@ -261,7 +199,7 @@ public class RewardCheck {
 		return best;
 	}
 
-	/** How many heaps to try before calling a floor that offers none a failure. */
+
 	private static final int MAX_HEAP_TRIES = 12;
 
 	private static final List< String > failures = new ArrayList<>();
@@ -307,20 +245,7 @@ public class RewardCheck {
 		}
 	}
 
-	/**
-	 * The degenerate strategy, replayed: {@code WAIT} until the stall guard fires.
-	 *
-	 * <p>This is the actual bug, expressed as a test. It drives the real environment with the real
-	 * stall limit and the real turn cost, so it catches the degenerate route whether it is reached by
-	 * {@code WAIT} misreporting, by the terminal reward being wrong, by the guard being reachable
-	 * without turns being charged, or by any future change that puts them back in that order.
-	 *
-	 * <p>The comparison was inverted, and the inversion is why the original fault survived the gate that
-	 * was written to catch it. It asserted {@code stall.score < death} and called that "cheaper", but a
-	 * score is negative, so {@code -0.24 < -100} is false and a run that converged on a stall at -0.24
-	 * passed. The condition that expresses the stated property is {@code stall.score > death}: it fires
-	 * on -5.24 and on -0.24, and passes on -100.24.
-	 */
+
 	private static void checkStallingIsNotCheaperThanDying( EnvConfig config ){
 		Outcome stall = playWaits( config, config.stallLimit + 8 );
 
@@ -345,19 +270,7 @@ public class RewardCheck {
 				+ " turns; dying costs " + fmt( death ) );
 	}
 
-	/**
-	 * {@code WAIT}, {@code REST} and {@code SEARCH} must report as accepted.
-	 *
-	 * <p>They are legal actions the environment performs. They used to return {@code false} from
-	 * {@code ActionMapper.apply}, which {@code SPDEnv.step} read as a refusal — so
-	 * {@code INVALID_ACTION} could not distinguish "the agent tried something impossible" from "the
-	 * agent waited", which is most of what a weak policy does. And it was invisible: the term was
-	 * recorded with a zero amount, so nothing about it showed up in any total.
-	 *
-	 * <p>Counted from {@link RewardLedger#notes}, not from a score. Asserting on the total compared an
-	 * always-zero quantity, and this case passed with {@code WAIT} deliberately mutated back into
-	 * reporting refusals — the first version of this check could not fail.
-	 */
+
 	private static void checkNoOpActionsAreNotRefusals( EnvConfig config ){
 		Action[] noOps = { Action.WAIT, Action.REST, Action.SEARCH };
 
@@ -382,21 +295,7 @@ public class RewardCheck {
 		System.out.println( "  WAIT, REST and SEARCH are accepted and never noted INVALID_ACTION" );
 	}
 
-	/**
-	 * Choosing an item action in WORLD is a refusal, because nothing was chosen.
-	 *
-	 * <p>The exact converse of {@link #checkNoOpActionsAreNotRefusals}, and the boundary between the
-	 * two matters. {@code WAIT}, {@code REST} and {@code SEARCH} do what they are asked in WORLD and
-	 * are accepted. {@code USE} and {@code DROP} in WORLD do <b>nothing</b>: they clear a stale
-	 * pending item and the real choice happens on the next step, in SLOT or INVENTORY. Returning
-	 * {@code true} claimed the environment had performed an action it had not, and nothing else checks
-	 * - the mode moves either way, so the run looks completely normal and the only trace is a recording
-	 * whose step says {@code DROP} and whose inventory never changed. Three of those in an 88-step
-	 * trainer recording.
-	 *
-	 * <p>The mask never offers {@code USE} or {@code DROP} in WORLD, so this is only reachable by
-	 * replaying a step - which is exactly what a recording is.
-	 */
+
 	private static void checkAnItemActionInWorldIsARefusal( EnvConfig config ){
 		for (Action action : new Action[]{ Action.USE, Action.DROP }){
 			Outcome o = playInWorld( config, action, 20 );
@@ -420,18 +319,7 @@ public class RewardCheck {
 				+ " comes on the next step" );
 	}
 
-	/**
-	 * A stall must not read as the game having decided the outcome.
-	 *
-	 * <p>{@code endedNaturally()} means death or victory, and only those two: they are the outcomes
-	 * where the game ended the episode rather than the harness cutting it short. A stall is marked
-	 * {@code truncated} instead, which is what makes GAE bootstrap it.
-	 *
-	 * <p>Asserted over the whole reason set rather than by producing a death, because whether a random
-	 * walk dies on floor 1 is a property of the game rather than of the reward function — a check that
-	 * failed when the hero became harder to kill would be backwards. The stall half is what proves the
-	 * classification is reached at all: it drives a real episode to a real stall and asks.
-	 */
+
 	private static void checkStallIsNotANaturalEnding( EnvConfig config ){
 		Outcome stall = playWaits( config, config.stallLimit + 8 );
 
@@ -458,24 +346,7 @@ public class RewardCheck {
 		System.out.println( "  STALLED bootstraps (truncated); only DEATH and VICTORY are natural endings" );
 	}
 
-	/**
-	 * {@code STALLED} must cost <em>more</em> than dying, and turn cost must still be charged.
-	 *
-	 * <p>The pair matters. The reward used to be zero, on the argument that a stall is a harness
-	 * timeout rather than an outcome and so should be "priced by turn cost alone" - and a zero stall
-	 * reward with no turn cost is just as broken, since it means idling is free.
-	 *
-* <p><b>It is worse than dying now, by its own configurable constant.</b> It was
-	 * {@code -deathPenalty}, which balanced the price and lost the distinction: to a learner the two
-	 * were one number with two labels, and the lesson that survives is that quitting is survivable.
-	 * Dying moved the run forward and closed a floor. A stall is a run that stopped, on a hero who is
-	 * alive and has not been asked to do anything difficult. See {@code issues.md} 13 for what
-	 * stopping actually looks like — {@code duelist-mid} spending 120 consecutive steps alternating
-	 * equip and unequip at zero engine time.
-	 *
-	 * <p>Asserted as an ordering against the config rather than against a literal, so "worse than
-	 * dying" is a property that survives both constants being retuned.
-	 */
+
 	private static void checkStallCostsMoreThanDying( EnvConfig config ){
 		Outcome stall = playWaits( config, config.stallLimit + 8 );
 		if (stall.endReason != RewardModel.TerminateReason.STALLED) return;  
@@ -515,14 +386,7 @@ public class RewardCheck {
 				+ stall.turns + " turns" );
 	}
 
-	/**
-	 * The terminal outcomes have to be ordered, or the agent will take the cheapest one.
-	 *
-	 * <p>As an ordering rather than as three comparisons to zero, because the ordering is the property:
-	 * giving up worse than dying, dying worse than running out of budget, running out of budget worse
-	 * than a floor that turned over. Any inversion among them is a strategy, and the whole history of
-	 * this function is strategies being found by an agent that was correct to find them.
-	 */
+
 	private static void checkTerminalsAreOrdered( EnvConfig config ){
 		double stall = -config.stallPenalty;
 		double death = -config.deathPenalty;
@@ -540,15 +404,7 @@ public class RewardCheck {
 				+ " < turn limit " + fmt( limit ) + " < a cleared floor " + fmt( cleared ) );
 	}
 
-	/**
-	 * Descending has to beat idling out the floor's turn budget.
-	 *
-	 * <p>This is the comparison {@code TURN_LIMIT} at {@code -turnCost * 100} lost by two orders of
-	 * magnitude: a fifth of a point against a +10 descent, on a floor where exploration pays per tile.
-	 * A hero could spend 1500 turns mapping a floor, bank the exploration, and be charged almost
-	 * nothing for never reaching the stairs — so idling out the clock was a strategy rather than a
-	 * failure, and the runs that did it were not misbehaving, they were optimising.
-	 */
+
 	private static void checkDepthBeatsAPerFloorTurnLimit( EnvConfig config ){
 		double perFloor = config.turnCost * config.turnLimitPerFloor;
 
@@ -566,19 +422,7 @@ public class RewardCheck {
 				+ " for idling out the floor" );
 	}
 
-	/**
-	 * Exploration must not outbuy a descent.
-	 *
-	 * <p>A regular floor holds several hundred walkable tiles — {@code TODO.md} 0.8 measured 419 of
-	 * 1040 sampled floors exceeding 48 on at least one side, up to 81 — so {@code exploreReward} per
-	 * tile is a large number by the time a floor is finished. At the shipped 0.05 it was larger than
-	 * the depth reward, which is the reason {@code bestDepth} has been 1 in every generation of every
-	 * run while the score climbed: the policy was being paid to wander, and wandering is what it
-	 * learned.
-	 *
-	 * <p>Measured against a deliberately small floor rather than the measured maximum, so the property
-	 * holds with room to spare instead of on a number that happens to be true today.
-	 */
+
 	private static void checkExplorationCannotOutbuyADescent( EnvConfig config ){
 		final int TILES = 120;
 
@@ -597,29 +441,7 @@ public class RewardCheck {
 				+ " against a " + fmt( descend ) + " descent" );
 	}
 
-/**
-	 * Killing must pay, and a surprise attack must pay more.
-	 *
-	 * <p>{@code KILL} was declared, counted by {@code RewardLedger.countKill()} and never emitted, so
-	 * fighting was worth exactly nothing while being hit cost something. Under that price the cheapest
-	 * way past a corridor is to walk down it, and the deaths in the corpus have that shape: the hero
-	 * does not lose a fight, he runs out of room.
-	 *
-	 * <p>Driven through the real environment rather than compared against a literal, so it survives the
-	 * constants being retuned in any order, and against a real mob from {@code Level.createMob()} rather
-	 * than one built to be convenient.
-	 *
-	 * <p><b>A hunt on the level's own mobs was tried first and could not reach the code.</b> A driver
-	 * that walked the hero at whatever was visible fought for 900 turns, took 99 damage and killed
-	 * nothing. The level is rooms joined by doors, so an enemy the hero can see but cannot reach is an
-	 * ordinary situation and the driver could not tell it from one it could reach. A gate that cannot
-	 * reach the emission site it guards is not a gate, so the mob is placed instead - through
-	 * {@code createMob}, {@code LevelPipeline.spriteFor} and {@code level.mobs}, which is exactly what
-	 * {@code SummoningTrap} does and what {@code GameScene.add} would have done in the game.
-	 *
-	 * <p>Placing it adjacent also gives the surprise case something to be true of: a mob the level has
-	 * just produced has not seen the hero, which is the condition {@code Mob.surprisedBy} tests.
-	 */
+
 	private static void checkKillingIsWorthDoing( EnvConfig config ){
 		final boolean[] placed = { false };
 		final int[] lastMobHp = { -1 };
@@ -719,13 +541,7 @@ public class RewardCheck {
 				+ " surprise(s) recorded" );
 	}
 
-	/**
-	 * Puts one level-appropriate mob on a free cell beside the hero, by the same three steps
-	 * {@code SummoningTrap} uses.
-	 *
-	 * @return false when every neighbour is occupied, so the caller reports that rather than quietly
-	 *         asserting nothing
-	 */
+
 	private static boolean placeMobBesideHero( SPDEnv env ){
 		if (Dungeon.level == null || Dungeon.hero == null) return false;
 
@@ -761,7 +577,7 @@ public class RewardCheck {
 		return false;
 	}
 
-	/** The hostile mob beside the hero right now, or null. */
+
 	private static Mob adjacentEnemy(){
 		Hero hero = Dungeon.hero;
 		if (hero == null || Dungeon.level == null) return null;
@@ -781,7 +597,7 @@ public class RewardCheck {
 		return null;
 	}
 
-	/** A legal action that walks the hero into the given mob. */
+
 	private static Action directionToTarget( SPDEnv env, Mob mob ){
 		Hero hero = Dungeon.hero;
 		int w = Dungeon.level.width();
@@ -805,24 +621,7 @@ public class RewardCheck {
 		return Action.SEARCH;
 	}
 
-	/**
-	 * A step the game resolved for free must be charged, and must cost materially more than a real one.
-	 *
-	 * <p>{@code issues.md} 13: {@code duelist-mid} ends {@code STALLED} without looking idle, because
-	 * 120 consecutive {@code USE} steps alternate equip and unequip on one {@code Rapier} at
-	 * {@code dEng = 0.0}. The stall guard is right that this is a stall, but until it fires those steps
-	 * cost a hundredth of a turn each, so a genuinely free infinite action is nearly free.
-	 *
-	 * <p>Priced here rather than prevented in the guard, because the guard decides when an episode
-	 * ends and moving that boundary would invalidate every recording in the corpus.
-	 *
-	 * <p><b>Two halves, because the first version only had one and it was the weak half.</b> Asserting
-	 * that {@code noProgressPenalty > turnCost * 10} is a statement about a number, and mutating the
-	 * emission site away entirely leaves it passing - the case was guarding the constant rather than the
-	 * behaviour. The second half drives the real loop through the real environment and requires the term
-	 * to have been charged on the step that spent nothing. Same failure as {@code checkStallPathRecordsOnce}
-	 * on {@code STALLED} at zero: removing the evidence removes the regression test for it.
-	 */
+
 	private static void checkFreeStepsCostSomething( EnvConfig config ){
 		double realStep = config.turnCost;
 		double freeStep = config.turnCost * config.freeStepCostFactor;
@@ -887,29 +686,7 @@ public class RewardCheck {
 				+ " real (" + fine( realPaid ) + ")" );
 	}
 
-	/**
-	 * An action that costs several engine turns must be charged for all of them.
-	 *
-	 * <p>{@code TURN_COST} was a flat charge per <em>step</em>, and a step is not a turn. {@code Hero.search}
-	 * calls {@code spendAndNext(TIME_TO_SEARCH)} where {@code TIME_TO_SEARCH} is 2, so a search buys two
-	 * turns of the engine clock - in which other actors act and the hero can be hit - for the price of
-	 * one.
-	 *
-	 * <p>Measured on a trainer run, reward per engine turn actually consumed:
-	 *
-	 * <pre>
-	 *   SEARCH   189 steps  387 turns  -0.11 per turn
-	 *   MOVE_E    63 steps   73 turns  +0.10 per turn
-	 * </pre>
-	 *
-	 * 189 of 940 steps - a fifth of the episode - took <b>half the run's engine time</b> at half price, and
-	 * searching reliably finds nothing after the first sweep of a floor, so the agent flooded the one
-	 * action that most reliably wastes time.
-	 *
-	 * <p>Driven rather than asserted as a constant, because the claim is about what the engine's clock
-	 * says. The clock is sampled <em>inside</em> the driver: read after the run it is not this run's
-	 * spend, because the stall guard and the mode machinery move it between the last step and the read.
-	 */
+
 	private static void checkAMultiTurnActionPaysForEveryTurn( EnvConfig config ){
 		final float[] spent = new float[ 1 ];
 		final int[] steps = new int[ 1 ];
@@ -958,18 +735,7 @@ public class RewardCheck {
 				+ fine( config.turnCost ) + " for a single-turn action" );
 	}
 
-	/**
-	 * Searching a floor that has already been searched must not be worth doing.
-	 *
-	 * <p>The companion to the case above, and the one that says what the agent should prefer instead.
-	 * {@code Hero.search} reveals a tile only when it <em>finds</em> something -
-	 * {@code Dungeon.level.discover} runs inside the success branch - so the second sweep of a room is
-	 * worth exactly nothing, forever.
-	 *
-	 * <p>So the property is that a search costs at least what the engine time it consumes, measured from
-	 * the same driver as the case above rather than compared against a constant, because the constant
-	 * would pass whatever the clock did.
-	 */
+
 	private static void checkSearchingIsNotCheaperThanActing( EnvConfig config ){
 		final float[] spent = new float[ 1 ];
 		final int[] steps = new int[ 1 ];
@@ -1013,7 +779,7 @@ public class RewardCheck {
 				+ " against " + fine( singleTurn ) + " for a single-turn action" );
 	}
 
-	/** A slot holding an equippable the hero is not already wearing, or 0. */
+
 	private static int equippableSlot( SPDEnv env ){
 		Hero hero = Dungeon.hero;
 		if (hero == null) return 0;
@@ -1029,26 +795,7 @@ public class RewardCheck {
 		return 0;
 	}
 
-	/**
-	 * Spending a talent point must pay, and must pay for more than levelling does.
-	 *
-	 * <p>The point is {@code TODO.md} 1.10 and the bug that motivates it. {@code Hero.upgradeTalent}
-	 * works and is public, and <b>nothing headless calls it</b>: spending a point is UI-only
-	 * ({@code TalentButton} -> {@code TalentsPane} -> {@code WndHero}), and {@code WindowBridge.open}
-	 * only answers {@code WndOptions}, so the agent has no way to reach it. Meanwhile
-	 * {@code talentPointsAvailable} gates at {@code {2, 7, 13, 21, 31}} — so the <b>first point arrives
-	 * at level 2</b>, which two rats on floor 1 will do. This is not an endgame gap.
-	 *
-	 * <p>So the emission site is wired and gated now, so that the action has something to pay when it
-	 * lands, and the gate drives it by calling {@code upgradeTalent} directly. That is the same
-	 * technique {@link #checkTheHeroCanDie} uses to produce a death without waiting for the mob cluster:
-	 * the ending is produced deterministically and everything downstream of it runs for real.
-	 *
-	 * <p>Asserted against {@link RewardTerm#LEVEL_UP} rather than against a literal, because the
-	 * relationship is the claim: a talent point is a choice about which gains to take, while a level is
-	 * +1 attack, +1 defence and a little max HP that happen automatically. Paying them the same would
-	 * say the choice does not matter.
-	 */
+
 	private static void checkSpendingATalentIsWorthALot( EnvConfig config ){
 
 		if (!( config.depthReward > config.talentReward )){
@@ -1122,12 +869,7 @@ public class RewardCheck {
 				+ notes + " point(s) recorded" );
 	}
 
-	/**
-	 * Any talent this hero could take, or null.
-	 *
-	 * <p>The first key of the first tier, which is what {@code TalentsPane} offers the player first and
-	 * is therefore the least surprising choice for a gate.
-	 */
+
 	private static com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent firstTalent( Hero hero ){
 		if (hero.talents.isEmpty()) return null;
 		for (com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent t : hero.talents.get( 0 ).keySet()){
@@ -1136,21 +878,7 @@ public class RewardCheck {
 		return null;
 	}
 
-	/**
-	 * A free-action loop must be bounded, not merely charged.
-	 *
-	 * <p>{@code noProgressPenalty} prices a step that advanced no engine time, and 12 per step did not
-	 * stop it: on {@code HRT-YYP-KGC} the episode spent 502 of its 1215 steps advancing nothing - 41% of
-	 * its whole cost - almost all of it {@code OPEN_INVENTORY} then {@code CANCEL} out of
-	 * {@code INVENTORY}, with a real move between pairs. The position guard could not see it, because a
-	 * move resets that count by design.
-	 *
-	 * <p>So the driver here does exactly that loop, and the case asserts that the episode ends, that it
-	 * ends as a <em>stall</em> rather than quietly running out of clock, and that the stall price is
-	 * above the death price - which is the whole point of pricing stopping above dying. The second half
-	 * runs the identical driver with the budget set out of reach, so the case cannot pass by ending for
-	 * some other reason.
-	 */
+
 	private static void checkFreeStepLoopIsBounded( EnvConfig config ){
 		Outcome loop = playFreeStepLoop( config, config.freeStepBudget + 200 );
 
@@ -1205,17 +933,7 @@ public class RewardCheck {
 				+ " free steps before ending " + control.endReason );
 	}
 
-	/**
-	 * The loop {@code HRT-YYP-KGC} spent 502 steps on, driven through the real environment.
-	 *
-	 * <p>{@code OPEN_INVENTORY} then {@code CANCEL} out of {@code INVENTORY}, with one real move between
-	 * pairs. The move is the point: without it the position guard fires at {@code stallLimit} and this
-	 * case would pass without having reached the free-step budget at all - which is what the first version
-	 * did, until the control run showed a wall refusing the fixed direction and the guard firing instead.
-	 *
-	 * <p>So the move is chosen from the action mask rather than hardcoded, which is what keeps it a move
-	 * on every floor and every seed.
-	 */
+
 	private static Outcome playFreeStepLoop( EnvConfig config, int maxTurns ){
 		return play( config, maxTurns, "FREESTEPLOOP", turn -> {
 			SPDEnv env = turn.env;
@@ -1231,7 +949,7 @@ public class RewardCheck {
 		} );
 	}
 
-	/** The first directional action the environment says is legal here, or {@code SEARCH}. */
+
 	private static Action legalMove( SPDEnv env ){
 		float[] mask = env.actionMask();
 		for (Action a : Action.values()){
@@ -1240,20 +958,7 @@ public class RewardCheck {
 		return Action.SEARCH;
 	}
 
-	/**
-	 * The reachable stall path must record {@code STALLED} exactly once.
-	 *
-	 * <p>Asserted on the record count rather than the score, because with {@code STALLED} at zero a
-	 * duplicate {@code terminate} is invisible in the total — the fix removed the very evidence that
-	 * would have caught its own regression. That is why {@link RewardLedger#notes} exists.
-	 *
-	 * <p><b>Scope, honestly: this covers one of the two guards.</b> {@code SPDEnv} also stalls from
-	 * {@code settle}'s {@code actorStepLimit} guard, and lowering that limit does not reach it — the
-	 * scheduler returns {@code READY} within the budget on floor 1, so {@code settle} never iterates
-	 * far enough to trip it. That path is protected by construction instead: {@code terminate} is now
-	 * idempotent, so a second call costs nothing and cannot overwrite the reason. A check that claimed
-	 * otherwise would be asserting something it cannot observe.
-	 */
+
 	private static void checkStallPathRecordsOnce( EnvConfig config ){
 		Outcome stall = playWaits( config, config.stallLimit + 8 );
 		if (stall.endReason != RewardModel.TerminateReason.STALLED ) return;  
@@ -1269,14 +974,7 @@ public class RewardCheck {
 		System.out.println( "  the reachable stall path records STALLED exactly once" );
 	}
 
-	/**
-	 * The shipped configuration must still pay every term.
-	 *
-	 * <p>The depth-only profile is a temporary override, and the failure mode of an override is not that
-	 * it breaks - it is that it stops being temporary. If {@code DEFAULT} ever stopped admitting a term,
-	 * or if a run with no configuration asked for {@code DEPTH_ONLY}, every other case in this file would
-	 * still pass on its own constants and the module would quietly be training the experiment.
-	 */
+
 	private static void checkDefaultProfilePaysEveryTerm(){
 		List< String > refused = new ArrayList<>();
 		for (int i = 0; i < RewardTerm.count(); i++){
@@ -1309,20 +1007,7 @@ public class RewardCheck {
 				+ " no configuration loads" );
 	}
 
-	/**
-	 * Under {@code DEPTH_ONLY}, reaching a new floor is the only route to a positive score.
-	 *
-	 * <p>The profile exists to measure what the objective alone is worth, which cannot be read off a
-	 * function that also pays for walking over new tiles - and this is the case that says the override
-	 * does what it says. It drives a real episode that provably triggers the incidental terms: a mob is
-	 * placed and fought, an item is picked up and dropped, the weapon is equipped and unequipped at zero
-	 * engine time, and the hero descends. Every term outside the profile's allow-list must then total
-	 * exactly zero, and the descent must pay {@code depthReward}.
-	 *
-	 * <p>Asserted on totals, not on the absence of notes: a term that was recorded and paid nothing is
-	 * the whole point of the profile, and a case that required no notes would pass on an episode that
-	 * never reached the code it guards.
-	 */
+
 	private static void checkDepthOnlyPaysOnlyForDepth(){
 		EnvConfig config = new EnvConfig();
 		config.rewardProfile = RewardProfile.DEPTH_ONLY;
@@ -1441,14 +1126,7 @@ public class RewardCheck {
 				+ " and it is the whole of the run's positive score" );
 	}
 
-	/**
-	 * The profile silences the incidental terms and nothing else.
-	 *
-	 * <p>Silencing everything would be a reward function with no gradient at all, and the profile would
-	 * read as a successful experiment rather than as a run that can only learn the terminal. Stall,
-	 * death and running out of turns are therefore each produced and priced against their configured
-	 * constants, so "only these four still charge" is a measurement rather than the name of an allow-list.
-	 */
+
 	private static void checkDepthOnlyKeepsTheFourNegatives(){
 		EnvConfig config = new EnvConfig();
 		config.rewardProfile = RewardProfile.DEPTH_ONLY;
@@ -1519,19 +1197,7 @@ public class RewardCheck {
 				+ " of turn cost" );
 	}
 
-/**
-	 * Descending has to be paid for reaching a floor, not for going down a stair.
- *
- * <p>Measured on a training run: {@code JEA-FKU-WZS} recorded nine floor rows at {@code deepest=2} and
- * {@code DEPTH_ADVANCE +7200}, because the hero went 1 -> 2 -> 1 -> 2 -> 1 -> 2 -> 1 and each descent
- * paid {@code depthReward} again. Ascending already pays zero, so the two halves were a closed money
- * machine, and under a profile whose entire claim is that a *new floor* is the only route to a positive
- * score it was the most profitable thing in the game.
- *
-	 * <p>The driver does exactly that, through the real environment: descend, climb back, descend again -
-	 * the sequence {@code transitioncheck} already proves is servable. The assertion is that the second
-	 * descent paid nothing at all, and that the total is one floor's reward rather than three.
-	 */
+
 	private static void checkOnlyANewFloorIsPaidFor( EnvConfig config ){
 		final int[] descents = { 0 };
 		final int[] ascents = { 0 };
@@ -1588,12 +1254,7 @@ public class RewardCheck {
 				+ o.deepest + " and paid " + fmt( paid ) + " - one reward per new floor, not per stair" );
 	}
 
-	/**
-	 * The hero is put on the stairs and the level is asked for the transition, as
-	 * {@code Hero.actTransition} does when he is standing on them.
-	 *
-	 * @return false when the floor has no exit to use, which the caller reports rather than treating as a pass
-	 */
+
 	private static boolean descend( SPDEnv env ){
 		com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition exit =
 				Dungeon.level.getTransition(
@@ -1607,10 +1268,7 @@ public class RewardCheck {
 		return accepted;
 	}
 
-	/**
-	 * The same, for the stairs a hero climbs to go back up - the floor's {@code REGULAR_ENTRANCE}, which is
-	 * the same tile seen from the other direction and the naming the game uses throughout.
-	 */
+
 	private static boolean ascend( SPDEnv env ){
 		com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition entrance =
 				Dungeon.level.getTransition(
@@ -1624,26 +1282,7 @@ public class RewardCheck {
 		return accepted;
 	}
 
-	/**
-	 * The hero must be able to die.
-	 *
-	 * <p>{@code HeadlessSprite.die} used to call {@code ch.die( ch )} - invoking the death callback
-	 * immediately to stand in for an animation that does not exist headless. That callback re-enters
-	 * {@code Hero.die} -> {@code Char.die} -> {@code sprite.die} -> the callback, and each bounce passes
-	 * a different {@code Char}, so {@code Hero.die}'s repeated-cause guard never matched. Every death
-	 * blew the stack with {@code StackOverflowError} instead of recording the {@code DEATH} that GAE
-	 * treats as a terminal state - so the one ending that actually matters was unreachable.
-	 *
-	 * <p><b>Why damage is applied directly.</b> A death has to be produced, and waiting on hunger or on
-	 * the mob cluster is a property of the game's balance rather than of this check: the hero might
-	 * simply survive, and a gate that starts failing when the game gets easier would be backwards.
-	 * Damaging the hero makes the ending deterministic, and everything else - {@code Hero.die},
-	 * {@code Char.die}, the sprite, {@code reallyDie}, and {@code SPDEnv}'s own observation of the
-	 * corpse - runs for real.
-	 *
-	 * <p>Also asserts the resulting classification, because surviving the call is not enough: a
-	 * {@code DEATH} that reports as truncated would silently change every advantage downstream.
-	 */
+
 	private static void checkTheHeroCanDie( EnvConfig config ){
 		Outcome o = play( config, 200, "DEATHCHECK", turn -> {
 			if (turn.env.mode() != EnvMode.WORLD ){
@@ -1684,37 +1323,7 @@ public class RewardCheck {
 				+ fmt( o.score ) );
 	}
 
-	/**
-	 * {@code WAIT} is a step that spends a turn, so it is not a free step.
-	 *
-	 * <p>{@code env.free_step_budget} exists to bound the loop where a policy alternates equipping and
-	 * unequipping - real actions that genuinely advance no engine time, because
-	 * {@code WndUseItem.onClick} calls {@code item.execute} and returns. It was also being spent on
-	 * {@code WAIT}, because {@code Actor.next()} only clears {@code current} and spends nothing, so a
-	 * deliberately given-up turn landed in the same bucket as an equip.
-	 *
-	 * <p>Measured on a trainer recording: of 158 steps, 38 advanced no engine time - 10 {@code WAIT} and
-	 * 6 {@code REST} among them - and that is what ended the episode at step 158 of a 1500-turn budget.
-	 * The budget was ending episodes for choosing to wait.
-	 *
-	 * <p>Asserted on the behaviour rather than on a constant: a run of nothing but {@code WAIT}, three
-	 * times the budget long, must record zero {@code NO_PROGRESS} and must not end at
-	 * {@code env.free_step_budget}. The equip half of the same property is
-	 * {@code checkFreeStepsCostSomething}'s, and keeping them apart is the point - together in one case
-	 * an off-by-one in either reads as the other's failure.
-	 *
-	 * <p>Measured: 121 waits ran to the position guard at 120 unchanged steps, not to the budget at 40,
-	 * with {@code NO_PROGRESS} charged 0 times. The step that ends an episode advances no time, because
-	 * terminating is not a turn the hero spends - which is why this asserts the charge and the budget
-	 * rather than a free-step count, which would only encode where the episode happened to stop.
-	 *
-	 * <p><b>{@code REST} is still wrong and is deliberately not fixed here.</b> It also spends no engine
-	 * time, but {@code Hero.act} charges {@code TIME_TO_REST} only when the scheduler picks the hero
-	 * again, and the pipeline's rest backstop returns {@code STALLED} after eight drain steps first.
-	 * Spending the turn at the action instead ends the episode before the agent gets a turn to release
-	 * the rest, which {@code checkRestIsNotAOneWayDoor} caught. That needs the drain's rest handling
-	 * decided first, not a second line here.
-	 */
+
 	private static void checkWaitingIsNotAFreeStep( EnvConfig config ){
 
 		Outcome o = play( config, config.freeStepBudget * 3, "WAITCOST", turn -> {
@@ -1746,20 +1355,7 @@ public class RewardCheck {
 		}
 	}
 
-	/**
-	 * {@code REST} must not end the episode.
-	 *
-	 * <p>{@code REST} sets {@code hero.resting} without setting a {@code curAction}. {@code Hero.act()}
-	 * branches on {@code curAction == null} first, so a resting hero takes the {@code rest} branch -
-	 * {@code spendConstant} then {@code next()} - and never calls {@code ready()}. Control is never
-	 * handed back, and if nothing else clears the flag the episode cannot leave the hero.
-	 *
-	 * <p>The assertion is on the hero's flag rather than on the episode surviving, because surviving is
-	 * the weaker property. An episode that rests and then <i>moves</i> never stalls, because a movement
-	 * action sets a {@code curAction} and {@code Hero.act()} clears {@code resting} on the way past - so
-	 * a test written that way passes with the release broken. Only actions that set no
-	 * {@code curAction} - {@code WAIT}, {@code SEARCH}, {@code USE}, {@code DROP} - leave the flag set.
-	 */
+
 	private static void checkRestIsNotAOneWayDoor( EnvConfig config ){
 
 		HeroProbe rest = HeroProbe.restThenWait( config );
@@ -1787,15 +1383,15 @@ public class RewardCheck {
 		System.out.println( "  REST is not a one-way door: it pays its turn and leaves the hero ready" );
 	}
 
-	/** Observes {@code hero.resting} across one REST and one following action. */
+
 	private static class HeroProbe {
-		/** Both steps actually ran; guards the case against passing by measuring nothing. */
+
 		boolean measured;
 
-		/** REST left the hero resting, so {@link #released} means something. */
+
 		boolean rested;
 
-		/** The following action cleared it. */
+
 		boolean released;
 
 		static HeroProbe restThenWait( EnvConfig config ){
@@ -1830,35 +1426,7 @@ public class RewardCheck {
 		}
 	}
 
-	/**
-	 * Picking an item up and putting it back down must be worth exactly nothing.
-	 *
-	 * <p>{@code issues.md} 8: a recording shows a hero picking an item up and dropping it, "presumably
-	 * cheating score". It was. {@code RewardModel} compared a <i>count</i> of carried items one way -
-	 * {@code items > prevItemCount} paid, and nothing was charged for the loss - so the loop
-	 * {@code INTERACT, DROP, INTERACT, DROP} raised the score on every pickup while the world did not
-	 * change. Three steps per cycle and no limit on cycles.
-	 *
-	 * <p>research.md:57 asks for exploit mitigation for exactly this shape - "reinforcement learning
-	 * agents are notoriously good at finding mechanical exploits" - and a diff-based reward is where
-	 * they hide, because the diff is written once per term and a term written one-sided is a term
-	 * with a free direction.
-	 *
-	 * <p><b>One round trip is the whole proof.</b> The assertion is that the drop refunds exactly what
-	 * the pickup paid, for the same item, which is a per-item identity rather than a running total. If
-	 * that holds for one item it holds for all of them, so a second cycle would only re-derive it; the
-	 * mutation that motivated this case is the refund going to zero, and that fails here on the first
-	 * cycle.
-	 *
-	 * <p>The hero is handed a known item rather than left to find one. Which cell carries a heap on a
-	 * given seed, and whether the hero is even allowed to take it, are properties of the level: on this
-	 * seed {@code INTERACT} walks the hero onto a second {@code Waterskin} - which {@code doPickUp}
-	 * refuses - and the pile of {@code CrystalKey}s one cell away is refused headlessly, so a case that
-	 * picked its own target reported "no item appeared" for reasons that had nothing to do with the
-	 * reward. {@code Level.drop} is the game's own way of putting something on the floor and makes the
-	 * item an object this check holds a reference to, which is what lets it assert a per-item refund
-	 * rather than a running total.
-	 */
+
 	private static void checkPickingUpAndDroppingIsNotProfitable( EnvConfig config ){
 		final int[] phase = { 0 };
 		final int[] tries = { 0 };
@@ -1964,16 +1532,7 @@ public class RewardCheck {
 				+ ", and no other term pays for the round trip" );
 	}
 
-	/**
-	 * Puts a known item on an adjacent cell through the game's own {@code Level.drop}, and has the
-	 * hero walk onto it.
-	 *
-	 * <p>Retries across the eight neighbours rather than insisting on one, because {@code Hero.handle}
-	 * refuses to collect with enemies in sight and refuses anything that will not fit - and both are
-	 * properties of where the hero happens to be standing, not of the reward being tested.
-	 *
-	 * @return true when the hero is carrying {@code item} when this returns.
-	 */
+
 	private static boolean takeItemFromTheFloor( SPDEnv env, Item item ){
 		if (Dungeon.level == null || Dungeon.hero == null) return false;
 
@@ -2002,7 +1561,7 @@ public class RewardCheck {
 		return false;
 	}
 
-	/** True when this exact item is in the hero's belongings. */
+
 	private static boolean carries( Item item ){
 		for (Item carried : Dungeon.hero.belongings){
 			if (carried == item) return true;
@@ -2010,7 +1569,7 @@ public class RewardCheck {
 		return false;
 	}
 
-	/** The directional action whose cell is {@code to} from {@code from}, or null if not adjacent. */
+
 	private static Action directionTo( int from, int to ){
 		int w = Dungeon.level.width();
 		int dx = Integer.compare( to % w, from % w );
@@ -2022,7 +1581,7 @@ public class RewardCheck {
 		}
 		return null;
 	}
-	/** Which inventory slot currently resolves to this item, or -1. */
+
 	private static int slotOf( SPDEnv env, Item item ){
 		if (item == null) return -1;
 		List< Item > slots = env.mapper().slots();
@@ -2032,21 +1591,21 @@ public class RewardCheck {
 		return -1;
 	}
 
-	/** One episode's outcome, and the per-term totals that produced it. */
+
 	private static class Outcome {
 		double score;
 		int turns;
 
-		/** The deepest floor the run reached - the game's own figure, as the trainer reports it. */
+
 		int deepest;
 		RewardModel.TerminateReason endReason = RewardModel.TerminateReason.OTHER;
 		boolean endedNaturally;
-		/** Which guard ended it, when it ended as STALLED. Lets a case name the guard, not infer it. */
+
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause stallCause =
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause.NONE;
 		String startMode = "?";
 
-		/** Refusals counted while the environment was in WORLD. See playInWorld. */
+
 		int refusals;
 		int worldTurns;
 
@@ -2057,22 +1616,14 @@ public class RewardCheck {
 		}
 	}
 
-	/** {@code WAIT} every turn, until the environment ends the episode. */
+
 	private static Outcome playWaits( EnvConfig config, int maxTurns ){
 		return play( config, maxTurns, "REWARDCHECK", turn -> {
 			turn.env.step( Action.WAIT, 0 );
 		} );
 	}
 
-	/**
-	 * One action, only while the environment is in the mode it was designed for.
-	 *
-	 * <p>{@code step} runs {@code settle}, which can hand the turn back in {@code MENU} or
-	 * {@code TARGETING}; a {@code WAIT} then means "cancel the dialog", which {@code applySecondary}
-	 * legitimately refuses. Counting refusals across that transition would blame the action for the
-	 * environment having moved on — so the count is taken over WORLD turns only, and the number of
-	 * those turns is asserted non-zero so the case cannot pass by measuring nothing.
-	 */
+
 	private static Outcome playInWorld( EnvConfig config, Action action, int maxTurns ){
 
 		Outcome counted = new Outcome();
@@ -2101,7 +1652,7 @@ public class RewardCheck {
 	private static class Turn {
 		final SPDEnv env;
 
-		/** Zero-based step index, so a driver can vary its action by turn. */
+
 		int step;
 
 		Turn( SPDEnv env ){ this.env = env; }
@@ -2139,15 +1690,8 @@ public class RewardCheck {
 		return String.format( java.util.Locale.ROOT, "%.2f", v );
 	}
 
-	/**
-	 * Enough places to see a turn cost.
-	 *
-	 * <p>{@link #fmt} is two decimal places, which is right for scores and useless for a per-turn price:
-	 * a turn costs 0.002, so every per-turn figure in this file printed as 0.00 and a case whose whole
-	 * claim is "these two prices differ" was printing them identically. Three places separates them and
-	 * is still one order below anything else the file reports.
-	 */
-	/** How many of a run's steps advanced no engine time, which is what is priced separately now. */
+
+
 	private static int freeSteps( Outcome o ){
 		return o.ledger == null ? 0 : o.ledger.notes( RewardTerm.NO_PROGRESS );
 	}

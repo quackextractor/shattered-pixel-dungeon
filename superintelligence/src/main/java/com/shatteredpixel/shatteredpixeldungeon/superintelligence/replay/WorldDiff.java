@@ -30,26 +30,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Compares two {@link WorldSnapshot} files field by field and names the first difference.
- *
- * <p>Returns a single string, empty when the two agree, matching {@link RngTrace#compare} so that every
- * two-sided comparison in this module reports the same way and callers handle them identically.
- *
- * <p>Coarser than {@code RngTrace.compare}, deliberately. That one compares whole records per step and
- * cannot say <i>which</i> field differed; this one resolves it down to the field and, for a cell, the
- * coordinates. A diff that stops at "step 17 differs" saves an investigator nothing.
- */
 public class WorldDiff {
 
 	private WorldDiff(){
 	}
 
-	/**
-	 * @param golden the expected snapshot
-	 * @param actual the run under test
-	 * @return empty when they agree, otherwise a message naming the first difference found
-	 */
 	public static String compare( Path golden, WorldSnapshot actual ){
 		Map< String, Map< String, List< String > > > expected;
 		try {
@@ -82,20 +67,10 @@ public class WorldDiff {
 		return "";
 	}
 
-	/**
-	 * True for a record kind only one side emits, so its absence is not read as a difference.
-	 *
-	 * <p>{@code accepted} is written by {@code ReplayPlayer} and records whether the viewer managed to
-	 * apply a step; {@code WorldTrace} replays the same recording with no player and never emits it.
-	 * {@code cells} is the mirror: {@code WorldTrace} writes per-cell rows unless {@code --no-cells} is
-	 * given, and {@code ReplayPlayer} does not write them at all. Neither is a statement about the world -
-	 * each is a statement about what the tool that wrote the trace is for.
-	 */
 	private static boolean oneSidedOnly( String name ){
 		return "accepted".equals( name ) || name.startsWith( "cell" );
 	}
 
-	/** One label's worth of records: hero, roster, and one entry per described cell. */
 	private static String compareRecords( String label,
 			Map< String, List< String > > expected,
 			Map< String, List< String > > got ){
@@ -121,13 +96,6 @@ public class WorldDiff {
 		return "";
 	}
 
-	/**
-	 * Fields are {@code key=value} tokens, compared by key rather than by position.
-	 *
-	 * <p>By key because the field set is not guaranteed identical between two builds of the same code,
-	 * and a positional comparison would report a cascade of differences from one added field instead of
-	 * the one that actually changed.
-	 */
 	private static String compareFields( String label, String name,
 			List< String > expected, List< String > got ){
 
@@ -189,26 +157,6 @@ public class WorldDiff {
 		return "";
 	}
 
-	/**
-	 * Splits a record into {@code key -> value}, keyed so order is not compared.
-	 *
-	 * <p>On tab <i>and</i> space, and that is a fix rather than a preference. Record rows are not
-	 * internally consistent: the mob, cell, gate and clock rows join their fields with tabs, while
-	 * {@link WorldSnapshot}'s hero row joins them with spaces - {@code pos=684 hp=20/20 turn=11.0}.
-	 * Splitting on tabs alone therefore made every hero record a single key, so a comparison of the hero
-	 * - the one record that carries position, health and engine time, and the one every divergence is
-	 * decided on - compared the whole row and reported the failure as a difference in whichever field
-	 * happened to come first, always {@code pos}. It never named the field that actually differed.
-	 *
-	 * <p>Measured, and it changed the answer: on warrior-long the headless and rendered runs differ at
-	 * step 13 in exactly one hero field, and the tool reported {@code hero field pos} for a position
-	 * that was identical in both.
-	 *
-	 * <p>Splitting on space costs nothing elsewhere. The only record that uses spaces is the hero's
-	 * inventory, where each item is a self-contained descriptor with no space inside it, so the items
-	 * become individual keys - {@code weapon=...}, {@code armor=...}, {@code backpack/0=...} - which is a
-	 * finer comparison than the single {@code inv=...} blob it replaces.
-	 */
 	private static Map< String, String > fields( String row ){
 		Map< String, String > out = new LinkedHashMap<>();
 
@@ -220,16 +168,6 @@ public class WorldDiff {
 		return out;
 	}
 
-	/**
-	 * Every record whose hero or roster differs from the one before it, within a single snapshot.
-	 *
-	 * <p>This is the question a two-sided diff cannot answer and the reason frame records exist: a world
-	 * change on a frame that applied no recorded step appears in neither side's step sequence, so
-	 * comparing step 16 against step 16 will never show it. Within one run the change is visible as a
-	 * record that differs from its predecessor.
-	 *
-	 * @param kind {@code frame} to inspect frames, {@code step} for settled steps
-	 */
 	public static List< String > changedRecords( WorldSnapshot snapshot, String kind ){
 		List< String > out = new ArrayList<>();
 		Map< String, Map< String, List< String > > > parsed = WorldSnapshot.parse( snapshot.lines() );

@@ -11,19 +11,6 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
-/**
- * Compiles the module with every javac lint enabled and fails on the first warning.
- *
- * <p>There is no checkstyle or spotbugs in this repository and adding one is a dependency decision that
- * has not been made. {@code javac}'s own {@code -Xlint} needs nothing new, and it is the one linter that
- * cannot disagree with the compiler the build actually uses.
- *
- * <p>Run by the post-commit hook alongside the comment stripper, and available as
- * {@code gradle :superintelligence:javaclint}.
- *
- * <p>Exits non-zero on a warning, so it is usable as a gate. It compiles to a scratch directory rather
- * than the build directory, because its purpose is to look at the sources and not to produce an artefact.
- */
 public class JavaLint {
 
 	public static void main( String[] args ){

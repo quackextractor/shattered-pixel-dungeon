@@ -16,9 +16,13 @@
 #   comment removal   automatic, and becomes its own commit so it is separately revertable
 #   javac lint        reported, never fatal
 #
-# A stripper that half-works is worse than none, so it is deliberately narrow: it removes `//` comments
-# and nothing else. Javadoc and block comments stay, because they document a type or a method's
-# contract where an inline comment documents a line that should already say what it does.
+# A stripper that half-works is worse than none, so it stays a lexer rather than a regex: it removes
+# `//` comments and, with --javadoc, javadoc as well, and it tracks string and character literals
+# throughout so a URL or a `//` inside a string is never touched. Plain block comments stay.
+#
+# AGENTS.md asks for no comments in code at all, and puts the prose where it belongs - this repository's
+# markdown. The stripper is how that becomes true across a hundred files in one reviewable change rather
+# than by hand, and it runs as its own commit so it reverts on its own.
 #
 # That does mean this deletes comments recording *why* a line is the way it is - non-obvious invariants
 # and the history of a bug. AGENTS.md asks for exactly that ("write no comments in code... as part of the
@@ -61,7 +65,7 @@ set +e
 # Every gradle call here is bounded. A post-commit hook with no timeout is a way to make `git commit`
 # hang for ever on a wedged daemon, and the commit is already made - there is nothing worth waiting
 # for. 120s is far more than any of these needs when healthy and short enough that a stall is obvious.
-timeout 120 ./gradlew --quiet :superintelligence:stripinlines
+timeout 120 ./gradlew --quiet :superintelligence:stripinlines -PstripPaths=--javadoc
 strip_rc=$?
 set -e
 
@@ -95,11 +99,11 @@ else
     fi
 
     git add -- superintelligence/src
-    SPD_AUTOCOMMIT=1 git commit -q -m "style(superintelligence): remove inline comments
+    SPD_AUTOCOMMIT=1 git commit -q -m "style(superintelligence): remove inline and javadoc comments
 
 Added by the post-commit hook, as a separate commit so it reverts on its own.
-Javadoc and block comments are kept; only \`//\` comments were removed."
-    echo "[OK]   post-commit: inline comments removed in a separate commit."
+The reasoning belongs in the repository's markdown, not in the source."
+    echo "[OK]   post-commit: comments removed in a separate commit."
 fi
 
 # Advisory. A post-commit hook cannot fail a commit that has already happened, and the existing sources

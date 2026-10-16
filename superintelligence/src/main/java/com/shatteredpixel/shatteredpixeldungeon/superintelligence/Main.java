@@ -52,19 +52,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.function.ToIntFunction;
 
-/**
- * Entry point for the headless training framework.
- *
- * Three subcommands, in the order they are useful:
- *
- * <pre>
- *   rollout  play one run headlessly with the scripted policy, print the run report, optionally
- *            save it as a replay. This is the smoke test: if this cannot complete a floor the
- *            environment is not wired up.
- *   verify    re-execute a saved run headlessly and confirm it still reproduces.
- *   train    run the PPO trainer across worker JVMs. See train.Trainer.
- * </pre>
- */
+
 public class Main {
 
 	public static void main( String[] args ){
@@ -227,36 +215,21 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		}
 	}
 
-	/**
-	 * Records the {@code DROP}-in-{@code SLOT} fixture the viewer gates play, and verifies it.
-	 *
-	 * <p>A command rather than a checked-in file nobody can reproduce. The fixture exists because the
-	 * committed corpus contains no {@code DROP} at all - 310 SLOT-mode steps, every one of them
-	 * {@code USE/SLOT} - and {@code DROP} is the one action that unbinds its own item, so it is the step
-	 * where the instant a recording captures the quickslot bindings decides what a slot index means on
-	 * playback. {@code viewcheck} was green on all seventeen recordings because the thing it would have
-	 * caught was absent, not because anything was caught.
-	 */
+
 	private static void dropfixture( String[] args ){
 		writeFixture( "dropfixture", args, DropFixture::recordAndWrite,
 				replay -> firstStep( replay, "DROP", "SLOT" ),
 				"DROP in SLOT" );
 	}
 
-	/**
-	 * Records the throw-that-presses fixture the viewer gates play, and verifies it.
-	 *
-	 * <p>The same argument for the same reason, on a different hole: {@code presscheck} proves a dropped
-	 * item presses the cell it lands on, and nothing in any committed recording contains a press, so
-	 * nothing could tell whether the two environments now agree about one.
-	 */
+
 	private static void pressfixture( String[] args ){
 		writeFixture( "pressfixture", args, PressFixture::recordAndWrite,
 				replay -> firstStep( replay, "USE", "TARGETING" ),
 				"throw resolved in TARGETING" );
 	}
 
-	/** Records a corpus fixture, refuses to write one that covers nothing, then verifies what it wrote. */
+
 	private static void writeFixture( String name, String[] args,
 			FixtureWriter writer, ToIntFunction< Replay > witness, String covers ){
 		Options options = Options.parse( args );
@@ -310,13 +283,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 				+ "; reproduced in " + result.stepsVerified + " steps" );
 	}
 
-	/**
-	 * Index of the first recorded step carrying this action in this mode, or -1.
-	 *
-	 * <p>Used as a witness: a count is zero only when nothing matched, but a count is also a statement
-	 * about the whole run, and a scripted tail is free to produce more of whatever the fixture is about.
-	 * The index says where the fixture put it.
-	 */
+
 	private static int firstStep( Replay replay, String action, String mode ){
 		for (int i = 0; i < replay.steps.size(); i++){
 			Replay.Step step = replay.steps.get( i );
@@ -329,17 +296,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		Replay write( EnvConfig config, File file ) throws IOException;
 	}
 
-	/**
-	 * The environment settings for a command: the external file if one was named, then the flags.
-	 *
-	 * <p>Order is the contract. A config file supplies defaults and {@code SPD_} environment variables
-	 * override it, but a flag somebody typed wins over both - someone who wrote {@code --max-turns 400}
-	 * meant 400 turns, and a file silently overriding an explicit flag would be a trap. Which is why the
-	 * caller applies its flags <em>after</em> this returns rather than the binder overwriting them.
-	 *
-	 * <p>Reports what it loaded, once. A run tuned by an external file is not reproducible from the
-	 * command line alone, and the single most useful line in the log is the one naming the file.
-	 */
+
 	static EnvConfig configFor( Options options ){
 		try {
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder.Loaded loaded =
@@ -361,15 +318,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		}
 	}
 
-	/**
-	 * Replays a recording and reports how much randomness each step consumed.
-	 *
-	 * <p>The headless half of the comparison in PLAN-replay-verification.md section 6. The other half is
-	 * the rendered viewer, which writes the identical format behind {@code -Dspd.rngTrace=<path>}.
-	 *
-	 * <p>A diagnostic, not a gate: golden traces are invalidated by any engine change that touches a draw,
-	 * and regenerating one reflexively would make the comparison worthless.
-	 */
+
 	private static void rngtrace( String[] args ){
 		if (args.length == 0){
 			System.err.println( "[ERROR] rngtrace needs a replay file" );
@@ -529,12 +478,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		}
 	}
 
-	/**
-	 * Checks the network's analytic gradients against finite differences.
-	 *
-	 * Exits non-zero on a mismatch, so it is usable as a gate rather than only a report. Needs no
-	 * game state, which is why it does not boot the headless services.
-	 */
+
 	private static void gradcheck( String[] args ){
 		boolean verbose = false;
 		for (String a : args){
@@ -547,14 +491,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		if (failures > 0) System.exit( 1 );
 	}
 
-	/**
-	 * Resets the env, reporting a bad seed as a message rather than a stack trace.
-	 *
-	 * A seed the game silently refuses is a user error, not a crash: the run would otherwise
-	 * continue on a random seed and look like it worked.
-	 *
-	 * @return false if the run was rejected and the caller should stop
-	 */
+
 	private static boolean reset( SPDEnv env, Options options ){
 		try {
 			env.reset( options.seed, options.hero );
@@ -572,13 +509,7 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		return out;
 	}
 
-	/**
-	 * Installs the headless services.
-	 *
-	 * Order matters: services first, because {@code HeadlessGame} calls into Gdx statics during
-	 * construction, then saving is disabled, because the only writes a rollout performs are
-	 * incidental and there are millions of turns' worth of them.
-	 */
+
 	static void boot( Options options ){
 		if (options.noColor) Ansi.enable( false );
 
@@ -590,11 +521,11 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		HeadlessServices.disableSaving( !options.persistSaves );
 	}
 
-	/** Parsed command line options. */
+
 	static class Options {
 		String seed = "";
       boolean seedProvided = false;
-		/** External settings file, or null for the compiled defaults. See {@link #configFor}. */
+
 		java.nio.file.Path configFile;
 		HeroClass hero = HeroClass.WARRIOR;
 		File saveTo;
@@ -602,11 +533,11 @@ System.out.println( Ansi.wrap( "outcome", Ansi.DIM ) + "  " + episode.env.endRea
 		int maxTurns = 0;
 boolean noColor = false;
       boolean persistSaves = false;
-      /** Where rngtrace writes its per-step trace, or null to print it. */
+
       java.nio.file.Path rngTraceOut;
-      /** A rendered-game trace to compare against, or null. */
+
       java.nio.file.Path rngTraceGolden;
-      /** Where to write the draws-by-site tally, or null. */
+
       java.nio.file.Path rngTraceSites;
 
 		static Options parse( String[] args ){
@@ -657,8 +588,8 @@ case "--no-color":
 		}
 	}
 
-	/** Placeholder until the trainer lands; replaced by train.Trainer.main. */
+
 	static void Trainer( String[] args ){
-		com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer.main( args );
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TrainerMain.main( args );
 	}
 }

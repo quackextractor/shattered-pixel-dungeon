@@ -38,37 +38,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Asserts that <em>reading</em> the world draws no randomness.
- *
- * <p>One violation of this already cost a full parity investigation. {@code HeroEncoder} built its
- * defence feature with {@code hero.drRoll()}, which is not a property of the hero but a fresh
- * {@code Random.NormalIntRange} per call, so encoding an observation advanced the gameplay RNG twice per
- * agent step. The stream was offset from the first floor and stayed offset, and the visible symptom -
- * rolls replaying differently - was blamed in turn on the observation encoder, the particle system,
- * the emote icons and the music, and finally the sound pitch. Every one of those was a separate real
- * leak; none of them was the first.
- *
- * <p>Nothing caught it, because every gate re-executes through {@code HeadlessGame}: a gate that shares
- * its implementation with its subject cannot see a fault in it. This one does not re-execute anything.
- * It measures the encoders directly, which is the only way to test them.
- *
- * <p>The first check is a positive control - it draws on purpose and requires the counter to move. Every
- * other check asserts a count of zero, and a counter that is silently broken would satisfy all of them
- * while looking perfectly healthy.
- */
 public class ObserveCheck {
 
 	private static final int CHECKS = 6;
 
 	private static final List< String > failures = new ArrayList<>();
 
-	/**
-	 * Runs one check and counts it failed if it produced any assertion.
-	 *
-	 * <p>Counting {@code failures.size()} against {@code CHECKS} looks equivalent and is not: one check
-	 * that makes three assertions then reports itself as three failed checks.
-	 */
 	private static int checksFailed = 0;
 
 	private static void check( Runnable body ){
@@ -112,12 +87,6 @@ public class ObserveCheck {
 		}
 	}
 
-	/**
-	 * The counter has to be able to move before any "no draws" result means anything.
-	 *
-	 * <p>Without this, deleting the {@code RandomTrace.record} calls would turn every check below into a
-	 * pass and the gate would report a clean bill of health for a property it had stopped measuring.
-	 */
 	private static void checkTheInstrumentIsLive(){
 		RandomTrace.enable();
 		RandomTrace.reset();
@@ -135,7 +104,6 @@ public class ObserveCheck {
 		RandomTrace.disable();
 	}
 
-	/** The invariant itself: encoding an observation must not advance the simulation's randomness. */
 	private static void checkEncodingDrawsNothing( ObservationEncoder encoder ){
 		RandomTrace.enable();
 		RandomTrace.reset();
@@ -153,7 +121,6 @@ public class ObserveCheck {
 		}
 	}
 
-	/** Purity implies determinism, so this catches an encoder that reads live state twice and disagrees. */
 	private static void checkEncodingTwiceIsIdentical( ObservationEncoder encoder ){
 		encoder.encode();
 		float[] grid = Arrays.copyOf( encoder.grid(), encoder.grid().length );
@@ -173,13 +140,6 @@ public class ObserveCheck {
 		}
 	}
 
-	/**
-	 * The quickslot snapshot goes into every recorded SLOT and INVENTORY step.
-	 *
-	 * <p>Checked separately because it runs on the recording path rather than the agent's, and a replay
-	 * that captured bindings from a shifted stream would resolve a recorded slot index against the wrong
-	 * item.
-	 */
 	private static void checkCapturingQuickslotsDrawsNothing(){
 		RandomTrace.enable();
 		RandomTrace.reset();
@@ -204,21 +164,6 @@ public class ObserveCheck {
 		failures.add( message );
 	}
 
-	/**
-	 * Every public draw path must move the counter, so "the counts match" means the streams match.
-	 *
-	 * <p>This exists because {@code Random.Int(int, boolean)} did not record its draws, and the hole was
-	 * invisible in the worst way available: a headless run and a rendered run reported the same base-draw
-	 * count at every step of a 126-step recording while their gameplay streams were four and sixteen
-	 * values apart. {@code RngTrace} - the instrument every conclusion about RNG parity in this project
-	 * was drawn with - was blind to exactly the draws that caused the fault, and the fingerprint that
-	 * should have caught it was itself only folding the visible half.
-	 *
-	 * <p>So the invariant is about the instrument rather than about any one call site: if a draw path
-	 * stops counting, this fails, instead of the next investigation being misled by a trace that agrees
-	 * with itself for the wrong reason. Every entry is a public entry point that reaches a generator, so
-	 * a new one added later is the thing this cannot catch and the review comment has to.
-	 */
 	private static void checkEveryDrawPathIsCounted(){
 		Object[][] paths = {
 			{ "Float()",                    (Runnable) Random::Float },
@@ -261,16 +206,6 @@ public class ObserveCheck {
 		}
 	}
 
-	/**
-	 * {@code Random.shuffle} must count, and must still produce the same order it always did.
-	 *
-	 * <p>It used to hand the generator straight to {@code Collections.shuffle}, which drives it itself,
-	 * so every value it consumed was invisible - and level generation shuffles with it, which is how a
-	 * stream can be offset before the first recorded step and have nothing to point at. It is now routed
-	 * through {@code Int}, and the second half of this check is what stops that routing from quietly
-	 * changing which permutation the game produces: the JDK walks the list downwards taking
-	 * {@code nextInt(i + 1)}, and any other order reshuffles item generation for every run in the game.
-	 */
 	private static void checkShufflingIsCounted(){
 		List< Integer > list = new ArrayList<>();
 		for (int i = 0; i < 8; i++) list.add( i );

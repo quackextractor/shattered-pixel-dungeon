@@ -11,30 +11,11 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 import java.util.Locale;
 import java.util.Random;
 
-/**
- * Measures what a PPO update actually costs, and projects it across sample rates.
- *
- * <pre>gradle :superintelligence:updatecost</pre>
- *
- * This exists because the whole worker-data-flow decision was argued on bandwidth. Transport at the
- * intended sample rate is ~120 MB per generation, roughly 120 ms. The update behind it is 9,600
- * forward and backward passes on a single thread, and nobody had estimated what that costs. If it
- * dominates, the answer is a parallel minibatch update, not a different data-flow option - so the
- * number has to exist before the sample rate is chosen rather than after.
- *
- * No game state is involved, on purpose. The update's cost is a property of the network and the
- * observation shape, and driving real episodes would add env time to a figure that is only ever
- * used to divide out.
- *
- * Synthetic observations are binary grids with roughly half the cells set, which is close to a real
- * floor and exercises the same im2col path. It is not a correctness check: `gradcheck` is.
- */
 public class UpdateCostCheck {
 
 	private static final int WARMUP = 20;
 	private static final int DEFAULT_SAMPLES = 64;
 
-	/** Measured on this repo; see PLAN-data-flow.md. */
 	private static final int WORKERS = 20;
 	private static final int EPISODES_PER_WORKER = 16;
 	private static final int MEAN_TURNS = 150;
@@ -66,7 +47,6 @@ public class UpdateCostCheck {
 		print( forward, full, clipped, network.parameterCount() );
 	}
 
-	/** One replayed sample: unpack, forward, and the backward pass. */
 	private static void oneStep( Network network, Transition t, float[] grid, float[] headGrad,
 			boolean backward ){
 
@@ -80,15 +60,6 @@ public class UpdateCostCheck {
 		network.backward( headGrad, null, null, 1f );
 	}
 
-	/**
-	 * One whole minibatch, timed and reported per sample.
-	 *
-	 * The optimiser runs once at the end of the batch, not once per sample, and that distinction is
-	 * most of what this harness exists to settle. Timing {@code network.step} per sample instead would
-	 * charge the full Adam pass and the full gradient-norm walk to every one of the 32 samples it
-	 * serves, and inflate the per-sample cost by more than half. A minibatch is one batch here, so the
-	 * optimiser's contribution is correctly amortised by dividing the whole thing by its size.
-	 */
 	private static Report time( Network network, Transition[] batch, float[] grid,
 			float[] headGrad, boolean backward, boolean optimiser ){
 
@@ -111,13 +82,6 @@ public class UpdateCostCheck {
 		return new Report( best / batch.length );
 	}
 
-	/**
-	 * A batch of plausible observations.
-	 *
-	 * Advantage and return are set to something non-zero on purpose: the loss the update computes is
-	 * meant to be a real number, and a fixture of all zeros would report the cost of an update that
-	 * had nothing to learn from.
-	 */
 	private static Transition[] syntheticBatch( EnvConfig config, int gridSize, int count, long seed ){
 		Random rng = new Random( seed );
 
@@ -188,7 +152,6 @@ public class UpdateCostCheck {
 		System.out.println();
 	}
 
-	/** Hours if this is longer than ten minutes, seconds otherwise. */
 	private static String seconds( double samples, double msPerSample ){
 		double s = samples * msPerSample / 1000;
 		if (s > 600) return String.format( Locale.US, "%.2f h", s / 3600 );

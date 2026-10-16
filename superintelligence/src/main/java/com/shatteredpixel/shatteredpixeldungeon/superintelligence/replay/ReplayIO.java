@@ -15,13 +15,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
-/**
- * Reads and writes {@link Replay} files, and re-executes a recorded run to check it still reproduces.
- *
- * The format is line based text rather than a binary blob. Replays are small - a few thousand
- * decisions per run - and a format a human can read means a suspicious run can be diffed against a
- * known-good one by eye, which matters more here than the bytes saved.
- */
+
 public class ReplayIO {
 
 	private ReplayIO() {}
@@ -130,14 +124,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		return replay;
 	}
 
-	/**
-	 * Reads only the header, tolerating a truncated or absent body.
-	 *
-	 * {@link #read} rejects a file whose declared step count does not match its body, which is right
-	 * for a determinism check and wrong for listing them: a truncated recording is exactly the one a
-	 * person browsing a catalog most needs to see, and it will not fix itself by being hidden.
-	 * {@link Replay#truncatedAt} carries the shortfall, or -1 when the body is complete.
-	 */
+
 	public static Replay readHeader( File file ) throws IOException {
 		java.util.List<String> lines = Files.readAllLines( file.toPath(), StandardCharsets.UTF_8 );
 		Replay replay = parseHeader( lines, file.getPath() );
@@ -151,21 +138,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		return replay;
 	}
 
-	/**
-	 * Whether any recorded step names a slot <em>and</em> carries its bindings.
-	 *
-	 * <p>Scans the raw lines rather than building {@link Replay.Step} objects, because
-	 * {@link #readHeader} exists precisely to avoid parsing every step of every recording in order to
-	 * print six numbers. A step line is whitespace separated with the bindings in field six, so this is
-	 * one split per step and nothing else - cheap enough for a catalog listing thousands of steps across
-	 * a directory.
-	 *
-	 * <p>Skips a step whose mode is not SLOT or INVENTORY, because a WORLD step records no bindings by
-	 * design and counting one would answer a question nobody asked.
-	 *
-	 * <p>The same trailing-empty-field caveat as below applies: a step with no bindings is five fields,
-	 * so the emptiness test is explicit rather than a bounds check.
-	 */
+
 	private static boolean bodyCarriesBindings( java.util.List<String> lines, int from ){
 		for (int i = from; i < lines.size(); i++){
 			String[] parts = lines.get( i ).split( " " );
@@ -176,20 +149,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		return false;
 	}
 
-	/**
-	 * Whether every recorded step carries the <i>not recorded</i> sentinels of all three of health,
-	 * engine time and inventory - the signature of the four-field wire.
-	 *
-	 * <p>The check that identifies a recording nobody can watch, and it is a signature rather than an
-	 * absence because absence cannot be read: "no quickslots recorded" is equally true of a run in which
-	 * the hero had nothing bound at every slot step, which plays perfectly. See
-	 * {@link Replay#wireDroppedStepFields()}.
-	 * <p>The signature is health {@code -1}, turn {@code -1.0} and an empty inventory, which is three
-	 * fields after the action. An empty inventory is a <em>trailing</em> field and {@code String.split}
-	 * discards trailing empty strings, so a step with no inventory is eight fields rather than nine -
-	 * and requiring nine would skip precisely the recordings being looked for. Hence the explicit
-	 * length test below rather than a bounds check that quietly assumes the field is present.
-	 */
+
 	private static boolean bodyDropsStepFields( java.util.List<String> lines, int from ){
 		boolean sawStep = false;
 		for (int i = from; i < lines.size(); i++){
@@ -204,7 +164,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		return sawStep;
 	}
 
-	/** Index of the first step line, i.e. one past the end of the {@code key=value} header. */
+
 	private static int headerEnd( java.util.List<String> lines ){
 		int index = 1;
 		while (index < lines.size() && lines.get( index ).indexOf( '=' ) >= 0) index++;
@@ -262,14 +222,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		return replay;
 	}
 
-	/**
-	 * The {@link EnvConfig} a replay has to be re-executed under.
-	 *
-	 * <p>The single place the header is turned back into settings, so the viewer, {@code verify} and the
-	 * new headless verifier cannot each pick their own: the point of recording these is that a replay
-	 * resolves a slot index the same way the recorder did, and three callers guessing independently is
-	 * how that stops being true.
-	 */
+
 	public static EnvConfig configFor( Replay replay ){
 		EnvConfig config = new EnvConfig();
 		config.turnLimitPerFloor = replay.turnLimitPerFloor;
@@ -279,7 +232,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		return config;
 	}
 
-	/** What re-executing a recorded run observed. */
+
 	public static class Verification {
 		public double score;
 		public int depth;
@@ -288,76 +241,35 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		public boolean diverged;
 		public int divergedAt = -1;
 
-		/** What disagreed, naming the quantity. Empty when the run reproduced. */
+
 		public String divergence = "";
 
-		/**
-		 * The step whose slot index this recording cannot resolve at all, or -1.
-		 *
-		 * <p>Distinct from {@link #diverged}, and it is the field that was missing. Every comparison in
-		 * this class is guarded by a sentinel that says <i>not recorded</i>, which is exactly what a
-		 * recording that was never watchable looks like from the inside - so an unwatchable file verified
-		 * on whatever fields it did carry and printed {@code [OK]}. Nine recordings the trainer wrote
-		 * were in that state and every one of them reported success.
-		 */
+
 		public int unwatchableAt = -1;
 
-		/** Why the recording cannot be watched. Empty when it can. */
+
 		public String unwatchable = "";
 
-		/**
-		 * True when the run reproduced <em>and</em> the recording can be watched.
-		 *
-		 * <p>Deliberately one verdict rather than two, because a caller printing {@code [OK]} is making
-		 * a claim about the file, and a file that reproduces on position alone while being unplayable in
-		 * the viewer is not a verified recording.
-		 */
+
 		public boolean passed(){
 			return !diverged && unwatchableAt < 0;
 		}
 	}
 
-	/**
-	 * Re-executes a recorded run and reports whether it reproduced.
-	 *
-	 * <p>This is a determinism regression check, not a playback. Nothing is drawn and no one is
-	 * watching - the value is in catching the moment the recorded path stops matching, because every
-	 * locked-seed comparison in the trainer becomes meaningless at that point.
-	 *
-	 * Used to verify that a recorded run still reproduces. It does, as long as the seed, the hero
-	 * class and the challenge set all match: the game's per-floor RNG is derived purely from
-	 * {@code Dungeon.seed}, depth and branch, so a floor is a function of the seed alone.
-	 *
-	 * Any divergence is reported rather than hidden, because the moment a replay stops
-	 * reproducing is the moment the seed lock has been broken somewhere and every locked-seed
-	 * comparison in the trainer becomes meaningless.
-	 */
+
 	public static Verification verify( Replay replay, SPDEnv env ){
 		return verify( replay, env, null );
 	}
 
-	/** Notified once per replayed step, after the world has settled. */
+
 	public interface StepObserver {
-		/**
-		 * Called once the world is built and before the first step, so an observer measuring cumulative
-		 * counters can start from zero.
-		 *
-		 * <p>Level generation draws several thousand values, and folding them in would make every early
-		 * step look identical while saying nothing about the steps themselves. Determinism of generation
-		 * is already covered by the position comparison below.
-		 */
+
 		default void onReset(){}
 
 		void onStep( int index, Replay.Step step, boolean running );
 	}
 
-	/**
-	 * Replays, notifying {@code observer} after each step.
-	 *
-	 * <p>The observer is how {@code rngtrace} reuses this loop rather than writing a second one. A second
-	 * replay loop would be a second implementation of "replay a recording", which is the same
-	 * duplication that let the viewer and the trainer drift apart in the first place.
-	 */
+
 	public static Verification verify( Replay replay, SPDEnv env, StepObserver observer ){
 		Verification result = new Verification();
 

@@ -14,23 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Checks the replay catalog: grouping, ranking, name resolution and header-only reads.
- *
- * <pre>gradle :superintelligence:replaycheck</pre>
- *
- * The catalog is what a person browses to find the run they want, so its failures are quiet ones: a
- * list ordered by the wrong key, or a group merged into another, still looks like a list. Nothing else
- * in the project would notice.
- *
- * Every fixture is written here rather than checked in, because the properties being asserted are
- * about <em>ordering and grouping</em> and not about any particular recording — a fixture on disk
- * would drift the moment the trainer wrote a better one, and the assertions would keep passing while
- * testing the wrong files. What is asserted is that a set of files with known scores and classes comes
- * back in the right order and the right groups, which holds for any set.
- *
- * Runs without game state, so it is fast and cannot be affected by anything the game does.
- */
+
 public class ReplayCatalogCheck {
 
 	private static final List< String > failures = new ArrayList<>();
@@ -83,23 +67,7 @@ public class ReplayCatalogCheck {
 		}
 	}
 
-	/**
-	 * The listing separates the reference corpus from what the trainer wrote, and the numbers still
-	 * mean what the listing says they mean.
-	 *
-	 * <p>The separation is the assertion: the corpus is recorded through {@code ReplayRecorder}
-	 * directly and reproduces end to end, while the trainer's recordings crossed a worker pipe that was
-	 * dropping five of nine step fields, so they stop at their first slot-bearing step. Interleaved in
-	 * one hero-class ranking they are distinguishable only by filename, and picking one halts the
-	 * viewer after a frame with nothing on screen saying why.
-	 *
-	 * <p>The numbering is the other half and the reason this is a check rather than a formatting
-	 * change. Two sections, one sequence: a person reads a number and types it back, so every number
-	 * printed has to resolve to the recording printed beside it. That holds across the section
-	 * boundary, which is exactly where it would break first if {@link ReplayCatalog#inListingOrder}
-	 * and {@link ReplayCatalog#render} were two traversals rather than one - and it would still look
-	 * right in every section above the boundary.
-	 */
+
 	private static void checkSectionsSplitByProvenance(){
 		File corpus = dir( "sections-corpus" );
 		File trainer = dir( "sections-trainer" );
@@ -199,7 +167,7 @@ public class ReplayCatalogCheck {
 		}
 	}
 
-	/** The printed line one recording appears on, or "" when it does not appear at all. */
+
 	private static String rowFor( String listing, String label ){
 		for (String line : listing.split( "\n" )){
 			if (line.contains( label )) return line;
@@ -207,17 +175,7 @@ public class ReplayCatalogCheck {
 		return "";
 	}
 
-	/**
- * Depth has to be a column a reader can scan, not a value in another column's padding.
- *
- * <p>It was printed - inline as {@code d2}, inside the turns column's whitespace - and nobody could use
- * it. The listing ranks by score, so the run that actually made progress sat mid-block with its one
- * interesting fact rendered as a footnote. The report of the first depth-2 run in the project's history
- * was "I cannot see which recording got there", which is the cost of a value without a heading.
- *
- * <p>Asserts the heading exists and that a recording's own depth appears on its own row, so the column
- * cannot go back to being invisible without this failing.
- */
+
 private static void checkDepthIsAReadableColumn(){
 	File dir = dir( "depth-column" );
 	write( dir, "SHALLOW", "WARRIOR", 1.0, 1, 40 );
@@ -279,12 +237,7 @@ private static void checkDepthIsAReadableColumn(){
 	}
 }
 
-/**
- * Where a row's depth cell starts, or -1 when the row has no depth to find.
- *
- * <p>Searches for the depth cell rather than the letter "d", so a recording whose seed contains a "d"
- * does not report a column position from the middle of its own name.
- */
+
 private static int depthColumnIn( String row ){
 	String[] cells = row.trim().split( "\\s+" );
 
@@ -299,12 +252,7 @@ private static int depthColumnIn( String row ){
 		return all;
 	}
 
-	/**
-	 * Descending by score inside one class.
-	 *
-	 * The reason the catalog exists. Ascending would be just as easy to write and completely useless,
-	 * so the direction is asserted explicitly rather than assumed.
-	 */
+
 	private static void checkRankedByScoreWithinAGroup(){
 		File dir = dir( "rank" );
 		write( dir, "low",  "WARRIOR", -3.5, 1, 12 );
@@ -336,13 +284,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	/**
-	 * One group per class, and a class's recordings never appear under another's heading.
-	 *
-	 * Score is not comparable across classes — a Huntress reaching depth 3 is not beaten by a Warrior
-	 * reaching depth 2 — so a single global ranking answers the wrong question. This is the property
-	 * that makes grouping correct rather than decorative.
-	 */
+
 	private static void checkGroupedByHeroClass(){
 		File dir = dir( "group" );
 		write( dir, "w-warrior",  "WARRIOR", 10.0, 1, 100 );
@@ -368,7 +310,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	/** Equal scores are ordered by depth, because two runs at one score are not equally good. */
+
 	private static void checkDepthBreaksAScoreTie(){
 		File dir = dir( "tie" );
 		write( dir, "shallow", "WARRIOR", 10.0, 1, 50 );
@@ -383,13 +325,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	/**
-	 * A truncated recording is listed, with the shortfall named.
-	 *
-	 * A truncated file is exactly the one a person browsing a catalog most needs to see — it is the run
-	 * that went wrong — and it will not fix itself by being hidden. `ReplayIO.read` rejects it, which is
-	 * right for a determinism check; the catalog uses `readHeader` and reports the shortfall.
-	 */
+
 	private static void checkDamagedFilesAreListedNotHidden(){
 		File dir = dir( "damaged" );
 		write( dir, "whole",   "WARRIOR", 5.0, 1, 20, 5, 5 );
@@ -424,15 +360,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	/**
-	 * An unreadable file is listed with its reason, and kept out of the ranked groups.
-	 *
-	 * Its class is unknowable — that is part of what failed to parse — so it goes under "?" rather than
-	 * being guessed at. Two consequences worth pinning down, because both are quiet: it must not
-	 * displace a readable recording from its class's group, and its score is NaN, which compares false
-	 * against everything, so a naive comparator would leave it at an arbitrary position rather than
-	 * last.
-	 */
+
 	private static void checkDamagedFilesSortLast(){
 		File dir = dir( "unreadable" );
 		write( dir, "good-one", "WARRIOR", 1.0, 1, 10 );
@@ -480,12 +408,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	/**
-	 * A bare seed resolves — the form a person reads off the screen.
-	 *
-	 * "YVU-UBS-QFE" is what the trainer prints and what ends up in a console log; the extension is
-	 * rarely what anyone copies.
-	 */
+
 	private static void checkLookupBySeedWithoutExtension(){
 		File dir = dir( "lookup-seed" );
 		write( dir, "YVU-UBS-QFE", "WARRIOR", 44.0, 1, 254 );
@@ -498,7 +421,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	/** The same name with its extension, which is the form a directory listing hands you. */
+
 	private static void checkLookupByFilenameWithExtension(){
 		File dir = dir( "lookup-ext" );
 		write( dir, "YVU-UBS-QFE", "WARRIOR", 44.0, 1, 254 );
@@ -515,7 +438,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	/** Lower case, and a full path, both resolve — a clipboard paste is neither controlled. */
+
 	private static void checkLookupIsCaseInsensitiveAndAcceptsAPath(){
 		File dir = dir( "lookup-case" );
 		write( dir, "YVU-UBS-QFE", "WARRIOR", 44.0, 1, 254 );
@@ -533,13 +456,7 @@ private static int depthColumnIn( String row ){
 		}
 	}
 
-	/**
-	 * The header-only read agrees with a full read.
-	 *
-	 * The catalog reads six fields per file across every recording on disk, so a divergence between
-	 * `readHeader` and `read` would put numbers in front of a person that do not describe the file they
-	 * will then play. Same input, same output — asserted field by field.
-	 */
+
 	private static void checkHeaderOnlyReadMatchesAFullRead(){
 		File dir = dir( "parity" );
 
@@ -575,21 +492,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	/**
-	 * The header-only read must reach the same verdict as a full read, in both directions.
-	 *
-	 * <p>The catalog reads headers so it can list a directory without parsing every step of every
-	 * recording, and it labels each one by whether it can be watched. That verdict comes from the body,
-	 * so {@link ReplayIO#readHeader} has to reach it without building a {@link Replay.Step} per line -
-	 * and the check here is that the cheap scan and the real parse do not drift.
-	 *
-	 * <p>Both directions, and the negative fixture is the instructive one: a recording that carries no
-	 * quickslots but <em>does</em> carry health, turn and inventory is <b>watchable</b>. It is a run in
-	 * which the hero had nothing bound, which resolves from backpack order. Refusing it is a false
-	 * positive that only showed up because {@code rolloutcheck} failed intermittently - which is the
-	 * usual way a false positive of this shape arrives, and the reason this fixture is built from the
-	 * signature rather than from the absence.
-	 */
+
 	private static void checkHeaderOnlyReadAgreesOnWatchability(){
 		File dir = dir( "watchable" );
 
@@ -634,19 +537,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	/**
-	 * The section header and the section's own rows must not contradict each other.
-	 *
-	 * <p>The trainer section's blurb read <em>"these reproduce too, and every one of them is watchable in
-	 * the viewer"</em> — over a section carrying nine lines marked <em>not watchable</em>, on the same
-	 * screen. It was written when every recording in that directory was the fixed trainer's and the claim
-	 * was true, and it was never revisited when nine files came back.
-	 *
-	 * <p>Worth being precise about which half matters. The header is what a skimming reader takes away,
-	 * so a false header costs more than nine absent markers would: it does not merely fail to inform, it
-	 * actively contradicts the list under it. The count is in the blurb now, which makes the claim a
-	 * function of the section rather than a sentence someone typed once.
-	 */
+
 	private static void checkTheBlurbAgreesWithItsOwnRows(){
 		File corpus = dir( "blurb-corpus" );
 		File trainer = dir( "blurb-trainer" );
@@ -708,12 +599,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	/**
-	 * One recording per seed, however many directories hold it.
-	 *
-	 * The trainer's temp directory and the repo's fixture directory can both hold a run of the same
-	 * seed; a catalog listing it twice under two paths is a question rather than an answer.
-	 */
+
 	private static void checkDeduplicatesTheSameSeed(){
 		File first = dir( "dedupe-a" );
 		File second = dir( "dedupe-b" );
@@ -732,17 +618,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	/**
-	 * A name that several directories recorded must not resolve silently.
-	 *
-	 * <p>Deduplication keeps the listing readable, and it used to keep the ambiguity too: typing a seed
-	 * returned whichever copy the directory order reached first. Here that meant
-	 * {@code TLH-MLA-DYU} handed back a 139-step recording while the person was trying to understand
-	 * the 1511-step one from a different run, with nothing on screen to say there was a choice.
-	 *
-	 * <p>So the listing still collapses, but the collapse is reported and the name is refused. A
-	 * filename is still accepted, because that does identify one file.
-	 */
+
 	private static void checkAmbiguousSeedIsRefusedNotGuessed(){
 		File first = dir( "ambig-a" );
 		File second = dir( "ambig-b" );
@@ -783,14 +659,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	/**
-	 * A run must be able to find its own recordings afterwards.
-	 *
-	 * <p>The trainer writes into {@code <--out>/replays} and {@code --out} is wherever the run was
-	 * pointed, while discovery searched a fixed pair of directories. On this machine that made 142 of
-	 * 147 recordings unreachable: written, ranked, closed, and never found again, with no error
-	 * anywhere. The index exists so "where did this run put them" is answered by the run.
-	 */
+
 	private static void checkIndexedDirectoriesAreDiscovered(){
 		File dir = dir( "indexed" );
 		write( dir, "INDEXED-SEED", "MAGE", 7.0, 1, 40 );
@@ -820,23 +689,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	/**
-	 * One directory, two spellings, one set of entries.
-	 *
-	 * <p><b>Measured on this machine, and the gate that would have caught it did not fire.</b> The trainer
-	 * resolved its default replay destination from the working directory and got
-	 * {@code superintelligence/./trainer-replays}; the catalogue's own default spelled the same directory
-	 * {@code superintelligence/trainer-replays}. They are one directory and two strings, and the
-	 * deduplication compared strings — so all 185 trainer recordings were scanned twice and every one of
-	 * them reported {@code 2 recordings share this seed}.
-	 *
-	 * <p>Worse than noise: the dedup that keeps one entry per seed then keeps whichever spelling came
-	 * first, so the {@code not watchable} marker on the nine four-field-wire recordings was decided by
-	 * directory order. The listing said one was unwatchable and eight were fine, and the eight were the
-	 * same files.
-	 *
-	 * <p>The fixture spells a directory two ways on purpose, because the real input does.
-	 */
+
 	private static void checkTheSameDirectoryUnderTwoSpellingsIsOneDirectory(){
 		File dir = dir( "spelled" );
 		write( dir, "SPELLED-SEED", "ROGUE", 5.0, 1, 60 );
@@ -865,22 +718,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	/**
-	 * A file name names a file, and must resolve even when its seed does not.
-	 *
-	 * <p>The listing refuses a bare seed that several runs recorded, which is right, and then says to
-	 * "type the file name to pick one". Typing one answered <em>no such recording</em>: {@code byName}
-	 * searched {@code entries}, which is deduplicated to one row per seed, so the three files behind one
-	 * seed were not in the list it searched. A file is not a seed. Measured, before the fix:
-	 *
-	 * <pre>
-	 *   IPW-QMA-AFY-r3.dat  -&gt; No recording named IPW-QMA-AFY-r3.dat
-	 *   IPW-QMA-AFY-r3      -&gt; No recording named IPW-QMA-AFY-r3
-	 * </pre>
-	 *
-	 * <p>which made the instruction the listing gave impossible to follow, and the picker the last thing
-	 * standing between a person and a recording.
-	 */
+
 	private static void checkASharedSeedResolvesByFileName(){
 		File dir = dir( "shared" );
 
@@ -922,18 +760,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	/**
-	 * A run's recordings are its own section, and nothing else joins it.
-	 *
-	 * <p>{@code --replay-group} exists so two runs can be watched against each other. Without a section
-	 * of its own a group's recordings would sit interleaved with every other run the machine has trained,
-	 * ranked by score - which is exactly the question that run was not asking: "what did this run do"
-	 * answered by a list of unrelated runs.
-	 *
-	 * <p>Asserted on the header rather than the folder, because that is where it is read from. A recording
-	 * moved out of its directory still says which run wrote it, and a recording in a group directory
-	 * whose header says otherwise would be filed under the header - so both are covered.
-	 */
+
 	private static void checkAGroupIsItsOwnSection(){
 		File corpus = dir( "group-corpus" );
 		File trainer = dir( "group-trainer" );
@@ -1009,19 +836,7 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	/**
-	 * A run's recordings live in a subdirectory, so the scan has to go and look for them - but not into
-	 * the one directory that holds files nobody should be offered.
-	 *
-	 * <p>The two halves are one property and neither is optional. Stopping at the top level makes
-	 * {@code trainer-replays/} look empty the moment a run is grouped: written, ranked, closed, and
-	 * unreachable, which is the failure {@link ReplayIndex} exists to stop happening by accident.
-	 *
-	 * <p>And {@code rejected/} is where {@code regenerate-corpus.ps1} parks a recording the rebuild could
-	 * not reproduce. Listing it would be the failure this project has already paid for: a picker offering
-	 * a file whose playback diverges is a dead end, and a {@code not watchable} marker beside it does not
-	 * stop anybody taking it.
-	 */
+
 	private static void checkSubdirectoriesAreScannedAndRejectedIsNot(){
 		File dir = dir( "nested" );
 		write( dir, "TOP-LEVEL", "WARRIOR", 1.0, 1, 10 );
@@ -1050,19 +865,13 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		}
 	}
 
-	/**
-	 * Writes a recording under a chosen file name with a seed of its own.
-	 *
-	 * <p>The trainer's never-overwrite rule produces exactly this: three runs of one seed, three
-	 * suffixed filenames, one header seed. {@link #write} names the file after the seed, so it cannot
-	 * build the fixture the duplicate-seed case needs.
-	 */
+
 	private static File writeAs( File dir, String seed, String fileStem, String hero,
 			double score, int depth, int turns ){
 		return writeFile( new File( dir, fileStem + ".replay" ), seed, "", hero, score, depth, turns, 1, 1 );
 	}
 
-	/** A recording a training run filed under a group: a subdirectory named after it, and the header. */
+
 	private static File writeGrouped( File dir, String group, String seed, String hero,
 			double score, int depth, int turns ){
 		return writeGrouped( dir, group, seed, hero, score, depth, turns, 1, 1 );
@@ -1086,39 +895,15 @@ fail( "readHeader and read disagree: seed " + header.seedText + "/" + full.seedT
 		return dir;
 	}
 
-	/**
-	 * Writes a recording.
-	 *
-	 * @param declared steps the header claims
-	 * @param actual   steps written, so a caller can produce a truncated file
-	 * @return the file written
-	 */
-/**
-	 * One recording written by hand, with every step field present.
-	 *
-	 * <p>Every field, deliberately. The default {@code Step} sentinel for health, engine time and
-	 * inventory is "not recorded", and a file written with those three at their sentinels carries the
-	 * exact signature of the four-field wire - so a fixture meant to stand for a <em>healthy</em>
-	 * recording has to give it real values, or the thing it is not testing is what fails.
-	 */
+
+
 	private static File write( File dir, String seed, String hero, double score,
 			int depth, int turns, int declared, int actual ){
 		return writeFile( new File( dir, seed + ".replay" ), seed, "", hero,
 				score, depth, turns, declared, actual );
 	}
 
-	/**
-	 * One recording written by hand, every step field present.
-	 *
-	 * <p>Every field, deliberately. The default {@code Step} sentinel for health, engine time and
-	 * inventory is "not recorded", and a file written with those three at their sentinels carries the
-	 * exact signature of the four-field wire - so a fixture meant to stand for a <em>healthy</em>
-	 * recording has to give it real values, or the thing it is not testing is what fails.
-	 *
-	 * <p>An ungrouped recording carries no {@code group} line at all rather than an empty one, which is
-	 * what every recording made before groups existed looks like and is therefore the case worth
-	 * holding: an absent key has to mean no group.
-	 */
+
 	private static File writeFile( File file, String seed, String group, String hero, double score,
 			int depth, int turns, int declared, int actual ){
 

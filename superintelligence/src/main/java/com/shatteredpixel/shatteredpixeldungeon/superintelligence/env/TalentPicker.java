@@ -7,31 +7,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-/**
- * The headless half of the game's talent pane: which talents a point can go on, and spending it.
- *
- * In the game this lives in {@code TalentButton} -> {@code TalentsPane} -> {@code WndHero}, all of which
- * need a renderer, so the agent could level up and then never act on the point it had been given.
- * {@code RewardTerm.TALENT_UPGRADE} is wired, gated and unearnable, and the first point arrives at
- * level 2 - two rats on floor 1 - so this is not an endgame gap.
- *
- * <p>The order is the game's own: tiers in ascending order, and inside a tier the insertion order of
- * {@link Hero#talents}, which is a {@code LinkedHashMap} built by {@code Talent.initClassTalents} and
- * therefore stable across processes. A recorded choice therefore names the same talent in the trainer
- * and in the viewer.
- */
 public final class TalentPicker {
 
 	private TalentPicker() {}
 
-	/**
-	 * Every talent the hero could spend a point on right now, in the game's order.
-	 *
-	 * A talent qualifies when its tier has a point available and it is not already at
-	 * {@link Talent#maxPoints()}. A tier with no point - a hero below the level that opens it, or one
-	 * with no subclass or armour ability behind tiers 3 and 4 - is skipped entirely, which is the same
-	 * test the game applies.
-	 */
 	public static List<Talent> available( Hero hero ){
 		List<Talent> out = new ArrayList<>();
 
@@ -56,11 +35,6 @@ public final class TalentPicker {
 		return out;
 	}
 
-	/**
-	 * Spends one point on {@code index} of {@link #available}.
-	 *
-	 * @return whether a point was spent, which is also whether the agent's choice was legal
-	 */
 	public static boolean spend( Hero hero, int index ){
 		List<Talent> options = available( hero );
 		if (index < 0 || index >= options.size()) return false;
@@ -69,7 +43,6 @@ public final class TalentPicker {
 		return true;
 	}
 
-	/** How many talent points the hero could spend without any further change. */
 	public static int spendableCount( Hero hero ){
 		if (hero == null) return 0;
 

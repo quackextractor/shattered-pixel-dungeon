@@ -15,31 +15,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Shared fixtures for the update checks.
- *
- * <p>Two things that {@link ParallelCheck} needs and {@link StateCheck} already had: a batch built the
- * way a worker builds one, and a way to drive {@code PPO}'s single-sample step.
- *
- * <p>Both are here rather than in one check because duplicating them is how two checks end up testing
- * different things under the same name. In particular the batch <em>must</em> carry real recurrent
- * states: a batch of zeros would make the per-sample restore a no-op, and a check that depends on that
- * restore would pass without ever exercising it.
- */
 final class ParallelFixtures {
 
 	private ParallelFixtures() {}
 
-	/** How many samples {@link ParallelCheck} accumulates per comparison. */
 	static final int BATCH = 32;
 
-	/** The advantage spread GAE output actually has, rather than a uniform draw. */
 	private static final Random ADVANTAGE_SEED = new Random( 90210L );
 
-	/**
-	 * Transitions the way {@code EpisodeCollector} produces them: sequential forwards carrying the LSTM
-	 * state, with each transition remembering the state it was decided under.
-	 */
 	static List< Transition > batch( Network net, EnvConfig config, int n, long seed ){
 		Random rng = new Random( seed );
 		List< Transition > out = new ArrayList<>( n );
@@ -80,14 +63,6 @@ final class ParallelFixtures {
 		return out;
 	}
 
-	/**
-	 * Runs one sample's forward and backward on {@code net}, accumulating into its gradients.
-	 *
-	 * <p>Through reflection because {@code PPO.oneSample} is private and the alternative is to widen the
-	 * production API for the benefit of a check. Widening it would also mean the check could call it
-	 * differently from the update, which is the failure mode the reflection makes impossible: the
-	 * signature has to match exactly or this throws.
-	 */
 	static void oneSample( PPO ppo, Network net, Transition t ){
 		Method m = method();
 		try {

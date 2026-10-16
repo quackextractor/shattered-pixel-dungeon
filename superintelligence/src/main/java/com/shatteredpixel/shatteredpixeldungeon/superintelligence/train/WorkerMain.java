@@ -10,13 +10,6 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 
-/**
- * Entry point for a worker process.
- *
- * The worker installs the headless services into its own save directory, then serves the trainer
- * over stdin and stdout. Nothing is written to stdout except protocol frames, so a stray print
- * anywhere in the game logic cannot desynchronise the stream.
- */
 public class WorkerMain {
 
 	public static void main( String[] args ){

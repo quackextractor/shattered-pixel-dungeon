@@ -26,26 +26,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Minimal libGDX service implementations so that the game's core logic - which reaches into
- * {@code Gdx} from all over the place (settings, saving, sound effects) - runs without a
- * graphics or audio backend.
- *
- * research.md: "bypass the android, ios, and desktop platform modules and operate strictly
- * within the Java based core module". That means {@code Gdx.app}, {@code Gdx.files} and
- * {@code Gdx.audio} must all be non-null even though nothing is ever drawn or heard.
- *
- * The only real side effect here is file IO, which is unavoidable because
- * {@code Dungeon.switchLevel} unconditionally calls {@code saveAll()}. {@link HeadlessFiles}
- * relocates that IO into a per-worker directory so parallel workers never fight over one
- * save file and a crashed worker cannot corrupt a real save.
- */
 public class HeadlessServices {
 
-	/** true once {@link #install} has run in this JVM. */
 	public static boolean installed = false;
 
-	/** Set true to make every Gdx.files write a no-op. See {@link NullingFiles}. */
 	private static HeadlessFiles files;
 
 	private HeadlessServices() {}
@@ -73,46 +57,10 @@ public class HeadlessServices {
 		installed = true;
 	}
 
-	/**
-	 * Loads the libGDX native library.
-	 *
-	 * The desktop build never does this itself: {@code Lwjgl3Application} pulls it in through
-	 * {@code Lwjgl3NativesLoader}. Headless replaces that backend wholesale, and a natives jar on the
-	 * classpath does not load itself - nothing in libGDX bootstraps it without being asked. So the
-	 * library was absent in every headless JVM, and only stayed unnoticed because almost nothing
-	 * headless reaches native code.
-	 *
-	 * {@code TextureCache} is the exception. Its {@code getBitmap} is guarded on {@code Gdx.gl == null}
-	 * and returns null, which is why decoding the item-icon film works at all. But its three
-	 * programmatic constructors - {@code createSolid}, {@code createGradient} and {@code create} -
-	 * build a {@code Pixmap} with no such guard, and a {@code Pixmap} allocates through
-	 * {@code Gdx2DPixmap}. Those are reached from ordinary game logic, not from drawing: a
-	 * {@code Flare} on roughly forty item and buff sites ({@code ScrollOfRemoveCurse},
-	 * {@code PotionOfCleansing}, {@code Wand}, {@code Invulnerability}'s aura and so on), and a
-	 * {@code ColorBlock} from {@code InventorySlot}, {@code InventoryPane} and {@code GameScene}.
-	 * Any of them throws {@code UnsatisfiedLinkError} the first time an item is used.
-	 *
-	 * The scripted policy never hit one because it makes a narrow set of item choices. A policy
-	 * sampling the action mask does, within a generation - which is how this surfaced: only once the
-	 * worker stopped playing the scripted heuristic.
-	 *
-	 * Loading rather than guarding is the smaller change. Guarding those three constructors would
-	 * alter behaviour for the real renderer, where they must keep working.
-	 *
-	 * Idempotent - libGDX guards it behind its own flag - so the trainer JVM and every worker can all
-	 * call this on the way through.
-	 */
 	private static void loadNatives(){
 		com.badlogic.gdx.utils.GdxNativesLoader.load();
 	}
 
-	/**
-	 * Redirects every path the game writes to into the void. {@code Dungeon.switchLevel} calls
-	 * saveAll() on every single floor, which means an IO syscall pair per floor change plus a
-	 * full JSON serialisation of the hero. Over a million simulated turns that is pure waste,
-	 * so the trainer runs with saving disabled and only turns it back on when it is about to
-	 * hand a finished run to the replay viewer.
-	 */
 	public static void disableSaving( boolean disabled ){
 		if (files != null) files.savingEnabled = !disabled;
 	}
@@ -121,12 +69,6 @@ public class HeadlessServices {
 		return files != null && files.savingEnabled;
 	}
 
-	/**
-	 * {@code Game.runOnRenderThread} funnels through {@code Gdx.app.postRunnable}. In the real
-	 * game that defers work to the GL thread; headlessly the actor thread already is the
-	 * simulation thread, so we run the callback inline. Deferring would introduce
-	 * nondeterminism between a callback that lands before the next turn and one that lands after.
-	 */
 	public static class App implements Application {
 
 		public final ApplicationLogger logger = new ApplicationLogger() {
@@ -169,20 +111,10 @@ public class HeadlessServices {
 		@Override public void removeLifecycleListener(LifecycleListener listener) { }
 	}
 
-	/**
-	 * SPDSettings, GamesInProgress and Badges all persist through Gdx.files. We give each
-	 * worker its own directory so N parallel workers do not interleave writes to the same
-	 * {@code games} / {@code prefs} files.
-	 */
 	public static class HeadlessFiles implements Files {
 
 		public final File root;
 
-		/**
-		 * When false every returned FileHandle points into {@link #sink}. This is the single
-		 * biggest rollout speedup available: it removes a JSON serialisation of the hero plus
-		 * two file syscalls from every single floor transition.
-		 */
 		public boolean savingEnabled = true;
 
 		private final File sink;
@@ -218,14 +150,6 @@ public class HeadlessServices {
 			}
 		}
 
-/**
-	 * True for paths the game writes to rather than reads from.
-	 *
-	 * Saves are GamesInProgress.gameFile/depthFile plus the handful of top level bundles in
-	 * Badges, Bones, Rankings, SPDAction and Journal. All are ".dat" bundles written by
-	 * FileUtils.bundleToFile, which stages them through a ".spdtmp" sibling first - hence both
-	 * suffixes, since a half-written save has the temporary one.
-	 */
 		private static boolean isSave( String path ){
 			String p = path.replace( '\\', '/' );
 			return p.contains( ".dat" )
@@ -234,17 +158,6 @@ public class HeadlessServices {
 					|| p.startsWith( "game" );
 		}
 
-		/**
-		 * Builds a FileHandle tagged FileType.Classpath.
-		 *
-		 * FileHandle's (String, FileType) constructor is protected, and the public (String)
-		 * constructor always tags the handle Absolute. That distinction matters: a Classpath
-		 * handle is read through the classloader (so assets packaged inside core-<ver>.jar are
-		 * found), whereas an Absolute handle is read straight off the filesystem.
-		 *
-		 * A cache is kept because this is called once per texture, once per font and once per
-		 * message file, and reflection lookup is not free.
-		 */
 		private FileHandle classpathHandle( String path ){
 			FileHandle cached = classpathCache.get( path );
 			if (cached != null) return cached;
@@ -275,21 +188,6 @@ public class HeadlessServices {
 		@Override public String getLocalStoragePath() { return root.getAbsolutePath(); }
 		@Override public boolean isLocalStorageAvailable() { return true; }
 
-		/**
-		 * Deletes a save file, wherever this process would write one.
-		 *
-		 * <p>The path is resolved rather than assembled by the caller because it is not the root: with
-		 * saving disabled - which is how every rollout and every check runs - saves are redirected into
-		 * {@link #sink}, and a caller that deleted {@code root/<name>} would report success having
-		 * removed nothing at all. That is not hypothetical: the remains file is written there, and reading
-		 * it back on the next run's floor generation is what made 2 of 32 recorded runs stop reproducing.
-		 *
-		 * <p>Removes the temporary sibling too. {@code FileUtils.bundleToFile} stages through
-		 * {@code .spdtmp}, so an interrupted write leaves that behind and {@link #getFileHandle} would
-		 * still find it a save.
-		 *
-		 * @return true if the file existed
-		 */
 		public boolean deleteSave( String name ){
 			File base = savingEnabled ? root : sink;
 			boolean existed = new File( base, name ).delete();
@@ -298,11 +196,6 @@ public class HeadlessServices {
 		}
 	}
 
-	/**
-	 * libGDX ships no in-memory Preferences, and writing real prefs files for millions of
-	 * simulated runs would dominate rollout cost. Straight string map, shared per prefs name so
-	 * that repeated getPreferences() calls see each other's writes the way the game expects.
-	 */
 	public static class MemoryPreferences implements Preferences {
 
 		private static final Map<String, Map<String, String>> stores = new HashMap<>();
@@ -365,11 +258,6 @@ public class HeadlessServices {
 		private void putRaw( String key, String value ){ synchronized (store){ store.put( key, value ); } }
 	}
 
-	/**
-	 * Sample.INSTANCE.play() is called from deep inside combat, pickup and trap code and would
-	 * otherwise load real audio assets. A silent Sound keeps all of those call sites working for
-	 * the cost of an interface dispatch.
-	 */
 	public static class SilentAudio implements Audio {
 		@Override public AudioDevice newAudioDevice(int sampleRate, boolean isMono) { return null; }
 		@Override public AudioRecorder newAudioRecorder(int sampleRate, boolean isMono) { return null; }

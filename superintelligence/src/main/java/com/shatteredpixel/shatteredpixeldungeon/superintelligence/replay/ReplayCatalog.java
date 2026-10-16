@@ -13,28 +13,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * What is on disk, grouped by hero class and ranked by score.
- *
- * <pre>gradle :superintelligence:replays [--dir &lt;d&gt;]... [--plain]</pre>
- *
- * Built because "which run was that" was answered by reading every file by hand, and because the
- * answer is not obvious from a directory listing: the trainer writes
- * {@code <seed>.dat} into a temp directory while the checked-in fixtures are {@code .replay} files,
- * the two are sorted by nothing in particular, and the seed text is what a person actually has to
- * hand.
- *
- * Grouped by class because score is not comparable across classes — a Huntress that reaches depth 3 is
- * not out-performed by a Warrior that reaches depth 2 — so a single global ranking answers the wrong
- * question. Ranked within each group by score descending, with depth as the tie-break because the
- * score is a sum over a turn budget and two runs at the same score are not equally good.
- *
- * Only the header of each file is read. A full {@link ReplayIO#read} would parse every step of every
- * recording to print six numbers, and the largest fixture is 1500 of them.
- */
+
 public class ReplayCatalog {
 
-	/** One recording, and where it is. */
+
 	public static class Entry {
 		public final File file;
 		public final String seed;
@@ -46,27 +28,16 @@ public class ReplayCatalog {
 		public final int generation;
 		public final int turnLimit;
 
-		/** The training run that wrote this, or "" when nobody grouped it. */
+
 		public final String group;
 
-		/** Steps actually present, or -1 when the body was complete. */
+
 		public final int truncatedAt;
 
-		/**
-		 * Whether this recording can be watched at all.
-		 *
-		 * <p>Read from the body rather than assumed, so the catalog can say per file what is true rather
-		 * than applying one blanket warning to a section - and a blanket warning becomes <em>wrong</em> the
-		 * moment a fixed recording joins the ones it condemns.
-		 *
-		 * <p>The discriminator is the signature of the broken wire, not the absence of quickslots: the
-		 * nine pre-fix trainer recordings carry {@code hp = -1, turn = -1.0, inventory = ""} on every
-		 * step, and that is what identifies them. A recording with real health and real engine time had a
-		 * wire that carried everything, so it plays.
-		 */
+
 		public final boolean watchable;
 
-		/** Set when the file could not be read at all, so a broken file is listed rather than lost. */
+
 		public final String error;
 
 		Entry( File file, Replay replay ){
@@ -101,25 +72,17 @@ public class ReplayCatalog {
 			this.error = error;
 		}
 
-		/** How many files carry this seed. More than one means the name alone does not identify it. */
+
 		public int copies = 1;
 
-		/**
-		 * Position of the directory this file was found in, which is what decides its section.
-		 *
-		 * <p>Not a path and not a name, because the section a recording belongs to is a statement about
-		 * how it was <em>found</em> - the reference set passed first, or anything after it. Matching on
-		 * directory names instead would have made a recording change section when someone renamed a
-		 * folder, and would have had no answer at all for the index and temp directories that training
-		 * runs write to, which are named after whatever {@code --out} happened to be.
-		 */
+
 		public int sourceIndex;
 
 		public boolean damaged(){
 			return error != null || truncatedAt >= 0;
 		}
 
-		/** Filename without its extension, which is what a person tends to have to hand. */
+
 		public String label(){
 			String name = file.getName();
 			int dot = name.lastIndexOf( '.' );
@@ -127,33 +90,27 @@ public class ReplayCatalog {
 		}
 	}
 
-	/** Hero classes in the order they should be listed, with anything unrecognised after them. */
+
 	private static final List<String> CLASS_ORDER = java.util.Arrays.asList(
 			"WARRIOR", "MAGE", "HUNTRESS", "ROGUE", "DUELIST" );
 
-	/** The reference set: the first {@code --dir}, which is {@code test-replays} in practice. */
+
 	public static final String SECTION_CORPUS = "TEST CORPUS";
 
-	/** Everything a training run wrote that was not filed under a group. */
+
 	public static final String SECTION_TRAINER = "TRAINER OUTPUT";
 
-	/**
-	 * Headings for the recordings one training run wrote.
-	 *
-	 * <p>Its own prefix rather than {@code "TRAINER " + group}, because a group named {@code output}
-	 * would then produce a heading identical to {@link #SECTION_TRAINER} and two sections would share one
-	 * key - the listing would print one of them twice and the other not at all.
-	 */
+
 	public static final String GROUP_PREFIX = "GROUP ";
 
-	/** Not scanned: recordings a rebuild could not reproduce, which is where a corpus script parks them. */
+
 	private static final String REJECTED_DIR = "rejected";
 
 	private final List<Entry> entries = new ArrayList<>();
 
 	private final Map<String, List<Entry>> copies = new LinkedHashMap<>();
 
-	/** Every entry found, including the duplicates the listing collapses. */
+
 	private final List<Entry> allEntries = new ArrayList<>();
 
 	public List<Entry> entries(){
@@ -164,30 +121,7 @@ public class ReplayCatalog {
 		return entries.isEmpty();
 	}
 
-	/**
-	 * Where recordings are looked for when {@code --dir} says nothing.
-	 *
-	 * <p>The checked-in fixtures first, because they are the deliberate reference set and a duplicate
-	 * of one of those should lose to the repository copy rather than win on directory order.
-	 *
-	 * <p>Then everything {@link ReplayIndex} knows about, which is the part that was missing. The
-	 * trainer writes into {@code <--out>/replays} and {@code --out} is wherever the run was pointed;
-	 * searching a fixed pair of directories found 5 of 147 recordings on this machine and silently
-	 * missed the other 142. Nothing errored - the recordings were written, ranked and closed, and then
-	 * unreachable.
-	 *
-	 * <p>The default temp directory is last rather than omitted, so a run made before the index
-	 * existed is still findable.
-	 *
-	 * <p><b>The checked-in directories are located by walking up to the repository root, not by
-	 * relative path.</b> They used to be {@code new File( "replays" )}, which resolves against the
-	 * working directory - and the gradle {@code run} task uses the <em>module</em> directory as its
-	 * working directory, so that silently meant {@code superintelligence/replays}, which does not exist.
-	 * The whole corpus was invisible to a default {@code --list}. The batch file worked around this by
-	 * passing an absolute {@code --dir}; this was the same mistake one layer down, and the two
-	 * directories now live inside the module, so a relative guess would have looked correct and kept
-	 * resolving to nothing.
-	 */
+
 	private static List<File> defaultDirectories(){
 
 		LinkedHashSet<File> dirs = new LinkedHashSet<>();
@@ -204,13 +138,7 @@ public class ReplayCatalog {
 		return new ArrayList<>( dirs );
 	}
 
-	/**
-	 * The directory's real path, with {@code .} and {@code ..} resolved away.
-	 *
-	 * <p>Falls back to the absolute path, which is what every caller already had. Canonicalisation
-	 * touches the filesystem and can fail on a path nothing can reach, and a catalog that lists a
-	 * directory twice is a much smaller problem than one that throws while being built.
-	 */
+
 	static File canonical( File dir ){
 		if (dir == null) return null;
 		try {
@@ -220,20 +148,7 @@ public class ReplayCatalog {
 		}
 	}
 
-	/**
-	 * The repository root, found by walking up from the working directory until {@code settings.gradle}
-	 * appears, or {@code null} when the run started somewhere that is not inside the repository.
-	 *
-	 * <p>Walking up rather than looking one directory down from the module, because the two are only
-	 * the same shape by accident: a jar run from a checkout has the module at {@code x/superintelligence}
-	 * and one level down is the root, but a run from {@code x/superintelligence} itself needs two. The
-	 * marker file is what settles it either way.
-	 *
-	 * <p>{@code null} is a supported answer rather than a failure. The catalog is reachable from
-	 * anywhere - a user's temp directory, a packaged jar - and a missing root there costs the two
-	 * checked-in directories and nothing else, because {@link ReplayIndex} still supplies whatever
-	 * training runs have recorded.
-	 */
+
 	private static File repositoryRoot(){
 		File dir = new File( System.getProperty( "user.dir" ) ).getAbsoluteFile();
 
@@ -245,23 +160,7 @@ public class ReplayCatalog {
 		return null;
 	}
 
-	/**
-	 * Scans each directory, keeping the first copy of any seed seen in the listing.
-	 *
-	 * <p>Deduplicated because the trainer's temp directory and the repo's fixture directory can both
-	 * hold a run of the same seed, and a catalog listing the same recording twice under two paths is a
-	 * question rather than an answer. Earlier directories win, so pass the repo first.
-	 *
-	 * <p><b>But the duplicates are kept, and counted.</b> They used to be dropped on the floor, which
-	 * made a name ambiguous in a way nothing was willing to say: typing {@code TLH-MLA-DYU} silently
-	 * returned whichever copy the directory order happened to reach first - a 139-step recording in
-	 * one directory rather than the 1511-step one in another, with no indication that a second
-	 * existed. A person checking why a particular run diverged would be handed a different run and no
-	 * reason to doubt it.
-	 *
-	 * <p>So every copy is retained in {@link #copies}, the listing marks a seed that has more than
-	 * one, and resolving a bare name that is ambiguous refuses rather than guessing.
-	 */
+
 	public ReplayCatalog scan( List<File> directories ){
 		Map<String, Entry> bySeed = new LinkedHashMap<>();
 		Map<String, List<Entry>> all = new LinkedHashMap<>();
@@ -311,23 +210,7 @@ File canonical = canonical( dir );
 		return this;
 	}
 
-	/**
-	 * Every file below {@code dir}, one level and deeper.
-	 *
-	 * <p>Deeper because a training run given {@code --replay-group} files its recordings into a
-	 * subdirectory, and a listing that stopped at the top level would show the directory as holding
-	 * nothing at all - the recordings would be written, ranked, and unreachable, which is the exact
-	 * failure {@link ReplayIndex} exists to stop happening by accident.
-	 *
-	 * <p>Skipping {@code rejected} is the one exclusion. That directory is where
-	 * {@code regenerate-corpus.ps1} parks recordings a rebuild could not reproduce, and listing them
-	 * would be the failure this project has already paid for once: a picker offering a file whose
-	 * playback diverges is a dead end, and a label on the row does not stop anybody taking it.
-	 *
-	 * <p>Total order, by name and then by path. {@code listFiles} order is unspecified, so two runs
-	 * over the same tree would otherwise disagree about which of two same-named recordings a seed
-	 * dedup keeps - which is the class of bug where directory order decides a property of the listing.
-	 */
+
 	private static List<File> recordingsUnder( File dir ){
 		List<File> found = new ArrayList<>();
 		collectRecordings( dir, found, 0 );
@@ -335,7 +218,7 @@ File canonical = canonical( dir );
 		return found;
 	}
 
-	/** Bounded: a directory tree deeper than any run writes into is not one of ours. */
+
 	private static void collectRecordings( File dir, List<File> found, int depth ){
 		if (depth > 4) return;
 
@@ -352,17 +235,12 @@ File canonical = canonical( dir );
 		}
 	}
 
-	/**
-	 * Every copy of every seed found, including duplicates the listing collapses.
-	 *
-	 * <p>Keyed by seed. A seed with more than one entry here is a name that cannot be resolved to a
-	 * single file without being told which one is meant.
-	 */
+
 	public Map<String, List<Entry>> copies(){
 		return copies;
 	}
 
-	/** Entries grouped by hero class, each group ranked by score descending. */
+
 	public Map<String, List<Entry>> grouped(){
 		Map<String, List<Entry>> groups = new LinkedHashMap<>();
 
@@ -377,13 +255,7 @@ File canonical = canonical( dir );
 		return groups;
 	}
 
-	/**
-	 * Best first, and a damaged file last regardless of the score it claims.
-	 *
-	 * <p>Shared by {@link #grouped} and {@link #sections} so the two views cannot rank the same two
-	 * recordings differently - which would mean the number beside a recording in the sectioned listing
-	 * and the position it holds in the hero-class view disagree, for no visible reason.
-	 */
+
 	private static Comparator<Entry> rankOrder(){
 		return Comparator
 
@@ -394,16 +266,7 @@ File canonical = canonical( dir );
 				.thenComparing( e -> e.label() );
 	}
 
-	/**
-	 * Finds the recording a name refers to.
-	 *
-	 * Accepts a seed, a filename, a path, or any of those with or without the extension, and matches
-	 * case-insensitively. A clipboard paste of "YVU-UBS-QFE" or "YVU-UBS-QFE.dat" both land here,
-	 * because those are the two forms a person realistically has: the name they read off the screen,
-	 * or the name they copied out of a directory listing.
-	 *
-	 * @return every match, so a caller can say "three files are called that" instead of picking one
-	 */
+
 	public List<Entry> find( String name ){
 		List<Entry> matches = new ArrayList<>();
 		if (name == null || name.trim().isEmpty()) return matches;
@@ -435,13 +298,7 @@ File canonical = canonical( dir );
 		return matches;
 	}
 
-	/**
-	 * The entries in listing order, numbered from 1.
-	 *
-	 * The same traversal {@link #render} prints, so a number shown to a person and a number typed
-	 * back refer to the same recording. Duplicated in the batch file otherwise, which is a second copy
-	 * of a sort order that would drift from this one the first time either changed.
-	 */
+
 	public List<Entry> inListingOrder(){
 		List<Entry> ordered = new ArrayList<>();
 
@@ -459,32 +316,7 @@ File canonical = canonical( dir );
 		return entry.group.isEmpty() ? SECTION_TRAINER : GROUP_PREFIX + entry.group.toUpperCase( Locale.ROOT );
 	}
 
-	/**
-	 * The listing's sections, each holding its hero-class groups.
-	 *
-	 * <p><b>Provenance is the outermost axis, and it is there because the halves are not
-	 * interchangeable.</b> The reference corpus is built by {@code replay-viewer --record} through
-	 * {@code ReplayRecorder} directly and reproduces end to end; what the trainer wrote crossed a
-	 * worker pipe and, for every recording made before {@code train.ReplayCodec}, stopped at its first
-	 * slot-bearing step because the quickslot bindings never arrived. Those files look identical in a
-	 * ranking that interleaves them by hero class - the only tell is a filename in {@code XXX-XXX-XXX}
-	 * form among descriptive ones, and the viewer gives no reason why selecting one halts after a
-	 * frame.
-	 *
-	 * <p>Within the training half, a {@code --replay-group} is a section of its own. It is read from the
-	 * header rather than from the directory the file happens to sit in, so a group survives being copied
-	 * and moved, and a recording filed by a run that named its group says which run it is even when the
-	 * folder is gone. Groups come after the ungrouped output and in name order, so the numbering stays a
-	 * function of what is on disk rather than of which group was written last.
-	 *
-	 * <p>Both are still numbered in one sequence: two listings with two sets of numbers would make the
-	 * word "number" mean two different recordings depending on which was on screen.
-	 *
-	 * <p>The split is the first {@code --dir} against everything after it, which is the same precedence
-	 * {@link #scan} already applies when a seed appears in two directories. That falls out of the
-	 * existing rule rather than adding a second notion of which directory is the reference one, and it
-	 * has an answer for the index and temp directories, whose names follow whatever {@code --out} was.
-	 */
+
 	public Map<String, Map<String, List<Entry>>> sections(){
 		Map<String, Map<String, List<Entry>>> sections = new LinkedHashMap<>();
 		sections.put( SECTION_CORPUS, new LinkedHashMap<>() );
@@ -510,7 +342,7 @@ File canonical = canonical( dir );
 		return sections;
 	}
 
-	/** The distinct group ids recorded by the trainer, lowercased the way a heading uppercases them. */
+
 	private Set<String> namedGroups(){
 		Set<String> groups = new LinkedHashSet<>();
 		for (Entry entry : entries){
@@ -519,28 +351,13 @@ File canonical = canonical( dir );
 		return groups;
 	}
 
-	/** The nth listing entry, 1-based, or null when there is no such entry. */
+
 	public Entry byNumber( int number ){
 		List<Entry> ordered = inListingOrder();
 		return number < 1 || number > ordered.size() ? null : ordered.get( number - 1 );
 	}
 
-	/**
-	 * Finds a recording by the name a person would type.
-	 *
-	 * <p>Accepts the seed, the seed with either extension, or the bare filename, case-insensitively -
-	 * because all three are things someone will try, and a resolver that only understands one of them
-	 * reads as "no such recording" rather than "you typed it slightly differently".
-	 *
-	 * <p>The filename is tried before the seed, because two directories can hold different recordings
-	 * under one seed name and the exact file the person saw is the one they meant.
-	 *
-	 * <p><b>The filename is searched across every file, not across {@link #entries}.</b> {@code entries}
-	 * is deduplicated to one per seed, which is right for a listing and wrong here: {@code IPW-QMA-AFY-r3.dat}
-	 * is a file and a perfectly unambiguous name for it, and the only reason it was not found is that it
-	 * shares a seed with three other files and so is not in the deduplicated list. The listing told the
-	 * reader to type the file name; typing it answered "no such recording".
-	 */
+
 	public Entry byName( String name ){
 		String wanted = name == null ? "" : name.trim();
 		if (wanted.isEmpty()) return null;
@@ -568,18 +385,7 @@ File canonical = canonical( dir );
 		return null;
 	}
 
-	/**
-	 * Every recording a name refers to, when that name is ambiguous.
-	 *
-	 * <p>Empty when the name identifies exactly one file. Used to refuse a guess rather than return
-	 * whichever copy the directory order reached first.
-	 *
-	 * <p><b>Filenames count too, which the first version of this got wrong.</b> It checked seeds only,
-	 * on the assumption that a filename identifies a file. It does not: two directories each holding
-	 * {@code TWIN-SEED.replay} is the normal state here, because every run that used a given seed wrote
-	 * the same filename. So the seed check passed and the resolution quietly returned one of them.
-	 * A name is ambiguous if it matches more than one file, whatever kind of name it is.
-	 */
+
 	public List<Entry> ambiguous( String name ){
 		List<Entry> matches = new ArrayList<>();
 
@@ -604,14 +410,7 @@ File canonical = canonical( dir );
 		return matches.size() > 1 ? matches : new ArrayList<>();
 	}
 
-	/**
-	 * Renders the grouped catalog.
-	 *
-	 * Columns are fixed width so the scores line up, which is what makes a ranked list readable — a
-	 * ranked list where the numbers do not line up is a list you have to read rather than scan.
-	 *
-	 * @param plain no colour codes, for a pipe or a log
-	 */
+
 	public String render( boolean plain ){
 		Map<String, Map<String, List<Entry>>> sections = sections();
 		StringBuilder out = new StringBuilder();
@@ -684,13 +483,13 @@ File canonical = canonical( dir );
 		return out.toString();
 	}
 
-	/** The directory a file sits in, by name - the part of the path two copies of one seed can differ in. */
+
 	private static String parentName( Entry entry ){
 		File parent = entry.file.getParentFile();
 		return parent == null ? "" : parent.getName();
 	}
 
-	/** One line saying what a section is and what to expect from it, counting what cannot be played. */
+
 	private String sectionBlurb( String section, Map<String, List<Entry>> groups ){
 		if (SECTION_CORPUS.equals( section )){
 			return "recorded through ReplayRecorder directly - these reproduce";
@@ -737,7 +536,7 @@ File canonical = canonical( dir );
 		return entry.watchable ? "" : watchable.trim();
 	}
 
-	/** Every file recorded under the same seed as {@code entry}. */
+
 	private List<Entry> copiesFor( Entry entry ){
 		String key = entry.seed == null || entry.seed.isEmpty() ? entry.file.getName() : entry.seed;
 
@@ -747,53 +546,26 @@ File canonical = canonical( dir );
 		return List.of( entry );
 	}
 
-	/** Right-aligned so positives and negatives line up, which they do not as plain {@code %f}. */
+
 	private static String formatScore( Entry entry ){
 		if (entry.error != null) return "-";
 		return String.format( "%,.1f", entry.score );
 	}
 
-	/**
-	 * Deepest floor reached, as a column rather than a bare {@code d2}.
-	 *
-	 * <p>It was already printed, inline and unlabelled, and it was the one column nobody could use: the
-	 * listing ranks by score, so the run that actually made progress - the first to reach depth 2 in this
-	 * project's history - sat in the middle of a score-ordered block with a {@code d2} that read as a
-	 * footnote. A column with a heading is a column; a value in the middle of another column's padding is
-	 * not.
-	 *
-	 * <p>{@code deepest}, not where the hero died. `Replay.depth` is `Statistics.deepestFloor`, so a run
-	 * that went down and came back up reports the floor it reached rather than the one it left from.
-	 */
+
 	private static String formatDepth( Entry entry ){
 		if (entry.error != null) return "-";
 		return "d" + entry.depth;
 	}
 
-	/** Column headings, aligned to {@link #render}'s row format so the columns read as columns. */
+
 	private static String columnHeadings(){
 		return String.format( Locale.US,
 				"  %-4s %-22s %9s  %5s  %9s  %7s",
 				"#", "recording", "score", "depth", "recorded", "turns" );
 	}
 
-	/**
-	 * When the file was written, as {@code MM-dd HH:mm}.
-	 *
-	 * <p>The filesystem's own modification time, and the answer is "when this file last changed", which
-	 * for a recording written once is when the run produced it.
-	 *
-	 * <p>Asked for because the list alone cannot answer "which of these is new": every recording carries a
-	 * generation number, and a run pointed at the same seed twice writes over the first, so a file's age
-	 * was the only thing that distinguished a fresh training run's output from yesterday's. Width is fixed
-	 * rather than formatted per locale, because the listing pads everything else to a column and one
-	 * variable-width cell would break every row below it.
-	 *
-	 * <p><b>No space inside the value.</b> {@code 10-11 17:10} is two cells to anything that splits on
-	 * whitespace, which makes the column ambiguous to read and impossible to assert on - the check that
-	 * guards it had to treat the date and the time as separate fields. So {@code 10-11T17:10}, which is
-	 * both one cell and still readable, and is what the default {@code java.time} ISO form prints anyway.
-	 */
+
 	private static String formatRecordedAt( Entry entry ){
 		if (entry.error != null) return "-";
 		long modified = entry.file.lastModified();

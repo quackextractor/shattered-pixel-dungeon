@@ -47,41 +47,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Per-step record of everything the world contains, for diffing a headless run against the rendered
- * viewer.
- *
- * <p>Every other comparison in the verification suite compares four fields: hero position, health,
- * engine time, inventory. That is enough to detect a divergence and never enough to explain one. The
- * reporting tool says "hp is 19, recording says 20" and stops, which is the same information a run
- * that died to a mob it should have dodged would give. This records the whole world, so the question
- * becomes answerable: which actor moved, which cell changed, which item appeared, at which step.
- *
- * <p>Deliberately a diagnostic, not a gate. It is large - a full floor is thousands of cells - and its
- * shape changes whenever the level model does, so a golden would need regenerating for unrelated
- * reasons. {@link WorldDiff} is what compares two of these; nothing asserts on one.
- *
- * <p>Two record kinds share the file, because a step alone cannot see the fault this exists for:
- *
- * <ul>
- *   <li>{@code step} - the world after a recorded step settled. The trainer's {@code StepObserver} and
- *       the viewer's {@code ReplayPlayer.settle} both emit these, and they line up one to one.</li>
- *   <li>{@code frame} - the world at a frame boundary, whether or not that frame applied a step. Only
- *       the viewer has frames. A frame whose state differs from the previous frame's is the only place
- *       a world change that no recorded step accounts for can appear.</li>
- * </ul>
- */
 public class WorldSnapshot {
 
 	private static final String HEADER =
 			"# spd-world-snapshot v1\trecord\tlabel\tfields";
 
-	/** Guards against a bag that contains itself, which would otherwise recurse until the stack dies. */
 	private static final int MAX_BAG_DEPTH = 8;
 
 	private final List< String > lines = new ArrayList<>();
 
-	/** Whether per-cell terrain is recorded. Off reduces a floor-sized record to a roster. */
 	private boolean cells = true;
 
 	public WorldSnapshot(){
@@ -97,35 +71,12 @@ public class WorldSnapshot {
 		lines.add( "# dungeonSeed=" + seed );
 	}
 
-	/**
-	 * Records the special-room pools, which decide which room every floor of a run gets.
-	 *
-	 * <p>Diagnostic, and added for a specific open question rather than for general coverage:
-	 * `SpecialRoom.runSpecials` is a run-level static that `useType` reorders as rooms are placed, so
-	 * <em>floor 2's room set depends on what floor 1 actually placed</em>. Two trainer recordings
-	 * diverge on a chasm that only exists if a `WeakFloorRoom` was placed on the floor before, and the
-	 * floors agree cell for cell up to that point - so the pools are where the difference has to be, and
-	 * nothing recorded them.
-	 *
-	 * <p>Ordered, because the order <em>is</em> the state: `createRoom` picks by index into it. Two
-	 * snapshots with the same rooms in a different order describe different runs.
-	 *
-	 * @param run    the run-level pool, mutated as rooms are placed
-	 * @param floor  the per-floor clone, which is what placement reads
-	 */
 	public WorldSnapshot specials( List< String > run, List< String > floor ){
 		lines.add( "specials\trun=" + String.join( ",", run )
 				+ "\tfloor=" + String.join( ",", floor ) );
 		return this;
 	}
 
-	/**
-	 * Records the world as it stands.
-	 *
-	 * @param kind  {@code step} or {@code frame}
-	 * @param label step index, or frame counter. Keyed rather than positional, so a run that stopped
-	 *              early compares honestly against one that did not.
-	 */
 	public WorldSnapshot sample( String kind, int label ){
 		if (kind.equals( "step" )) lastStepLabel = label;
 		String prefix = kind + "\t" + label + "\t";
@@ -136,13 +87,6 @@ public class WorldSnapshot {
 		return this;
 	}
 
-	/**
-	 * The special-room pools as they stand, read from the run-level static rather than passed in.
-	 *
-	 * <p>Read here rather than sampled by the caller so that every existing caller - the headless
-	 * worldtrace and the rendered viewer's per-frame trace alike - records it without having to know the
-	 * question exists. That the pools are named at all is the point: see {@link #specials}.
-	 */
 	private String specialRooms(){
 		return "specials\trun=" + poolNames( SpecialRoom.runSpecials )
 				+ "\tfloor=" + poolNames( SpecialRoom.floorSpecials );
@@ -159,18 +103,6 @@ public class WorldSnapshot {
 		return sb.toString();
 	}
 
-	/**
-	 * Adds the viewer's own per-frame accounting to a frame record.
-	 *
-	 * <p>The frame delta and what the drain concluded are what turn "31 frames passed and nothing
-	 * happened" into an explanation. Without them the gap is only measurable in wall-clock, and the two
-	 * candidate explanations - a long animation, or the drain waiting on something else - are
-	 * indistinguishable from the world state alone.
-	 *
-	 * @param elapsed     frame delta in seconds as the player saw it
-	 * @param drain       what the scheduler drain returned, or null when it did not run
-	 * @param appliedStep whether this frame applied a recorded step
-	 */
 	public WorldSnapshot frame( String kind, int label, float elapsed, Object drain, boolean appliedStep ){
 		lines.add( kind + "\t" + label + "\tdriver\telapsed=" + elapsed
 				+ "\tdrain=" + (drain == null ? "-" : drain.toString())
@@ -178,16 +110,6 @@ public class WorldSnapshot {
 		return this;
 	}
 
-	/**
-	 * Records the step gate's own inputs on a frame record.
-	 *
-	 * <p>The three fields together are what a two-sided diff cannot show. Whether a recorded step was
-	 * applied while some actor was mid-turn, and while an animation was in flight, is the whole question
-	 * of whether the viewer honours the trainer's ordering - and it is invisible from world state alone,
-	 * because the world looks identical on both sides until the ordering has already gone wrong.
-	 *
-	 * <p>Read at the frame boundary, so it describes the moment the gate was consulted.
-	 */
 	public WorldSnapshot gate( boolean readyToAct, String currentActor, int animating ){
 		lines.add( "gate\t" + gateLabel++ + "\tgate\tready=" + readyToAct
 				+ "\tcurrent=" + currentActor
@@ -195,40 +117,15 @@ public class WorldSnapshot {
 		return this;
 	}
 
-	/** Separate counter so a gate line cannot be mistaken for a frame record at the same label. */
 	private int gateLabel;
 
-	/**
-	 * Records whether the engine accepted the recorded step this record follows.
-	 *
-	 * <p>{@code ActionMapper.apply} and {@code applySecondary} both answer that question and the viewer
-	 * discarded the answer, so a step the engine refused looked exactly like a step that was applied and
-	 * then lost somewhere else. The trainer reads the same boolean as {@code INVALID_ACTION}, which makes
-	 * this the one field of a step record that has an oracle on both sides rather than only on one.
-	 *
-	 * @param accepted whether the environment took the action
-	 */
 	public WorldSnapshot accepted( boolean accepted ){
 		lines.add( "step\t" + lastStepLabel + "\taccepted\taccepted=" + accepted );
 		return this;
 	}
 
-	/** Label of the most recent {@code step} sample, so {@link #accepted} attaches to the right one. */
 	private int lastStepLabel = -1;
 
-	/**
-	 * Records what this frame did to the turn order.
-	 *
-	 * <p>The gap a roster record cannot close on its own. A roster says what a mob's cooldown is now;
-	 * it does not say whether it changed <i>on this frame</i>, or which actor caused it. A frame that
-	 * applied no recorded step is precisely where a turn the recording never authorised appears, so the
-	 * "did the world move while the player waited" question needs both facts on one record.
-	 *
-	 * @param previousNow engine time at the previous frame boundary, or NaN for the first frame
-	 * @param now         engine time now
-	 * @param taker       who held the scheduler at this boundary, or "-"
-	 * @param spent       frames so far on which engine time advanced
-	 */
 	public WorldSnapshot turns( float previousNow, float now, String taker, int spent ){
 		String delta = Float.isNaN( previousNow ) ? "-" : String.valueOf( now - previousNow );
 		lines.add( "frame\t" + turnsLabel++ + "\tturns\tnow=" + now
@@ -238,21 +135,8 @@ public class WorldSnapshot {
 		return this;
 	}
 
-	/** Separate counter, so a turns line cannot be mistaken for the frame record at the same index. */
 	private int turnsLabel;
 
-	/**
-	 * Records what the animation clock actually saw on a frame.
-	 *
-	 * <p>{@code Game.elapsed} is what every animation accumulates and {@code timeTotal} is its running
-	 * sum, so their per-frame difference is precisely what {@code MovieClip} advanced by. Recording it is
-	 * the only way to tell a pinned frame clock that landed from one that did not: the player's own
-	 * pacing would look correct either way, and an animation still running on real frame time would show
-	 * up nowhere else.
-	 *
-	 * @param playerElapsed what {@link ReplayPlayer} was handed, which may differ from the game's own
-	 * @param gameElapsed   {@code Game.elapsed} at the frame boundary
-	 */
 	public WorldSnapshot clock( String kind, int label, float playerElapsed, float gameElapsed,
 			float timeTotal, float timeScale ){
 		lines.add( kind + "\t" + label + "\tclock\tplayer=" + playerElapsed
@@ -282,17 +166,6 @@ public class WorldSnapshot {
 		return sb.toString();
 	}
 
-	/**
-	 * The mob and blob roster.
-	 *
-	 * <p>Sorted because a list's order is not a fact about the world: two runs can spawn the same mobs
-	 * in a different order and would then report every mob as changed. {@code EpisodeDiff} sorts for
-	 * the same reason.
-	 *
-	 * <p>{@link Actor#id()} assigns lazily on first read, so reading it here consumes ids an actor that
-	 * never asked would otherwise have taken. Harmless - ids are compared within a run, never across
-	 * runs - and it is the only stable handle a mob has, {@code Level.mobs} being a set of identity.
-	 */
 	private String roster(){
 		Level level = Dungeon.level;
 		if (level == null) return "roster\t-";
@@ -326,11 +199,6 @@ public class WorldSnapshot {
 		return sb.toString();
 	}
 
-	/**
-	 * Blobs have no cell - they occupy an area and a volume of water - so what is recorded is the volume
-	 * and the extent, not a position. A gas cloud that spread further than the recording says is a real
-	 * divergence and this catches it.
-	 */
 	private String blobRow( Blob blob ){
 		return "blob\t" + blob.getClass().getSimpleName()
 				+ "\tvol=" + blob.volume
@@ -344,15 +212,6 @@ public class WorldSnapshot {
 		return mob.fieldOfView[heroPos] ? "Y" : "N";
 	}
 
-	/**
-	 * Per-cell state for the whole floor.
-	 *
-	 * <p>Iterates the level arrays directly rather than reusing {@code ObservationEncoder}, because the
-	 * encoder crops a window around the hero and rescales it onto the network's grid - several real
-	 * cells collapse onto one grid cell there, so it cannot represent a per-cell difference at all. It
-	 * is still the reference for <i>which</i> fields matter and how FOV gating works, and both are
-	 * followed here.
-	 */
 	private void sampleCells( String prefix, int label ){
 		Level level = Dungeon.level;
 		if (level == null) return;
@@ -410,12 +269,6 @@ public class WorldSnapshot {
 		return sb.toString();
 	}
 
-	/**
-	 * An order-sensitive fingerprint over every cell's terrain and passability.
-	 *
-	 * <p>Covers what {@link #cellRow} deliberately omits: a tile swapped for another on a plain explored
-	 * cell produces no row, so without this a real terrain divergence would be invisible.
-	 */
 	private static String terrainFingerprint( Level level ){
 		long h = 0xcbf29ce484222325L;
 		for (int cell = 0; cell < level.length(); cell++){
@@ -428,7 +281,6 @@ public class WorldSnapshot {
 		return Long.toHexString( h );
 	}
 
-	/** Same fold over a boolean array, for the three per-cell masks the row records omit. */
 	private static String booleanFingerprint( boolean[] arr ){
 		long h = 0xcbf29ce484222325L;
 		for (int i = 0; i < arr.length; i++){
@@ -449,15 +301,6 @@ public class WorldSnapshot {
 		return names.isEmpty() ? "-" : String.join( ",", names );
 	}
 
-	/**
-	 * The whole inventory, path-qualified, so an item inside a bag is distinguishable from the same item
-	 * loose in the backpack.
-	 *
-	 * <p>{@code Belongings} iterates equipment first in fixed slot order then the backpack, and
-	 * {@code Bag.iterator()} already recurses - but flattening loses the path, so two VelvetPouches
-	 * holding different things render identically. {@code ReplayRecorder.inventory()} shares that blind
-	 * spot and additionally walks only the backpack.
-	 */
 	private static String inventory( Belongings b ){
 		StringBuilder sb = new StringBuilder();
 		appendItem( sb, b.weapon(), "weapon" );
@@ -515,7 +358,6 @@ public class WorldSnapshot {
 		Files.write( path, render().getBytes( StandardCharsets.UTF_8 ) );
 	}
 
-	/** Parsed into records keyed by {@code kind:label}, then by record name. */
 	public static Map< String, Map< String, List< String > > > parse( List< String > raw ){
 		Map< String, Map< String, List< String > > > out = new LinkedHashMap<>();
 

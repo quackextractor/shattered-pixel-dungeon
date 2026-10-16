@@ -19,53 +19,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-/**
- * A reset must make the environment independent of everything that ran before it.
- *
- * <pre>gradle :superintelligence:resetcheck</pre>
- *
- * <p><b>Why this is a gate.</b> {@code restartcheck} compares the level a restart rebuilds, and it
- * passes. It did not catch this, because the fault does not touch the level: it touched the
- * <i>mode</i>. Same seed, same tiles, same hero position, same HP - and the episode still diverged,
- * because the first action was read as picking a target instead of being applied.
- *
- * <p><b>The fault.</b> {@code GameScene.pendingCellListener} is static and belongs to the process, not
- * to a run. {@code SPDEnv.step} cleared it on entry, so it was tidy between steps; {@code reset} did
- * not, so whatever armed it last - an item left mid-aim, which is exactly what {@code USE} of a
- * targeting item does - stayed armed into the next episode's first {@code settle()}. {@code settle}
- * reports TARGETING, the agent's first action becomes a target choice, the hero never moves, and the
- * recorded position mismatches on step 0.
- *
- * <p><b>Why nothing else saw it.</b> It is invisible to a single episode: one process, one reset,
- * nothing to leak from. So every check that verifies one recording in one process passed, and the
- * trainer's own collector round-tripped. It needs a second episode in the same process to appear -
- * which is what the replay viewer does on every file after the first, and what a trainer worker does
- * thousands of times.
- *
- * <p>Measured before the fix: 4 of 10 recorded runs diverged when verified in sequence, and one file
- * verified clean on its own and diverged when reached second.
- */
+
 public class ResetCheck {
 
 	private static final int CHECKS = 6;
 
 	private static final List< String > failures = new ArrayList<>();
 
-	/** Long enough to reach the item-and-inventory dance at step ~290, where the stale recordings broke. */
+
 	private static final int TRACE_STEPS = 320;
 
 	private static final String[] SEEDS = {
 		"RESETCHECK-A", "RESETCHECK-B", "RESETCHECK-C", "RESETCHECK-D"
 	};
 
-	/**
-	 * A seed measured to kill a ROGUE at turn 56, so the remains case has something to inherit.
-	 *
-	 * <p>Named rather than searched for at run time because the property it needs - that the hero dies -
-	 * is a fact about the world, and discovering it by running would make the check's cost and its result
-	 * depend on how long one is willing to wait. A survivor leaves no remains, and the case then passes
-	 * without testing anything.
-	 */
+
 	private static final String DYING_SEED = "PARITY-ALPHA";
 
 	public static void main( String[] args ){
@@ -93,23 +61,7 @@ public class ResetCheck {
 		}
 	}
 
-	/**
-	 * An armed aim request must not decide the mode of the next episode.
-	 *
-	 * <p>Armed through {@code GameScene.selectCell}, which is the real path: it is what a wand, a
-	 * throwable or an armour ability calls, and with no renderer it parks the request in the static
-	 * this is about. Simulating the arming directly rather than hunting for a targeting item keeps the
-	 * case deterministic - item drops depend on the seed, and a check that only fires on the seeds that
-	 * happen to produce a scroll is not a check.
-	 *
-	 * <p><b>The assertion is on the mode, not on the listener.</b> It would be easy to assert that
-	 * {@code pendingCellListener()} comes back null, and that assertion is simply false:
-	 * {@code Hero.ready()} calls {@code GameScene.ready()}, which calls
-	 * {@code selectCell(defaultCellListener)}, so the listener is armed again on every turn where the
-	 * hero is waiting for input. That is the normal state, not leakage. What must not happen is the
-	 * listener from the *previous* episode being visible to {@code settle}'s very first check, before
-	 * the pipeline has run a single turn - that is what put the new episode straight into TARGETING.
-	 */
+
 	private static void checkResetClearsAnArmedAim( SPDEnv env, EnvConfig config ){
 		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
 
@@ -140,26 +92,7 @@ public class ResetCheck {
 				+ " starts in WORLD" );
 	}
 
-	/**
-	 * A dialog the previous episode left open must not decide the next episode's mode either.
-	 *
-	 * <p>The same shape of fault as the armed aim, on the other pending-request static: {@code settle}
-	 * tests {@link com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge#open()}
-	 * before it runs a turn, so a leftover dialog puts the new episode straight into MENU and the
-	 * recorded position mismatches at step 0.
-	 *
-	 * <p>Opened through {@code GameScene.show}, which is the real path - a shop, the blacksmith and the
-	 * resurrection prompt all reach it - and is what makes it park the window in the static headlessly.
-	 * A {@code WndOptions} rather than any other window because {@code WindowBridge.open} is narrower
-	 * than "a window is showing": informational windows have no options and are deliberately not treated
-	 * as open, so asserting on one of those would pass for a reason that has nothing to do with the
-	 * reset.
-	 *
-	 * <p>Reached by play rather than by construction alone: {@code settle} only reports MENU if it sees
-	 * the dialog, so the case plays a turn first and checks that the turn, not the reset, is what
-	 * surfaced it. That is the difference between "the static is cleared" and "the mode was reset" -
-	 * only one of them is the property.
-	 */
+
 	private static void checkResetClearsAnOpenDialog( SPDEnv env ){
 		env.reset( SEEDS[ 1 ], HeroClass.WARRIOR );
 
@@ -197,27 +130,7 @@ public class ResetCheck {
 				+ " in WORLD and leaves nothing answerable parked" );
 	}
 
-	/**
-	 * A dead hero's remains must not appear in the next run.
-	 *
-	 * <p>Remains are process-spanning by design: a hero who dies leaves their belongings and one
-	 * class-specific remnant behind, and the next run picks them up where they fell. For a player returning
-	 * to a dungeon that is the feature. For an environment playing thousands of independent runs in one
-	 * process it makes the world a function of process history as well as of the seed, and it is invisible
-	 * until a recording is replayed: the replay drops a heap the recording had, or vice versa.
-	 *
-	 * <p>Measured by {@code diag.ParityCheck}, which found it: 2 of 32 recorded runs over 8 seeds and 4
-	 * hero classes diverged, both on inventory, both on a remnant - one carrying a HUNTRESS's fragment
-	 * where the replay had a ROGUE's scrap and one the other way round. Every other gate missed it,
-	 * because each either plays one episode per process or never lets the hero die.
-	 *
-	 * <p><b>Ordering is what this case really tests.</b> Remains are read by {@code RegularLevel.createItems},
-	 * which runs inside {@code startRun}. Clearing them after the run has begun clears them one floor too
-	 * late, and the floor is already carrying the previous hero's heap - which is exactly how the first
-	 * attempt at this fix failed while every other reset case passed. So the first episode is played to a
-	 * real death, not simulated, and the assertion is on the new floor's contents rather than on any
-	 * internal state.
-	 */
+
 	private static void checkARunDoesNotInheritRemains(){
 		EnvConfig config = new EnvConfig();
 
@@ -258,7 +171,7 @@ public class ResetCheck {
 		System.out.println( "  a run following a hero's death inherits none of that hero's remains" );
 	}
 
-	/** Every episode begins in WORLD, whatever the previous one was doing when it ended. */
+
 	private static void checkEveryEpisodeStartsInWorld( SPDEnv env, EnvConfig config ){
 
 		for (int i = 0; i < 4; i++){
@@ -277,13 +190,7 @@ public class ResetCheck {
 		System.out.println( "  four consecutive episodes all started in WORLD" );
 	}
 
-	/**
-	 * The same seed and the same policy must produce the same trajectory, whatever ran before.
-	 *
-	 * <p>This is the property the replay viewer depends on and the one every single-episode check was
-	 * blind to. The seeds are rotated between passes so that "reproduces" cannot quietly mean
-	 * "reproduces because it ran first".
-	 */
+
 	private static void checkTrajectoriesDoNotDependOnOrder( SPDEnv env, EnvConfig config ){
 		for (String seed : SEEDS){
 			String first = trace( env, config, seed );
@@ -306,20 +213,7 @@ public class ResetCheck {
 				+ " others in between (" + TRACE_STEPS + " steps each)" );
 	}
 
-	/**
-	 * The special-room pools must be a function of the seed, not of what ran before.
-	 *
-	 * <p>The companion to {@link #checkTrajectoriesDoNotDependOnOrder}, and it exists because that case
-	 * compares the hero's <em>trajectory</em> and is blind to this. Two trainer recordings diverge at a
-	 * step where the recorded and replayed floors agree cell for cell, so the difference is in something
-	 * level generation read rather than in where the hero stood. The pools are that something:
-	 * {@code SpecialRoom.runSpecials} is a run-level static, {@code initForRun} shuffles it, and
-	 * {@code createRoom} picks by index into it - so a different permutation gives a different floor, and
-	 * a {@code WeakFloorRoom} on the wrong floor means a chasm on the wrong floor.
-	 *
-	 * <p>Checked on the pools rather than on the trajectory because the trajectory is the symptom and this
-	 * is the state. A seed run twice with other seeds in between must produce the same order both times.
-	 */
+
 	private static void checkSpecialRoomPoolsDoNotDependOnOrder( SPDEnv env, EnvConfig config ){
 		for (String seed : SEEDS){
 			String first = pools( env, config, seed );
@@ -342,12 +236,7 @@ public class ResetCheck {
 				+ " seeds run around each other" );
 	}
 
-	/**
-	 * The pools as they stand after a run of {@code seed}, as one comparable string.
-	 *
-	 * <p>Ordered, because the order is the state. Two pools with the same rooms in a different order
-	 * describe two different dungeons, which is what a set comparison would hide.
-	 */
+
 	private static String pools( SPDEnv env, EnvConfig config, String seed ){
 		env.config().turnLimitPerFloor = config.turnLimitPerFloor;
 		env.reset( seed, HeroClass.WARRIOR );
@@ -368,7 +257,7 @@ public class ResetCheck {
 		return sb.toString();
 	}
 
-	/** {@code SpecialRoom.pitNeededDepth} is private, and it is the state that decides a pit floor. */
+
 	private static String pitNeededDepth(){
 		try {
 			java.lang.reflect.Field f = com.shatteredpixel.shatteredpixeldungeon.levels.rooms
@@ -384,7 +273,7 @@ public class ResetCheck {
 		return room instanceof Class ? ((Class<?>) room).getSimpleName() : String.valueOf( room );
 	}
 
-	/** A seeded random policy, so the only thing that can differ between two traces is the environment. */
+
 	private static void play( SPDEnv env, int steps ){
 		Random rng = new Random( 4242L );
 		Action[] all = Action.values();
@@ -395,13 +284,7 @@ public class ResetCheck {
 		}
 	}
 
-	/**
-	 * The trajectory of a fixed policy, as one comparable string.
-	 *
-	 * <p>Every step's position and mode go in, not just the start, because a leak can leave the start
-	 * identical and only diverge later - which is exactly what the two stale recordings did, at step
-	 * 290 and 402 of runs that began correctly.
-	 */
+
 	private static String trace( SPDEnv env, EnvConfig config, String seed ){
 		env.config().turnLimitPerFloor = config.turnLimitPerFloor;
 		env.reset( seed, HeroClass.WARRIOR );
