@@ -95,7 +95,7 @@ public class SPDEnv {
 
 		if (seedText.isEmpty()){
 			seedText = com.shatteredpixel.shatteredpixeldungeon.superintelligence.utils
-					.DungeonSeedCodes.encode( pipeline.currentSeed() );
+					.DungeonSeedCodes.encode( LevelPipeline.currentSeed() );
 		}
 
 		mode = EnvMode.WORLD;

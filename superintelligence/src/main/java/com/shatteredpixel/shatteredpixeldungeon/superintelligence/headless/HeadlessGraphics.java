@@ -67,6 +67,7 @@ public class HeadlessGraphics implements Graphics {
 
 	@Override public long getFrameId(){ return 0L; }
 	@Override public float getDeltaTime(){ return 1f / 60f; }
+	@SuppressWarnings( "deprecation" )
 	@Override public float getRawDeltaTime(){ return 1f / 60f; }
 	@Override public int getFramesPerSecond(){ return 60; }
 

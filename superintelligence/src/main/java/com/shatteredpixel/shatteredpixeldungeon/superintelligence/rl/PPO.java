@@ -45,7 +45,7 @@ public class PPO {
 	public int threads = 0;
 
 
-	private final ShardedUpdate sharded = new ShardedUpdate( this );
+	private final ShardedUpdate sharded = new ShardedUpdate();
 
 
 	public int threadCount(){
@@ -242,7 +242,7 @@ public float lastClipFraction;
 	private void oneMinibatch( List< List< Transition > > chunks, int from, int to ){
 		int count = Math.max( 1, to - from );
 
-		Minibatch m = threads > 1 ? sharded.run( chunks, from, to ) : null;
+		Minibatch m = threads > 1 ? sharded.run( this, chunks, from, to ) : null;
 		accumulate( m != null ? m : processMinibatch( chunks, from, to ), count );
 	}
 

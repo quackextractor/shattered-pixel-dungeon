@@ -166,7 +166,7 @@ public class Trainer {
 	}
 
 
-	public void learning( PpoHyperparameters hyper ){
+	private void learning( PpoHyperparameters hyper ){
 		ppo.gamma = hyper.gamma;
 		ppo.lambda = hyper.lambda;
 		ppo.clipEpsilon = hyper.clipEpsilon;
@@ -246,7 +246,7 @@ public class Trainer {
 		out.writeUTF( traceWorldPath == null ? "" : traceWorldPath );
 
 		out.writeFloat( (float) sampleRate() );
-		out.writeInt( (int) maxSampledPerEpisode() );
+		out.writeInt( maxSampledPerEpisode() );
 		out.writeInt( hyper.tailSteps );
 
 		out.writeLong( rng.nextLong() );

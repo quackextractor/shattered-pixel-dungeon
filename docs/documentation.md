@@ -36,7 +36,7 @@ scored by a configurable reward function, with the best run per seed recorded an
 
 **Nothing has won a run, and nothing has reached floor 5.** The machinery is correct - the network's
 gradients check against central differences, the environment is reproducible across processes,
-recordings replay exactly, and every one of the twenty-four gates is green - and the reward function now
+recordings replay exactly, and every one of the twenty-nine gates is green - and the reward function now
 asks for the right thing. Measured, over twelve generations: **deaths fell 100% to 19%, mean turns rose
 377 to 1335**, and `bestDepth 2` has been observed once. **Depth does not trend yet.**
 
@@ -275,7 +275,7 @@ from `KILL`'s "declared, plumbed and never emitted". `TODO.md` 1.10 is the missi
 
 ## Gates
 
-twenty-four gates, one invocation, ~23 seconds:
+twenty-nine gates, one invocation:
 
 ```sh
 ./gradlew :superintelligence:gates
@@ -307,6 +307,11 @@ twenty-four gates, one invocation, ~23 seconds:
 | `observecheck` | Reading the world drawing from the gameplay RNG, **or** a draw path the RNG trace cannot see |
 | `configcheck` | A configuration binder that ignores its input |
 | `paritycheck` | A recording that will not replay exactly, across seeds in one process |
+| `freeactioncheck` | A rest that spends no engine time, or a menu loop that can be repeated with the world standing still |
+| `bpttcheck` | A recurrent gradient that never crosses a timestep, or a critic asked for returns in the thousands |
+| `stallcausecheck` | A stall guard that is unreachable or that reports the wrong guard |
+| `pushcheck` | A policy push written in one call rather than chunked, retried, and refused by name |
+| `javaclint` | Any compiler warning at all, under `-Xlint:all -Werror` |
 
 Plus `playbackcheck` in `:desktop`, which drives the rendered viewer with no window and no scene, and
 `viewcheck`, which plays the whole corpus through the real viewer and needs a display.

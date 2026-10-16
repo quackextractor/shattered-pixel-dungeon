@@ -287,8 +287,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		env.reset( replay.seedText, heroClass );
 		if (observer != null) observer.onReset();
 
-		int cumulative = 0;
-
 		boolean wireDroppedFields = replay.wireDroppedStepFields();
 
 		for (int i = 0; i < replay.steps.size(); i++){
@@ -305,7 +303,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				break;
 			}
 
-			cumulative += env.step( action, step.slot );
+			env.step( action, step.slot );
 			result.stepsVerified++;
 
 			if (step.heroPos >= 0 && env.heroPosition() != step.heroPos ){

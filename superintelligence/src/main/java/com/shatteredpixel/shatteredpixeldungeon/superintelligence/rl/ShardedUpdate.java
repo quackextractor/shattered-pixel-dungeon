@@ -12,17 +12,11 @@ import java.util.concurrent.Executors;
 
 final class ShardedUpdate {
 
-	private final PPO ppo;
-
 	private final List<Shard> shards = new ArrayList<>();
 
 	private ExecutorService pool;
 
 	private int threadCount = 1;
-
-	ShardedUpdate( PPO ppo ){
-		this.ppo = ppo;
-	}
 
 
 	int resolveThreads( int requested ){
@@ -66,7 +60,7 @@ final class ShardedUpdate {
 	}
 
 
-	PPO.Minibatch run( List< List< Transition > > chunks, int from, int to ){
+	PPO.Minibatch run( PPO ppo, List< List< Transition > > chunks, int from, int to ){
 		int count = to - from;
 
 		int n = Math.min( ppo.threads, count );
@@ -74,7 +68,7 @@ final class ShardedUpdate {
 			return null;
 		}
 
-		network().zeroGrad();
+		ppo.network.zeroGrad();
 
 		while (shards.size() < n) shards.add( new Shard( ppo.config, new Random( 1L + shards.size() ),
 				ppo.chunkLength ));
@@ -117,11 +111,11 @@ final class ShardedUpdate {
 			} );
 		}
 
-		await( ready );
+await( ready );
 
 		PPO.Minibatch result = new PPO.Minibatch();
 		for (int s = 0; s < n; s++){
-			shards.get( s ).network.addGradientsTo( network() );
+			shards.get( s ).network.addGradientsTo( ppo.network );
 			result.policyLoss += policy[ s ];
 			result.valueLoss += value[ s ];
 			result.entropy += entropy[ s ];
@@ -129,15 +123,11 @@ final class ShardedUpdate {
 			result.clipped += clipped[ s ];
 		}
 
-		network().scaleGradients( 1f / count );
-		result.gradNorm = network().clipGradients( network().gradClip );
-		if (result.gradNorm > network().gradClip) result.gradClipped = 1;
+		ppo.network.scaleGradients( 1f / count );
+		result.gradNorm = ppo.network.clipGradients( ppo.network.gradClip );
+		if (result.gradNorm > ppo.network.gradClip) result.gradClipped = 1;
 
 		return result;
-	}
-
-	private Network network(){
-		return ppo.network;
 	}
 
 	private static void await( CountDownLatch latch ){

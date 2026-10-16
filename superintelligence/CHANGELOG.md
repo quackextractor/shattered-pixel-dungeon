@@ -11,32 +11,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - **A dense signal for the objective: potential-based shaping towards this floor's stairs.**
-  gamma*Phi(s') - Phi(s) with Phi the negative breadth-first distance to the exit,
-  
-eward.stair_potential_weight 2.0. Floor 1 is several hundred walkable tiles and a random walk
-  onto the exit succeeds about 0.1% of the time, so across 5,360 episodes meanDepth was 1.001 -
+  `gamma*Phi(s') - Phi(s)` with `Phi` the negative breadth-first distance to the exit,
+  `reward.stair_potential_weight` 2.0. Floor 1 is several hundred walkable tiles and a random walk
+  onto the exit succeeds about 0.1% of the time, so across 5,360 episodes `meanDepth` was 1.001 -
   a descent was not merely unrewarded but unreachable. The shaping term telescopes over an episode,
   so a round trip pays nothing however many times it is repeated, and the only way to earn is to
-  arrive. Measured by 
-ewardcheck, which is 26 cases: 4 steps closing the gap pay **+8.12** and 4
+  arrive. Measured by `rewardcheck`, which is 26 cases: 4 steps closing the gap pay **+8.12** and 4
   steps opening it cost **-5.82**, and a round trip nets **2.30** where a farmable reward would net
   the gross. Zero turns it off.
-- **obs.GridChannel.EXIT_BEACON**, a memory plane that lights the floor's stairs once the hero has
-  stood where they can be seen. TRANSITION only lights while they are in view, so a hero that walked
+- **`obs.GridChannel.EXIT_BEACON`**, a memory plane that lights the floor's stairs once the hero has
+  stood where they can be seen. `TRANSITION` only lights while they are in view, so a hero that walked
   past and away had no channel carrying the fact - which is exactly what the agent needs and least
   often has in front of it, and exactly what the recurrent gradient now has to carry. Not lit from
   generation: painting it immediately would hand over the objective for free.
+- **`Action.TALENT` and `EnvMode.TALENT`**, so a talent point can be spent headlessly. Spending was
+  UI-only (`TalentButton` -> `TalentsPane` -> `WndHero`), so `RewardTerm.TALENT_UPGRADE` - 400.0, one
+  of the largest payouts in the reward function - could never fire, and the first point arrives at
+  level 2. `env.TalentPicker` enumerates what the game would offer, in the game's order.
+- **`gradle :superintelligence:freeactioncheck`**, a gate, 7 cases, mutation-tested both ways.
+- **`gradle :superintelligence:bpttcheck`**, a gate, 7 cases. Its first case is constructed so the
+  answer is forced: the loss sits on the second step only, so the sum of the isolated steps is exactly
+  the isolated gradient of the second. Comparing two gradient *norms* was tried first and was measured
+  to let the mutation through.
+- **`gradle :superintelligence:pushcheck`**, a gate, 6 cases, and the first one to reach the policy
+  push at all. It asserts that no single write carries more than `train.push_chunk_bytes`, that the
+  bytes arrive identical, that a payload of exactly one chunk is one write, that an empty payload
+  writes nothing, that a stream failing twice is retried rather than abandoned, and that a stream
+  failing for ever is refused naming what failed and how much. Reinstating the unchunked write fails
+  the first case with the measured size; dropping the retry fails the fifth. `trainer.push_retries`
+  is now a setting rather than a private constant, which is what lets the fifth case run in 250 ms.
+- **A `.env` file is read by the module.** It sits between the properties file and the process
+  environment, which is where the documentation has always said it sits; it used to sit nowhere, so a
+  developer who skipped the shell one-liner ran with settings they did not believe they were using.
+- **Twenty-six settings that were Java literals.** Worker JVM heap and GC pause, the pipe and weight
+  push chunk sizes, the episode tail length, the gradient clip and Adam's three constants, the value
+  loss weight and residual ceiling, the random-seed leak rate, the checkpoint and record intervals, and
+  the dialog aging step. `configcheck` is now 10 cases and 63 keys.
+- **`env.max_slots` is 96, the game's own ceiling.** It was 32, which silently truncated two thirds of
+  what the hero can carry; the truncation was invisible rather than refused, because the head is a
+  fixed-width window and everything past it simply was not in the observation. This widens the network's
+  input, so it invalidates checkpoints trained at 32.
+- **`--replay-group <id>`: a run's recordings are its own group, in the catalogue and on disk.**
+
 ### Fixed
-- **gradcheck reported finite-difference noise as a wrong gradient.** The relative error was measured
+- **`gradcheck` reported finite-difference noise as a wrong gradient.** The relative error was measured
   against a denominator that can be arbitrarily small, so a gradient of 1.2e-4 read to an absolute
   accuracy of 2.8e-5 was reported as 22% wrong. The noise is now **measured** - the same central
   difference at two step sizes, whose disagreement is the noise - and an entry passes when the analytic
-  gradient agrees to within it. A genuine defect reproduces at every step size: removing a tanh
+  gradient agrees to within it. A genuine defect reproduces at every step size: removing a `tanh`
   derivative fails 5 entries with relative errors of 0.23 to 0.50 against noise of 0.001 to 0.02.
-### Changed
-- **
-ewardcheck is 26 cases**, from 23.
-### Fixed
 - **The recurrent gradient was truncated at length one.** Every sampled step was backpropagated in
   isolation with `dPrev` and `dCell` cleared, so no gradient crossed a timestep and `LSTM.W_hh`
   received nothing at all for holding information forward - the whole point of a recurrent layer in a
@@ -61,37 +84,41 @@ ewardcheck is 26 cases**, from 23.
   way out of two of them, so the pair is a loop that advances no engine time at all - and every step of
   it is charged against `env.free_step_budget`, so 100% of episodes ended `STALLED` at turn ~120 of
   the 1500 granted. After a zero-time exit the next `WORLD` mask refuses all three for exactly one step.
-### Added
-- **`Action.TALENT` and `EnvMode.TALENT`**, so a talent point can be spent headlessly. Spending was
-  UI-only (`TalentButton` -> `TalentsPane` -> `WndHero`), so `RewardTerm.TALENT_UPGRADE` - 400.0, one
-  of the largest payouts in the reward function - could never fire, and the first point arrives at
-  level 2. `env.TalentPicker` enumerates what the game would offer, in the game's order.
-- **`gradle :superintelligence:freeactioncheck`**, a gate, 7 cases, mutation-tested both ways.
-- **`gradle :superintelligence:bpttcheck`**, a gate, 7 cases. Its first case is constructed so the
-  answer is forced: the loss sits on the second step only, so the sum of the isolated steps is exactly
-  the isolated gradient of the second. Comparing two gradient *norms* was tried first and was measured
-  to let the mutation through.
-- **A `.env` file is read by the module.** It sits between the properties file and the process
-  environment, which is where the documentation has always said it sits; it used to sit nowhere, so a
-  developer who skipped the shell one-liner ran with settings they did not believe they were using.
-- **Twenty-six settings that were Java literals.** Worker JVM heap and GC pause, the pipe and weight
-  push chunk sizes, the episode tail length, the gradient clip and Adam's three constants, the value
-  loss weight and residual ceiling, the random-seed leak rate, the checkpoint and record intervals, and
-  the dialog aging step. `configcheck` is now 10 cases and 63 keys.
-- **`env.max_slots` is 96, the game's own ceiling.** It was 32, which silently truncated two thirds of
-  what the hero can carry; the truncation was invisible rather than refused, because the head is a
-  fixed-width window and everything past it simply was not in the observation. This widens the network's
-  input, so it invalidates checkpoints trained at 32.
-- **`--replay-group <id>`: a run's recordings are its own group, in the catalogue and on disk.**
-### Fixed
-- **An item that creates a mob left it with no sprite, and killed the worker - now committed and gated.*
+- **An item that creates a mob left it with no sprite, and killed the worker - now committed and gated.**
 - **A free-action loop was charged and not bounded, and the charge did not stop it.**
+- **A descent pays for a new floor, not for going down a stair.**
+- **Six compiler warnings, and nothing was holding the module to zero.** `javaclint` compiles the
+  module with `-Xlint:all -Werror` and reported a `this` escape in `PPO`'s field initialiser, a
+  possibly-lossy `double`-to-`int` compound assignment in `ReplayIO.verify`, two static members
+  reached through an instance expression in `SPDEnv` and `Quickslots`, a redundant cast in
+  `Trainer.writeParams`, and the deprecated `Graphics.getRawDeltaTime`. Two of them were worth more
+  than a lint: the `PPO` one is a field holding a reference to its own constructor's argument, and the
+  `ReplayIO` one was an accumulator of the per-step reward that **nothing ever read**, so `verify` had
+  been summing a total and discarding it since the wire was introduced. `ShardedUpdate` now takes the
+  `PPO` per call rather than storing one, which is the same fix without a lazy initialiser.
+- **A run now shows a progress bar, and a script means nobody types a path.**
+- **The viewer catalogue no longer goes through gradle.**
+
 ### Changed
+- **`rewardcheck` is 26 cases**, from 23.
 - **The spatial grid is bit-packed on the wire.** Every plane is 0 or 1, so a byte per cell held eight
   times the information it carried, and the grid was 90% of a transition: 50,688 bytes down to
-  6,336 at 22 planes over 48x48. Lossless, and gaecheck holds both halves - that it round-trips
+  6,336 at 22 planes over 48x48. Lossless, and `gaecheck` holds both halves - that it round-trips
   exactly, and that it is still eight times smaller, so a packing that quietly stopped compressing
   would fail.
+- **`Protocol.VERSION` is 4.** The transition frame carries the episode id and step index, and the
+  params frame carries the tail length; a version-3 pair would read the episode id as an action index,
+  which is a plausible action on every step and so trains on noise rather than throwing.
+- **`gates` is now 29 checks and `verifyall` is 30**, with `pushcheck` and `javaclint` added. Every
+  document that counted them has been corrected: `README.md` said "twenty-six", `testing-guide.md`
+  said 24, and `docs/documentation.md` said twenty-four and named 24 of them.
+- **`javaclint` is in `gates`.** It was a task a developer had to remember to run, so the six warnings
+  it had been reporting survived; a lint that is not a gate is a lint that does not happen.
+- **`.env.example` was describing pre-rescaling values** - `depth_reward` 25 against the compiled
+  1800, `turn_cost` 0.002 against 1.0, `death_penalty` 100 against 2500, `max_slots` 32 against 96 -
+  so copying it configured a run the module does not run. Every value now matches the compiled default.
+
+### Measured
 - **A depth-2 run, verified.** 20 generations, 8 workers, 4 update threads, seed 20261016, every
   default unchanged: `bestDepth` 2 in **8 of 20 generations** and `meanDepth` 1.05, against `meanDepth`
   1.001 across 5,360 episodes before. `trainer-replays/bptt-stairs/CLL-ZXD-MTZ.dat` (ROGUE,
@@ -101,18 +128,8 @@ ewardcheck is 26 cases**, from 23.
   **This is one run and it does not clear the noise floor** - `TODO.md` 1 puts that at plus or minus 16
   points of `meanScore` over fifteen generations - so it is a move in the right direction and not yet
   a result. `issues.md` 36.
-- **A run's artefacts go to `superintelligence/out/run/`, not to the system temp directory.**
-- **`env.free_step_budget`** (`SPD_ENV_FREE_STEP_BUDGET`), **40**.
-- **`mobspritecheck` is a gate**, so `gates` is now 24 checks.
-- **`gates` is now 27 checks**, and `README.md`'s "twenty-four" was already one behind.
-- **`Protocol.VERSION` is 4.** The transition frame carries the episode id and step index, and the
-  params frame carries the tail length; a version-3 pair would read the episode id as an action index,
-  which is a plausible action on every step and so trains on noise rather than throwing.
-- **`.env.example` was describing pre-rescaling values** - `depth_reward` 25 against the compiled
-  1800, `turn_cost` 0.002 against 1.0, `death_penalty` 100 against 2500, `max_slots` 32 against 96 -
-  so copying it configured a run the module does not run. Every value now matches the compiled default.
-### Measured, after the free-action fixes
-- `stallbreakdown`, 40 episodes, uniform policy, fixed seed per episode, defaults unchanged:
+- **`stallbreakdown`, 40 episodes, uniform policy, fixed seed per episode, defaults unchanged, after
+  the free-action fixes:**
 
   | | before | after |
   | --- | --- | --- |
@@ -123,14 +140,11 @@ ewardcheck is 26 cases**, from 23.
   | longest run of consecutive free steps in an `OPEN_INVENTORY`/`CANCEL` loop | 240 of 240 | **2** |
 
   Evidence: `superintelligence/out/evidence/stallbreakdown-after-fix1.txt`.
-### Fixed
-- **A descent pays for a new floor, not for going down a stair.**
-- **A run now shows a progress bar, and a script means nobody types a path.**
-- **The viewer catalogue no longer goes through gradle.**
+- **A run's artefacts go to `superintelligence/out/run/`**, not to the system temp directory.
+
 ### Not done
 
 Tracked in TODO.md and issues.md, not here.
-
 ## [0.10.0] - 2026-10-13
 ### Added
 - **`reward.profile`, with two values.**

@@ -17,6 +17,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.BpttCheck
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ActionCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.EpisodeDiff;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RolloutCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.PushCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SlotCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ObserveCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.VerifyCheck;
@@ -96,6 +97,7 @@ public class Main {
 		case "presscheck": PressCheck.main( rest ); break;
 		case "mobspritecheck": MobSpriteCheck.main( rest ); break;
 		case "rolloutcheck": RolloutCheck.main( rest ); break;
+			case "pushcheck": PushCheck.main( rest ); break;
 			case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": ReplayCatalogCheck.main( rest ); break;

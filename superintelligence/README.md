@@ -304,6 +304,7 @@ something.
 | Configuration externalised | Done - properties file plus `SPD_*` environment variables, flags overriding both; `configcheck` is a gate |
 | A run inherits nothing from the previous one | Done - `RunState` clears the armed aim, the open dialog, the pending item and a dead hero's remains, before level generation - and the viewer does the same at both ends of a playback, so watching a recording no longer leaves `bones.dat` in the player's profile |
 | Gradient check vs central differences | Verified - `gradcheck` passes, and fails when a derivative is removed |
+| Zero compiler warnings | **Done** - `javaclint` compiles the module with `-Xlint:all -Werror` and is **in `gates`**. It was reporting six: a `this` escape in `PPO`'s field initialiser, a possibly-lossy `double`-to-`int` compound assignment in `ReplayIO.verify` that was accumulating the per-step reward into an `int` **nothing ever read**, two static members reached through an instance expression, a redundant cast, and the deprecated `Graphics.getRawDeltaTime`. `ShardedUpdate` now takes the `PPO` per call rather than storing one |
 | Update cost measurement | Measured - `updatecost`, 11.3 ms/sample, projects across sample rates |
 | Diagnostics dashboard (colour-coded floors, graphs) | Console only; live, with a per-generation history behind it |
 | Per-generation metrics history (CSV, end-of-run trend) | Done - `metrics.csv` per generation, `diag.Graph` at end of run |
@@ -336,6 +337,7 @@ eward.stair_potential_weight = 0 turns it off |
 | LSTM state with each transition | Fixed - the replay ran under an unrelated sample's state |
 | Trained anything yet | **No.** Never left floor 1; milestone is depth 5 (`research.md:40`). **The update path was itself faulty** - all N update threads shared one `Network` - and that is fixed and gated as of `issues.md` 25; no run has been measured since |
 | Parallel worker processes, seed schedule | Running; exercised to 8 workers x 25 generations |
+| The policy push survives a Windows pipe | **Gated** - a whole 14.3 MB blob in one `write` killed runs at generation ~22 with `Insufficient system resources exist to complete the requested service`. The write is chunked (`train.push_chunk_bytes`), retried (`trainer.push_retries`), and `pushcheck` holds the loop's contract: 6 cases, mutation-tested both ways. The gate asserts the write loop, not a spawned worker - a worker cannot be spawned inside a gate's JVM, but it never needed to be |
 | Graphical trainer UI, desktop replay viewer | Replay viewer done; trainer UI not started |
 | Garbage collection / object pooling audit (research.md:60) | Not started |
 
@@ -388,7 +390,7 @@ eward.stair_potential_weight = 0 turns it off |
 -Generations 60 -Name depth-only-60`, `./train.ps1 -Resume`. It names the artefacts, prints the gradle
 command it is about to run, and passes `-Name` as the run's replay group.
 
-**twenty-six gates, one invocation.** Each has had the thing it guards deleted, and each has been
+**twenty-nine gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives
@@ -407,7 +409,13 @@ covers a third fault on the same path with the same cause: `Level.drop` pressed 
 on only behind a scene test no headless run can satisfy, so every throw was inert and nothing in the
 project had ever thrown an item at a trap. A seventh, `freeactioncheck`, covers the arithmetic that
 ended 100% of episodes: a rest that spent no engine time, and a menu loop that could be repeated
-without the world moving.
+without the world moving. An eighth, `pushcheck`, is the first to reach the trainer's side of a worker
+pipe at all: a whole policy blob written in one call killed runs at generation ~22 with
+`Insufficient system resources exist to complete the requested service`, and the mechanism that fixed it
+was a chunked, retried write with no gate over it - because a gate cannot spawn a worker in another
+process, but it can assert the write loop's own contract. The twenty-ninth, `javaclint`, compiles the
+module with `-Xlint:all -Werror`; it was a task to remember rather than a gate to fail, and six warnings
+lived in the tree for as long as that was true.
 
 **A gate that passes because the thing it would catch is absent is the same failure as a gate that
 cannot fail**, and the corpus was one for a long time: 17 recordings, 310 SLOT-mode steps, and not one

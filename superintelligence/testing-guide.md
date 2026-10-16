@@ -141,7 +141,7 @@
 
 | Test Command / Task | Subsystem Verified | Success Criterion |
 | :--- | :--- | :--- |
-| **`./gradlew :superintelligence:gates`** | Master aggregator running all 24 automated gate checks across all modules. | **All 24 gates pass cleanly** in 23 seconds (measured 2026-10-12). |
+| **`./gradlew :superintelligence:gates`** | Master aggregator running all 29 automated gate checks across all modules. | **All 29 gates pass cleanly** in one invocation (measured 2026-10-16 at ~40 s). |
 | **`./gradlew :superintelligence:run --args="verify <file.replay>"`** | Headless re-execution of a recorded replay through `ActionMapper` & `LevelPipeline`, resolving each recorded slot index against its recorded quickslot bindings - the same `Quickslots.prepare` the viewer calls. | Replays trajectory to completion, matching recorded position, HP, turns, and inventory. Exits 3 rather than 0 on a recording whose slot indices cannot be resolved at all. |
 | **`transitioncheck` (`:superintelligence`)** | Drives real descents **and** an ascent through `Level.activateTransition`, and asserts the hero's first action on the new floor is not swallowed by the act where the floor's mobs notice him. 9 cases, mutation-tested. | Depth changes in both directions, the episode continues, the engine clock restarts with the floor, and the agent's first action there moves the hero. |
 | **`fallcheck` (`:superintelligence`)** | Drives a real chasm fall through `Level.occupyCell` - the transition that carries **no** `LevelTransition`, so `curTransition` is null on it by construction. 6 cases, each mutation-tested. | The fall lands the hero a floor down, alive, on a restarted clock, and the landing costs health the way `InterlevelScene.fall()` costs it; the hand-off leaves `InterlevelScene.mode` and `curTransition` clear, so the next episode's ordinary descent is a descent; walking toward a chasm asks the game's own question instead of throwing; the same fall twice in one process, with other runs in between, lands on the same cell of the same floor; and **a levitation that expires over a chasm drops the hero**, which `Levitation.detach` does not do headlessly. |
@@ -158,9 +158,13 @@
 | **`collectcheck` (`:superintelligence`)** | Records a sweep of seeds and hero classes in one process, verifies each recording twice - once immediately, once after the sweep - round-trips a populated replay through the worker wire (`train.ReplayCodec`), and asserts that a `DROP` in `SLOT` is recorded against the bindings its index was chosen against. 7 cases. | Every recording replays exactly, both times; all nine step fields survive the pipe; and a rebinding step is recorded on the clock it was chosen on rather than the one it produced. |
 | **`rolloutcheck` (`:superintelligence`)** | Records an episode with **no seed**, so `SeedPool` puts it on a random one, and verifies the result. 3 cases. **Red about one run in thirty for a reason `issues.md` 18 records without claiming to know it** - a random-seed episode occasionally records a trajectory that does not reproduce. A/B'd against the base tree, so it is not a recent change's doing. | A random-seed episode records a usable seed, and what it records verifies. **A green here is a claim about 97% of random draws, not about all of them**, which is worth stating rather than leaving a reader to assume the other reading. |
 | **`slotcheck` (`:superintelligence`)** | A recorded slot index resolving to a different item, and the binding on an equipped item that no index can name. 6 cases. | Capture and restore reproduce slot resolution; a capture naming nothing clears a carried binding and leaves an equipped one alone. |
+| **`pushcheck` (`:superintelligence`)** | The trainer's side of a worker pipe: `TrainerWorkers.writeFully`, the loop that writes a whole policy blob to a worker's stdin. 6 cases. | No single write carries more than `train.push_chunk_bytes`; the bytes arrive identical; a payload of exactly one chunk is one write; an empty payload writes nothing; a stream that fails twice is retried rather than abandoned; and a stream that fails for ever is refused naming what failed and how many bytes. |
+| **`javaclint` (`:superintelligence`)** | Compiles the module with `-Xlint:all -Werror` and fails on any diagnostic. | **Zero** warnings and zero mandatory notes across the module's own sources. |
 | **`verifycheck` (`:superintelligence`)** | Verification that cannot detect an altered recording, **and** verification that certifies one that cannot be played. 8 cases. | Position, health, engine time and inventory alterations are caught at the altered step; a recording carrying none of the five dropped step fields is refused; and a hero carrying nothing bound is not refused. |
 | **`modecheck` & `restartcheck`** | Verifies action modes (`WORLD`, `SLOT`, `TARGETING`, `MENU`, `INVENTORY`) and floor re-initialisation. | Zero mode traps; floor 1 regenerates identically after 400+ turns. |
-| **`rewardcheck` (`:superintelligence`)** | Drives the real environment and asserts the reward **prices the objective**, as properties rather than as constants. 21 cases. | Terminal outcomes are **ordered** (stall < death < turn limit < a cleared floor); stalling costs *more* than dying; descending beats idling out the floor's turn budget; mapping 120 tiles pays less than a descent; a step that advanced no engine time costs more than a real one; **an action consuming two engine turns is charged for both**; a search is never cheaper than a single-turn action; killing and surprise-attacking both pay, the surprise more; a talent point pays more than a level; **a free-action loop is bounded** - `env.stall_limit` is cleared by one move, `env.free_step_budget` is not, and a control run with the budget out of reach must get well past it; **`reward.profile=depth_only` pays nothing but a descent and the four prices for stopping over an episode that provably fires 80 incidental events, while `default` still admits all 30 terms.** |
+| **`rewardcheck` (`:superintelligence`)** | Drives the real environment and asserts the reward **prices the objective**, as properties rather than as constants. 26 cases. | Terminal outcomes are **ordered** (stall < death < turn limit < a cleared floor); stalling costs *more* than dying; descending beats idling out the floor's turn budget; mapping 120 tiles pays less than a descent; a step that advanced no engine time costs more than a real one; **an action consuming two engine turns is charged for both**; a search is never cheaper than a single-turn action; killing and surprise-attacking both pay, the surprise more; a talent point pays more than a level; **a free-action loop is bounded** - `env.stall_limit` is cleared by one move, `env.free_step_budget` is not, and a control run with the budget out of reach must get well past it; **shaping towards the stairs is dense but not farmable** - four steps closing the gap pay, four steps opening it cost, and a round trip nets the difference rather than the gross; **`reward.profile=depth_only` pays nothing but a descent and the four prices for stopping over an episode that provably fires 80 incidental events, while `default` still admits all 30 terms.** |
+| **`freeactioncheck` (`:superintelligence`)** | The arithmetic that ended 100% of episodes: a `REST` that spends an engine turn, and a menu that can be entered and left without the world moving. 7 cases. | `REST` advances the engine clock; opening a menu costs no turn; a zero-time exit masks the three sub-mode entries for exactly one step; and a `TALENT_UPGRADE` point is spent and pays, driven through `SPDEnv.step` rather than through the picker alone. |
+| **`bpttcheck` (`:superintelligence`)** | The recurrent gradient and the critic's targets. 7 cases. | A two-step chunk's LSTM gradient differs from the sum of its steps' isolated gradients, and equals nothing at all when the accumulation is reverted; value targets normalise a batch of -3000 and +1800 to at most 1.0. |
 | **Multi-JVM Byte-Diff Sweep** | Runs identical seed/hero rollouts across separate JVMs. | Generated `.replay` files are **byte-identical** across fresh JVMs. |
 
 ### The reward gate, and what "property rather than constant" means there
@@ -427,4 +431,51 @@ That is the sixth time this suite has hit the same shape from a different direct
 one the rest of this file keeps arriving at: **a green is a claim about what was checked.** `viewcheck`
 being green here is a true statement about the viewer and says nothing about the trainer, and the gate
 that says something about the trainer is the one that re-executes a recording headlessly.
+
+### Why the policy push was ungated for seven months, and what ungates it
+
+`issues.md` 28 recorded a run dying at generation ~22 with
+
+```
+java.io.IOException: Insufficient system resources exist to complete the requested service
+	at ...TrainerWorkers.lambda$pushWeights$0(TrainerWorkers.java:258)
+```
+
+and the fix — a chunked, retried write — shipped with no gate over it. The reason was stated and it is
+real: **a gate cannot spawn a worker.** `Worker` calls `HeadlessServices.install`, which is a
+process-wide install, so a child JVM launched from a gate's own JVM does not come up cleanly and the
+case could not be written as it stood.
+
+That reasoning is right about the *fault* and wrong about the *contract*. What killed the run was not a
+worker being spawned; it was one call to `write` carrying 14.3 MB, and that is a property of a method
+whose entire body is a loop. A gate does not need a pipe to check a loop.
+
+`pushcheck` drives `writeFully` against a recording `OutputStream` that counts what it was asked to
+write, throws on the calls it is told to fail, and keeps everything that got through. The six cases
+assert the contract rather than the symptom:
+
+| case | what it holds |
+| --- | --- |
+| no write exceeds the chunk | the size that killed a run is the size the loop refuses to produce |
+| the bytes arrive intact | a retry resumes at the right offset rather than restarting the payload |
+| a payload of one chunk is one write | chunking did not become two writes per chunk |
+| an empty payload writes nothing | the loop has a guard rather than relying on the caller's payload |
+| a transient failure is retried | a pipe that hiccups is not the same as a pipe that has died |
+| a persistent failure is refused by name | the error names the worker and the byte count |
+
+Each was mutation-tested by reverting one half of the fix:
+
+| reverted | what fails |
+| --- | --- |
+| the chunk bound | `policy push: 1 of 6 checks failed` — `one write carried 98304 bytes against a chunk size of 32768` |
+| the retry loop | `policy push: 1 of 6 checks failed` — `two failed writes out of many abandoned the push rather than retrying it` |
+
+The sixth case needed `trainer.push_retries` to be a setting rather than a private constant: at the
+production value of 8 with its quadratic backoff the refusal case would have spent 4.5 s asleep in a
+30 s gate suite. The knob is worth having on its own terms — a pipe that fails eight times is a pipe
+that is gone, and a run that wants to be told so sooner now can be.
+
+The general form is the one this file has now stated seven times, and this instance is the one about the
+*harness* rather than the game: **a gate that cannot reach a fault is not always a gate that cannot
+exist.** It is usually a gate that was written against the symptom rather than the contract.
 

@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.QuickSlot;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 
@@ -24,7 +25,7 @@ public class Quickslots {
 	public static void restore( String encoded ){
 		if (Dungeon.hero == null) return;
 
-		for (int slot = 0; slot < Dungeon.quickslot.SIZE; slot++){
+		for (int slot = 0; slot < QuickSlot.SIZE; slot++){
 			Item bound = Dungeon.quickslot.getItem( slot );
 			if (bound != null && namesASlot( bound )) Dungeon.quickslot.clearSlot( slot );
 		}
