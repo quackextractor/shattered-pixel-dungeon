@@ -55,6 +55,11 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
     `checkRandomSeedRecordingVerifies` — and both are reported before any position, health, clock or
     inventory comparison, because `ReplayIO.verify` now checks `baseDraws` first.
 
+    Across three separate re-measurements after the draw count landed - eight consecutive runs, then
+    two single runs from `verifyall` - the gate has failed three times in about twenty invocations,
+    which is the same rate the two eight-run sweeps measured. The signature has been stable across
+    those failures: a negative delta, at step 57 of 60, in the same case.
+
     **What that buys is a direction.** A negative delta means the replay consumed **fewer** draws
     than the recording did, by a multiple of four, at a step late in a sixty-step episode. The old
     signature — a different cell at step 54 — said the world differed and nothing about which side
