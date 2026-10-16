@@ -69,6 +69,42 @@ Correct in principle, and it is a rewrite of the game's randomness across every 
 would most obviously address is `issues.md` 25, which was a shared object and not a stream-ordering
 fault.
 
+## Vectorising `Dense.matvec` with `jdk.incubator.vector`
+
+**Proposed by** `review.md` §6 Feature 1: "keep the project 100% pure Java ... and vectorise
+`Dense.forward` / `Dense.backward` using the built-in JDK Vector API". **Declined on measurement.**
+
+The incubator module is available on this JDK — `javac --add-modules jdk.incubator.vector` compiles and
+`FloatVector.SPECIES_PREFERRED` reports 8 lanes here — so this is not blocked on the toolchain. It is
+blocked on where the arithmetic is.
+
+Multiply-accumulates per forward pass, from the layer shapes after the reduction convolution:
+
+| layer | MACs | share |
+| --- | --- | --- |
+| `conv`, 529 positions x 24 filters x 336 patch | 4,264,896 | 62.0% |
+| `reduce`, 100 positions x 32 filters x 384 patch | 1,228,800 | 17.9% |
+| `trunk`, 4,567 x 256 | 1,169,152 | 17.0% |
+| `memory`, 4 x (256 + 128) x 128 | 196,608 | 2.9% |
+| the four heads, 128 x 125 | 16,000 | 0.2% |
+
+**The dense layer the review's sketch vectorises is 17% of the forward pass.** Forward is 4.95 ms of
+the 11.07 ms forward+backward, so the whole of that 17% is **7.6% of an update**, and a vectorised
+matvec is not free — the honest ceiling is a few per cent.
+
+**And the part worth vectorising is the part the sketch does not touch.** `Conv2D.forward` runs
+`for p { for q { for k } }` over an im2col buffer laid out row-major in `k`, so the inner loop strides
+by `col.cols` — the worst layout for a vector unit, and 80% of the work. Getting a win there means
+restructuring `Conv2D`, not replacing a scalar loop in `Dense`.
+
+The cost side is four build sites: `compileJava`, `javaclint` (whose `-Xlint:all -Werror` meets the
+incubator module's mandatory warning and would need a suppression to opt back in), `trainerJvmArgs`,
+and the worker JVM's command line.
+
+**Revisit when** a run profile shows the learner rather than collection and the barrier is the wall —
+the same trigger `REJECTED.md` already gives for a native or ONNX runtime, and the arithmetic above is
+why this one has the same answer rather than a different one.
+
 ## Moving the remaining sound-pitch draws off `Random`
 
 **Proposed by** `review.md` §3 and §5: "migrate the 11 sound-pitch `Random` calls to `PRandom`".

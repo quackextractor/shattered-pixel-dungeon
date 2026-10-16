@@ -142,6 +142,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Not done
 - **`rolloutcheck` is still the one flaky gate, re-measured at 1 in 8 with the new comparison and unchanged.**"n"n  Seven of eight consecutive runs green, so recording `baseDraws` has not made it flakier. The one"n  failure now reports `rng baseDraws diverged at step 57: replayed 290, recorded 298 (delta -8)`"n  instead of a different cell at step 54, because `ReplayIO.verify` checks the stream first. That is"n  a direction and not a diagnosis: the count is cumulative and says nothing about which call site made"n  the extra draws. `issues.md` 18 records it.
 
+- **`Dense.matvec` is not vectorised with `jdk.incubator.vector`.** The incubator module works on
+  this JDK - `SPECIES_PREFERRED` reports 8 lanes here - so this is not a toolchain problem. The dense
+  layer the review's sketch targets is **17.0% of the forward pass** by multiply-accumulates
+  (`trunk`, 4,567 x 256, against 6,875,456 for the whole forward), and forward is 4.95 ms of an
+  11.07 ms update, so the whole of it is **7.6% of an update**. The part worth vectorising is the
+  convolution at **79.9%**, whose `Conv2D.forward` inner loop strides by `col.cols` over a row-major
+  im2col buffer - the worst layout for a vector unit - and winning there means restructuring
+  `Conv2D` rather than replacing a scalar loop in `Dense`. Four build sites would need the module
+  flag, including `javaclint`, whose `-Xlint:all -Werror` meets the incubator module's mandatory
+  warning. The arithmetic is in `REJECTED.md`.
+- **The eleven sound-pitch draws stay on `Random`.** Ten of them, counted; the eleventh is a
 - **The eleven sound-pitch draws stay on `Random`.** Ten of them, counted; the eleventh is a
   `Random.oneOf` over sound ids and not a pitch. One line each, and moving them changes how many
   values a footstep consumes, which invalidates all twenty committed recordings — including

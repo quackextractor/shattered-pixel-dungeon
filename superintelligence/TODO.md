@@ -75,8 +75,16 @@ points over fifteen generations to mean anything. `bestDepth` on its own is not 
       closed.** `ReplayPlayer` records cells now, and all 1,003 of them are identical on both sides at
       every step around the divergence, so it is neither the terrain, a trap, a plant, a heap, a
       transition, the fog, the visited set nor a mob. Evidence in `out/evidence/issue-26/`.
-- [ ] **A native or ONNX runtime for the learner.** Not attempted, and the numbers say the learner
-      is not yet the binding constraint. See `REJECTED.md`.
+- [ ] **The observation grid is a fixed 48x48 window**, and 419 of 1,040 measured floors exceed it
+      on at least one side, the largest 81 tiles. Not changed this cycle, and the reason is the
+      cost rather than the difficulty: ego-centring the grid on `hero.pos` rewrites
+      `ObservationEncoder`'s plane semantics and invalidates every checkpoint, so it belongs with a
+      measurement rather than in the middle of one. `EXIT_BEACON` already carries the stair's
+      location forward across the boundary, which is half the problem.
+- [ ] **A native or ONNX runtime, or `jdk.incubator.vector`.** Neither attempted. The incubator
+      module works on this JDK, but the dense layer its sketch vectorises is 17.0% of the forward
+      pass's multiply-accumulates against the convolution's 79.9%, and `Conv2D`'s inner loop has the
+      memory layout that would actually pay. Both arithmetic and trigger are in `REJECTED.md`.
 - [ ] **The sound-pitch draws.** **Declined, not deferred** - ten sites, and moving them invalidates
       every committed recording including the one `issues.md` 26 is diagnosed against. The reason and
       the trigger are in `REJECTED.md`.
