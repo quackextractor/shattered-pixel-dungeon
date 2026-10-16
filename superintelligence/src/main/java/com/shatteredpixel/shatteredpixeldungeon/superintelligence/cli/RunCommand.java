@@ -86,11 +86,15 @@ public final class RunCommand {
 				ReplayIO.write( recording, options.saveTo );
 				result.savedTo = options.saveTo;
 				System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "   wrote "
-						+ recording.length() + " steps to " + options.saveTo.getPath() );
+						+ recording.length() + " steps to "
+						+ com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer
+						.describe( options.saveTo ) );
 			} catch (IOException e){
 				result.exitCode = 1;
-				result.refusal = "cannot write the replay to " + options.saveTo
-						+ " (" + e.getClass().getSimpleName() + ")";
+				result.refusal = "cannot write the replay to "
+						+ com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer
+						.describe( options.saveTo )
+						+ " (" + e.getClass().getSimpleName() + ": " + e.getMessage() + ")";
 				System.err.println( "[ERROR] " + result.refusal );
 			}
 		}

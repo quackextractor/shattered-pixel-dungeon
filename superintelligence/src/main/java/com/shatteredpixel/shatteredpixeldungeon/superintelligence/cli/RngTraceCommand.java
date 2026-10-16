@@ -21,7 +21,7 @@ public final class RngTraceCommand {
 			return;
 		}
 
-		File file = new File( args[ 0 ] );
+		File file = CliOptions.resolve( new File( args[ 0 ] ) );
 		CliOptions options = CliOptions.parse( Cli.tail( args ) );
 		Cli.boot( options );
 

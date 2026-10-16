@@ -35,9 +35,32 @@ turns instead of ~122, the stall rate is 79% instead of 99%, and `bestDepth` rea
 of 15 generations against 2 of 67 before. That is the pre-regression regime (104 of 150 generations, in git history), so it is a regression recovered rather than progress. No run has yet been
 measured against the band to say whether it is now improving.
 
-- [ ] Measure a 30-generation run against the noise floor and state whether `meanScore`
+- [x] Measure a 30-generation run against the noise floor and state whether `meanScore`
       clears it. Nothing longer than ~21 generations survives `issues.md` 28's push crash
-      often enough to trust, so segment and resume.
+      often enough to trust, so segment and resume. **Measured, and it does not clear it.**
+      30 generations, 8 workers x 4 episodes, 4 update threads, seed 20261016,
+      `train.random_seed_rate=0`, every other default unchanged, 12 min 41 s, completed
+      where `issues.md` 28's push killed runs at ~22.
+
+      | | generations 0-14 | generations 15-29 |
+      | --- | --- | --- |
+      | `meanScore` mean | **-3,535.7** | **-3,534.1** |
+      | `meanScore` sd | 137.5 | 98.5 |
+      | `meanScore` range | **567.2** | **375.4** |
+
+      **The movement is +1.6 points against a per-generation sd of 98 to 138.** That is not a
+      trend; it is noise, and it is two orders of magnitude smaller than the noise. `bestDepth 2`
+      in **9 of 30** generations and `meanDepth` peaks at 1.062. `valueLoss` is O(1)
+      (0.14-0.90) and `clipFraction` falls 0.552 -> ~0.05 while entropy climbs 3.66 -> ~4.5, so
+      the update is doing something; the objective is not moving.
+
+      The band `issues.md` 27 measured (+/-16 over 15 generations) came from a *different* config
+      and does not transfer. What this run establishes for *this* config is the sd above, and it
+      is 6 to 8 times larger than the band the repository had been quoting. **Any future
+      comparison has to clear ~100 points over 15 generations, not 16.**
+
+      Evidence: `out/evidence/train-noise-floor-30.log`, `out/evidence/noise-floor-30.csv`.
+      `issues.md` 37 - one of the two recordings this run wrote does not reproduce.
 - [ ] Confirm the free-step budget is now the binding constraint rather than `stallLimit`.
       250 was chosen from a 10-generation run; the guard behind it was never re-measured.
 

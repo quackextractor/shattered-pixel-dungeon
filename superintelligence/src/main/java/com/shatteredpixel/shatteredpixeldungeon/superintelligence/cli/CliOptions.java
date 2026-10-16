@@ -1,10 +1,10 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class CliOptions {
 
@@ -35,28 +35,28 @@ public class CliOptions {
 					o.hero = HeroClass.valueOf( args[ ++i ].toUpperCase() );
 					break;
 				case "--save":
-					o.saveTo = new File( args[ ++i ] );
+					o.saveTo = resolve( new File( args[ ++i ] ));
 					break;
 				case "--out":
-					o.outDir = new File( args[ ++i ] );
+					o.outDir = resolve( new File( args[ ++i ] ));
 					break;
 				case "--max-turns":
 					o.maxTurns = Integer.parseInt( args[ ++i ] );
 					break;
 				case "--config":
-					o.configFile = Paths.get( args[ ++i ] );
+					o.configFile = resolve( new File( args[ ++i ] )).toPath();
 					break;
 				case "--no-color":
 					o.noColor = true;
 					break;
 				case "--rng-trace-out":
-					o.rngTraceOut = Paths.get( args[ ++i ] );
+					o.rngTraceOut = resolve( new File( args[ ++i ] )).toPath();
 					break;
 				case "--rng-trace-sites":
-					o.rngTraceSites = Paths.get( args[ ++i ] );
+					o.rngTraceSites = resolve( new File( args[ ++i ] )).toPath();
 					break;
 				case "--rng-trace-golden":
-					o.rngTraceGolden = Paths.get( args[ ++i ] );
+					o.rngTraceGolden = resolve( new File( args[ ++i ] )).toPath();
 					break;
 				case "--persist-saves":
 					o.persistSaves = true;
@@ -68,5 +68,13 @@ public class CliOptions {
 			}
 		}
 		return o;
+	}
+
+	public static File resolve( File path ){
+		if (path == null || path.isAbsolute()) return path;
+
+		File module = Trainer.replayDirDefault();
+		File root = module.getParentFile();
+		return new File( root == null ? module : root, path.getPath() );
 	}
 }

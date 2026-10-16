@@ -36,16 +36,17 @@ scored by a configurable reward function, with the best run per seed recorded an
 
 **Nothing has won a run, and nothing has reached floor 5.** The machinery is correct - the network's
 gradients check against central differences, the environment is reproducible across processes,
-recordings replay exactly, and every one of the twenty-nine gates is green - and the reward function now
-asks for the right thing. Measured, over twelve generations: **deaths fell 100% to 19%, mean turns rose
-377 to 1335**, and `bestDepth 2` has been observed once. **Depth does not trend yet.**
+recordings replay exactly, and every one of the thirty gates is green - and the reward function now
+asks for the right thing. **The 30-generation measurement is done and it does not clear the noise
+floor:** `meanScore` moved **+1.6 points** between the first and last fifteen generations against a
+per-generation standard deviation of **98 to 138**. `bestDepth 2` appeared in **9 of 30** generations.
 
-That last sentence is the one that matters. The three reward defects that kept depth at 1 were real and
-are fixed, and the run that shows survival improving is the first evidence in this project that a
-change to the objective moved behaviour in the direction it was supposed to. It is not evidence that the
-ratio is right. A 40-generation run is the measurement that would settle it, and it is `TODO.md` 1.4.
-
-The milestone is beating the first boss at depth 5 (`research.md:40`).
+That last sentence is the one that matters. The three reward defects that kept depth at 1 were real
+and are fixed, and the run that shows survival improving is the first evidence in this project that a
+change to the objective moved behaviour in the direction it was supposed to. It is not evidence that
+the ratio is right. A change now has to clear **~100 points over 15 generations** - not the +/-16 the
+repository had been quoting, which was measured on a different configuration - and nothing has. The
+milestone is beating the first boss at depth 5 (`research.md:40`).
 
 ## Versioning
 
@@ -275,7 +276,7 @@ from `KILL`'s "declared, plumbed and never emitted". `TODO.md` 1.10 is the missi
 
 ## Gates
 
-twenty-nine gates, one invocation:
+thirty gates, one invocation:
 
 ```sh
 ./gradlew :superintelligence:gates

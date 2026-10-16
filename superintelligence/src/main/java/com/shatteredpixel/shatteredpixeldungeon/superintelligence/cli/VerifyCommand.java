@@ -22,7 +22,7 @@ public final class VerifyCommand {
 			return;
 		}
 
-		File file = new File( args[ 0 ] );
+		File file = CliOptions.resolve( new File( args[ 0 ] ) );
 		CliOptions options = CliOptions.parse( Cli.tail( args ) );
 		Cli.boot( options );
 
@@ -30,7 +30,8 @@ public final class VerifyCommand {
 		try {
 			replay = ReplayIO.read( file );
 		} catch (IOException e){
-			System.err.println( "[ERROR] " + e.getMessage() );
+			System.err.println( "[ERROR] cannot read " + file.getPath() + " ("
+					+ e.getClass().getSimpleName() + "): " + e.getMessage() );
 			System.exit( 1 );
 			return;
 		}

@@ -53,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Twenty-six settings that were Java literals.** Worker JVM heap and GC pause, the pipe and weight
   push chunk sizes, the episode tail length, the gradient clip and Adam's three constants, the value
   loss weight and residual ceiling, the random-seed leak rate, the checkpoint and record intervals, and
-  the dialog aging step. `configcheck` is now 11 cases and 64 keys.
+  the dialog aging step. `configcheck` is now 13 cases and 64 keys.
 - **`env.max_slots` is 96, the game's own ceiling.** It was 32, which silently truncated two thirds of
   what the hero can carry; the truncation was invisible rather than refused, because the head is a
   fixed-width window and everything past it simply was not in the observation. This widens the network's
@@ -166,16 +166,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`Protocol.VERSION` is 4.** The transition frame carries the episode id and step index, and the
   params frame carries the tail length; a version-3 pair would read the episode id as an action index,
   which is a plausible action on every step and so trains on noise rather than throwing.
-- **`gates` is now 29 checks and `verifyall` is 30**, with `pushcheck` and `javaclint` added. Every
-  document that counted them has been corrected: `README.md` said "twenty-six", `testing-guide.md`
-  said 24, and `docs/documentation.md` said twenty-four and named 24 of them.
-- **`configcheck` is 11 cases and 64 keys,** up from 10 and a count of 43 that was printed as 64.
+- **`gates` is now 30 checks and `verifyall` is 31**, with `pushcheck`, `curriculumcheck` and
+  `javaclint` added. Every document that counted them has been corrected: `README.md` said
+  "twenty-six", `testing-guide.md` said 24, and `docs/documentation.md` said twenty-four and named
+  24 of them.
+- **`configcheck` is 13 cases and 64 keys,** up from 10 and a count of 43 that was printed as 64.
 - **`.env.example` was describing pre-rescaling values** - `depth_reward` 25 against the compiled
   1800, `turn_cost` 0.002 against 1.0, `death_penalty` 100 against 2500, `max_slots` 32 against 96 -
   so copying it configured a run the module does not run. Every value now matches the compiled default.
 
 ### Measured
-- **A depth-2 run, verified.** 20 generations, 8 workers, 4 update threads, seed 20261016, every
+- **The 30-generation run `TODO.md` 1 has asked for since the beginning.** 8 workers x 4 episodes,
+  4 update threads, seed 20261016, `train.random_seed_rate=0`, every other default unchanged,
+  12 min 41 s, **and it completes** - past the generation ~22 where `issues.md` 28's policy push
+  used to kill a run.
+
+  | | generations 0-14 | generations 15-29 |
+  | --- | --- | --- |
+  | `meanScore` mean | **-3,535.7** | **-3,534.1** |
+  | `meanScore` sd | 137.5 | 98.5 |
+  | `meanScore` range | **567.2** | **375.4** |
+
+  **+1.6 points of movement against a per-generation standard deviation of 98 to 138.** That is not
+  a trend. `bestDepth 2` in **9 of 30** generations, `meanDepth` peaks at 1.062, `valueLoss` runs
+  0.14 to 0.90 and `clipFraction` falls 0.552 to ~0.05 while entropy climbs - so the update is
+  moving and the objective is not. The band `issues.md` 27 quotes (+/-16 over 15 generations) was
+  measured on a different configuration and does not transfer; **a change on this config has to
+  clear ~100 points over 15 generations to mean anything.** Evidence:
+  `out/evidence/train-noise-floor-30.log`, `out/evidence/noise-floor-30.csv`.
+- **A recording this trainer wrote does not reproduce.** `issues.md` 37, new: of the two
+  recordings a generation keeps, the 1186-step one reproduces to the last decimal and the 599-step
+  one diverges at step 534 by one engine turn, deterministically, with position and health
+  agreeing at every step. Recorded, not guessed at.
+- **`shapingScale` is a column in `metrics.csv`.** It was on the generation report and nowhere
+  else, so the one number a run's shaping was priced at could not be compared across runs.
+
+### Fixed
+- **A path given on the command line resolved against the wrong directory, and the log named
+  the right one.** `--out`, `--save`, `--config` and the `--rng-trace-*` outputs were resolved
+  against the process's working directory, which is the module directory under `gradle` and the
+  shell's under a plain `java -cp`. Measured: a run logged
+  `superintelligence\out\run\metrics.csv` and wrote
+  `superintelligence\superintelligence\out\run\metrics.csv`; and `verify` on a path that existed
+  reported `[ERROR] <path>`, which is `NoSuchFileException`'s message with nothing to say the file
+  was missing. A relative path now resolves from the repository root whichever way the process was
+  started, every path the trainer *reports* is canonical and absolute, and `configcheck` holds
+  both in 2 of its 13 cases.
+- **`shaping=` under the generation report was a constant with a label on it.** 20 generations, 8 workers, 4 update threads, seed 20261016, every
   default unchanged: `bestDepth` 2 in **8 of 20 generations** and `meanDepth` 1.05, against `meanDepth`
   1.001 across 5,360 episodes before. `trainer-replays/bptt-stairs/CLL-ZXD-MTZ.dat` (ROGUE,
   generation 19, 438 steps, depth 2) **reproduces exactly**, so the descent is a real trajectory rather

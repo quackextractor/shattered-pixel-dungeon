@@ -21,7 +21,7 @@ public class MetricsHistory {
 			"generation", "episodes", "activeSeeds", "sampledSteps", "droppedSteps",
 			"meanScore", "bestScore", "worstScore", "meanDepth", "bestDepth", "meanTurns",
 			"policyLoss", "valueLoss", "entropy", "clipFraction", "klDivergence",
-			"advantageMean", "advantageStd",
+			"advantageMean", "advantageStd", "shapingScale",
 			"wallSeconds", "ppoSeconds", "barrierSeconds", "turnsPerSecond",
 			"workerCores", "trainerCores"
 	};
@@ -86,7 +86,7 @@ public class MetricsHistory {
 				(float) s.meanScore, (float) s.bestScore, (float) s.worstScore,
 				(float) s.meanDepth, s.bestDepth, (float) s.meanTurns,
 				s.policyLoss, s.valueLoss, s.entropy, s.clipFraction, s.klDivergence,
-				(float) s.advantageMean, (float) s.advantageStd,
+				(float) s.advantageMean, (float) s.advantageStd, s.shaping,
 				(float) s.wallSeconds, (float) s.ppoSeconds, (float) s.barrierSeconds,
 				(float) s.turnsPerSecond, (float) s.workerCores, (float) s.trainerCores
 		} );
@@ -111,6 +111,7 @@ public class MetricsHistory {
 					.append( ',' ).append( fmt( s.entropy ) ).append( ',' ).append( fmt( s.clipFraction ) )
 					.append( ',' ).append( fmt( s.klDivergence ) )
 					.append( ',' ).append( fmt( s.advantageMean ) ).append( ',' ).append( fmt( s.advantageStd ) )
+					.append( ',' ).append( fmt( s.shaping ) )
 					.append( ',' ).append( fmt( s.wallSeconds ) ).append( ',' ).append( fmt( s.ppoSeconds ) )
 					.append( ',' ).append( fmt( s.barrierSeconds ) )
 					.append( ',' ).append( fmt( s.turnsPerSecond ) )
@@ -187,7 +188,7 @@ public class MetricsHistory {
 		int width = Math.min( 72, Math.max( 16, series.size() ) );
 		System.out.println();
 		System.out.println( Ansi.wrap( "trend", Ansi.DIM ) + "   " + series.size()
-				+ " generations, " + ( csv == null ? "no CSV" : csv.getPath() ) );
+				+ " generations, " + ( csv == null ? "no CSV" : Trainer.describe( csv ) ) );
 
 		line( "score ", 5, width );
 		line( "depth ", 8, width );

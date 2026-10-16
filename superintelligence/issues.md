@@ -937,3 +937,88 @@ What *is* measured, and is not a matter of luck:
 The next measurement is the one `TODO.md` 1 has always asked for: a run long enough to clear the band.
 Evidence: `out/evidence/train-20gen.log`, `out/evidence/depth2-run.dat`,
 `out/evidence/stallbreakdown-after-fix1.txt`, `out/evidence/viewcheck-final.txt`.
+
+## 37. One recording in two does not reproduce, and it is the trainer's half - **OPEN, not investigated**
+
+Found by running the 30-generation measurement `TODO.md` 1 asks for, and reading what it wrote rather
+than what it printed. `issues.md` 15 and 26 both record a recording that will not replay; this one is
+neither of those, and the distinction is the reason it is filed separately.
+
+### What it is
+
+A 30-generation run, 8 workers, 4 update threads, seed 20261016, `train.random_seed_rate=0`, wrote two
+recordings - best per seed and the run's worst, which is what `ReplayKeeper` keeps. Same generation,
+same seed, same hero class, same header:
+
+```
+trainer-replays/noise-floor/LZJ-LNO-HLE.dat      generation 29  depth 2  598 turns  599 steps
+trainer-replays/noise-floor/LZJ-LNO-HLE-r2.dat   generation 29  depth 1 1184 turns 1186 steps
+```
+
+The longer one reproduces exactly:
+
+```
+verify: seed=LZJ-LNO-HLE hero=WARRIOR steps=1186 recorded score=-5402.804771922529
+[OK]     replay reproduced in 1186 steps, 556 ms
+score    recorded -5402.804771922529, reproduced -5402.804771922529
+```
+
+The shorter one does not, and it does not in the same place every time:
+
+```
+verify: seed=LZJ-LNO-HLE hero=WARRIOR steps=599 recorded score=-1649.690040986985
+[ERROR] replay diverged at step 534 of 599
+        turn: replayed 13.0, recorded 12.0
+```
+
+Run again, identical output. **Deterministic, not a flaky seed** - which is the one thing this rules
+out.
+
+### Why it is not `issues.md` 26 and not `issues.md` 15
+
+- Not 15. That was four of nine step fields dropped by the wire, recognised by the four-field
+  signature. These recordings carry health, engine time and inventory on every step.
+- Not 26. That is the *rendered viewer* spending 1 HP the recording does not contain, and it needs a
+  display to see. This is `verify` - headless, in one process - refusing a recording that a **worker
+  in another process** wrote. Nothing about the renderer is involved, so the whole viewer half of 26
+  is irrelevant to it.
+
+### What it looks like
+
+Only `turn` differs, by one, at step 534 of 599. Position and health agree at that step, and agree at
+every step before it - `verify` compares position first and would have reported a position
+divergence had one occurred.
+
+```
+ 528  MOVE_SW 1 WORLD 1044  1.04  11  11.0  Longsword:1,Seed:1
+ 529  MOVE_NE 1 WORLD  993 -2.96  11  12.0  Longsword:1,Seed:1
+ ...
+ 533  MOVE_SW 1 WORLD 1044  1.04  11  11.0  Longsword:1,Seed:1
+ 534  MOVE_S  0 WORLD 1094 -0.96  11  12.0  Longsword:1,Seed:1
+ 535  MOVE_E  0 WORLD 1095 -2.94  11  13.0  Longsword:1,Seed:1
+```
+
+The clock reads 11.0 at both 528 and 533 and 12.0 at 534, so the step at 534 cost one turn in the
+recording and two in the replay, and the two stayed one apart for the remaining 65 steps without the
+positions ever separating. The floor is 50 wide - `MOVE_SE` at 531 is `994 -> 1045`, which is
+`+50 +1` - so nothing crossed a floor boundary and the clock was never restarted under it.
+
+### What is not established
+
+- **Which action.** It is a move on step 534, but it is not the first move of its kind in the
+  recording, so "a move costs two turns sometimes" is not yet a description of anything.
+- **Which process is right.** The recording was made by a worker; the replay ran in the verifier's
+  process. Both are headless and share every line of the environment, so "one of them is wrong" does
+  not yet have an answer.
+- **Whether it is the real policy's doing.** `paritycheck`, `collectcheck` and `rolloutcheck` all
+  drive `ScriptedPolicy`, and all three are green. This recording was made by the trained policy,
+  which walks into things the scripted one does not. That is a difference in *coverage*, not
+  evidence about the cause.
+
+Recorded rather than guessed at, for the reason `issues.md` 18 gives: a hypothesis here would be a
+story about a turn cost, and `issues.md` 33's own measurement - 189 searches taking half a
+940-step run's engine time - is the shape of the last confident answer to that question.
+
+Evidence: `out/evidence/gen29-divergence.txt`, `out/evidence/gen29-LZJ-LNO-HLE.dat`,
+`out/evidence/gen29-LZJ-LNO-HLE-r2.dat`, `out/evidence/noise-floor-30.csv`,
+`out/evidence/train-noise-floor-30.log`.

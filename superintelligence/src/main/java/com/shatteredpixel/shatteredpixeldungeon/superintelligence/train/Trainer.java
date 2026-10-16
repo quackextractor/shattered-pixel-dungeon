@@ -391,7 +391,7 @@ public class Trainer {
 		try {
 			Checkpoint.save( saveFile, ppo.network, config, generation, rngSeed );
 			lastSavedGeneration = generation;
-			System.out.println( Ansi.wrap( "saved", Ansi.DIM ) + "   " + saveFile
+			System.out.println( Ansi.wrap( "saved", Ansi.DIM ) + "   " + describe( saveFile )
 					+ "  " + Ansi.wrap( "(generation " + generation + ", adam step "
 					+ ppo.network.adamSteps() + ")", Ansi.DIM ) );
 		} catch (IOException e){
@@ -584,13 +584,23 @@ private void saveBestReplays(){
 		System.out.println();
 		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "   wrote " + saved
 				+ " replays from " + keeper.considered() + " episodes (best per seed, plus the run's"
-				+ " worst) to " + dir.getPath()
+				+ " worst) to " + describe( dir )
 				+ ( replayGroup.isEmpty() ? "" : "  (group " + replayGroup + ")" ) );
 	}
 
 
+	public static String describe( File file ){
+		if (file == null) return "no file";
+		try {
+			return file.getCanonicalPath();
+		} catch (java.io.IOException e){
+			return file.getAbsolutePath();
+		}
+	}
 
-	static File replayDirDefault(){
+
+
+	public static File replayDirDefault(){
 		File here = new File( "." ).getAbsoluteFile();
 		for (int i = 0; i < 6 && here != null; i++){
 			if (new File( here, "superintelligence.properties" ).isFile()) return tidy( here );

@@ -57,7 +57,29 @@ controls. Evidence worth keeping goes in `superintelligence/out/evidence/` in th
 ## Read this first
 
 **Nothing has been trained yet. The machinery is correct; the reward still does not ask for
-anything.** Five things were missing; four are fixed and the fifth is the milestone itself:
+anything.** Five things were missing; four are fixed and the fifth is the milestone itself. **The
+30-generation measurement `TODO.md` 1 has been asking for is now done, and it does not clear the
+noise floor:**
+
+| | generations 0-14 | generations 15-29 |
+| --- | --- | --- |
+| `meanScore` mean | **-3,535.7** | **-3,534.1** |
+| `meanScore` sd | 137.5 | 98.5 |
+| `meanScore` range | **567.2** | **375.4** |
+
+30 generations, 8 workers x 4 episodes, 4 update threads, seed 20261016,
+`train.random_seed_rate=0`, every other default unchanged, 12 min 41 s, and it completes past the
+generation ~22 where the policy push used to kill it. **The movement is +1.6 points against a
+per-generation standard deviation of 98 to 138** - noise, and two orders of magnitude smaller than
+the noise. `bestDepth 2` in **9 of 30** generations; `meanDepth` peaks at 1.062; `valueLoss` is O(1)
+and `clipFraction` falls 0.552 -> ~0.05 while entropy climbs, so the update is moving and the
+objective is not. **The band this repository had been quoting (+/-16 over 15 generations) was
+measured on a different config and is 6 to 8 times too tight for this one; a change has to clear
+~100 points over 15 generations to mean anything.** One of the two recordings the run wrote does not
+reproduce - `issues.md` 37. Evidence: `out/evidence/noise-floor-30.csv`,
+`out/evidence/train-noise-floor-30.log`.
+
+And the five things:
 
 - **A run can be judged.** `clip=` used to report `P(|N(0,1)| > 0.2)` = 0.8415 whatever the policy
   did, because it counted `|advantage| > clipEpsilon` on a *normalised* advantage. The real
@@ -390,7 +412,7 @@ eward.stair_potential_weight = 0 turns it off |
 -Generations 60 -Name depth-only-60`, `./train.ps1 -Resume`. It names the artefacts, prints the gradle
 command it is about to run, and passes `-Name` as the run's replay group.
 
-**twenty-nine gates, one invocation.** Each has had the thing it guards deleted, and each has been
+****thirty gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives
@@ -413,9 +435,10 @@ without the world moving. An eighth, `pushcheck`, is the first to reach the trai
 pipe at all: a whole policy blob written in one call killed runs at generation ~22 with
 `Insufficient system resources exist to complete the requested service`, and the mechanism that fixed it
 was a chunked, retried write with no gate over it - because a gate cannot spawn a worker in another
-process, but it can assert the write loop's own contract. The twenty-ninth, `javaclint`, compiles the
-module with `-Xlint:all -Werror`; it was a task to remember rather than a gate to fail, and six warnings
-lived in the tree for as long as that was true.
+process, but it can assert the write loop's own contract. A ninth, `curriculumcheck`, asks whether the
+shaping fade does anything, and measures it: **1.0 to depth 3, 0.0 from depth 10, 0.6064 at depth 6.**
+The thirtieth, `javaclint`, compiles the module with `-Xlint:all -Werror`; it was a task to remember
+rather than a gate to fail, and six warnings lived in the tree for as long as that was true.
 
 **A gate that passes because the thing it would catch is absent is the same failure as a gate that
 cannot fail**, and the corpus was one for a long time: 17 recordings, 310 SLOT-mode steps, and not one
