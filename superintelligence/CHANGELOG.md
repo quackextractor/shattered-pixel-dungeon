@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- **`research.md` and `docs.md` named 26 classes at paths that do not exist.** `FogOfWar.java` and
+  `ShadowCaster.java` moved to `tiles/` and `mechanics/` in an upstream merge, and the remaining
+  references were bare file names that a reader cannot locate a package from. One of them,
+  `SPDAction.java`, **was never a class in this repository**: the action the brief calls `SPDAction`
+  is `env.ActionMapper`, which issues `HeroAction` itself. Every reference in `research.md` is now
+  package-relative, and the two that name a class across a module boundary carry their fully-qualified
+  name as well.
+- **`doccheck` never checked that a documented class is a class.** It now resolves every Java path
+  and fully-qualified class name in `research.md`, `docs.md`, `README.md`, `ENGINE-CHANGES.md` and
+  `docs/documentation.md` against `core/src/main/java`, `SPD-classes/src/main/java`,
+  `desktop/src/main/java` and `superintelligence/src/main/java`, and fails naming any that does not
+  resolve. **48 references across 5 documents, 4,371 source files.** Mutation-tested: changing
+  `tiles/FogOfWar.java` to `scenes/FogOfWar.java` fails it and names the path. `doccheck` is
+  **4 cases**, from 3.
 - **Sampling no longer defeats the recurrent chunk it is supposed to feed.**
   `EpisodeCollector` drew an independent 5% Bernoulli sample per step while `PPO.update` groups
   samples into contiguous runs of `rl.chunk_length` and resets the recurrent state at a gap. At
@@ -124,9 +138,10 @@ uncommitted. The external code review that asked for it to be committed found it
   - `seedcheck`, 5 cases. A draw is a function of its index, the same seed draws the same sequence,
     two trainer seeds differ, a resumed pool continues the interrupted sequence, and a checkpoint's
     `Meta` carries the schedule.
-  - `doccheck`, 3 cases. No markdown under the module carries a control byte, every gate is
+  - `doccheck`, 4 cases. No markdown under the module carries a control byte, every gate is
     reachable either through `Main`'s dispatch or a `mainClass` of its own and every `cliTask` has a
-    case in `Main`, and `README.md`'s gate count matches the `gates` task.
+    case in `Main`, `README.md`'s gate count matches the `gates` task, and **every Java path a
+    document names resolves against the four source roots**.
 
 ### Changed
 - **`gates` is 33 checks and `verifyall` is 34**, from 30 and 31. `configcheck` is 14 cases and 86

@@ -458,7 +458,12 @@ says, and a grid flattened straight into the dense trunk fails it. **`seedcheck`
 run: a draw must be a function of its index, so a pool resumed after 120 draws continues at 121
 rather than restarting at generation 0. **`doccheck`** covers this file: no markdown under the module
 may carry a control byte — a NUL makes `grep` read it as binary and the pre-commit hook's badge check
-then skips it — every gate must be reachable, and this paragraph's count must be the real one.
+then skips it — every gate must be reachable, this paragraph's count must be the real one, and **every
+Java path any of the five documents names must resolve against `core/src/main/java`,
+`SPD-classes/src/main/java`, `desktop/src/main/java` or `superintelligence/src/main/java`**. That last
+case is 4 cases in total and it found 26 references in `research.md` that name a file which has moved
+or never existed — `FogOfWar.java` and `ShadowCaster.java` live in `tiles/` and `mechanics/` now, and
+`SPDAction.java` was never a class in this repository at all.
 
 **A gate that passes because the thing it would catch is absent is the same failure as a gate that
 cannot fail**, and the corpus was one for a long time: 17 recordings, 310 SLOT-mode steps, and not one

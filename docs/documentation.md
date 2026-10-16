@@ -313,7 +313,7 @@ thirty-three gates, one invocation:
 | `curriculumcheck` | A shaping fade that is written and wired but inert, or a `shaping=` column that reports a constant |
 | `samplercheck` | Sampling that shatters the recurrent chunk, or a grid flattened straight into the dense trunk |
 | `seedcheck` | A resumed run that replays generation 0's seed sequence from the top |
-| `doccheck` | Documentation that is unreadable as text, a gate that is not reachable, or a gate count that disagrees with the list |
+| `doccheck` | Documentation that is unreadable as text, a gate that is not reachable, a gate count that disagrees with the list, **or** a Java path in a document that names a file which is not there |
 | `stallcausecheck` | A stall guard that is unreachable or that reports the wrong guard |
 | `pushcheck` | A policy push written in one call rather than chunked, retried, and refused by name |
 | `javaclint` | Any compiler warning at all, under `-Xlint:all -Werror` |

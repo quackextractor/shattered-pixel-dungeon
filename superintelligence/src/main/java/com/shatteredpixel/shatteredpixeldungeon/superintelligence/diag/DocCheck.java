@@ -12,15 +12,30 @@ import java.util.regex.Pattern;
 
 public class DocCheck {
 
-	private static final int CHECKS = 3;
+	private static final int CHECKS = 4;
 
 	private static final Pattern GATE_COUNT = Pattern.compile(
 			"\\*\\*([A-Za-z-]+) gates, one invocation\\.\\*\\*" );
+
+	private static final Pattern JAVA_PATH = Pattern.compile(
+			"[A-Za-z0-9_$]+(?:/[A-Za-z0-9_$]+)*\\.java" );
+
+	private static final Pattern JAVA_CLASS_NAME = Pattern.compile(
+			"com\\.(?:shatteredpixel\\.shatteredpixeldungeon|watabou)\\.[A-Za-z0-9_$]+(?:\\.[A-Za-z0-9_$]+)+" );
+
+	private static final String[] SCANNED_DOCS = {
+			"superintelligence/research.md",
+			"superintelligence/docs.md",
+			"superintelligence/README.md",
+			"superintelligence/ENGINE-CHANGES.md",
+			"docs/documentation.md"
+	};
 
 	public static void main( String[] args ){
 		checkNoMarkdownCarriesAControlByte();
 		checkEveryGateIsDispatchable();
 		checkTheDocumentedGateCountIsTheRealOne();
+		checkMarkdownJavaPathsExist();
 
 		System.exit( GateReport.report( "documentation", CHECKS ));
 	}
@@ -216,6 +231,119 @@ public class DocCheck {
 			here = here.getParentFile();
 		}
 		return new File( "." ).getAbsoluteFile();
+	}
+
+
+	private static void checkMarkdownJavaPathsExist(){
+		File repo = repoRoot();
+		java.util.Set< String > sources = javaSources( repo );
+		if (sources.isEmpty()){
+			fail( "no Java sources found under " + repo + ": the path check has nothing to resolve"
+					+ " against, so it would pass over every reference in every document." );
+			return;
+		}
+
+		List< String > broken = new ArrayList<>();
+		int checked = 0;
+
+		for (String doc : SCANNED_DOCS){
+			Path file = repo.toPath().resolve( doc.replace( '/', java.io.File.separatorChar ) );
+			String text = read( file );
+			if (text.isEmpty()){
+				fail( "could not read " + doc + ", so its Java references are unchecked" );
+				return;
+			}
+
+			for (String reference : javaReferences( text )){
+				checked++;
+				if (resolves( sources, reference )) continue;
+				broken.add( doc + " names " + reference );
+			}
+		}
+
+		if (!broken.isEmpty()){
+			fail( broken.size() + " Java reference(s) in the documentation name a file that does not"
+					+ " exist: " + String.join( "; ", broken ) + ". A document that names a class where"
+					+ " it no longer lives reads as though the reader should go and find it, and a"
+					+ " package that moved in an upstream merge is exactly how that happens: the"
+					+ " check resolves each reference against core/src/main/java,"
+					+ " SPD-classes/src/main/java, desktop/src/main/java and"
+					+ " superintelligence/src/main/java." );
+			return;
+		}
+
+		System.out.println( "  " + checked + " Java reference(s) across " + SCANNED_DOCS.length
+				+ " document(s) resolve against " + sources.size() + " source files" );
+	}
+
+
+	private static List< String > javaReferences( String text ){
+		java.util.LinkedHashSet< String > out = new java.util.LinkedHashSet<>();
+
+		Matcher paths = JAVA_PATH.matcher( text );
+		while (paths.find()) out.add( paths.group() );
+
+		Matcher names = JAVA_CLASS_NAME.matcher( text );
+		while (names.find()){
+			String name = names.group();
+			boolean isFile = name.endsWith( ".java" );
+			if (isFile) name = name.substring( 0, name.length() - ".java".length() );
+			out.add( name.replace( '.', '/' ) + (isFile ? ".java" : ".java") );
+		}
+		return new ArrayList<>( out );
+	}
+
+
+	private static boolean resolves( java.util.Set< String > sources, String reference ){
+		String slash = reference.replace( '\\', '/' );
+		return sources.contains( slash ) || sources.contains( slash.replace( ".java", ".java" ) )
+				|| sources.stream().anyMatch( key -> key.endsWith( "/" + slash ) );
+	}
+
+
+	private static java.util.Set< String > javaSources( File repo ){
+		java.util.LinkedHashSet< String > out = new java.util.LinkedHashSet<>();
+		String[] roots = {
+				"core/src/main/java",
+				"SPD-classes/src/main/java",
+				"desktop/src/main/java",
+				"superintelligence/src/main/java"
+		};
+
+		for (String root : roots){
+			Path base = repo.toPath().resolve( root.replace( '/', java.io.File.separatorChar ) );
+			if (!Files.isDirectory( base )) continue;
+			try (java.util.stream.Stream< Path > walk = Files.walk( base )){
+				walk.filter( p -> p.getFileName().toString().endsWith( ".java" ) )
+						.forEach( p -> {
+							String fromRoot = base.relativize( p ).toString().replace( '\\', '/' );
+							out.add( fromRoot );
+							out.add( root + "/" + fromRoot );
+							out.add( fromRoot.substring( fromRoot.lastIndexOf( '/' ) + 1 ));
+						});
+			} catch (IOException e){
+				fail( "could not walk " + root + ": " + e.getMessage() );
+			}
+		}
+		return out;
+	}
+
+
+	private static File repoRoot(){
+		File here;
+		try {
+			here = moduleDir().getCanonicalFile();
+		} catch (IOException e){
+			here = moduleDir().getAbsoluteFile();
+		}
+		for (int i = 0; i < 6 && here != null; i++){
+			if (new File( here, "superintelligence/build.gradle" ).isFile()
+					&& new File( here, "docs" ).isDirectory()){
+				return here;
+			}
+			here = here.getParentFile();
+		}
+		return moduleDir().getAbsoluteFile();
 	}
 
 

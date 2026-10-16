@@ -75,5 +75,8 @@ Declined proposals are in `REJECTED.md` and appear nowhere else.
       transition, the fog, the visited set nor a mob. Evidence in `out/evidence/issue-26/`.
 ## 6. Stale references in the source documents
 
-`research.md` and `docs.md` name classes that moved packages in v4.0.1, including `FogOfWar.java` and
-`ShadowCaster.java`, which exist but not where the documents say.
+**Closed.** `research.md` and `docs.md` named classes that moved packages in v4.0.1 - `FogOfWar.java`
+and `ShadowCaster.java` live in `tiles/` and `mechanics/` now - and one that never existed here at all,
+`SPDAction.java`. Every reference is package-relative or fully qualified, and `doccheck` resolves all
+45 of them against the four source roots, so the next upstream merge that moves a class turns a
+document red rather than stale.
