@@ -29,7 +29,8 @@ public class ReplayProbe {
 
 		for (int i = 0; i < n; i++){
 			Transition t = new Transition();
-			t.grid = new byte[ scratch.length ];
+		t.gridCells = scratch.length;
+		t.grid = new byte[ Transition.packedGridBytes( scratch.length ) ];
 			t.inventory = new float[ config.maxSlots
 					* com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder.FEATURES_PER_SLOT ];
 			t.hero = new float[ com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder.FEATURES ];
@@ -37,7 +38,8 @@ public class ReplayProbe {
 			t.slotMask = new float[ config.maxSlots ];
 			t.targetMask = new float[ ActionMapper.TARGET_COUNT ];
 
-			for (int g = 0; g < t.grid.length; g++) t.grid[ g ] = (byte) (rng.nextFloat() > 0.6f ? 1 : 0);
+		for (int g = 0; g < scratch.length; g++) scratch[ g ] = rng.nextFloat() > 0.6f ? 1f : 0f;
+		t.packGrid( scratch );
 			for (float[] a : new float[][]{ t.inventory, t.hero, t.actionMask, t.slotMask, t.targetMask }){
 				for (int k = 0; k < a.length; k++) a[ k ] = rng.nextFloat();
 			}

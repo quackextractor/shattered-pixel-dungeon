@@ -6,6 +6,38 @@ public class Transition {
 
 	public byte[] grid;
 
+	/** Floats the packed grid expands to, which is one per spatial cell. */
+	public int gridCells;
+
+	/**
+	 * Packs a binary grid one bit per cell.
+	 *
+	 * <p>Every spatial plane is 0 or 1 - a tile is visible, or it is a wall, or it is not - so a byte per
+	 * cell is eight times the information it holds. At 22 planes over 48x48 that is 50,688 bytes down
+	 * to 6,336, which is 90% of a transition and therefore of the buffer the trainer holds and the pipe
+	 * carries. Lossless: {@link #unpackGrid} returns exactly what came in.
+	 */
+	public void packGrid( float[] src ){
+		java.util.Arrays.fill( grid, (byte) 0 );
+		int n = Math.min( src.length, gridCells );
+		for (int i = 0; i < n; i++){
+			if (src[ i ] <= 0.5f ) continue;
+			grid[ i >>> 3 ] |= (byte) (1 << ( i & 7 ));
+		}
+	}
+
+	public void unpackGrid( float[] dst ){
+		int n = Math.min( dst.length, gridCells );
+		for (int i = 0; i < n; i++){
+			dst[ i ] = ( ( grid[ i >>> 3 ] >>> ( i & 7 ) ) & 1 ) != 0 ? 1f : 0f;
+		}
+	}
+
+	/** Bytes the packed grid costs, for {@code gridCells} cells. */
+	public static int packedGridBytes( int cells ){
+		return ( cells + 7 ) >>> 3;
+	}
+
 	public float[] inventory;
 	public float[] hero;
 
@@ -47,7 +79,8 @@ public class Transition {
 		Transition t = POOL.poll();
 		if (t == null) t = new Transition();
 
-		t.grid    = fit( t.grid,    gridSize );
+		t.gridCells = gridSize;
+		t.grid    = fit( t.grid,    packedGridBytes( gridSize ) );
 		t.inventory = fit( t.inventory, inventorySize );
 		t.hero    = fit( t.hero,    heroSize );
 		t.actionMask = fit( t.actionMask, actionCount );
@@ -86,19 +119,6 @@ public class Transition {
 	private static byte[] fit( byte[] existing, int len ){
 		return (existing != null && existing.length == len) ? existing : new byte[ len ];
 	}
-
-	public void packGrid( float[] src ){
-		for (int i = 0; i < grid.length; i++){
-			grid[ i ] = (byte) (src[ i ] > 0.5f ? 1 : 0 );
-		}
-	}
-
-	public void unpackGrid( float[] dst ){
-		for (int i = 0; i < grid.length && i < dst.length; i++){
-			dst[ i ] = grid[ i ] != 0 ? 1f : 0f;
-		}
-	}
-
 	public void release(){
 		if (pooled) return;
 		pooled = true;

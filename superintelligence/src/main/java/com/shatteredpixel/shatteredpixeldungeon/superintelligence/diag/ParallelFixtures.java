@@ -30,7 +30,8 @@ final class ParallelFixtures {
 
 		for (int i = 0; i < n; i++ ){
 			Transition t = new Transition();
-			t.grid = new byte[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
+			t.gridCells = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		t.grid = new byte[ Transition.packedGridBytes( t.gridCells ) ];
 			t.inventory = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
 			t.hero = new float[ HeroEncoder.FEATURES ];
 			t.actionMask = new float[ Action.size() ];
@@ -42,7 +43,9 @@ final class ParallelFixtures {
 
 			t.liveHead = i % 3;
 
-			for (int g = 0; g < t.grid.length; g++) t.grid[ g ] = (byte) (rng.nextFloat() > 0.55f ? 1 : 0);
+		float[] grid = new float[ t.gridCells ];
+		for (int g = 0; g < grid.length; g++) grid[ g ] = rng.nextFloat() > 0.55f ? 1f : 0f;
+		t.packGrid( grid );
 			for (float[] a : new float[][]{ t.inventory, t.hero, t.actionMask, t.slotMask, t.targetMask }){
 				for (int k = 0; k < a.length; k++) a[ k ] = rng.nextFloat();
 			}
@@ -91,7 +94,7 @@ final class ParallelFixtures {
 	}
 
 	static float[] gridOf( Transition t ){
-		float[] dst = new float[ t.grid.length ];
+		float[] dst = new float[ t.gridCells ];
 		t.unpackGrid( dst );
 		return dst;
 	}

@@ -24,7 +24,7 @@ public class GaeCheck {
 	private static final float LAMBDA = 0.913f;
 
 
-	private static final int CHECKS = 13;
+	private static final int CHECKS = 15;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -41,6 +41,8 @@ checkTerminalZerosTheTail();
 		checkAdvantagesAreIndependentOfSampling();
 		checkTransitionCodecRoundTrip();
 		checkShortEpisodeRetainsItsTail();
+		checkThePackedGridSurvivesARoundTrip();
+		checkThePackedGridIsEightTimesSmaller();
 		checkClipFractionIsNotAdvantageMagnitude();
 
 		if (failures.isEmpty()){
@@ -52,6 +54,54 @@ checkTerminalZerosTheTail();
 		}
 	}
 
+
+	private static void checkThePackedGridSurvivesARoundTrip(){
+		EnvConfig config = new EnvConfig();
+		int cells = config.spatialChannels() * config.gridWidth * config.gridWidth;
+
+		Transition t = new Transition();
+		t.gridCells = cells;
+		t.grid = new byte[ Transition.packedGridBytes( cells ) ];
+
+		java.util.Random rng = new java.util.Random( 987654321L );
+		float[] src = new float[ cells ];
+		for (int i = 0; i < cells; i++) src[ i ] = rng.nextBoolean() ? 1f : 0f;
+
+		t.packGrid( src );
+
+		float[] back = new float[ cells ];
+		t.unpackGrid( back );
+
+		for (int i = 0; i < cells; i++){
+			if (back[ i ] == src[ i ] ) continue;
+			fail( "the packed grid lost cell " + i + ": packed " + src[ i ] + ", unpacked "
+					+ back[ i ] + ". Every spatial plane is 0 or 1, so the packing has to be lossless or"
+					+ " the update trains on an observation the agent never saw." );
+			return;
+		}
+
+		System.out.println( "  the bit-packed grid round-trips exactly (" + cells + " cells)" );
+	}
+
+	/** Eight times smaller, which is the entire point of doing it. */
+	private static void checkThePackedGridIsEightTimesSmaller(){
+		EnvConfig config = new EnvConfig();
+		int cells = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		int packed = Transition.packedGridBytes( cells );
+
+		if (packed * 7 >= cells){
+			fail( "the packed grid is " + packed + " bytes for " + cells + " cells, which is not the"
+					+ " eight-fold reduction the packing exists for." );
+			return;
+		}
+
+		System.out.println( "  the grid travels as " + packed + " bytes for " + cells
+				+ " cells - " + fmt( (double) packed / cells ) + " of it" );
+	}
+
+	private static String fmt( double v ){
+		return String.format( "%.3f", v );
+	}
 
 	private static void checkScalarMatchesTransitionList(){
 		int n = 64;
@@ -379,15 +429,18 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 		int stateFloats = 2 * 128;
 
 		Transition sent = new Transition();
-		sent.grid = new byte[ gridSize ];
+		sent.gridCells = gridSize;
+		sent.grid = new byte[ Transition.packedGridBytes( gridSize ) ];
 		sent.inventory = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
 		sent.hero = new float[ HeroEncoder.FEATURES ];
 		sent.actionMask = new float[ Action.size() ];
 		sent.slotMask = new float[ config.maxSlots ];
 		sent.targetMask = new float[ ActionMapper.TARGET_COUNT ];
 
-		Random rng = new Random( 24680L );
-		for (int i = 0; i < sent.grid.length; i++) sent.grid[ i ] = (byte) (rng.nextBoolean() ? 1 : 0 );
+		float[] grid = new float[ sent.gridCells ];
+		java.util.Random rng = new java.util.Random( 20261016L );
+		for (int i = 0; i < grid.length; i++) grid[ i ] = rng.nextBoolean() ? 1f : 0f;
+		sent.packGrid( grid );
 		for (float[] a : new float[][]{ sent.inventory, sent.hero, sent.actionMask,
 				sent.slotMask, sent.targetMask }){
 			for (int i = 0; i < a.length; i++) a[ i ] = rng.nextFloat();

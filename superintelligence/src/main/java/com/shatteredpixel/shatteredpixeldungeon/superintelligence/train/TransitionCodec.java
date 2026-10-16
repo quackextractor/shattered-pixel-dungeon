@@ -16,7 +16,8 @@ public final class TransitionCodec {
 	private TransitionCodec() {}
 
 	public static long wireBytesPerStep( EnvConfig config ){
-		int grid = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		int grid = com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition.packedGridBytes(
+				config.spatialChannels() * config.gridWidth * config.gridWidth );
 		int inventory = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		int hero = HeroEncoder.FEATURES;
 
@@ -104,6 +105,8 @@ public final class TransitionCodec {
 
 		for (int i = 0; i < count; i++){
 			Transition t = new Transition();
+			t.gridCells = gridSize;
+				gridSize = com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition.packedGridBytes( gridSize );
 			t.grid = new byte[ gridSize ];
 			t.inventory = new float[ inventorySize ];
 			t.hero = new float[ heroSize ];

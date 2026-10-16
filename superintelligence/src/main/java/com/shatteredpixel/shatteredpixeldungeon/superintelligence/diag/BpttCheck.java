@@ -296,7 +296,7 @@ Transition t = transition( config, ppo, 3, i );
 	}
 
 	private static float[] gridOf( Transition t ){
-		float[] dst = new float[ t.grid.length ];
+		float[] dst = new float[ t.gridCells ];
 		t.unpackGrid( dst );
 		return dst;
 	}
