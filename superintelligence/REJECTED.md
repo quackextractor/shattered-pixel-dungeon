@@ -9,7 +9,7 @@ reason is on this page, or **deferred**, meaning the answer is later and the tri
 
 ## A native or ONNX runtime for the learner
 
-**Proposed by** `review.md` §6 Feature 3. **Not attempted.**
+**Proposed by** the external code review, as a native or ONNX learner. **Not attempted.**
 
 The numbers are right and the conclusion does not follow from them. Pure-Java forward and backward is
 11.29 ms/sample on one thread and 2.73 ms at four; past four the 14.3 MB gradient reduction per
@@ -75,8 +75,8 @@ fault.
 
 ## Ego-centring the observation grid on `hero.pos`
 
-**Proposed by** `review.md` §1.4: "either the grid is ego-centric (centered on `hero.pos`) or
-downsampled". **Downsampling is done; ego-centring is declined.**
+**Proposed by** the external code review: "either the grid is ego-centric (centered on
+`hero.pos`) or downsampled". **Downsampling is done; ego-centring is declined.**
 
 Measured across 1,040 floors over 40 seeds at depths 1-26: **419 exceed 48 tiles on at least one
 axis**, the largest 81. So a fixed `env.grid_width` x `env.grid_height` window clips real floors.
@@ -95,7 +95,7 @@ are going to be read, because it invalidates every weight file there is.
 
 ## Vectorising `Dense.matvec` with `jdk.incubator.vector`
 
-**Proposed by** `review.md` §6 Feature 1: "keep the project 100% pure Java ... and vectorise
+**Proposed by** the external code review: "keep the project 100% pure Java ... and vectorise
 `Dense.forward` / `Dense.backward` using the built-in JDK Vector API". **Declined on measurement.**
 
 The incubator module is available on this JDK — `javac --add-modules jdk.incubator.vector` compiles and
@@ -131,7 +131,7 @@ why this one has the same answer rather than a different one.
 
 ## Moving the remaining sound-pitch draws off `Random`
 
-**Proposed by** `review.md` §3 and §5: "migrate the 11 sound-pitch `Random` calls to `PRandom`".
+**Proposed by** the external code review: "migrate the 11 sound-pitch `Random` calls to `PRandom`".
 **Declined on measurement.**
 
 Ten sites, counted by scanning `core` and `SPD-classes` for a `Random.*` draw passed as the pitch

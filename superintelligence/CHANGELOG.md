@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ENGINE-CHANGES.md` §7 and this changelog were wrong about `Mob.holdAllies`.**
   `Random.shuffle(candidatePositions)` is what the tree has, and it landed in commit `b4f717992`,
   whose message is about `rolloutcheck`. Both documents recorded the change as applied and
-  uncommitted. `review.md` §3 asks for it to be committed; it already was.
+uncommitted. The external code review that asked for it to be committed found it already committed.
 
 ### Added
 - **A second, strided convolution between the grid and the dense trunk.** The trunk's input was the
