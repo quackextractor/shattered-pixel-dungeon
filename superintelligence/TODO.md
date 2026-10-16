@@ -34,9 +34,13 @@ points over fifteen generations to mean anything. `bestDepth` on its own is not 
 
 ## 2. Reward signals
 
-- [ ] **`MENU_NOOP` has no emission site**, for the reason already measured rather than a new one:
-      every sub-mode action either advances the clock or leaves the sub-mode, and `modecheck` now
-      covers all seven modes and the claim still holds.
+- [x] ~~**`MENU_NOOP` has no emission site**~~ **It has had one all along, and now has a gate.**
+      `SPDEnv.menuNoop()` - entered a sub-mode, stayed in it, advanced no engine time - feeds
+      `RewardModel.step(..., menuNoop)`, which is where `ledger.add( MENU_NOOP, menuNoopPenalty )`
+      lives. What was missing was the check, and the entry read as though the wiring were in doubt.
+      `rewardcheck` drives the real model against a real world both ways and measures **MENU_NOOP
+      firing once and paying -1.00**; reverting the emission fails it. `checkAMenuNoOpIsUnreachable`
+      still measures that play cannot reach the state, which is the honest half.
 - [ ] **Terms that never fire in a run.** `KILL`, `GOLD_GAIN` and `ITEM_PICKUP` have never been
       observed paying in a run. **All three are now proven to fire**: `rewardcheck` drives
       `Action.INTERACT` over a heap beside the hero and measures `ITEM_PICKUP` at 0.50 and

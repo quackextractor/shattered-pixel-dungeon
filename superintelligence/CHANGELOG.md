@@ -44,11 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `gold`, `pickups`, `talents` and `crafted` totals rather than the two recordings that survive.
   `metrics.csv` gains `meanObjectiveScore` and `depth2PlusEpisodes`. **`Protocol.VERSION` is 6**, and
   `collectcheck` is **9 cases** with a new one that round-trips the whole episode frame.
-- **`GOLD_GAIN` and `ITEM_PICKUP` are proven to fire.** `TODO.md` 2.2 records both as terms never
+- **`GOLD_GAIN` and `ITEM_PICKUP` are proven to fire.** `TODO.md` 2.2 recorded both as terms never
   observed paying in a run, and the question was whether an untrained policy ever gets there or
-  whether the term can move. It can: `rewardcheck` now drops a heap beside the hero and drives
-  `Action.INTERACT` over it, and measures **`ITEM_PICKUP` paying 0.50 and `GOLD_GAIN` paying 1.25**.
-  `rewardcheck` is **33 cases**.
+  whether the term can move. It can: `rewardcheck` drops a heap beside the hero and drives
+  `Action.INTERACT` over it, measuring **`ITEM_PICKUP` paying 0.50 and `GOLD_GAIN` paying 1.25** -
+  which a 2-generation smoke run then confirmed generation-wide at 6-9 kills and 100-188 pickups.
 - **Every comparison a run makes now carries an error bar.** `train.WindowStatistics` answers the
   window mean, the sample standard deviation, the standard error and the quadrature error on the
   difference of two windows; `MetricsHistory` splits a run's generations in half and prints both
@@ -68,6 +68,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   block fails the second.
 
 ### Fixed
+- **`TODO.md` 2.1 said `MENU_NOOP` had no emission site, and it has had one all along.**
+  `SPDEnv.menuNoop()` - a step that entered a sub-mode, stayed in it and advanced no engine time -
+  has been feeding `RewardModel.step( newlyExplored, tookAction, menuNoop )` since the sub-mode work,
+  which is where `ledger.add( MENU_NOOP, config.menuNoopPenalty, false )` lives. What was missing was
+  the **gate**, and the entry read as though the wiring were the thing in doubt. `rewardcheck` now
+  drives the real `RewardModel` against a real world twice - once with the flag false, once with it
+  true - and measures **MENU_NOOP firing once and paying -1.00**, while
+  `checkAMenuNoOpIsUnreachable` separately measures that the state is not reachable through play.
+  Reverting the emission fails it. `rewardcheck` is **34 cases**.
 - **`research.md` and `docs.md` named 26 classes at paths that do not exist.** `FogOfWar.java` and
   `ShadowCaster.java` moved to `tiles/` and `mechanics/` in an upstream merge, and the remaining
   references were bare file names that a reader cannot locate a package from. One of them,

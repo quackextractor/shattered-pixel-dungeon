@@ -70,6 +70,50 @@ public final class RewardShapingCheck {
 	}
 
 
+	public static void checkAMenuNoOpEmitsAndPays(){
+		EnvConfig config = new EnvConfig();
+
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardLedger ledger
+				= new com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardLedger();
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel model
+				= new com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel(
+				config, ledger, new com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.Curriculum() );
+
+		RewardFixtures.play( config, 3, "MENU-NOOP", turn -> turn.env.step( Action.WAIT, 0 ) );
+
+		model.resetSnapshot();
+		model.step( 0, true, false );
+		if (ledger.notes( RewardTerm.MENU_NOOP ) != 0){
+			fail( "a step that advanced and left the sub-mode noted MENU_NOOP"
+					+ ledger.notes( RewardTerm.MENU_NOOP ) + " time(s), so the term is paying for states it"
+					+ " was written for" );
+			return;
+		}
+
+		double before = ledger.termTotal( RewardTerm.MENU_NOOP );
+		model.step( 0, true, true );
+
+		if (ledger.notes( RewardTerm.MENU_NOOP ) != 1){
+			fail( "a sub-mode step that advanced no engine time and stayed in its mode noted MENU_NOOP "
+					+ ledger.notes( RewardTerm.MENU_NOOP ) + " time(s) where it should note it once."
+					+ " The emission site is SPDEnv.menuNoop() into RewardModel.step, and TODO.md 2.1"
+					+ " still says it does not exist." );
+			return;
+		}
+
+		double paid = ledger.termTotal( RewardTerm.MENU_NOOP ) - before;
+		if (Math.abs( paid - config.menuNoopPenalty ) > 1e-9){
+			fail( "MENU_NOOP paid " + fmt( paid ) + " and reward.menu_noop_penalty is "
+					+ fmt( config.menuNoopPenalty ) );
+			return;
+		}
+
+		System.out.println( "  a sub-mode step that moves nothing fires MENU_NOOP and pays "
+				+ fmt( paid ) + " - the state is unreachable in this environment, which"
+				+ " checkAMenuNoOpIsUnreachable measures, and the site is live rather than declared" );
+	}
+
+
 	private static Outcome pickup( com.shatteredpixel.shatteredpixeldungeon.items.Item item ){
 		return play( new EnvConfig(), 12, "PICKUPCHECK", turn -> {
 			if (turn.step == 1){
