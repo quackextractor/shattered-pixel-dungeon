@@ -77,6 +77,7 @@ private EnvConfig config;
 		float sampleRate = in.readFloat();
 		int maxSampledPerEpisode = in.readInt();
 		int tailSteps = in.readInt();
+		int chunkLength = in.readInt();
 
 		Random policyRng = new Random( in.readLong() );
 
@@ -86,7 +87,7 @@ private EnvConfig config;
 		network = new Network( config, policyRng );
 
 		collector = new EpisodeCollector( config, network, policyRng, new Random( policyRng.nextLong() ),
-				gamma, lambda, sampleRate, maxSampledPerEpisode );
+				gamma, lambda, sampleRate, maxSampledPerEpisode, chunkLength );
 		collector.tailSteps( tailSteps );
 		if (traceWorld != null && !traceWorld.isEmpty()) collector.trace( traceWorld );
 		readWeights( in, network );

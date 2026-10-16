@@ -14,6 +14,7 @@ public class Network {
 	public final EnvConfig config;
 
 	public final Conv2D conv;
+	public final Conv2D reduce;
 	public final LSTM memory;
 	public final Dense trunk;
 	public final Dense actionHead;
@@ -34,6 +35,7 @@ public class Network {
 	private int adamStep = 0;
 
 	private final Tensor convOut;
+	private final Tensor reduceOut;
 	private final Tensor concat;
 	private final Tensor hidden;
 	private final Tensor memoryOut;
@@ -51,6 +53,8 @@ public class Network {
 	private final Tensor dHeadScratch;
 	private final Tensor dPrev;
 	private final Tensor dLstmIn;
+	private final Tensor dTrunkIn;
+	private final Tensor dReduce;
 	private final Tensor dConv;
 	private final float[] dGrid;
 
@@ -60,14 +64,26 @@ public class Network {
 
 	private final Tensor[] gradients;
 
+	public static final int CONV_FILTERS = 24;
+	public static final int CONV_KERNEL = 4;
+	public static final int CONV_STRIDE = 2;
+
+	public static final int REDUCE_FILTERS = 32;
+	public static final int REDUCE_KERNEL = 4;
+	public static final int REDUCE_STRIDE = 2;
+
 	public Network( EnvConfig config, Random rng ){
 		this.config = config;
 
 		this.extraInputs = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT + HeroEncoder.FEATURES;
 
-		this.conv = new Conv2D( config.spatialChannels(), config.gridWidth, 24, 4, 2, rng );
+		this.conv = new Conv2D( config.spatialChannels(), config.gridWidth,
+				CONV_FILTERS, CONV_KERNEL, CONV_STRIDE, rng );
 
-		int convFeatures = conv.outputSize();
+		this.reduce = new Conv2D( conv.outChannels, conv.outSize,
+				REDUCE_FILTERS, REDUCE_KERNEL, REDUCE_STRIDE, rng );
+
+		int convFeatures = reduce.outputSize();
 
 		this.trunk = new Dense( convFeatures + extraInputs, 256, rng, 1f );
 		this.memory = new LSTM( 256, 128, rng );
@@ -78,7 +94,8 @@ public class Network {
 
 		this.valueHead = new Dense( 128, 1, rng, 1f, false );
 
-		this.convOut = new Tensor( 1, convFeatures );
+		this.convOut = new Tensor( 1, conv.outputSize() );
+		this.reduceOut = new Tensor( 1, convFeatures );
 		this.concat = new Tensor( 1, convFeatures + extraInputs );
 		this.hidden = new Tensor( 1, 256 );
 		this.memoryOut = new Tensor( 1, memory.size );
@@ -96,13 +113,16 @@ public class Network {
 		this.dHeadScratch = new Tensor( 1, memory.size );
 		this.dPrev = new Tensor( 1, memory.size );
 		this.dLstmIn = new Tensor( 1, 256 );
-		this.dConv = new Tensor( 1, trunk.in );
+		this.dTrunkIn = new Tensor( 1, trunk.in );
+		this.dReduce = new Tensor( 1, convFeatures );
+		this.dConv = new Tensor( 1, conv.outputSize() );
 
 		this.dGrid = new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
 		this.gridSnapshot = new float[ dGrid.length ];
 
 		this.gradients = new Tensor[] {
 				conv.gW, conv.gb,
+				reduce.gW, reduce.gb,
 				trunk.gW, trunk.gb,
 				memory.gW, memory.gb,
 				actionHead.gW, actionHead.gb,
@@ -145,6 +165,14 @@ public class Network {
 
 	public int concatLength(){
 		return concat.cols;
+	}
+
+	public int convPreActLength(){
+		return conv.preActivationSize();
+	}
+
+	public int reducePreActLength(){
+		return reduce.preActivationSize();
 	}
 
 
@@ -202,6 +230,8 @@ public class Network {
 		System.arraycopy( hidden.data, 0, cache.hidden, 0, hidden.cols );
 		System.arraycopy( memoryOut.data, 0, cache.memoryOut, 0, memoryOut.cols );
 
+		conv.savePreAct( cache.convPreAct );
+		reduce.savePreAct( cache.reducePreAct );
 		trunk.savePreAct( cache.trunkPreAct );
 		actionHead.savePreAct( cache.actionPreAct );
 		slotHead.savePreAct( cache.slotPreAct );
@@ -215,9 +245,10 @@ public class Network {
 				Math.min( grid.length, gridSnapshot.length ) );
 
 		conv.forward( grid, convOut );
+		reduce.forward( convOut.data, reduceOut );
 
-		System.arraycopy( convOut.data, 0, concat.data, 0, convOut.cols );
-		int off = convOut.cols;
+		System.arraycopy( reduceOut.data, 0, concat.data, 0, reduceOut.cols );
+		int off = reduceOut.cols;
 		System.arraycopy( inventory, 0, concat.data, off, inventory.length );
 		off += config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		System.arraycopy( heroFeatures, 0, concat.data, off, heroFeatures.length );
@@ -281,8 +312,13 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		System.arraycopy( memory.inputGrad(), 0, dLstmIn.data, 0,
 				Math.min( memory.inputGradLen(), dLstmIn.cols ) );
 
+		dReduce.fill( 0f );
+		dTrunkIn.fill( 0f );
+		trunk.backward( concat, dLstmIn, dTrunkIn );
+		System.arraycopy( dTrunkIn.data, 0, dReduce.data, 0, dReduce.cols );
+
 		dConv.fill( 0f );
-		trunk.backward( concat, dLstmIn, dConv );
+		reduce.backward( convOut.data, dReduce, dConv.data );
 
 		java.util.Arrays.fill( dGrid, 0f );
 		conv.backward( gridSnapshot, dConv, dGrid );
@@ -295,6 +331,8 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		System.arraycopy( cache.memoryOut, 0, memoryOut.data, 0, memoryOut.cols );
 		System.arraycopy( cache.grid, 0, gridSnapshot, 0, gridSnapshot.length );
 
+		conv.loadPreAct( cache.convPreAct );
+		reduce.loadPreAct( cache.reducePreAct );
 		trunk.loadPreAct( cache.trunkPreAct );
 		actionHead.loadPreAct( cache.actionPreAct );
 		slotHead.loadPreAct( cache.slotPreAct );
@@ -326,6 +364,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 
 	public void zeroGrad(){
 		conv.zeroGrad();
+		reduce.zeroGrad();
 		trunk.zeroGrad();
 		memory.zeroGrad();
 		actionHead.zeroGrad();
@@ -339,6 +378,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		adamStep++;
 		float s = gradScale;
 		conv.adamStep( learningRate, beta1, beta2, adamEps, s, adamStep );
+		reduce.adamStep( learningRate, beta1, beta2, adamEps, s, adamStep );
 		trunk.adamStep( learningRate, beta1, beta2, adamEps, s, adamStep );
 		memory.adamStep( learningRate, beta1, beta2, adamEps, s, adamStep );
 		actionHead.adamStep( learningRate, beta1, beta2, adamEps, s, adamStep );
@@ -359,6 +399,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 
 	public long parameterCount(){
 		return (long) conv.W.size() + conv.b.size()
+				+ reduce.W.size() + reduce.b.size()
 				+ trunk.W.size() + trunk.b.size()
 				+ memory.W.size() + memory.b.size()
 				+ actionHead.W.size() + actionHead.b.size()
@@ -388,6 +429,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 	public Layer[] layers(){
 		return new Layer[] {
 				new Layer( "conv.W", conv.W.rows, conv.W.cols, conv.W.data, conv.b.data ),
+				new Layer( "reduce.W", reduce.W.rows, reduce.W.cols, reduce.W.data, reduce.b.data ),
 				new Layer( "trunk.W", trunk.W.rows, trunk.W.cols, trunk.W.data, trunk.b.data ),
 				new Layer( "memory.W", memory.W.rows, memory.W.cols, memory.W.data, memory.b.data ),
 				new Layer( "actionHead.W", actionHead.W.rows, actionHead.W.cols, actionHead.W.data, actionHead.b.data ),
@@ -443,6 +485,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 	public Moments[] moments(){
 		return new Moments[] {
 				momentsOf( "conv.W", conv.mW, conv.vW, conv.mb, conv.vb ),
+				momentsOf( "reduce.W", reduce.mW, reduce.vW, reduce.mb, reduce.vb ),
 				momentsOf( "trunk.W", trunk.mW, trunk.vW, trunk.mb, trunk.vb ),
 				momentsOf( "memory.W", memory.mW, memory.vW, memory.mb, memory.vb ),
 				momentsOf( "actionHead.W", actionHead.mW, actionHead.vW, actionHead.mb, actionHead.vb ),

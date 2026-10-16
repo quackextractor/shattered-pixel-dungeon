@@ -60,6 +60,8 @@ public class PpoHyperparameters {
 
 	public int pushChunkBytes = 32 * 1024;
 
+	public int pushRetries = 8;
+
 	public String workerHeapMin = "256m";
 
 	public String workerHeapMax = "1536m";
@@ -102,6 +104,7 @@ public class PpoHyperparameters {
 		require( recordEvery >= 1, "train.record_every must be at least 1, was " + recordEvery );
 		require( pipeBufferBytes > 0, "ipc.pipe_buffer_bytes must be positive, was " + pipeBufferBytes );
 		require( pushChunkBytes > 0, "ipc.push_chunk_bytes must be positive, was " + pushChunkBytes );
+		require( pushRetries >= 1, "trainer.push_retries must be at least 1, was " + pushRetries );
 		require( workerGcPauseMs > 0, "worker.gc_pause_ms must be positive, was " + workerGcPauseMs );
 		require( !workerHeapMin.isBlank(), "worker.heap_min must not be blank" );
 		require( !workerHeapMax.isBlank(), "worker.heap_max must not be blank" );
@@ -142,6 +145,7 @@ public class PpoHyperparameters {
 		p.recordEvery = recordEvery;
 		p.pipeBufferBytes = pipeBufferBytes;
 		p.pushChunkBytes = pushChunkBytes;
+		p.pushRetries = pushRetries;
 		p.workerHeapMin = workerHeapMin;
 		p.workerHeapMax = workerHeapMax;
 		p.workerGcPauseMs = workerGcPauseMs;

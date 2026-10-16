@@ -200,7 +200,7 @@ public float lastClipFraction;
 	}
 
 
-	List< List< Transition > > chunks(){
+	public List< List< Transition > > chunks(){
 		List< List< Transition > > out = new ArrayList<>( buffer.size() );
 
 		List< Transition > current = new ArrayList<>();

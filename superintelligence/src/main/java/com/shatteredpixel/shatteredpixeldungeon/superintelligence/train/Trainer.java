@@ -139,6 +139,7 @@ public class Trainer {
 		WorkerPool.heapMax = hyper.workerHeapMax;
 		WorkerPool.gcPauseMs = hyper.workerGcPauseMs;
 		TrainerWorkers.pushChunkBytes = hyper.pushChunkBytes;
+		TrainerWorkers.pushRetries = hyper.pushRetries;
 		this.seeds.randomFraction = (float) hyper.randomSeedRate;
 		learning( hyper );
 	}
@@ -249,6 +250,7 @@ public class Trainer {
 		out.writeFloat( (float) sampleRate() );
 		out.writeInt( maxSampledPerEpisode() );
 		out.writeInt( hyper.tailSteps );
+		out.writeInt( Math.max( 1, hyper.chunkLength ) );
 
 		out.writeLong( rng.nextLong() );
 		Worker.writeWeights( out, ppo.network );

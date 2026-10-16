@@ -26,6 +26,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResetChec
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RolloutCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SamplerCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SlotCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.TransitionCheck;
@@ -79,6 +80,7 @@ public class Main {
 		case "rolloutcheck": RolloutCheck.main( rest ); break;
 		case "pushcheck": PushCheck.main( rest ); break;
 		case "curriculumcheck": CurriculumCheck.main( rest ); break;
+		case "samplercheck": SamplerCheck.main( rest ); break;
 		case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag
@@ -113,6 +115,8 @@ public class Main {
 		System.out.println( "  freeactioncheck           fail if a free action can be repeated forever, or a talent point cannot be spent" );
 		System.out.println( "  bpttcheck                  fail if the recurrent gradient does not cross a timestep" );
 		System.out.println( "  pushcheck                fail if the policy push is not chunked and retried" );
+		System.out.println( "  curriculumcheck          fail if the shaping fade is wired to nothing" );
+		System.out.println( "  samplercheck             fail if sampling shatters the recurrent chunk" );
 		System.out.println( "  transitioncheck           fail if descending ends the episode, or is worth nothing" );
 		System.out.println( "  fallcheck                fail if a chasm fall is dropped, or inherits an earlier episode" );
 		System.out.println( "  dialogcheck              fail if an answer cannot reach a dialog the game opened" );

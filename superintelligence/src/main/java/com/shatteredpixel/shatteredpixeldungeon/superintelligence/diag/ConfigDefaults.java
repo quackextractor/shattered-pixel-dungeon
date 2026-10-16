@@ -64,6 +64,42 @@ public final class ConfigDefaults {
 			case "reward.curriculum_progress": return String.valueOf( config.curriculumProgress );
 			case "reward.stair_potential_weight":
 				return String.valueOf( config.stairPotentialWeight );
+			case "reward.identified_reward":
+				return String.valueOf( config.identifiedReward );
+			case "reward.curse_equipped_penalty":
+				return String.valueOf( config.curseEquippedPenalty );
+			case "reward.curse_removed_reward":
+				return String.valueOf( config.curseRemovedReward );
+			case "reward.equip_too_strong_penalty":
+				return String.valueOf( config.equipTooStrongPenalty );
+			case "reward.cured_debuff_reward":
+				return String.valueOf( config.curedDebuffReward );
+			case "reward.eaten_early_penalty":
+				return String.valueOf( config.eatenEarlyPenalty );
+			case "reward.menu_noop_penalty":
+				return String.valueOf( config.menuNoopPenalty );
+			case "reward.level_up_reward":
+				return String.valueOf( config.levelUpReward );
+			case "reward.strength_gain_reward":
+				return String.valueOf( config.strengthGainReward );
+			case "reward.gold_lost_factor":
+				return String.valueOf( config.goldLostFactor );
+			case "reward.item_value_bag":
+				return String.valueOf( config.itemValueBag );
+			case "reward.item_value_equip_base":
+				return String.valueOf( config.itemValueEquipBase );
+			case "reward.item_value_equip_level":
+				return String.valueOf( config.itemValueEquipLevel );
+			case "reward.item_value_other":
+				return String.valueOf( config.itemValueOther );
+			case "reward.boss_slain_factor":
+				return String.valueOf( config.bossSlainFactor );
+			case "reward.max_hp_gain_cap":
+				return String.valueOf( config.maxHpGainCap );
+			case "reward.curriculum_fade_start_depth":
+				return String.valueOf( config.curriculumFadeStartDepth );
+			case "reward.curriculum_fade_end_depth":
+				return String.valueOf( config.curriculumFadeEndDepth );
 
 			case "rl.learning_rate":          return String.valueOf( hyper.learningRate );
 			case "rl.gamma":                  return String.valueOf( hyper.gamma );
@@ -96,6 +132,7 @@ public final class ConfigDefaults {
 
 			case "ipc.pipe_buffer_bytes":     return String.valueOf( hyper.pipeBufferBytes );
 			case "ipc.push_chunk_bytes":      return String.valueOf( hyper.pushChunkBytes );
+			case "trainer.push_retries":      return String.valueOf( hyper.pushRetries );
 			case "worker.heap_min":           return hyper.workerHeapMin;
 			case "worker.heap_max":           return hyper.workerHeapMax;
 			case "worker.gc_pause_ms":        return String.valueOf( hyper.workerGcPauseMs );
@@ -164,6 +201,24 @@ public final class ConfigDefaults {
 			case "reward.victory_reward":     return "2000.0";
 			case "reward.curriculum_progress": return "0.5";
 			case "reward.stair_potential_weight": return "0.5";
+			case "reward.identified_reward": return "1.5";
+			case "reward.curse_equipped_penalty": return "-1.5";
+			case "reward.curse_removed_reward": return "3.5";
+			case "reward.equip_too_strong_penalty": return "-4.5";
+			case "reward.cured_debuff_reward": return "3.5";
+			case "reward.eaten_early_penalty": return "-2.5";
+			case "reward.menu_noop_penalty": return "-2.5";
+			case "reward.level_up_reward": return "3.5";
+			case "reward.strength_gain_reward": return "2.5";
+			case "reward.gold_lost_factor": return "3.5";
+			case "reward.item_value_bag": return "4.5";
+			case "reward.item_value_equip_base": return "1.5";
+			case "reward.item_value_equip_level": return "0.25";
+			case "reward.item_value_other": return "0.75";
+			case "reward.boss_slain_factor": return "3.5";
+			case "reward.max_hp_gain_cap": return "7.0";
+			case "reward.curriculum_fade_start_depth": return "4";
+			case "reward.curriculum_fade_end_depth": return "9";
 
 			case "rl.learning_rate":          return "0.007";
 			case "rl.gamma":                  return "0.5";
@@ -193,6 +248,7 @@ public final class ConfigDefaults {
 
 			case "ipc.pipe_buffer_bytes":     return "65536";
 			case "ipc.push_chunk_bytes":      return "8192";
+			case "trainer.push_retries":      return "2";
 			case "worker.gc_pause_ms":        return "50";
 
 			default:

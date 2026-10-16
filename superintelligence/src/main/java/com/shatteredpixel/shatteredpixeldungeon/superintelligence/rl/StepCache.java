@@ -6,6 +6,9 @@ public class StepCache {
 	final float[] concat;
 	final float[] hidden;
 
+	final float[] convPreAct;
+	final float[] reducePreAct;
+
 	final float[] trunkPreAct;
 	final float[] actionPreAct;
 	final float[] slotPreAct;
@@ -20,6 +23,8 @@ public class StepCache {
 		this.grid = new float[ net.gridLength() ];
 		this.concat = new float[ net.concatLength() ];
 		this.hidden = new float[ net.trunkOut() ];
+		this.convPreAct = new float[ net.convPreActLength() ];
+		this.reducePreAct = new float[ net.reducePreActLength() ];
 		this.trunkPreAct = new float[ net.trunkOut() ];
 		this.actionPreAct = new float[ net.actionCount() ];
 		this.slotPreAct = new float[ net.slotCount() ];

@@ -54,6 +54,25 @@ public class EnvConfigBinder {
 			"reward.victory_reward",
 			"reward.curriculum_progress",
 
+			"reward.identified_reward",
+			"reward.curse_equipped_penalty",
+			"reward.curse_removed_reward",
+			"reward.equip_too_strong_penalty",
+			"reward.cured_debuff_reward",
+			"reward.eaten_early_penalty",
+			"reward.menu_noop_penalty",
+			"reward.level_up_reward",
+			"reward.strength_gain_reward",
+			"reward.gold_lost_factor",
+			"reward.item_value_bag",
+			"reward.item_value_equip_base",
+			"reward.item_value_equip_level",
+			"reward.item_value_other",
+			"reward.boss_slain_factor",
+			"reward.max_hp_gain_cap",
+			"reward.curriculum_fade_start_depth",
+			"reward.curriculum_fade_end_depth",
+
 			"rl.learning_rate",
 			"rl.gamma",
 			"rl.gae_lambda",
@@ -85,6 +104,8 @@ public class EnvConfigBinder {
 
 			"ipc.pipe_buffer_bytes",
 			"ipc.push_chunk_bytes",
+
+			"trainer.push_retries",
 
 			"worker.heap_min",
 			"worker.heap_max",
@@ -250,6 +271,42 @@ public class EnvConfigBinder {
 			case "reward.victory_reward":    config.victoryReward = decimal( key, value, origin ); break;
 			case "reward.curriculum_progress":
 				config.curriculumProgress = decimal( key, value, origin ); break;
+			case "reward.identified_reward":
+				config.identifiedReward = decimal( key, value, origin ); break;
+			case "reward.curse_equipped_penalty":
+				config.curseEquippedPenalty = decimal( key, value, origin ); break;
+			case "reward.curse_removed_reward":
+				config.curseRemovedReward = decimal( key, value, origin ); break;
+			case "reward.equip_too_strong_penalty":
+				config.equipTooStrongPenalty = decimal( key, value, origin ); break;
+			case "reward.cured_debuff_reward":
+				config.curedDebuffReward = decimal( key, value, origin ); break;
+			case "reward.eaten_early_penalty":
+				config.eatenEarlyPenalty = decimal( key, value, origin ); break;
+			case "reward.menu_noop_penalty":
+				config.menuNoopPenalty = decimal( key, value, origin ); break;
+			case "reward.level_up_reward":
+				config.levelUpReward = decimal( key, value, origin ); break;
+			case "reward.strength_gain_reward":
+				config.strengthGainReward = decimal( key, value, origin ); break;
+			case "reward.gold_lost_factor":
+				config.goldLostFactor = decimal( key, value, origin ); break;
+			case "reward.item_value_bag":
+				config.itemValueBag = decimal( key, value, origin ); break;
+			case "reward.item_value_equip_base":
+				config.itemValueEquipBase = decimal( key, value, origin ); break;
+			case "reward.item_value_equip_level":
+				config.itemValueEquipLevel = decimal( key, value, origin ); break;
+			case "reward.item_value_other":
+				config.itemValueOther = decimal( key, value, origin ); break;
+			case "reward.boss_slain_factor":
+				config.bossSlainFactor = decimal( key, value, origin ); break;
+			case "reward.max_hp_gain_cap":
+				config.maxHpGainCap = decimal( key, value, origin ); break;
+			case "reward.curriculum_fade_start_depth":
+				config.curriculumFadeStartDepth = integer( key, value, origin ); break;
+			case "reward.curriculum_fade_end_depth":
+				config.curriculumFadeEndDepth = integer( key, value, origin ); break;
 
 			case "rl.learning_rate":     hyper.learningRate = decimal( key, value, origin ); break;
 			case "rl.gamma":             hyper.gamma = decimal( key, value, origin ); break;
@@ -284,6 +341,7 @@ public class EnvConfigBinder {
 
 			case "ipc.pipe_buffer_bytes":     hyper.pipeBufferBytes = integer( key, value, origin ); break;
 			case "ipc.push_chunk_bytes":      hyper.pushChunkBytes = integer( key, value, origin ); break;
+			case "trainer.push_retries":      hyper.pushRetries = integer( key, value, origin ); break;
 
 			case "worker.heap_min":           hyper.workerHeapMin = text( key, value, origin ); break;
 			case "worker.heap_max":           hyper.workerHeapMax = text( key, value, origin ); break;

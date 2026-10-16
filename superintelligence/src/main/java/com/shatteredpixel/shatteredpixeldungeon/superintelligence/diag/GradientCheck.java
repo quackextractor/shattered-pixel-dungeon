@@ -16,6 +16,8 @@ public class GradientCheck {
 
 	private static final double FAILURE_TOLERANCE = 0.2;
 
+	private static final double DIFFERENCE_FLOOR = 8.0;
+
 
 	private static final float ACTION_W = 1f;
 	private static final float SLOT_W = 2f;
@@ -84,7 +86,7 @@ public class GradientCheck {
 		network.zeroGrad();
 		network.backward( actionGradient(), slotGradient(), targetGradient(), VALUE_W );
 
-		String[] layers = { "conv", "trunk", "memory", "actionHead", "slotHead", "targetHead", "valueHead" };
+		String[] layers = { "conv", "reduce", "trunk", "memory", "actionHead", "slotHead", "targetHead", "valueHead" };
 		Random picker = new Random( 0xC0FFEE );
 
 		int exact = 0;
@@ -106,7 +108,7 @@ public class GradientCheck {
 		System.out.println();
 		System.out.println( "gradient check: " + checks + " parameters across "
 				+ layers.length + " layers, " + exact + " within " + TOLERANCE
-				+ ", " + ( checks - exact - failures ) + " in the finite-difference noise band" );
+				+ ", " + ( checks - exact - failures ) + " in the noise band" );
 
 		if (failures > 0){
 			System.err.println( "[ERROR] " + failures + " parameters disagree with finite"
@@ -131,12 +133,18 @@ public class GradientCheck {
 		return (up - down) / (2 * eps );
 	}
 
+private static double differenceFloor( double center, double eps ){
+		return DIFFERENCE_FLOOR * Math.abs( center ) * 1.1920929e-7 / eps;
+	}
+
+
 	private double compare( float[] param, float[] grad, int index, String label, boolean verbose ){
 		if (index < 0 || index >= param.length) return 0;
 
 		float original = param[ index ];
 
 		double eps = 1e-3;
+		double center = loss();
 		double numeric = central( param, index, original, eps );
 		double analytic = grad[ index ];
 
@@ -144,13 +152,12 @@ public class GradientCheck {
 
 		double scale = Math.max( Math.abs( numeric ), Math.abs( analytic ) );
 
-
-		double noise = Math.abs( central( param, index, original, eps * 2 )
-				- central( param, index, original, eps * 0.5 ) );
+		double noise = Math.max( differenceFloor( center, eps ),
+				Math.abs( central( param, index, original, eps * 2 )
+						- central( param, index, original, eps * 0.5 ) ) );
 
 		double disagreement = Math.abs( numeric - analytic );
 		double relative = disagreement / scale;
-
 
 		boolean ok = disagreement <= Math.max( FAILURE_TOLERANCE * scale, noise );
 

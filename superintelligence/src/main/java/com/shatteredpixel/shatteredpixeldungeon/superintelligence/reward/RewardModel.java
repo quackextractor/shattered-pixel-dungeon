@@ -96,7 +96,7 @@ public class RewardModel {
 
 		if (hero.HP > prevHp){
 			ledger.add( RewardTerm.MAX_HP_GAIN,
-					config.maxHpReward * Math.min( hero.HP - prevHp, 10 ), false );
+					config.maxHpReward * Math.min( hero.HP - prevHp, config.maxHpGainCap ), false );
 		} else if (hero.HP < prevHp){
 			ledger.add( RewardTerm.DAMAGE_TAKEN,
 					-config.damagePenalty * (prevHp - hero.HP), false );
@@ -108,7 +108,7 @@ public class RewardModel {
 		}
 
 		if (hero.lvl > prevLevel){
-			ledger.add( RewardTerm.LEVEL_UP, 2f * (hero.lvl - prevLevel), false );
+			ledger.add( RewardTerm.LEVEL_UP, config.levelUpReward * (hero.lvl - prevLevel), false );
 		}
 
 		int talents = talentsSpent();
@@ -119,7 +119,7 @@ public class RewardModel {
 
 		int strength = hero.STR();
 		if (strength > prevStrength){
-			ledger.add( RewardTerm.STRENGTH_GAIN, 1f * (strength - prevStrength), false );
+			ledger.add( RewardTerm.STRENGTH_GAIN, config.strengthGainReward * (strength - prevStrength), false );
 		}
 
 		int gold = Dungeon.gold;
@@ -128,7 +128,7 @@ public class RewardModel {
 			ledger.countGold( gold - prevGold );
 		} else if (gold < prevGold){
 
-			ledger.add( RewardTerm.GOLD_LOST, -config.goldReward * 2f * (prevGold - gold), false );
+			ledger.add( RewardTerm.GOLD_LOST, -config.goldReward * config.goldLostFactor * (prevGold - gold), false );
 		}
 
 		float carried = inventoryValue();
@@ -140,12 +140,12 @@ public class RewardModel {
 
 		int identified = countIdentified();
 		if (identified != prevIdentified){
-			ledger.add( RewardTerm.IDENTIFIED, 0.5f * (identified - prevIdentified), false );
+			ledger.add( RewardTerm.IDENTIFIED, config.identifiedReward * (identified - prevIdentified), false );
 		}
 
 		int debuffs = countDebuffs();
 		if (debuffs < prevDebuffCount){
-			ledger.add( RewardTerm.CURED_DEBUFF, 1.5f * (prevDebuffCount - debuffs), false );
+			ledger.add( RewardTerm.CURED_DEBUFF, config.curedDebuffReward * (prevDebuffCount - debuffs), false );
 		}
 
 		int kills = kills();
@@ -163,30 +163,30 @@ public class RewardModel {
 
 		int cursedEquipped = countCursedEquipped();
 		if (cursedEquipped > prevCursedEquipped){
-			ledger.add( RewardTerm.CURSE_EQUIPPED, -5f * (cursedEquipped - prevCursedEquipped), false );
+			ledger.add( RewardTerm.CURSE_EQUIPPED, config.curseEquippedPenalty * (cursedEquipped - prevCursedEquipped), false );
 		}
 
 		int stillCarried = countCarried();
 		int cursedCarried = countCursedCarried();
 		if (cursedCarried < prevCursedCarried && stillCarried == prevCarried){
 			ledger.add( RewardTerm.CURSE_REMOVED,
-					1.5f * (prevCursedCarried - cursedCarried), false );
+					config.curseRemovedReward * (prevCursedCarried - cursedCarried), false );
 		}
 
 		int overStrong = countEquippedOverStrength();
 		if (overStrong > prevEquippedOverStrength){
 			ledger.add( RewardTerm.EQUIP_TOO_STRONG,
-					-2f * (overStrong - prevEquippedOverStrength), false );
+					config.equipTooStrongPenalty * (overStrong - prevEquippedOverStrength), false );
 		}
 
 		if (menuNoop){
-			ledger.add( RewardTerm.MENU_NOOP, -1f, false );
+			ledger.add( RewardTerm.MENU_NOOP, config.menuNoopPenalty, false );
 		}
 
 		float hunger = hungerLevel( hero );
 		if (hunger > prevHunger + 20f && !hero.isStarving()){
 
-			ledger.add( RewardTerm.EATEN_EARLY, -1f, false );
+			ledger.add( RewardTerm.EATEN_EARLY, config.eatenEarlyPenalty, false );
 		}
 
 		if (newlyExplored > 0){
@@ -249,7 +249,7 @@ public class RewardModel {
 		}
 
 		if (hero != null && hero.isAlive() && reason == TerminateReason.VICTORY){
-			ledger.add( RewardTerm.BOSS_SLAIN, config.depthReward * 2f, false );
+			ledger.add( RewardTerm.BOSS_SLAIN, config.depthReward * config.bossSlainFactor, false );
 		}
 
 		return ledger.flushTurn();
@@ -319,20 +319,22 @@ public class RewardModel {
 	private float inventoryValue(){
 		float value = 0f;
 		for (Item item : Dungeon.hero.belongings){
-			if (item != null) value += itemValue( item );
+			if (item != null) value += itemValue( config, item );
 		}
 		return value;
 	}
 
 
-	private static float itemValue( Item item ){
+	private static float itemValue( EnvConfig config, Item item ){
 		if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag){
-			return 3f;
+			return config.itemValueBag;
 		}
 		if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem){
-			return 1f + 0.5f * ((com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem) item).level();
+			return config.itemValueEquipBase
+					+ config.itemValueEquipLevel
+							* ((com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem) item).level();
 		}
-		return 0.5f;
+		return config.itemValueOther;
 	}
 
 

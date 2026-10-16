@@ -53,6 +53,18 @@ public class Conv2D {
 		return outSize * outSize * outChannels;
 	}
 
+	public int preActivationSize(){
+		return preAct.length;
+	}
+
+	public void savePreAct( float[] into ){
+		System.arraycopy( preAct, 0, into, 0, Math.min( preAct.length, into.length ) );
+	}
+
+	public void loadPreAct( float[] from ){
+		System.arraycopy( from, 0, preAct, 0, Math.min( preAct.length, from.length ) );
+	}
+
 	public void forward( float[] input, Tensor out ){
 		im2col( input );
 

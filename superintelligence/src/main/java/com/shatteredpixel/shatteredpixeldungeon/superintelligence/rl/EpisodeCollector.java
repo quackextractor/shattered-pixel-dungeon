@@ -27,6 +27,10 @@ public class EpisodeCollector {
 		return this;
 	}
 
+	public int chunkLength(){
+		return chunkLength;
+	}
+
 
 	public static final int DEFAULT_MAX_SAMPLED = 2048;
 
@@ -39,6 +43,7 @@ public class EpisodeCollector {
 	private final float lambda;
 	private final float sampleRate;
 	private final int maxSampled;
+	private final int chunkLength;
 
 	private final int gridSize;
 	private final int inventorySize;
@@ -78,6 +83,10 @@ public class EpisodeCollector {
 	private final float[] slotProbs;
 	private final float[] targetProbs;
 
+	public static final int DEFAULT_CHUNK_LENGTH = 16;
+
+	private final ContiguousChunkSampler sampler = new ContiguousChunkSampler();
+
 	public EpisodeCollector( EnvConfig config, Network network, Random rng, Random samplingRng,
 			float gamma, float lambda, float sampleRate ){
 		this( config, network, rng, samplingRng, gamma, lambda, sampleRate, DEFAULT_MAX_SAMPLED );
@@ -85,6 +94,12 @@ public class EpisodeCollector {
 
 	public EpisodeCollector( EnvConfig config, Network network, Random rng, Random samplingRng,
 			float gamma, float lambda, float sampleRate, int maxSampled ){
+		this( config, network, rng, samplingRng, gamma, lambda, sampleRate, maxSampled,
+				DEFAULT_CHUNK_LENGTH );
+	}
+
+	public EpisodeCollector( EnvConfig config, Network network, Random rng, Random samplingRng,
+			float gamma, float lambda, float sampleRate, int maxSampled, int chunkLength ){
 
 		this.config = config;
 		this.network = network;
@@ -94,6 +109,7 @@ public class EpisodeCollector {
 		this.lambda = lambda;
 		this.sampleRate = sampleRate;
 		this.maxSampled = maxSampled;
+		this.chunkLength = Math.max( 1, chunkLength );
 
 		this.gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
 		this.inventorySize = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
@@ -108,6 +124,7 @@ public class EpisodeCollector {
 	public EpisodeRecord run( SPDEnv env, String seed, HeroClass heroClass ){
 		record.release();
 		tail.clear();
+		sampler.reset();
 
 		env.reset( seed, heroClass );
 		network.resetState();
@@ -194,8 +211,8 @@ public class EpisodeCollector {
 
 
 	private boolean wantsByDraw( int stepIndex ){
-		if (record.sampledCount() >= maxSampled) return false;
-		return samplingRng.nextFloat() < sampleRate;
+		return sampler.shouldSample( stepIndex, 0, tailSteps, sampleRate, chunkLength,
+				record.sampledCount(), maxSampled, samplingRng );
 	}
 
 

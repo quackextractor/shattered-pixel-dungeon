@@ -24,7 +24,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Co
 
 public class ConfigCheck {
 
-	private static final int CHECKS = 13;
+	private static final int CHECKS = 14;
 
 	public static void main( String[] args ) throws IOException {
 		if (args.length > 0 && (args[ 0 ].equals( "--verbose" ) || args[ 0 ].equals( "-v" ) )){
@@ -42,12 +42,13 @@ public class ConfigCheck {
 		checkEveryKnownKeyIsReachable();
 		checkUnknownKeysWarn();
 		checkBadValuesAreRefused();
-		checkOutputPathsFollowTheWorkingDirectory();
-		checkDotEnvIsRead();
-		checkDotEnvBeatsThePropertiesFile();
-		checkTheBuildScriptReadsTheHeapItDocuments();
-		checkEveryPathIsReportedAbsolute();
-		checkARelativePathResolvesAgainstTheRepository();
+checkOutputPathsFollowTheWorkingDirectory();
+		ConfigDotEnvCheck.checkDotEnvIsRead();
+		ConfigDotEnvCheck.checkDotEnvBeatsThePropertiesFile();
+		ConfigDotEnvCheck.checkTheExampleFileNamesEveryDocumentedKey();
+		ConfigPathCheck.checkTheBuildScriptReadsTheHeapItDocuments();
+		ConfigPathCheck.checkEveryPathIsReportedAbsolute();
+		ConfigPathCheck.checkARelativePathResolvesAgainstTheRepository();
 
 		if (ConfigDefaults.failures.isEmpty()){
 			System.out.println( "[OK]     configuration binding: " + CHECKS + " checks passed" );
@@ -105,6 +106,15 @@ public class ConfigCheck {
 		probe.freeStepCostFactor = 10.5f;
 		probe.deathPenalty = 11.5f;     probe.stallPenalty = 12.5f;     probe.turnLimitPenalty = 13.5f;
 		probe.victoryReward = 14.5f;
+		probe.identifiedReward = 15.5f;  probe.curseEquippedPenalty = 16.5f;
+		probe.curseRemovedReward = 17.5f; probe.equipTooStrongPenalty = 18.5f;
+		probe.curedDebuffReward = 19.5f; probe.eatenEarlyPenalty = 20.5f;
+		probe.menuNoopPenalty = 21.5f;   probe.levelUpReward = 22.5f;
+		probe.strengthGainReward = 23.5f; probe.goldLostFactor = 24.5f;
+		probe.itemValueBag = 25.5f;     probe.itemValueEquipBase = 26.5f;
+		probe.itemValueEquipLevel = 27.5f; probe.itemValueOther = 28.5f;
+		probe.bossSlainFactor = 29.5f;   probe.maxHpGainCap = 30.5f;
+		probe.curriculumFadeStartDepth = 31; probe.curriculumFadeEndDepth = 32;
 		probe.honourVisionBuffs = false;
 		probe.mimicsVisibleOutOfFog = false;
 		probe.allowEquipping = false;
@@ -167,7 +177,13 @@ public class ConfigCheck {
 		"depthReward", "exploreReward", "maxHpReward", "talentReward", "goldReward", "damagePenalty",
 		"killReward", "sneakAttackReward", "freeStepCostFactor", "deathPenalty", "stallPenalty",
 		"turnLimitPenalty", "victoryReward", "honourVisionBuffs", "mimicsVisibleOutOfFog",
-		"allowEquipping", "allowTrading", "allowAlchemy", "persistSaves", "rewardProfile" );
+		"allowEquipping", "allowTrading", "allowAlchemy", "persistSaves", "rewardProfile",
+		"dialogAgeSeconds", "stairPotentialWeight",
+		"identifiedReward", "curseEquippedPenalty", "curseRemovedReward", "equipTooStrongPenalty",
+		"curedDebuffReward", "eatenEarlyPenalty", "menuNoopPenalty", "levelUpReward",
+		"strengthGainReward", "goldLostFactor", "itemValueBag", "itemValueEquipBase",
+		"itemValueEquipLevel", "itemValueOther", "bossSlainFactor", "maxHpGainCap",
+		"curriculumFadeStartDepth", "curriculumFadeEndDepth" );
 
 	private static Object fieldValue( EnvConfig c, String name ){
 		try {
@@ -402,191 +418,4 @@ public class ConfigCheck {
 				+ " of its output somewhere else, and nothing reports where the rest went." );
 	}
 
-
-	private static void checkDotEnvIsRead() throws IOException {
-		File dir = new File( ConfigDefaults.scratch, "dotenv" );
-		dir.mkdirs();
-
-		Path file = new File( dir, "run.properties" ).toPath();
-		java.nio.file.Files.writeString( file, "env.turn_limit_per_floor=1500\n" );
-
-		java.nio.file.Files.writeString( new File( dir, ".env" ).toPath(),
-				"# a comment\n"
-				+ "SPD_ENV_TURN_LIMIT_PER_FLOOR=321\n"
-				+ "SPD_RL_GAMMA=\"0.5\"\n"
-				+ "NOT_OURS=1\n"
-				+ "malformed line\n" );
-
-		EnvConfigBinder.Loaded loaded = EnvConfigBinder.load( file );
-
-		if (loaded.config.turnLimitPerFloor != 321){
-			fail( ".env beside the properties file was not read: turn_limit_per_floor is "
-					+ loaded.config.turnLimitPerFloor + ", not the 321 it names." );
-			return;
-		}
-
-		if (Math.abs( loaded.hyper.gamma - 0.5f ) > 1e-6){
-			fail( "a quoted .env value was not unquoted: gamma is " + loaded.hyper.gamma + ", not 0.5." );
-			return;
-		}
-
-		boolean sawForeign = false;
-		boolean sawMalformed = false;
-		for (String warning : loaded.warnings){
-			if (warning.contains( "NOT_OURS" )) sawForeign = true;
-			if (warning.contains( "malformed line" )) sawMalformed = true;
-		}
-
-		if (!sawForeign || !sawMalformed){
-			fail( "a .env entry that is not SPD_ prefixed, and a line with no '=', should both warn."
-					+ " sawForeign=" + sawForeign + " sawMalformed=" + sawMalformed );
-			return;
-		}
-
-		System.out.println( "  .env is read beside the properties file: quoted values unquoted, foreign"
-				+ " and malformed entries warned about" );
-	}
-
-
-	private static void checkDotEnvBeatsThePropertiesFile() throws IOException {
-		File dir = new File( ConfigDefaults.scratch, "dotenv-order" );
-		dir.mkdirs();
-
-		Path file = new File( dir, "run.properties" ).toPath();
-		java.nio.file.Files.writeString( file, "env.stall_limit=111\n" );
-		java.nio.file.Files.writeString( new File( dir, ".env" ).toPath(),
-				"SPD_ENV_STALL_LIMIT=222\n" );
-
-		EnvConfigBinder.Loaded loaded = EnvConfigBinder.load( file );
-
-		if (loaded.config.stallLimit != 222){
-			fail( ".env names stall_limit 222 and the properties file names 111, but the run used "
-					+ loaded.config.stallLimit + ". The documented order is defaults, file, .env,"
-					+ " process environment." );
-			return;
-		}
-
-		System.out.println( "  .env outranks the properties file" );
-	}
-
-
-	private static void checkTheBuildScriptReadsTheHeapItDocuments() throws IOException {
-		Path build;
-		try {
-			build = Path.of( "superintelligence/build.gradle" );
-			if (!Files.isReadable( build )) build = Path.of( "build.gradle" );
-		} catch (RuntimeException e){
-			fail( "could not name the module's build script from "
-					+ new File( "." ).getAbsolutePath() + ": " + e.getMessage() );
-			return;
-		}
-		if (!Files.isReadable( build )){
-			fail( "could not read the build script at " + build + ". It is a committed file; this check"
-					+ " cannot pass without it, and failing is better than skipping." );
-			return;
-		}
-
-		String script = Files.readString( build );
-
-		for (String setting : new String[]{ "SPD_WORKER_HEAP_MIN", "SPD_WORKER_HEAP_MAX",
-				"SPD_WORKER_GC_PAUSE_MS" }){
-			if (script.contains( setting )) continue;
-			fail( "the build script does not read " + setting + ", so the heap the trainer JVM is"
-					+ " launched with is a literal in a Gradle file while worker.heap_min,"
-					+ " worker.heap_max and worker.gc_pause_ms are documented settings that do not"
-					+ " reach it. Two places that decide one run's heap, one of them unreachable." );
-			return;
-		}
-
-		for (String literal : new String[]{ "-Xmx1536m", "-Xms256m", "MaxGCPauseMillis=200" }){
-			if (!script.contains( literal )) continue;
-			fail( "the build script still carries the literal " + literal + " alongside the"
-					+ " SPD_WORKER_* names, so the literal wins whenever they disagree" );
-			return;
-		}
-
-		System.out.println( "  the trainer JVM's heap and GC pause come from SPD_WORKER_HEAP_MIN,"
-				+ " SPD_WORKER_HEAP_MAX and SPD_WORKER_GC_PAUSE_MS, not from literals" );
-	}
-
-
-	private static void checkEveryPathIsReportedAbsolute(){
-		File relative = new File( "superintelligence/out/run/metrics.csv" );
-
-		String reported = com.shatteredpixel.shatteredpixeldungeon.superintelligence.train
-				.Trainer.describe( relative );
-
-		if (!new File( reported ).isAbsolute()){
-			fail( "the trainer reports " + reported + " for a path it was given as '"
-					+ relative.getPath() + "'. A relative path is resolved against the process's"
-					+ " working directory, which is the module directory under gradle and the shell's"
-					+ " directory under a plain java -cp, so the same flag writes somewhere different"
-					+ " depending on how the run was launched - and the report said the other one."
-					+ " Measured: a run logged 'superintelligence/out/run/metrics.csv' and wrote"
-					+ " superintelligence/superintelligence/out/run/metrics.csv." );
-			return;
-		}
-
-		if (!reported.endsWith( "superintelligence" + File.separator + "out" + File.separator
-				+ "run" + File.separator + "metrics.csv" )
-				&& !reported.endsWith( "superintelligence/out/run/metrics.csv" )){
-			fail( "the trainer reported " + reported + " for the path it was given, so the reported"
-					+ " location is not the requested one" );
-			return;
-		}
-
-		if (com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer.describe( null )
-				.equals( reported )){
-			fail( "the trainer reports the same string for a real path and for none at all" );
-			return;
-		}
-
-		System.out.println( "  every path the trainer reports is canonical and absolute, so the log"
-				+ " cannot name a different file from the one that was written" );
-	}
-
-
-	private static void checkARelativePathResolvesAgainstTheRepository(){
-		File module = com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer
-				.replayDirDefault();
-		File root = module.getParentFile();
-		if (root == null){
-			fail( "the module directory " + module + " has no parent, so there is nowhere to resolve"
-					+ " a relative path against and this check cannot say what the rule is" );
-			return;
-		}
-
-		CliOptions options = CliOptions.parse( new String[]{
-				"--save", "trainer-replays/probe.replay",
-				"--out", "superintelligence/out/run",
-				"--config", "superintelligence/superintelligence.properties" });
-
-		if ( !options.saveTo.isAbsolute() || !options.outDir.isAbsolute()
-				|| !options.configFile.isAbsolute() ){
-			fail( "a relative path on the command line is still relative after parsing: saveTo="
-					+ options.saveTo + ", outDir=" + options.outDir + ", configFile="
-					+ options.configFile + ". A relative path is resolved against the process's working"
-					+ " directory, which is the module directory under gradle and the shell's directory"
-					+ " under a plain java -cp, so one flag writes to two different places." );
-			return;
-		}
-
-		if ( !options.saveTo.getPath().startsWith( root.getPath() ) ){
-			fail( "'--save trainer-replays/probe.replay' resolved to " + options.saveTo
-					+ ", which is not under the repository root " + root + ". The rule this check holds"
-					+ " is that a relative path on the command line means a path from the repository"
-					+ " root, whatever directory the process was started in." );
-			return;
-		}
-
-		if ( !options.configFile.toFile().isFile() ){
-			fail( "'--config superintelligence/superintelligence.properties' resolved to "
-					+ options.configFile + ", which does not exist, so the rule above is not the one in"
-					+ " force" );
-			return;
-		}
-
-		System.out.println( "  a relative path on the command line resolves from the repository root ("
-				+ root + "), not from whichever directory the process was started in" );
-	}
 }

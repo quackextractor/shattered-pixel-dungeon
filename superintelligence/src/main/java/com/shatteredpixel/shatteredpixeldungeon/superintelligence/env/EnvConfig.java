@@ -56,6 +56,60 @@ public class EnvConfig {
 	public float curriculumProgress = 0f;
 
 
+	public float identifiedReward = 0.5f;
+
+
+	public float curseEquippedPenalty = -5f;
+
+
+	public float curseRemovedReward = 1.5f;
+
+
+	public float equipTooStrongPenalty = -2f;
+
+
+	public float curedDebuffReward = 1.5f;
+
+
+	public float eatenEarlyPenalty = -1f;
+
+
+	public float menuNoopPenalty = -1f;
+
+
+	public float levelUpReward = 2f;
+
+
+	public float strengthGainReward = 1f;
+
+
+	public float goldLostFactor = 2f;
+
+
+	public float itemValueBag = 3f;
+
+
+	public float itemValueEquipBase = 1f;
+
+
+	public float itemValueEquipLevel = 0.5f;
+
+
+	public float itemValueOther = 0.5f;
+
+
+	public float bossSlainFactor = 2f;
+
+
+	public float maxHpGainCap = 10f;
+
+
+	public int curriculumFadeStartDepth = 3;
+
+
+	public int curriculumFadeEndDepth = 10;
+
+
 	public float turnCost = 1f;
 
 
@@ -137,6 +191,24 @@ public class EnvConfig {
 		out.writeFloat( turnLimitPenalty );
 		out.writeFloat( victoryReward );
 		out.writeFloat( dialogAgeSeconds );
+		out.writeFloat( identifiedReward );
+		out.writeFloat( curseEquippedPenalty );
+		out.writeFloat( curseRemovedReward );
+		out.writeFloat( equipTooStrongPenalty );
+		out.writeFloat( curedDebuffReward );
+		out.writeFloat( eatenEarlyPenalty );
+		out.writeFloat( menuNoopPenalty );
+		out.writeFloat( levelUpReward );
+		out.writeFloat( strengthGainReward );
+		out.writeFloat( goldLostFactor );
+		out.writeFloat( itemValueBag );
+		out.writeFloat( itemValueEquipBase );
+		out.writeFloat( itemValueEquipLevel );
+		out.writeFloat( itemValueOther );
+		out.writeFloat( bossSlainFactor );
+		out.writeFloat( maxHpGainCap );
+		out.writeInt( curriculumFadeStartDepth );
+		out.writeInt( curriculumFadeEndDepth );
 		out.writeBoolean( honourVisionBuffs );
 		out.writeBoolean( mimicsVisibleOutOfFog );
 		out.writeBoolean( allowEquipping );
@@ -175,6 +247,24 @@ public class EnvConfig {
 		turnLimitPenalty = in.readFloat();
 		victoryReward = in.readFloat();
 		dialogAgeSeconds = in.readFloat();
+		identifiedReward = in.readFloat();
+		curseEquippedPenalty = in.readFloat();
+		curseRemovedReward = in.readFloat();
+		equipTooStrongPenalty = in.readFloat();
+		curedDebuffReward = in.readFloat();
+		eatenEarlyPenalty = in.readFloat();
+		menuNoopPenalty = in.readFloat();
+		levelUpReward = in.readFloat();
+		strengthGainReward = in.readFloat();
+		goldLostFactor = in.readFloat();
+		itemValueBag = in.readFloat();
+		itemValueEquipBase = in.readFloat();
+		itemValueEquipLevel = in.readFloat();
+		itemValueOther = in.readFloat();
+		bossSlainFactor = in.readFloat();
+		maxHpGainCap = in.readFloat();
+		curriculumFadeStartDepth = in.readInt();
+		curriculumFadeEndDepth = in.readInt();
 		honourVisionBuffs = in.readBoolean();
 		mimicsVisibleOutOfFog = in.readBoolean();
 		allowEquipping = in.readBoolean();
@@ -220,6 +310,24 @@ public class EnvConfig {
 		c.dialogAgeSeconds = dialogAgeSeconds;
 		c.rewardProfile = rewardProfile;
 		c.persistSaves = persistSaves;
+		c.identifiedReward = identifiedReward;
+		c.curseEquippedPenalty = curseEquippedPenalty;
+		c.curseRemovedReward = curseRemovedReward;
+		c.equipTooStrongPenalty = equipTooStrongPenalty;
+		c.curedDebuffReward = curedDebuffReward;
+		c.eatenEarlyPenalty = eatenEarlyPenalty;
+		c.menuNoopPenalty = menuNoopPenalty;
+		c.levelUpReward = levelUpReward;
+		c.strengthGainReward = strengthGainReward;
+		c.goldLostFactor = goldLostFactor;
+		c.itemValueBag = itemValueBag;
+		c.itemValueEquipBase = itemValueEquipBase;
+		c.itemValueEquipLevel = itemValueEquipLevel;
+		c.itemValueOther = itemValueOther;
+		c.bossSlainFactor = bossSlainFactor;
+		c.maxHpGainCap = maxHpGainCap;
+		c.curriculumFadeStartDepth = curriculumFadeStartDepth;
+		c.curriculumFadeEndDepth = curriculumFadeEndDepth;
 		return c;
 	}
 }
