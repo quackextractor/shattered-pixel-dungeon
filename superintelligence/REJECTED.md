@@ -69,6 +69,39 @@ Correct in principle, and it is a rewrite of the game's randomness across every 
 would most obviously address is `issues.md` 25, which was a shared object and not a stream-ordering
 fault.
 
+## Moving the remaining sound-pitch draws off `Random`
+
+**Proposed by** `review.md` §3 and §5: "migrate the 11 sound-pitch `Random` calls to `PRandom`".
+**Declined on measurement.**
+
+Ten sites, counted by scanning `core` and `SPD-classes` for a `Random.*` draw passed as the pitch
+argument of `play` / `playDelayed` / `hitSound` / `blockSound`:
+
+| Site | Note |
+| --- | --- |
+| `Hero.java:2337`, `:2339`, `:2344`, `:2346`, `:2349` | one per terrain type the step lands on |
+| `Char.java:502`, `:503` | `blockSound` then `hitSound` |
+| `HolyLance.java:126` | the neighbouring `:125` already reads `PRandom` |
+| `GreatCrab.java:104` | the neighbouring `:88` already reads `PRandom` |
+| `WandOfLivingEarth.java:178` | the neighbouring `:111` and `:167` already read `PRandom` |
+
+The eleventh site `ENGINE-CHANGES.md` §4 named is `WndSettings.java:931`, a `Random.oneOf` over sound
+ids and not a pitch.
+
+**The change is one line per site and it invalidates the whole committed corpus.** Every one of these
+draws is made by *both* environments, which is why §4 says they cannot separate them - and that
+symmetry is also why moving them is not free. Taking a draw off the gameplay stream changes the
+number of values a footstep consumes, so the first step on the first floor diverges from every
+recording in `test-replays/`, including `duelist-death-last.replay`, which is the fixture
+`issues.md` 26 is diagnosed against and `viewcheck` is 19 of 20 because of.
+
+**What it buys is tidiness and nothing else.** A sound's pitch is still random; the only effect is
+that the presentation draw stops consuming the gameplay stream, which the game's own `PRandom`
+exists for. It cannot fix a divergence, because it cannot cause one.
+
+**Revisit when** the corpus is regenerated for another reason - a changed observation width, a new
+action head - at which point it is ten mechanical edits and no recording is lost by them.
+
 ## Making `holdAllies` reachable in the trainer
 
 **Deliberately not done.** `InterlevelScene.fall()` opens with `Mob.holdAllies`; copying that into

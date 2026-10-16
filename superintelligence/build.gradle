@@ -1,67 +1,30 @@
 apply plugin: 'java-library'
 apply plugin: 'application'
-
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 java.sourceCompatibility = java.targetCompatibility = appJavaCompatibility
-
-//The RL framework runs the game logic with the noosa/libGDX render layer bypassed,
-//so it is a plain JVM module. It depends on :core for the game itself and inherits
-//libGDX through :SPD-classes.
 dependencies {
     implementation project(':core')
-
-    //com.watabou.utils.PlatformSupport has an abstract method that returns a freetype font
-    //generator, so the type must be on the compile classpath even though headless never
-    //instantiates one. SPD-classes declares gdx-freetype as 'implementation', which does not
-    //leak transitively.
     implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
-
-    //ItemSpriteSheet.Icons resolves a TextureFilm in its static initialiser, and ~890 files
-    //reference those icon constants from their own static/instance initialisers. Avoiding the
-    //film would mean touching the item tree everywhere, so instead we let it be built: Pixmap
-    //decodes the PNG on the CPU, and HeadlessGl absorbs every GL call it triggers. See
-    //HeadlessServices.install for why this is contained.
     runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
 }
-
 ext.appMainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.Main'
 application.mainClass = appMainClass
-
-//ItemSpriteSheet.Icons decodes sprites/item_icons.png the first time any item is constructed,
-//so the asset tree has to be on the classpath even though nothing is ever drawn. The :core jar
-//does not bundle assets - the desktop launcher copies them in, and so must every other headless
-//entry point. See HeadlessFiles.getFileHandle for how these paths are resolved.
 processResources {
     from new File(project(':core').projectDir, '/src/main/assets')
     from new File(projectDir, '/src/main/assets')
 }
-
-//jvmArgs are sized for the trainer process and for the worker processes it spawns; see
-//com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessBootstrap.
-//The three values the properties file documents as worker.heap_min, worker.heap_max and
-//worker.gc_pause_ms are read from SPD_WORKER_HEAP_MIN, SPD_WORKER_HEAP_MAX and SPD_WORKER_GC_PAUSE_MS
-//rather than written here, so a settings file and a build script cannot disagree about the heap one
-//run gets. The compiled defaults below are PpoHyperparameters'.workerHeapMin/.workerHeapMax/
-//.workerGcPauseMs, and ConfigCheck asserts that they agree.
 def trainerSetting = { String envName, String projectProperty, String compiledDefault ->
     return System.getenv( envName ) ?: ( project.findProperty( projectProperty )?.toString() ) ?: compiledDefault
 }
-
 def trainerJvmArgs = [
         '-Xms' + trainerSetting( 'SPD_WORKER_HEAP_MIN', 'spd.workerHeapMin', '256m' ),
         '-Xmx' + trainerSetting( 'SPD_WORKER_HEAP_MAX', 'spd.workerHeapMax', '1536m' ),
-        //The game allocates heavily per turn; keeping the young gen large and the old gen
-        //small avoids full GCs mid-rollout. See research.md "Garbage Collection and Memory Pooling".
         '-XX:+UseParallelGC',
         '-XX:MaxGCPauseMillis=' + trainerSetting( 'SPD_WORKER_GC_PAUSE_MS', 'spd.workerGcPauseMs', '200' ),
-        //A 1,000-sim sweep must never be killed by the OS for touching unused natives.
         '-XX:+IgnoreUnrecognizedVMOptions',
-        //HeadlessServices loads the libGDX natives; without this a JDK that restricts native access
-        //warns on every launch
         '--enable-native-access=ALL-UNNAMED',
         '-Djava.awt.headless=true'
 ]
-
 tasks.register('probeClasspath') {
     group = 'superintelligence'
     description = 'Prints the runtime classpath so the headless entry points can be launched without gradle.'
@@ -69,30 +32,19 @@ tasks.register('probeClasspath') {
         println sourceSets.main.runtimeClasspath.asPath
     }
 }
-
-//Main dispatches on argv[0], so each task has to put its own subcommand in front. A plain
-//`args = [...]` assignment would not survive `--args`, which Gradle applies over the top of
-//the build-script value, so the subcommand is prepended at execution time instead. That way
-//both `gradle :superintelligence:rollout` and
-//`gradle :superintelligence:rollout --args="--seed x"` reach Main correctly.
 def withSubcommand = { task, String command ->
     task.doFirst {
-        //a caller who already spelled out the subcommand keeps it
         if (!args || args[0].startsWith('--')) args = [command] + args
     }
 }
-
 tasks.register('train', JavaExec) {
     group = 'superintelligence'
     description = 'Runs the PPO/IMPALA trainer over a pool of worker processes.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = appMainClass
     jvmArgs trainerJvmArgs
-    //without this, `gradle :superintelligence:train --args="--workers 8"` reached Main with no
-    //subcommand at all and died on "unknown command: --workers"
     withSubcommand(delegate, 'train')
 }
-
 def cliTask = { String taskName, String taskDescription ->
     tasks.register(taskName, JavaExec) {
         group = 'superintelligence'
@@ -103,21 +55,12 @@ def cliTask = { String taskName, String taskDescription ->
         withSubcommand(delegate, taskName)
     }
 }
-
 cliTask('rollout', 'Runs a single headless episode on a locked seed with the scripted policy.')
-
 cliTask('gradcheck', 'Finite-difference check of the network gradients against the analytic ones.')
-
 cliTask('verify', 'Re-executes a recorded run headlessly and confirms it still reproduces.')
-
 cliTask('modecheck', 'Fails if the environment cannot reach one of its own action modes.')
-
   cliTask('restartcheck', 'Fails if restarting a run does not rebuild the same first floor.')
 cliTask('resetcheck', 'Fails if a reset does not isolate an episode from whatever ran before it.')
-
-//Both of these are direct JavaExec rather than Main subcommands. They need fixtures on disk and, in
-//ConfigCheck's case, to assert on configuration the CLI has no business exposing - routing that through
-//the argument dispatch would give a test a surface that looks like a supported command.
 tasks.register('configcheck', JavaExec) {
     group = 'verification'
     description = 'Fails if the configuration binder ignores its input, or accepts a value it cannot use.'
@@ -125,7 +68,6 @@ tasks.register('configcheck', JavaExec) {
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ConfigCheck'
     jvmArgs trainerJvmArgs
 }
-
 tasks.register('stripinlines', JavaExec) {
     group = 'maintenance'
     description = 'Removes // comments from Java sources, preserving javadoc and block comments. Exits 3 if it rewrote anything.'
@@ -135,7 +77,6 @@ tasks.register('stripinlines', JavaExec) {
     if (project.hasProperty('stripPaths')) args project.property('stripPaths').toString().split(' ')
     else args "${project.projectDir}/src"
 }
-
 tasks.register('javaclint', JavaExec) {
     group = 'verification'
     description = 'Compiles the module with every javac lint enabled and fails on a warning.'
@@ -144,17 +85,14 @@ tasks.register('javaclint', JavaExec) {
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.tools.JavaLint'
     jvmArgs trainerJvmArgs
 }
-
 tasks.register('stallcausecheck', JavaExec) {
     group = 'verification'
     description = 'Fails if any of the four stall guards is unreachable or reports the wrong guard.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StallBreakdown'
     jvmArgs trainerJvmArgs
-    //-1 selects the reachability probe rather than the breakdown; it exits non-zero on a mismatch.
     args '-1'
 }
-
 tasks.register('stallbreakdown', JavaExec) {
     group = 'diagnostics'
     description = 'Names which of the four stall guards ended each episode, under a uniform policy.'
@@ -163,17 +101,14 @@ tasks.register('stallbreakdown', JavaExec) {
     jvmArgs trainerJvmArgs
     if (project.hasProperty('stallArgs')) args project.property('stallArgs').toString().split(' ')
 }
-
 tasks.register('worldtrace', JavaExec) {
     group = 'diagnostics'
     description = 'Replays a recording headlessly and records the whole world at every step, for diffing against the viewer.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.WorldTrace'
     jvmArgs trainerJvmArgs
-    //Passed through untouched, so one recording can be traced without editing this file.
     if (project.hasProperty('worldArgs')) args project.property('worldArgs').toString().split(' ')
 }
-
 tasks.register('viewdiff', JavaExec) {
     group = 'diagnostics'
     description = 'Diffs a headless world snapshot against a rendered one and names the first difference.'
@@ -182,22 +117,18 @@ tasks.register('viewdiff', JavaExec) {
     jvmArgs trainerJvmArgs
     if (project.hasProperty('viewDiffArgs')) args project.property('viewDiffArgs').toString().split(' ')
 }
-
 tasks.register('paritycheck', JavaExec) {
     group = 'verification'
     description = 'Fails if a recorded run will not replay exactly, across several seeds in one process.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ParityCheck'
     jvmArgs trainerJvmArgs
-    //Sweep size comes from the command line, so `gates` can run the short sweep and a nightly job the
-    //long one against the same code. Passed through untouched rather than parsed here.
     if (project.hasProperty('parityArgs')) args project.property('parityArgs').toString().split(' ')
 }
   cliTask('graphcheck', 'Fails if a chart reports a range it did not observe.')
   cliTask('actioncheck', 'Fails if a movement action does not move the way it is named.')
 cliTask('slotcheck', 'Fails if a recorded slot index does not resolve to the item it was recorded against.')
 cliTask('verifycheck', 'Fails if replay verification cannot detect an altered recording.')
-
   cliTask('replayprobe', "Reports how far a replayed observation's value drifts from the rollout's.")
   cliTask('rngtrace', 'Reports how much randomness each replayed step consumed, for comparing headless against the rendered game.')
   cliTask('valuescale', "Reports the critic's target range against the range it can reach.")
@@ -217,39 +148,17 @@ cliTask('samplercheck', 'Fails if sampling shatters the recurrent chunk, or the 
 cliTask('seedcheck', 'Fails if resuming a run replays the seed sequence from generation 0.')
 cliTask('doccheck', 'Fails if the documentation is unreadable, or disagrees with the gates it lists.')
 cliTask('updatecost', 'Measures what a PPO update costs and projects it across sample rates.')
-
 cliTask('gaecheck', 'Fails if the two advantage implementations disagree, or sampling misbehaves.')
-
   cliTask('replays', 'Lists recordings, grouped by hero class and ranked by score.')
-
   cliTask('dropfixture', 'Records the DROP-in-SLOT fixture the viewer gates play, and verifies it.')
   cliTask('pressfixture', 'Records the throw-that-presses fixture the viewer gates play, and verifies it.')
-
 cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misresolves a name.')
-
   cliTask('collectcheck', 'Fails if a recording made by the collector will not replay exactly.')
   cliTask('rolloutcheck', 'Fails if a recorded episode does not carry a usable seed, or does not verify.')
   cliTask('episodediff', 'Reports where and why two runs of one seed disagree after other seeds ran between them.')
   cliTask('observecheck', 'Fails if reading the world draws from the gameplay RNG.')
   cliTask('checkpointcheck', 'Fails if a policy does not survive a trip through disk, or if a bad checkpoint is accepted.')
   cliTask('weightsdiff', 'Reports how far a checkpoint is from a freshly initialised policy.')
-
-//Every gate in one invocation, because gradle's per-invocation overhead is most of the cost.
-//Measured: gaecheck is 0.22s of actual work and 2.4s through gradle, so gradle is ~90% of it.
-//Twenty-eight gates together take ~30s in one invocation against roughly a minute run one after
-//another - and that each if the daemon is cold. The checks are not slow; the harness around them is.
-//javaclint is in this list rather than run by hand: it compiles the module with -Xlint:all and
-//-Werror, which is the only thing that holds the module to zero compiler warnings.
-//
-//dependsOn is enough for correctness: gradle fails the build if any dependency task exits non-zero,
-//which is what each of these already does on a mismatch. doLast only adds a line to read.
-//Named `gates`, not `check`: the java-library plugin already contributes a lifecycle `check`, and
-//Gradle refuses to shadow it. `check` also conventionally means compile plus test, and this runs
-//neither a compiler pass nor JUnit.
-//presscheck is in gates because it is green. It was excluded while the divergence was open: a thrown
-//item landed inert because Level.drop pressed the cell only behind a `scene() instanceof GameScene`
-//test no headless run can satisfy, and the fix needed an engine change. Run it on its own with
-//`gradle :superintelligence:presscheck` when working on drops.
 tasks.register('gates') {
     dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck', 'transitioncheck', 'fallcheck', 'dialogcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
@@ -258,9 +167,6 @@ tasks.register('gates') {
     description = 'Runs every correctness gate in one invocation.'
     doLast { println "all gates passed" }
 }
-
-//Everything the trainer and its workers need on one classpath, so a worker can be launched
-//with a plain `java -cp` instead of forking gradle.
 tasks.register('workerJar', Jar) {
     group = 'superintelligence'
     description = 'Self-contained jar used to launch training worker JVMs.'

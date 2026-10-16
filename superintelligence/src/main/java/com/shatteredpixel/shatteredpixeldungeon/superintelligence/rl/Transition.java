@@ -1,22 +1,8 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
-
 import java.util.ArrayDeque;
-
 public class Transition {
-
 	public byte[] grid;
-
-	/** Floats the packed grid expands to, which is one per spatial cell. */
 	public int gridCells;
-
-	/**
-	 * Packs a binary grid one bit per cell.
-	 *
-	 * <p>Every spatial plane is 0 or 1 - a tile is visible, or it is a wall, or it is not - so a byte per
-	 * cell is eight times the information it holds. At 22 planes over 48x48 that is 50,688 bytes down
-	 * to 6,336, which is 90% of a transition and therefore of the buffer the trainer holds and the pipe
-	 * carries. Lossless: {@link #unpackGrid} returns exactly what came in.
-	 */
 	public void packGrid( float[] src ){
 		java.util.Arrays.fill( grid, (byte) 0 );
 		int n = Math.min( src.length, gridCells );
@@ -25,60 +11,40 @@ public class Transition {
 			grid[ i >>> 3 ] |= (byte) (1 << ( i & 7 ));
 		}
 	}
-
 	public void unpackGrid( float[] dst ){
 		int n = Math.min( dst.length, gridCells );
 		for (int i = 0; i < n; i++){
 			dst[ i ] = ( ( grid[ i >>> 3 ] >>> ( i & 7 ) ) & 1 ) != 0 ? 1f : 0f;
 		}
 	}
-
-	/** Bytes the packed grid costs, for {@code gridCells} cells. */
 	public static int packedGridBytes( int cells ){
 		return ( cells + 7 ) >>> 3;
 	}
-
 	public float[] inventory;
 	public float[] hero;
-
 	public float[] actionMask;
 	public float[] slotMask;
 	public float[] targetMask;
-
 	public float[] recurrentState;
-
 	public int liveHead;
-
 	public int episodeId = -1;
 	public int stepIndex = -1;
-
 	public int actionIndex;
 	public int slotIndex;
-
 	public float oldLogProbability;
-
 	public float value;
-
 	public float reward;
-
 	public boolean terminal;
-
 	public float nextValue;
-
 	public float returnValue;
 	public float advantage;
-
 	private static final ArrayDeque<Transition> POOL = new ArrayDeque<>();
 	private static final int MAX_POOLED = 8192;
-
 	private boolean pooled = false;
-
 	public static Transition take( int gridSize, int inventorySize, int heroSize,
 			int actionCount, int slotCount, int targetCount, int recurrentStateSize ){
-
 		Transition t = POOL.poll();
 		if (t == null) t = new Transition();
-
 		t.gridCells = gridSize;
 		t.grid    = fit( t.grid,    packedGridBytes( gridSize ) );
 		t.inventory = fit( t.inventory, inventorySize );
@@ -89,7 +55,6 @@ public class Transition {
 		t.recurrentState = recurrentStateSize > 0
 				? fit( t.recurrentState, recurrentStateSize )
 				: null;
-
 		t.oldLogProbability = 0;
 		t.value = 0;
 		t.reward = 0;
@@ -103,19 +68,15 @@ public class Transition {
 		t.actionIndex = 0;
 		t.slotIndex = 0;
 		t.pooled = false;
-
 		return t;
 	}
-
 	public static Transition take( int gridSize, int inventorySize, int heroSize,
 			int actionCount, int slotCount, int targetCount ){
 		return take( gridSize, inventorySize, heroSize, actionCount, slotCount, targetCount, 0 );
 	}
-
 	private static float[] fit( float[] existing, int len ){
 		return (existing != null && existing.length == len) ? existing : new float[ len ];
 	}
-
 	private static byte[] fit( byte[] existing, int len ){
 		return (existing != null && existing.length == len) ? existing : new byte[ len ];
 	}

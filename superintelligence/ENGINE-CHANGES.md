@@ -192,37 +192,18 @@ reading exactly like a simulation that consumes no randomness at all.
 - **`viewcheck` is not in `gates`** and stays out: it needs a display, forks a JVM per recording, and
   costs about 200 seconds sequential. That is a real hole rather than a decision — this class of
   regression returns silently between manual runs.
-- **Sound pitch still draws from `Random`** at 11 sites, symmetric across both environments (§4).
-- **`Mob.holdAllies` still uses `Collections.shuffle`** (`Mob.java:1782`). §3 lists the sites that
-  ignored the seeded generator and were converted; this one was missed, so it is still unseeded in the
-  committed tree. **A one-line change is proposed below and applied uncommitted** - see the entry at
-  the end of this section. It does not show up in the committed corpus - nothing reachable by the
-  scripted policy calls `holdAllies` - so `paritycheck` cannot see it either way. `observecheck` does
-  not look for it, since it gates draw *paths*, not call sites that bypass them.
-  `LevelPipeline.handleFall` also does not call it, for the same reason: `InterlevelScene.fall()`
-  opens with `Mob.holdAllies`, and copying that would put an unseeded draw into every fall in the
-  trainer.
-- **`Mob.holdAllies` used an unseeded shuffle - PROPOSED, applied, uncommitted.** `Mob.java` shuffled
-  `candidatePositions` with `Collections.shuffle`, which hands the generator to the JDK's own and
-  therefore ignores the game's seeded stream entirely. Every other site §3 lists was converted; this
-  one was missed. It is still unseeded in the committed tree, and the change below is one line:
-
-  ```java
-  Random.shuffle(candidatePositions);
-  ```
-
-  It is a logic change to `:core`, so under `instructions.md` §12.3 it is applied and **not
-  committed**. Measured on this change: `paritycheck` **32 recordings over 8 seeds replay exactly,
-  twice, in one process**, all 30 gates green, and `:desktop:viewcheck` unchanged at **19 of 20** with
-  the same single failure as before it - `duelist-death-last.replay`, which is `issues.md` 26 and has
-  nothing to do with this. No recording in the corpus reaches `holdAllies`, which is also why
-  nothing would have noticed it being wrong.
-
-  **What it changes in a game.** `Random.shuffle` draws from the gameplay stream, so every floor where
-  an ally is held consumes a different number of values than it did. That is the point - the order is
-  still random - but it is an RNG stream change to pre-existing game code, which is the class of edit
-  §12.3 names as risky. Any recording made before it that happens to hold an ally will not replay.
-  `LevelPipeline.handleFall` also deliberately does not call `holdAllies`, for the same reason.
+- **Sound pitch still draws from `Random`** at 10 sites, symmetric across both environments, and it
+  is **declined rather than deferred** - see `REJECTED.md`. Moving them is a one-line change per
+  site and it invalidates every recording in the committed corpus.
+- **`Mob.holdAllies` already draws from the seeded stream - and it is committed, contrary to what the
+  rest of this section used to say.** `Mob.java:1782` is `Random.shuffle(candidatePositions)` and it
+  landed in commit `b4f717992`, whose message is about `rolloutcheck`. An earlier version of this
+  entry recorded it as applied and uncommitted and `CHANGELOG.md` repeated the claim; both were wrong
+  about the tree. Everything else below it still holds: the site was missed by 3, `Collections.shuffle`
+  hands the generator to the JDK's own and so ignores the game's seeded stream entirely, and no
+  recording in the corpus reaches `holdAllies`, which is why nothing would have noticed either way.
+  `LevelPipeline.handleFall` still does not call it, for the same reason: `InterlevelScene.fall()`
+  opens with `Mob.holdAllies`, and copying that would put a draw into every fall in the trainer.
 - **`observecheck` enumerates the draw paths that exist** - 17 of them, in `ObserveCheck.java:224-241`. An eighteenth added later does not appear in
   its list, so the gate protects what it knows about rather than what is added next.
 - **`Mob` and `Char` do not override `hashCode`.** Nothing found iterates them through a hash

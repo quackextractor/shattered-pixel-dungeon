@@ -1,26 +1,4 @@
-/*
- * Pixel Dungeon
- * Copyright (C) 2012-2015 Oleg Dolya
- *
- * Shattered Pixel Dungeon
- * Copyright (C) 2014-2026 Evan Debenham
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
-
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -32,51 +10,39 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.Scripte
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots;
 import com.watabou.utils.Random;
 import com.watabou.utils.RandomTrace;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 public class ObserveCheck {
-
 	private static final int CHECKS = 6;
-
 	private static final List< String > failures = new ArrayList<>();
-
 	private static int checksFailed = 0;
-
 	private static void check( Runnable body ){
 		int before = failures.size();
 		body.run();
 		if (failures.size() > before) checksFailed++;
 	}
-
 	public static void main( String[] args ){
 		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-observecheck" ));
 		HeadlessServices.disableSaving( true );
-
 		EnvConfig config = new EnvConfig();
 		config.turnLimitPerFloor = 200;
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		env.reset( "OBSERVECHECK-A", HeroClass.WARRIOR );
-
 		ScriptedPolicy policy = new ScriptedPolicy( env.mapper(), 11 );
 		int[] slot = new int[ 1 ];
 		for (int i = 0; i < 14 && env.running(); i++){
 			Action action = policy.choose( env, slot );
 			env.step( action, slot[ 0 ] );
 		}
-
 		ObservationEncoder encoder = new ObservationEncoder( config, env.mapper() );
-
 		check( ObserveCheck::checkTheInstrumentIsLive );
 		check( () -> checkEncodingDrawsNothing( encoder ) );
 		check( () -> checkEncodingTwiceIsIdentical( encoder ) );
 		check( ObserveCheck::checkCapturingQuickslotsDrawsNothing );
 		check( ObserveCheck::checkEveryDrawPathIsCounted );
 		check( ObserveCheck::checkShufflingIsCounted );
-
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
 		} else {
@@ -86,49 +52,40 @@ public class ObserveCheck {
 			System.exit( 1 );
 		}
 	}
-
 	private static void checkTheInstrumentIsLive(){
 		RandomTrace.enable();
 		RandomTrace.reset();
 		Random.Float();
 		Random.Int();
 		Random.Long();
-
 		if ( RandomTrace.draws() != 3 ){
 			fail( "the draw counter did not move after three deliberate draws ("
 					+ RandomTrace.summary() + "). Every check below counts draws, so all of them would "
 					+ "pass for the wrong reason." );
 		}
-
 		RandomTrace.reset();
 		RandomTrace.disable();
 	}
-
 	private static void checkEncodingDrawsNothing( ObservationEncoder encoder ){
 		RandomTrace.enable();
 		RandomTrace.reset();
 		encoder.encode();
-
 		String measured = RandomTrace.summary();
 		long drawn = RandomTrace.draws();
 		RandomTrace.reset();
 		RandomTrace.disable();
-
 		if ( drawn != 0 ){
 			fail( "ObservationEncoder.encode drew " + drawn + " value(s) from the gameplay RNG ("
 					+ measured + "). Reading the world must not change it: a draw here "
 					+ "offsets the stream from this turn onwards, and no replay made afterwards will match." );
 		}
 	}
-
 	private static void checkEncodingTwiceIsIdentical( ObservationEncoder encoder ){
 		encoder.encode();
 		float[] grid = Arrays.copyOf( encoder.grid(), encoder.grid().length );
 		float[] inventory = Arrays.copyOf( encoder.inventory(), encoder.inventory().length );
 		float[] hero = Arrays.copyOf( encoder.hero(), encoder.hero().length );
-
 		encoder.encode();
-
 		if ( !Arrays.equals( grid, encoder.grid() )){
 			fail( "a second encode of an unchanged world produced a different grid" );
 		}
@@ -139,7 +96,6 @@ public class ObserveCheck {
 			fail( "a second encode of an unchanged world produced a different hero vector" );
 		}
 	}
-
 	private static void checkCapturingQuickslotsDrawsNothing(){
 		RandomTrace.enable();
 		RandomTrace.reset();
@@ -148,22 +104,18 @@ public class ObserveCheck {
 		long drawn = RandomTrace.draws();
 		RandomTrace.reset();
 		RandomTrace.disable();
-
 		if ( drawn != 0 ){
 			fail( "Quickslots.capture drew " + drawn + " value(s) from the gameplay RNG ("
 					+ measured + "). Captured bindings are written into the recording, so a "
 					+ "draw here both offsets the stream and corrupts what is stored." );
 		}
-
 		if ( captured == null ){
 			fail( "Quickslots.capture returned null" );
 		}
 	}
-
 	private static void fail( String message ){
 		failures.add( message );
 	}
-
 	private static void checkEveryDrawPathIsCounted(){
 		Object[][] paths = {
 			{ "Float()",                    (Runnable) Random::Float },
@@ -184,9 +136,7 @@ public class ObserveCheck {
 			{ "chances(float[])",           (Runnable) () -> Random.chances( new float[]{ 1, 0 } ) },
 			{ "element(list)",              (Runnable) () -> Random.element( Arrays.asList( 1, 2, 3 ) ) },
 		};
-
 		List< String > silent = new ArrayList<>();
-
 		for (Object[] path : paths){
 			RandomTrace.enable();
 			RandomTrace.reset();
@@ -194,10 +144,8 @@ public class ObserveCheck {
 			long drawn = RandomTrace.draws();
 			RandomTrace.reset();
 			RandomTrace.disable();
-
 			if ( drawn == 0 ) silent.add( (String) path[ 0 ] );
 		}
-
 		if (!silent.isEmpty()){
 			fail( "these Random draw paths advanced the generator without being counted: "
 					+ String.join( ", ", silent ) + ". Anything inferred from the RNG trace about stream "
@@ -205,35 +153,29 @@ public class ObserveCheck {
 					+ "and a rendered run were reported as agreeing at every step while sixteen values apart." );
 		}
 	}
-
 	private static void checkShufflingIsCounted(){
 		List< Integer > list = new ArrayList<>();
 		for (int i = 0; i < 8; i++) list.add( i );
-
 		RandomTrace.enable();
 		RandomTrace.reset();
 		Random.shuffle( list );
 		long drawn = RandomTrace.draws();
 		RandomTrace.reset();
 		RandomTrace.disable();
-
 		if ( drawn == 0 ){
 			fail( "Random.shuffle(List) advanced the generator without being counted. Level generation "
 					+ "shuffles with it, so this is how a gameplay stream gets offset before the first "
 					+ "recorded step, with nothing in the trace to show it." );
 		}
-
 		List< Integer > same = new ArrayList<>( list );
 		RandomTrace.enable();
 		RandomTrace.reset();
 		Random.shuffle( same );
 		RandomTrace.reset();
 		RandomTrace.disable();
-
 		if ( !new java.util.HashSet<>( list ).equals( new java.util.HashSet<>( same ) )){
 			fail( "Random.shuffle(List) did not permute the list" );
 		}
-
 		int[] array = { 0, 1, 2, 3, 4, 5, 6, 7 };
 		RandomTrace.enable();
 		RandomTrace.reset();
@@ -241,7 +183,6 @@ public class ObserveCheck {
 		long arrayDrawn = RandomTrace.draws();
 		RandomTrace.reset();
 		RandomTrace.disable();
-
 		if ( arrayDrawn == 0 ){
 			fail( "Random.shuffle(int[]) advanced the generator without being counted" );
 		}
