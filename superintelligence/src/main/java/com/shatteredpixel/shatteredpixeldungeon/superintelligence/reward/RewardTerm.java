@@ -1,100 +1,108 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward;
 
-
 public enum RewardTerm {
 
-
-	DEPTH_ADVANCE,
-
-
-	BOSS_SLAIN,
+	DEPTH_ADVANCE( Type.OBJECTIVE ),
 
 
-	VICTORY,
+	BOSS_SLAIN( Type.OBJECTIVE ),
 
 
-	EXPLORE,
+	VICTORY( Type.OBJECTIVE ),
 
 
-	STAIR_POTENTIAL,
+	EXPLORE( Type.EXPLORATION ),
 
 
-	MAX_HP_GAIN,
+	STAIR_POTENTIAL( Type.EXPLORATION ),
 
 
-	GOLD_GAIN,
+	MAX_HP_GAIN( Type.PROGRESSION ),
 
 
-	ITEM_PICKUP,
+	GOLD_GAIN( Type.ITEMS ),
 
 
-	ITEM_DROPPED,
+	ITEM_PICKUP( Type.ITEMS ),
 
 
-	IDENTIFIED,
+	ITEM_DROPPED( Type.ITEMS ),
 
 
-	CURED_DEBUFF,
+	IDENTIFIED( Type.ITEMS ),
 
 
-	LEVEL_UP,
+	CURED_DEBUFF( Type.SURVIVAL ),
 
 
-	TALENT_UPGRADE,
+	LEVEL_UP( Type.PROGRESSION ),
 
 
-	STRENGTH_GAIN,
+	TALENT_UPGRADE( Type.PROGRESSION ),
 
 
-	CURSE_REMOVED,
+	STRENGTH_GAIN( Type.PROGRESSION ),
 
 
-	CRAFTED,
+	CURSE_REMOVED( Type.ITEMS ),
 
 
-	CRAFTED_MEAT_PIE,
+	CRAFTED( Type.SURVIVAL ),
 
 
-	KILL,
+	CRAFTED_MEAT_PIE( Type.SURVIVAL ),
 
 
-	SNEAK_ATTACK,
+	KILL( Type.COMBAT ),
 
 
-	NO_PROGRESS,
+	SNEAK_ATTACK( Type.COMBAT ),
 
 
-	DAMAGE_TAKEN,
+	NO_PROGRESS( Type.COSTS ),
 
 
-	GOLD_LOST,
+	DAMAGE_TAKEN( Type.COMBAT ),
 
 
-	EATEN_EARLY,
+	GOLD_LOST( Type.ITEMS ),
 
 
-	CURSE_EQUIPPED,
+	EATEN_EARLY( Type.SURVIVAL ),
 
 
-	EQUIP_TOO_STRONG,
+	CURSE_EQUIPPED( Type.ITEMS ),
 
 
-	TURN_COST,
+	EQUIP_TOO_STRONG( Type.ITEMS ),
 
 
-	DEATH,
+	TURN_COST( Type.COSTS ),
 
 
-	STALLED,
+	DEATH( Type.TERMINAL ),
 
 
-	TURN_LIMIT,
+	STALLED( Type.TERMINAL ),
 
 
-	INVALID_ACTION,
+	TURN_LIMIT( Type.TERMINAL ),
 
 
-	MENU_NOOP;
+	INVALID_ACTION( Type.COSTS ),
+
+
+	MENU_NOOP( Type.COSTS );
+
+	private final Type type;
+
+	RewardTerm( Type type ){
+		this.type = type;
+	}
+
+	public Type type(){
+		return type;
+	}
 
 	private static final RewardTerm[] VALUES = values();
 
@@ -130,5 +138,17 @@ public enum RewardTerm {
 			default:
 				return false;
 		}
+	}
+
+
+	public enum Type {
+		OBJECTIVE,
+		EXPLORATION,
+		COMBAT,
+		PROGRESSION,
+		ITEMS,
+		SURVIVAL,
+		COSTS,
+		TERMINAL
 	}
 }

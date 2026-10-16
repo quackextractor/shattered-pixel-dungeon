@@ -4,7 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 
 public class RewardCheck {
 
-	private static final int CHECKS = 29;
+	private static final int CHECKS = 31;
 
 	public static void main( String[] args ){
 		EnvConfig config = new EnvConfig();
@@ -40,9 +40,12 @@ public class RewardCheck {
 		RewardShapingCheck.checkSearchingIsNotCheaperThanActing( config );
 		RewardShapingCheck.checkClosingTheGapToTheStairsPays( config );
 		RewardShapingCheck.checkStairShapingCannotBeFarmed( config );
-		RewardShapingCheck.checkStairShapingIsOffAtZero( config );
+RewardShapingCheck.checkStairShapingIsOffAtZero( config );
 
-		if (RewardFixtures.failures.isEmpty()){
+	RewardTypeCheck.checkEveryTermHasATypeAndTheSubtotalsSum();
+	RewardTypeCheck.checkTheReportRendersColourCodedTypeTotals();
+
+	if (RewardFixtures.failures.isEmpty()){
 			System.out.println( "[OK]     reward signals: " + CHECKS + " checks passed" );
 		} else {
 			System.out.println( "[ERROR]  reward signals: " + RewardFixtures.failures.size() + " of "

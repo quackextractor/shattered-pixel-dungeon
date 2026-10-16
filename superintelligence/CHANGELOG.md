@@ -9,6 +9,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- **`RewardTerm.Type`, and a colour-coded type table in the run report.** `docs.md` asks the summary
+  interface for "floor-by-floor point gains and losses, type totals/subtotals, and the overall run
+  score"; the report printed floors and then thirty individual terms with nothing grouping them.
+  Every term now carries one of eight types - `OBJECTIVE`, `EXPLORATION`, `COMBAT`, `PROGRESSION`,
+  `ITEMS`, `SURVIVAL`, `COSTS`, `TERMINAL` - `RewardLedger` answers `typeTotals()` and `typeCounts()`,
+  and `RunReport` prints a `type totals` block between the floor table and the term table with the
+  event count and the subtotal in green above zero and red below. `rewardcheck` is **31 cases** and
+  both new ones are mutation-tested: one term's type set to null fails the first, and removing the
+  block fails the second.
+
 ### Fixed
 - **`research.md` and `docs.md` named 26 classes at paths that do not exist.** `FogOfWar.java` and
   `ShadowCaster.java` moved to `tiles/` and `mechanics/` in an upstream merge, and the remaining

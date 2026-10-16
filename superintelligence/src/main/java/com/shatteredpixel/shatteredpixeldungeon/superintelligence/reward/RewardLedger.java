@@ -129,6 +129,29 @@ public class RewardLedger {
 		return runTotals[ term.ordinal() ];
 	}
 
+	public java.util.EnumMap<RewardTerm.Type, Double> typeTotals(){
+		java.util.EnumMap<RewardTerm.Type, Double> out
+				= new java.util.EnumMap<>( RewardTerm.Type.class );
+		for (RewardTerm.Type type : RewardTerm.Type.values()) out.put( type, 0.0 );
+
+		for (RewardTerm term : RewardTerm.values()){
+			out.merge( term.type(), runTotals[ term.ordinal() ], Double::sum );
+		}
+		return out;
+	}
+
+	public java.util.EnumMap<RewardTerm.Type, Integer> typeCounts(){
+		java.util.EnumMap<RewardTerm.Type, Integer> out
+				= new java.util.EnumMap<>( RewardTerm.Type.class );
+		for (RewardTerm.Type type : RewardTerm.Type.values()) out.put( type, 0 );
+
+		for (int i = 0; i < notes.length; i++){
+			if (notes[ i ] == 0) continue;
+			out.merge( RewardTerm.at( i ).type(), notes[ i ], Integer::sum );
+		}
+		return out;
+	}
+
 	public java.util.ArrayList<FloorTotals> floors(){
 		return floors;
 	}

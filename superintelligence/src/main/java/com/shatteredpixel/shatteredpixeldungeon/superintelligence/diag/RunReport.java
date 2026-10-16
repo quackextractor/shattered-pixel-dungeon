@@ -43,6 +43,7 @@ public class RunReport {
 
 		renderHeader( sb );
 		renderFloors( sb );
+		renderTypeTotals( sb );
 		renderTerms( sb );
 		renderGraph( sb, graphWidth );
 
@@ -86,6 +87,27 @@ public class RunReport {
 			sb.append( Ansi.cell( Integer.toString( floor.goldGained ), 7 ) );
 			sb.append( Ansi.padLeft( Ansi.signed( net ), 10 + (Ansi.enabled() ? Ansi.GREEN.length() + Ansi.RESET.length() : 0) ) );
 			sb.append( Ansi.wrap( " cleared", Ansi.DIM + Ansi.GREEN ) );
+			sb.append( '\n' );
+		}
+	}
+
+	private void renderTypeTotals( StringBuilder sb ){
+		java.util.EnumMap<RewardTerm.Type, Double> totals = ledger.typeTotals();
+		java.util.EnumMap<RewardTerm.Type, Integer> counts = ledger.typeCounts();
+
+		sb.append( '\n' );
+		sb.append( Ansi.wrap( "type totals", Ansi.DIM ) );
+		sb.append( '\n' );
+
+		for (RewardTerm.Type type : RewardTerm.Type.values()){
+			int events = counts.get( type );
+			double total = totals.get( type );
+			if (events == 0 && total == 0) continue;
+
+			sb.append( "  " ).append( Ansi.cell( type.name(), 20 ) );
+			sb.append( Ansi.cell( Integer.toString( events ), 6 ) );
+			sb.append( Ansi.padLeft( Ansi.signed( total ), 12 + (Ansi.enabled() ? 10 : 0) ) );
+			sb.append( Ansi.wrap( total >= 0 ? " green" : " red", total >= 0 ? Ansi.GREEN : Ansi.RED ) );
 			sb.append( '\n' );
 		}
 	}
