@@ -34,13 +34,6 @@ points over fifteen generations to mean anything. `bestDepth` on its own is not 
 
 ## 2. Reward signals
 
-- [x] **`CRAFTED` and `CRAFTED_MEAT_PIE` have emission sites.** `env.AlchemyAction` brews over the
-      game's own `Recipe.findRecipes` and `Action.ALCHEMY` reaches it, so `AlchemyScene` and its
-      renderer are not on the path. Measured: a meat pie is brewed with energy 20 -> 14,
-      `CRAFTED` 25.0 and `CRAFTED_MEAT_PIE` 100.0.
-- [x] **The weights that were Java literals are settings.** Forty-seven of them, including
-      `CURSE_REMOVED` 1.50, `EQUIP_TOO_STRONG` -2.00 and the curriculum fade depths.
-      `configcheck` is 14 cases and 87 keys, and its new case reads `.env.example` as well.
 - [ ] **`MENU_NOOP` has no emission site**, for the reason already measured rather than a new one:
       every sub-mode action either advances the clock or leaves the sub-mode, and `modecheck` now
       covers all seven modes and the claim still holds.
@@ -54,6 +47,8 @@ points over fifteen generations to mean anything. `bestDepth` on its own is not 
       depth 6** - but it starts at depth 3 and no run has passed floor 2, so every episode has
       priced every shaping term at 1.0. The fix is an agent that descends, not a retune.
 
+
+Declined proposals are in `REJECTED.md` and appear nowhere else.
 ## 3. Missing subsystems
 
 | # | Task | Document | Size |
@@ -78,24 +73,6 @@ points over fifteen generations to mean anything. `bestDepth` on its own is not 
       closed.** `ReplayPlayer` records cells now, and all 1,003 of them are identical on both sides at
       every step around the divergence, so it is neither the terrain, a trap, a plant, a heap, a
       transition, the fog, the visited set nor a mob. Evidence in `out/evidence/issue-26/`.
-- [ ] **The observation grid is a fixed 48x48 window**, and 419 of 1,040 measured floors exceed it
-      on at least one side, the largest 81 tiles. Not changed this cycle, and the reason is the
-      cost rather than the difficulty: ego-centring the grid on `hero.pos` rewrites
-      `ObservationEncoder`'s plane semantics and invalidates every checkpoint, so it belongs with a
-      measurement rather than in the middle of one. `EXIT_BEACON` already carries the stair's
-      location forward across the boundary, which is half the problem.
-- [ ] **A native or ONNX runtime, or `jdk.incubator.vector`.** Neither attempted. The incubator
-      module works on this JDK, but the dense layer its sketch vectorises is 17.0% of the forward
-      pass's multiply-accumulates against the convolution's 79.9%, and `Conv2D`'s inner loop has the
-      memory layout that would actually pay. Both arithmetic and trigger are in `REJECTED.md`.
-- [ ] **The sound-pitch draws.** **Declined, not deferred** - ten sites, and moving them invalidates
-      every committed recording including the one `issues.md` 26 is diagnosed against. The reason and
-      the trigger are in `REJECTED.md`.
-
-`Mob.holdAllies` is closed: `Random.shuffle(candidatePositions)` is what the tree has and it landed
-in commit `b4f717992`. `ENGINE-CHANGES.md` §7 and `CHANGELOG.md` both recorded it as uncommitted and
-are corrected.
-
 ## 6. Stale references in the source documents
 
 `research.md` and `docs.md` name classes that moved packages in v4.0.1, including `FogOfWar.java` and

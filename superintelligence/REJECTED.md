@@ -3,6 +3,10 @@
 Things that were proposed, measured or argued, and **not** done. Kept so they are not re-proposed
 without their reasoning. A proposal here is not a failure; several are the right answer.
 
+`TODO.md` carries open work only, so nothing declined appears in both. A declined item that is
+still worth doing someday is in one of two states: **declined**, meaning the answer is no and the
+reason is on this page, or **deferred**, meaning the answer is later and the trigger is stated.
+
 ## A native or ONNX runtime for the learner
 
 **Proposed by** `review.md` §6 Feature 3. **Not attempted.**
@@ -68,6 +72,26 @@ observation. Delta encoding and shuffling are mutually exclusive.
 Correct in principle, and it is a rewrite of the game's randomness across every subsystem. The bug it
 would most obviously address is `issues.md` 25, which was a shared object and not a stream-ordering
 fault.
+
+## Ego-centring the observation grid on `hero.pos`
+
+**Proposed by** `review.md` §1.4: "either the grid is ego-centric (centered on `hero.pos`) or
+downsampled". **Downsampling is done; ego-centring is declined.**
+
+Measured across 1,040 floors over 40 seeds at depths 1-26: **419 exceed 48 tiles on at least one
+axis**, the largest 81. So a fixed `env.grid_width` x `env.grid_height` window clips real floors.
+
+**Why it is not a config change.** `ObservationEncoder`'s planes are written in *level* coordinates
+and index the grid absolutely. Re-centring them on `hero.pos` is a rewrite of every plane's plane
+arithmetic, and it invalidates every checkpoint - the same thing `env.max_slots` 32 -> 96 did, and
+for the same reason.
+
+The half of the problem that is cheap is already done: `obs.GridChannel.EXIT_BEACON` carries the
+stair's location forward across the window boundary, so a hero that walked past and away still has a
+channel carrying the objective.
+
+**Revisit with** the next measurement, not in the middle of one. It belongs with a run whose numbers
+are going to be read, because it invalidates every weight file there is.
 
 ## Vectorising `Dense.matvec` with `jdk.incubator.vector`
 
