@@ -55,12 +55,21 @@ if [ -n "$(git status --porcelain)" ]; then
     exit 0
 fi
 
-echo "[INFO]  post-commit: removing inline comments from superintelligence"
+echo "[INFO]  post-commit: removing inline comments from superintelligence (about 5s)"
 
 set +e
-./gradlew --quiet :superintelligence:stripinlines
+# Every gradle call here is bounded. A post-commit hook with no timeout is a way to make `git commit`
+# hang for ever on a wedged daemon, and the commit is already made - there is nothing worth waiting
+# for. 120s is far more than any of these needs when healthy and short enough that a stall is obvious.
+timeout 120 ./gradlew --quiet :superintelligence:stripinlines
 strip_rc=$?
 set -e
+
+# 124 is timeout's own exit code, and it means the strip never finished rather than that it failed.
+if [ "$strip_rc" -eq 124 ]; then
+    echo "[WARN]  post-commit: stripinlines timed out after 120s, leaving the tree alone."
+    exit 0
+fi
 
 # Non-zero means the scan itself failed, so leave the tree alone. Whether anything was rewritten is not
 # read from the exit code: JavaExec does not propagate one, gradle reports a failed task and exits 1 for
@@ -78,8 +87,8 @@ else
     # Verified before committing, because a strip that does not compile must not be committed - it would
     # be a commit that cannot be built, and the next person to check it out gets a broken tree rather
     # than a clean revert.
-    echo "[INFO]  post-commit: verifying the tree still builds"
-    if ! ./gradlew --quiet verifyall; then
+    echo "[INFO]  post-commit: verifying the tree still builds (about 40s)"
+    if ! timeout 900 ./gradlew --quiet verifyall; then
         echo "[ERROR] post-commit: the stripped tree does not pass verifyall. Reverting the strip."
         git checkout -- superintelligence/src
         exit 0
@@ -97,7 +106,17 @@ fi
 # carry -Xlint:all warnings (an orphan javadoc in Replay.java, a lossy cast in ReplayIO.java), so
 # treating this as fatal would mean failing every commit for a pre-existing condition. Print the count and
 # move on; run 'gradlew :superintelligence:javaclint' yourself to see them.
-./gradlew --quiet :superintelligence:javaclint 2>&1 | grep -c 'warning' | \
+# Advisory, and the last thing that runs, so it is also the thing most likely to be the reason a commit
+# seemed to hang: about five seconds of quiet gradle after the commit is already made. Bounded like the
+# rest, skipped on SPD_SKIP_LINT for when it is not wanted, and it never affects the outcome either way.
+if [ -n "$SPD_SKIP_LINT" ]; then
+    exit 0
+fi
+
+echo "[INFO]  post-commit: checking javac lint (about 5s, advisory)"
+set +e
+timeout 120 ./gradlew --quiet :superintelligence:javaclint 2>&1 | grep -c 'warning' | \
     { read n; echo "[INFO]  post-commit: javac lint reports $n warning line(s). Advisory only."; }
+set -e
 
 exit 0
