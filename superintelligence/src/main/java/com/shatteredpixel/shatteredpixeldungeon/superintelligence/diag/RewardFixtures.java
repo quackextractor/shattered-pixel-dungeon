@@ -23,7 +23,7 @@ import java.util.List;
 
 public final class RewardFixtures {
 
-	static final List< String > failures = new ArrayList<>();
+	static final List< String > failures = GateReport.failures();
 
 	private RewardFixtures(){}
 
@@ -252,6 +252,6 @@ public final class RewardFixtures {
 	}
 
 	static void fail( String message ){
-		failures.add( message );
+		GateReport.fail( message );
 	}
 }

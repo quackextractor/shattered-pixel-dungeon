@@ -44,14 +44,21 @@ measured against the band to say whether it is now improving.
 ## 2. Reward signals
 
 - [ ] **Terms that never fire.** `KILL`, `GOLD_GAIN` and `ITEM_PICKUP` have never been
-      observed paying. Either they cannot fire or the agent never reaches the state.
+      observed paying in a *run*. `KILL` is wired and gated - `rewardcheck` places a
+      level-appropriate mob, fights it and requires the payout - so the question is whether an
+      untrained policy ever gets there, not whether the term can move.
 - [ ] **Exploration is not separable from descent.** The reward pays for seeing new tiles as
       well as for going deeper, so `bestDepth` cannot measure exploration even where it does
       measure something. `reward.profile=depth_only` exists for this and has not been run
       since the budget change.
-- [ ] **The curriculum is inert.** `Curriculum.observe()` is never called, so `deepestSeen`
-      stays 0 and `shapingScale()` returns 1 forever. A design question, not a bug - see
-      section 5.
+- [x] ~~**The curriculum is inert.**~~ **Closed, and it was never true.**
+      `SPDEnv.onFloorTransition` calls `curriculum.observe(depth)` and pushes the result into
+      the ledger, and `curriculumcheck` measures a real run reaching depth 6 at a shaping scale
+      of 0.6064 in both. Removing the `observe` call fails two of its five cases. What is true
+      is narrower and is worth stating: **the fade starts at depth 3 and no run in this
+      project's history has passed floor 2**, so the scale has been 1.0 on every episode and
+      the shaping terms have never actually been faded. That is a statement about the agent, not
+      about the wiring. See section 5.
 
 ## 3. Missing subsystems
 
@@ -79,12 +86,21 @@ measured against the band to say whether it is now improving.
 
 Small things that are wrong but not blocking.
 
-- **The reward curriculum is inert.** Written in full and applied to the ledger, but nothing
-  calls `Curriculum.observe()`, so shaping stays at 1f and the dashboard prints a constant
-  under `shaping=`.
-- **Two javac lint warnings** in `superintelligence`, found by `gradle :superintelligence:javaclint`:
-  an orphan javadoc in `Replay.java` and a possibly-lossy `double`-to-`int` cast in
-  `ReplayIO.java:421`. Advisory only, so neither is fixed.
+- **The shaping fade has never actually faded anything.** `Curriculum.observe()` is called on every
+  floor change and `curriculumcheck` measures it moving - **0.6064 at depth 6** - so the wiring is
+  live and the gate forces it to stay that way. What is inert is the *effect*: the fade starts at
+  depth 3, and no run in this project's history has passed floor 2, so every episode has priced
+  every shaping term at 1.0. The fix, if there is one, is an agent that descends; retuning the fade
+  would change what is being faded rather than make anything fade.
+- **Five reward terms still have no emission site:** `CRAFTED`, `CRAFTED_MEAT_PIE`, `CURSE_REMOVED`,
+  `EQUIP_TOO_STRONG` and `MENU_NOOP`. `docs.md` asks for the first two, the third and the fourth;
+  `MENU_NOOP` is the suite's own. All are state-diffs rather than hooks, per `docs.md`'s own note
+  that a state diff cannot see an item created in the alchemist - the alchemy pot is a terrain tile
+  and its result is one item delta indistinguishable from a pickup. That is the reason and it is
+  still true; the honest fix is a diff on *what appears on the hero's own cell*, which a pickup
+  cannot do, rather than pretending the term was never wanted.
+- **Five files were over the project's own 500-line limit.** **Closed.** Every file in
+  `:superintelligence` is under 600 logical lines. See section 8.
 
 ## 6. Stale references in the source documents
 
@@ -144,8 +160,24 @@ Recorded so the next reader does not re-derive them. The measurements are in `is
 - **`INTERACT` could not name the cell it acted on.** The step's secondary index is now a
       direction; index 0 keeps its old meaning, so the corpus reproduces unchanged.
 - **`Trainer.java` was over the project's own 500-line limit** at 1,021 lines, and the module
-      carried a javadoc comment on almost every declaration. `train/TrainerMain` took the entry
-      point and configuration loading (Trainer is 467), and `stripinlines --javadoc` removed
-      13,366 comment lines across 114 files in one reviewable change. Still over the limit:
-      `diag/RewardCheck` 1,354, `diag/ReplayCatalogCheck` 783, `diag/CollectCheck` 615,
-      `diag/ConfigCheck` 542, `Main` 506. `RewardCheck` is the one that matters.
+  carried a javadoc comment on almost every declaration. `train/TrainerMain` took the entry
+  point and configuration loading (Trainer is 467), and `stripinlines --javadoc` removed
+  13,366 comment lines across 114 files in one reviewable change. **The five diagnostic files
+  that were still over are split too**: `diag/RewardCheck` 1,354 became a runner plus
+  `RewardTerminalCheck` (352), `RewardDescentCheck` (260), `RewardCombatCheck` (307),
+  `RewardShapingCheck` (275) and the shared `RewardFixtures` (208);
+  `diag/ReplayCatalogCheck` 783 became a runner plus `ReplayCatalogListingCheck`,
+  `ReplayCatalogGroupingCheck` and `ReplayCatalogFixture`; `diag/CollectCheck` 615 became a
+  runner plus `CollectWireCheck` and `CollectTrace`; `diag/ConfigCheck` 542 became the cases
+  plus `ConfigDefaults`; `Main` 506 became a dispatcher plus a `cli` package.
+- **The shaping fade is wired, and the `shaping=` column is not a constant any more.** The
+  fade itself was always live - `curriculumcheck` measures 0.6064 at depth 6 - but
+  `Trainer.curriculumScale()` returned a literal `1f`, so the report showed a number the run
+  had never used. It is now the mean over the generation's episodes of the scale each one
+  priced its shaping terms at.
+- **The trainer JVM's heap is read from `SPD_WORKER_HEAP_MIN` / `_MAX` / `SPD_WORKER_GC_PAUSE_MS`**
+  instead of literals in `build.gradle`, which was the one file deciding a setting without being
+  one. `configcheck` holds both directions.
+- **`pushcheck`**, 6 cases, the first gate to reach the policy push. A gate cannot spawn a
+  worker - `HeadlessServices.install` is process-wide - so the case is written against the
+  write loop's own contract rather than against a spawned process.

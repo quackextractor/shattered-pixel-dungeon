@@ -309,6 +309,7 @@ twenty-nine gates, one invocation:
 | `paritycheck` | A recording that will not replay exactly, across seeds in one process |
 | `freeactioncheck` | A rest that spends no engine time, or a menu loop that can be repeated with the world standing still |
 | `bpttcheck` | A recurrent gradient that never crosses a timestep, or a critic asked for returns in the thousands |
+| `curriculumcheck` | A shaping fade that is written and wired but inert, or a `shaping=` column that reports a constant |
 | `stallcausecheck` | A stall guard that is unreachable or that reports the wrong guard |
 | `pushcheck` | A policy push written in one call rather than chunked, retried, and refused by name |
 | `javaclint` | Any compiler warning at all, under `-Xlint:all -Werror` |

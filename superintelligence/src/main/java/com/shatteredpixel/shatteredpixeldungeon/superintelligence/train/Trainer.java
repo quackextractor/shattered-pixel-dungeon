@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceS
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.Curriculum;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
@@ -547,7 +548,9 @@ public class Trainer {
 	}
 
 	private float curriculumScale(){
-		return 1f;
+		int[] deepest = new int[ lastEpisodes.size() ];
+		for (int i = 0; i < deepest.length; i++) deepest[ i ] = lastEpisodes.get( i ).depth;
+		return Curriculum.meanScale( deepest );
 	}
 
 

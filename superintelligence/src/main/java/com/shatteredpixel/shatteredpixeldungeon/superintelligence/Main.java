@@ -9,6 +9,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ActionChe
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.BpttCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CheckpointCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CurriculumCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.DialogCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.EpisodeDiff;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.FallCheck;
@@ -77,6 +78,7 @@ public class Main {
 		case "mobspritecheck": MobSpriteCheck.main( rest ); break;
 		case "rolloutcheck": RolloutCheck.main( rest ); break;
 		case "pushcheck": PushCheck.main( rest ); break;
+		case "curriculumcheck": CurriculumCheck.main( rest ); break;
 		case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag

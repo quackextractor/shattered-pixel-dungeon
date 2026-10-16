@@ -33,13 +33,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   answer is forced: the loss sits on the second step only, so the sum of the isolated steps is exactly
   the isolated gradient of the second. Comparing two gradient *norms* was tried first and was measured
   to let the mutation through.
-- **`gradle :superintelligence:pushcheck`**, a gate, 6 cases, and the first one to reach the policy
-  push at all. It asserts that no single write carries more than `train.push_chunk_bytes`, that the
-  bytes arrive identical, that a payload of exactly one chunk is one write, that an empty payload
-  writes nothing, that a stream failing twice is retried rather than abandoned, and that a stream
-  failing for ever is refused naming what failed and how much. Reinstating the unchunked write fails
-  the first case with the measured size; dropping the retry fails the fifth. `trainer.push_retries`
-  is now a setting rather than a private constant, which is what lets the fifth case run in 250 ms.
+- **A gate for the policy push that issues.md 28 fixed and could not gate.** It asserts that no
+  single write carries more than `train.push_chunk_bytes`, that the bytes arrive identical, that a
+  payload of exactly one chunk is one write, that an empty payload writes nothing, that a stream
+  failing twice is retried rather than abandoned, and that a stream failing for ever is refused
+  naming what failed and how much. Reinstating the unchunked write fails the first case with the
+  measured size; dropping the retry fails the fifth. `trainer.push_retries` is now a setting rather
+  than a private constant, which is what lets the fifth case run in 250 ms.
+- **`gradle :superintelligence:curriculumcheck`**, a gate, 5 cases, and the first measurement of
+  whether the shaping fade does anything. `curriculumcheck` says **1.0 up to depth 3, 0.0 from depth
+  10**, strictly between them in between, monotone across forty floors; that a generation's `shaping=`
+  is the mean of its episodes' own scales (**0.6787** over depths 1, 2, 3, 7, 12); and - driving real
+  descents through `Level.activateTransition` - that a run reaching **depth 6** carries a shaping
+  scale of **0.6064** in both `SPDEnv.curriculum()` and `RewardLedger`. Removing
+  `curriculum.observe(depth)` from `SPDEnv.onFloorTransition` fails two of the five.
 - **A `.env` file is read by the module.** It sits between the properties file and the process
   environment, which is where the documentation has always said it sits; it used to sit nowhere, so a
   developer who skipped the shell one-liner ran with settings they did not believe they were using.
@@ -66,6 +73,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decides a setting without being one. See the first entry under Fixed.
 
 ### Fixed
+- **`shaping=` under the generation report was a constant with a label on it.** `Trainer.curriculumScale()`
+  returned `1f`. The curriculum itself was wired - `SPDEnv.onFloorTransition` calls
+  `curriculum.observe(depth)` and pushes the result into the ledger - so the dashboard reported a
+  number the run had never used. It is now the mean over the generation's episodes of the scale each
+  one actually priced its shaping terms at, and `curriculumcheck` measures it. **The fade was never
+  inert, and it is still at 1.0 for any run that has not passed floor 3**, which is every run in this
+  project's history. `TODO.md` 2 and 5 said the opposite of `README.md`; `README.md` was right.
+- **A gate whose failures went to a list nobody read.** `CurriculumCheck` had its own `failures`
+  list and statically imported `RewardFixtures.fail`, which appends to *that* class's list, so the
+  two descent cases failed into a sink `main` never read and the gate printed `[OK] 5 checks passed`
+  over them. Every gate this cycle touched now reports through one `GateReport`, so there is a single
+  list in the module rather than one per file that has to be the right one.
 - **Two places decided one run's heap and one of them was unreachable.** `worker.heap_min`,
   `worker.heap_max` and `worker.gc_pause_ms` are documented settings, they reach every worker JVM,
   and `superintelligence.properties` compares them against the compiled defaults - but the trainer
