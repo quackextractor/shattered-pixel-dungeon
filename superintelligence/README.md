@@ -354,7 +354,7 @@ something.
 | **Every setting is a setting** | configcheck is 14 cases and 84 keys. Forty-seven values that were Java literals are now documented settings: worker JVM heap and GC pause, pipe and weight-push chunk sizes, episode tail length, gradient clip, Adam's three constants, value loss weight and residual ceiling, random-seed leak rate, checkpoint and record intervals, dialog aging step, chunk length, stair shaping weight |
 | **.env is read by the module** | It sits between the properties file and the process environment, which is where the documentation has always said it sits and where it never sat at all: the JVM does not read one, so the documented workflow was a shell one-liner, and a developer who skipped it ran with settings they did not believe they were using - silently, because nothing said the file had been ignored |
 | CNN + LSTM network, PPO agent | Verified; **PPO now runs on real worker data** |
-| Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included. `checkpointcheck` is a gate, 9 cases - one of them asserts that a flag with no value after it is **refused naming itself**, because every flag reads `args[i + 1]` and `train.ps1 -Resume` used to append a bare `--resume` |
+| Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included, **and the seed schedule**: the pool seed, the schedule seed, the pool size and the number of draws made all travel in `Checkpoint.Meta`, so a resumed run continues the sequence instead of replaying generation 0's. `checkpointcheck` is a gate, 9 cases - one of them asserts that a flag with no value after it is **refused naming itself**, because every flag reads `args[i + 1]` and `train.ps1 -Resume` used to append a bare `--resume`. `seedcheck` is a gate, 5 cases |
 | Bad checkpoint handling | Done - foreign, truncated, trailing-byte and wrong-config files all refused, the last naming the field |
 | Parallel minibatch update | Done - `--update-threads N`, measured 3.29x at 4 threads, 3.47x at 8. `parallelcheck` is a gate |
 | Cross-sample gradient leak | Fixed - `dCell` was not cleared, so every gradient depended on the previous sample |
@@ -415,7 +415,7 @@ something.
 -Generations 60 -Name depth-only-60`, `./train.ps1 -Resume`. It names the artefacts, prints the gradle
 command it is about to run, and passes `-Name` as the run's replay group.
 
-**Thirty-two gates, one invocation.** Each has had the thing it guards deleted, and each has been
+**Thirty-three gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives
@@ -491,8 +491,11 @@ no way to reach them from the command line:
 
 **A run can be stopped and continued.** `--save` writes a checkpoint every `--checkpoint-every`
 generations (default 25) and on exit; `--resume` continues from one, keeping the generation and
-optimiser-step numbering so the two runs' `metrics.csv` rows do not collide. Note that the *seeds*
-restart from `--seed` — the policy continues, the schedule does not.
+optimiser-step numbering so the two runs' `metrics.csv` rows do not collide. **The seed schedule
+continues too**: a checkpoint carries the pool seed, the schedule seed and the number of draws made,
+so a resumed run opens on the seeds the uninterrupted run would have reached at that point rather
+than replaying generation 0's. `seedcheck` is the gate, 5 cases, and the decisive one resumes a
+pool mid-sequence and compares the next 80 draws against the uninterrupted run's.
 
 ```sh
 # 50 generations, then 50 more

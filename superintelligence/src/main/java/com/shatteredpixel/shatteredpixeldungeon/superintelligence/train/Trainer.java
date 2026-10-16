@@ -113,6 +113,8 @@ public class Trainer {
 
 	private static final int BOSS_DEPTH = 5;
 	private static final int SEED_POOL_SIZE = 100;
+	private static final long SEED_POOL_MIX = 0xBF58476D1CE4E5B9L;
+	private static final long SEED_SCHEDULE_MIX = 0x94D049BB133111EBL;
 
 	public Trainer( EnvConfig config, long seed, File workDir ){
 		this( config, new PpoHyperparameters(), seed, workDir,
@@ -125,7 +127,7 @@ public class Trainer {
 		this.config = config;
 		this.rng = new Random( seed );
 		this.rngSeed = seed;
-		this.seeds = new SeedPool( rng );
+		this.seeds = new SeedPool( seed ^ SEED_POOL_MIX, seed ^ SEED_SCHEDULE_MIX );
 		this.workDir = workDir;
 		this.traceWorldPath = traceWorldPath;
 		this.replayDirOverride = replayDir;
@@ -225,6 +227,9 @@ public class Trainer {
 
 		lastSavedGeneration = meta.generation;
 
+		seeds.resume( meta.seedPoolSeed, meta.seedScheduleSeed, meta.seedDraws, meta.seedPoolSize,
+				meta.activeSeeds );
+
 		System.out.println( Ansi.wrap( "resume", Ansi.DIM ) + "   loaded " + file
 				+ "  " + Ansi.wrap( "(" + meta + ")", Ansi.DIM ) );
 		return meta;
@@ -295,7 +300,8 @@ public class Trainer {
 		if (resumedFrom != null){
 			System.out.println( Ansi.wrap( "resuming", Ansi.DIM ) + "   generations "
 					+ first + " to " + lastGeneration
-					+ Ansi.wrap( "  (seeds restart from the trainer seed; the policy does not)", Ansi.DIM ) );
+					+ Ansi.wrap( "  (the seed schedule resumes at draw " + seeds.draws()
+							+ " of the checkpoint)", Ansi.DIM ) );
 		}
 
 		for (int g = first; g < lastGeneration; g++){
@@ -391,7 +397,9 @@ public class Trainer {
 		if (saveFile == null) return;
 
 		try {
-			Checkpoint.save( saveFile, ppo.network, config, generation, rngSeed );
+			Checkpoint.save( saveFile, ppo.network, config, generation, rngSeed,
+					seeds.poolSeed(), seeds.scheduleSeed(), seeds.draws(), seeds.poolSize(),
+					seeds.activeSeeds() );
 			lastSavedGeneration = generation;
 			System.out.println( Ansi.wrap( "saved", Ansi.DIM ) + "   " + describe( saveFile )
 					+ "  " + Ansi.wrap( "(generation " + generation + ", adam step "

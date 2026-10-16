@@ -214,6 +214,7 @@ cliTask('bpttcheck', 'Fails if the recurrent gradient does not cross a timestep,
 cliTask('pushcheck', 'Fails if the policy push is not chunked and retried.')
 cliTask('curriculumcheck', 'Fails if the shaping fade is wired to nothing.')
 cliTask('samplercheck', 'Fails if sampling shatters the recurrent chunk, or the trunk is not downsampled.')
+cliTask('seedcheck', 'Fails if resuming a run replays the seed sequence from generation 0.')
 cliTask('doccheck', 'Fails if the documentation is unreadable, or disagrees with the gates it lists.')
 cliTask('updatecost', 'Measures what a PPO update costs and projects it across sample rates.')
 
@@ -252,7 +253,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 tasks.register('gates') {
     dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck', 'transitioncheck', 'fallcheck', 'dialogcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
-		'observecheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck', 'freeactioncheck', 'bpttcheck', 'pushcheck', 'curriculumcheck', 'samplercheck', 'doccheck', 'javaclint'
+		'observecheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck', 'freeactioncheck', 'bpttcheck', 'pushcheck', 'curriculumcheck', 'samplercheck', 'seedcheck', 'doccheck', 'javaclint'
     group = 'verification'
     description = 'Runs every correctness gate in one invocation.'
     doLast { println "all gates passed" }

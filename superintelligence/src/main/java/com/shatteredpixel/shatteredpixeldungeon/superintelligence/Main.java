@@ -29,6 +29,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCh
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RolloutCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SamplerCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SeedScheduleCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SlotCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.TransitionCheck;
@@ -84,6 +85,7 @@ public class Main {
 		case "pushcheck": PushCheck.main( rest ); break;
 		case "curriculumcheck": CurriculumCheck.main( rest ); break;
 		case "samplercheck": SamplerCheck.main( rest ); break;
+		case "seedcheck": SeedScheduleCheck.main( rest ); break;
 		case "doccheck": DocCheck.main( rest ); break;
 		case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
@@ -121,6 +123,7 @@ public class Main {
 		System.out.println( "  pushcheck                fail if the policy push is not chunked and retried" );
 		System.out.println( "  curriculumcheck          fail if the shaping fade is wired to nothing" );
 		System.out.println( "  samplercheck             fail if sampling shatters the recurrent chunk" );
+		System.out.println( "  seedcheck                 fail if a resumed run replays generation 0's seeds" );
 		System.out.println( "  doccheck                 fail if the documentation is unreadable or stale" );
 		System.out.println( "  transitioncheck           fail if descending ends the episode, or is worth nothing" );
 		System.out.println( "  fallcheck                fail if a chasm fall is dropped, or inherits an earlier episode" );

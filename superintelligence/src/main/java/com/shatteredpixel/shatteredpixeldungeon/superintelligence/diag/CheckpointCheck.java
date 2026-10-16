@@ -45,8 +45,8 @@ public class CheckpointCheck {
 			checkReportsGenerationAndSteps( original, small, file, 7, 4242L );
 		checkAMissingFlagValueIsRefusedNamingItself();
 
-			Checkpoint.save( new File( dir, "default.bin" ),
-					new Network( config, new Random( 1L ) ), config, 1, 1L );
+Checkpoint.save( new File( dir, "default.bin" ),
+				new Network( config, new Random( 1L ) ), config, 1, 1L, 11L, 13L, 17L, 4, 4 );
 			File defaultFile = new File( dir, "default.bin" );
 			Checkpoint.load( defaultFile, new Network( config, new Random( 2L ) ), config );
 
@@ -68,7 +68,7 @@ public class CheckpointCheck {
 
 	private static void checkRoundTripIsExact( Network original, EnvConfig config, File file,
 			int generation, long seed ) throws IOException {
-		Checkpoint.save( file, original, config, generation, seed );
+		Checkpoint.save( file, original, config, generation, seed, 11L, 13L, 17L, 4, 4 );
 
 		Network restored = new Network( config, new Random( 999L ) );
 		Checkpoint.load( file, restored, config );
@@ -145,7 +145,7 @@ public class CheckpointCheck {
 
 	private static void checkRefusesTruncatedFile( Network original, EnvConfig config,
 			File file, File truncated ) throws IOException {
-		Checkpoint.save( file, original, config, 1, 1L );
+		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4 );
 		java.nio.file.Files.copy( file.toPath(), truncated.toPath(),
 				java.nio.file.StandardCopyOption.REPLACE_EXISTING );
 
@@ -163,7 +163,7 @@ public class CheckpointCheck {
 
 	private static void checkRefusesTrailingBytes( Network original, EnvConfig config,
 			File file, File trailing ) throws IOException {
-		Checkpoint.save( file, original, config, 1, 1L );
+		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4 );
 		java.nio.file.Files.copy( file.toPath(), trailing.toPath(),
 				java.nio.file.StandardCopyOption.REPLACE_EXISTING );
 
@@ -181,7 +181,7 @@ public class CheckpointCheck {
 
 	private static void checkRefusesDifferentConfig( Network original, EnvConfig config,
 			File file ) throws IOException {
-		Checkpoint.save( file, original, config, 1, 1L );
+		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4 );
 
 		checkMismatchNames( config, file, "maxSlots", 6 );
 		checkMismatchNames( config, file, "gridWidth", 10 );
@@ -227,8 +227,8 @@ public class CheckpointCheck {
 
 	private static void checkLeavesNoTemporaryFiles( Network original, EnvConfig config,
 			File file, File dir ) throws IOException {
-		Checkpoint.save( file, original, config, 1, 1L );
-		Checkpoint.save( file, original, config, 2, 1L );
+		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4 );
+		Checkpoint.save( file, original, config, 2, 1L, 11L, 13L, 17L, 4, 4 );
 
 		File[] strays = dir.listFiles( (d, name) -> name.startsWith( "weights-" ) );
 		if (strays != null && strays.length > 0){
@@ -239,7 +239,7 @@ public class CheckpointCheck {
 
 	private static void checkResumesIntoAnUntrainedNetwork( Network original, EnvConfig config,
 			File file ) throws IOException {
-		Checkpoint.save( file, original, config, 1, 1L );
+		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4 );
 
 		Network target = new Network( config, new Random( 555L ) );
 		Network.Layer[] before = target.layers();
@@ -269,7 +269,7 @@ public class CheckpointCheck {
 
 	private static void checkReportsGenerationAndSteps( Network original, EnvConfig config,
 			File file, int generation, long seed ) throws IOException {
-		Checkpoint.save( file, original, config, generation, seed );
+		Checkpoint.save( file, original, config, generation, seed, 11L, 13L, 17L, 4, 4 );
 		Checkpoint.Meta meta = Checkpoint.load( file,
 				new Network( config, new Random( 4L ) ), config );
 
@@ -279,6 +279,14 @@ public class CheckpointCheck {
 		}
 		if (meta.trainSeed != seed){
 			fail( "the training seed came back as " + meta.trainSeed + ", expected " + seed );
+			return;
+		}
+		if (meta.seedPoolSeed != 11L || meta.seedScheduleSeed != 13L
+				|| meta.seedDraws != 17L || meta.activeSeeds != 4 ){
+			fail( "the seed schedule came back as pool " + meta.seedPoolSeed + ", schedule "
+					+ meta.seedScheduleSeed + ", draws " + meta.seedDraws + ", active "
+					+ meta.activeSeeds + " against the 11/13/17/4 that was written. A resume that does"
+					+ " not carry them replays the seed sequence from generation 0." );
 			return;
 		}
 		if (meta.adamSteps != original.adamSteps()){

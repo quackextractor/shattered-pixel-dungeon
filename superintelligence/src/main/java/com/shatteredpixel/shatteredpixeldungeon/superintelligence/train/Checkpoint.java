@@ -15,12 +15,12 @@ import java.nio.file.StandardCopyOption;
 
 public final class Checkpoint {
 
-	private static final int MAGIC = 0x53504431; 
-	private static final int FORMAT = 1;
+	private static final int MAGIC = 0x53504431;
+	private static final int FORMAT = 2;
 
 	private Checkpoint() {}
 
-	public static class Meta {
+public static class Meta {
 		public int generation;
 		public int adamSteps;
 		public long trainSeed;
@@ -29,15 +29,23 @@ public final class Checkpoint {
 		public int gridWidth;
 		public int gridHeight;
 
+		public long seedPoolSeed;
+		public long seedScheduleSeed;
+		public long seedDraws;
+		public int seedPoolSize;
+		public int activeSeeds;
+
 		@Override public String toString(){
 			return "generation " + generation + ", adam step " + adamSteps
 					+ ", train seed " + trainSeed + ", grid " + gridWidth + "x" + gridHeight
-					+ ", " + maxSlots + " slots";
+					+ ", " + maxSlots + " slots, seed draw " + seedDraws;
 		}
 	}
 
 	public static void save( File file, Network network, EnvConfig config,
-			int generation, long trainSeed ) throws IOException {
+			int generation, long trainSeed,
+			long seedPoolSeed, long seedScheduleSeed, long seedDraws, int seedPoolSize, int activeSeeds )
+			throws IOException {
 
 		Path target = file.toPath();
 		Path parent = target.getParent();
@@ -57,6 +65,12 @@ public final class Checkpoint {
 				out.writeInt( config.maxSlots );
 				out.writeInt( config.gridWidth );
 				out.writeInt( config.gridHeight );
+
+				out.writeLong( seedPoolSeed );
+				out.writeLong( seedScheduleSeed );
+				out.writeLong( seedDraws );
+				out.writeInt( seedPoolSize );
+				out.writeInt( activeSeeds );
 
 				Network.Layer[] layers = network.layers();
 				out.writeInt( layers.length );
@@ -111,6 +125,11 @@ public final class Checkpoint {
 			meta.maxSlots = in.readInt();
 			meta.gridWidth = in.readInt();
 			meta.gridHeight = in.readInt();
+				meta.seedPoolSeed = in.readLong();
+				meta.seedScheduleSeed = in.readLong();
+				meta.seedDraws = in.readLong();
+				meta.seedPoolSize = in.readInt();
+				meta.activeSeeds = in.readInt();
 
 			checkConfig( file, meta, config );
 
