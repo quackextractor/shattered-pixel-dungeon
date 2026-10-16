@@ -11,6 +11,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Checkpoin
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CurriculumCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.DialogCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.DocCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.EpisodeDiff;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.FallCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.FreeActionCheck;
@@ -22,6 +23,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ObserveCh
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ParallelCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.PressCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.PushCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayProbe;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResetCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RestartCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardCheck;
@@ -64,6 +66,7 @@ public class Main {
 		case "gaecheck": GaeCheck.main( rest ); break;
 		case "collectcheck": CollectCheck.main( rest ); break;
 		case "observecheck": ObserveCheck.main( rest ); break;
+		case "replayprobe": ReplayProbe.main( rest ); break;
 		case "episodediff": EpisodeDiff.main( rest ); break;
 		case "checkpointcheck": CheckpointCheck.main( rest ); break;
 		case "statecheck": StateCheck.main( rest ); break;
@@ -81,6 +84,7 @@ public class Main {
 		case "pushcheck": PushCheck.main( rest ); break;
 		case "curriculumcheck": CurriculumCheck.main( rest ); break;
 		case "samplercheck": SamplerCheck.main( rest ); break;
+		case "doccheck": DocCheck.main( rest ); break;
 		case "weightsdiff": WeightsDiff.main( rest ); break;
 		case "replays":  ReplayCatalog.main( rest ); break;
 		case "replaycheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag
@@ -117,6 +121,7 @@ public class Main {
 		System.out.println( "  pushcheck                fail if the policy push is not chunked and retried" );
 		System.out.println( "  curriculumcheck          fail if the shaping fade is wired to nothing" );
 		System.out.println( "  samplercheck             fail if sampling shatters the recurrent chunk" );
+		System.out.println( "  doccheck                 fail if the documentation is unreadable or stale" );
 		System.out.println( "  transitioncheck           fail if descending ends the episode, or is worth nothing" );
 		System.out.println( "  fallcheck                fail if a chasm fall is dropped, or inherits an earlier episode" );
 		System.out.println( "  dialogcheck              fail if an answer cannot reach a dialog the game opened" );
