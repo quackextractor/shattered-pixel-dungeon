@@ -305,7 +305,7 @@ thirty-three gates, one invocation:
 | `actioncheck` | A movement action that does not move the way it is named |
 | `slotcheck` | A recorded slot index resolving to a different item, or a restore wiping a binding no index can name |
 | `verifycheck` | Verification that cannot detect an altered recording, **or** verification that certifies one that cannot be played |
-| `observecheck` | Reading the world drawing from the gameplay RNG, **or** a draw path the RNG trace cannot see |
+| `observecheck` | Reading the world drawing from the gameplay RNG, **or** a draw path the RNG trace cannot see, **or** a public static `Random` method the audit has never seen |
 | `configcheck` | A configuration binder that ignores its input, **or** an example file that names a different value from the compiled default |
 | `paritycheck` | A recording that will not replay exactly, across seeds in one process |
 | `freeactioncheck` | A rest that spends no engine time, or a menu loop that can be repeated with the world standing still |
@@ -380,6 +380,11 @@ Three of them are worth singling out, because they reach faults the others struc
   streams were 12 values apart. Six hypotheses about the divergence had been refuted by
   measurement before that was found, because the instrument that was supposed to catch it was blind to
   the draws that caused it.
+- **`observecheck` now audits `Random` itself**, not only the paths it knows. It reflects over
+  `Random.class.getDeclaredMethods()` and fails naming any public static method outside a 36-name
+  audited set. **The first run found 13 the gate had never covered**, which is the entire argument for
+  it: enumerating what the gate knows is an invariant about the present, and the four presentation
+  draws that spent the gameplay stream while every count agreed got through exactly that hole.
 - **`transitioncheck`** looks at what the hero *did* on arrival rather than only at where he landed. A
   hero arrives on a new floor where everything is at time 0, so the game's own scheduler gives him
   exactly one act before the player can act at all - and `Hero.act()` is where the floor's sleeping mobs

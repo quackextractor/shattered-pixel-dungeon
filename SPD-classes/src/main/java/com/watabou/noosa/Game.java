@@ -72,6 +72,9 @@ public class Game implements ApplicationListener {
 	public static float timeTotal = 0f;
 	public static long realTime = 0;
 
+	/** Frame delta override in seconds, or 0 to use measured frame time. */
+	public static float fixedFrameDelta = 0f;
+
 	public static InputHandler inputHandler;
 	
 	public static PlatformSupport platform;
@@ -279,7 +282,7 @@ public class Game implements ApplicationListener {
 
 	protected void update() {
 		//game will not process more than 200ms of graphics time per frame
-		float frameDelta = Math.min(0.2f, Gdx.graphics.getDeltaTime());
+		float frameDelta = Math.min(0.2f, fixedFrameDelta > 0f ? fixedFrameDelta : Gdx.graphics.getDeltaTime());
 		Game.elapsed = Game.timeScale * frameDelta;
 		Game.timeTotal += Game.elapsed;
 		

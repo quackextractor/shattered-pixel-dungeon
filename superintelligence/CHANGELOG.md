@@ -10,6 +10,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **`Game.fixedFrameDelta`, and a pin that reaches the animation clock.** `Game.elapsed` and
+  `Game.timeTotal` are both derived from the raw frame delta *before* any game code runs, so
+  `FrameDelta` could only ever pin playback's own pacing - and its own javadoc records the measurement
+  that proved it: a pin of 0.0166666 with `Game.elapsed` reading exactly that and `timeTotal`
+  advancing 0.0070 per frame. A new `public static float fixedFrameDelta`, `0f` by default, is read
+  in place of `Gdx.graphics.getDeltaTime()` when positive; **`0f` leaves the original expression in
+  place**, so a game with a renderer is untouched by construction rather than by argument.
+  `FrameDelta.apply()` publishes the pin and `FrameDelta.release()` restores measured frame time,
+  `ReplayLauncher` calls both, and `playbackcheck` holds it - reverting `apply()` to write nothing
+  fails with *"published Game.fixedFrameDelta=0.0"*.
+- **An audit of `Random` itself, and 13 draw paths the gate had never covered.** `observecheck`
+  enumerated the draw paths it knew, which is an invariant about the present rather than the future.
+  It now also reflects over `Random.class.getDeclaredMethods()` and fails naming any public static
+  method outside its audited set of 36. **The first run found 13 outside it**: `index(Collection)`,
+  `element(Collection)`, `element(Object[])`, `element(Object[], int)`, `shuffle(Object[])` twice,
+  `Long(long)`, `Float(float)`, `chances(HashMap)`, `Int(boolean)`, `oneOf(Object[])` and
+  `shuffle(int[])`. Four are now in the draw-path table as well. Mutation-tested with a temporary
+  `public static void dummy(){}`. `observecheck` is **7 cases**.
+- **A recording the trainer ended on the soft stall guard no longer halts as a viewer stall.**
+  `ReplayPlayer.settle()` completes playback on the frame the final step settles rather than waiting
+  for the next frame to find a null step, and `playbackcheck` carries a fixture built from a real
+  soft-stall episode - `WAIT` every step, `env.stall_limit` 6, hero alive at the final step - which
+  plays every step and ends as the run. `playbackcheck` is **25 cases**. **Reverting the one line
+  does not fail the new case**, because that fixture's hero is ready after its final `WAIT` and the
+  ordinary completion path runs; it is a property and not a mutation test, and `issues.md` 31 says so.
 - **The generation report says what a generation earned, not only what one episode did.** Every
   episode now crosses the worker pipe carrying its **stall cause**, its **objective score** - the
   part of the reward restricted to `depth_only`'s terms, computed regardless of which profile is

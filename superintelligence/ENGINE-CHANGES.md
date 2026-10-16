@@ -43,6 +43,7 @@ Each one exists because an observer needed a fact the engine kept to itself, and
 | `GameScene.answerableWindow()` | `GameScene.show()` parks a dialog in `headlessWindow` **only when there is no scene**. So a caller reading that slot directly saw no dialog in the rendered game, and a recorded `MENU` step resolved against nothing while `ReplayController` deliberately left the `WndOptions` on screen forever. This prefers the scene's live window and falls back to the slot. |
 | `GameScene.headlessGameplay()` | Declares that this process is simulating gameplay with the renderer bypassed. `Level.drop` presses the cell a thrown or dropped item lands on only when the current scene is a `GameScene`, which separates gameplay drops from the two scene drops that must not press — `AlchemyScene` crafting onto the cell the hero stands on, and `InterlevelScene.resurrect` dropping the LostBackpack on the cell he died on. A headless process has no scene at all, so the test was false and every thrown item landed inert: measured, an armed `WornDartTrap` was still armed after a `Food` was dropped on it on four seeds out of four. Both scene drops need a renderer, so neither can exist here, which is what makes the flag safe. See §7. |
 | `PRandom.element(Collection)` | Mirrors `Random.element` for the presentation stream, so a caller choosing presentation can be moved across without reimplementing the indexing. |
+| `Game.fixedFrameDelta` | A frame-delta override in seconds, `0f` by default. `Game.update` reads it in place of `Gdx.graphics.getDeltaTime()` when it is positive. **`0f` leaves the original expression in place**, so a game with a renderer is unaffected by construction rather than by argument — which is the shape every other entry here has. It exists because `Game.elapsed` and `Game.timeTotal` are both derived from the raw delta *before* any game code runs, so nothing written from a frame driver can pin them: `FrameDelta`'s own measurements recorded a pin of 0.0166666 with `Game.elapsed` reading exactly that and `timeTotal` advancing 0.0070 per frame. `playbackcheck` holds that `FrameDelta.apply()` reaches it. |
 
 ## 2. Null-tolerance for a bypassed renderer
 
@@ -203,14 +204,17 @@ reading exactly like a simulation that consumes no randomness at all.
   hands the generator to the JDK's own and so ignores the game's seeded stream entirely, and no
   recording in the corpus reaches `holdAllies`, which is why nothing would have noticed either way.
   `LevelPipeline.handleFall` still does not call it, for the same reason: `InterlevelScene.fall()`
-  opens with `Mob.holdAllies`, and copying that would put a draw into every fall in the trainer.
-- **`observecheck` enumerates the draw paths that exist** - 17 of them, in `ObserveCheck.java:224-241`. An eighteenth added later does not appear in
-  its list, so the gate protects what it knows about rather than what is added next.
+- **`observecheck` enumerated the draw paths that exist** - 17 of them, in `ObserveCheck.java`. An
+  eighteenth added later did not appear in its list, so the gate protected what it knew about rather
+  than what is added next. **That is closed**: it now also reflects over `Random.class.getDeclaredMethods()`
+
+  audit found **13** the gate had never covered.
 - **`Mob` and `Char` do not override `hashCode`.** Nothing found iterates them through a hash
   collection during play, but that is an invariant a future change could break.
-- **`Game.elapsed` cannot be pinned from outside.** It is derived in `Game.update` before any game code
-  runs, so animation timing remains frame-rate dependent and a future timing fault will need an engine
-  change at the point the delta is measured.
+- **`Game.elapsed` could not be pinned from outside, and now can.** It was derived in `Game.update`
+  before any game code ran, so animation timing stayed frame-rate dependent. `Game.fixedFrameDelta`
+  (see §1) is the point at which the delta is measured, and with the pin reaching it a pinned playback
+  is frame-rate deterministic rather than only reproducible.
 - **`Levitation.detach()` only re-presses the hero's cell when a `GameScene` exists** (`Levitation.java:58`),
   and `Level.drop` only calls `pressCell` under a scene test too (`Level.java:1068`). A gameplay guard
   keyed on a scene — the same shape as the animation clock above.

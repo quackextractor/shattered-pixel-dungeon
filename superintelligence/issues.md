@@ -10,7 +10,6 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
 | 22 | with the ping-pong closed, nothing the policy does pays |
 | 26 | the viewer spends 1 HP on a step the recording does not |
 | 27 | no comparison in this project has an error bar, and `bestDepth` is a coin flip |
-| 31 | open items recovered from the viewer-fidelity and parity documents |
 | 37 | one recording in two does not reproduce, and it is the trainer's half |
 | 38 | a recording verifies in a fresh JVM and not in a process that has played an episode |
 
@@ -289,7 +288,7 @@ That is the most likely reason nothing descends: with 99% of the data being STAL
 This also contradicts `README.md`'s "Every episode runs the full 1500 turns with zero stalls". That line
 Evidence: [`out/evidence/floor-1.csv`](out/evidence/floor-1.csv), [`floor-2.csv`](out/evidence/floor-2.csv),
 
-## 31. Open items recovered from the viewer-fidelity and parity documents - **OPEN**
+## 31. Open items recovered from the viewer-fidelity and parity documents - **CLOSED**
 
 Recorded before `PLAN-replay-parity.md` and `FINDINGS-viewer-fidelity.md` were removed. Both carried
 live content that was in neither `issues.md` nor `TODO.md`, and deleting them would have lost it. The

@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 public class ObserveCheck {
-	private static final int CHECKS = 6;
+	private static final int CHECKS = 7;
 	private static final List< String > failures = new ArrayList<>();
 	private static int checksFailed = 0;
 	private static void check( Runnable body ){
@@ -43,6 +43,7 @@ public class ObserveCheck {
 		check( ObserveCheck::checkCapturingQuickslotsDrawsNothing );
 		check( ObserveCheck::checkEveryDrawPathIsCounted );
 		check( ObserveCheck::checkShufflingIsCounted );
+		check( ObserveCheck::checkNoUnauditedPublicRandomMethods );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
 		} else {
@@ -122,20 +123,24 @@ public class ObserveCheck {
 			{ "Float(false)",               (Runnable) () -> Random.Float( false ) },
 			{ "Float(10)",                  (Runnable) () -> Random.Float( 10 ) },
 			{ "Float(1, 2)",                (Runnable) () -> Random.Float( 1, 2 ) },
+			{ "Float(1f)",                  (Runnable) () -> Random.Float( 1f ) },
 			{ "NormalFloat(1, 2)",          (Runnable) () -> Random.NormalFloat( 1, 2 ) },
 			{ "Int()",                      (Runnable) Random::Int },
+			{ "Int(false)",                 (Runnable) () -> Random.Int( false ) },
 			{ "Int(10)",                    (Runnable) () -> Random.Int( 10 ) },
 			{ "Int(10, false)",             (Runnable) () -> Random.Int( 10, false ) },
 			{ "Int(1, 2)",                  (Runnable) () -> Random.Int( 1, 2 ) },
 			{ "IntRange(1, 2)",              (Runnable) () -> Random.IntRange( 1, 2 ) },
 			{ "NormalIntRange(1, 2)",        (Runnable) () -> Random.NormalIntRange( 1, 2 ) },
 			{ "InvNormalIntRange(1, 2)",    (Runnable) () -> Random.InvNormalIntRange( 1, 2 ) },
-			{ "Long()",                     (Runnable) Random::Long },
+{ "Long()",                     (Runnable) Random::Long },
 			{ "Long(false)",                (Runnable) () -> Random.Long( false ) },
 			{ "Long(10)",                   (Runnable) () -> Random.Long( 10 ) },
+			{ "Long(7L)",                   (Runnable) () -> Random.Long( 7L ) },
+			{ "oneOf(Object[])",            (Runnable) () -> Random.oneOf( new Object[]{ 1, 2 } ) },
 			{ "chances(float[])",           (Runnable) () -> Random.chances( new float[]{ 1, 0 } ) },
 			{ "element(list)",              (Runnable) () -> Random.element( Arrays.asList( 1, 2, 3 ) ) },
-		};
+	};
 		List< String > silent = new ArrayList<>();
 		for (Object[] path : paths){
 			RandomTrace.enable();
@@ -186,5 +191,50 @@ public class ObserveCheck {
 		if ( arrayDrawn == 0 ){
 			fail( "Random.shuffle(int[]) advanced the generator without being counted" );
 		}
+	}
+	private static final java.util.Set< String > AUDITED = new java.util.LinkedHashSet<>( Arrays.asList(
+			"Float()", "Float(boolean)", "Float(int)", "Float(float)", "Float(float,float)",
+			"NormalFloat(float,float)",
+			"Int()", "Int(boolean)", "Int(int)", "Int(int,boolean)", "Int(int,int)",
+			"IntRange(int,int)", "NormalIntRange(int,int)", "InvNormalIntRange(int,int)",
+			"Long()", "Long(boolean)", "Long(int)", "Long(long)",
+			"chances([F)", "chances(java.util.HashMap)",
+			"element(java.util.List)", "element(java.util.Collection)",
+			"element([Ljava.lang.Object;)", "element([Ljava.lang.Object;,int)",
+			"index(java.util.Collection)", "oneOf([Ljava.lang.Object;)",
+			"shuffle([I)", "shuffle(java.util.List)", "shuffle([Ljava.lang.Object;)", "shuffle([Ljava.lang.Object;,[Ljava.lang.Object;)",
+			"seed()", "reseedBase(long)", "resetGenerators()",
+			"pushGenerator()", "pushGenerator(long)", "popGenerator()"
+	) );
+	private static void checkNoUnauditedPublicRandomMethods(){
+		List< String > declared = new ArrayList<>();
+		for (java.lang.reflect.Method method : Random.class.getDeclaredMethods()){
+			if ( !java.lang.reflect.Modifier.isPublic( method.getModifiers() )) continue;
+			if ( !java.lang.reflect.Modifier.isStatic( method.getModifiers() )) continue;
+			if ( method.isSynthetic() ) continue;
+
+			StringBuilder signature = new StringBuilder( method.getName() ).append( '(' );
+			Class< ? >[] parameters = method.getParameterTypes();
+			for (int i = 0; i < parameters.length; i++){
+				if (i > 0 ) signature.append( ',' );
+				signature.append( parameters[ i ].getName() );
+			}
+			declared.add( signature.append( ')' ).toString() );
+		}
+
+		List< String > undeclared = new ArrayList<>();
+		for (String signature : declared) if ( !AUDITED.contains( signature )) undeclared.add( signature );
+
+		if (undeclared.isEmpty()){
+			System.out.println( "  all " + declared.size() + " public static Random methods are audited: "
+					+ AUDITED.size() + " in the set, no 18th draw path can appear unnoticed" );
+			return;
+		}
+
+		fail( "these public static Random methods are not in the audited set: "
+				+ String.join( ", ", undeclared ) + ". The draw-path check above enumerates what it knows, "
+				+ "so a path added later is invisible to it - which is precisely how four presentation draws "
+				+ "spent the gameplay stream while every count agreed. Add the method to the audited set and "
+				+ "to the draw-path table, or the next one repeats it." );
 	}
 }

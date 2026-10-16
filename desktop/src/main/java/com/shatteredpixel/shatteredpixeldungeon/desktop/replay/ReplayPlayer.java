@@ -949,6 +949,8 @@ awaitingSettle = true;
 			if (rngTrace != null) rngTrace.sample( playback.cursor() );
 			if (worldSnapshot != null) worldSnapshot.sample( "step", playback.cursor() );
 			playback.advance();
+
+			if (playback.finished()) endWhereRecordingEnds();
 		} else {
 			endWhereRecordingEnds();
 		}

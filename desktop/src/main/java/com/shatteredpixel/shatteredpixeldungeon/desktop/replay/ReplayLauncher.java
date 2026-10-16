@@ -110,12 +110,16 @@ public class ReplayLauncher {
 
 		ReplayController.install( new ReplayPlayer( replay ) );
 
+		FrameDelta.apply();
+
 		Game.setSceneClass( InterlevelScene.class );
 
 		ShatteredPixelDungeon game = new ShatteredPixelDungeon( new DesktopPlatformSupport() );
 		ReplayController.gameInstance( game );
 
 		new Lwjgl3Application( game, config );
+
+		FrameDelta.release();
 	}
 
 private static void describe( Replay replay ){

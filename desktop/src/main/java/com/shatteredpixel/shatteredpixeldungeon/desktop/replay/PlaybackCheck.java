@@ -63,7 +63,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 23;
+	private static final int CHECKS = 25;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -124,6 +124,8 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		check( () -> checkHudTextWrapsInsteadOfRunningOffScreen() );
 		check( () -> checkTheHudAnchorIsMovableAndDefaultsTopLeft() );
 		check( () -> checkPlaybackLeavesNoRemainsBehind() );
+		check( () -> checkASoftStallRecordingCompletesWithoutAViewerStall() );
+		check( PlaybackCheck::checkTheFrameDeltaPinReachesTheEngine );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
@@ -134,6 +136,111 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 			System.exit( 1 );
 		}
 	}
+
+	private static void checkTheFrameDeltaPinReachesTheEngine(){
+		com.watabou.noosa.Game.fixedFrameDelta = 0f;
+
+		FrameDelta.release();
+		if (com.watabou.noosa.Game.fixedFrameDelta != 0f){
+			fail( "releasing the pin left Game.fixedFrameDelta at "
+					+ com.watabou.noosa.Game.fixedFrameDelta + ", so a viewer's pin would outlive it" );
+			return;
+		}
+
+		String raw = System.getProperty( "spd.fixedDelta" );
+		try {
+			System.setProperty( "spd.fixedDelta", "0.0166666" );
+			FrameDelta.reset();
+
+			FrameDelta.apply();
+			float pinnedEngine = com.watabou.noosa.Game.fixedFrameDelta;
+
+			if (Math.abs( pinnedEngine - 0.0166666f ) > 1e-7f){
+				fail( "spd.fixedDelta=0.0166666 published Game.fixedFrameDelta=" + pinnedEngine
+						+ ". Game.elapsed and Game.timeTotal are both derived from that field before any"
+						+ " game code runs, so a pin that never reaches it cannot make the animation"
+						+ " clock deterministic - which is what this case exists to hold" );
+				return;
+			}
+
+			if (Math.abs( FrameDelta.current( 0.09f ) - 0.0166666f ) > 1e-7f){
+				fail( "FrameDelta.current(0.09f) did not return the pin" );
+				return;
+			}
+
+			FrameDelta.release();
+			if (com.watabou.noosa.Game.fixedFrameDelta != 0f){
+				fail( "releasing the pin after applying it left Game.fixedFrameDelta at "
+						+ com.watabou.noosa.Game.fixedFrameDelta );
+				return;
+			}
+		} finally {
+			if (raw == null) System.clearProperty( "spd.fixedDelta" );
+			else System.setProperty( "spd.fixedDelta", raw );
+			FrameDelta.reset();
+			FrameDelta.release();
+		}
+	}
+
+
+	private static void checkASoftStallRecordingCompletesWithoutAViewerStall(){
+		EnvConfig softStall = config.copy();
+		softStall.freeStepBudget = 3;
+		softStall.stallLimit = 6;
+		softStall.turnLimitPerFloor = 200;
+
+		SPDEnv soft = new SPDEnv( softStall, HeadlessGame.install() );
+		soft.reset( SEED, HeroClass.WARRIOR );
+
+		ReplayRecorder recorder = new ReplayRecorder();
+		recorder.begin( SEED, "WARRIOR", 0, softStall.turnLimitPerFloor, softStall );
+
+		while (soft.running() && recorder.replay().length() < 200){
+			recorder.record( Action.WAIT, 0, soft.mode() );
+			float reward = (float) soft.step( Action.WAIT, 0 );
+			recorder.afterStep( soft.heroPosition(), reward );
+		}
+
+		recorder.end( soft.ledger().total(), soft.deepestDepth(), soft.turnsTotal(), 0,
+				soft.endReason().name() );
+
+		Replay stalled = recorder.replay();
+		if (stalled.termination == null || !stalled.termination.equals( "STALLED" )){
+			fail( "the fixture ended as " + stalled.termination + " rather than STALLED, so the case"
+					+ " did not reach the soft stall guard it exists to exercise" );
+			return;
+		}
+		if (com.shatteredpixel.shatteredpixeldungeon.Dungeon.hero == null
+				|| !com.shatteredpixel.shatteredpixeldungeon.Dungeon.hero.isAlive()){
+			fail( "the fixture's hero died, so this is a death run rather than the soft-stall case where"
+					+ " the hero is still alive at the final step" );
+			return;
+		}
+
+		Outcome outcome = play( stalled );
+
+		if (outcome.haltReason != null && outcome.haltReason.contains( "did not become ready" )){
+			fail( "a recording the trainer ended on the soft stall guard halted with '" + outcome.haltReason
+					+ "' - the viewer waited out a hero the trainer had already stopped watching, and every"
+					+ " step had already been applied" );
+			return;
+		}
+		if (outcome.diverged){
+			fail( "a recording ending on the soft stall guard diverged: " + outcome.haltReason );
+			return;
+		}
+		if (outcome.cursor != stalled.length()){
+			fail( "a recording ending on the soft stall guard played " + outcome.cursor + " of "
+					+ stalled.length() + " steps" );
+			return;
+		}
+		if (outcome.haltReason != null && !outcome.haltReason.contains( "run ended" )){
+			fail( "a recording ending on the soft stall guard halted with '" + outcome.haltReason
+					+ "' rather than as the run the recording says it was" );
+			return;
+		}
+	}
+
 
 	/** Records a short run with the scripted policy, the cheapest source of a real replay. */
 	private static Replay recordAShortRun(){

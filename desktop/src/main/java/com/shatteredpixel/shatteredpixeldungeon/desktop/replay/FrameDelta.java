@@ -21,6 +21,8 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 
+import com.watabou.noosa.Game;
+
 /**
  * The frame delta the viewer advances playback by, and the option to pin it.
  *
@@ -59,6 +61,12 @@ public class FrameDelta {
 	public static float pinned(){
 		if (pinned == -1f) pinned = read();
 		return pinned;
+	}
+
+	/** Re-reads the property. For gates, which set it after the class has been loaded. */
+	public static void reset(){
+		pinned = -1f;
+		warned = false;
 	}
 
 	private static float read(){
@@ -119,4 +127,29 @@ public class FrameDelta {
 	}
 
 	private static boolean warned;
+
+	/**
+	 * Publishes the pin where {@code Game.update} reads it, and nothing else.
+	 *
+	 * <p>{@code Game.elapsed} and {@code Game.timeTotal} are both derived from the raw delta before any
+	 * game code runs, so writing them from a frame driver only splits the clock - measured in this file's
+	 * own javadoc as 0.0166666 requested against 0.0070 accumulated. {@code Game.fixedFrameDelta} is
+	 * upstream of both, so pinning it pins the animation clock as well as playback's pacing.
+	 *
+	 * <p>No-op when nothing is pinned, so ordinary gameplay reads {@code Gdx.graphics.getDeltaTime()}
+	 * exactly as before.
+	 */
+	public static void apply(){
+		float fixed = pinned();
+		Game.fixedFrameDelta = fixed < 0f ? 0f : fixed;
+		if (Game.fixedFrameDelta > 0f){
+			System.err.println( "[replay] spd.fixedDelta pins Game.fixedFrameDelta at "
+					+ Game.fixedFrameDelta + "s, so the animation clock is deterministic for this run" );
+		}
+	}
+
+	/** Restores measured frame time, so a viewer's pin cannot outlive the playback. */
+	public static void release(){
+		Game.fixedFrameDelta = 0f;
+	}
 }
