@@ -7,6 +7,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TrainOpt
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +23,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Co
 
 public class ConfigCheck {
 
-	private static final int CHECKS = 10;
+	private static final int CHECKS = 11;
 
 	public static void main( String[] args ) throws IOException {
 		if (args.length > 0 && (args[ 0 ].equals( "--verbose" ) || args[ 0 ].equals( "-v" ) )){
@@ -43,6 +44,7 @@ public class ConfigCheck {
 		checkOutputPathsFollowTheWorkingDirectory();
 		checkDotEnvIsRead();
 		checkDotEnvBeatsThePropertiesFile();
+		checkTheBuildScriptReadsTheHeapItDocuments();
 
 		if (ConfigDefaults.failures.isEmpty()){
 			System.out.println( "[OK]     configuration binding: " + CHECKS + " checks passed" );
@@ -462,5 +464,45 @@ public class ConfigCheck {
 		}
 
 		System.out.println( "  .env outranks the properties file" );
+	}
+
+
+	private static void checkTheBuildScriptReadsTheHeapItDocuments() throws IOException {
+		Path build;
+		try {
+			build = Path.of( "superintelligence/build.gradle" );
+			if (!Files.isReadable( build )) build = Path.of( "build.gradle" );
+		} catch (RuntimeException e){
+			fail( "could not name the module's build script from "
+					+ new File( "." ).getAbsolutePath() + ": " + e.getMessage() );
+			return;
+		}
+		if (!Files.isReadable( build )){
+			fail( "could not read the build script at " + build + ". It is a committed file; this check"
+					+ " cannot pass without it, and failing is better than skipping." );
+			return;
+		}
+
+		String script = Files.readString( build );
+
+		for (String setting : new String[]{ "SPD_WORKER_HEAP_MIN", "SPD_WORKER_HEAP_MAX",
+				"SPD_WORKER_GC_PAUSE_MS" }){
+			if (script.contains( setting )) continue;
+			fail( "the build script does not read " + setting + ", so the heap the trainer JVM is"
+					+ " launched with is a literal in a Gradle file while worker.heap_min,"
+					+ " worker.heap_max and worker.gc_pause_ms are documented settings that do not"
+					+ " reach it. Two places that decide one run's heap, one of them unreachable." );
+			return;
+		}
+
+		for (String literal : new String[]{ "-Xmx1536m", "-Xms256m", "MaxGCPauseMillis=200" }){
+			if (!script.contains( literal )) continue;
+			fail( "the build script still carries the literal " + literal + " alongside the"
+					+ " SPD_WORKER_* names, so the literal wins whenever they disagree" );
+			return;
+		}
+
+		System.out.println( "  the trainer JVM's heap and GC pause come from SPD_WORKER_HEAP_MIN,"
+				+ " SPD_WORKER_HEAP_MAX and SPD_WORKER_GC_PAUSE_MS, not from literals" );
 	}
 }

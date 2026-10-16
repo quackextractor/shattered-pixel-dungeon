@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Twenty-six settings that were Java literals.** Worker JVM heap and GC pause, the pipe and weight
   push chunk sizes, the episode tail length, the gradient clip and Adam's three constants, the value
   loss weight and residual ceiling, the random-seed leak rate, the checkpoint and record intervals, and
-  the dialog aging step. `configcheck` is now 10 cases and 63 keys.
+  the dialog aging step. `configcheck` is now 11 cases and 64 keys.
 - **`env.max_slots` is 96, the game's own ceiling.** It was 32, which silently truncated two thirds of
   what the hero can carry; the truncation was invisible rather than refused, because the head is a
   fixed-width window and everything past it simply was not in the observation. This widens the network's
@@ -60,9 +60,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the command's empty-`--seed` refusal, the resolved seed reaching the recording, the `--save` round
   trip and `--max-turns` reaching the environment. The command body moved out of `Main` into
   `cli.RunCommand`, which is what made it callable at all.
-- **`javaclint` is in `gates`.**
+- **`javaclint` is in `gates`.** It was a task a developer had to remember to run, so the six warnings
+  it had been reporting survived; a lint that is not a gate is a lint that does not happen.
+- **`configcheck` reads `superintelligence/build.gradle`**, which is the one file in the module that
+  decides a setting without being one. See the first entry under Fixed.
 
 ### Fixed
+- **Two places decided one run's heap and one of them was unreachable.** `worker.heap_min`,
+  `worker.heap_max` and `worker.gc_pause_ms` are documented settings, they reach every worker JVM,
+  and `superintelligence.properties` compares them against the compiled defaults - but the trainer
+  process itself is launched by a Gradle task whose `-Xms256m`, `-Xmx1536m` and
+  `-XX:MaxGCPauseMillis=200` were literals, so setting them changed the workers and not the process
+  that pushes weights to them. The build script reads `SPD_WORKER_HEAP_MIN`, `SPD_WORKER_HEAP_MAX`
+  and `SPD_WORKER_GC_PAUSE_MS` now, with the compiled default as the fallback, and `configcheck`
+  holds the contract in both directions: each name must appear, and each literal must not.
 - **21 of 64 documented settings were never proven reachable, and the check said all 64 were.**
   `configcheck` compares each key in `superintelligence.properties` against the compiled default, and
   `compiledValue` knew about 43 of them; the other 21 took `continue` on a null, which is a skip and
@@ -139,8 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`gates` is now 29 checks and `verifyall` is 30**, with `pushcheck` and `javaclint` added. Every
   document that counted them has been corrected: `README.md` said "twenty-six", `testing-guide.md`
   said 24, and `docs/documentation.md` said twenty-four and named 24 of them.
-- **`javaclint` is in `gates`.** It was a task a developer had to remember to run, so the six warnings
-  it had been reporting survived; a lint that is not a gate is a lint that does not happen.
+- **`configcheck` is 11 cases and 64 keys,** up from 10 and a count of 43 that was printed as 64.
 - **`.env.example` was describing pre-rescaling values** - `depth_reward` 25 against the compiled
   1800, `turn_cost` 0.002 against 1.0, `death_penalty` 100 against 2500, `max_slots` 32 against 96 -
   so copying it configured a run the module does not run. Every value now matches the compiled default.

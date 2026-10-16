@@ -36,15 +36,24 @@ processResources {
     from new File(projectDir, '/src/main/assets')
 }
 
-//jvmArgs are sized for the worker processes spawned by the trainer; see
-//com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessBootstrap
+//jvmArgs are sized for the trainer process and for the worker processes it spawns; see
+//com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessBootstrap.
+//The three values the properties file documents as worker.heap_min, worker.heap_max and
+//worker.gc_pause_ms are read from SPD_WORKER_HEAP_MIN, SPD_WORKER_HEAP_MAX and SPD_WORKER_GC_PAUSE_MS
+//rather than written here, so a settings file and a build script cannot disagree about the heap one
+//run gets. The compiled defaults below are PpoHyperparameters'.workerHeapMin/.workerHeapMax/
+//.workerGcPauseMs, and ConfigCheck asserts that they agree.
+def trainerSetting = { String envName, String projectProperty, String compiledDefault ->
+    return System.getenv( envName ) ?: ( project.findProperty( projectProperty )?.toString() ) ?: compiledDefault
+}
+
 def trainerJvmArgs = [
-        '-Xms256m',
-        '-Xmx1536m',
+        '-Xms' + trainerSetting( 'SPD_WORKER_HEAP_MIN', 'spd.workerHeapMin', '256m' ),
+        '-Xmx' + trainerSetting( 'SPD_WORKER_HEAP_MAX', 'spd.workerHeapMax', '1536m' ),
         //The game allocates heavily per turn; keeping the young gen large and the old gen
         //small avoids full GCs mid-rollout. See research.md "Garbage Collection and Memory Pooling".
         '-XX:+UseParallelGC',
-        '-XX:MaxGCPauseMillis=200',
+        '-XX:MaxGCPauseMillis=' + trainerSetting( 'SPD_WORKER_GC_PAUSE_MS', 'spd.workerGcPauseMs', '200' ),
         //A 1,000-sim sweep must never be killed by the OS for touching unused natives.
         '-XX:+IgnoreUnrecognizedVMOptions',
         //HeadlessServices loads the libGDX natives; without this a JDK that restricts native access
