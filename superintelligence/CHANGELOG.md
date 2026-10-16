@@ -52,8 +52,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed-width window and everything past it simply was not in the observation. This widens the network's
   input, so it invalidates checkpoints trained at 32.
 - **`--replay-group <id>`: a run's recordings are its own group, in the catalogue and on disk.**
+- **A gate for `Main.rollout`,** the command's own option handling rather than the collector
+  underneath it. `issues.md` 31 recorded that `rolloutcheck` guards the path training uses and that
+  `Main.rollout` is a separate path with no gate over it - which is where a real regression landed
+  before, an empty-seed guard that rejected both the flag *and its absence*, making random seeds
+  unreachable. `rolloutcheck` drives `cli.RunCommand.execute` in process, so what is under test is
+  the command's empty-`--seed` refusal, the resolved seed reaching the recording, the `--save` round
+  trip and `--max-turns` reaching the environment. The command body moved out of `Main` into
+  `cli.RunCommand`, which is what made it callable at all.
+- **`javaclint` is in `gates`.**
 
 ### Fixed
+- **21 of 64 documented settings were never proven reachable, and the check said all 64 were.**
+  `configcheck` compares each key in `superintelligence.properties` against the compiled default, and
+  `compiledValue` knew about 43 of them; the other 21 took `continue` on a null, which is a skip and
+  not an agreement. The reachability case did the same, so `worker.heap_max`, `rl.chunk_length`,
+  `reward.stair_potential_weight`, `ipc.push_chunk_bytes`, Adam's two betas, the four value-loss keys
+  and the rest were counted inside a green that read "all 64 documented keys change the setting they
+  name". All 21 are mapped and given a sentinel now, and **a key with no compiled value is a
+  failure** in both cases rather than a line skipped. This is the seventh instance this project has
+  recorded of a green that was a claim about less than it appeared.
+- **Five files over the project's 500-line limit**, split by functional boundary, which is what the
+  limit is for. `diag/RewardCheck` (1,354) is a runner plus `RewardTerminalCheck`,
+  `RewardDescentCheck`, `RewardCombatCheck`, `RewardShapingCheck` and the shared `RewardFixtures`;
+  `diag/ReplayCatalogCheck` (783) is a runner plus `ReplayCatalogListingCheck`,
+  `ReplayCatalogGroupingCheck` and `ReplayCatalogFixture`; `diag/CollectCheck` (615) is a runner plus
+  `CollectWireCheck` and `CollectTrace`; `diag/ConfigCheck` (542) is the cases plus `ConfigDefaults`;
+  and `Main` (506) is a dispatcher plus a `cli` package - `CliOptions`, `Cli`, `RunCommand`,
+  `VerifyCommand`, `RngTraceCommand`, `FixtureCommand`. Every file in `:superintelligence` is now
+  under 600 logical lines.
 - **`gradcheck` reported finite-difference noise as a wrong gradient.** The relative error was measured
   against a denominator that can be arbitrarily small, so a gradient of 1.2e-4 read to an absolute
   accuracy of 2.8e-5 was reported as 22% wrong. The noise is now **measured** - the same central
