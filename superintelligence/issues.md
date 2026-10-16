@@ -619,6 +619,12 @@ Both are free far more often than they should be, and they are **not** both defe
 ```
 212 of the 401 free steps are the mandated first half of the action. That is not a fault, but it is not
 ### Test status of the two viewer flags, stated precisely
+
+**Both are now gated**, by `viewcheck` rather than by `gates`: they need a display, and `viewcheck`
+is the only harness that has one. Measured: `spd.replayContinueOnDiverge` applies **100** steps to
+`duelist-death-last.replay` against **95** without it, and `spd.hidden` reads as `false` without the
+property and `true` with it - checked without ever constructing a window. What follows is the record
+of how they were established, kept because it is what the gate now asserts.
 Both were tested by running them, and **neither is in `gates`**, for a reason worth naming rather than
 **`-Dspd.replayContinueOnDiverge`.** Measured on `duelist-death-last.replay`:
 ```

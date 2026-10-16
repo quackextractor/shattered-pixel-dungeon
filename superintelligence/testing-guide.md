@@ -33,6 +33,15 @@
 
     **It defaults to 8 children at once, and that is a valid result.** Children were forked one at a time until this default changed; `VIEWCHECK_JOBS=N` (or `-PviewcheckJobs=N`) overrides it either way. Measured on the 17 committed recordings: **37.0s at 8 children against 219.7s sequential**, 17 of 17 clean at both. What concurrency costs is the **failing step**, not the verdict: playback is timing-sensitive, so several children at once report the same *recordings* as diverging but shuffle *which step* each one fails at. The gate prints a note about that **only when something actually failed**, and its `[OK]` line reports the mode too, so a green says which measurement produced it. `VIEWCHECK_JOBS=1` reproduces failing steps exactly.
 
+  **It also gates the two viewer diagnostics, and it runs them whether or not the corpus is green** - so a corpus failure cannot hide a diagnostic failure. Both were in `issues.md` 29 with a measured answer and no gate over them, which means either could have stopped working with nothing to say so:
+
+  | check | how | measured |
+  | --- | --- | --- |
+  | `spd.replayContinueOnDiverge` | Plays `duelist-death-last.replay` twice - once with the flag, once without - and compares how many steps each applied | **100 against 95.** Dropping the flag fails it with both runs at 95 |
+  | `spd.hidden` | Forks a child that calls `ReplayLauncher.windowConfig()` and halts, with and without the property, and reads what the launcher reported | **`hidden=false` without it, `hidden=true` with it** |
+
+  The second deliberately **does not open a window**. `windowConfig()` reads the property, builds the configuration and prints `hidden=`; nothing constructs an `Lwjgl3Application`. The project's own record is that the viewer's defaults once made it take over the desktop during an unattended run, and a gate that did that to prove a flag was wired is a gate nobody runs. `-PspdHidden` is still not how you set it - that property lands on the *supervisor*, and the children are what open the window, which is exactly why it once looked set and was not.
+
   **What it does not cover, and it is not a small thing.** Every child is forked *hidden* at speed 40, so the gate has never run the timing path a human run takes. Playback is timing-sensitive by its own nature - a recorded action can be pending across a frame boundary while another actor's animation resolves - and `TODO.md` §0.7 records a divergence reported by hand at speed 1 in a fullscreen window that 50-odd attempts, including 20 concurrent visible children, could not reproduce. A green `viewcheck` is evidence that the hidden, fast path agrees with the recording. It is not evidence that a slow, visible one does.
 
   **What it now refuses to pass.** The verdict used to be `!playback.diverged()`, which is the same shape of claim `ReplayIO.verify` used to make with its sentinels: a player that halted for *any other* reason - an unresolvable slot index, a stall, a refusal - left `diverged()` false and scored a pass. Measured on a fresh trainer recording whose bindings could not be resolved at step 13:

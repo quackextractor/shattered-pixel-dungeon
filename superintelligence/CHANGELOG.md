@@ -33,6 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   answer is forced: the loss sits on the second step only, so the sum of the isolated steps is exactly
   the isolated gradient of the second. Comparing two gradient *norms* was tried first and was measured
   to let the mutation through.
+- **`viewcheck` gates the two viewer diagnostics that were verified by running them and gated by
+  nothing.** `-Dspd.replayContinueOnDiverge` and `spd.hidden` are both in `issues.md` 29 with a
+  measured answer and no gate, so either could stop working without anything going red.
+  `spd.replayContinueOnDiverge` is checked on the one recording that diverges - **100 steps applied
+  against 95 without it**, and dropping the flag fails the check with both runs reporting 95.
+  `spd.hidden` is checked **without ever opening a window**: a new `--probe-config` mode calls
+  `ReplayLauncher.windowConfig()` and halts, so the property is read and printed with no
+  `Lwjgl3Application` constructed. A gate that took over the desktop to prove a flag was wired is a
+  gate nobody runs. Both run whether or not the corpus is green, so a corpus failure cannot hide one.
 - **A gate for the policy push that issues.md 28 fixed and could not gate.** It asserts that no
   single write carries more than `train.push_chunk_bytes`, that the bytes arrive identical, that a
   payload of exactly one chunk is one write, that an empty payload writes nothing, that a stream

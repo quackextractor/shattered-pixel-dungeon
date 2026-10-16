@@ -37,7 +37,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -104,6 +106,15 @@ public class ViewCheck {
 		int one = parsed.indexOf( "--one" );
 		if (one >= 0 && one + 1 < parsed.size()){
 			playOne( new File( parsed.get( one + 1 )) );
+			return;
+		}
+
+		int probe = parsed.indexOf( "--probe-config" );
+		if (probe >= 0){
+			ReplayLauncher.windowConfig();
+			System.out.flush();
+			System.err.flush();
+			Runtime.getRuntime().halt( 0 );
 			return;
 		}
 
@@ -197,12 +208,15 @@ public class ViewCheck {
 
 		double seconds = (System.nanoTime() - started) / 1e9;
 
+		int diagnosticsFailed = diagnostics( corpus );
+
 		if (failed.isEmpty()){
 			System.out.println( "[OK]     rendered playback: " + files.length
 					+ " recordings played clean in the real viewer (" + jobs
 					+ " at a time, " + String.format( Locale.ROOT, "%.1fs", seconds ) + ")"
 					+ (jobs > 1 ? " - which recordings played clean is reliable; failing steps would not be"
 						+ ", had anything failed" : "") );
+			System.exit( diagnosticsFailed );
 			return;
 		}
 
@@ -221,6 +235,183 @@ public class ViewCheck {
 	}
 
 	/** Failed recordings, each with its reported step, so two runs can be compared line for line. */
+	/**
+ * The two viewer diagnostics that were verified by running them and gated by nothing.
+ *
+ * <p>{@code -Dspd.replayContinueOnDiverge} and {@code spd.hidden} were both in {@code issues.md} 29
+ * with a measured answer and no gate, so both could stop working without anything going red. Neither
+ * can be checked by the corpus sweep: the first only differs on a recording that diverges, and the
+ * second is read by the launcher's window configuration before a window exists.
+ *
+ * <p>The second is checked without ever showing a window. {@code ReplayLauncher.HIDDEN} gates
+ * {@code setInitialVisible}, and {@code --probe-config} calls {@code windowConfig()} and halts - the
+ * property is read and printed, and no {@code Lwjgl3Application} is constructed. A gate that took
+ * over the desktop to prove a flag was wired is a gate nobody runs.
+ *
+ * @return 0 when both hold, 1 otherwise.
+ */
+private static int diagnostics( File corpus ) throws IOException, InterruptedException {
+		List< String > problems = new ArrayList<>();
+
+		checkHiddenFlagReachesTheWindowConfig( problems );
+		checkContinueOnDivergeKeepsPlaying( corpus, problems );
+
+		if (problems.isEmpty()){
+			System.out.println( "[OK]     viewer diagnostics: spd.replayContinueOnDiverge and"
+					+ " spd.hidden both reach the viewer" );
+			return 0;
+		}
+
+		System.out.println( "[ERROR]  viewer diagnostics: " + problems.size() + " of 2 checks failed" );
+		for (String p : problems) System.out.println( "        " + p );
+		return 1;
+	}
+
+
+	private static void checkHiddenFlagReachesTheWindowConfig( List< String > problems )
+			throws IOException, InterruptedException {
+		Map< String, String > without = new LinkedHashMap<>();
+		without.put( "spd.hidden", null );
+
+		String off = probeConfig( without );
+		String on = probeConfig( new LinkedHashMap<>() );
+
+		if (!off.contains( "hidden=false" )){
+			problems.add( "a child launched without spd.hidden reported " + firstReplayLine( off )
+					+ ", so the flag's absence does not read as a visible window. -PspdHidden on the"
+					+ " gradle task set the property on the supervisor, whose children are the ones that"
+					+ " open the window, which is why it looked set and was not." );
+			return;
+		}
+		if (!on.contains( "hidden=true" )){
+			problems.add( "a child launched with spd.hidden reported " + firstReplayLine( on )
+					+ ", so the property is not being read by the window configuration at all" );
+			return;
+		}
+
+		System.out.println( "  spd.hidden reaches the window configuration: hidden=false without it,"
+				+ " hidden=true with it, and neither run opens a window" );
+	}
+
+
+	private static String probeConfig( Map< String, String > overrides )
+			throws IOException, InterruptedException {
+		StringBuilder sink = new StringBuilder();
+		runProbe( overrides, sink );
+		return sink.toString();
+	}
+
+
+	private static void checkContinueOnDivergeKeepsPlaying( File corpus, List< String > problems )
+			throws IOException, InterruptedException {
+		File diverging = null;
+		File[] files = corpus.listFiles( ( dir, name ) -> name.endsWith( ".replay" ) );
+		if (files != null){
+			for (File file : files){
+				if (file.getName().contains( "death-last" )) diverging = file;
+			}
+		}
+
+		if (diverging == null){
+			problems.add( "no recording named *death-last* is in " + corpus.getAbsolutePath()
+					+ ", and that is the recording the continue-on-divergence flag exists for. Without"
+					+ " a fixture that diverges, the flag has nothing to be checked against." );
+			return;
+		}
+
+		Map< String, String > keepGoing = new LinkedHashMap<>();
+		keepGoing.put( "spd.replayContinueOnDiverge", "1" );
+
+		StringBuilder offSink = new StringBuilder();
+		runChild( diverging, new LinkedHashMap<>(), offSink );
+		StringBuilder onSink = new StringBuilder();
+		runChild( diverging, keepGoing, onSink );
+
+		Integer off = appliedSteps( offSink.toString() );
+		Integer on = appliedSteps( onSink.toString() );
+
+		if (off == null || on == null){
+			problems.add( "neither run of " + diverging.getName() + " reported how many steps it"
+					+ " applied (off=" + off + ", on=" + on + "), so the two cannot be compared. The"
+					+ " FAIL line is the only place that number is printed." );
+			return;
+		}
+
+		if (on <= off){
+			problems.add( "spd.replayContinueOnDiverge applied " + on + " steps against " + off
+					+ " without it, so setting the flag changed nothing. Its whole purpose is that the"
+					+ " steps after a divergence are the only ones worth looking at." );
+			return;
+		}
+
+		System.out.println( "  spd.replayContinueOnDiverge keeps playing past the divergence: "
+				+ on + " steps applied against " + off + " without it" );
+	}
+
+
+	/** The applied/total step count out of a child's last {@code [viewcheck]} line, or null. */
+	private static Integer appliedSteps( String output ){
+		java.util.regex.Matcher matcher = java.util.regex.Pattern
+				.compile( "\\[(\\d+)/(\\d+) steps" ).matcher( output );
+		Integer found = null;
+		while (matcher.find()){
+			found = Integer.parseInt( matcher.group( 1 ));
+		}
+		return found;
+	}
+
+
+	private static String firstReplayLine( String output ){
+		for (String line : output.split( "\n" )){
+			if (line.contains( "[replay]" )) return line.trim();
+		}
+		return "nothing at all";
+	}
+
+
+	private static void runProbe( Map< String, String > overrides, StringBuilder sink )
+			throws IOException, InterruptedException {
+		runChild( overrides, sink, "--probe-config" );
+	}
+
+
+	private static void runChild( Map< String, String > overrides, StringBuilder sink,
+			String... mode ) throws IOException, InterruptedException {
+		String javaBin = System.getProperty( "java.home" )
+				+ File.separator + "bin" + File.separator + "java";
+
+		Map< String, String > flags = new LinkedHashMap<>();
+		flags.put( "spd.mute", "1" );
+		flags.put( "spd.windowed", "1" );
+		flags.put( "spd.hidden", "1" );
+		flags.put( "spd.autoClose", "1" );
+		flags.put( "spd.fast", String.valueOf( (int) GATE_SPEED ) );
+		flags.putAll( overrides );
+
+		List< String > command = new ArrayList<>();
+		command.add( javaBin );
+		command.add( "-cp" );
+		command.add( System.getProperty( "java.class.path" ) );
+		for (Map.Entry< String, String > flag : flags.entrySet()){
+			if (flag.getValue() == null) continue;
+			command.add( "-D" + flag.getKey() + "=" + flag.getValue() );
+		}
+		command.add( "--enable-native-access=ALL-UNNAMED" );
+		command.add( ViewCheck.class.getName() );
+		command.addAll( Arrays.asList( mode ));
+
+		Process child = new ProcessBuilder( command ).redirectErrorStream( true ).start();
+
+		try (java.io.BufferedReader in = new java.io.BufferedReader(
+				new java.io.InputStreamReader( child.getInputStream() ))){
+			String line;
+			while ((line = in.readLine()) != null) sink.append( line ).append( '\n' );
+		}
+
+		if (!child.waitFor( CHILD_TIMEOUT_MS, TimeUnit.MILLISECONDS )) child.destroyForcibly();
+	}
+
+
 	private static List< String > sortedFailures( List< String > failed ){
 		List< String > sorted = new ArrayList<>( failed );
 		Collections.sort( sorted );
@@ -307,22 +498,44 @@ public class ViewCheck {
 
 	/** Forks one playback and waits for it, killing it if it overruns. */
 	private static int runChild( File file ) throws IOException, InterruptedException {
+		return runChild( file, new LinkedHashMap<>() );
+	}
+
+	private static int runChild( File file, Map< String, String > overrides )
+			throws IOException, InterruptedException {
+		StringBuilder sink = new StringBuilder();
+		return runChild( file, overrides, sink );
+	}
+
+	private static int runChild( File file, Map< String, String > overrides, StringBuilder sink )
+			throws IOException, InterruptedException {
 		String javaBin = System.getProperty( "java.home" )
 				+ File.separator + "bin" + File.separator + "java";
 
-		List< String > command = new ArrayList<>( Arrays.asList(
-				javaBin,
-				"-cp", System.getProperty( "java.class.path" ),
-				"-Dspd.mute=1",
-				"-Dspd.windowed=1", "-Dspd.hidden=1",
-				"-Dspd.autoClose=1",
-				"-Dspd.fast=" + (int) GATE_SPEED,
-				optional( "-Dspd.fixedDelta", System.getProperty( "spd.fixedDelta" )),
-				optional( "-Dspd.worldTrace", System.getProperty( "spd.worldTrace" )),
-				"--enable-native-access=ALL-UNNAMED",
-				ViewCheck.class.getName(),
-				"--one", file.getAbsolutePath()
-		));
+		Map< String, String > flags = new LinkedHashMap<>();
+		flags.put( "spd.mute", "1" );
+		flags.put( "spd.windowed", "1" );
+		flags.put( "spd.hidden", "1" );
+		flags.put( "spd.autoClose", "1" );
+		flags.put( "spd.fast", String.valueOf( (int) GATE_SPEED ) );
+		String fixedDelta = System.getProperty( "spd.fixedDelta" );
+		if (fixedDelta != null && !fixedDelta.trim().isEmpty()) flags.put( "spd.fixedDelta", fixedDelta.trim() );
+		String worldTrace = System.getProperty( "spd.worldTrace" );
+		if (worldTrace != null && !worldTrace.trim().isEmpty()) flags.put( "spd.worldTrace", worldTrace.trim() );
+		flags.putAll( overrides );
+
+		List< String > command = new ArrayList<>();
+		command.add( javaBin );
+		command.add( "-cp" );
+		command.add( System.getProperty( "java.class.path" ) );
+		for (Map.Entry< String, String > flag : flags.entrySet()){
+			if (flag.getValue() == null) continue;
+			command.add( "-D" + flag.getKey() + "=" + flag.getValue() );
+		}
+		command.add( "--enable-native-access=ALL-UNNAMED" );
+		command.add( ViewCheck.class.getName() );
+		command.add( "--one" );
+		command.add( file.getAbsolutePath() );
 
 		File root = new File( System.getProperty( "java.io.tmpdir" ),
 				"spd-viewcheck" + System.nanoTime() );
@@ -368,12 +581,14 @@ public class ViewCheck {
 		int code = child.exitValue();
 		if (code != 0){
 			System.out.println( "        " + file.getName() + " said:" );
-			synchronized (captured){
-				for (String line : captured.toString().split( "\n" )){
-					if (line.contains( "[replay] halted" ) || line.contains( "Exception" )
-							|| line.contains( "Error" )){
-						System.out.println( "          " + line );
-					}
+		}
+		synchronized (captured){
+			sink.append( captured );
+			if (code == 0) return code;
+			for (String line : captured.toString().split( "\n" )){
+				if (line.contains( "[replay] halted" ) || line.contains( "Exception" )
+						|| line.contains( "Error" )){
+					System.out.println( "          " + line );
 				}
 			}
 		}
@@ -505,7 +720,8 @@ public class ViewCheck {
 						: "played " + playback.cursor() + " of " + playback.total() + " steps - "
 								+ player.haltReason();
 				System.out.println( "[viewcheck] FAIL  " + file.getName() + "  " + why
-						+ "   [" + player.frameReport() + "]" );
+						+ "   [" + playback.cursor() + "/" + playback.total() + " steps; "
+						+ player.frameReport() + "]" );
 			}
 			System.out.flush();
 			System.err.flush();
