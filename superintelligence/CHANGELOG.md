@@ -1,4 +1,17 @@
 # Changelog - Superintelligence
+### Fixed: the policy push no longer depends on a single 14MB pipe write succeeding
+### Fixed: the free-step budget was ending every episode at 8% of its granted turns
+- **`Replay.Step` records whether the engine acted on it.** `accepted` is `1`, `0`, or `-1` for a
+  recording written before this. `SPDEnv` exposes `lastStepActed()`, the worker's collector listener
+  passes it to `ReplayRecorder.afterStep`, and `ReplayIO.verify` compares it **before** position -
+  which is the question `issues.md` 26 asked and the recording could not answer: a step the engine
+  refused and a step it applied looked identical, so a viewer refusal could not be told from a
+  trainer refusal. `Replay.VERSION` and `ReplayCodec.VERSION` are **5**. `verifycheck` is **10
+  cases** and mutation-tests it: reverting the comparison fails with *"verification reported no
+  divergence after flipping step 0 from accepted to refused"*; `collectcheck`'s wire case carries it
+  too.
+### Fixed: the policy push no longer depends on a single 14MB pipe write succeeding
+# Changelog - Superintelligence
 
 All notable changes to the **Superintelligence module** are documented in this file.
 
@@ -11,13 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - **`Game.fixedFrameDelta`, and a pin that reaches the animation clock.** `Game.elapsed` and
-  `Game.timeTotal` are both derived from the raw frame delta *before* any game code runs, so
-  `FrameDelta` could only ever pin playback's own pacing - and its own javadoc records the measurement
-  that proved it: a pin of 0.0166666 with `Game.elapsed` reading exactly that and `timeTotal`
-  advancing 0.0070 per frame. A new `public static float fixedFrameDelta`, `0f` by default, is read
-  in place of `Gdx.graphics.getDeltaTime()` when positive; **`0f` leaves the original expression in
-  place**, so a game with a renderer is untouched by construction rather than by argument.
-  `FrameDelta.apply()` publishes the pin and `FrameDelta.release()` restores measured frame time,
   `ReplayLauncher` calls both, and `playbackcheck` holds it - reverting `apply()` to write nothing
   fails with *"published Game.fixedFrameDelta=0.0"*.
 - **An audit of `Random` itself, and 13 draw paths the gate had never covered.** `observecheck`

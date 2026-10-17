@@ -162,6 +162,7 @@ if (mode == EnvMode.WORLD){
 			mode = needsTarget ? EnvMode.TARGETING : EnvMode.WORLD;
 			acted = true;
 		}
+		lastStepActed = acted;
 		if (!acted){
 			reward.noteEvent( RewardTerm.INVALID_ACTION );
 		}
@@ -333,6 +334,10 @@ if (!reward.lastStepAdvancedClock()){
 	}
 public float[] actionMask(){ return actionMask; }
 	public StallCause stallCause(){ return stallCause; }
+
+	public boolean lastStepActed(){ return lastStepActed; }
+
+	private boolean lastStepActed = true;
 	public boolean lastStepAdvancedClock(){ return reward.lastStepAdvancedClock(); }
 	public float[] slotMask(){ return slotMask; }
 	public float[] targetMask(){ return targetMask; }

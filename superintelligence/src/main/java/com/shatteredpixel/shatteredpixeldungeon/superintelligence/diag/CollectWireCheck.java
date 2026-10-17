@@ -114,6 +114,7 @@ public final class CollectWireCheck {
 		s.heroHp = 17;
 		s.turn = 42.5f;
 		s.inventory = "Food:1,Waterskin:2";
+		s.accepted = 1;
 		s.baseDraws = 918273L;
 		s.baseFingerprint = 0x0123456789ABCDEFL;
 		sample.steps.add( s );
@@ -162,6 +163,12 @@ public final class CollectWireCheck {
 		if (!s.quickslots.equals( r.quickslots )){
 			fail( "quickslot bindings did not survive the wire: '" + s.quickslots + "' -> '"
 					+ r.quickslots + "'. A recorded slot index means nothing without them." );
+			return;
+		}
+		if (r.accepted != s.accepted ){
+			fail( "accepted did not survive the wire: " + s.accepted + " -> " + r.accepted
+					+ ". Without it a step the engine refused is indistinguishable from one it applied,"
+					+ " and issues.md 26 is exactly that question.");
 			return;
 		}
 		if (r.baseDraws != s.baseDraws || r.baseFingerprint != s.baseFingerprint ){

@@ -16,7 +16,7 @@ import java.util.List;
 
 public class VerifyCheck {
 
-	private static final int CHECKS = 9;
+	private static final int CHECKS = 10;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -35,6 +35,7 @@ public class VerifyCheck {
 		checkAHeroWithNothingBoundIsNotRefused( good );
 		checkAWatchableRecordingIsNotRefused( good );
 		checkAnAlteredDrawCountIsCaughtAndNamed( good );
+		checkAnAlteredAcceptanceIsCaughtAndNamed( good );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     verification detects divergence: " + CHECKS + " checks passed" );
@@ -66,7 +67,7 @@ public class VerifyCheck {
 					policy.choose( env, slot );
 			recorder.record( action, slot[ 0 ], env.mode() );
 			float reward = (float) env.step( action, slot[ 0 ] );
-			recorder.afterStep( env.heroPosition(), reward );
+			recorder.afterStep( env.heroPosition(), reward, env.lastStepActed() ? 1 : 0 );
 		}
 
 		if (replay.length() < 20){
@@ -305,6 +306,7 @@ public class VerifyCheck {
 s.inventory = step.inventory;
 		s.baseDraws = step.baseDraws;
 		s.baseFingerprint = step.baseFingerprint;
+			s.accepted = step.accepted;
 		copy.steps.add( s );
 		}
 		return copy;
@@ -318,5 +320,60 @@ s.inventory = step.inventory;
 
 	private static void fail( String where, String what ){
 		failures.add( where + ": " + what );
+	}
+
+
+private static void checkAnAlteredAcceptanceIsCaughtAndNamed( Replay source ){
+		String where = "an altered acceptance flag is caught and named";
+
+		if ( !recordsAcceptance( source )){
+			fail( where, "the fixture recorded no acceptance flags, so there is nothing to alter."
+					+ " The trainer's worker has to write it for this case to say anything." );
+			return;
+		}
+
+		Replay copy = copyOf( source );
+		int altered = -1;
+		for (int i = 0; i < copy.steps.size() - 1; i++){
+			Replay.Step step = copy.steps.get( i );
+			if (step.accepted < 0) continue;
+			step.accepted = step.accepted == 1 ? 0 : 1;
+			altered = i;
+			break;
+		}
+
+		if (altered < 0){
+			fail( where, "no step carries an acceptance flag" );
+			return;
+		}
+
+		ReplayIO.Verification result = ReplayIO.verify( copy,
+				new SPDEnv( ReplayIO.configFor( copy ), HeadlessGame.install() ) );
+
+		if (!result.diverged){
+			fail( where, "verification reported no divergence after flipping step " + altered
+					+ " from accepted to refused. A recording cannot say whether the engine acted on a"
+					+ " step, so a viewer refusal and a trainer refusal look identical - which is"
+					+ " issues.md 26's question exactly." );
+			return;
+		}
+		if (result.divergedAt != altered){
+			fail( where, "verification caught the altered acceptance at step " + result.divergedAt
+					+ " rather than at " + altered + ", so the flag is not what stopped it" );
+			return;
+		}
+		if (result.divergence == null || !result.divergence.contains( "accepted" )){
+			fail( where, "the divergence is '" + result.divergence + "' and does not say the two sides"
+					+ " disagree about whether the action was applied" );
+			return;
+		}
+
+		System.out.println( "  " + where + ": " + result.divergence );
+	}
+
+
+	private static boolean recordsAcceptance( Replay replay ){
+		for (Replay.Step step : replay.steps) if (step.accepted >= 0) return true;
+		return false;
 	}
 }

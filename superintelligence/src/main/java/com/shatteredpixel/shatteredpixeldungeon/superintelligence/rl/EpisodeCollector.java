@@ -58,7 +58,11 @@ public class EpisodeCollector {
 		void onDecision( EnvMode mode, Action action, int secondary );
 
 
-		void onStep( int heroPosition, float reward );
+		default void onStep( int heroPosition, float reward ){}
+
+		default void onStep( int heroPosition, float reward, boolean accepted ){
+			onStep( heroPosition, reward );
+		}
 	}
 
 	private Listener listener;
@@ -185,7 +189,7 @@ public class EpisodeCollector {
 
 			int heroPosition = env.heroPosition();
 
-			if (listener != null) listener.onStep( heroPosition, reward );
+			if (listener != null) listener.onStep( heroPosition, reward, env.lastStepActed() );
 
 			record.add( reward, network.value(), isTerminal, liveHead, actionIndex, slotIndex,
 					logProbability );

@@ -87,6 +87,8 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 
 				out.write( ' ' );
 				out.write( Long.toString( step.baseFingerprint ));
+				out.write( ' ' );
+				out.write( Integer.toString( step.accepted ));
 				out.newLine();
 			}
 		}
@@ -126,6 +128,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			if (parts.length > 8) step.inventory = parts[ 8 ];
 			if (parts.length > 9) step.baseDraws = Long.parseLong( parts[ 9 ] );
 			if (parts.length > 10) step.baseFingerprint = Long.parseLong( parts[ 10 ] );
+			if (parts.length > 11) step.accepted = Integer.parseInt( parts[ 11 ] );
 			replay.steps.add( step );
 		}
 
@@ -332,6 +335,17 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				result.diverged = true;
 				result.divergedAt = i;
 				result.divergence = rng;
+				break;
+			}
+
+			if (step.accepted >= 0 && (step.accepted == 1) != env.lastStepActed() ){
+				result.diverged = true;
+				result.divergedAt = i;
+				result.divergence = "action " + step.action + "/" + step.slot + " in " + step.mode
+						+ ": the recording says the engine " + (step.accepted == 1 ? "accepted" : "refused")
+						+ " it and the replay " + (env.lastStepActed() ? "accepted" : "refused")
+						+ " it. The two sides are playing different actions from here, and every later"
+						+ " position, health and turn comparison is downstream of that.";
 				break;
 			}
 

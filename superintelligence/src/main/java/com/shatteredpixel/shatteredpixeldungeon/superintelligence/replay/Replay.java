@@ -6,7 +6,7 @@ public class Replay {
 
 	public static final String MAGIC = "SPD-REPLAY";
 
-	public static final int VERSION = 4;
+	public static final int VERSION = 5;
 
 	public String seedText = "";
 	public String heroClass = "WARRIOR";
@@ -58,6 +58,8 @@ public class Replay {
 		public long baseDraws = -1;
 
 		public long baseFingerprint = 0;
+
+		public int accepted = -1;
 
 		public Step( String action, int slot, String mode, int heroPos, double reward ){
 			this.action = action;

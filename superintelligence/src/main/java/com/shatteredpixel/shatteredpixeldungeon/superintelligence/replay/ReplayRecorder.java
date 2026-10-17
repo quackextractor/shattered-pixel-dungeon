@@ -64,6 +64,10 @@ private final Replay replay = new Replay();
 
 
 	public void afterStep( int heroPosition, float reward ){
+		afterStep( heroPosition, reward, -1 );
+	}
+
+	public void afterStep( int heroPosition, float reward, int accepted ){
 		if (!recording) return;
 		int last = replay.length() - 1;
 		if (last < 0) return;
@@ -74,6 +78,7 @@ private final Replay replay = new Replay();
 		step.heroHp = Dungeon.hero.HP;
 		step.turn = Actor.now();
 		step.inventory = inventoryOf();
+		step.accepted = accepted;
 
 		if (rngFingerprint ){
 			step.baseDraws = com.watabou.utils.RandomTrace.baseDraws();

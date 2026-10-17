@@ -113,8 +113,8 @@ private EnvConfig config;
 				recorder.record( action, secondary, mode );
 			}
 
-			@Override public void onStep( int heroPosition, float reward ){
-				recorder.afterStep( heroPosition, reward );
+			@Override public void onStep( int heroPosition, float reward, boolean accepted ){
+				recorder.afterStep( heroPosition, reward, accepted ? 1 : 0 );
 			}
 		} );
 
