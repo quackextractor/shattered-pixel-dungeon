@@ -73,8 +73,8 @@ Declined proposals are in `REJECTED.md` and appear nowhere else.
 
 | # | Section | Status |
 | --- | --- | --- |
-| 4.1 | Garbage collection and memory pooling | Unaddressed. Not started. |
-| 4.2 | 1,000 simultaneous simulations | Never run at scale. The pool sizes to the machine. |
+| 4.1 | Garbage collection and memory pooling | **Done, and measured.** The pooling `research.md:60` describes was already there - pooled observation buffers, action masks, network scratch, an 8,192-strong `Transition` pool - and `TODO.md` had it recorded as unstarted. `./gradlew :superintelligence:poolingaudit` is the measurement: **27.9 KB allocated per environment step, 1 GC in 4,000 steps, 2 ms pause.** What is left is the engine's own per-action churn, which is a `:core` change. |
+| 4.2 | 1,000 simultaneous simulations | **Run, and it does not fit.** `out/evidence/scale-1000-sims.txt`: 10 workers x 100 episodes dies with `OutOfMemoryError` in a worker *and* the trainer. The binding constraint is **per-worker sample residency** - `max_sampled_per_episode` 2,048 held for all 100 episodes of a worker, 1.30 GB at the measured packed-grid size - not the trainer's capped buffer. The largest that runs is 10 x 20 = 200 episodes at **1,136-1,152 turns/s**, 32-38% of the machine, barrier 55-68% of wall. The fix is applying the cap as episodes arrive rather than after the generation completes. |
 | 4.3 | IMPALA as the alternative learner | Declined on architecture; see `REJECTED.md`. |
 
 ## 5. Open engine and harness faults

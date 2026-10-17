@@ -85,6 +85,14 @@ tasks.register('javaclint', JavaExec) {
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.tools.JavaLint'
     jvmArgs trainerJvmArgs
 }
+tasks.register('poolingaudit', JavaExec) {
+    group = 'diagnostics'
+    description = 'Measures heap allocated per environment step, garbage collections and pause time, and what is pooled.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.PoolingAudit'
+    jvmArgs trainerJvmArgs
+    if (project.hasProperty('poolingArgs')) args project.property('poolingArgs').toString().split(' ')
+}
 tasks.register('stallcausecheck', JavaExec) {
     group = 'verification'
     description = 'Fails if any of the four stall guards is unreachable or reports the wrong guard.'

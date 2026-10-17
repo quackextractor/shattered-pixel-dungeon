@@ -57,6 +57,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `graphcheck` is **7 cases**; the new two assert the arithmetic on a deterministic fixture, where
   six scores with mean -3450 give `sd 104.88` and `sem 42.82`, and six of sixteen episodes reaching
   floor 2 gives `0.375`.
+- **The per-generation cap resamples whole chunks instead of dropping the oldest steps.** `rl.max_samples_per_generation`
+  used to call `PPO.dropOldest`, which is not a sample: it keeps the tail of the generation and
+  discards the head, so with 1,000 episodes the update trains on the last ~110 of them and the
+  report calls it a sample. `rl.ChunkReservoir` applies Algorithm R at **chunk** granularity, so
+  every episode has the same chance of contributing intact and no retained run is cut mid-chunk.
+  Measured by `samplercheck`, now **8 cases**: **1,000 episodes of 20 steps into a 125-chunk
+  reservoir retain 125 chunks, 125 episodes represented, 14 of the last 100, and every retained
+  chunk contiguous.** The first real run to hit the cap reported it by name and count: *"33905
+  transitions over the 8192 cap were dropped. Whole chunks were resampled rather than the oldest
+  steps discarded."*
+- **`gradle :superintelligence:poolingaudit`, and the number `research.md:60` asked for.**
+  `TODO.md` 4.1 recorded garbage collection and memory pooling as *not started*. The pooling it
+  describes is in fact done — the observation encoder's grid, inventory, hero scalars and edge
+  buffer, the action mapper's three masks, `StepCache`'s every Conv2D/Dense/LSTM pre-activation and
+  a static `Transition` pool of 8,192 are all instance or pooled fields — and what was missing was
+  the measurement. It is now one: **27.9 KB allocated per environment step, one garbage
+  collection in 4,000 steps, 2 ms of pause.** What remains is the engine's own per-action churn,
+  which is a change to `:core`. Evidence in `out/evidence/gc-pooling-audit.txt`.
+- **A 1,000-episode generation does not fit on this machine, and the reason is measured.**
+  `out/evidence/scale-1000-sims.txt`. 10 workers x 100 episodes dies with `OutOfMemoryError` in
+  both a worker and the trainer - **not** at the transition buffer, which the chunk reservoir caps
+  correctly, but *before* it: a worker holds `max_sampled_per_episode` (2,048) per episode for all
+  100 of its episodes, which at the measured 6,336-byte packed grid is **1.30 GB per worker**. The
+  largest that runs is 10 x 20 = 200 episodes: **1,136 and 1,152 turns/s, 32-38% of the machine,
+  the barrier at 55-68% of wall and it is the update rather than the collection.**
 - **`RewardTerm.Type`, and a colour-coded type table in the run report.** `docs.md` asks the summary
   interface for "floor-by-floor point gains and losses, type totals/subtotals, and the overall run
   score"; the report printed floors and then thirty individual terms with nothing grouping them.

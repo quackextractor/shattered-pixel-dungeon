@@ -4,6 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.ChunkReservoir;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.ContiguousChunkSampler;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord;
@@ -17,7 +18,7 @@ import java.util.Random;
 
 public class SamplerCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 
 	private static final int CHUNK = 16;
 
@@ -31,12 +32,91 @@ public class SamplerCheck {
 		checkZeroAndOneAreSettingsRatherThanAnError();
 		checkTheTrunkIsDownsampledBeforeTheDenseMatrix();
 		checkTheCollectorKeepsContiguousRunsAcrossARealEpisode();
+		checkTheCapResamplesWholeChunksUnbiasedly();
 
 		System.exit( GateReport.report( "sampling and trunk", CHECKS ));
 	}
 
 	private static void fail( String message ){
 		GateReport.fail( message );
+	}
+
+
+	private static void checkTheCapResamplesWholeChunksUnbiasedly(){
+		int episodes = 1000;
+		int stepsPerEpisode = 20;
+		int cap = 2000;
+
+		ChunkReservoir reservoir = new ChunkReservoir( cap / CHUNK, CHUNK, 20261016L );
+		boolean[] touched = new boolean[ episodes ];
+
+		for (int episode = 0; episode < episodes; episode++){
+			List< Transition > collected = new ArrayList<>();
+			for (int step = 0; step < stepsPerEpisode; step++){
+				Transition t = new Transition();
+				t.episodeId = episode;
+				t.stepIndex = step;
+				collected.add( t );
+			}
+			reservoir.offer( collected );
+		}
+
+		if (reservoir.offered() != (long) episodes * stepsPerEpisode){
+			fail( "the reservoir was offered " + reservoir.offered() + " steps where "
+					+ ((long) episodes * stepsPerEpisode) + " were produced" );
+			return;
+		}
+
+		for (List< Transition > chunk : reservoir.retainedChunks()){
+			int episode = chunk.get( 0 ).episodeId;
+			if (episode < 0 || episode >= episodes){
+				fail( "a retained chunk names episode " + episode + ", which is not one of the "
+						+ episodes + " offered" );
+				return;
+			}
+			for (int i = 1; i < chunk.size(); i++){
+				if (chunk.get( i ).episodeId != episode
+						|| chunk.get( i ).stepIndex != chunk.get( i - 1 ).stepIndex + 1){
+					fail( "a retained chunk is not contiguous: episode " + episode + " step "
+							+ chunk.get( i - 1 ).stepIndex + " then episode " + chunk.get( i ).episodeId
+							+ " step " + chunk.get( i ).stepIndex + ". A cap that cuts a chunk hands the"
+							+ " update runs of one and the recurrent gradient is lost again" );
+					return;
+				}
+			}
+			touched[ episode ] = true;
+		}
+
+		int capChunks = cap / CHUNK;
+		if (reservoir.chunkCount() > capChunks){
+			fail( "the reservoir holds " + reservoir.chunkCount() + " chunks against a cap of "
+					+ capChunks );
+			return;
+		}
+
+		int represented = 0;
+		for (boolean t : touched) if (t) represented++;
+
+		int fromTail = 0;
+		for (int episode = episodes - 100; episode < episodes; episode++) if (touched[ episode ]) fromTail++;
+
+		if (represented == 0){
+			fail( "none of " + episodes + " episodes contributed anything to a reservoir with room for "
+					+ capChunks + " chunks" );
+			return;
+		}
+
+		if (fromTail == 0){
+			fail( "0 of the last 100 episodes are represented in the retained set. A cap that drops the"
+					+ " oldest steps keeps only the most recent episodes, so a 1,000-episode generation"
+					+ " trains on its tail and calls it a sample" );
+			return;
+		}
+
+		System.out.println( "  " + episodes + " episodes of " + stepsPerEpisode + " steps into a "
+				+ capChunks + "-chunk reservoir: " + reservoir.chunkCount() + " chunks retained, "
+				+ reservoir.replacements() + " replaced, " + represented + " episodes represented, "
+				+ fromTail + " of the last 100, every retained chunk contiguous" );
 	}
 
 

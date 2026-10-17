@@ -10,6 +10,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.Curricu
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.ChunkReservoir;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 
@@ -263,17 +264,25 @@ public class Trainer {
 	}
 
 
-	private void enforceGenerationCap(){
+private void enforceGenerationCap(){
 		int over = ppo.bufferSize() - maxSamplesPerGeneration;
 		if (over <= 0) return;
 
-		ppo.dropOldest( over );
-		droppedThisGeneration += over;
+		ChunkReservoir reservoir = new ChunkReservoir(
+				Math.max( 1, maxSamplesPerGeneration / Math.max( 1, ppo.chunkLength )),
+				ppo.chunkLength, rngSeed * 31 + epoch );
 
-		System.err.println( "[WARN] generation " + epoch + ": " + over + " transitions over the "
-				+ maxSamplesPerGeneration + " cap were dropped. Raise --max-samples or lower"
-				+ " --sample-rate; the update saw only the most recent " + maxSamplesPerGeneration
-				+ "." );
+		reservoir.offer( ppo.buffer() );
+		ppo.clearBuffer();
+		ppo.addAll( reservoir.retained() );
+
+		droppedThisGeneration += (int) Math.min( Integer.MAX_VALUE, reservoir.dropped() );
+
+		System.err.println( "[WARN] generation " + epoch + ": " + reservoir.dropped()
+				+ " transitions over the " + maxSamplesPerGeneration + " cap were dropped."
+				+ " Whole chunks were resampled rather than the oldest steps discarded, so every"
+				+ " episode had the same chance of contributing and no retained chunk was cut."
+				+ " Raise --max-samples or lower --sample-rate to see the rest." );
 	}
 
 
