@@ -278,6 +278,43 @@ to on both sides at step 88.
 Evidence: `out/evidence/issue-26/pinned-clock-and-refusals.txt`.
 
 
+### Ruled out: the viewer and the trainer do not disagree about acceptance
+
+`reprocheck --args="deathfixture"` records a DUELIST run on `DUELIST-LONG-16` and refuses to write
+one that does not end in DEATH, reproduce, or refuse at least one step. It wrote:
+
+```
+recorded 100 steps, ends DEATH, depth 1, score -2994.8800207301974, accepted 93, refused 7
+verified headlessly in 100 steps
+```
+
+The same recording through the real viewer:
+
+```
+[replay] halted: DIVERGED at step 95 - USE/0 in SLOT: hp is 6, recording says 7
+```
+
+**The acceptance comparison never fired. All 100 steps agreed, including all 7 refusals** - so the
+viewer and the trainer accept and refuse the same steps, and the hypothesis this fixture was built to
+test is refuted.
+
+**Four explanations are now ruled out with the instrument that can see them**, which is more than this
+entry had:
+
+| ruled out | by |
+| --- | --- |
+| animation timing | `Game.fixedFrameDelta` pinned, fault bit-for-bit identical |
+| action acceptance | this fixture - 7 refusals, zero disagreements |
+| terrain, trap, plant, heap, transition, fog, visited set, mob | `ReplayPlayer` records cells, all 1,003 identical |
+| presentation randomness on the gameplay stream | `rngtrace`, 0 of 94 and 0 of 104 attributed sites |
+
+**What is left is narrow:** same actions, same acceptances, same cells, same roster, same buffs, same
+draw count, deterministic clock - and **one point of health at step 95 on a `USE/0 in SLOT`.** The
+remaining candidates are inside the scroll's own read path (`Scroll.readAnimation`, the `Recharging`
+effect, the time it costs), and the next measurement is the hero's effect state at step 94 on both
+sides, which nothing currently records.
+
+Evidence: `out/evidence/issue-26/acceptance-fixture.md`.
 ### The refusals are not an asymmetry - **the recording does not record acceptance**
 
 `spd.trace` now prints what a refused step resolved to. On `duelist-death-last.replay`:

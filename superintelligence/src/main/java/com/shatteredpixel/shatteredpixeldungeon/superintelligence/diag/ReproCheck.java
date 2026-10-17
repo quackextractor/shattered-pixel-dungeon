@@ -38,6 +38,11 @@ public class ReproCheck {
 		EnvConfig config = new EnvConfig();
 		config.turnLimitPerFloor = TURNS;
 
+		if (args.length > 0 && args[ 0 ].equals( "deathfixture" )){
+			recordDeathFixture( config );
+			return;
+		}
+
 		boolean baseline = args.length > 0 && args[ 0 ].equals( "baseline" );
 
 		Replay recorded = null;
@@ -73,6 +78,54 @@ public class ReproCheck {
 		verify( config, replay, baseline ? "baseline-again" : "second" );
 	}
 
+
+private static void recordDeathFixture( EnvConfig config ) throws java.io.IOException {
+		String seed = "DUELIST-LONG-16";
+
+		ScriptedEpisode.Result episode = ScriptedEpisode.record( config, seed, HeroClass.DUELIST,
+				0, seed.hashCode() );
+		Replay replay = episode.replay;
+
+		int accepted = 0;
+		int refused = 0;
+		for (Replay.Step step : replay.steps){
+			if (step.accepted == 1) accepted++;
+			else if (step.accepted == 0) refused++;
+		}
+
+		System.out.println( "recorded " + replay.length() + " steps, ends " + replay.termination
+				+ ", depth " + replay.depth + ", score " + replay.score
+				+ ", accepted " + accepted + ", refused " + refused );
+
+		if (replay.termination == null || !replay.termination.equals( "DEATH" )){
+			System.err.println( "[ERROR] the fixture ended as " + replay.termination
+					+ " rather than DEATH, so it is not the death recording issues.md 26 is about" );
+			System.exit( 1 );
+			return;
+		}
+		if (refused == 0){
+			System.err.println( "[ERROR] the fixture refused nothing, so it cannot say whether the two"
+					+ " environments agree about a refusal" );
+			System.exit( 1 );
+			return;
+		}
+
+		ReplayIO.Verification check = ReplayIO.verify( replay,
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv(
+						config, HeadlessGame.install() ) );
+		if (check.diverged){
+			System.err.println( "[ERROR] the fixture does not reproduce: " + check.divergence );
+			System.exit( 1 );
+			return;
+		}
+
+		File out = new File( new File( "." ).getAbsoluteFile(),
+				"out/evidence/duelist-acceptance-fixture.replay" );
+		if (out.getParentFile() != null ) out.getParentFile().mkdirs();
+		ReplayIO.write( replay, out );
+		System.out.println( "verified headlessly in " + check.stepsVerified + " steps and wrote "
+				+ out.getAbsolutePath() );
+	}
 
 	private static final String SAVED =
 			"out/evidence/issue-38-PARITY-ALPHA-WARRIOR.replay";

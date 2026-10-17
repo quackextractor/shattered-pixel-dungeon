@@ -33,7 +33,7 @@ public class ScriptedEpisode {
 			Action action = policy.choose( env, slot );
 			recorder.record( action, slot[ 0 ], env.mode() );
 			float reward = (float) env.step( action, slot[ 0 ] );
-			recorder.afterStep( env.heroPosition(), reward );
+			recorder.afterStep( env.heroPosition(), reward, env.lastStepActed() ? 1 : 0 );
 			report.sample( (float) env.ledger().total(), env.depth() );
 		}
 		recorder.end( env.ledger().total(), env.deepestDepth(), env.turnsTotal(), 0,

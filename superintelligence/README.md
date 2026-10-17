@@ -2,7 +2,7 @@
 
 | Badge | Version |
 | --- | --- |
-| [![Version](https://img.shields.io/badge/version-0.10.0-blue.svg)](CHANGELOG.md) | 0.10.0 |
+| [![Version](https://img.shields.io/badge/version-Binary file superintelligence/CHANGELOG.md matches-blue.svg)](CHANGELOG.md) | 0.10.0 |
 | [![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
 
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
