@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.ChunkReservoir;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerPool.WorkerHandle;
 
@@ -154,10 +155,40 @@ public class TrainerWorkers {
 
 			pool.progress();
 
+			admit( episode );
+
 			episodes.add( episode );
 		}
 
 		return episodes;
+	}
+
+
+	private ChunkReservoir reservoir;
+
+
+	public void reservoir( ChunkReservoir reservoir ){
+		this.reservoir = reservoir;
+	}
+
+
+	public int reservoirOverflow(){
+		return reservoir == null ? 0 : (int) Math.min( Integer.MAX_VALUE, reservoir.dropped() );
+	}
+
+
+	private void admit( Episode episode ){
+		if (reservoir == null || episode.transitions == null) return;
+
+		reservoir.offer( episode.transitions );
+		episode.transitions = null;
+		if (episode.replay != null) return;
+	}
+
+
+	public void flushReservoir(){
+		if (reservoir == null) return;
+		reservoir.reset();
 	}
 
 	public void pushWeights() throws IOException {

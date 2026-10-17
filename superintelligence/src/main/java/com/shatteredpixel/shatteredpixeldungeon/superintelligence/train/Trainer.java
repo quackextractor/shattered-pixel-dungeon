@@ -260,33 +260,12 @@ public class Trainer {
 		out.writeInt( Math.max( 1, hyper.chunkLength ) );
 
 		out.writeLong( rng.nextLong() );
-		Worker.writeWeights( out, ppo.network );
+Worker.writeWeights( out, ppo.network );
 	}
-
-
-private void enforceGenerationCap(){
-		int over = ppo.bufferSize() - maxSamplesPerGeneration;
-		if (over <= 0) return;
-
-		ChunkReservoir reservoir = new ChunkReservoir(
-				Math.max( 1, maxSamplesPerGeneration / Math.max( 1, ppo.chunkLength )),
-				ppo.chunkLength, rngSeed * 31 + epoch );
-
-		reservoir.offer( ppo.buffer() );
-		ppo.clearBuffer();
-		ppo.addAll( reservoir.retained() );
-
-		droppedThisGeneration += (int) Math.min( Integer.MAX_VALUE, reservoir.dropped() );
-
-		System.err.println( "[WARN] generation " + epoch + ": " + reservoir.dropped()
-				+ " transitions over the " + maxSamplesPerGeneration + " cap were dropped."
-				+ " Whole chunks were resampled rather than the oldest steps discarded, so every"
-				+ " episode had the same chance of contributing and no retained chunk was cut."
-				+ " Raise --max-samples or lower --sample-rate to see the rest." );
-	}
-
 
 	private int droppedThisGeneration;
+	private long sampledBytes;
+	private long gridBytes;
 
 	private int lastSampledSteps;
 	private double lastAdvantageMean;
@@ -321,13 +300,41 @@ private void enforceGenerationCap(){
 			episodesPerWorker = workerCount;
 			List<TrainerWorkers.Job> jobs = planGeneration( workerCount );
 
+			ChunkReservoir reservoir = new ChunkReservoir(
+					Math.max( 1, maxSamplesPerGeneration / Math.max( 1, ppo.chunkLength )),
+					ppo.chunkLength, rngSeed * 31 + epoch );
+			pool.reservoir( reservoir );
+			droppedThisGeneration = 0;
+
 			ResourceStats.Interval gen = ResourceStats.start();
 			List<Episode> episodes = pool.dispatch( jobs );
 			gen.stop();
 			lastWorkerSeconds = sumWorkerCpuSeconds( episodes );
 
-			for (Episode e : episodes) ppo.addAll( e.transitions );
-			enforceGenerationCap();
+			List<com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition> retained
+					= reservoir.retained();
+			droppedThisGeneration = pool.reservoirOverflow();
+			pool.reservoir( null );
+
+			ppo.clearBuffer();
+			ppo.addAll( retained );
+
+			sampledBytes = 0;
+			gridBytes = 0;
+			for (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition t : retained){
+				gridBytes += t.grid.length;
+				sampledBytes += t.grid.length
+						+ 4L * (t.inventory.length + t.hero.length + t.actionMask.length
+						+ t.slotMask.length + t.targetMask.length);
+			}
+
+			if (droppedThisGeneration > 0){
+				System.err.println( "[WARN] generation " + epoch + ": " + droppedThisGeneration
+						+ " transitions over the " + maxSamplesPerGeneration + " cap were dropped."
+						+ " Whole chunks were resampled rather than the oldest steps discarded, so every"
+						+ " episode had the same chance of contributing and no retained chunk was cut."
+						+ " Raise --max-samples or lower --sample-rate to see the rest." );
+			}
 
 			lastSampledSteps = ppo.bufferSize();
 			lastAdvantageMean = ppo.meanAdvantage();
@@ -561,18 +568,8 @@ private void enforceGenerationCap(){
 		s.advantageMean = lastAdvantageMean;
 		s.advantageStd = lastAdvantageStd;
 
-		s.sampledBytes = 0;
-		s.gridBytes = 0;
-		for (Episode e : episodes){
-			for (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition t : e.transitions){
-				s.gridBytes += t.grid.length;
-				s.sampledBytes += t.grid.length
-						+ 4L * (t.inventory.length + t.hero.length + t.actionMask.length
-						+ t.slotMask.length + t.targetMask.length);
-			}
-		}
-
-		droppedThisGeneration = 0;
+		s.sampledBytes = sampledBytes;
+		s.gridBytes = gridBytes;
 
 		GenerationReport.print( s );
 

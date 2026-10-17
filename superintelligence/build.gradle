@@ -85,6 +85,13 @@ tasks.register('javaclint', JavaExec) {
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.tools.JavaLint'
     jvmArgs trainerJvmArgs
 }
+tasks.register('reprocheck', JavaExec) {
+    group = 'diagnostics'
+    description = 'Records a run, verifies it repeatedly in one process, and names the draw site whose tally moved.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReproCheck'
+    jvmArgs trainerJvmArgs
+}
 tasks.register('poolingaudit', JavaExec) {
     group = 'diagnostics'
     description = 'Measures heap allocated per environment step, garbage collections and pause time, and what is pooled.'

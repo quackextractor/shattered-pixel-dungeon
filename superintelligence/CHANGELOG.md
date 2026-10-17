@@ -81,7 +81,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   correctly, but *before* it: a worker holds `max_sampled_per_episode` (2,048) per episode for all
   100 of its episodes, which at the measured 6,336-byte packed grid is **1.30 GB per worker**. The
   largest that runs is 10 x 20 = 200 episodes: **1,136 and 1,152 turns/s, 32-38% of the machine,
-  the barrier at 55-68% of wall and it is the update rather than the collection.**
+  the barrier at 55-68% of wall and it is the update rather than the collection.** **Superseded** -
+  see the Added entry above; the same 10 x 100 run now completes at 968-1,015 turns/s.
 - **`RewardTerm.Type`, and a colour-coded type table in the run report.** `docs.md` asks the summary
   interface for "floor-by-floor point gains and losses, type totals/subtotals, and the overall run
   score"; the report printed floors and then thirty individual terms with nothing grouping them.
@@ -102,6 +103,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   true - and measures **MENU_NOOP firing once and paying -1.00**, while
   `checkAMenuNoOpIsUnreachable` separately measures that the state is not reachable through play.
   Reverting the emission fails it. `rewardcheck` is **34 cases**.
+- **1,000 episodes in one generation now runs.** The cap was applied after the whole generation
+  had arrived, so a worker held `max_sampled_per_episode` 2,048 for all 100 of its episodes — 1.30 GB
+  at the measured packed-grid size — and the run died with `OutOfMemoryError` in a worker and in the
+  trainer. `TrainerWorkers` now admits each episode's transitions into the `ChunkReservoir` **as they
+  arrive** and releases them, so the trainer's residency is the cap rather than the generation.
+  Measured: **10 workers x 100 episodes = 1,000 episodes per generation, 968 and 1,015 turns/s,
+  605,495 and 559,084 turns collected, no OOM.** The report's byte accounting reads the retained set
+  before the update consumes it, since the buffer is empty afterwards.
+- **`gradle :superintelligence:reprocheck`, and `issues.md` 38 localised to floor 2's generator.**
+  The open divergence entries needed a reproduction with the per-site draw tally attached, and the
+  recording that produced one was sitting in a gate. It records `PARITY-ALPHA/WARRIOR`, writes the
+  recording and its tally to `out/evidence/`, and verifies it three times in one process. **The three
+  verifications agree with each other exactly** - same step, same `baseDraws` 544, same 175 sites -
+  so the recording is not the variable; the difference is between a process that has run an episode
+  and one that has not. Diffing the poisoned tally against a fresh-JVM `rngtrace`: **`Maze.generate`
+  appears only in the fresh run**, and `MazeConnectionRoom` is what `RegularBuilder` puts wherever a
+  `SecretRoom` connects, so the two runs built a different number of secret rooms on floor 2. That is
+  not the same floor at a different offset. The per-step count cannot see it because a draw counts as
+  base only when its generator is the sole one on the stack, and floor 2 is built on a pushed
+  per-floor generator. **Localised, not diagnosed** - which draw on the base stack before the push
+  differs is still unknown.
 - **`research.md` and `docs.md` named 26 classes at paths that do not exist.** `FogOfWar.java` and
   `ShadowCaster.java` moved to `tiles/` and `mechanics/` in an upstream merge, and the remaining
   references were bare file names that a reader cannot locate a package from. One of them,

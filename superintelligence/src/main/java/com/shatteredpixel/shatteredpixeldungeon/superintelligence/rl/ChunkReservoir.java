@@ -57,6 +57,20 @@ public class ChunkReservoir {
 	}
 
 
+	/**
+	 * Drops every retained chunk and starts again, keeping the seeded sequence.
+	 *
+	 * <p>Used when a generation is replayed into the same reservoir: the replacement decisions a
+	 * second pass makes must not depend on what the first pass happened to keep.
+	 */
+	public void reset(){
+		chunks.clear();
+		seen = 0;
+		offered = 0;
+		replacements = 0;
+	}
+
+
 	public List< List< Transition > > retainedChunks(){
 		return new ArrayList<>( chunks );
 	}

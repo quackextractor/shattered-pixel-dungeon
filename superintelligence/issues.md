@@ -488,6 +488,45 @@ The measurement that would locate it is `RandomTrace.attribute()` over the windo
 verifies. `TODO.md` 1.2's `rngtrace` work is that measurement, and this is the deterministic fixture
 to run it on.
 
+### Localised: it is floor 2's generator, not the base stream
+
+`./gradlew :superintelligence:reprocheck` records the run, writes the recording and the per-site
+draw tally to `out/evidence/`, and verifies it three times in one process. **The three verifications
+agree with each other exactly** - same step, same delta, same `baseDraws` 544, same 175 sites - so
+verification is deterministic and the recording is not the variable. Verify the written file in a
+fresh JVM and it reproduces in 357 steps.
+
+Diffing the poisoned process's tally against a fresh-JVM `rngtrace` of the same file:
+
+```
+site                                      fresh   poisoned   delta
+Patch.generate:56                          14078      8098    +5980
+Maze.generate:84                             3912         0    +3912
+Maze.generate:85                             3912         0    +3912
+Patch.generate:129                           9856      6168    +3688
+Maze.decideDirection:125                      2502         0    +2502
+```
+
+**`Maze.generate` appears only in the fresh run.** `MazeConnectionRoom` is what `RegularBuilder`
+puts wherever a `SecretRoom` connects, so the fresh run built a secret room on floor 2 and the
+poisoned one did not. That is not the same floor at a different offset; it is a different number of
+secret rooms, which changes the floor's whole layout and therefore where the hero stands at step 256.
+
+**Why the per-step count cannot see it.** `baseDraws` is identical at 544 on both sides through the
+divergence and `ReplayIO.verify` compares it before position, so by that measure the gameplay stream
+is level. It is not level in fact. A draw is classified as base by the generator being the *sole* one
+on the stack, so the only draws invisible to `baseDraws` are the ones on a pushed generator - and
+`Dungeon.seedForDepth` with `Random.pushGenerator` is exactly that: floor 2 is built on its own
+generator seeded from the run seed, and its starting state depends on draws made on the base stack
+before the push.
+
+**That is the localisation, and it is not the diagnosis.** Established: the divergence is in floor 2's
+generation, it is on a per-floor generator rather than the base stream, and it changes how many secret
+rooms the floor has. Not established: which draw on the base stack, before the push, differs between
+a process that has run an episode and one that has not.
+
+Evidence: `out/evidence/issue-38-underfoot-pickup/localised.txt`.
+
 ### Not shipped
 
 The `ActionMapper` change is not in the commit this sits beside: `paritycheck` is red without it and

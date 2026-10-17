@@ -47,12 +47,12 @@ not get closer to the stairs. Evidence: `out/evidence/remeasure-30.csv`.
 
 ## 4. Scale
 
-- [ ] **1,000 episodes in one generation does not fit**, and the reason is measured. The binding
-      constraint is per-worker sample residency - `max_sampled_per_episode` 2,048 held for all 100
-      episodes of a worker, 1.30 GB at the measured packed-grid size - not the trainer's capped
-      buffer. The largest that runs is 10 x 20 = 200 episodes at 1,136-1,152 turns/s. The fix is
-      applying the cap as episodes arrive rather than after the generation completes. Evidence in
-      `out/evidence/scale-1000-sims.txt`.
+- [x] **1,000 episodes in one generation runs.** The cap was applied after the generation arrived, so
+      a worker held `max_sampled_per_episode` 2,048 for all 100 of its episodes — 1.30 GB — and the run
+      died with `OutOfMemoryError` in a worker *and* the trainer. Transitions are now admitted into
+      the `ChunkReservoir` as they arrive and released, so residency is the cap rather than the
+      generation. Measured: **10 x 100 = 1,000 episodes, 968 and 1,015 turns/s, 605,495 and 559,084
+      turns collected, no OOM.** Evidence in `out/evidence/scale-1000-sims-streamed.log`.
 
 ## 5. Open engine and harness faults
 
