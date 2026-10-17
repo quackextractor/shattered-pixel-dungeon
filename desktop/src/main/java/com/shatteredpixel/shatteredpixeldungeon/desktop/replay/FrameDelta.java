@@ -118,9 +118,9 @@ public class FrameDelta {
 
 		if (!warned){
 			warned = true;
-			System.err.println( "[replay] spd.fixedDelta pins playback pacing only. Animations still run on"
-					+ " real frame time, so it does not make a playback frame-rate independent - see"
-					+ " FrameDelta for why the animation clock cannot be pinned from here." );
+			System.err.println( "[replay] spd.fixedDelta pins playback pacing here and, through"
+					+ " Game.fixedFrameDelta, the animation clock too - a pinned playback is frame-rate"
+					+ " deterministic rather than only reproducible." );
 		}
 
 		return fixed;

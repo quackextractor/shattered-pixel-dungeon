@@ -235,6 +235,42 @@ Evidence: `out/evidence/issue-26/`, with the three commands to reproduce it in i
 ### Why 20 of 20 recordings played clean until now
 **The corpus had no scroll to read.** The previous `duelist-death-last` used `USE` on food, a
 ### What is not established
+### The clock is now pinnable, and the fault survives it - **timing refuted, and four steps the viewer refuses**
+
+`Game.fixedFrameDelta` makes `Game.elapsed` and `Game.timeTotal` deterministic for a run, which is
+what this entry said would be needed before the animation hypothesis could be tested. It has been
+tested:
+
+```
+[replay] spd.fixedDelta pins Game.fixedFrameDelta at 0.05s, so the animation clock is deterministic
+[replay] DIVERGED at step 95 - USE/0 in SLOT: hp is 6, recording says 7
+[DIFF]   at step:94: hero (settled) field hp   expected 7/20, actual 6/20
+```
+
+**Bit-for-bit the same with the clock pinned as without it, so animation timing is not the cause.**
+
+**And the viewer's own world snapshot names something this entry had not looked at.** It records
+acceptance per step: 100 applied, 11 refused, 96 frames advancing engine time, with refusals at steps
+0, 81, 84 and 87-94. Steps **88, 90, 92 and 94 are `USE 0 SLOT` in the recording, and every one of
+them is refused** - while the trainer applied all four and the hero's health fell 9 -> 8 -> 7 across
+the first three:
+
+```
+ 88  USE 0 SLOT  Food:1,PotionOfHaste:1,ScrollOfRecharging:1,... -> PotionOfHaste:1,...
+ 90  USE 0 SLOT  PotionOfHaste:1,ScrollOfRecharging:1,...        -> ScrollOfRecharging:1,...
+ 92  USE 0 SLOT  ScrollOfRecharging:1,...                        -> VelvetPouch:1,...
+```
+
+**The bound item at slot 0 is not the item the trainer consumed**, and from step 88 the two sides are
+playing different actions. That is a sufficient explanation for one point of health at step 94 and a
+better one than all 1,003 cells being identical. `SlotAction.use` returns false on exactly three
+things - the item resolved to null, a bare equip toggle, or `resolveAction` returning null - and
+**which of the three fires is not established.** The next measurement is to print what slot 0 resolves
+to on both sides at step 88.
+
+Evidence: `out/evidence/issue-26/pinned-clock-and-refusals.txt`.
+
+
 - **What deals the extra HP.** Not the scroll read, not its animation, not the RNG, not the engine
   clock, not the speed - all five measured. Not the roster, and now not the cells either: with
   `ReplayPlayer` recording them, all 1,003 differ by nothing at every step around the divergence, and

@@ -22,7 +22,8 @@ public class WorldTrace {
 			System.exit( 1 );
 			return;
 		}
-		File file = new File( args[0] );
+		File file = com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.CliOptions.resolve(
+			new File( args[0] ) );
 		Path out = Paths.get( args[1] );
 		int limit = args.length > 2 && !args[2].startsWith( "--" )
 				? Integer.parseInt( args[2] ) : Integer.MAX_VALUE;

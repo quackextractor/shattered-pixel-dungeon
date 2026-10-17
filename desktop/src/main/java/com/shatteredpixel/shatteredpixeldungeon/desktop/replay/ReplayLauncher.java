@@ -343,13 +343,28 @@ config.setWindowSizeLimits( 720, 400, -1, -1 );
 
 		for (int i = 0; i < args.length; i++){
 			if (args[ i ].equals( "--file" ) && i + 1 < args.length){
-				file = new File( args[ ++i ] );
+				file = resolve( args[ ++i ] );
 			} else if (!args[ i ].startsWith( "--" ) && file == null){
-				file = new File( args[ i ] );
+				file = resolve( args[ i ] );
 			}
 		}
 
 		return file != null;
+	}
+
+	private static File resolve( String path ){
+		File given = new File( path );
+		if (given.isAbsolute() || given.isFile()) return given;
+
+		File here = new File( "." ).getAbsoluteFile();
+		for (int i = 0; i < 6 && here != null; i++){
+			if (new File( here, "superintelligence/test-replays" ).isDirectory()){
+				File candidate = new File( here, path );
+				if (candidate.isFile()) return candidate;
+			}
+			here = here.getParentFile();
+		}
+		return given;
 	}
 
 	private static void usage(){

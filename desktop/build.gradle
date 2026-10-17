@@ -40,7 +40,7 @@ tasks.register('replay', JavaExec) {
     if (project.hasProperty('spdHidden')) { systemProperty 'spd.hidden', '1' }
     if (project.hasProperty('spdRngTrace')) { systemProperty 'spd.rngTrace', project.property('spdRngTrace') }
     if (project.hasProperty('spdWorldTrace')) { systemProperty 'spd.worldTrace', project.property('spdWorldTrace') }
-    systemProperty 'Implementation-Title', appPackageName
+    if (project.hasProperty('spdFixedDelta')) { systemProperty 'spd.fixedDelta', project.property('spdFixedDelta') }
     systemProperty 'Implementation-Version', appVersionCode
     standardInput = System.in
 }

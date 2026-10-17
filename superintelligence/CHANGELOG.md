@@ -111,6 +111,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Measured: **10 workers x 100 episodes = 1,000 episodes per generation, 968 and 1,015 turns/s,
   605,495 and 559,084 turns collected, no OOM.** The report's byte accounting reads the retained set
   before the update consumes it, since the buffer is empty afterwards.
+- **`issues.md` 26: the animation hypothesis is refuted, and a better lead is named.** `Game.fixedFrameDelta`
+  makes `Game.elapsed` and `Game.timeTotal` deterministic for a run, which is the engine hook that
+  entry said was needed before the hypothesis could be tested. Tested with
+  `-PspdFixedDelta=0.05`: **the divergence is bit-for-bit identical with the clock pinned** - still
+  `DIVERGED at step 95 - USE/0 in SLOT: hp is 6, recording says 7` - so **animation timing is not the
+  cause.** The viewer's own world snapshot also names something the entry had not looked at: it records
+  acceptance per step, and **steps 88, 90, 92 and 94 are `USE 0 SLOT` and every one of them is refused**
+  by the viewer while the trainer applied all four and the hero's health fell 9 -> 8 -> 7 across the
+  first three. **The bound item at slot 0 is not the item the trainer consumed**, so the two sides play
+  different actions from step 88 - a sufficient explanation for one point of health at step 94.
+- **A relative path on the command line resolved against the process working directory, not the
+  repository root**, in three places. `CHANGELOG.md` records this as fixed; it was fixed in `verify`
+  and `rngtrace` and not in `worldtrace`, `ReplayLauncher --file`, or the trainer's `--out`. A run
+  given `--out superintelligence/out/evidence/remeasure-30` wrote to
+  `superintelligence/superintelligence/out/evidence/remeasure-30`. All three now resolve from the
+  repository root, which is what every documented command already assumes.
 - **`gradle :superintelligence:reprocheck`, and `issues.md` 38 localised to floor 2's generator.**
   The open divergence entries needed a reproduction with the per-site draw tally attached, and the
   recording that produced one was sitting in a gate. It records `PARITY-ALPHA/WARRIOR`, writes the
