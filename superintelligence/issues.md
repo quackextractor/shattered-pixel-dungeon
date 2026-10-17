@@ -288,50 +288,6 @@ That is the most likely reason nothing descends: with 99% of the data being STAL
 This also contradicts `README.md`'s "Every episode runs the full 1500 turns with zero stalls". That line
 Evidence: [`out/evidence/floor-1.csv`](out/evidence/floor-1.csv), [`floor-2.csv`](out/evidence/floor-2.csv),
 
-## 31. Open items recovered from the viewer-fidelity and parity documents - **CLOSED**
-
-Recorded before `PLAN-replay-parity.md` and `FINDINGS-viewer-fidelity.md` were removed. Both carried
-live content that was in neither `issues.md` nor `TODO.md`, and deleting them would have lost it. The
-refutation record those two held - eleven hypotheses, ten refuted by running them - is the reason the
-viewer fault took as long as it did, and it is worth keeping that such a record exists even where the
-individual results live on in the changelog.
-
-### From the parity plan, never resolved
-
-**A run that ends on the soft stall guard replays as a stall.** `SPDEnv` terminates when the hero's
-position and health have not changed for `stallLimit` turns. The recording is complete and the hero is
-alive, but the viewer has nothing to ask, so after the final step it waits for a hero that will never
-become ready and halts with *"stalled - hero did not become ready within 400 turns"*. A viewer fault,
-not a trainer one, and it was never gated.
-
-**`Main.rollout` is not gate-covered.** `collectcheck` guards the collector path that training uses.
-`Main.rollout` is a separate path and is not guarded - which is exactly where a real regression landed
-before: an empty-seed guard that rejected both the flag *and its absence*, making random seeds
-unreachable, and a recording that stored the seed it was asked for rather than the one the environment
-resolved.
-
-**Three decisions that were never formally settled.** Whether the corpus is checked in or generated on
-demand (in practice: checked in, 20 recordings), whether to split the gate budget into a fast gate and a
-larger periodic job (no), and whether to adopt event-keyed RNG (correct in principle, not adopted - see
-`issues.md` 25 for the bug that made the case for it).
-
-### From the findings record, never resolved
-
-**The animation clock cannot be pinned from the viewer.** It needs an engine change at `Game.java`.
-Closing it would make animation timing deterministic for diagnosis, and on its own would not have fixed
-any of the divergence - it changes *when* an animation completes, not *what happens* when it does.
-
-**A new public draw path would not be caught.** `observecheck` enumerates the draw paths it knows and
-checks each is counted; a path added later does not appear in that list. The invariant is about the
-paths it knows about, not about future ones - which is precisely how the four presentation draws in the
-original fault got through.
-
-**Two divergence shapes were never separately explained.** `duelist-short` failing on position by one
-cell, and `mage-mid` reporting two points of healing the recording did not, were both recorded as
-distinct signatures. Both were present before the fix and both are gone after it, so they were
-downstream of the same cause - but that was never shown. It is asserted from their absence.
-
-
 ## 37. One recording in two does not reproduce, and it is the trainer's half - **OPEN, not investigated**
 
 Found by running the 30-generation measurement `TODO.md` 1 asks for, and reading what it wrote rather

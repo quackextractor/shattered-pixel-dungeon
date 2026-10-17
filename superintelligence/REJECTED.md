@@ -7,6 +7,8 @@ without their reasoning. A proposal here is not a failure; several are the right
 still worth doing someday is in one of two states: **declined**, meaning the answer is no and the
 reason is on this page, or **deferred**, meaning the answer is later and the trigger is stated.
 
+## Declined, with the arithmetic
+
 ## A native or ONNX runtime for the learner
 
 **Proposed by** the external code review, as a native or ONNX learner. **Not attempted.**
@@ -23,6 +25,22 @@ code unmodified, and a learner that no longer runs on the same matrix as the env
 different project.
 
 **Revisit when** a run profile shows the learner, not the collection and not the barrier, is the wall.
+
+## Settled by practice, then recorded
+
+These were decided by what the project did and never written down, which is why they read as open
+questions in documents that outlived the decision. They are decisions now, and the two stubs at the
+foot of this page are the same decisions in one line each.
+
+**The corpus is checked in, not generated on demand.** 20 recordings under `test-replays/`, read by
+both `viewcheck` and `playbackcheck`. Regenerating it on demand would invalidate the corpus every time
+the observation width or an action head changed, and the whole value of a checked-in corpus is that it
+is the same bytes a gate read last time.
+
+**One gate tier, not a fast one and a slow one.** One `gates` task at ~40 s is cheaper to reason about
+than two tiers, and `viewcheck` is already the slow manual gate outside it - it needs a display, so
+splitting the budget would have meant moving a gate that cannot run here into a gate that can.
+
 
 ## The libGDX trainer dashboard and the live reward monitor
 
@@ -171,7 +189,7 @@ call is left out on purpose, not overlooked.
 ## Deciding the corpus is generated rather than checked in
 
 **Settled by practice, never formally.** It is checked in, 20 recordings, and `viewcheck` and
-`playbackcheck` both read it. The decision was never written down because it was never in doubt.
+`playbackcheck` both read it.
 
 ## Splitting the gate budget into a fast gate and a large periodic job
 
