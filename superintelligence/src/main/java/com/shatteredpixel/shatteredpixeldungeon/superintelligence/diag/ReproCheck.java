@@ -40,24 +40,33 @@ public class ReproCheck {
 
 		boolean baseline = args.length > 0 && args[ 0 ].equals( "baseline" );
 
-		ScriptedEpisode.Result episode = baseline ? null
-				: ScriptedEpisode.record( config, SEED, HeroClass.WARRIOR, 0, SEED.hashCode() );
-		Replay replay = episode == null ? readSaved() : episode.replay;
+		Replay recorded = null;
+		if (!baseline){
+			ScriptedEpisode.Result episode = ScriptedEpisode.record( config, SEED,
+					HeroClass.WARRIOR, 0, SEED.hashCode() );
+			recorded = episode.replay;
+			File out = new File( new File( "." ).getAbsoluteFile(), SAVED );
+			if (out.getParentFile() != null ) out.getParentFile().mkdirs();
+			ReplayIO.write( recorded, out );
+			System.out.println( "recorded " + recorded.length() + " steps as the control and to poison"
+					+ " the process: " + out.getAbsolutePath() );
+		}
 
+		Replay replay = readSaved();
 		if (replay == null){
-			System.err.println( "[ERROR] baseline mode needs " + SAVED );
+			System.err.println( "[ERROR] no control recording at " + SAVED );
 			System.exit( 1 );
 			return;
 		}
 
 		System.out.println( (baseline ? "baseline" : "poisoned")
-				+ ": " + replay.length() + " steps, score " + replay.score );
+				+ ": verifying " + replay.length() + " steps, score " + replay.score );
 
-		if (!baseline){
+		if (recorded != null){
 			File out = new File( new File( "." ).getAbsoluteFile(), SAVED );
 			if (out.getParentFile() != null ) out.getParentFile().mkdirs();
-			ReplayIO.write( replay, out );
-			System.out.println( "wrote " + out.getAbsolutePath() );
+			ReplayIO.write( recorded, out );
+			System.out.println( "wrote the control recording to " + out.getAbsolutePath() );
 		}
 
 		verify( config, replay, baseline ? "baseline" : "first" );
