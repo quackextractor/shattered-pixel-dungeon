@@ -257,6 +257,32 @@ uncommitted. The external code review that asked for it to be committed found it
   (was 35), `reward.kill_reward` 150.0 and `reward.sneak_attack_reward` 300.0 (were 12.0 and 22.0).
 
 ### Measured
+- **The 30-generation re-measurement, and the first run in this project's history whose movement
+  clears its own error bar.** 8 workers x 4 episodes, 4 update threads, seed 20261016,
+  `train.random_seed_rate=0`, every other default unchanged - the same configuration as the run
+  `issues.md` 27 measured, now with the contiguous chunk sampler, the smaller trunk, the sub-mode
+  mask and the alchemy pot in it. Split into first and last fifteen generations:
+
+  | | generations 0-14 | generations 15-29 | difference |
+  | --- | --- | --- | --- |
+  | `meanScore` | **-4110.58** sd 164.5, sem 42.5 | **-3976.09** sd 119.0, sem 30.7 | **+134.49 +/- 52.4** |
+  | `meanObjectiveScore` | -3403.44 sd 173.0, sem 44.7 | -3337.75 sd 142.6, sem 36.8 | +65.69 +/- 57.9 |
+
+  **+134 against an error of 52** is about 2.6 sigma, and the previous run's headline was +1.6
+  against a per-generation sd of 98 to 138. The direction is real and the band is the one
+  `issues.md` 27 said a change had to clear.
+
+  **And it is not yet the objective.** `meanObjectiveScore` - the reward restricted to `depth_only`'s
+  terms - moved +65.69 against an error of 57.9, which is **not** significant, and
+  **`depth>=2` is 0.0% in both windows: 0 of 960 episodes reached a second floor.** So the score
+  improved while descent did not move at all, and the two-window report says which of the two it is.
+  Term fire counts in the last generation, generation-wide across all 32 episodes: **72 kills,
+  1,320 pickups, 0 talents spent, 0 crafted.** `STALLED` fell to 208 of 960 and every stall that
+  remained was `FREE_STEP` - the sub-mode mask working, the free-step budget binding.
+
+  `endDEATH` 750, `endSTALLED` 208, `endVICTORY` 0, `endTURN_LIMIT` 0, `bestDepth` 1 in **30 of 30**
+  generations. Both recordings the run kept verify exactly, so `issues.md` 37 did not recur on it.
+  Evidence: `out/evidence/remeasure-30.csv`, `out/evidence/remeasure-30.log`.
 - **`issues.md` 37 reproduced on a fresh run, and localised.** A two-worker, two-episode,
   two-generation run with `train.record_every=1` wrote two recordings. One reproduces twice,
   identically. The other does not, identically on both runs:

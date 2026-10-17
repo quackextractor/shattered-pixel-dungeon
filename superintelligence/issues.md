@@ -397,6 +397,22 @@ recording and two in the replay, and the two stayed one apart for the remaining 
 positions ever separating. The floor is 50 wide - `MOVE_SE` at 531 is `994 -> 1045`, which is
 `+50 +1` - so nothing crossed a floor boundary and the clock was never restarted under it.
 
+### Re-measured on a 30-generation run, and it did not recur - **still open**
+
+The re-measurement `TODO.md` 1 asked for wrote two recordings and **both verify exactly**:
+
+```
+[OK]  replay reproduced in 207 steps, 406 ms   score recorded -3094.229994300753, reproduced -3094.229994300753
+[OK]  replay reproduced in 1283 steps, 442 ms  score recorded -5518.715346027166, reproduced -5518.715346027166
+```
+
+**That is one run, and it does not close this entry.** `issues.md` 18 put the same fault at 1 in 8
+runs days earlier, so two clean recordings out of two is the expected outcome even if the rate is
+unchanged. What has not changed is that nothing diagnoses it: the measurement this entry asks for -
+`rngtrace` with `-Dspd.rngTrace` over the failing recording, whose tally names the call site - has
+still not been taken, and `issues.md` 38 has since produced a cheaper reproduction of a neighbouring
+fault to run it on.
+
 ### What is not established
 
 - **Which action.** It is a move on step 534, but it is not the first move of its kind in the

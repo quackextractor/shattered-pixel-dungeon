@@ -5,23 +5,35 @@ findings are in `issues.md`; proposals that were declined or deferred are in `RE
 
 **Order is by what unblocks learning first**, which for a long time has not been the harness.
 
-## 1. Nothing has learned anything
+## 1. Something moved, and it is not the objective
 
-The goal is to descend several floors, or win. Neither has happened, and **the 30-generation run
-says why**: `meanScore` moved **+1.6 points** between the first and last fifteen generations against a
-per-generation standard deviation of **98 to 138**. That is noise, and the movement is two orders of
-magnitude smaller than the noise.
+The goal is to descend several floors, or win. **The 30-generation re-measurement is done and it is
+the first run in this project's history whose movement clears its own error bar** - and
+`depth>=2` is still **0 of 960**.
 
-**The band this repository had been quoting - +/-16 over fifteen generations - was measured on a
-different configuration and is 6 to 8 times too tight for this one.** Any change has to clear ~100
-points over fifteen generations to mean anything. `bestDepth` on its own is not evidence either way.
+| | generations 0-14 | generations 15-29 | difference |
+| --- | --- | --- | --- |
+| `meanScore` | -4110.58, sd 164.5, sem 42.5 | -3976.09, sd 119.0, sem 30.7 | **+134.49 +/- 52.4** |
+| `meanObjectiveScore` | -3403.44, sem 44.7 | -3337.75, sem 36.8 | +65.69 +/- 57.9 |
+| `depth>=2` | 0.0% | 0.0% | - |
 
-- [ ] **Re-measure, and this is the first run that can.** Four things the 30-generation run lacked
-      are now in: the recurrent chunk is actually reached (`samplercheck` measures 1,113 retained
-      steps in 70 contiguous runs of up to 16 rather than 70 singletons), the trunk is 2.55x smaller,
-      sub-mode entry is masked unless the hero has something to use (`STALLED` 14 of 40 -> 2 of 40),
-      and the alchemy pot is reachable with two of `docs.md`'s terms paying. **None of them has been
-      measured on a training run, and the claim that the objective now moves is untested.**
+**+134 against an error of 52 is about 2.6 sigma.** The run it replaces moved +1.6 against a
+per-generation standard deviation of 98 to 138, so this clears the ~100-point bar `issues.md` 27 set
+and the earlier band of +/-16 was 6 to 8 times too tight for this configuration.
+
+**What it is not is a descent.** `bestDepth` is 1 in 30 of 30 generations and not one of 960 episodes
+reached a second floor. The objective-only score - the reward restricted to `depth_only`'s terms -
+moved +65.69 against an error of 57.9, which is not significant. So the two-window report separates
+them: **the policy got better at the thing the shaping pays for and did not get closer to the
+stairs.** What it is doing is visible - 72 kills and 1,320 pickups across the last generation's 32
+episodes, `STALLED` down to 208 of 960 and every remaining stall a `FREE_STEP` - and none of those
+is a descent.
+
+- [ ] **Teach it to descend.** The next thing to measure is not another reward weight; the objective
+      terms are working and the shaping is what moved. The candidate is the policy's inability to
+      survive the walk to the stairs on floor 1, and `issues.md` 20's arithmetic - under a profile
+      that pays only for depth, a policy that cannot yet descend learns to die cheaply - applies to
+      any further change to that balance.
 - [ ] Close `issues.md` 37 and 18 together. Both are "a recording the trainer wrote does not replay",
       and both now carry the evidence that would locate one. **37 is localised and not diagnosed**:
       a fresh 2-generation run reproduced it - one of two worker recordings diverges at step 1421 of

@@ -34,18 +34,21 @@ scored by a configurable reward function, with the best run per seed recorded an
 
 ## Status, honestly
 
-**Nothing has won a run, and nothing has reached floor 5.** The machinery is correct - the network's
+**Nothing has won a run, and nothing has reached floor 2.** The machinery is correct - the network's
 gradients check against central differences, the environment is reproducible across processes,
-recordings replay exactly, and every one of the thirty-three gates is green - and the reward function now
-asks for the right thing. **The 30-generation measurement is done and it does not clear the noise
-floor:** `meanScore` moved **+1.6 points** between the first and last fifteen generations against a
-per-generation standard deviation of **98 to 138**. `bestDepth 2` appeared in **9 of 30** generations.
+recordings replay exactly, and every one of the thirty-three gates is green - and the reward function
+asks for the right thing. **The 30-generation measurement is done, and it is the first run whose
+movement clears its own error bar without producing a descent:** `meanScore` moved **+134.49 +/- 52.4**
+between the first and last fifteen generations, about 2.6 sigma, where the run it replaces moved +1.6
+against a per-generation standard deviation of 98 to 138. **The objective did not move with it.**
+`meanObjectiveScore` moved +65.69 +/- 57.9, which is not significant, and `depth>=2` is **0 of 960
+episodes** with `bestDepth` 1 in 30 of 30 generations.
 
-That last sentence is the one that matters. The three reward defects that kept depth at 1 were real
-and are fixed, and the run that shows survival improving is the first evidence in this project that a
-change to the objective moved behaviour in the direction it was supposed to. It is not evidence that
-the ratio is right. A change now has to clear **~100 points over 15 generations** - not the +/-16 the
-repository had been quoting, which was measured on a different configuration - and nothing has. The
+That distinction is the result worth reading. The policy got better at what the shaping pays for -
+kills, pickups, a fall in `STALLED` - and none of that is a descent, which is why the generation
+report now carries an **objective-only score** beside the score and a `depth>=2` share of
+**episodes** rather than generations. A change has to clear **~100 points over 15 generations** - not
+the +/-16 the repository had been quoting, which was measured on a different configuration. The
 milestone is beating the first boss at depth 5 (`research.md:40`).
 
 ## Versioning

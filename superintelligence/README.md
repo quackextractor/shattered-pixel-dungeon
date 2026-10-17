@@ -56,38 +56,29 @@ controls. Evidence worth keeping goes in `superintelligence/out/evidence/` in th
 
 ## Read this first
 
-**Nothing has been trained yet. The machinery is correct; the reward still does not ask for
-anything.** Five things were missing; four are fixed and the fifth is the milestone itself. **The
-30-generation measurement `TODO.md` 1 has been asking for is now done, and it does not clear the
-noise floor:**
+**Nothing has been trained yet. Something moved, and it is not the objective.** The 30-generation
+re-measurement is the first run in this project's history whose movement clears its own error bar,
+and it did not produce a descent:
 
-| | generations 0-14 | generations 15-29 |
-| --- | --- | --- |
-| `meanScore` mean | **-3,535.7** | **-3,534.1** |
-| `meanScore` sd | 137.5 | 98.5 |
-| `meanScore` range | **567.2** | **375.4** |
+| | generations 0-14 | generations 15-29 | difference |
+| --- | --- | --- | --- |
+| `meanScore` | -4110.58, sd 164.5, sem 42.5 | -3976.09, sd 119.0, sem 30.7 | **+134.49 +/- 52.4** |
+| `meanObjectiveScore` | -3403.44, sem 44.7 | -3337.75, sem 36.8 | +65.69 +/- 57.9 |
+| `depth>=2` | 0.0% | 0.0% | - |
 
 30 generations, 8 workers x 4 episodes, 4 update threads, seed 20261016,
-`train.random_seed_rate=0`, every other default unchanged, 12 min 41 s, and it completes past the
-generation ~22 where the policy push used to kill it. **The movement is +1.6 points against a
-per-generation standard deviation of 98 to 138** - noise, and two orders of magnitude smaller than
-the noise. `bestDepth 2` in **9 of 30** generations; `meanDepth` peaks at 1.062; `valueLoss` is O(1)
-and `clipFraction` falls 0.552 -> ~0.05 while entropy climbs, so the update is moving and the
-objective is not. **The band this repository had been quoting (+/-16 over 15 generations) was
-measured on a different config and is 6 to 8 times too tight for this one; a change has to clear
-~100 points over 15 generations to mean anything.** One of the two recordings the run wrote does not
-reproduce - `issues.md` 37. Evidence: `out/evidence/noise-floor-30.csv`,
-`out/evidence/train-noise-floor-30.log`.
+`train.random_seed_rate=0`, every other default unchanged. **+134.49 against an error of 52 is about
+2.6 sigma**, against the +1.6 the run it replaces moved under a per-generation standard deviation of
+98 to 138. **The band this repository had been quoting (+/-16 over 15 generations) was measured on a
+different configuration and is 6 to 8 times too tight for this one; a change has to clear ~100
+points over 15 generations to mean anything, and this one does.**
 
-**Four things have changed since that run was measured, and none of them has been measured on a
-training run yet.** The sampler now draws whole `rl.chunk_length` blocks instead of an independent
-5% per step, so the recurrent chunk the update is built around actually occurs — `1,113` retained
-steps in `70` contiguous runs of up to `16` over `20,000` steps. The trunk is **2.55x smaller** after
-a second strided convolution: **1,403,316** parameters against **3,583,827**. Sub-mode entry is
-masked unless the hero carries something to use, which took uniform-policy episodes from
-**`STALLED` 14 of 40 to 2 of 40**. And the alchemy pot is reachable headlessly, with `CRAFTED` and
-`CRAFTED_MEAT_PIE` paying. **The claim that the objective now moves is untested, and
-`TODO.md` §1 says so.**
+**And the objective did not move.** `depth>=2` is **0 of 960 episodes**, `bestDepth` is 1 in **30 of
+30** generations, and the objective-only score moved +65.69 against an error of 57.9, which is not
+significant. The two-window report is what separates them: the policy got better at what the shaping
+pays for - 72 kills and 1,320 pickups across the last generation's 32 episodes, `STALLED` down to 208
+of 960 and every remaining stall a `FREE_STEP` - and none of that is a descent. Evidence:
+`out/evidence/remeasure-30.csv`, `out/evidence/remeasure-30.log`.
 
 And the five things:
 
