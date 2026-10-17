@@ -283,6 +283,16 @@ uncommitted. The external code review that asked for it to be committed found it
   `endDEATH` 750, `endSTALLED` 208, `endVICTORY` 0, `endTURN_LIMIT` 0, `bestDepth` 1 in **30 of 30**
   generations. Both recordings the run kept verify exactly, so `issues.md` 37 did not recur on it.
   Evidence: `out/evidence/remeasure-30.csv`, `out/evidence/remeasure-30.log`.
+- **Which stall guard binds, measured rather than assumed.** `TODO.md` 1 asked whether
+  `env.free_step_budget` (250) or `env.stall_limit` (120) is the binding constraint now that the
+  sub-mode mask has changed. Ten generations × two settings, everything else identical:
+  `out/evidence/free-step-budget-confirm.txt`. At 120, **25% of episodes end on it and every stall is
+  `FREE_STEP`**; at the shipped 250 it does not bind at all - the re-measurement reports 208 stalls of
+  960, all `FREE_STEP`, against `DEATH` 750. **`stallLimit` is not the constraint**, the mask has
+  already removed the equip/unequip loop that used to make the budget dominate, and what ends an
+  episode is the hero dying or the budget. Turns per episode move **313 against 382**, which is the
+  price of ending a quarter of them early. The generation report now prints the per-cause breakdown,
+  so a run says which guard bound instead of reporting `stalled` as one word.
 - **`issues.md` 37 reproduced on a fresh run, and localised.** A two-worker, two-episode,
   two-generation run with `train.record_every=1` wrote two recordings. One reproduces twice,
   identically. The other does not, identically on both runs:

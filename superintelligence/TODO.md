@@ -41,8 +41,15 @@ is a descent.
       both runs, so the streams parted in the generator and the recording drew *more*. `18` is still
       1 in 8 and now reports the same way. Both need `rngtrace` with `-Dspd.rngTrace`, whose tally
       names the call site; neither is guessed at. Evidence in `out/evidence/issue-37-smoke/`.
-- [ ] Confirm the free-step budget is now the binding constraint rather than `stallLimit`. It was
-      chosen from a 10-generation run, and the mask underneath it has changed.
+- [x] **Confirm the free-step budget is now the binding constraint rather than `stallLimit`.** Answered,
+      and it is the other way round: `out/evidence/free-step-budget-confirm.txt`, 10 generations × 2
+      settings, everything else identical. At `env.free_step_budget=120` **25% of episodes end on it
+      and every stall is `FREE_STEP`**, with no `POSITION` or `PIPELINE` stall anywhere. At the
+      shipped default of 250 it does not bind at all — the 30-generation run reports **208 stalls of
+      960, all `FREE_STEP`, against `DEATH` 750**. What ends an episode is the hero dying (78%) or the
+      budget (22%); `stallLimit` is not the constraint and the mask has already removed the
+      equip/unequip loop that used to make the budget dominate. The setting that did move is turns per
+      episode, **313 against 382**, which is the cost of ending a quarter of them early.
 
 ## 2. Reward signals
 
