@@ -11,6 +11,8 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
 | 37 | one recording in two does not reproduce, and it is the trainer's half |
 | 38 | a recording verifies in a fresh JVM and not in a process that has played an episode |
 
+## 18. `rolloutcheck` is the one flaky gate - **OPEN, and undiagnosed**
+
 18. `rolloutcheck` fails about one run in thirty, and the recording it made verifies on the next
 
     **Re-measured 2026-10-16: the rate and the signature both moved.** Eight consecutive runs of
