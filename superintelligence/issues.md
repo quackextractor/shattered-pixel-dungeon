@@ -5,15 +5,11 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
 
 | # | |
 | --- | --- |
-| 18 | `rolloutcheck` is the one flaky gate. Re-measured twice: 1 in 8 both times, and the signature now names the RNG stream rather than a cell |
+| 18 | `rolloutcheck` is the one flaky gate, 1 in 8. Undiagnosed: the tally names the stream, not the call site |
 | 20 | under `depth_only` the run converges on dying early rather than on descending |
-| 22 | with the ping-pong closed, nothing the policy does pays |
 | 26 | the viewer spends 1 HP on a step the recording does not |
-| 27 | no comparison in this project has an error bar, and `bestDepth` is a coin flip |
 | 37 | one recording in two does not reproduce, and it is the trainer's half |
 | 38 | a recording verifies in a fresh JVM and not in a process that has played an episode |
-
----
 
 18. `rolloutcheck` fails about one run in thirty, and the recording it made verifies on the next
 
@@ -89,6 +85,34 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
     **Not investigated, and stated as open rather than guessed at.** A recorded position and a replayed
     **What is not wrong:** `paritycheck` verifies 32 recordings across seeds in one process and passes,
 
+
+### Re-measured 2026-10-17 with the sub-mode mask on - **the same conclusion, and the first depth signal**
+
+15 generations, 8 workers x 4 episodes, 4 update threads, seed 20261016, `env.sub_mode_progress_only=true`
+throughout, every other default unchanged. `out/evidence/depth-only-postmask-15.log`.
+
+```
+windows   first 7 generations against the last 8
+score     -2941.16 sd=109.8 sem=41.5  ->  -2783.94 sd=84.0 sem=29.7   delta=+157.22 +/- 51.0
+depth>=2  0.4% -> 2.3%   (share of episodes reaching floor 2 or deeper)
+```
+
+- **7 of 480 episodes reached floor 2**, against **0 of 960** in the `default` 30-generation run.
+- **`bestDepth` 2 in 5 of 15 generations**, against 5 of 31 in the run this entry originally measured.
+- **`depth>=2` rises 0.4% -> 2.3%** between the first and last windows. That is the first depth signal
+  any run in this project has produced, and it is on the axis this entry says nothing pays.
+- **`DEATH` 479 of 480 (99.8%)**, `STALLED` 1, `TURN_LIMIT` 0.
+
+**The conclusion is unchanged and the entry stays open.** Under `depth_only` the run converges on dying
+early rather than on descending: 99.8% of episodes end in death, and the mean score is **-2,857**,
+which is a little over the `-2,500` death penalty plus a little over the per-turn cost. The arithmetic
+is the same one the entry gives - with nothing but the objective paying, a policy that cannot yet
+descend learns to die cheaply - and the sub-mode mask moved the *rate* of descending by a factor the
+project had never seen without moving that.
+
+**What did change is that descending is no longer zero.** That is `issues.md` 22, which this run
+closes: with the profile paying only for the objective, `meanScore` moved **+157.22 +/- 51.0**, about
+3 sigma, and the movement is not exploration because under `depth_only` exploration pays zero.
 ## 20. Under `depth_only` the run converges on dying early rather than on descending - **OPEN, and it is a finding rather than a defect**
 Measured on the same 30-generation run (30 generations, 16 workers x 4 episodes, `reward.profile=depth_only`,
 | generation | meanScore | meanDepth | bestDepth | meanTurns | ended |
@@ -103,25 +127,6 @@ Measured on the same 30-generation run (30 generations, 16 workers x 4 episodes,
 **So `depth_only` is a diagnostic profile and not a training default.** It answers the question the
 **The next measurement is a curriculum rather than a switch**, and the machinery for it already exists and
 
-## 22. With the ping-pong closed, nothing the policy does pays - **OPEN, and it is the honest measurement**
-The third of the three runs, and the first one where the reward function means what it says. Same seed
-| | run 1: nothing fixed | run 2: free-step bound | run 3: bound + ping-pong closed |
-| --- | --- | --- | --- |
-| `bestScore` | -2,579 | **+9,540** | -2,132 |
-| generations with a positive best | 0 | **21 of 30** | **0 of 30** |
-| `bestDepth 2` | 5 of 31 | 28 of 30 | **2 of 30** |
-| last generation's endings | death 100% | death 49% / stalled 52% | death 2 / **stalled 62** |
-**Run 2's numbers were the exploit, not progress, and closing it removed all of them.** A positive best
-**What the policy does now, from its best recording** (`JEA-FKU-WZS`, CLERIC, 84 steps, reproduced exactly):
-```
-terms
-  NO_PROGRESS              -264.00
-  TURN_COST                -104.00
-  DEATH                   -2500.00
-```
-15 moves north, 13 interacts, 9 searches, 4 inventory opens: real actions, no free-step flood, no descent to
-**So the profile is not a training setting, and this is the proof rather than the suspicion.** Every route
-**The next run is `default`, not `depth_only`,** with the bound and the depth payment in place. That is the
 
 ## 26. The viewer spends 1 HP on a step the recording does not - **OPEN, diagnosed, not fixed**
 Found while replacing `duelist-death-last` after the `WAIT` fix. It is the ninth recording this
@@ -271,6 +276,37 @@ to on both sides at step 88.
 Evidence: `out/evidence/issue-26/pinned-clock-and-refusals.txt`.
 
 
+### The refusals are not an asymmetry - **the recording does not record acceptance**
+
+`spd.trace` now prints what a refused step resolved to. On `duelist-death-last.replay`:
+
+```
+[trace] refused 88 USE/0 in SLOT: slot 0 = Food, quickslot -1,
+                backpack 0=Food 1=PotionOfHaste 2=Waterskin 3=ScrollOfRecharging 4=VelvetPouch
+[trace] refused 89 USE/0 in WORLD
+[trace] refused 91 USE/0 in WORLD: slot 0 = PotionOfHaste
+[trace] refused 93 USE/0 in WORLD: slot 0 = ScrollOfRecharging
+```
+
+**Slot 0 resolves to exactly the item the trainer consumed**, the quickslot binding is right, and the
+refusals alternate `SLOT` / `WORLD` - the pair `SlotAction` produces when an item takes more than one
+step.
+
+**So the refusals are not the fault.** `Replay.Step` does not carry whether the action was accepted,
+so a refusal in the viewer is indistinguishable from the same refusal in the trainer: the recording's
+own inventory column shows the `Food` still carried at step 88 and gone at 89, which is what a refusal
+followed by a refusal looks like from either side. An earlier version of this entry read the 11
+refusals as the viewer rejecting steps the trainer applied, and **that reading is wrong** - the
+recording cannot answer the question.
+
+**What this costs and what it would buy.** `ReplayRecorder.afterStep` is given the hero's position and
+the reward and nothing else, so the one bit that separates "the engine did this" from "the engine
+refused this" is never written. Adding it is a format change: a field on `Replay.Step`, a codec
+version, a sentinel so recordings written before it still verify, and a comparison in `ReplayIO.verify`
+that reports a step the two sides disagree about rather than a step one side skipped. That is the
+next measurement for this entry, and it is not taken here.
+
+
 - **What deals the extra HP.** Not the scroll read, not its animation, not the RNG, not the engine
   clock, not the speed - all five measured. Not the roster, and now not the cells either: with
   `ReplayPlayer` recording them, all 1,003 differ by nothing at every step around the divergence, and
@@ -292,37 +328,6 @@ Both halves of the instrument were wrong, which is why the fault above read as *
 - **`:desktop:replay` did not forward `-PspdHidden`.** `ReplayLauncher` reads `spd.hidden` and
   `ViewCheck` already passes it, so the setting existed and worked - but this task never bound it, so
 With `-PspdContinueOnDiverge` the traced run now completes and the diff has 5 more steps to work with,
-
-## 27. No comparison in this project has an error bar, and `bestDepth` is a coin flip - **OPEN, and it invalidates the headline metric**
-Found while trying to answer "did the `Network` and `WAIT` fixes help?" and discovering there is no way to
-Three runs of one identical config - `--reward-profile default --generations 15 --episodes 4 --seed
-```
-run       gen0       last mean   bestScore   bestDepth   valueLoss   advStd
-floor-1   -3114.60   -3154.40      -1552         2         12432.7    112.4
-floor-2   -3113.20   -3142.60      -3061         1         13363.2    112.4
-floor-3   -3113.70   -3117.50      -1466         2         31323.3    174.1
-```
-**The start is nearly deterministic and the end is not.** `gen0` agrees to within 1.4 points across three
-- **`bestScore` spans 1,595 points** on identical config and seed. Two of the three runs reached a best
-  score twice as good as the third. Any before/after comparison of `bestScore` smaller than that is noise.
-- **`bestDepth` is 1 or 2 and which one is chance.** Two runs hit 2, one hit 1. **This is the project's
-  headline metric and it is a coin flip.** Every claim in this repository that a run "reached depth 2" -
-- **`valueLoss` spans 2.5x** (12,433 to 31,323) with no trend in any run.
-- `meanScore` over 15 generations is the stable one: -3134, -3166, -3139, so **+/- 16 points**.
-### What this retires
-`README.md` and `TODO.md` both record `bestDepth 2` as a result. With three repeats showing it at chance,
-### Why nothing has learned, stated plainly
-The same three runs, plus a 30-generation run, show what is actually happening at the episode level:
-```
-floor-1: episodes=1200 stalled=1188 (99.0%) meanTurns=123
-floor-2: episodes=1200 stalled=1187 (98.9%) meanTurns=140
-floor-3: episodes=1200 stalled=1171 (97.6%) meanTurns=122
-```
-**98-99% of every episode ends STALLED, and it is 99% at generation 0** - before the policy has learned
-`EnvConfig`'s own comment on `freeStepBudget` says 120 "was binding: four of ten recordings from the run
-That is the most likely reason nothing descends: with 99% of the data being STALLED terminations, the
-This also contradicts `README.md`'s "Every episode runs the full 1500 turns with zero stalls". That line
-Evidence: [`out/evidence/floor-1.csv`](out/evidence/floor-1.csv), [`floor-2.csv`](out/evidence/floor-2.csv),
 
 ## 37. One recording in two does not reproduce, and it is the trainer's half - **OPEN, not investigated**
 

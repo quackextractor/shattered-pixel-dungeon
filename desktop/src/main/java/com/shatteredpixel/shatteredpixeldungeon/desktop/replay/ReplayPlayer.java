@@ -904,6 +904,14 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 		if (!acted){
 			refusedSteps++;
+			if (TRACE){
+				String resolved = mode == EnvMode.SLOT || mode == EnvMode.INVENTORY
+						|| mode == EnvMode.TALENT
+						? mapper.describeSlot( step.slot ) : "";
+				System.err.println( "[trace] refused " + playback.cursor() + " "
+						+ (step == null ? "?" : step.action + "/" + step.slot) + " in " + mode
+						+ (resolved.isEmpty() ? "" : ": " + resolved) );
+			}
 			if (worldSnapshot != null){
 				worldSnapshot.sample( "step", playback.cursor() )
 						.accepted( false );

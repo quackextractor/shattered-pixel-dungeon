@@ -102,6 +102,22 @@ public class ActionMapper {
 		return (index >= 0 && index < slots.size()) ? slots.get( index ) : null;
 	}
 
+	public String describeSlot( int index ){
+		StringBuilder sb = new StringBuilder();
+		Item item = slot( index );
+		sb.append( "slot " ).append( index ).append( " = " )
+				.append( item == null ? "nothing" : item.getClass().getSimpleName() );
+		int bound = item == null ? -1 : Dungeon.quickslot.getSlot( item );
+		sb.append( ", quickslot " ).append( bound );
+		sb.append( ", backpack " );
+		for (int i = 0; i < Math.min( slots.size(), 8 ); i++){
+			Item carried = slots.get( i );
+			sb.append( i ).append( '=' )
+					.append( carried == null ? "-" : carried.getClass().getSimpleName() ).append( ' ' );
+		}
+		return sb.toString();
+	}
+
 
 	public void actionMask( EnvMode mode, float[] mask ){
 		for (int i = 0; i < mask.length; i++) mask[i] = 0f;

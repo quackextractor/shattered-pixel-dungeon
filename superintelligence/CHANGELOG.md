@@ -111,16 +111,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Measured: **10 workers x 100 episodes = 1,000 episodes per generation, 968 and 1,015 turns/s,
   605,495 and 559,084 turns collected, no OOM.** The report's byte accounting reads the retained set
   before the update consumes it, since the buffer is empty afterwards.
-- **`issues.md` 26: the animation hypothesis is refuted, and a better lead is named.** `Game.fixedFrameDelta`
+- **`issues.md` 26: the animation hypothesis is refuted.** `Game.fixedFrameDelta`
   makes `Game.elapsed` and `Game.timeTotal` deterministic for a run, which is the engine hook that
   entry said was needed before the hypothesis could be tested. Tested with
   `-PspdFixedDelta=0.05`: **the divergence is bit-for-bit identical with the clock pinned** - still
   `DIVERGED at step 95 - USE/0 in SLOT: hp is 6, recording says 7` - so **animation timing is not the
-  cause.** The viewer's own world snapshot also names something the entry had not looked at: it records
-  acceptance per step, and **steps 88, 90, 92 and 94 are `USE 0 SLOT` and every one of them is refused**
-  by the viewer while the trainer applied all four and the hero's health fell 9 -> 8 -> 7 across the
-  first three. **The bound item at slot 0 is not the item the trainer consumed**, so the two sides play
-  different actions from step 88 - a sufficient explanation for one point of health at step 94.
+  cause.** `spd.trace` now also prints what a refused step resolved to, which showed that slot 0 holds
+  exactly the item the trainer consumed and the binding is right: the 11 refusals are **not** the
+  viewer rejecting steps the trainer applied, because **`Replay.Step` does not record whether the
+  action was accepted**, so a refusal cannot be told apart from a skipped step in either direction.
+  Recording that bit is the next measurement and is not taken.
 - **A relative path on the command line resolved against the process working directory, not the
   repository root**, in three places. `CHANGELOG.md` records this as fixed; it was fixed in `verify`
   and `rngtrace` and not in `worldtrace`, `ReplayLauncher --file`, or the trainer's `--out`. A run
@@ -295,6 +295,31 @@ uncommitted. The external code review that asked for it to be committed found it
   (was 35), `reward.kill_reward` 150.0 and `reward.sneak_attack_reward` 300.0 (were 12.0 and 22.0).
 
 ### Measured
+- **`issues.md` 22 closed, and `issues.md` 20 re-measured.** 15 generations, 8 workers x 4 episodes,
+  4 update threads, seed 20261016, `env.sub_mode_progress_only=true`, `reward.profile=depth_only`:
+
+  | | |
+  | --- | --- |
+  | `meanScore`, first 7 generations | -2941.16 sd 109.8, sem 41.5 |
+  | `meanScore`, last 8 | -2783.94 sd 84.0, sem 29.7 |
+  | difference | **+157.22 +/- 51.0** |
+  | `depth>=2` share of episodes | **0.4% -> 2.3%** |
+  | episodes reaching floor 2 | **7 of 480**, against 0 of 960 in the `default` 30-generation run |
+  | `bestDepth` 2 | 5 of 15 generations, against 5 of 31 |
+  | endings | `DEATH` 479 (99.8%), `STALLED` 1, `TURN_LIMIT` 0 |
+
+  **22 is closed**: +157 against an error of 51 is about 3 sigma, and the movement cannot be
+  exploration because under `depth_only` `EXPLORE` pays zero. **20 stays open** — the same conclusion
+  with a new number: 99.8% of episodes still end in death, and a mean score of -2,857 against a
+  -2,500 death penalty is a policy that has learned to die cheaply rather than one that has learned
+  to descend. Evidence: `out/evidence/depth-only-postmask-15.log`.
+- **`issues.md` 27 closed.** `train.WindowStatistics` answers the window mean, the **sample** standard
+  deviation, the standard error and the quadrature error on a two-window difference; `MetricsHistory`
+  splits a run in half and prints both windows with `sd`, `sem` and `delta +/- error`, plus an
+  objective-only score and a `depth>=2` share of **episodes** rather than generations. `graphcheck` is
+  7 cases and asserts the arithmetic on a deterministic fixture: six scores with mean -3450 give
+  `sd 104.88`, `sem 42.82`, difference error `59.16`. The first run the instrument produced is what
+  closed 22.
 - **The 30-generation re-measurement, and the first run in this project's history whose movement
   clears its own error bar.** 8 workers x 4 episodes, 4 update threads, seed 20261016,
   `train.random_seed_rate=0`, every other default unchanged - the same configuration as the run
