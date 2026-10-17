@@ -565,9 +565,9 @@ Evidence: `out/evidence/issue-38-underfoot-pickup/localised.txt`.
 
 ### Not shipped
 
-The `ActionMapper` change is not in the commit this sits beside: `paritycheck` is red without it and
-green with it reverted. The reward cases it asked for now drop the heap on an adjacent cell, which
-proves both terms fire without the own-cell path - so the terms are proven live and the
-underfoot-priority work stays open with a reproduction attached.
+The ActionMapper change is declined for now and the reasoning is in REJECTED.md; this
+entry carries the reproduction. paritycheck is red without it and green with it reverted,
+and a committed tree has to be green. The reward cases it asked for now drop the heap on an
+adjacent cell, which proves both terms fire without the own-cell path.
 
 Evidence: `out/evidence/issue-38-underfoot-pickup/`.

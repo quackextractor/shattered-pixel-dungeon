@@ -45,16 +45,9 @@ not get closer to the stairs. Evidence: `out/evidence/remeasure-30.csv`.
 | 3.1 | libGDX trainer UI in the `desktop` module | research.md:16, docs.md:10 | L |
 | 3.3 | Live play with real-time reward/term monitoring | docs.md:10 | M |
 
-## 4. Scale
-
-- [x] **1,000 episodes in one generation runs.** The cap was applied after the generation arrived, so
-      a worker held `max_sampled_per_episode` 2,048 for all 100 of its episodes — 1.30 GB — and the run
-      died with `OutOfMemoryError` in a worker *and* the trainer. Transitions are now admitted into
-      the `ChunkReservoir` as they arrive and released, so residency is the cap rather than the
-      generation. Measured: **10 x 100 = 1,000 episodes, 968 and 1,015 turns/s, 605,495 and 559,084
       turns collected, no OOM.** Evidence in `out/evidence/scale-1000-sims-streamed.log`.
 
-## 5. Open engine and harness faults
+## 4. Open engine and harness faults
 
 - [ ] **`issues.md` 26**, the viewer spending 1 HP the recording does not contain. Narrowed, not
       closed. `ReplayPlayer` records cells now, and all 1,003 of them are identical on both sides at

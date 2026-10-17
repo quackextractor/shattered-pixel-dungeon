@@ -9,6 +9,29 @@ reason is on this page, or **deferred**, meaning the answer is later and the tri
 
 ## Declined, with the arithmetic
 
+## Letting `INTERACT` pick an item up off the hero's own cell
+
+**Proposed by** `TODO.md` §2 and `review.md` Plan 4.2. **Declined until `issues.md` 38 is diagnosed.**
+
+`ActionMapper.pickInteractCell()` scans offsets 1..8 and `handleCell()` refuses a non-adjacent cell,
+so an item on the cell the hero stands on cannot be picked up. Making both accept it turns
+`paritycheck` **red, deterministically** — one seed, one hero, `DIVERGED at 256: position replayed
+500, recorded 1301` — while the same file reproduces in 357 steps in two fresh JVMs. A/B on one tree:
+
+| variant | `paritycheck` |
+| --- | --- |
+| `pickInteractCell` checks the hero's own cell, `handleCell` still requires adjacency | green, 32 of 32 |
+| both changed | red at step 256 |
+| both changed, own cell admitted only when a heap is there | red, same step |
+
+**The pickup completing is the cause, not the cell the action resolves to.** `issues.md` 38 has since
+localised it: the divergence is in floor 2's generation, on a pushed per-floor generator, and it changes
+how many secret rooms the floor has.
+
+**Not declined on merit.** It is held because a committed tree has to be green, and this one cannot be
+with the change in it. The reward cases that asked for it now drop the heap on an adjacent cell, which
+proves `GOLD_GAIN` and `ITEM_PICKUP` fire without it.
+
 ## A native or ONNX runtime for the learner
 
 **Proposed by** the external code review, as a native or ONNX learner. **Not attempted.**
