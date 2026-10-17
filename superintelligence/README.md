@@ -261,6 +261,14 @@ silenced, and `default` restores the whole function. It exists because the objec
 through a function that also pays for exploration — a run can score well without ever leaving floor 1, and
 that is indistinguishable from a run that learned to descend.
 
+**It is a diagnostic, not a training default, and that is measured rather than asserted.** 15 generations
+under it with the sub-mode mask on: `meanScore` moved **+157.22 +/- 51.0** between the first 7 and last 8
+generations, **7 of 480 episodes reached floor 2** against 0 of 960 in the `default` 30-generation run,
+and `depth>=2` rose 0.4% -> 2.3% — which is what closed `issues.md` 22 and produced the first depth
+signal this project has. But `DEATH` is **479 of 480** and the mean score is **-2,857** against a -2,500
+death penalty: with nothing but the objective paying, a policy that cannot yet descend learns to die
+cheaply. `issues.md` 20 carries that and stays open. Use it to *measure* the objective, not to train on.
+
 The profile travels the wire rather than being re-read by each process, so a trainer and its workers
 cannot disagree about what a run was worth, and it is recorded in the replay header, so a recording
 written under it verifies under it. `rewardcheck` asserts the property in both directions: that

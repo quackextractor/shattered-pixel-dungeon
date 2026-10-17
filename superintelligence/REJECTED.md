@@ -203,18 +203,6 @@ exists for. It cannot fix a divergence, because it cannot cause one.
 **Revisit when** the corpus is regenerated for another reason - a changed observation width, a new
 action head - at which point it is ten mechanical edits and no recording is lost by them.
 
-## `reward.profile=depth_only` as a training setting
-
-**Measured three times and declined each time as a default.** It remains the right *diagnostic* and
-the reason the generation report now carries an objective-only score beside the score - which is what
-closed `issues.md` 22 and showed 7 of 480 episodes reaching floor 2 where the `default` run had 0 of
-960.
-
-**It is not a training profile.** `DEATH` is 479 of 480 under it, and a mean score of -2,857 against a
--2,500 death penalty is a policy that has learned to die cheaply: with nothing but the objective
-paying, the cheapest ending a policy that cannot yet descend can reach is death. `issues.md` 20 is the
-measurement and it stays open.
-
 ## Making `holdAllies` reachable in the trainer
 
 **Deliberately not done.** `InterlevelScene.fall()` opens with `Mob.holdAllies`; copying that into
