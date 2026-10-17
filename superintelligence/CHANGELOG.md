@@ -295,6 +295,19 @@ uncommitted. The external code review that asked for it to be committed found it
   (was 35), `reward.kill_reward` 150.0 and `reward.sneak_attack_reward` 300.0 (were 12.0 and 22.0).
 
 ### Measured
+- **`reprocheck --args="baseline"`, and the call site `issues.md` 37 and 18 have been asking for.**
+  The control mode verifies the saved recording in a fresh process. Reading `SecretRoom`'s
+  per-region secret-room budget - a process static consumed as floors are built - after each
+  verification: **the fresh process's first verification spends one region-0 secret and the second
+  spends none, and the second diverges at step 256.** The draw that decides it is
+  `SecretRoom.java:79`, `Random.Float() < secrets % 1f`, which for floor 2 is `2 / 3 = 0.667` - so
+  **one draw decides whether floor 2 has a secret room at all**, and a floor with one more is a
+  different layout, a different `MazeConnectionRoom`, and different cells under the hero.
+  **That is not the cause and neither entry closes:** the draw lands differently because floor 2's
+  per-floor generator starts at a different position, which depends on draws made before the push.
+  The three verifications inside one process agree exactly, so the verification perturbs nothing. The
+  next measurement is one counter - the base-stack draw position immediately before
+  `Dungeon.seedForDepth` pushes floor 2's generator.
 - **`issues.md` 22 closed, and `issues.md` 20 re-measured.** 15 generations, 8 workers x 4 episodes,
   4 update threads, seed 20261016, `env.sub_mode_progress_only=true`, `reward.profile=depth_only`:
 

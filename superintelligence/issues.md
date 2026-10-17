@@ -568,6 +568,49 @@ a process that has run an episode and one that has not.
 
 Evidence: `out/evidence/issue-38-underfoot-pickup/localised.txt`.
 
+
+### The call site is named: `SecretRoom.java:79`
+
+`reprocheck --args="baseline"` verifies the saved recording in a fresh process, which is the control
+for the poisoned run. Reading `SecretRoom.regionSecretsThisRun` - the per-region secret-room budget,
+a **process static that is consumed as floors are built** - after each verification:
+
+```
+poisoned:  verify #first   diverged=true at step 256, base draws 544   secrets per region: 2,2,3,3,3
+           verify #second  identical                                  secrets per region: 2,2,3,3,3
+
+baseline:  verify #baseline       diverged=false, steps 357, 976 draws secrets per region: 1,2,3,3,3
+           verify #baseline-again  diverged=true at step 256, 544 draws secrets per region: 2,2,3,3,3
+```
+
+**The fresh process's first verification spends one region-0 secret; the second spends none.** The
+draw that decides it is one line:
+
+```java
+secrets = regionSecretsThisRun[region] / (float)floorsLeft;
+if (Random.Float() < secrets % 1f){          // SecretRoom.java:79
+```
+
+For floor 2 that is `2 / 3 = 0.667`, so **one draw decides whether floor 2 has a secret room at all**.
+A floor with one more secret room is a different layout, a different `MazeConnectionRoom`, and
+different cells under the hero - which is the `position: replayed 500, recorded 1301` this entry
+reports. `rngtrace` confirms the line is reached.
+
+**This is what `issues.md` 37 and 18 have both been asking for since they were filed:** not the site
+where an offset becomes visible, which was never the question, but a measurement that *can* name one.
+
+**It is not the cause, and this does not close either entry.** The draw lands on the other side of
+0.667 because floor 2's per-floor generator is at a different position when the floor is built. That
+generator is pushed and seeded from the run seed, so its starting position depends on draws made
+before the push, and that is what still differs. The three verifications inside one process agree
+exactly with each other, so **the verification does not perturb anything** - it is whatever the
+recording episode left behind.
+
+**The next measurement** is one counter in one place: the base-stack draw position immediately before
+`Dungeon.seedForDepth` pushes floor 2's generator, dumped in both modes and diffed.
+
+Evidence: `out/evidence/issue-38-underfoot-pickup/call-site.md`.
+
 ### Not shipped
 
 The ActionMapper change is declined for now and the reasoning is in REJECTED.md; this

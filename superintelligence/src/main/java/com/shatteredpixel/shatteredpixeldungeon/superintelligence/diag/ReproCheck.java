@@ -38,32 +38,53 @@ public class ReproCheck {
 		EnvConfig config = new EnvConfig();
 		config.turnLimitPerFloor = TURNS;
 
-		ScriptedEpisode.Result episode = ScriptedEpisode.record( config, SEED, HeroClass.WARRIOR,
-				0, SEED.hashCode() );
-		Replay replay = episode.replay;
+		boolean baseline = args.length > 0 && args[ 0 ].equals( "baseline" );
 
-		System.out.println( "recorded " + replay.length() + " steps, score " + replay.score );
+		ScriptedEpisode.Result episode = baseline ? null
+				: ScriptedEpisode.record( config, SEED, HeroClass.WARRIOR, 0, SEED.hashCode() );
+		Replay replay = episode == null ? readSaved() : episode.replay;
 
-		File out = new File( new File( "." ).getAbsoluteFile(),
-				"out/evidence/issue-38-" + replay.seedText + "-" + replay.heroClass + ".replay" );
-		if (out.getParentFile() != null ) out.getParentFile().mkdirs();
-		ReplayIO.write( replay, out );
-		System.out.println( "wrote " + out.getAbsolutePath()
-				+ " - verify it in a fresh JVM for the baseline tally" );
+		if (replay == null){
+			System.err.println( "[ERROR] baseline mode needs " + SAVED );
+			System.exit( 1 );
+			return;
+		}
 
-		verify( config, replay, "first" );
-		verify( config, replay, "second" );
-		verify( config, replay, "third" );
+		System.out.println( (baseline ? "baseline" : "poisoned")
+				+ ": " + replay.length() + " steps, score " + replay.score );
+
+		if (!baseline){
+			File out = new File( new File( "." ).getAbsoluteFile(), SAVED );
+			if (out.getParentFile() != null ) out.getParentFile().mkdirs();
+			ReplayIO.write( replay, out );
+			System.out.println( "wrote " + out.getAbsolutePath() );
+		}
+
+		verify( config, replay, baseline ? "baseline" : "first" );
+		verify( config, replay, baseline ? "baseline-again" : "second" );
 	}
 
 
-	private static void verify( EnvConfig config, Replay replay, String label ){
+	private static final String SAVED =
+			"out/evidence/issue-38-PARITY-ALPHA-WARRIOR.replay";
+
+
+	private static Replay readSaved(){
+		try {
+			return ReplayIO.read( new File( new File( "." ).getAbsoluteFile(), SAVED ) );
+		} catch (java.io.IOException e){
+			return null;
+		}
+	}
+
+
+private static void verify( EnvConfig config, Replay replay, String label ){
 		RandomTrace.enable();
 		RandomTrace.attribute();
 
 		ReplayIO.Verification result = ReplayIO.verify( replay,
 				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv(
-						config, HeadlessGame.install() ));
+						config, HeadlessGame.install() ) );
 
 		Map< String, Integer > sites = new LinkedHashMap<>( RandomTrace.sites() );
 
@@ -75,8 +96,28 @@ public class ReproCheck {
 				+ (result.diverged ? " at step " + result.divergedAt + " - " + result.divergence : "")
 				+ ", steps " + result.stepsVerified + ", base draws " + RandomTrace.baseDraws()
 				+ ", sites " + sites.size() );
+		System.out.println( "  secrets per region: " + secretsPerRegion() );
 		print( sites, label );
 		dump( replay, label, sites );
+	}
+
+
+	private static String secretsPerRegion(){
+		StringBuilder sb = new StringBuilder();
+		try {
+			Class<?> secret = Class.forName(
+					"com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretRoom" );
+			java.lang.reflect.Field field = secret.getDeclaredField( "regionSecretsThisRun" );
+			field.setAccessible( true );
+			int[] values = (int[]) field.get( null );
+			for (int i = 0; i < values.length; i++){
+				if (i > 0) sb.append( ',' );
+				sb.append( values[ i ] );
+			}
+		} catch (Exception e){
+			return "(unreadable: " + e.getClass().getSimpleName() + ")";
+		}
+		return sb.toString();
 	}
 
 

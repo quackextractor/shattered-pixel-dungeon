@@ -7,8 +7,6 @@ without their reasoning. A proposal here is not a failure; several are the right
 still worth doing someday is in one of two states: **declined**, meaning the answer is no and the
 reason is on this page, or **deferred**, meaning the answer is later and the trigger is stated.
 
-## Declined, with the arithmetic
-
 ## Letting `INTERACT` pick an item up off the hero's own cell
 
 **Proposed by** `TODO.md` §2 and `review.md` Plan 4.2. **Declined until `issues.md` 38 is diagnosed.**
