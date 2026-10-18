@@ -27,9 +27,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   least one step: **100 steps, ends DEATH, accepted 93, refused 7, verified headlessly in 100
   steps**. The same file through the real viewer halts `DIVERGED at step 95 - USE/0 in SLOT: hp is
   6, recording says 7` - **and the acceptance comparison never fires**. The viewer and the trainer
-  accept and refuse the same steps, including all 7 refusals. With the clock already pinned and all
-  1,003 cell records already identical, **four explanations are now ruled out by instruments that
-  can see them** and what is left is one point of health inside the scroll's read path.
+  accept and refuse the same steps, including all 7 refusals.
+- **`issues.md` 26 narrowed to a single frame, and the reading inverts.** The viewer's per-frame
+  trace shows the hero at 7/20 on frame 5640 and 6/20 on frame 5641, with nothing else on that
+  frame's record differing, one frame after `gate current=Snake@5 animating=2`. At turn 92.0,
+  settled, ready, the two sides carry identical position, gold, level, experience, strength,
+  paralysis, invisibility, rooting, flight, resting, starving, all five buffs, the whole
+  inventory, a byte-identical roster and 1,003 identical cell records. **One hit point is the
+  entire difference** - and it may be that the headless path *skips* a hit the rendered path lands,
+  not that the viewer spends one. `worldtrace` records per step and the viewer records per frame, so
+  this window has never been compared frame-for-frame on both sides. That is the next measurement.
 - **Game.fixedFrameDelta, and a pin that reaches the animation clock.** Game.elapsed and
   Game.timeTotal are both derived from the raw frame delta *before* any game code runs, so
   FrameDelta could only ever pin playback's own pacing - and its own javadoc records the

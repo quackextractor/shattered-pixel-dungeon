@@ -278,6 +278,52 @@ to on both sides at step 88.
 Evidence: `out/evidence/issue-26/pinned-clock-and-refusals.txt`.
 
 
+### Narrowed to a single frame, and the reading inverts
+
+`reprocheck --args="deathfixture"` records `DUELIST-LONG-16` - 100 steps, verified headlessly, with
+`accepted` on every step - and the viewer plays it to the same fault:
+
+```
+[replay] DIVERGED at step 95 - USE/0 in SLOT: hp is 6, recording says 7
+```
+
+**The two traces, at step 94, settled.** Headless records one hero line; the viewer records two, one
+per settle. At `turn=92.0`, `ready=true`:
+
+```
+headless  pos=552 hp=7/20  Haste:18.0 Recharging:29.0
+viewer    pos=552 hp=6/20  Haste:18.0 Recharging:29.0
+```
+
+**Identical position, depth, gold, level, experience, strength, paralysis, invisibility, rooting,
+flight, resting, starving, all five buffs, the whole inventory, a byte-identical roster and 1,003
+identical cell records.** One hit point is the entire difference.
+
+**And the viewer's per-frame trace names the frame it happens on:**
+
+```
+frame 5640  driver  elapsed=0.006975 drain=- applied=false
+frame 5640  gate    ready=false current=Snake@5 animating=2
+frame 5640  turns   now=91.0 delta=0.0 taker=Hero@1 spent=91
+frame 5641  hero    pos=552 hp=6/20
+```
+
+`hp` is 7 on frame 5640 and 6 on 5641, and nothing else on that frame's record differs. The gate line
+names **`Snake@5` holding the turn with an animation in flight** one frame earlier. That snake is at
+cell 579 and the hero at 552, and its roster entry - `Hunting`, `hp=4/4`, `cd=0.0` - is identical on
+both sides.
+
+**This inverts the reading the entry has carried.** It is not established that the viewer *spends* a
+hit point the recording does not contain; it may equally be that **the headless path skips a hit the
+rendered path lands.** `Actor.headlessStep` drops frames that the render loop would resolve, and the
+trainer keeps no per-frame trace at all, so this window has never been compared frame-for-frame on
+both sides - `worldtrace` records per step and the viewer records per frame. **That asymmetry is the
+next measurement.**
+
+Not established: which of the two readings is right. Established: the loss is on rendered frame 5641,
+one frame after a `Snake@5` turn with `animating=2`, with the entire recorded world identical.
+
+Evidence: `out/evidence/issue-26/frame-5641.md`.
 ### Ruled out: the viewer and the trainer do not disagree about acceptance
 
 `reprocheck --args="deathfixture"` records a DUELIST run on `DUELIST-LONG-16` and refuses to write
