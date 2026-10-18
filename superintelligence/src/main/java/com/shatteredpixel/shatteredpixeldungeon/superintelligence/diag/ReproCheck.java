@@ -45,6 +45,11 @@ public class ReproCheck {
 
 		boolean baseline = args.length > 0 && args[ 0 ].equals( "baseline" );
 
+		if (args.length > 0 && args[ 0 ].equals( "diff" )){
+			diffDumps();
+			return;
+		}
+
 		Replay recorded = null;
 		if (!baseline){
 			ScriptedEpisode.Result episode = ScriptedEpisode.record( config, SEED,
@@ -142,6 +147,7 @@ private static void recordDeathFixture( EnvConfig config ) throws java.io.IOExce
 
 private static void verify( EnvConfig config, Replay replay, String label ){
 		RandomTrace.enable();
+		RandomTrace.reset();
 		RandomTrace.attribute();
 
 		ReplayIO.Verification result = ReplayIO.verify( replay,
@@ -149,6 +155,8 @@ private static void verify( EnvConfig config, Replay replay, String label ){
 						config, HeadlessGame.install() ) );
 
 		Map< String, Integer > sites = new LinkedHashMap<>( RandomTrace.sites() );
+		List< String > order = new ArrayList<>( RandomTrace.siteLog() );
+		List< String > pushes = new ArrayList<>( RandomTrace.generatorLog() );
 
 		RandomTrace.attribute( false );
 		RandomTrace.disable();
@@ -157,10 +165,14 @@ private static void verify( EnvConfig config, Replay replay, String label ){
 		System.out.println( "verify #" + label + ": diverged=" + result.diverged
 				+ (result.diverged ? " at step " + result.divergedAt + " - " + result.divergence : "")
 				+ ", steps " + result.stepsVerified + ", base draws " + RandomTrace.baseDraws()
-				+ ", sites " + sites.size() );
+				+ ", sites " + sites.size() + ", ordered draws " + order.size()
+				+ ", generator events " + pushes.size() );
 		System.out.println( "  secrets per region: " + secretsPerRegion() );
+		System.out.println( "  guide pages found: " + guidePagesFound() );
 		print( sites, label );
 		dump( replay, label, sites );
+		write( label + ".order.txt", order );
+		write( label + ".pushes.txt", pushes );
 	}
 
 
@@ -204,7 +216,75 @@ private static void verify( EnvConfig config, Replay replay, String label ){
 	}
 
 
+	private static String guidePagesFound(){
+		try {
+			Class<?> document = Class.forName(
+					"com.shatteredpixel.shatteredpixeldungeon.journal.Document" );
+			Object guide = document.getField( "ADVENTURERS_GUIDE" ).get( null );
+			java.lang.reflect.Field states = document.getDeclaredField( "pagesStates" );
+			states.setAccessible( true );
+			Object map = states.get( guide );
+			return String.valueOf( map );
+		} catch (Exception e){
+			return "(unreadable: " + e.getClass().getSimpleName() + ")";
+		}
+	}
+
 	private static final Map< String, String > BASELINES = new LinkedHashMap<>();
+
+	private static String evidencePath( String name ){
+		return "out/evidence/" + name;
+	}
+
+	private static void write( String name, List< String > lines ){
+		File out = new File( new File( "." ).getAbsoluteFile(), evidencePath( name ));
+		try {
+			if (out.getParentFile() != null ) out.getParentFile().mkdirs();
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < lines.size(); i++) sb.append( i ).append( '\t' ).append( lines.get( i ) ).append( '\n' );
+			java.nio.file.Files.write( out.toPath(), sb.toString().getBytes( java.nio.charset.StandardCharsets.UTF_8 ));
+		} catch (java.io.IOException e){
+			System.err.println( "[WARN] cannot write " + out + ": " + e.getMessage() );
+		}
+	}
+
+	private static List< String > read( String name ){
+		File in = new File( new File( "." ).getAbsoluteFile(), evidencePath( name ));
+		if ( !in.exists() ) return new ArrayList<>();
+		List< String > lines = new ArrayList<>();
+		try {
+			for (String line : java.nio.file.Files.readAllLines( in.toPath() )){
+				int tab = line.indexOf( '\t' );
+				lines.add( tab < 0 ? line : line.substring( tab + 1 ));
+			}
+		} catch (java.io.IOException e){
+			System.err.println( "[WARN] cannot read " + in + ": " + e.getMessage() );
+		}
+		return lines;
+	}
+
+	private static void diffDumps(){
+		compare( "baseline", "baseline-again" );
+		compare( "first", "second" );
+		compare( "baseline", "first" );
+	}
+
+	private static void compare( String left, String right ){
+		List< String > leftOrder = read( left + ".order.txt" );
+		List< String > rightOrder = read( right + ".order.txt" );
+		if (leftOrder.isEmpty() || rightOrder.isEmpty()){
+			System.out.println( "[" + left + " vs " + right + "] no dump to compare; run reprocheck"
+					+ " and reprocheck --args=\"baseline\" first" );
+			return;
+		}
+		System.out.println( "[" + left + " vs " + right + "] ordered draws" );
+		System.out.println( OrderedDiff.report( left, right, leftOrder, rightOrder, 3 ));
+
+		List< String > leftPushes = read( left + ".pushes.txt" );
+		List< String > rightPushes = read( right + ".pushes.txt" );
+		System.out.println( "[" + left + " vs " + right + "] generator stack" );
+		System.out.println( OrderedDiff.report( left, right, leftPushes, rightPushes, 2 ));
+	}
 
 	private static void print( Map< String, Integer > sites, String label ){
 		List< String > moved = new ArrayList<>();

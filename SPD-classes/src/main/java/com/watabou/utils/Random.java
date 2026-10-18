@@ -42,6 +42,7 @@ public class Random {
 public static synchronized void resetGenerators(){
 		generators = new ArrayDeque<>();
 		generators.push(new java.util.Random());
+		RandomTrace.generator( "reset", generators.size(), "" );
 	}
 
 	/**
@@ -62,14 +63,17 @@ public static synchronized void resetGenerators(){
 			generators.addLast( base );
 		}
 		PRandom.reseed( seed );
+		RandomTrace.generator( "reseed", generators.size(), "seed=" + seed );
 	}
 
 	public static synchronized void pushGenerator(){
 		generators.push( new java.util.Random() );
+		RandomTrace.generator( "push", generators.size(), "seed=unseeded" );
 	}
 
 	public static synchronized void pushGenerator( long seed ){
 		generators.push( new java.util.Random( scrambleSeed(seed) ) );
+		RandomTrace.generator( "push", generators.size(), "seed=" + seed );
 	}
 
 	//scrambles a given seed, this helps eliminate patterns between the outputs of similar seeds
@@ -90,6 +94,7 @@ public static synchronized void resetGenerators(){
 			Game.reportException( new RuntimeException("tried to pop the last random number generator!"));
 		} else {
 			generators.pop();
+			RandomTrace.generator( "pop", generators.size(), "" );
 		}
 	}
 

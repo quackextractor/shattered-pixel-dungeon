@@ -85,6 +85,26 @@ public class RandomTrace {
 	private static final java.util.LinkedHashMap< String, Integer > bySite =
 			new java.util.LinkedHashMap<>();
 
+	/**
+	 * Every attributed draw site, in the order the draws were made.
+	 *
+	 * <p>{@link #sites()} answers "how much did this code draw", which is what a per-run tally can
+	 * say. It cannot answer "where did two runs of one seed stop agreeing", because a tally has no
+	 * order: two runs whose streams part at the first draw of floor 2 still report identical totals for
+	 * every site afterwards. This log is the ordered form, and its first differing entry names the draw
+	 * the two runs parted at.
+	 */
+	private static final java.util.ArrayList< String > siteLog = new java.util.ArrayList<>();
+
+	/**
+	 * Every generator stack event, in order, carrying the base stream's position at that moment.
+	 *
+	 * <p>A pushed generator is an independent stream, so the only thing that can reach a floor's layout
+	 * from outside it is the state the base generator was left in before the push. {@link #baseDraws()}
+	 * answers that for the whole run and nothing for a moment inside it; this answers it per push.
+	 */
+	private static final java.util.ArrayList< String > generatorLog = new java.util.ArrayList<>();
+
 	private RandomTrace() {}
 
 	public static void enable(){
@@ -106,6 +126,8 @@ public class RandomTrace {
 		baseDraws = 0;
 		fingerprint = 0;
 		baseFingerprint = 0;
+		siteLog.clear();
+		generatorLog.clear();
 	}
 
 	/**
@@ -136,6 +158,7 @@ public class RandomTrace {
 	public static void attribute(){
 		attributing = true;
 		bySite.clear();
+		siteLog.clear();
 	}
 
 	public static void attribute( boolean on ){
@@ -149,6 +172,34 @@ public class RandomTrace {
 	/** Draw count per calling site, first-seen first. */
 	public static java.util.Map< String, Integer > sites(){
 		return bySite;
+	}
+
+	/** Every attributed draw site in draw order. Empty unless {@link #attribute()} is on. */
+	public static java.util.List< String > siteLog(){
+		return siteLog;
+	}
+
+	/** Every generator stack event in order. Empty unless counting is on. */
+	public static java.util.List< String > generatorLog(){
+		return generatorLog;
+	}
+
+	/**
+	 * Records one generator stack event and the base stream's position at that moment.
+	 *
+	 * <p>Called by {@link Random} on every push, pop, reseed and reset, so a diagnostic can say where
+	 * the base generator stood when a floor's own generator was pushed - which is the one piece of state
+	 * outside that generator that a floor's layout can depend on.
+	 *
+	 * @param kind   what happened: push, pop, reseed or reset
+	 * @param depth  generator stack depth after the event
+	 * @param detail the seed pushed, or the seed the base was reseeded with, or empty
+	 */
+	public static void generator( String kind, int depth, String detail ){
+		if (!enabled) return;
+		generatorLog.add( kind + " depth=" + depth + " " + detail
+				+ " baseDraws=" + baseDraws + " baseFingerprint=" + baseFingerprint
+				+ " from=" + callerOutsideRandom() );
 	}
 
 	/** The tally as lines of {@code count<TAB>site}, most frequent first. */
@@ -181,11 +232,28 @@ public class RandomTrace {
 		for (int i = 2; i < stack.length; i++){
 			String cls = stack[i].getClassName();
 			if (cls.equals( self ) || cls.equals( Random.class.getName() )) continue;
-			bySite.merge( frame( stack, i ), 1, Integer::sum );
+			String site = frame( stack, i );
+			bySite.merge( site, 1, Integer::sum );
+			siteLog.add( site );
 			return;
 		}
 
 		bySite.merge( "(no caller outside the RNG)", 1, Integer::sum );
+		siteLog.add( "(no caller outside the RNG)" );
+	}
+
+	/** The first stack frame outside this class and {@link Random}, or a placeholder. */
+	private static String callerOutsideRandom(){
+		StackTraceElement[] stack = new Throwable().getStackTrace();
+
+		String self = RandomTrace.class.getName();
+		for (int i = 2; i < stack.length; i++){
+			String cls = stack[i].getClassName();
+			if (cls.equals( self ) || cls.equals( Random.class.getName() )) continue;
+			return frame( stack, i );
+		}
+
+		return "(no caller outside the RNG)";
 	}
 
 	private static String frame( StackTraceElement[] stack, int index ){

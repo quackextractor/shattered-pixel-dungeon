@@ -10,6 +10,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- **An ordered draw log and a generator-stack log, and the call site `issues.md` 37 and 18 have
+  been asking for since they were filed.** `RandomTrace` counted draws and tallied them per call
+  site, and neither can answer *where two runs of one seed stopped agreeing*: a count has no order,
+  so two runs that part at the first draw of floor 2 still report identical totals for every site
+  afterwards. It now also keeps the **order** - `siteLog()` names every draw site as it is made -
+  and a **generator-stack log**: `Random.pushGenerator`, `popGenerator`, `reseedBase` and
+  `resetGenerators` each record the base stream's draw count and fingerprint at that moment, which
+  is the one piece of state outside a floor's own generator that its layout can depend on. Both are
+  off unless counting is on and both name the frame outside the RNG that caused the event.
+  `reprocheck --args="diff"` compares two verifications' dumps and reports the first entry at which
+  they part. `observecheck` is **8 cases**: the ordered log must hold one entry per draw and no
+  unnamed one, a run must produce generator events, the position must be the base count and not the
+  total, and the log must be empty while counting is off. Mutation-tested twice - wiring the log to
+  nothing fails three assertions, and dropping the `enabled` guard fails the inert-when-off case.
+- **`issues.md` 38 named: a guidebook page is the whole difference.** The measurement `issues.md` 38
+  ends by naming produces one line. Comparing a fresh JVM's first verification against a warm one,
+  the base stream is **level** when floor 2's own generator is popped - identical draw count and
+  fingerprint at generator event 43 - and the **ordered** draw log parts at entry 1563 of 40,919:
+
+  ```
+  1562  both    Dungeon.seedForDepth:429
+  1563  fresh   EntranceRoom.placeEarlyGuidePages:125
+  1563  warm    RegularPainter.placeDoors:178
+  ```
+
+  `EntranceRoom.placeEarlyGuidePages:121` asks `!Document.ADVENTURERS_GUIDE.isPageFound(
+  Document.GUIDE_SEARCHING)`, and `Document` is an enum whose `pagesStates` map is **process state
+  that `Dungeon.init()` never clears**. Collecting the page marks it found, so the *second* episode
+  in a process builds floor 2 without it - a different floor, and `RegularLevel.createItems:559-584`
+  drops a different guidebook page over it because `missingPages` is derived from the same map.
+  `reprocheck` now reads that map after every verification:
+
+  ```
+  fresh, first verification  diverged=false, steps 357, Searching=1 at the end
+  same process, second       diverged=true at step 256, Searching=1 at the end
+  ```
+
+  The end state is identical on both sides; only the instant floor 2 was built differs. Evidence:
+  `out/evidence/issue-38-guidebook/named.txt`.
 - **`Replay.Step` records whether the engine acted on it.** `accepted` is `1`, `0`, or `-1` for a
   recording written before this. `SPDEnv` exposes `lastStepActed()`, the worker's collector listener
   passes it to `ReplayRecorder.afterStep`, and `ReplayIO.verify` compares it **before** position -

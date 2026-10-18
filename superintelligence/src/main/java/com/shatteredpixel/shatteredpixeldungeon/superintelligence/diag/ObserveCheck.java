@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 public class ObserveCheck {
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 	private static final List< String > failures = new ArrayList<>();
 	private static int checksFailed = 0;
 	private static void check( Runnable body ){
@@ -44,6 +44,8 @@ public class ObserveCheck {
 		check( ObserveCheck::checkEveryDrawPathIsCounted );
 		check( ObserveCheck::checkShufflingIsCounted );
 		check( ObserveCheck::checkNoUnauditedPublicRandomMethods );
+		check( () -> checkTheOrderedLogNamesEveryDraw( env ) );
+		check( ObserveCheck::checkTheGeneratorLogIsInertWhenOff );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
 		} else {
@@ -116,6 +118,106 @@ public class ObserveCheck {
 	}
 	private static void fail( String message ){
 		failures.add( message );
+	}
+
+	private static void checkTheOrderedLogNamesEveryDraw( SPDEnv env ){
+		EnvConfig config = new EnvConfig();
+		config.turnLimitPerFloor = 200;
+		SPDEnv probe = new SPDEnv( config, HeadlessGame.install() );
+
+		RandomTrace.enable();
+		RandomTrace.reset();
+		RandomTrace.attribute();
+
+		probe.reset( "OBSERVECHECK-ORDERED", HeroClass.WARRIOR );
+		ScriptedPolicy policy = new ScriptedPolicy( probe.mapper(), 29 );
+		int[] slot = new int[ 1 ];
+		for (int i = 0; i < 40 && probe.running(); i++){
+			Action action = policy.choose( probe, slot );
+			probe.step( action, slot[ 0 ] );
+		}
+
+		long drawn = RandomTrace.draws();
+		List< String > order = new ArrayList<>( RandomTrace.siteLog() );
+		List< String > pushes = new ArrayList<>( RandomTrace.generatorLog() );
+
+		RandomTrace.attribute( false );
+		RandomTrace.disable();
+
+		if (order.size() != drawn){
+			fail( "the ordered site log holds " + order.size() + " entries for " + drawn
+					+ " draws. The per-site tally and the ordered log are built from the same walk, so a "
+					+ "difference here means the log can miss a draw - and a log that misses draws cannot "
+					+ "name the draw two runs parted at." );
+		}
+
+		int unnamed = 0;
+		for (String site : order) if (site.startsWith( "(no caller" )) unnamed++;
+		if (unnamed > 0){
+			fail( unnamed + " of " + order.size() + " logged draws name no caller outside the RNG, so "
+					+ "they would all read as the same entry in a diff." );
+		}
+
+		if (pushes.isEmpty()){
+			fail( "resetting a run and playing forty steps produced no generator stack events. Level "
+					+ "generation pushes a generator per floor, so an empty log means the push/pop hook "
+					+ "is not wired and no floor boundary can be located." );
+		}
+
+		boolean floorPush = false;
+		for (String push : pushes) if (push.startsWith( "push " )) floorPush = true;
+		if (!floorPush){
+			fail( "none of the " + pushes.size() + " generator events is a push" );
+		}
+	}
+
+	private static void checkTheGeneratorLogIsInertWhenOff(){
+		RandomTrace.enable();
+		RandomTrace.reset();
+		Random.Float();
+		Random.Float();
+		Random.Float();
+		long at = RandomTrace.baseDraws();
+		Random.pushGenerator( 7L );
+		Random.popGenerator();
+		List< String > pushes = new ArrayList<>( RandomTrace.generatorLog() );
+		RandomTrace.reset();
+		RandomTrace.disable();
+
+		Random.pushGenerator( 7L );
+		Random.Float();
+		Random.popGenerator();
+		List< String > silent = new ArrayList<>( RandomTrace.generatorLog() );
+
+		if (!silent.isEmpty()){
+			fail( "the generator log grew while counting was off: " + silent.size()
+					+ " entries. Every push and pop in the game would then walk the stack for an "
+					+ "instrument nobody asked for, which is the cost this trace exists to avoid." );
+		}
+
+		if (pushes.size() != 2){
+			fail( "one push and one pop produced " + pushes.size() + " generator events rather than 2" );
+			return;
+		}
+
+		String marker = " baseDraws=" + at + " ";
+		if (!pushes.get( 0 ).contains( marker ) || !pushes.get( 1 ).contains( marker )){
+			fail( "a generator event did not carry the base stream's position. The push recorded \""
+					+ pushes.get( 0 ) + "\" and the base had made " + at + " draws at that moment. The "
+					+ "position at the push is the whole measurement: a floor's generator is its own "
+					+ "stream, so nothing outside it can change its layout except what the base was "
+					+ "left holding when it was pushed." );
+		}
+
+		if (!pushes.get( 0 ).contains( "from=" ) || pushes.get( 0 ).contains( "from=(no caller" )){
+			fail( "a generator event did not name the code that pushed: \"" + pushes.get( 0 ) + "\"" );
+		}
+
+		if (!pushes.get( 0 ).contains( "ObserveCheck" )){
+			fail( "a generator event named " + pushes.get( 0 ).split( "from=" )[ 1 ]
+					+ " rather than the code that pushed it. Naming the plumbing instead of the caller is "
+					+ "how an instrument points at Random rather than at the fault." );
+		}
 	}
 	private static void checkEveryDrawPathIsCounted(){
 		Object[][] paths = {

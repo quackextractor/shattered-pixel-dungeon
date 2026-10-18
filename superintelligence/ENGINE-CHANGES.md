@@ -44,6 +44,7 @@ Each one exists because an observer needed a fact the engine kept to itself, and
 | `GameScene.headlessGameplay()` | Declares that this process is simulating gameplay with the renderer bypassed. `Level.drop` presses the cell a thrown or dropped item lands on only when the current scene is a `GameScene`, which separates gameplay drops from the two scene drops that must not press — `AlchemyScene` crafting onto the cell the hero stands on, and `InterlevelScene.resurrect` dropping the LostBackpack on the cell he died on. A headless process has no scene at all, so the test was false and every thrown item landed inert: measured, an armed `WornDartTrap` was still armed after a `Food` was dropped on it on four seeds out of four. Both scene drops need a renderer, so neither can exist here, which is what makes the flag safe. See §7. |
 | `PRandom.element(Collection)` | Mirrors `Random.element` for the presentation stream, so a caller choosing presentation can be moved across without reimplementing the indexing. |
 | `Game.fixedFrameDelta` | A frame-delta override in seconds, `0f` by default. `Game.update` reads it in place of `Gdx.graphics.getDeltaTime()` when it is positive. **`0f` leaves the original expression in place**, so a game with a renderer is unaffected by construction rather than by argument — which is the shape every other entry here has. It exists because `Game.elapsed` and `Game.timeTotal` are both derived from the raw delta *before* any game code runs, so nothing written from a frame driver can pin them: `FrameDelta`'s own measurements recorded a pin of 0.0166666 with `Game.elapsed` reading exactly that and `timeTotal` advancing 0.0070 per frame. `playbackcheck` holds that `FrameDelta.apply()` reaches it. |
+| `RandomTrace.siteLog()`, `RandomTrace.generatorLog()` | The ordered forms of the two things `RandomTrace` already counted. A count says a stream is offset; a tally says by how much and roughly where; neither can say *where two runs of one seed stopped agreeing*, because both are unordered and two runs that part at the first draw of floor 2 still report identical totals afterwards. The first keeps every attributed draw site in draw order; the second records every `pushGenerator` / `popGenerator` / `reseedBase` / `resetGenerators` with the base generator's draw count and fingerprint at that moment. Off unless counting is on, and each event names the frame outside the RNG that caused it. This is the instrument `issues.md` 37, 18 and 38 were all blocked on, and `reprocheck --args="diff"` is the comparison that uses it. |
 
 ## 2. Null-tolerance for a bypassed renderer
 
@@ -174,6 +175,16 @@ and it is where an offset introduced before playback begins appears with nothing
 rather than by `!useGeneratorStack`; an earlier version used the latter, which on an empty stack
 classified every ordinary gameplay draw as *non*-base and left `baseDraws` at zero for entire runs —
 reading exactly like a simulation that consumes no randomness at all.
+
+**`RandomTrace` gained an ordered site log and a generator-stack log, and `Random`'s five
+generator-management methods report themselves to it.** Neither changes which value comes out of
+anything; the second is five calls into a method that returns `if (!enabled)`, and the first is a
+list append beside the tally the class was already building. The reason is that the third instance of
+this project's recurring fault — two runs of one seed agreeing on every count and differing in fact
+— is not visible to a count. `issues.md` 38 is the worked example: a fresh JVM and a warm one
+reported the same `baseDraws` at every generator event that mattered, and the difference was *which
+call sites had been reached*, which is an ordering question. `observecheck` holds both halves: one
+entry per draw with none unnamed, and an empty log while counting is off.
 
 ## 6. Gated, so none of this can come back silently
 

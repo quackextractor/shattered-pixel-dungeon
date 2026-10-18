@@ -684,17 +684,85 @@ reports. `rngtrace` confirms the line is reached.
 **This is what `issues.md` 37 and 18 have both been asking for since they were filed:** not the site
 where an offset becomes visible, which was never the question, but a measurement that *can* name one.
 
-**It is not the cause, and this does not close either entry.** The draw lands on the other side of
+**It is not the cause, and this does not close either entry.** ~~The draw lands on the other side of
 0.667 because floor 2's per-floor generator is at a different position when the floor is built. That
 generator is pushed and seeded from the run seed, so its starting position depends on draws made
-before the push, and that is what still differs. The three verifications inside one process agree
-exactly with each other, so **the verification does not perturb anything** - it is whatever the
-recording episode left behind.
+before the push, and that is what still differs.~~ **That reasoning was wrong and the measurement
+below refutes it:** the floor's generator is seeded from the run seed and therefore cannot depend on
+the base stream at all, and the base stream is in fact level at the moment floor 2 is built. The three
+verifications inside one process agree exactly with each other, so **the verification does not perturb
+anything** - it is whatever the recording episode left behind.
 
 **The next measurement** is one counter in one place: the base-stack draw position immediately before
 `Dungeon.seedForDepth` pushes floor 2's generator, dumped in both modes and diffed.
 
 Evidence: `out/evidence/issue-38-underfoot-pickup/call-site.md`.
+
+### The measurement, and the line it names - **diagnosed**
+
+`RandomTrace` now keeps the **order** of every attributed draw and a **generator-stack log**: every
+`pushGenerator`, `popGenerator`, `reseedBase` and `resetGenerators`, with the base generator's draw
+count and fingerprint at that moment. `reprocheck --args="diff"` compares two verifications' dumps and
+reports the first entry at which they part. Neither is a count, and that is the point -
+`ENGINE-CHANGES.md` §5.
+
+Run on a tree carrying the declined `INTERACT` own-cell change, which is what makes the hero collect
+floor 2's guidebook page and mark it found. Fresh process against a warm one:
+
+```
+generator event 43, identical on both sides - floor 2's own generator is popped
+  baseDraws=542  baseFingerprint=4108875478584261044  from=Level.create:334
+
+generator event 44, the first that differs - 4 base draws spent between them against 2
+  fresh   baseDraws=546
+  warm    baseDraws=544
+```
+
+**The base stream is level**, which refutes the paragraph above and is why the fault was not where
+this entry had been looking. The ordered draw log parts **at entry 1563 of 40,919**:
+
+```
+  1562  both    Dungeon.seedForDepth:429
+  1563  fresh   EntranceRoom.placeEarlyGuidePages:125
+  1563  warm    RegularPainter.placeDoors:178
+```
+
+`EntranceRoom.placeEarlyGuidePages:121`:
+
+```java
+if (Dungeon.depth == 2 && !Document.ADVENTURERS_GUIDE.isPageFound(Document.GUIDE_SEARCHING)){
+```
+
+`Document` is an **enum**, and `pagesStates` is a **process static that `Dungeon.init()` never
+clears**. Collecting the page marks it found, so the first episode in a process builds floor 2 with it
+and every episode after that builds floor 2 without it - a different floor. `RegularLevel.createItems:
+559-584` then drops a different guidebook page over that floor, because `missingPages` comes from the
+same map and the drop is `missingPages.get(0)` onto a cell that may be high grass.
+
+`reprocheck` reads the map after every verification:
+
+```
+fresh, first verification   diverged=false, steps 357, base draws 976, ordered 40,919
+fresh, second verification  diverged=true at step 256, base draws 544, ordered 12,781
+poisoned, both              diverged=true at step 256, identical to each other
+
+guide pages found, every side, at the end:
+  {Intro=0, Examining=2, Surprise_Attacks=1, Identifying=1, Food=1, Alchemy=1, Dieing=1,
+   Searching=1, Strength=0, Upgrades=0, Looting=0, Levelling=0, Positioning=0, Magic=0}
+```
+
+**The end state is the same on every side.** Only the instant floor 2 was built differs: in the fresh
+process `Searching` was still `0` when floor 2 was generated, and by the second verification the hero
+had collected it. `0` is `NOT_FOUND` and `1` is `FOUND` in `Document`'s own scale.
+
+**It is the same shape as every other fault this project has recorded:** a process static that a reset
+does not reach, consulted by level generation. `Dungeon.init()` clears `Statistics`, `Notes`, `gold`,
+`generatedLevels`, `LimitedDrops`, the four quest states and `Badges`; `RunState` clears the armed aim,
+the parked dialog, the pending item and a dead hero's remains. **Nothing clears any `Document`**, and
+`Document` is read by `RegularLevel.createItems`, `RegularPainter.paint`, `EntranceRoom` and the whole
+of the game's guidebook flow. `issues.md` 18 and 37 are both this.
+
+Evidence: `out/evidence/issue-38-guidebook/named.txt`.
 
 ### Not shipped
 

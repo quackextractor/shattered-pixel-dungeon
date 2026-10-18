@@ -1,0 +1,59 @@
+# issues.md 38 - the call site, named
+#
+# ordered draw log and generator-stack log, produced by
+#   ./gradlew :superintelligence:reprocheck --rerun-tasks
+#   ./gradlew :superintelligence:reprocheck --args=baseline --rerun-tasks
+#   ./gradlew :superintelligence:reprocheck --args=diff
+# on a tree carrying the declined INTERACT own-cell change, which is what makes the
+# hero pick floor 2's guidebook page up and mark it found for the rest of the process.
+
+## the base stream is level when floor 2's own generator is popped
+
+generator event 43, identical on both sides:
+  baseline: 43	pop depth=1  baseDraws=542 baseFingerprint=4108875478584261044 from=com.shatteredpixel.shatteredpixeldungeon.levels.Level.create:334
+  first   : 43	pop depth=1  baseDraws=542 baseFingerprint=4108875478584261044 from=com.shatteredpixel.shatteredpixeldungeon.levels.Level.create:334
+
+generator event 44, the first that differs - baseline spends 4 base draws between
+the two events and first spends 2:
+  baseline: 44	push depth=2 seed=-3108582593280525208 baseDraws=546 baseFingerprint=-4019902999738873991 from=com.shatteredpixel.shatteredpixeldungeon.items.Generator.random:713
+  first   : 44	push depth=2 seed=5006396653022 baseDraws=544 baseFingerprint=-2303281960932621028 from=com.shatteredpixel.shatteredpixeldungeon.Dungeon.seedForDepth:424
+
+## the ordered draw log parts at entry 1563 of 40919
+
+  1560  baseline: com.shatteredpixel.shatteredpixeldungeon.Dungeon.seedForDepth:427
+  1560  first   : com.shatteredpixel.shatteredpixeldungeon.Dungeon.seedForDepth:427
+  1561  baseline: com.shatteredpixel.shatteredpixeldungeon.Dungeon.seedForDepth:427
+  1561  first   : com.shatteredpixel.shatteredpixeldungeon.Dungeon.seedForDepth:427
+  1562  baseline: com.shatteredpixel.shatteredpixeldungeon.Dungeon.seedForDepth:429
+  1562  first   : com.shatteredpixel.shatteredpixeldungeon.Dungeon.seedForDepth:429
+  1563  baseline: com.shatteredpixel.shatteredpixeldungeon.levels.rooms.standard.entrance.EntranceRoom.placeEarlyGuidePages:125
+  1563  first   : com.shatteredpixel.shatteredpixeldungeon.levels.painters.RegularPainter.placeDoors:178
+  1564  baseline: com.shatteredpixel.shatteredpixeldungeon.levels.rooms.standard.entrance.EntranceRoom.placeEarlyGuidePages:126
+  1564  first   : com.shatteredpixel.shatteredpixeldungeon.levels.painters.RegularPainter.placeDoors:178
+  1565  baseline: com.shatteredpixel.shatteredpixeldungeon.levels.painters.RegularPainter.placeDoors:178
+  1565  first   : com.shatteredpixel.shatteredpixeldungeon.levels.painters.RegularPainter.placeDoors:178
+  1566  baseline: com.shatteredpixel.shatteredpixeldungeon.levels.painters.RegularPainter.placeDoors:178
+  1566  first   : com.shatteredpixel.shatteredpixeldungeon.levels.painters.RegularPainter.placeDoors:178
+
+  baseline places floor 2's guidebook page and first does not, because
+  EntranceRoom.placeEarlyGuidePages:121 asks a process-wide question:
+    if (Dungeon.depth == 2 && !Document.ADVENTURERS_GUIDE.isPageFound(Document.GUIDE_SEARCHING)){
+
+## the state that decides it, read after each verification
+
+fresh process, first verification - reproduces, floor 2 carries the page:
+  diverged=false, steps 357, base draws 976, ordered draws 40919, generator events 168
+  secrets per region: 1,2,3,3,3
+  guide pages found: {Intro=0, Examining=2, Surprise_Atacks=1, Identifying=1, Food=1,
+                     Alchemy=1, Dieing=1, Searching=1, Strength=0, Upgrades=0, Looting=0,
+                     Levelling=0, Positioning=0, Magic=0}
+
+same process, second verification - diverges, floor 2 no longer carries it:
+  diverged=true at step 256 - position: replayed 500, recorded 1301
+  secrets per region: 2,2,3,3,3
+  guide pages found: identical to the line above
+
+  The end state is the same on every side; only the instant floor 2 was built differs.
+  In the fresh process Searching was still 0 when floor 2 was generated, so the page was
+  dropped; by the second verification the hero had collected it, so it was not. 0 is
+  NOT_FOUND and 1 is FOUND in Document's own scale.
