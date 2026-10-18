@@ -9,6 +9,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Measured
+- **`TODO.md` §1, measured twice more: the size of the stair potential is not what stands
+  between this policy and a descent.** Two 30-generation runs, 8 workers x 4 episodes, 4 update
+  threads, seed 20261016, `train.random_seed_rate=0`, `reward.profile=default`, one variable
+  between them.
+
+  | | shipped (`reward.stair_potential_weight` 2.0) | A/B (10.0) |
+  | --- | --- | --- |
+  | `meanScore`, gen 0-14 → 15-29 | -4097.73 sem 30.6 → -4095.34 sem 32.5, **+2.39 +/- 44.6** | -3948.79 sem 29.1 → -4000.07 sem 25.4, **-51.28 +/- 38.6** |
+  | `meanObjectiveScore` | **-115.34 +/- 48.4** | **-214.14 +/- 42.8** |
+  | `depth>=2` | **0.0% → 0.0%** | **0.0% → 0.0%** |
+  | last generation | -4065.68, 799.8 turns, `bestDepth` 1 | -4060.61, 838.9 turns, `bestDepth` 1 |
+
+  **Five times the shaping and still 0 of 960 episodes reach floor 2.** The score trend is flat
+  in the shipped run and flat-to-negative in the A/B, so the `-182.32 +/- 56.4` this changelog
+  recorded did not reproduce either - two samples of one configuration, neither clearing its own
+  error bar, with the objective window **2.4 and 5 sigma worse** in both. That last movement is
+  the one that has now repeated, and it is worth saying plainly: the objective is getting worse,
+  not better, at the same time as the shaped terms improve.
+
+  A shaping term that goes five times more valuable and moves nothing says the policy is not
+  responding to its **direction**. And it cannot: `StairPotential` is the negative breadth-first
+  distance to the stairs across the whole floor, `obs.GridChannel.EXIT_BEACON` lights only once
+  they have been in view - deliberately not from generation, since painting it from the start
+  hands over the objective - so the term pays for progress towards something the observation does
+  not carry. The episode's total cannot distinguish a hero who walked straight at the exit from one
+  that drifted and finished nearer.
+
+  That is an observation question, not a reward question, and it is the sharpened form of
+  `TODO.md` §1. `reward.stair_potential_weight` stays at 2.0: the measurement is why, and
+  `REJECTED.md` records the decline with the numbers. Evidence
+  `out/evidence/descend-30-ab.txt`, CSVs beside it.
 ### Fixed
 - **`stallcausecheck`'s sub-mode rows asserted an outcome rather than the property.** Both rows
   drove a uniform policy and read off *which guard ended the episode*: the loose mask must reach

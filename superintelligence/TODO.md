@@ -15,14 +15,28 @@ shaped terms improved by about +72 an episode and the 216 extra turns consumed a
 starts: **the policy does not fail to want the stairs, it fails to walk to them.** The earlier
 `+134.49 +/- 52.4` did not reproduce, so a 30-generation run on this configuration does not clear its
 own error bar in either direction. Numbers and method: `CHANGELOG.md`; evidence
-`out/evidence/descend-30.csv`.
+`out/evidence/descend-30.csv`. **A third run since then is flat at `+2.39 +/- 44.6`** and five times
+the stair potential is also flat, so the entry below has been rewritten around what the measurement
+actually rules out.
 
 - [ ] **Teach it to walk to the stairs.** `issues.md` 37 is closed and the divergence entries are
-      gone, so nothing stands between a run and a measurement any more. The open question is what
-      moves a policy that already survives floor 1 onto the stairs: a curriculum, a larger
-      `reward.stair_potential_weight`, or `depth_only` as a training default. Each is one knob and
-      one 30-generation run against this same error bar, and the answer is whichever moves
-      `depth>=2` in **episodes**. `issues.md` 20 carries the arithmetic.
+      gone, so nothing stands between a run and a measurement any more - and two measurements
+      have been taken. The shipped configuration is **flat**: `meanScore` **+2.39 +/- 44.6** over
+      30 generations, so the `-182.32 +/- 56.4` this file quoted did not reproduce either, and
+      `depth>=2` is **0 of 960 episodes**. `reward.stair_potential_weight` at **10.0** - five times
+      the shipped weight, the only dense term that pays for walking towards the exit - is also
+      **0 of 960**, with the objective window **5 sigma worse**. Numbers and method:
+      `CHANGELOG.md` and `REJECTED.md`; evidence `out/evidence/descend-30-ab.txt`.
+
+      So the reward is not the lever, and the next question is the observation: `StairPotential` is
+      the breadth-first distance to stairs the hero has usually never seen, and `EXIT_BEACON` lights
+      only once they have been in view. The term pays for progress towards something the observation
+      does not carry, which is why five times more of it moves nothing. The lever is an ego-centred
+      grid, or a beacon that survives the window edge, and both are declined in `REJECTED.md` with
+      their own triggers - so the next step is a measurement of **how often the policy's episodes
+      end nearer the stairs than they started**, against a random walk over the same floors. If the
+      policy is already better than random at closing the gap, the reward is being read and the
+      problem is elsewhere; if it is not, the observation is the thing.
 
 ## 2. Reward signals
 

@@ -12,6 +12,36 @@ obstruction was `issues.md` 38 and the fixture `issues.md` 26 was diagnosed agai
 Two lines in `ActionMapper`, a regenerated corpus, `rewardcheck` at 35 cases and `:desktop:viewcheck`
 at 20 of 20. Its reasoning is in `CHANGELOG.md`.
 
+## Raising `reward.stair_potential_weight`
+
+**Proposed by** `TODO.md` §1, as the dense term that pays for walking towards the exit. **Declined
+on measurement: 5x the weight, 0 of 960 episodes reach floor 2.**
+
+| | shipped (2.0) | A/B (10.0) |
+| --- | --- | --- |
+| `meanScore` gen 0-14 → 15-29 | +2.39 +/- 44.6 | -51.28 +/- 38.6 |
+| `meanObjectiveScore` | -115.34 +/- 48.4 | **-214.14 +/- 42.8** |
+| `depth>=2` | 0.0% → 0.0% | 0.0% → 0.0% |
+
+Both runs are 30 generations, 8 workers x 4 episodes, 4 update threads, seed 20261016,
+`train.random_seed_rate=0`, `reward.profile=default`, one variable between them. Evidence
+`out/evidence/descend-30-ab.txt`.
+
+The term is potential-based, so it telescopes: an episode's total is `weight x (distance at the
+start - distance at the end)`, and five times the weight multiplies that difference rather than
+creating one. The objective window getting **5 sigma worse** while the shaping improves is what a
+term produces when the policy is not exploiting it, and `depth>=2` staying at zero is the direct
+answer: the policy does not respond to the direction of the gradient at all.
+
+**It cannot respond to it.** The potential is the breadth-first distance to the stairs across the
+whole floor, and `obs.GridChannel.EXIT_BEACON` lights only once they have been in view - not from
+generation, because painting it from the start would hand the objective over. So the term pays for
+progress towards something the observation does not carry.
+
+**Revisit when** the observation carries the stairs further than "seen once" - an ego-centred grid,
+or a beacon that survives the window edge - which is the ego-centring entry below and its own
+trigger.
+
 ## A native or ONNX runtime for the learner
 
 **Proposed by** the external code review, as a native or ONNX learner. **Not attempted.**

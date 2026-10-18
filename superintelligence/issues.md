@@ -25,7 +25,13 @@ Measured on the same 30-generation run (30 generations, 16 workers x 4 episodes,
 | 20 | -3471.4 | 1.00 | 1 | 209 | death 64 |
 | 29 | -4156.2 | 1.00 | 1 | 363 | death 64 |
 **`bestDepth 2` in 5 of 31 generations, all of them before generation 12, and 100% of episodes dead from
-**Re-measured 2026-10-18, after the guide-page fix, and the conclusion is unchanged.** 30 generations on the re-measurement's exact configuration: DEATH 56% in both windows, STALLED 6% in both, so **a third of every generation now ends on the turn limit**, meanTurns 542.79 -> 758.65, and depth>=2 **0 of 960**. The policy is learning to live longer rather than to descend, which is this entry's arithmetic arriving from the other side. CHANGELOG.md, evidence out/evidence/descend-30.csv.
+**Re-measured twice more, 2026-10-18, and the conclusion is unchanged.** The shipped configuration
+is **flat**: `meanScore` **+2.39 +/- 44.6** over 30 generations, so the `-182.32 +/- 56.4` recorded
+above did not reproduce either, and `depth>=2` is **0 of 960**. `reward.stair_potential_weight` at
+10.0 - five times the shipped weight - is **also 0 of 960**, with the objective window **5 sigma
+worse**. So the depth-only arithmetic is not the whole story and the reward is not the lever; the
+term pays for progress towards stairs the observation does not carry. CHANGELOG.md and
+REJECTED.md, evidence out/evidence/descend-30-ab.txt.
 
 **Why, and it is arithmetic rather than a mystery.** With nothing but the objective paying, the only
 **So `depth_only` is a diagnostic profile and not a training default.** It answers the question the

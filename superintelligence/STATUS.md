@@ -96,6 +96,37 @@ contributed that nothing else had was two plans this cycle would not otherwise h
 `randomtrace` attribution inside the worker for Plan 1, and a hero-damage tripwire for Plan 2 - and
 Plan 8, the trainer UI, which `REJECTED.md` declines and which therefore left `TODO.md` entirely.
 
+## 2026-10-18 (second loop) — the two divergence entries closed, and the descent question narrowed
+
+Both open engine entries closed, each on a measurement rather than a hypothesis, and each by the
+same instrument: `RandomTrace.siteLog()`, the ordered draw log, written by **both** environments
+for the first time (`replay.RngOrderLog` is the one format they share, and `reprocheck cross` diffs
+any two).
+
+- **`issues.md` 26.** One snake attack landed on both sides at `turn=91.0` with the hero at 7 HP
+  and the number arriving at `Char.damage` was 0 against 1. The two ordered logs agree for 460 draws
+  and then the headless side spends one gameplay value the rendered side does not, at a scroll read:
+  `HeadlessSprite$Inert.start` was compensating for a particle emitter on the **gameplay** stream
+  where `Emitter.start` draws from `PRandom`. The reasoning that put it there — a stand-in should
+  consume the same number of values as the thing it replaces — consumed the same number on the wrong
+  stream, which is worse than either error alone. `:desktop:viewcheck` is **20 of 20**.
+- **`issues.md` 37.** `--rng-trace-dir` gives the worker its own ordered log, which is the only
+  instrument in this project that reads across a process boundary. The two agreed for 705 of 712
+  draws and then part at the hero's death: `Bones.leave` draws once per item for a **random**-seed
+  episode and not at all for a **custom**-seed replay of it. Death paperwork was being compared as
+  gameplay.
+
+The generalisation this time is about gates rather than instruments: **`stallcausecheck`'s
+sub-mode rows asserted an outcome, not the property.** They drove a uniform policy and read off which
+guard ended the episode, which held only because a hero that could not pick up what it walks over
+rarely wandered into a free-action loop on its own. The moment `INTERACT` reached the underfoot heap
+— a change that did not touch the mask at all — the row went red. Both rows now measure the mask's
+actual promise: nothing usable in the pack, no sub-mode entry offered. 6 offered with the flag off,
+0 with it on, and the mutation test says what it holds.
+
+`regenerate-corpus.ps1` also turned out to delete three corpus members and not rebuild them, so a
+regeneration reported 17 of 20 and every reader would have read that as a regression.
+
 ## 12.2 — one deviation to declare
 
 The user's instruction is not to label source comments with `Fix x:` / `plan x:` / `item x:`. Nothing
