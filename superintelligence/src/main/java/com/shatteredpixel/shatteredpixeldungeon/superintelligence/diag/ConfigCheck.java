@@ -24,7 +24,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Co
 
 public class ConfigCheck {
 
-	private static final int CHECKS = 14;
+	private static final int CHECKS = 15;
 
 	public static void main( String[] args ) throws IOException {
 		if (args.length > 0 && (args[ 0 ].equals( "--verbose" ) || args[ 0 ].equals( "-v" ) )){
@@ -49,6 +49,7 @@ checkOutputPathsFollowTheWorkingDirectory();
 		ConfigPathCheck.checkTheBuildScriptReadsTheHeapItDocuments();
 		ConfigPathCheck.checkEveryPathIsReportedAbsolute();
 		ConfigPathCheck.checkARelativePathResolvesAgainstTheRepository();
+		ConfigPathCheck.checkTheTrainerResolvesItsOwnPathsToo();
 
 		if (ConfigDefaults.failures.isEmpty()){
 			System.out.println( "[OK]     configuration binding: " + CHECKS + " checks passed" );

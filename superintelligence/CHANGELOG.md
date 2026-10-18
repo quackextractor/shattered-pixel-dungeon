@@ -160,6 +160,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   block fails the second.
 
 ### Fixed
+- **A documented `--out` wrote into a nested copy of the module directory.** The trainer's own
+  option parser resolved `--out`, `--replay-dir`, `--metrics`, `--save` and `--resume` with
+  `new File( value )`, which is relative to the process working directory - and under `gradle` that
+  is the **module** directory. `CliOptions`, the rollout command's parser, already resolved the same
+  five from the repository root, and `configcheck` held a case proving it. **That is why it was
+  missed**: the gate covered the parser that had been fixed and not the one beside it.
+
+  Measured on a two-generation run given the invocation `review.md` and `CHANGELOG.md` both
+  document:
+
+  ```
+  --out superintelligence/out/evidence/issue-37-recheck
+
+  before  C:\...\shattered-pixel-dungeon\superintelligence\superintelligence\out\evidence\...
+  after   C:\...\shattered-pixel-dungeon\superintelligence\out\evidence\...
+  ```
+
+  `TrainOptions` now calls `CliOptions.resolve`, so there is one rule with one implementation, and
+  `configcheck` is **15 cases**: the new one asserts all five of the trainer's path flags resolve
+  from the repository root and names the measured nesting in its failure message. Mutation-tested by
+  putting `new File` back on `--out`, which fails it naming `--out -> superintelligence\out\evidence\
+  probe`.
 - **`issues.md` 18: `rolloutcheck` is green 8 times out of 8 after the guide-page fix.** Eight
   consecutive runs with `--rerun-tasks` each, against **1 failure in 8** measured three separate
   times before it. The failing case was `checkRandomSeedRecordingVerifies` every time, and the

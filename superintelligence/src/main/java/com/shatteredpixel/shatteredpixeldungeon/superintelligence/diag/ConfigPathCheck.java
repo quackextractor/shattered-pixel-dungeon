@@ -138,4 +138,52 @@ public final class ConfigPathCheck {
 		System.out.println( "  a relative path on the command line resolves from the repository root ("
 				+ root + "), not from whichever directory the process was started in" );
 	}
+
+
+	public static void checkTheTrainerResolvesItsOwnPathsToo(){
+		File root = com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer
+				.replayDirDefault().getParentFile();
+
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TrainOptions options;
+		try {
+			options = com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TrainOptions
+					.parse( new String[]{
+							"--out", "superintelligence/out/evidence/probe",
+							"--replay-dir", "superintelligence/trainer-replays/probe",
+							"--metrics", "superintelligence/out/evidence/probe/metrics.csv",
+							"--save", "superintelligence/out/evidence/probe/weights.bin",
+							"--resume", "superintelligence/out/evidence/probe/weights.bin" } );
+		} catch (IOException e){
+			fail( "the trainer's own option parser threw on five well-formed relative paths ("
+					+ e.getMessage() + "), so this case cannot say what it resolves them to" );
+			return;
+		}
+
+		java.util.List< String > wrong = new java.util.ArrayList<>();
+		if ( !under( options.workDir, root )) wrong.add( "--out -> " + options.workDir );
+		if ( !under( options.replayDir, root )) wrong.add( "--replay-dir -> " + options.replayDir );
+		if ( !under( options.metricsCsv, root )) wrong.add( "--metrics -> " + options.metricsCsv );
+		if ( !under( options.save, root )) wrong.add( "--save -> " + options.save );
+		if ( !under( options.resume, root )) wrong.add( "--resume -> " + options.resume );
+
+		if (!wrong.isEmpty()){
+			fail( "the trainer's own option parser left these paths relative, so they resolve against "
+					+ "the process working directory - the module directory under gradle: "
+					+ String.join( ", ", wrong ) + ". The rule is one rule and the rollout command's "
+					+ "parser already follows it (checkARelativePathResolvesAgainstTheRepository); the "
+					+ "trainer's did not, and a documented invocation naming "
+					+ "'superintelligence/out/...' wrote it to 'superintelligence/superintelligence/out/...'. "
+					+ " Measured on a two-generation run." );
+			return;
+		}
+
+		System.out.println( "  all five of the trainer's path flags resolve from the repository root ("
+				+ root + "), not only the rollout command's" );
+	}
+
+
+	private static boolean under( File path, File root ){
+		if (path == null || !path.isAbsolute() || root == null) return false;
+		return path.getPath().startsWith( root.getPath() );
+	}
 }

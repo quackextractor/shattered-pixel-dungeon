@@ -143,8 +143,8 @@ public class TrainOptions {
 				case "--seed":        o.seed = Long.parseLong( value( args, at )); i++; break;
 				case "--java-home":   o.javaHome = value( args, at ); i++; break;
 				case "--classpath":   o.classpath = value( args, at ); i++; break;
-				case "--out":         o.workDir = new File( value( args, at )); i++; break;
-				case "--replay-dir":   o.replayDir = new File( value( args, at )); i++; break;
+				case "--out":         o.workDir = resolve( value( args, at )); i++; break;
+				case "--replay-dir":   o.replayDir = resolve( value( args, at )); i++; break;
 				case "--replay-group": o.replayGroup = value( args, at ); i++; break;
 				case "--record-every": o.recordEvery = Integer.parseInt( value( args, at )); i++; break;
 				case "--stall-seconds":
@@ -159,12 +159,12 @@ public class TrainOptions {
 					o.maxSampledPerEpisode = Integer.parseInt( value( args, at )); i++; break;
 				case "--max-samples":
 					o.maxSamplesPerGeneration = Integer.parseInt( value( args, at )); i++; break;
-				case "--metrics":     o.metricsCsv = new File( value( args, at )); o.metricsGiven = true; i++; break;
+				case "--metrics":     o.metricsCsv = resolve( value( args, at )); o.metricsGiven = true; i++; break;
 				case "--trace-world":
 
 					o.traceWorld = value( args, at ); i++; break;
-				case "--save":        o.save = new File( value( args, at )); o.saveGiven = true; i++; break;
-				case "--resume":      o.resume = new File( value( args, at )); i++; break;
+				case "--save":        o.save = resolve( value( args, at )); o.saveGiven = true; i++; break;
+				case "--resume":      o.resume = resolve( value( args, at )); i++; break;
 				case "--checkpoint-every":
 					o.checkpointEvery = Integer.parseInt( value( args, at )); i++; break;
 				default:
@@ -219,6 +219,14 @@ public class TrainOptions {
 				? Long.MAX_VALUE
 				: availableMemoryBytes() / (1200L * 1024 * 1024);
 		return (int) Math.max( 1, Math.min( cores, budget ) );
+	}
+
+
+	/** A path given on the command line, resolved from the repository root rather than from wherever
+	 *  the process was started. CliOptions.resolve is the same rule for the rollout command. */
+	static File resolve( String path ){
+		return com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.CliOptions
+				.resolve( new File( path ));
 	}
 
 
