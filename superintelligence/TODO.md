@@ -40,13 +40,14 @@ actually rules out.
 
 ## 2. Reward signals
 
-- [ ] **Coverage of the terms that fire.** `KILL`, `GOLD_GAIN` and `ITEM_PICKUP` are all proven to
-      fire and a trainer run reports 6-9 kills and 100-188 pickups per generation. What is left is
-      whether an untrained policy gets there on its own. **Both blockers are gone**: `issues.md` 38
-      closed on the guide page, and the own-cell `INTERACT` that `REJECTED.md` deferred is now
-      shipped with the corpus regenerated on the new semantics. `INTERACT` reaches the heap the hero
-      is standing on, which is the only way a dropped item ever becomes carried, and `rewardcheck`
-      holds it.
+- [x] ~~**Coverage of the terms that fire.**~~ **Closed by measurement.** `KILL`, `GOLD_GAIN` and
+      `ITEM_PICKUP` all fire under an **untrained** policy - 87 and 30 kills, 0 and 3 gold, 1441 and
+      1743 pickups across two 32-episode generations - so the item and combat shaping is reachable
+      without training and the blockers were never wiring. `TALENT_UPGRADE` and `CRAFTED` never fire
+      because the first talent point arrives at level 2 and no episode stood beside an alchemy pot;
+      both are driven and paid in `rewardcheck` and `freeactioncheck`, so they are unreachable rather
+      than dead, and both become live the moment the policy descends. Numbers and method:
+      `CHANGELOG.md`; evidence `out/evidence/untrained-coverage.txt`.
 - [ ] **The shaping fade has never faded anything.** Wired and measured - 0.6064 at depth 6 - but it
       starts at depth 3 and no run has passed floor 2. The fix is an agent that descends, not a
       retune.

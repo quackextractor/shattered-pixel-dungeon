@@ -10,6 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Measured
+- **`TODO.md` §2 closed: the item and combat shaping is reachable without training.** Two
+  generations, 8 workers x 4 episodes, 4 update threads, seed 20261016, `--record-every 1`, and
+  generation 0 scored by an **untrained** policy — the first update lands after it.
+
+  | | `KILL` | `GOLD_GAIN` | `ITEM_PICKUP` | `TALENT_UPGRADE` | `CRAFTED` |
+  | --- | --- | --- | --- | --- | --- |
+  | generation 0 | 87 | 0 | 1441 | 0 | 0 |
+  | generation 1 | 30 | 3 | 1743 | 0 | 0 |
+
+  So the question the entry carried — "whether an untrained policy gets there on its own" — has its
+  answer: yes for all three terms that carry the item and combat shaping, and 45 to 55 pickups an
+  episode is not a rounding error. `TALENT_UPGRADE` and `CRAFTED` never fire, and both are
+  **unreachable rather than dead**: `rewardcheck` and `freeactioncheck` drive each and measure what
+  it pays, and both become live the moment the policy reaches level 2 or stands beside a pot. That
+  is the same shape as `issues.md` 26 and 37 — what looked like a wiring fault was a reachability
+  question, and a measurement was needed to say so. Evidence `out/evidence/untrained-coverage.txt`.
 - **`TODO.md` §1, measured twice more: the size of the stair potential is not what stands
   between this policy and a descent.** Two 30-generation runs, 8 workers x 4 episodes, 4 update
   threads, seed 20261016, `train.random_seed_rate=0`, `reward.profile=default`, one variable

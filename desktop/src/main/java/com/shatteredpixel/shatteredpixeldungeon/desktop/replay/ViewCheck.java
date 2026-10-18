@@ -357,15 +357,6 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 	}
 
 
-	/**
-	 * A copy of a committed recording whose step {@link #ALTERED_STEP} claims a cell the hero never
-	 * stood on, so the viewer has something to diverge from.
-	 *
-	 * <p>Built here rather than committed, and that is the point: the corpus is green because this
-	 * fault is fixed, so a recording that diverges in the viewer no longer exists in it. A flag whose
-	 * only fixture was a live defect stops being measured the day the defect closes, which is the
-	 * opposite of what a gate is for.
-	 */
 	private static File divergedCopy( File source ){
 		Replay replay;
 		try {
