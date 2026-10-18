@@ -169,6 +169,8 @@ private static final String SAVED =
 
 		Replay replay = ReplayIO.read( replayFile );
 
+		final boolean stepWindowTraced = replay.recordsRngFingerprint();
+
 		RandomTrace.enable();
 		RandomTrace.reset();
 		RandomTrace.attribute();
@@ -185,10 +187,7 @@ private static final String SAVED =
 						generationPushes.addAll( RandomTrace.generatorLog() );
 					}
 					@Override public void onStep( int index, Replay.Step step, boolean running ){
-						if (index == 1){
-							RandomTrace.reset();
-							RandomTrace.enable();
-						}
+						if (!stepWindowTraced) RandomTrace.enable();
 					}
 				} );
 
@@ -199,7 +198,7 @@ private static final String SAVED =
 		RandomTrace.disable();
 
 		RngOrderLog.write( prefix + ".gen", generation, generationPushes );
-		RngOrderLog.writeCurrent( prefix + ".all" );
+		if (stepWindowTraced) RngOrderLog.writeCurrent( prefix + ".all" );
 
 		System.out.println( "headless " + replay.seedText + " " + replay.heroClass + ": diverged="
 				+ result.diverged + (result.diverged ? " at step " + result.divergedAt + " - "

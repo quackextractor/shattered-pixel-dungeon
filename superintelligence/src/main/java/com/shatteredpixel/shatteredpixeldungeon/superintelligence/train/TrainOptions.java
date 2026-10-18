@@ -76,6 +76,7 @@ public class TrainOptions {
 
 	public File metricsCsv;
 	public String traceWorld = null;
+	public java.io.File rngTraceDir = null;
 
 
 	public File save;
@@ -163,6 +164,9 @@ public class TrainOptions {
 				case "--trace-world":
 
 					o.traceWorld = value( args, at ); i++; break;
+				case "--rng-trace-dir":
+
+					o.rngTraceDir = resolve( value( args, at )); i++; break;
 				case "--save":        o.save = resolve( value( args, at )); o.saveGiven = true; i++; break;
 				case "--resume":      o.resume = resolve( value( args, at )); i++; break;
 				case "--checkpoint-every":

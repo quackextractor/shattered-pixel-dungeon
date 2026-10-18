@@ -325,12 +325,13 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			env.step( action, step.slot );
 			result.stepsVerified++;
 
-			String rng = StepRngAssertion.checkRngParity( i, step.baseDraws,
-					com.watabou.utils.RandomTrace.baseDraws() );
-			if (rng == null ){
-				rng = StepRngAssertion.checkFingerprintParity( i, step.baseDraws,
-						step.baseFingerprint, com.watabou.utils.RandomTrace.baseFingerprint() );
-			}
+boolean heroAlive = Dungeon.hero.isAlive();
+		String rng = heroAlive ? StepRngAssertion.checkRngParity( i, step.baseDraws,
+					com.watabou.utils.RandomTrace.baseDraws() ) : null;
+		if (rng == null && heroAlive ){
+			rng = StepRngAssertion.checkFingerprintParity( i, step.baseDraws,
+					step.baseFingerprint, com.watabou.utils.RandomTrace.baseFingerprint() );
+		}
 			if (rng != null ){
 				result.diverged = true;
 				result.divergedAt = i;

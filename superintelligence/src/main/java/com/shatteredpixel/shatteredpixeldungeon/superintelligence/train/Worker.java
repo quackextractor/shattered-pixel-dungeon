@@ -17,6 +17,8 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 
@@ -29,6 +31,9 @@ private EnvConfig config;
 	private Network network;
 	private EpisodeCollector collector;
 	private SPDEnv env;
+	private String rngTraceDir = "";
+	private final List< String > generation = new ArrayList<>();
+	private final List< String > generationPushes = new ArrayList<>();
 
 	private final ReplayRecorder recorder = new ReplayRecorder();
 
@@ -75,6 +80,7 @@ private EnvConfig config;
 		float lambda = in.readFloat();
 
 		String traceWorld = in.readUTF();
+		rngTraceDir = in.readUTF();
 		float sampleRate = in.readFloat();
 		int maxSampledPerEpisode = in.readInt();
 		int tailSteps = in.readInt();
@@ -102,8 +108,23 @@ private EnvConfig config;
 
 		ResourceStats.Interval work = ResourceStats.start();
 
+		boolean tracing = rngTraceDir != null && !rngTraceDir.isEmpty();
+
+		if (tracing){
+			com.watabou.utils.RandomTrace.enable();
+			com.watabou.utils.RandomTrace.reset();
+			com.watabou.utils.RandomTrace.attribute();
+		}
+
 		collector.listener( new EpisodeCollector.Listener() {
 			@Override public void onEpisodeStart( String seedText, String hero ){
+
+				if (tracing){
+					generation.clear();
+					generation.addAll( com.watabou.utils.RandomTrace.siteLog() );
+					generationPushes.clear();
+					generationPushes.addAll( com.watabou.utils.RandomTrace.generatorLog() );
+				}
 
 				recorder.begin( seedText, hero, 0, config.turnLimitPerFloor, config );
 			}
@@ -119,6 +140,8 @@ private EnvConfig config;
 		} );
 
 		EpisodeRecord record = collector.run( env, seed, heroClass );
+
+		if (tracing) writeOrderedLogs( env.seedText() );
 
 		work.stop();
 
@@ -162,6 +185,29 @@ private EnvConfig config;
 
 	private void writeReplay( Replay replay ) throws IOException {
 		ReplayCodec.write( out, replay );
+	}
+
+
+	private void writeOrderedLogs( String seed ){
+		java.io.File dir = new java.io.File( rngTraceDir );
+		if (!dir.isDirectory() && !dir.mkdirs()){
+			System.err.println( "[WARN] worker: cannot create " + dir.getAbsolutePath()
+					+ ", so this episode's ordered draw logs are not written" );
+			return;
+		}
+
+		String prefix = new java.io.File( dir, seed.replaceAll( "[^A-Za-z0-9._-]", "_" )
+				+ ".worker" ).getAbsolutePath();
+
+		try {
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngOrderLog
+					.write( prefix + ".gen", generation, generationPushes );
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngOrderLog
+					.writeCurrent( prefix + ".all" );
+		} catch (IOException e){
+			System.err.println( "[WARN] worker: cannot write the ordered draw logs to " + prefix
+					+ " (" + e.getClass().getSimpleName() + ")" );
+		}
 	}
 
 

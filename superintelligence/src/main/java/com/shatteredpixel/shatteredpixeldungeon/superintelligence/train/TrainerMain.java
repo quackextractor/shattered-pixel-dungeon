@@ -35,9 +35,10 @@ public final class TrainerMain {
 					+ " (--reward-profile)" );
 		}
 
-		Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
+Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
 				options.replayDir, options.traceWorld, options.replayGroup,
-				options.recordEverySet ? options.recordEvery : options.hyper.recordEvery );
+				options.recordEverySet ? options.recordEvery : options.hyper.recordEvery,
+				options.rngTraceDir == null ? null : options.rngTraceDir.getAbsolutePath() );
 
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );

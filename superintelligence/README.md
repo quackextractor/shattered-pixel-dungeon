@@ -421,6 +421,11 @@ something.
 # train, and file this run's recordings under a group so the catalogue lists it alone.
 # Letters, digits, '.', '_' and '-', up to 64; anything else is refused rather than escaped.
 ./gradlew :superintelligence:train --args="--workers 8 --replay-group depth-only-60"
+
+# train, and have every worker dump its ordered draw log beside the recordings it writes.
+# Then reprocheck cross diffs a worker's own episode against a verification of the file it wrote,
+# which is the only instrument that reads across a process boundary. Off unless named.
+./gradlew :superintelligence:train --args="--workers 2 --rng-trace-dir superintelligence/out/evidence/rng"
 ```
 
 **`superintelligence/train.ps1` is the workflow**: `./train.ps1`, `./train.ps1 -Profile depth_only

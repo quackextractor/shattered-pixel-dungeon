@@ -37,6 +37,7 @@ public class Trainer {
 
 
 	private final String traceWorldPath;
+	private final String rngTraceDir;
 
 
 	private final File replayDirOverride;
@@ -120,18 +121,26 @@ public class Trainer {
 
 	public Trainer( EnvConfig config, long seed, File workDir ){
 		this( config, new PpoHyperparameters(), seed, workDir,
-				new File( replayDirDefault(), "trainer-replays" ), null, "", 1 );
+				new File( replayDirDefault(), "trainer-replays" ), null, "", 1, null );
 	}
 
 
 	public Trainer( EnvConfig config, PpoHyperparameters hyper, long seed, File workDir,
 			File replayDir, String traceWorldPath, String replayGroup, int recordEvery ){
+		this( config, hyper, seed, workDir, replayDir, traceWorldPath, replayGroup, recordEvery, null );
+	}
+
+
+	public Trainer( EnvConfig config, PpoHyperparameters hyper, long seed, File workDir,
+			File replayDir, String traceWorldPath, String replayGroup, int recordEvery,
+			String rngTraceDir ){
 		this.config = config;
 		this.rng = new Random( seed );
 		this.rngSeed = seed;
 		this.seeds = new SeedPool( seed ^ SEED_POOL_MIX, seed ^ SEED_SCHEDULE_MIX );
 		this.workDir = workDir;
 		this.traceWorldPath = traceWorldPath;
+		this.rngTraceDir = rngTraceDir;
 		this.replayDirOverride = replayDir;
 		this.replayGroup = replayGroup == null ? "" : replayGroup;
 		this.recordEvery = Math.max( 1, recordEvery );
@@ -253,6 +262,7 @@ public class Trainer {
 		out.writeFloat( ppo.lambda );
 
 		out.writeUTF( traceWorldPath == null ? "" : traceWorldPath );
+		out.writeUTF( rngTraceDir == null ? "" : rngTraceDir );
 
 		out.writeFloat( (float) sampleRate() );
 		out.writeInt( maxSampledPerEpisode() );

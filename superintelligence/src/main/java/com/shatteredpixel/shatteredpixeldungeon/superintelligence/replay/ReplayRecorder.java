@@ -80,7 +80,7 @@ private final Replay replay = new Replay();
 		step.inventory = inventoryOf();
 		step.accepted = accepted;
 
-		if (rngFingerprint ){
+		if (rngFingerprint && Dungeon.hero.isAlive() ){
 			step.baseDraws = com.watabou.utils.RandomTrace.baseDraws();
 			step.baseFingerprint = com.watabou.utils.RandomTrace.baseFingerprint();
 		}

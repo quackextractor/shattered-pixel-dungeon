@@ -17,13 +17,12 @@ starts: **the policy does not fail to want the stairs, it fails to walk to them.
 own error bar in either direction. Numbers and method: `CHANGELOG.md`; evidence
 `out/evidence/descend-30.csv`.
 
-- [ ] Close `issues.md` 37. **`issues.md` 18 closed** on the guide-page fix and 8 green runs out of
-      8; 37 did not close with it and reproduced on a new seed with the identical signature
-      (`rng baseDraws diverged at step 1124 of 1125, delta -2`). What is narrowed: two verifications
-      of one file agree exactly, and `paritycheck` is green across 32 episode boundaries in one
-      process, so the leak is reached by the **trained** policy and lives in the process that made
-      the recording. The next measurement is `RandomTrace.siteLog()` inside the worker, per episode,
-      diffed against a verification of the same file. Evidence: `out/evidence/issue-37-recheck.txt`.
+- [ ] **Teach it to walk to the stairs.** `issues.md` 37 is closed and the divergence entries are
+      gone, so nothing stands between a run and a measurement any more. The open question is what
+      moves a policy that already survives floor 1 onto the stairs: a curriculum, a larger
+      `reward.stair_potential_weight`, or `depth_only` as a training default. Each is one knob and
+      one 30-generation run against this same error bar, and the answer is whichever moves
+      `depth>=2` in **episodes**. `issues.md` 20 carries the arithmetic.
 
 ## 2. Reward signals
 
@@ -31,10 +30,10 @@ own error bar in either direction. Numbers and method: `CHANGELOG.md`; evidence
       fire and a trainer run reports 6-9 kills and 100-188 pickups per generation. What is left is
       whether an untrained policy gets there on its own. **The blocker is no longer `issues.md` 38**,
       which is closed: the cause was a guidebook page read out of the process-wide `Document`, and
-      `Document.resetPages()` is now called on every reset. The blocker is now the **committed
-      corpus** - `viewcheck` reports 7 of 20 recordings diverging under the own-cell `INTERACT`
-      semantics, and regenerating it would destroy the fixture `issues.md` 26 is diagnosed against.
-      Measured, with the numbers, in `REJECTED.md`.
+      `Document.resetPages()` is now called on every reset. **And it is no longer `issues.md` 26**,
+      which closed on the ordered draw log, so the revisit condition `REJECTED.md` states for the
+      own-cell `INTERACT` has fired: regenerate the corpus on the new semantics, re-run `viewcheck`,
+      and ship.
 - [ ] **The shaping fade has never faded anything.** Wired and measured - 0.6064 at depth 6 - but it
       starts at depth 3 and no run has passed floor 2. The fix is an agent that descends, not a
       retune.

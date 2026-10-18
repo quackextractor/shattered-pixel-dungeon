@@ -10,6 +10,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- **`issues.md` 37 closed: a hero's death paperwork was being compared as if it were gameplay.**
+  `Bones.pickItem` opens with `if (!Dungeon.customSeedText.isEmpty()) return null;` - a hero who
+  dies under a custom seed leaves no remains and makes no draws, and one who dies under a random
+  seed does. An episode the trainer hands a **random** seed runs with an empty
+  `customSeedText` and records the *resolved* seed text in its header, so its replay runs under a
+  **custom** seed. The two sides therefore spent a different number of values on the step the hero
+  died, and `verify` compared them: `rng baseDraws diverged at step 1189: replayed 712, recorded 716
+  (delta -4)`, which is this entry's exact signature - a negative delta on the last step, so the
+  recording drew more.
+
+  Named by the instrument the entry asked for and which no process boundary had ever crossed:
+  **`--rng-trace-dir` on the trainer**, which turns `RandomTrace` attribution on inside the worker,
+  splits its log on the same line the viewer splits on, and writes `<seed>.worker.gen.order.txt` and
+  `.all.order.txt` beside the recording. Diffed against a verification of the same file, the two
+  agree for 705 of 712 draws and then part at the death:
+
+  ```
+  705  verify  Hero.reallyDie:2278
+  705  worker  Bones.pickItem:121
+  706  worker  Bones.pickItem:122
+  707  worker  QuickSlot.randomNonePlaceholder:118
+  ```
+
+  Both sides draw `Hero.reallyDie` the same number of times afterwards. The 4 extra draws are
+  `Bones.leave`, on a step that is over either way.
+
+  `ReplayRecorder` records the per-step draw count and fingerprint only while the hero is alive,
+  and `ReplayIO.verify` compares them only while the hero is alive - the same predicate applied to
+  the same step on both sides. No `:core` change: the asymmetry was never in the game, and
+  `Bones` behaves correctly in a real playthrough.
+
+  Measured: `ZZJ-FYQ-QJH.dat`, **written before the fix**, now `[OK] replay reproduced in 1190
+  steps` with the score identical to the last decimal; a second run of the same shape wrote three
+  recordings and all three verify. `verifycheck` is **11 cases** and mutation-tests the rule: it
+  takes the corpus's death recording, alters the draw count on the step where the hero died and
+  requires verification to pass, and alters one on a step where he was alive and requires it to
+  fail. Pinning the guard back to `true` fails the first half.
 - **`issues.md` 26 closed: the headless stand-in for a particle emitter was compensating on the
   wrong stream.** `Emitter.start` opens with `startDelayed(..., PRandom.Float(interval))` - a
   presentation draw - and `HeadlessSprite$Inert.start` stood in for it with `Random.Float(interval)`,
