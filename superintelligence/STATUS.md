@@ -59,6 +59,43 @@ is where they and their measurements now live. The loop it drove now runs agains
 What remains open is `TODO.md` §1: nothing has been trained and the agent has never left floor 1.
 That is not reachable by repeating the review loop, and the honest state of it is written down there.
 
+## 2026-10-18 — the loop ran again, and it found two things the documents did not
+
+The working copy arrived **rolled back**: about fifty files in `:superintelligence`, plus
+`docs/documentation.md` and `hooks/pre-commit`, held a state several releases older than `HEAD`,
+enough that `:superintelligence:compileJava` failed outright - `ReproCheck` referenced
+`Replay.Step.accepted` and `RewardTypeCheck` referenced `RewardTerm.type()`, neither of which existed
+in that copy, while `CHANGELOG.md` described both as shipped. Restoring the tree from `HEAD` was the
+first act of the session and nothing in this cycle's findings depends on the discarded state. **A
+dirty working tree is not a reliable base for measurement**, and the check that would have caught it
+is `git status` plus one compile.
+
+What the loop then closed is worth recording, because both were the *same* fault and neither was the
+fault the entries described:
+
+- **`issues.md` 38** was not a per-floor generator offset. It was a guidebook page: `Document` is an
+  enum, so `pagesStates` is a process static, and level generation reads it in three places.
+- **`issues.md` 18**, the flaky `rolloutcheck`, was that same leak. Eight green runs out of eight
+  after the fix, against 1 in 8 measured three times before.
+- **`issues.md` 37** did **not** close with it, and that is the part worth keeping: the prediction
+  that one named cause fixes both was wrong, and the entry's next measurement is now wiring rather
+  than instrumentation.
+- **`issues.md` 26**'s central reading was wrong in both directions. Neither side spends or skips a
+  hit; one snake attack lands on both and arrives at `Char.damage` with a different number.
+
+The generalisation is the one `testing-guide.md` has now stated eight times and this cycle is the
+first time it was wrong in the *optimistic* direction - a cause was named, and it fixed a **different**
+entry from the one predicted while leaving the predicted one standing. `issues.md` 18 and 37 were
+filed together as one fault on the strength of a shared signature; a shared signature is not a shared
+cause, and the one measurement that separated them cost a full training run to obtain.
+
+`review.md` has been folded into `issues.md`, `TODO.md` and `CHANGELOG.md` and removed, on the same
+precedent as the documents it replaced: every plan in it is now either landed or carried as an open
+entry, and the three that remain open are `issues.md` 26, `issues.md` 37 and `TODO.md` §1. What it
+contributed that nothing else had was two plans this cycle would not otherwise have written -
+`randomtrace` attribution inside the worker for Plan 1, and a hero-damage tripwire for Plan 2 - and
+Plan 8, the trainer UI, which `REJECTED.md` declines and which therefore left `TODO.md` entirely.
+
 ## 12.2 — one deviation to declare
 
 The user's instruction is not to label source comments with `Fix x:` / `plan x:` / `item x:`. Nothing

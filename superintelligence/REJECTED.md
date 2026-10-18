@@ -9,7 +9,7 @@ reason is on this page, or **deferred**, meaning the answer is later and the tri
 
 ## Letting `INTERACT` pick an item up off the hero's own cell
 
-**Proposed by** `TODO.md` §2 and `review.md` Plan 4.2. **The blocker is gone; the corpus is now the
+**Proposed by** `TODO.md` §2, and by the external code review whose plans have since been folded into `CHANGELOG.md`. **The blocker is gone; the corpus is now the
 one, and the change is deferred until `issues.md` 26 closes.**
 
 `ActionMapper.pickInteractCell()` scans offsets 1..8 and `handleCell()` refuses a non-adjacent cell,

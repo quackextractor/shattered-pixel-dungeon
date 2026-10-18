@@ -518,10 +518,10 @@ the recording drew more - on a different seed and a different network shape. The
 - The difference therefore lives in the process that **made** the recording, and no instrument in
   this repository reads across a process boundary yet.
 
-**The next measurement is `review.md` Plan 1.1 steps 3 and 4**, and it is wiring rather than new
-instrumentation, because `RandomTrace.siteLog()` and `RandomTrace.generatorLog()` now exist: enable
-attribution inside the worker, dump the per-episode site and generator logs, and diff them against a
-verification of the same file. The ordered log is what makes it possible - a per-site tally said two
-processes were level at every site while their order differed.
+**The next measurement is wiring rather than new instrumentation**, and it is the one instrument
+that has never existed here: attribute inside the **worker**, dump `RandomTrace.siteLog()` and
+`generatorLog()` per episode, and diff them against a verification of the same file. The ordered log
+is what makes it possible - a per-site tally said two processes were level at every site while their
+order differed, and that is exactly how this entry survived three entry points.
 
 Evidence: `out/evidence/issue-37-recheck.txt`.

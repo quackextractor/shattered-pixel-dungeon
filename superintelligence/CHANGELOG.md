@@ -167,8 +167,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   five from the repository root, and `configcheck` held a case proving it. **That is why it was
   missed**: the gate covered the parser that had been fixed and not the one beside it.
 
-  Measured on a two-generation run given the invocation `review.md` and `CHANGELOG.md` both
-  document:
+Measured on a two-generation run given the invocation the module's own usage notes and this
+changelog document:
 
   ```
   --out superintelligence/out/evidence/issue-37-recheck
@@ -506,7 +506,7 @@ uncommitted. The external code review that asked for it to be committed found it
   What is left is reached by the **trained** policy and lives in the process that *made* the
   recording, and no instrument here reads across a process boundary yet.
 
-  **The next measurement is `review.md` Plan 1.1 steps 3 and 4**: enable `RandomTrace` attribution
+  **The next measurement is wiring rather than instrumentation**: enable `RandomTrace` attribution
   inside the worker and dump the per-episode site and generator logs, then diff them against a
   verification of the same file. `RandomTrace.siteLog()` and `generatorLog()` already exist, so this
   is wiring rather than new instrumentation. Evidence: `out/evidence/issue-37-recheck.txt`.
@@ -606,7 +606,7 @@ uncommitted. The external code review that asked for it to be committed found it
 - **`INTERACT` still cannot pick an item up off the cell the hero is standing on**, and the attempt
   to fix it produced a better reproduction than either open divergence entry has.
   `ActionMapper.pickInteractCell()` scans offsets 1..8 and `handleCell()` refuses a non-adjacent cell,
-  so `review.md`'s Plan 4.2 is only half implementable. Making both accept the hero's own cell turns
+  so the external review's plan for it was only half implementable. Making both accept the hero's own cell turns
   `paritycheck` **red, deterministically**:
 
   ```
