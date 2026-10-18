@@ -160,6 +160,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   block fails the second.
 
 ### Fixed
+- **`issues.md` 38 closed: a guidebook page was the whole difference between a fresh JVM and a
+  process that has played an episode.** `Document` is an enum and `pagesStates` is a **process
+  static that `Dungeon.init()` never cleared**, and level generation asks it three times -
+  `EntranceRoom.placeEarlyGuidePages:121` drops floor 2's page outright on
+  `!isPageFound(Document.GUIDE_SEARCHING)`, and `RegularLevel.createItems:559-584` drops a page
+  chosen from `missingPages.get(0)` onto a cell that may be high grass. Collecting a page marks it
+  found for the rest of the process, so **every episode after the first built a different floor 2**,
+  and a recording made in one of them would not replay in any other.
+
+  `Document.resetPages()` restores every document to what a fresh process would have, the static
+  initialiser now calls it, and `RunState.clearRunStatics()` calls it with everything else a new run
+  must not inherit. Nothing in the game calls it - a playthrough wants the opposite - and the static
+  block's body is unchanged, so a game with a renderer reads it exactly as before.
+
+  Measured on the reproduction `issues.md` 38 carries, which is the tree with the declined
+  `INTERACT` own-cell change, `paritycheck --seeds 1 --heroes 1 --turns 400`:
+
+  | | before | after |
+  | --- | --- | --- |
+  | `paritycheck` | `DIVERGED at 256: position: replayed 500, recorded 1301` | `reproduced (357 steps, -315.340)`, clean again after the sweep |
+  | `reprocheck`, first verification | `diverged=true at step 256`, base draws 544, ordered 12,781 | `diverged=false, steps 357`, base draws 976, ordered **40,919** |
+  | `reprocheck`, second verification | `diverged=true at step 256` | `diverged=false`, base draws 976, ordered 40,919, generator events 168 |
+
+  A warm process is now **bit-identical to a fresh one** on the same file, which is the first time
+  this project has measured that rather than inferred it.
+
+  Gated by a new `resetcheck` case, **7 checks**: floor 2 of a seed must be the same dungeon after
+  three guide pages have been collected, fingerprinted by dimensions, terrain, custom walls, heaps,
+  traps, mobs and plants. Mutation-tested by removing the `resetPages()` call, which fails it with
+  *"First difference: `heaps=17` vs `heaps=16`"* - the missing page, named.
 - **`TODO.md` 2.1 said `MENU_NOOP` had no emission site, and it has had one all along.**
   `SPDEnv.menuNoop()` - a step that entered a sub-mode, stayed in it and advanced no engine time -
   has been feeding `RewardModel.step( newlyExplored, tookAction, menuNoop )` since the sub-mode work,

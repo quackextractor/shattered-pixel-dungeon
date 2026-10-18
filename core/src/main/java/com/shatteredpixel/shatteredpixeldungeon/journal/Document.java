@@ -257,6 +257,22 @@ public enum Document {
 
 	//pages and default states
 	static {
+		resetPages();
+	}
+
+	/**
+	 * Restores every document's page states to what a fresh process would have.
+	 *
+	 * <p>Nothing in the game calls this. A playthrough wants the opposite - a page the hero found stays
+	 * found for the next run - and a process that plays thousands of independent runs cannot have a
+	 * floor's contents depend on which hero collected a page last: {@code RegularLevel.createItems}
+	 * drops a guidebook page chosen from the pages still missing, and
+	 * {@code EntranceRoom.placeEarlyGuidePages} drops floor 2's outright. See the 'superintelligence'
+	 * module.
+	 */
+	public static void resetPages(){
+		for (Document doc : values()) doc.pagesStates.clear();
+
 		boolean debug = DeviceCompat.isDebug();
 		//hero gets these when guidebook is collected
 		ADVENTURERS_GUIDE.pagesStates.put(GUIDE_INTRO,          debug ? READ : NOT_FOUND);

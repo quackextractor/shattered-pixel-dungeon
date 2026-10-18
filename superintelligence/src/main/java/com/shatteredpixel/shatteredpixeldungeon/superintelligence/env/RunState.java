@@ -21,6 +21,8 @@ public class RunState {
 
 		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.fallIntoPit = false;
 
+		com.shatteredpixel.shatteredpixeldungeon.journal.Document.resetPages();
+
 		forgetPreviousRemains();
 	}
 

@@ -2,6 +2,8 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
+import com.shatteredpixel.shatteredpixeldungeon.journal.Document;
+import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.CellSelector;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
@@ -22,7 +24,7 @@ import java.util.Random;
 
 public class ResetCheck {
 
-	private static final int CHECKS = 6;
+	private static final int CHECKS = 7;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -50,6 +52,7 @@ public class ResetCheck {
 		checkEveryEpisodeStartsInWorld( env, config );
 		checkTrajectoriesDoNotDependOnOrder( env, config );
 		checkSpecialRoomPoolsDoNotDependOnOrder( env, config );
+		checkGuidePagesDoNotSurviveAReset( env, config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reset isolation: " + CHECKS + " checks passed" );
@@ -322,6 +325,65 @@ public class ResetCheck {
 		}
 		return "";
 	}
+
+	private static void checkGuidePagesDoNotSurviveAReset( SPDEnv env, EnvConfig config ){
+		String clean = floorTwo( env, config, SEEDS[ 0 ] );
+
+		if (clean.isEmpty()){
+			fail( "floor 2 could not be generated for " + SEEDS[ 0 ]
+					+ ", so this case cannot say whether the reset forgot the guide pages." );
+			return;
+		}
+
+		Document.ADVENTURERS_GUIDE.findPage( Document.GUIDE_SEARCHING );
+		Document.ADVENTURERS_GUIDE.findPage( Document.GUIDE_ALCHEMY );
+		Document.ADVENTURERS_GUIDE.findPage( Document.GUIDE_FOOD );
+
+		String afterCollection = floorTwo( env, config, SEEDS[ 0 ] );
+
+		if (!clean.equals( afterCollection )){
+			fail( "floor 2 of " + SEEDS[ 0 ] + " is a different dungeon once three guide pages have been"
+					+ " collected, and a reset did not put them back. Level generation asks the"
+					+ " process-wide Document which pages are still missing - RegularLevel.createItems"
+					+ " drops one from that list and EntranceRoom drops floor 2's outright - so every"
+					+ " episode after the first in this process builds a different dungeon, and a"
+					+ " recording made in one of them will not replay in any other."
+					+ firstDifference( clean, afterCollection ) );
+			return;
+		}
+
+		System.out.println( "  three collected guide pages leave the next floor 2 identical ("
+				+ clean + ")" );
+	}
+
+
+	private static String floorTwo( SPDEnv env, EnvConfig config, String seed ){
+		env.config().turnLimitPerFloor = config.turnLimitPerFloor;
+		env.reset( seed, HeroClass.WARRIOR );
+
+		Dungeon.depth = 2;
+		Dungeon.branch = 0;
+		Dungeon.generatedLevels.clear();
+		Level level = Dungeon.newLevel();
+		if (level == null || level.length() == 0) return "";
+
+		StringBuilder sb = new StringBuilder();
+		int plants = 0, heaps = 0, traps = 0;
+		for (int i = 0; i < level.length(); i++){
+			if (level.plants.get( i ) != null) plants++;
+			if (level.heaps.get( i ) != null) heaps++;
+			if (level.traps.get( i ) != null) traps++;
+		}
+		sb.append( level.width() ).append( 'x' ).append( level.height() )
+				.append( " map=" ).append( java.util.Arrays.hashCode( level.map ))
+				.append( " walls=" ).append( java.util.Arrays.hashCode( level.customWalls.toArray() ))
+				.append( " heaps=" ).append( heaps )
+				.append( " traps=" ).append( traps )
+				.append( " mobs=" ).append( level.mobs.size() )
+				.append( " plants=" ).append( plants );
+		return sb.toString();
+	}
+
 
 	private static void fail( String message ){
 		failures.add( message );
