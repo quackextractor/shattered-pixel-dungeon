@@ -1,0 +1,53 @@
+# issues.md 18 and 37 re-measured after the guide-page fix
+# 2026-10-18, on the tree at commit c4431e812.
+
+## rolloutcheck, eight consecutive runs, --rerun-tasks each
+
+  run 1 ok    run 2 ok    run 3 ok    run 4 ok
+  run 5 ok    run 6 ok    run 7 ok    run 8 ok
+
+  0 of 8, against 1 in 8 measured three times before the fix. Eight runs bound
+  the rate at about 1 in 3 rather than at zero; what closes the entry is the named
+  cause, not the sample size.
+
+## the trainer's own recordings, 2 generations x 2 workers x 2 episodes
+
+  ./gradlew :superintelligence:train --args="--workers 2 --episodes 2 --generations 2
+      --max-turns 40 --update-threads 1 --replay-group smoke-rl"
+
+  wrote 3 replays from 8 episodes, all three verified in fresh JVMs:
+
+    ZVI-KMW-HKC-r2.dat  OK
+    ZVI-KMW-HKC-r3.dat  OK
+    LBS-VPS-LZG.dat     FAILED
+      [ERROR] replay diverged at step 1124 of 1125
+              rng baseDraws diverged at step 1124: replayed 637, recorded 639 (delta -2)
+
+  One of three, and the signature is issues.md 37's exactly: a negative delta on a
+  SEARCH at the last step of the recording, so the recording drew more. A different
+  seed, a different network, the same shape. The entry stays open.
+
+## the two recordings from the 2026-10-16 run, for the A/B
+
+    NRF-TFY-RXG.dat     FAILED  rng baseDraws diverged at step 1421 of 1422, delta -2
+    ZVI-KMW-HKC.dat     OK
+
+  NRF-TFY-RXG.dat is the fixture issues.md 37 was localised with. It was written
+  before the fix, under the leaky semantics, so it fails permanently and says nothing
+  about the current tree. LBS-VPS-LZG.dat is the same fault on a recording made after
+  it.
+
+## what is narrowed, and what is not
+
+  Narrowed, on measurement: the leak is not the guide page. It is not the
+  verification either - two verifications of one file agree exactly. paritycheck
+  runs 32 recordings over 32 episode boundaries in one process and is green, so an
+  episode-to-episode leak that the scripted policy reaches is excluded.
+
+  Not narrowed: the worker's own recording-side trace. replay.sh compares two
+  verifications, and both verifications of a given file agree, so the difference
+  lives in the process that made the recording and no instrument this repository
+  has yet reads across a process boundary. review.md Plan 1.1 steps 3 and 4 are that
+  instrument: enable RandomTrace attribution inside the worker and dump the
+  per-episode site and generator logs, then diff them against a verification of the
+  same file.

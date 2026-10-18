@@ -5,115 +5,10 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
 
 | # | |
 | --- | --- |
-| 18 | `rolloutcheck` is the one flaky gate, 1 in 8. Undiagnosed: the tally names the stream, not the call site |
 | 20 | under `depth_only` the run converges on dying early rather than on descending |
 | 26 | the viewer spends 1 HP on a step the recording does not |
 | 37 | one recording in two does not reproduce, and it is the trainer's half |
 
-## 18. `rolloutcheck` is the one flaky gate - **OPEN, and undiagnosed**
-
-18. `rolloutcheck` fails about one run in thirty, and the recording it made verifies on the next
-
-    **Re-measured 2026-10-16: the rate and the signature both moved.** Eight consecutive runs of
-    `rolloutcheck` alone, `--rerun-tasks` each time:
-
-    ```
-    run 1 ok    run 2 ok    run 3 ok    run 4 FAILED    run 5 ok    run 6 ok    run 7 ok    run 8 ok
-
-          a recording made from a random-seed episode does not verify: position: replayed 135, recorded 103 at step 54
-          verification covered 55 of 60 steps; a short match is not a reproduction
-    ```
-
-    Three things are worth stating precisely.
-
-    - **It is `checkRandomSeedRecordingVerifies`, and not one of the four cases added to this gate
-      since.** `checkAnAbsentSeedFlagIsAccepted` also runs a random-seed episode but only asserts that
-      steps came back, so it cannot fail on a divergence. The failing case is the original one.
-    - **The divergence is on position, not on engine time.** `issues.md` 26 and 37 are both a
-      one-turn or one-point deficit; this is the hero at a different **cell** from step 54 of 60, so
-      the world itself differs rather than the accounting for it. That makes it a different fault from
-      37 even though both are "a recording the trainer wrote does not replay".
-    - **1 in 8 is not 1 in 30, and 8 runs cannot tell the two apart** - the 95% interval on one
-      failure in eight runs runs from about 1 in 25 to 1 in 3. What can be said is that the original
-      figure was measured on a gate that ran one random-seed episode and this one runs two, so the
-      exposure is at least double.
-
-    **Re-measured again once every step records its RNG draw count: the rate is unchanged and the
-    signature now names the stream.** Eight consecutive runs of `rolloutcheck` alone, `--rerun-tasks`
-    each time: **7 of 8 green**, the same 1-in-8 this entry recorded above, so the new comparison has
-    not made the gate flakier. The one failure reports:
-
-    ```
-    a recording made from a random-seed episode does not verify: rng baseDraws diverged at step 57:
-      replayed 290, recorded 298 (delta -8)
-    ```
-
-    and a second run gave `step 57: replayed 397, recorded 401 (delta -4)`. Both are the *same* case —
-    `checkRandomSeedRecordingVerifies` — and both are reported before any position, health, clock or
-    inventory comparison, because `ReplayIO.verify` now checks `baseDraws` first.
-
-    Across three separate re-measurements after the draw count landed - eight consecutive runs, then
-    two single runs from `verifyall` - the gate has failed three times in about twenty invocations,
-    which is the same rate the two eight-run sweeps measured. The signature has been stable across
-    those failures: a negative delta, at step 57 of 60, in the same case.
-
-    **What that buys is a direction.** A negative delta means the replay consumed **fewer** draws
-    than the recording did, by a multiple of four, at a step late in a sixty-step episode. The old
-    signature — a different cell at step 54 — said the world differed and nothing about which side
-    moved. This one says the two sides had already parted in the generator, and that the recording
-    drew more.
-
-    **What it does not do is diagnose it.** The count is cumulative and says nothing about which
-    call site made the extra draws; `RandomTrace.attribute()` answers that and is a separate tool.
-    The two deltas being multiples of four is suggestive and is not a conclusion — four and eight are
-    also what a single mob's `attackDelay`-sized decision costs, and this entry records
-    `issues.md` 33's own lesson that a turn-cost story is the shape of the last confident wrong answer.
-
-    **This makes `gates` itself flaky**, which is a cost the fix has to weigh and this entry now
-    records. A gate that goes red for a real reason beats one that hides it, and `rolloutcheck` was
-    kept inside `gates` on that basis; but a red `verifyall` a ninth of the time trains people to
-    re-run it, and a re-run that comes back green is the exact habit this repository's gates exist to
-    break. **Until this is diagnosed a green `gates` is a claim about the run it just did, not about
-    the next one.**
-
-    The original entry follows, kept for the A/B against the base tree and for what was ruled out.
-    Found while closing 17, and unrelated to it. `rolloutcheck` is in `gates`, and `gates` failed on one
-    ```
-    **It is not caused by the change that was in flight.** A/B'd against the base tree, the same
-    | tree | runs | failures |
-    Same signature, same rate, different random draws.
-    **Why it is intermittent, and it is not a seed lock.** `RolloutCheck`'s first two cases record an
-    **Not investigated, and stated as open rather than guessed at.** A recorded position and a replayed
-    **What is not wrong:** `paritycheck` verifies 32 recordings across seeds in one process and passes,
-
-
-### Re-measured 2026-10-17 with the sub-mode mask on - **the same conclusion, and the first depth signal**
-
-15 generations, 8 workers x 4 episodes, 4 update threads, seed 20261016, `env.sub_mode_progress_only=true`
-throughout, every other default unchanged. `out/evidence/depth-only-postmask-15.log`.
-
-```
-windows   first 7 generations against the last 8
-score     -2941.16 sd=109.8 sem=41.5  ->  -2783.94 sd=84.0 sem=29.7   delta=+157.22 +/- 51.0
-depth>=2  0.4% -> 2.3%   (share of episodes reaching floor 2 or deeper)
-```
-
-- **7 of 480 episodes reached floor 2**, against **0 of 960** in the `default` 30-generation run.
-- **`bestDepth` 2 in 5 of 15 generations**, against 5 of 31 in the run this entry originally measured.
-- **`depth>=2` rises 0.4% -> 2.3%** between the first and last windows. That is the first depth signal
-  any run in this project has produced, and it is on the axis this entry says nothing pays.
-- **`DEATH` 479 of 480 (99.8%)**, `STALLED` 1, `TURN_LIMIT` 0.
-
-**The conclusion is unchanged and the entry stays open.** Under `depth_only` the run converges on dying
-early rather than on descending: 99.8% of episodes end in death, and the mean score is **-2,857**,
-which is a little over the `-2,500` death penalty plus a little over the per-turn cost. The arithmetic
-is the same one the entry gives - with nothing but the objective paying, a policy that cannot yet
-descend learns to die cheaply - and the sub-mode mask moved the *rate* of descending by a factor the
-project had never seen without moving that.
-
-**What did change is that descending is no longer zero.** That is `issues.md` 22, which this run
-closes: with the profile paying only for the objective, `meanScore` moved **+157.22 +/- 51.0**, about
-3 sigma, and the movement is not exploration because under `depth_only` exploration pays zero.
 ## 20. Under `depth_only` the run converges on dying early rather than on descending - **OPEN, and it is a finding rather than a defect**
 Measured on the same 30-generation run (30 generations, 16 workers x 4 episodes, `reward.profile=depth_only`,
 | generation | meanScore | meanDepth | bestDepth | meanTurns | ended |
@@ -413,7 +308,7 @@ Both halves of the instrument were wrong, which is why the fault above read as *
   `ViewCheck` already passes it, so the setting existed and worked - but this task never bound it, so
 With `-PspdContinueOnDiverge` the traced run now completes and the diff has 5 more steps to work with,
 
-## 37. One recording in two does not reproduce, and it is the trainer's half - **OPEN, not investigated**
+## 37. One recording in two does not reproduce, and it is the trainer's half - **OPEN, re-measured after the fix**
 
 Found by running the 30-generation measurement `TODO.md` 1 asks for, and reading what it wrote rather
 than what it printed. `issues.md` 15 and 26 both record a recording that will not replay; this one is
@@ -554,3 +449,40 @@ Evidence: `out/evidence/issue-37-smoke/`, holding both recordings and both `veri
 Evidence: `out/evidence/gen29-divergence.txt`, `out/evidence/gen29-LZJ-LNO-HLE.dat`,
 `out/evidence/gen29-LZJ-LNO-HLE-r2.dat`, `out/evidence/noise-floor-30.csv`,
 `out/evidence/train-noise-floor-30.log`.
+
+### Re-measured after the guide-page fix - **did not recur in its old form, and reproduced in its own**
+
+`issues.md` 38 was closed by `Document.resetPages()`, and that fix was a per-process state leak of
+exactly this family, so the obvious prediction is that this entry closes with it. **It does not.**
+
+A two-generation run, 2 workers x 2 episodes, `--record-every 1`, wrote three recordings and **two
+of the three verify exactly**:
+
+```
+ZVI-KMW-HKC-r2.dat  OK
+ZVI-KMW-HKC-r3.dat  OK
+LBS-VPS-LZG.dat     [ERROR] replay diverged at step 1124 of 1125
+                    rng baseDraws diverged at step 1124: replayed 637, recorded 639 (delta -2)
+```
+
+**That is this entry's signature exactly** - a negative delta at the last step of the recording, so
+the recording drew more - on a different seed and a different network shape. The historical
+`NRF-TFY-RXG.dat` still fails identically, which says only that it was written before the fix.
+
+**What the fix did narrow, and it is a real narrowing.**
+
+- Two verifications of one file **agree exactly**, so the verification perturbs nothing.
+- `paritycheck` runs **32 recordings across 32 episode boundaries in one process** and is green, so
+  an episode-to-episode leak that the **scripted** policy reaches is excluded. The worker's policy is
+  the trained network, and `issues.md` 37 already recorded that this is a difference in *coverage*
+  rather than evidence about the cause.
+- The difference therefore lives in the process that **made** the recording, and no instrument in
+  this repository reads across a process boundary yet.
+
+**The next measurement is `review.md` Plan 1.1 steps 3 and 4**, and it is wiring rather than new
+instrumentation, because `RandomTrace.siteLog()` and `RandomTrace.generatorLog()` now exist: enable
+attribution inside the worker, dump the per-episode site and generator logs, and diff them against a
+verification of the same file. The ordered log is what makes it possible - a per-site tally said two
+processes were level at every site while their order differed.
+
+Evidence: `out/evidence/issue-37-recheck.txt`.

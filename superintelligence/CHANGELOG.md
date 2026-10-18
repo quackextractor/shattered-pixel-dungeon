@@ -160,6 +160,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   block fails the second.
 
 ### Fixed
+- **`issues.md` 18: `rolloutcheck` is green 8 times out of 8 after the guide-page fix.** Eight
+  consecutive runs with `--rerun-tasks` each, against **1 failure in 8** measured three separate
+  times before it. The failing case was `checkRandomSeedRecordingVerifies` every time, and the
+  signature was always a **negative** delta at step 57 of 60 - the replay consumed fewer draws than
+  the recording - which is the direction a per-process state leak produces and not the direction a
+  flaky seed does. Eight runs bound the rate at about 1 in 3 rather than at zero; **what closes the
+  entry is the named cause and the measurement agreeing, not the sample size.**
+  `issues.md` 37 does **not** close, and says why below.
 - **`issues.md` 38 closed: a guidebook page was the whole difference between a fresh JVM and a
   process that has played an episode.** `Document` is an enum and `pagesStates` is a **process
   static that `Dungeon.init()` never cleared**, and level generation asks it three times -
@@ -391,6 +399,32 @@ uncommitted. The external code review that asked for it to be committed found it
   (was 35), `reward.kill_reward` 150.0 and `reward.sneak_attack_reward` 300.0 (were 12.0 and 22.0).
 
 ### Measured
+- **`issues.md` 37 re-measured after the fix: it did not recur in its old form and reproduced in
+  its own.** A two-generation run, 2 workers x 2 episodes, `--record-every 1`, wrote three recordings
+  and **two of the three verify exactly**:
+
+  ```
+  ZVI-KMW-HKC-r2.dat  OK
+  ZVI-KMW-HKC-r3.dat  OK
+  LBS-VPS-LZG.dat     [ERROR] replay diverged at step 1124 of 1125
+                      rng baseDraws diverged at step 1124: replayed 637, recorded 639 (delta -2)
+  ```
+
+  **That is `issues.md` 37's exact signature** - a negative delta at the last step of the recording,
+  so the recording drew more - on a different seed and a different network. The historical
+  `NRF-TFY-RXG.dat` fails identically, which says only that it was written before the fix under the
+  leaky semantics.
+
+  **What the fix did narrow, on measurement.** Two verifications of one file agree exactly, so the
+  verification perturbs nothing. `paritycheck` runs 32 recordings across 32 episode boundaries in
+  one process and is green, so an episode-to-episode leak the scripted policy reaches is excluded.
+  What is left is reached by the **trained** policy and lives in the process that *made* the
+  recording, and no instrument here reads across a process boundary yet.
+
+  **The next measurement is `review.md` Plan 1.1 steps 3 and 4**: enable `RandomTrace` attribution
+  inside the worker and dump the per-episode site and generator logs, then diff them against a
+  verification of the same file. `RandomTrace.siteLog()` and `generatorLog()` already exist, so this
+  is wiring rather than new instrumentation. Evidence: `out/evidence/issue-37-recheck.txt`.
 - **`reprocheck --args="baseline"`, and the call site `issues.md` 37 and 18 have been asking for.**
   The control mode verifies the saved recording in a fresh process. Reading `SecretRoom`'s
   per-region secret-room budget - a process static consumed as floors are built - after each
