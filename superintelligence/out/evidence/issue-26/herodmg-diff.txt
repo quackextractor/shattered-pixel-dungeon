@@ -1,0 +1,41 @@
+# issues.md 26 - who spends the hit, answered by both sides at once
+#
+# A tripwire in Char.damage, enabled by SPD_HERO_DAMAGE_FILE, records every hit the hero
+# takes with the engine time, the health going in, the number, the source and the first
+# frame outside Char and Actor. Same recording, headless verifier and real viewer.
+#
+#   headless  ./gradlew :superintelligence:verify --args=superintelligence/test-replays/duelist-death-last.replay
+#   viewer    ./gradlew :desktop:viewcheck -PviewcheckJobs=1 -PspdReplayDir=<solo dir>
+#
+#   headless 34 lines, viewer 86 - the gate plays the recording twice, once for
+#   the corpus verdict and once for the spd.replayContinueOnDiverge check.
+
+## the first differing line
+
+  index 24, at engine time 91.0, health 7, from a Snake:
+
+    headless  [HERODMG] turn=91.0 hp=7 dmg=0 src=Snake via=Hero.damage:1683
+    viewer    [HERODMG] turn=91.0 hp=7 dmg=1 src=Snake via=Hero.damage:1683
+
+  and the four lines before it are identical on both sides:
+
+    [HERODMG] turn=88.0 hp=8 dmg=0 src=Snake via=com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero.damage:1683
+    [HERODMG] turn=88.0 hp=8 dmg=0 src=Snake via=com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero.damage:1683
+    [HERODMG] turn=89.0 hp=8 dmg=0 src=Snake via=com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero.damage:1683
+    [HERODMG] turn=90.0 hp=8 dmg=1 src=Snake via=com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero.damage:1683
+
+## what that is
+
+  Both sides take the hit. Both sides reach Char.damage at the same engine time with the
+  same health and the same source, through the same line - Hero.damage:1683 is
+  super.damage( dmg, src ). The number arriving there differs: 0 against 1.
+
+  So the entry's reading - the viewer spends a hit the recording does not contain - is
+  wrong, and so is its own alternative. Nothing is extra and nothing is skipped: one
+  attack lands on both sides and resolves to a different amount, upstream of Char.damage,
+  in a computation that consumes randomness.
+
+  That is why every instrument this entry reached for failed. The per-step baseDraws and
+  baseFingerprint are equal on both sides at every step, so a divergence *inside* a step is
+  invisible to a comparison taken at step boundaries - and this entry had already
+  measured the draw count and all 1,003 cells identical at steps 93 to 96.

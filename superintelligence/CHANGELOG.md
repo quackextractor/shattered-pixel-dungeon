@@ -421,6 +421,33 @@ uncommitted. The external code review that asked for it to be committed found it
   (was 35), `reward.kill_reward` 150.0 and `reward.sneak_attack_reward` 300.0 (were 12.0 and 22.0).
 
 ### Measured
+- **`issues.md` 26: both sides take the hit, and one roll differs.** A tripwire in `Char.damage`
+  records every hit the hero takes with the engine time, the health going in, the number, the
+  source and the first frame outside `Char` and `Actor`. Run on `duelist-death-last.replay` through
+  the headless verifier and through the real viewer, the traces are **identical for 24 lines and
+  then**:
+
+  ```
+  headless  [HERODMG] turn=91.0 hp=7 dmg=0 src=Snake via=Hero.damage:1683
+  viewer    [HERODMG] turn=91.0 hp=7 dmg=1 src=Snake via=Hero.damage:1683
+  ```
+
+  **So the entry's reading is refuted, and so is its own alternative.** Nothing is spent and
+  nothing is skipped: one snake attack lands on both sides, at the same engine time, with the same
+  health going in and the same source, through the same line - `Hero.damage:1683` is
+  `super.damage( dmg, src )` - and the **number arriving there differs, 0 against 1**.
+
+  **And that is why every instrument this entry reached for failed.** `baseDraws` and
+  `baseFingerprint` are compared per step, and both were already measured equal on both sides at
+  every step. A divergence *inside* a step is invisible to a comparison taken at step boundaries,
+  which is the same class of miss as this project's other seven: a green is a claim about what was
+  checked, and "equal at every step" is a claim about step boundaries.
+
+  **What is left, and it is smaller than the entry was.** The fault is upstream of `Char.damage`, in
+  a computation that consumes randomness, on one attack at engine time 91.0. The next measurement
+  is to take `RandomTrace.siteLog()` - the ordered form this release adds - on **both** sides
+  around that window and read the first draw at which they part, rather than a per-site tally,
+  which cannot see order. Evidence: `out/evidence/issue-26/herodmg-diff.txt`.
 - **`issues.md` 37 re-measured after the fix: it did not recur in its old form and reproduced in
   its own.** A two-generation run, 2 workers x 2 episodes, `--record-every 1`, wrote three recordings
   and **two of the three verify exactly**:

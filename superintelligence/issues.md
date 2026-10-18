@@ -6,7 +6,7 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
 | # | |
 | --- | --- |
 | 20 | under `depth_only` the run converges on dying early rather than on descending |
-| 26 | the viewer spends 1 HP on a step the recording does not |
+| 26 | one snake attack lands on both sides and rolls a different number |
 | 37 | one recording in two does not reproduce, and it is the trainer's half |
 
 ## 20. Under `depth_only` the run converges on dying early rather than on descending - **OPEN, and it is a finding rather than a defect**
@@ -24,7 +24,7 @@ Measured on the same 30-generation run (30 generations, 16 workers x 4 episodes,
 **The next measurement is a curriculum rather than a switch**, and the machinery for it already exists and
 
 
-## 26. The viewer spends 1 HP on a step the recording does not - **OPEN, diagnosed, not fixed**
+## 26. One snake attack lands on both sides and rolls a different number - **OPEN, diagnosed, not fixed**
 Found while replacing `duelist-death-last` after the `WAIT` fix. It is the ninth recording this
 ### What it is
 The replacement recording - `duelist-death-last.replay`, seed `DUELIST-LONG-16`, DUELIST, 100 steps,
@@ -172,7 +172,7 @@ to on both sides at step 88.
 Evidence: `out/evidence/issue-26/pinned-clock-and-refusals.txt`.
 
 
-### Narrowed to a single frame, and the reading inverts
+### Narrowed to a single frame, and the reading inverts - **superseded by the hit trace below**
 
 `reprocheck --args="deathfixture"` records `DUELIST-LONG-16` - 100 steps, verified headlessly, with
 `accepted` on every step - and the viewer plays it to the same fault:
@@ -218,6 +218,43 @@ Not established: which of the two readings is right. Established: the loss is on
 one frame after a `Snake@5` turn with `animating=2`, with the entire recorded world identical.
 
 Evidence: `out/evidence/issue-26/frame-5641.md`.
+
+### Both sides take the hit. The number differs.
+
+A tripwire in `Char.damage`, enabled by `SPD_HERO_DAMAGE_FILE`, records every hit the hero takes
+with the engine time, the health going in, the number, the source, and the first frame outside
+`Char` and `Actor`. Run on `duelist-death-last.replay` through the headless verifier and through the
+real viewer, the two traces are **identical for 24 lines and then**:
+
+```
+headless  [HERODMG] turn=91.0 hp=7 dmg=0 src=Snake via=Hero.damage:1683
+viewer    [HERODMG] turn=91.0 hp=7 dmg=1 src=Snake via=Hero.damage:1683
+```
+
+**This refutes the entry's reading, and its own alternative.** For twenty-odd lines both sides took
+the same hits, in the same order, from the same sources, at the same engine times, with the same
+health. Then one snake attack lands on both sides and arrives at `Char.damage` with a different
+number. `Hero.damage:1683` is `super.damage( dmg, src )`, so the difference is **upstream** of
+`Char.damage` entirely: nothing is spent, nothing is skipped, and no hit exists on one side that the
+other does not have.
+
+**And it is why every instrument this entry reached for came back empty.** `baseDraws` and
+`baseFingerprint` are compared per step and were already measured equal on both sides at every
+step; all 1,003 cells were identical at steps 93 to 96; the roster was byte-identical. **A
+divergence inside a step is invisible to a comparison taken at step boundaries.** That is this
+project's eighth instance of one shape, arrived at from the other end: *a green is a claim about
+what was checked*, and "equal at every step" is a claim about step boundaries.
+
+**What is left, and it is much narrower than the entry was.** One attack, at engine time 91.0, from
+a `Snake`, landing on a hero at 7 HP, resolving to 0 headless and 1 in the viewer. The fault is in a
+computation that consumes randomness, on one roll.
+
+**The next measurement** is to take `RandomTrace.siteLog()` - the ordered draw log this release adds,
+which a per-site tally cannot replace because a tally has no order - on **both** sides around that
+window, and read the first draw at which they part.
+
+Evidence: `out/evidence/issue-26/herodmg-diff.txt`, with both raw traces beside it.
+
 ### Ruled out: the viewer and the trainer do not disagree about acceptance
 
 `reprocheck --args="deathfixture"` records a DUELIST run on `DUELIST-LONG-16` and refuses to write
