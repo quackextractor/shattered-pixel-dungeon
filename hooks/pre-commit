@@ -67,7 +67,7 @@ set_badge() {
 read_badge() {
     # $1 file, $2 badge label. First match wins, which is why the two badges in README.md carry
     # different labels rather than the same one twice - `version-` and `superintelligence-`.
-    grep -o "img.shields.io/badge/$2-[0-9][^-]*-blue.svg" "$1" \
+    grep -a -o "img.shields.io/badge/$2-[0-9][^-]*-blue.svg" "$1" \
         | head -1 \
         | sed "s|.*$2-||; s|-blue.svg||"
 }
@@ -86,9 +86,24 @@ fi
 
 # ---------------------------------------------------------------- the module: its own changelog
 
+# A NUL anywhere makes grep read the file as binary and print 'Binary file ... matches' to stdout
+# instead of the matches. `$(...)` captures that, the pattern does not match it, and the garbage is
+# then written straight into a README badge - which is how both badges in this repository came to
+# read 'version-Binary file superintelligence/CHANGELOG.md matches-blue.svg'. `-a` below removes the
+# failure mode; this refuses rather than repairs, because a changelog with a NUL in it is a bug in
+# whatever wrote it and a badge that silently absorbs the bug hides it.
+for _md in README.md $(ls superintelligence/*.md docs/*.md 2>/dev/null); do
+    if LC_ALL=C tr -d '\11\12\15\40-\376' < "$_md" | grep -q . 2>/dev/null; then
+        echo "[ERROR] $_md carries a control byte."
+        echo "        grep reads such a file as binary, so the badge checks below cannot be trusted."
+        echo "        :superintelligence:doccheck names the offending file and the byte offsets."
+        exit 1
+    fi
+done
+
 # The changelog's newest *released* heading. 'Unreleased' does not match the numeric pattern, so an
 # unreleased section above it is skipped rather than being read as the current version.
-si_changelog_version=$(grep -o '^## \[[0-9][^]]*\]' superintelligence/CHANGELOG.md \
+si_changelog_version=$(grep -a -o '^## \[[0-9][^]]*\]' superintelligence/CHANGELOG.md \
     | head -1 \
     | sed 's/^## \[//; s/\]$//')
 

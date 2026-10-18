@@ -2,7 +2,7 @@
 
 | Badge | Version |
 | --- | --- |
-| [![Version](https://img.shields.io/badge/version-Binary file superintelligence/CHANGELOG.md matches-blue.svg)](CHANGELOG.md) | 0.10.0 |
+| [![Version](https://img.shields.io/badge/version-0.10.0-blue.svg)](CHANGELOG.md) | 0.10.0 |
 | [![Game](https://img.shields.io/badge/game-4.0.2-blue.svg)](../README.md)
 
 A headless reinforcement-learning framework for Shattered Pixel Dungeon, implementing the design
@@ -20,7 +20,7 @@ seed recorded and re-verified.
 
 **A recording the trainer writes can now be watched, and that is a measured claim rather than a plan.**
 It was false, and `verify` said otherwise: the trainer pinned a step's quickslot bindings *after* the
-step, so a `DROP` — the one action that unbinds its own item — named a different item on playback than
+step, so a `DROP`  -  the one action that unbinds its own item  -  named a different item on playback than
 it did on the recording; `ReplayIO.verify` resolved recorded slot indices against the live bindings
 rather than the recorded ones and skipped the comparison entirely when the field was empty, which is
 why nine unplayable recordings each reported `[OK]`; and `viewcheck`'s verdict was "did not diverge",
@@ -95,8 +95,8 @@ And the five things:
   every gradient depended on whichever sample preceded it. All three are fixed, and each has a
   gate that fails when the fix is reverted.
 - **The reward paid the agent to give up.** `STALLED` cost -5.0 against death's -100, and the cheapest
-  action in the game — `WAIT`, which moves nothing — walked straight into the guard that triggers it.
-  A 20-generation run converged `meanScore` on exactly -5.0 with turns collapsing 62 → 8. `STALLED` is
+  action in the game  -  `WAIT`, which moves nothing  -  walked straight into the guard that triggers it.
+  A 20-generation run converged `meanScore` on exactly -5.0 with turns collapsing 62 -> 8. `STALLED` is
   now zero and priced by turn cost alone. Measured after: `meanScore` +3.29, `meanTurns` 56,
   `valueLoss` 0.44. See [`PLAN-reward-signals.md`](PLAN-reward-signals.md).
 - **`REST` was a one-way door, and that was the real cause of a 100% stall rate.** The agent was not
@@ -151,68 +151,68 @@ And the five things:
   `meanScore` fall is inside the noise. See `issues.md` 27. `depthReward` of +10 against `turnCost` of
   0.002 means
   descending pays 5,000 turns of idling, and `KILL` / `GOLD_GAIN` / `ITEM_PICKUP` still never fire
-  (`TODO.md` §2).
+  (`TODO.md` Section 2).
 - **The desktop viewer and the trainer now agree.** They did not, and it was not a viewer fault:
-  four presentation draws — a sprite's random facing, the attack overlay's highlight target, and two
-  Mages Staff particle effects — were spending the gameplay RNG stream, which only the rendered game
+  four presentation draws  -  a sprite's random facing, the attack overlay's highlight target, and two
+  Mages Staff particle effects  -  were spending the gameplay RNG stream, which only the rendered game
   makes. The viewer's stream ran twelve values from the trainer's, so every damage and defence roll
   after the first differed and recordings that verified exactly headlessly diverged in the viewer:
   **14 of 17**, deterministically. Worse, `RngTrace` reported identical draw counts at every step
   throughout, because `Random.Int` and `Random.shuffle` were advancing the generator without being
-  counted — so the instrument that was supposed to catch it was blind to the draws that caused it.
+  counted  -  so the instrument that was supposed to catch it was blind to the draws that caused it.
 `gradle :desktop:viewcheck` is now **green on all 17**, and stable across repeated runs. The four
-   fixes are engine changes under `instructions.md` §12.3; the proposal record is
+   fixes are engine changes under `instructions.md` Section 12.3; the proposal record is
    `ENGINE-CHANGES.md` and they are committed. See `CHANGELOG.md`.
 - **Descending now survives the whole journey, including climbing back up.** A hero who walks down the
   stairs was ending the episode on the spot: `Game.switchScene(...)` raises a request and returns, and
   the acknowledgement that turns it into "a scene wants to take over" is raised in `Game.step()`,
-  reached from `Game.render()` — which never runs headlessly. That is why `bestDepth` was 1 in every
+  reached from `Game.render()`  -  which never runs headlessly. That is why `bestDepth` was 1 in every
   generation of every run: the one action that would have moved the agent was ending it.
   Four more faults were only reachable because nothing descended. The last of them was the mirror image
   of the first, and `CHANGELOG.md`: the environment never gave the hero a turn on the new floor, so a
-  mob waking up and seeing him for the first time interrupted the agent's first action there — the
+  mob waking up and seeing him for the first time interrupted the agent's first action there  -  the
   agent's first move on every new floor was spent being noticed by a rat. Both environments now agree,
   and `viewcheck` is 17 of 17 with `verifyall` green. See `CHANGELOG.md`.
 - **A chasm fall was being dropped on the floor.** A fall is the only transition that carries no
-  `LevelTransition` — `Chasm.heroFall` writes `InterlevelScene.mode` and asks for a scene switch, and
-  nothing else — and `LevelPipeline.handleTransition` tested for a transition before it tested the
+  `LevelTransition`  -  `Chasm.heroFall` writes `InterlevelScene.mode` and asks for a scene switch, and
+  nothing else  -  and `LevelPipeline.handleTransition` tested for a transition before it tested the
   mode, which is false on every fall and true on none of the others. So it answered "not a level
   transition", cleared the switch request and left the hero standing on the pit: `Transition.FALL` and
   `handleFall()` were unreachable code. Three more faults on the same path: the landing ignored
   `InterlevelScene.fallIntoPit`, the landing applied no fall damage (so a fall was free and strictly
   better than the stairs), and walking a hero *at* a chasm threw a `NullPointerException` out of
-  `Chasm.heroJump` and out of the worker with it. **And the agent could not cross a chasm by choice** —
+  `Chasm.heroJump` and out of the worker with it. **And the agent could not cross a chasm by choice**  - 
   the game's "jump?" prompt gated its own answer on `elapsed > 0.2f` on a clock only a rendered frame
   loop advances, and `WindowBridge` discarded the dialog on any press regardless, so the environment was
   asked the question and then had the answer thrown away. The prompt is now aged once per environment
   step (once per frame, the approximation `ReplayPlayer` already makes about a recorded step) and the
-  game's own `hide()` closes it, so the agent asks, answers, and ends up a floor down — for 13 steps and
+  game's own `hide()` closes it, so the agent asks, answers, and ends up a floor down  -  for 13 steps and
   -15.00, against a descent at +1800.00. And a levitation expiring over a chasm now drops the hero, which the
    game's `Levitation.detach` does not do without a renderer. `CHANGELOG.md`; `fallcheck` and
    `dialogcheck` gate it, 6 and 3 cases.
-- **A thrown item did not trigger what it landed on, and nothing had ever found out** — the third fault
+- **A thrown item did not trigger what it landed on, and nothing had ever found out**  -  the third fault
    on this path, filed as its own issue and now closed. `Level.drop` presses the cell an item lands on,
    which is how a thrown stone sets off a trap or flattens grass, and it did so only behind
    `scene() instanceof GameScene`: a renderer-bypassed process has no scene, so **every throw landed on a
    trap and did nothing to it.** Measured on four seeds, an armed `WornDartTrap` was still armed after a
-   `Food` was dropped on it in all four. `Level.drop` is the only place that needed to change — `Item.onThrow`
-   and `Item.doDrop` both call it and nothing else puts an item on a floor — and the scene test survives,
+   `Food` was dropped on it in all four. `Level.drop` is the only place that needed to change  -  `Item.onThrow`
+   and `Item.doDrop` both call it and nothing else puts an item on a floor  -  and the scene test survives,
    because the two drops it exists to exclude (`AlchemyScene` crafting onto the cell the hero stands on,
    `InterlevelScene.resurrect` onto the cell he died on) both need a renderer and cannot exist headlessly.
    A dropped item now fires a trap and tramples grass, and level generation still presses nothing.
-   `presscheck` gates it — 3 cases, in `gates` — and `test-replays/duelist-throw.replay` is the recording
+   `presscheck` gates it  -  3 cases, in `gates`  -  and `test-replays/duelist-throw.replay` is the recording
    that makes a recorded press reproducible on both sides. `CHANGELOG.md`.
 
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
-(`TODO.md` §1). See [`PLAN-data-flow.md`](PLAN-data-flow.md), whose steps are all resolved.
+(`TODO.md` Section 1). See [`PLAN-data-flow.md`](PLAN-data-flow.md), whose steps are all resolved.
 
 **The reward now prices the objective, and the price of giving up is above the price of dying.** Three
 things were wrong with it, and each was a property rather than a size:
 
-- **Exploration outbid a descent.** A regular floor holds several hundred walkable tiles — measured
-  across 1040 floors, the largest is 81 tall and 419 exceed 48 on one side — so at the old 0.05 a hero
+- **Exploration outbid a descent.** A regular floor holds several hundred walkable tiles  -  measured
+  across 1040 floors, the largest is 81 tall and 419 exceed 48 on one side  -  so at the old 0.05 a hero
   that mapped a floor without ever touching the stairs earned *more* than descending did. That is the
   objective restated as a ratio, and it is why `bestDepth` had been 1 in every generation of every run.
   Now `reward.depth_reward=1800.0` against `reward.explore_reward=0.05`.
@@ -220,11 +220,11 @@ things were wrong with it, and each was a property rather than a size:
   was written and never called, and `prevKills` was snapshotted and never compared. Walking past
   everything was optimal, which is the shape every recorded death has: the hero does not lose a fight,
   he runs out of room. Now emitted from `Statistics.enemiesSlain`.
-- **`STALLED` cost exactly what dying cost**, so quitting and losing were one decision with two labels —
+- **`STALLED` cost exactly what dying cost**, so quitting and losing were one decision with two labels  - 
   and the useful label is the one that survives. It is now worse than dying (3000 against 2500). Separately,
   `TURN_LIMIT` was `-turnCost * 100`, a fifth of a point against a +10 descent, so idling out a floor was
-  a *positive-value strategy*. And a step that advances no engine time — equipping and unequipping cost
-  nothing in the real game too — is now charged, which is the `duelist-mid` loop at a price.
+  a *positive-value strategy*. And a step that advances no engine time  -  equipping and unequipping cost
+  nothing in the real game too  -  is now charged, which is the `duelist-mid` loop at a price.
 
 **Surprise attacks are the largest combat payout**, read from `Statistics.sneakAttacks`, which
 `Mob.defenseProc` increments exactly when `Mob.surprisedBy` holds. A kill is paid for damage dealt, which
@@ -245,26 +245,26 @@ only when a scene exists, and `Char.move` dereferences the sprite unconditionall
 gate: 3 cases, in `gates`, and the third asserts that with `headlessGameplay` off the stand-in factory is
 never consulted, so a game with a renderer cannot reach the branch.
 
-`rewardcheck` grew from 9 cases to 13, and the new ones assert **properties** — that the four terminal
+`rewardcheck` grew from 9 cases to 13, and the new ones assert **properties**  -  that the four terminal
 outcomes are ordered, that descending beats idling out the floor, that exploration cannot outbuy a
-descent, that a free step costs more than a real one — rather than comparing constants. It is 20 cases
+descent, that a free step costs more than a real one  -  rather than comparing constants. It is 20 cases
 now; the three `0.10.0` added are in the next section.
 
 **`reward.profile` can switch the reward function down to the objective alone.** `default` pays every
-term. `depth_only` pays nothing but a descent, a win, and four prices for stopping — the per-turn cost,
-the charge for a step the engine resolved for free, running out of turns, dying and stalling — so
+term. `depth_only` pays nothing but a descent, a win, and four prices for stopping  -  the per-turn cost,
+the charge for a step the engine resolved for free, running out of turns, dying and stalling  -  so
 **the only route to a positive score is a new floor or a win**, and every incidental term is still
 counted while paying zero.
 
 It is a temporary override and nothing is re-priced: every weight still applies when it is on, terms are
 silenced, and `default` restores the whole function. It exists because the objective cannot be *measured*
-through a function that also pays for exploration — a run can score well without ever leaving floor 1, and
+through a function that also pays for exploration  -  a run can score well without ever leaving floor 1, and
 that is indistinguishable from a run that learned to descend.
 
 **It is a diagnostic, not a training default, and that is measured rather than asserted.** 15 generations
 under it with the sub-mode mask on: `meanScore` moved **+157.22 +/- 51.0** between the first 7 and last 8
 generations, **7 of 480 episodes reached floor 2** against 0 of 960 in the `default` 30-generation run,
-and `depth>=2` rose 0.4% -> 2.3% — which is what closed `issues.md` 22 and produced the first depth
+and `depth>=2` rose 0.4% -> 2.3%  -  which is what closed `issues.md` 22 and produced the first depth
 signal this project has. But `DEATH` is **479 of 480** and the mean score is **-2,857** against a -2,500
 death penalty: with nothing but the objective paying, a policy that cannot yet descend learns to die
 cheaply. `issues.md` 20 carries that and stays open. Use it to *measure* the objective, not to train on.
@@ -283,8 +283,8 @@ which is arithmetic rather than mystery - with nothing but the objective paying,
 reach. Under `default` the same hardware put `bestDepth 2` in 104 of 150 generations. See `issues.md` 20.
 
 **Measured, and honestly: survival improved and depth did not.** A 12-generation run moved deaths
-100% → 19% and mean turns 377 → 1335, and `bestDepth 2` appeared once in a smoke test. Depth does not
-trend yet; a 40-generation run is the measurement that would settle it. See [`TODO.md`](TODO.md) §1.8.
+100% -> 19% and mean turns 377 -> 1335, and `bestDepth 2` appeared once in a smoke test. Depth does not
+trend yet; a 40-generation run is the measurement that would settle it. See [`TODO.md`](TODO.md) Section 1.8.
 
 **Nothing has won a run.** The milestone from `research.md:40` is beating Goo on depth 5.
 
@@ -297,8 +297,8 @@ optimiser step that moved nothing.
 **The trainer now updates on real data.** Workers play their own episodes with the real policy,
 compute GAE over the whole episode, and ship a sample of the transitions; the trainer pools them
 across every worker and applies one update. `policy=` and `value=` are non-zero. That is the first
-time the loop has learned anything at all — and it is not yet a trained agent: the runs so far were
-smoke tests of a few dozen generations each, and the barrier is currently ~6× the cost of collecting
+time the loop has learned anything at all  -  and it is not yet a trained agent: the runs so far were
+smoke tests of a few dozen generations each, and the barrier is currently ~6x the cost of collecting
 the data. `gradle :superintelligence:gaecheck` keeps the two advantage implementations honest, and
 `gradle :superintelligence:updatecost` measures what an update costs.
 
@@ -353,10 +353,10 @@ something.
 | **Killing pays; approaching pays more** | Done - `KILL` was declared and never emitted, so fighting was worth nothing while being hit cost something. `reward.kill_reward` 150.0, and `reward.sneak_attack_reward` **300.0** above it, read from `Statistics.sneakAttacks` - the one combat outcome that costs no health, because `Mob.surprisedBy` skips the defender's defence outright |
 | **A free action is not free** | Done - equipping and unequipping advance no engine time at all, and a policy alternated them for 120 consecutive steps on one `Rapier`. `reward.no_progress_penalty` 0.05, **priced rather than prevented**, so the stall guard still ends recordings where it did and the corpus stays valid |
 | **A free action cannot be repeated for ever** | Done - `OPEN_INVENTORY`, `USE` and `DROP` are the only entries into a sub-mode and all three cost nothing, and `CANCEL` is the only way out of two of them, so the pair is a loop that advances no engine time at all while charging every step against `env.free_step_budget`. `REST` was the worst of it, at 323 free steps in 326. After a step that leaves a sub-mode without moving the clock, the next `WORLD` mask refuses all three **for exactly one step** - the actions stay legal, the agent just cannot chain them without spending a turn in between. Measured over 40 uniform-policy episodes: `meanTurns` 626.8 -> **800.7**, ended `STALLED` 21 of 40 -> **15 of 40**, `REST` free steps 323 of 326 -> **1**. `freeactioncheck` is the gate, 7 cases, mutation-tested both ways. `CHANGELOG.md` |
-| **A free action is not always offered** | Done - an equip toggle is a legal use and spends no engine time at all, so the mask that offered `USE` whenever the hero carried anything was satisfied by a backpack holding one unequipped weapon. `env.sub_mode_progress_only` masks `USE` when every carried item is a bare equip toggle and `OPEN_INVENTORY` when there is nothing to use at all; `DROP` is untouched. Measured over 40 uniform-policy episodes at fixed seeds, same code, only the flag differing: ended `STALLED` **14 of 40 → 2 of 40**, `deepestDepth` 1 → **2**. `stallcausecheck` proves both halves - `FREE_STEP` is reachable with the flag off and unreachable with it on. Evidence: `out/evidence/stallbreakdown-sub-mode-mask-{tight,loose}.txt` |
+| **A free action is not always offered** | Done - an equip toggle is a legal use and spends no engine time at all, so the mask that offered `USE` whenever the hero carried anything was satisfied by a backpack holding one unequipped weapon. `env.sub_mode_progress_only` masks `USE` when every carried item is a bare equip toggle and `OPEN_INVENTORY` when there is nothing to use at all; `DROP` is untouched. Measured over 40 uniform-policy episodes at fixed seeds, same code, only the flag differing: ended `STALLED` **14 of 40 -> 2 of 40**, `deepestDepth` 1 -> **2**. `stallcausecheck` proves both halves - `FREE_STEP` is reachable with the flag off and unreachable with it on. Evidence: `out/evidence/stallbreakdown-sub-mode-mask-{tight,loose}.txt` |
 | **A two-turn action is not a one-turn price** | Fixed - `TURN_COST` was charged per *step*, and `Hero.search` costs **two** engine turns, so a search was half price and the agent spent 189 of 940 steps and **half the run's engine time** on an action that finds nothing after the first sweep. Charged by the engine clock now, floored at one turn so idling cannot become free. `SEARCH` fell to 39 steps / 78 turns on the same seed |
 | **Drops are charged** | Fixed - the pickup/drop pair had been correct since `issues.md` (closed; see CHANGELOG.md), but **`IDENTIFIED` was still one-sided**: it paid +0.5 for carrying an already-identified item and refunded nothing when dropped, so `DROP`-then-`INTERACT` was a repeatable +0.5. Measured on `IPW-QMA-AFY`: `IDENTIFIED +27.50` against an inventory round trip that was itself **net -5.00**. Now a signed diff, and the gate checks that no *other* term pays for the round trip |
-| **A turn costs something** | Fixed - `reward.turn_cost` 0.002 → **1.0**, with every other term rescaled onto the same footing. A floor's 1500-turn budget had cost **-3.00** against a **+25** descent, so idling was nearly free. Same seed before and after: 1508 steps / deepest 1 → **392 steps / deepest 2**. That run was the first to reach depth 2 in this project, and depth 2 has been reached in `bestDepth` in 9 of 30 generations since - which, as above, is not yet a result |
+| **A turn costs something** | Fixed - `reward.turn_cost` 0.002 -> **1.0**, with every other term rescaled onto the same footing. A floor's 1500-turn budget had cost **-3.00** against a **+25** descent, so idling was nearly free. Same seed before and after: 1508 steps / deepest 1 -> **392 steps / deepest 2**. That run was the first to reach depth 2 in this project, and depth 2 has been reached in `bestDepth` in 9 of 30 generations since - which, as above, is not yet a result |
 | **The hero levels but cannot spend the point** | **Done** - `TALENT_UPGRADE` at `reward.talent_reward` 400.0, wired from `Hero.talentPointsSpent` and gated. Spending is UI-only in the game (`TalentButton` -> `TalentsPane` -> `WndHero`), so there was no headless action at all and the point could never be spent. `Action.TALENT` opens `EnvMode.TALENT`, where the slot head enumerates `env.TalentPicker.available(hero)` in the game's own order, and `freeactioncheck` drives the whole path through `SPDEnv.step` and asserts the reward pays. The first point arrives at **level 2**: two rats on floor 1 |
 | Actions report what happened | Done - `WAIT`/`REST`/`SEARCH` were recorded as `INVALID_ACTION`, and the term carried no weight, so nothing observed it |
 | CNN + LSTM network, PPO agent | **The recurrent gradient is no longer truncated at length one.** Every sampled step used to be backpropagated in isolation with dPrev and dCell cleared, so nothing crossed a timestep and LSTM.W_hh received no gradient at all for holding information forward. The update now groups the batch into contiguous runs of up to `rl.chunk_length` (16) steps and backpropagates each run in reverse, and the sampler that decides which steps reach the trainer now draws whole blocks of that length rather than an independent draw per step, so a run of the length the setting names actually occurs. Contiguity travels with the sample - the worker stamps an episode id and a step index, and a gap or a change of episode starts a new run. Measured: a two-step chunk's LSTM gradient differs from the sum of its steps' by **63.7%**, and reverting the accumulation drops that to **0.00000**. `bpttcheck` is the gate, 7 cases, and the decisive one is constructed so the answer is forced. `samplercheck` holds the sampling half: at `rl.sample_rate=0.05` over 20,000 steps it retains 1,113 steps in 70 contiguous runs with the longest at 16 and no interior gaps, against a Bernoulli sampler whose runs are all of length one |
@@ -459,12 +459,12 @@ at `rl.sample_rate=0.05`, the retained steps must group into runs as long as `rl
 says, and a grid flattened straight into the dense trunk fails it. **`seedcheck`** covers a resumed
 run: a draw must be a function of its index, so a pool resumed after 120 draws continues at 121
 rather than restarting at generation 0. **`doccheck`** covers this file: no markdown under the module
-may carry a control byte — a NUL makes `grep` read it as binary and the pre-commit hook's badge check
-then skips it — every gate must be reachable, this paragraph's count must be the real one, and **every
+may carry a control byte  -  a NUL makes `grep` read it as binary and the pre-commit hook's badge check
+then skips it  -  every gate must be reachable, this paragraph's count must be the real one, and **every
 Java path any of the five documents names must resolve against `core/src/main/java`,
 `SPD-classes/src/main/java`, `desktop/src/main/java` or `superintelligence/src/main/java`**. That last
 case is 4 cases in total and it found 26 references in `research.md` that name a file which has moved
-or never existed — `FogOfWar.java` and `ShadowCaster.java` live in `tiles/` and `mechanics/` now, and
+or never existed  -  `FogOfWar.java` and `ShadowCaster.java` live in `tiles/` and `mechanics/` now, and
 `SPDAction.java` was never a class in this repository at all.
 
 **A gate that passes because the thing it would catch is absent is the same failure as a gate that
@@ -504,7 +504,7 @@ because the reduction is 14.3 MB per thread per minibatch, which costs about wha
 saves. `parallelcheck` asserts the sharded gradient equals the serial one.
 
 The default is **2 epochs**, which also corrects a misconfiguration: 4 epochs is 300 Adam steps over a
-2,400-sample batch. Transport is 0.12 s against ~7 s of collection — never the bottleneck.
+2,400-sample batch. Transport is 0.12 s against ~7 s of collection  -  never the bottleneck.
 
 Sampling and metrics are tunable, and the three sampling knobs were previously `Trainer` fields with
 no way to reach them from the command line:
@@ -528,7 +528,7 @@ pool mid-sequence and compares the next 80 draws against the uninterrupted run's
 ```
 
 `gradle :superintelligence:weightsdiff --args="<file>"` reports how far a checkpoint is from a freshly
-initialised policy — mean and max absolute weight difference. `checkpointcheck` asserts that a policy
+initialised policy  -  mean and max absolute weight difference. `checkpointcheck` asserts that a policy
 survives disk exactly, Adam moments included, and that bad checkpoints are refused.
 
 ## Layout

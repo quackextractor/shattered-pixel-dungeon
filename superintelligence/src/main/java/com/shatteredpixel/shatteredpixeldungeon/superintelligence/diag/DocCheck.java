@@ -61,10 +61,9 @@ public class DocCheck {
 			for (int i = 0; i < bytes.length; i++){
 				int b = bytes[ i ] & 0xff;
 				if (b == '\n' || b == '\r' || b == '\t' ) continue;
-				if (b >= 9 && b < 32 ){
-					where.append( " 0x" ).append( String.format( "%02X", b ) )
-							.append( " at byte " ).append( i );
-				}
+				if (b >= 0x20 || b == 0x7f ) continue;
+				where.append( " 0x" ).append( String.format( "%02X", b ) )
+						.append( " at byte " ).append( i );
 			}
 
 			if (where.length() > 0){
@@ -77,7 +76,9 @@ public class DocCheck {
 					+ " backticked names in README.md lost their first characters: "
 					+ String.join( "; ", damaged ) + ". A file with a NUL or a backspace in it is read"
 					+ " as binary by grep, so the pre-commit hook's badge check silently skipped it and"
-					+ " reported a mismatch it could not fix." );
+					+ " reported a mismatch it could not fix - and then rewrote the badge with grep's own"
+					+ " 'Binary file ... matches' line. Every byte below 0x20 except tab, CR and LF is a"
+					+ " failure here, NUL included." );
 			return;
 		}
 
