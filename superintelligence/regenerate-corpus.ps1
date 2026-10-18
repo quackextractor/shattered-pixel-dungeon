@@ -303,6 +303,61 @@ foreach ($probe in $probes) {
 }
 Remove-Item $probeDir -Recurse -Force -ErrorAction SilentlyContinue
 
+# Three corpus members are not rollout recordings. Each is produced by a command that searches for a
+# seed and refuses to write anything else, because a corpus member that cannot witness what it exists
+# for is worse than no member: duelist-drop carries the only DROP in SLOT, duelist-throw the only
+# recorded press, duelist-death-last a death on the final step. This script cleared the directory
+# wholesale and did not rebuild them, so a regeneration quietly dropped a third of the corpus and
+# every gate that reads those three reported the wrong thing - 17 of 20 instead of 20 of 20, which
+# reads as a regression rather than as a file that was never written.
+Write-Host "rebuilding the three fixtures that are not rollouts"
+$fixtures = @(
+    @{ Name = 'duelist-drop.replay';   Command = 'dropfixture';   Seed = 'DROPFIXTURE' }
+    @{ Name = 'duelist-throw.replay';  Command = 'pressfixture';  Seed = 'PRESSFIXTURE' }
+)
+foreach ($fixture in $fixtures) {
+    $log = Join-Path $logDir "fixture-$($fixture.Name).log"
+    $work = Join-Path $logDir "fixturework-$($fixture.Name)"
+    if (Test-Path $work) { Remove-Item $work -Recurse -Force }
+    New-Item -ItemType Directory -Path $work | Out-Null
+
+    $proc = Start-Process -FilePath 'java' -PassThru -NoNewWindow `
+        -RedirectStandardOutput $log -RedirectStandardError "$log.err" `
+        -ArgumentList @('-cp', $cp, $main, $fixture.Command,
+                        '--save', (Join-Path $Dir $fixture.Name),
+                        '--out', $work, '--no-color')
+    $null = $script:spawned.Add($proc)
+    $proc.WaitForExit($PerFileSeconds * 1000) | Out-Null
+    if (-not $proc.HasExited) { $proc.Kill() }
+
+    if (Test-Path (Join-Path $Dir $fixture.Name)) {
+        Write-Host ("  {0,-24} rebuilt" -f $fixture.Name)
+    } else {
+        Write-Host ("  {0,-24} NOT REBUILT - see {1}" -f $fixture.Name, $log) -ForegroundColor Red
+    }
+}
+
+# A death recording, from the same command the death analysis runs, which refuses to write one that
+# does not end in DEATH, does not reproduce, or refuses no step at all.
+$deathLog = Join-Path $logDir 'fixture-duelist-death-last.log'
+$deathWork = Join-Path $logDir 'fixturework-duelist-death-last'
+if (Test-Path $deathWork) { Remove-Item $deathWork -Recurse -Force }
+New-Item -ItemType Directory -Path $deathWork | Out-Null
+$deathProc = Start-Process -FilePath 'java' -PassThru -NoNewWindow `
+    -RedirectStandardOutput $deathLog -RedirectStandardError "$deathLog.err" `
+    -ArgumentList @('-cp', $cp, $main, 'reprocheck', 'deathfixture')
+$null = $script:spawned.Add($deathProc)
+$deathProc.WaitForExit($PerFileSeconds * 1000) | Out-Null
+if (-not $deathProc.HasExited) { $deathProc.Kill() }
+
+$deathBuilt = Join-Path $module 'out\evidence\duelist-acceptance-fixture.replay'
+if (Test-Path $deathBuilt) {
+    Move-Item $deathBuilt (Join-Path $Dir 'duelist-death-last.replay') -Force
+    Write-Host ("  {0,-24} rebuilt" -f 'duelist-death-last.replay')
+} else {
+    Write-Host ("  {0,-24} NOT REBUILT - see {1}" -f 'duelist-death-last.replay', $deathLog) -ForegroundColor Red
+}
+
 Write-Host "verifying every recording reproduces, $Parallel at a time"
 
 # A recording that does not reproduce is not committed. Leaving it in place would mean the corpus

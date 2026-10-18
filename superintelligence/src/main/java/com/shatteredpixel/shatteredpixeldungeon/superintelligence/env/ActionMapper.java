@@ -371,7 +371,7 @@ public class ActionMapper {
 
 		Hero hero = hero();
 
-		if (!Dungeon.level.adjacent( hero.pos, cell )) return false;
+		if (cell != hero.pos && !Dungeon.level.adjacent( hero.pos, cell )) return false;
 
 		if (hero.handle( cell )) {
 			hero.next();
@@ -468,6 +468,17 @@ public class ActionMapper {
 				}
 				return cell;
 			}
+		}
+		Heap underfoot = Dungeon.level.heaps.get( hero().pos );
+		if (underfoot != null ){
+			if (PickupTrace.enabled()) PickupTrace.pickup( hero().pos, underfoot );
+			if (dbg != null){
+				System.err.println( "[interact] picked heap under the hero at " + hero().pos
+						+ " size=" + underfoot.size() + " type=" + underfoot.type
+						+ " peek=" + (underfoot.peek() == null ? "null" : underfoot.peek().getClass().getSimpleName())
+						+ " seen=" + underfoot.seen + dbg );
+			}
+			return hero().pos;
 		}
 		for (int o = 1; o < TARGET_COUNT; o++){
 			int cell = targetCell( o );

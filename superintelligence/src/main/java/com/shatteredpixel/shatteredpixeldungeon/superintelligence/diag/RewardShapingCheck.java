@@ -127,6 +127,32 @@ public final class RewardShapingCheck {
 	}
 
 
+	public static void checkPickingUpUnderfootPays(){
+		Outcome outcome = play( new EnvConfig(), 12, "UNDERFOOTCHECK", turn -> {
+			if (turn.step == 1){
+				Dungeon.level.drop( new com.shatteredpixel.shatteredpixeldungeon.items.potions
+						.PotionOfHealing(), Dungeon.hero.pos );
+				Dungeon.observe();
+				turn.env.step( Action.INTERACT, 0 );
+				return;
+			}
+			turn.env.step( Action.WAIT, 0 );
+		} );
+
+		if (outcome.notes( RewardTerm.ITEM_PICKUP ) == 0){
+			fail( "a potion lying on the hero's own cell was not picked up by Action.INTERACT and"
+					+ " ITEM_PICKUP never fired. The hero reaches that cell by walking over the heap, which"
+					+ " is the only way a dropped item ever becomes carried, and an agent whose own"
+					+ " pickup is unreachable cannot learn to collect anything." );
+			return;
+		}
+
+		System.out.println( "  a heap under the hero is picked up by INTERACT, ITEM_PICKUP firing "
+				+ outcome.notes( RewardTerm.ITEM_PICKUP ) + " time(s) paying "
+				+ fmt( outcome.termTotal( RewardTerm.ITEM_PICKUP ) ) );
+	}
+
+
 	private static int cellBesideHero(){
 		int width = Dungeon.level.width();
 		for (int off : new int[]{ -width, width, -1, 1 }){

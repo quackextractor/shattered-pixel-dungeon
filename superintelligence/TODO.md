@@ -28,12 +28,11 @@ own error bar in either direction. Numbers and method: `CHANGELOG.md`; evidence
 
 - [ ] **Coverage of the terms that fire.** `KILL`, `GOLD_GAIN` and `ITEM_PICKUP` are all proven to
       fire and a trainer run reports 6-9 kills and 100-188 pickups per generation. What is left is
-      whether an untrained policy gets there on its own. **The blocker is no longer `issues.md` 38**,
-      which is closed: the cause was a guidebook page read out of the process-wide `Document`, and
-      `Document.resetPages()` is now called on every reset. **And it is no longer `issues.md` 26**,
-      which closed on the ordered draw log, so the revisit condition `REJECTED.md` states for the
-      own-cell `INTERACT` has fired: regenerate the corpus on the new semantics, re-run `viewcheck`,
-      and ship.
+      whether an untrained policy gets there on its own. **Both blockers are gone**: `issues.md` 38
+      closed on the guide page, and the own-cell `INTERACT` that `REJECTED.md` deferred is now
+      shipped with the corpus regenerated on the new semantics. `INTERACT` reaches the heap the hero
+      is standing on, which is the only way a dropped item ever becomes carried, and `rewardcheck`
+      holds it.
 - [ ] **The shaping fade has never faded anything.** Wired and measured - 0.6064 at depth 6 - but it
       starts at depth 3 and no run has passed floor 2. The fix is an agent that descends, not a
       retune.

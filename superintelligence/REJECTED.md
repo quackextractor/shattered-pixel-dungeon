@@ -7,63 +7,10 @@ without their reasoning. A proposal here is not a failure; several are the right
 still worth doing someday is in one of two states: **declined**, meaning the answer is no and the
 reason is on this page, or **deferred**, meaning the answer is later and the trigger is stated.
 
-## Letting `INTERACT` pick an item up off the hero's own cell
-
-**Proposed by** `TODO.md` §2, and by the external code review whose plans have since been folded into `CHANGELOG.md`. **The blocker is gone; the corpus is now the
-one, and the change is deferred until `issues.md` 26 closes.**
-
-`ActionMapper.pickInteractCell()` scans offsets 1..8 and `handleCell()` refuses a non-adjacent cell,
-so an item on the cell the hero stands on cannot be picked up. Making both accept it turned
-`paritycheck` **red, deterministically** — one seed, one hero, `DIVERGED at 256: position replayed
-500, recorded 1301` — while the same file reproduced in 357 steps in two fresh JVMs. A/B on one tree:
-
-| variant | `paritycheck` |
-| --- | --- |
-| `pickInteractCell` checks the hero's own cell, `handleCell` still requires adjacency | green, 32 of 32 |
-| both changed | red at step 256 |
-| both changed, own cell admitted only when a heap is there | red, same step |
-
-**Not declined on merit.** It was held because a committed tree has to be green, and this one could
-not be with the change in it. The reward cases that asked for it now drop the heap on an adjacent
-cell, which proves `GOLD_GAIN` and `ITEM_PICKUP` fire without the own-cell path.
-
-### What the measurement changed, and what it did not
-
-`issues.md` 38 named the cause and it is fixed (`CHANGELOG.md`): a guidebook page, read out of the
-process-wide `Document` by level generation, and `Document.resetPages()` is now called on every
-reset. The original refusal is gone:
-
-| | `issues.md` 38 blocked on | now |
-| --- | --- | --- |
-| `paritycheck --seeds 1 --heroes 1 --turns 400` | `DIVERGED at 256: position: replayed 500, recorded 1301` | `reproduced (357 steps, -315.340)`, clean again after the sweep |
-| full sweep, 8 seeds x 4 heroes | red at step 256 | **32 of 32**, twice each |
-| `rewardcheck` | 34 checks | 34 checks |
-
-**And `:desktop:viewcheck` is what stops it, and it is a different kind of objection.** With the fix
-in place *and* the change applied, **7 of the 20 committed recordings diverge in the real viewer**:
-
-```
-[replay] halted: DIVERGED at step 7  - INTERACT/0 in WORLD: hero at (6, 14) pos 496, recording says (7, 14) pos 497
-[replay] halted: DIVERGED at step 11 - INTERACT/0 in WORLD: hero at (22, 13) pos 568, recording says (22, 12) pos 526
-[replay] halted: DIVERGED at step 23 - INTERACT/0 in WORLD: hp is 19, recording says 20
-[replay] halted: DIVERGED at step 31 - INTERACT/0 in WORLD: inventory is [Pasty:1,VelvetPouch():1,Waterskin:1], recording says [VelvetPouch():1,Waterskin:1]
-```
-
-Every one is an `INTERACT` recorded while the hero stood on a heap. Under the old semantics the step
-did nothing to the item; under the new one it picks it up. **No reset fixes that** — it is a genuine
-semantic change to what a recorded step means, and it is invisible to `paritycheck`, which re-records
-in the same process and therefore re-records under the new semantics. That is the eighth instance of
-this file's rule: *a green is a claim about what was checked*, and `paritycheck`'s green is a claim
-about recordings it made itself.
-
-Shipping it therefore means regenerating the whole corpus, and **`duelist-death-last.replay` is the
-fixture `issues.md` 26 is diagnosed against**. Regenerating it to accommodate this change would
-destroy the reproduction for an entry that is still open, and 26's own finding is that the corpus is
-the only instrument that can see the renderer.
-
-**Revisit when** `issues.md` 26 closes: regenerate the corpus on the new semantics, re-run
-`viewcheck`, and ship. The change is two lines in `ActionMapper` and the measurement above is the
-one to re-check first.
+**Shipped, not rejected.** The own-cell `INTERACT` this page carried for a while is done: the
+obstruction was `issues.md` 38 and the fixture `issues.md` 26 was diagnosed against, both closed.
+Two lines in `ActionMapper`, a regenerated corpus, `rewardcheck` at 35 cases and `:desktop:viewcheck`
+at 20 of 20. Its reasoning is in `CHANGELOG.md`.
 
 ## A native or ONNX runtime for the learner
 

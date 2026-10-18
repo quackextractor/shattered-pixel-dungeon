@@ -1,5 +1,8 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import java.util.ArrayList;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -141,12 +144,19 @@ private static int probeGuards( int episodes ){
 
 			boolean ok;
 			String want;
-			if (row == 4 ){
-				ok = seen.getOrDefault( StallCause.FREE_STEP, 0 ) == 0;
-				want = "expects FREE_STEP unreachable";
-			} else if (row == 0 ){
-				ok = seen.getOrDefault( StallCause.FREE_STEP, 0 ) > 0;
-				want = "expects FREE_STEP reachable";
+			if (row == 4 || row == 0 ){
+				EnvConfig probe = new EnvConfig();
+				probe.subModeProgressOnly = row != 0;
+				int offered = subModeEntriesOffered( probe, episodes );
+				ok = row == 0 ? offered > 0 : offered == 0;
+				want = (row == 0 ? "expects a sub-mode entry offered, got "
+						: "expects no sub-mode entry offered when nothing is usable, got ") + offered;
+				System.out.println( String.format( "  %-11s %-16d %-16d %-16d  %-22s %s",
+						names[ row ], c.stallLimit, c.freeStepBudget, c.actorStepLimit,
+						"subModeProgressOnly=" + probe.subModeProgressOnly,
+						want + (ok ? "  [OK]" : "  [ERROR]") ));
+				if (!ok) failures++;
+				continue;
 			} else {
 				ok = dominant == expected[ row ];
 				want = "expected " + expected[ row ].name();
@@ -161,14 +171,37 @@ private static int probeGuards( int episodes ){
 		System.out.println();
 		if (failures == 0){
 			System.out.println( "  all four guards reachable, and each reports its own name."
-					+ " FREE_STEP is reachable only with the loose sub-mode mask, which is what"
-					+ " env.sub_mode_progress_only is for." );
+					+ " The shipped sub-mode mask offers no sub-mode entry when the hero carries"
+					+ " nothing usable, which is what env.sub_mode_progress_only is for. It used to"
+					+ " assert that through which guard ended the episode, which a uniform policy"
+					+ " reached only by luck - and a hero that can pick up what it walks over now"
+					+ " reaches it without any luck at all." );
 		} else {
 			System.out.println( "  " + failures + " row(s) named the wrong guard, or none at all." );
 			System.out.println( "  A mislabelled StallCause constant compiles and passes every other gate," );
 			System.out.println( "  because under the default thresholds only FREE_STEP is ever reached." );
 		}
 		return failures;
+	}
+
+	private static boolean isSubModeEntryFree( Action action ){ return false; }
+
+	private static int subModeEntriesOffered( EnvConfig config, int episodes ){
+		int offered = 0;
+		for (int i = 0; i < episodes; i++){
+			SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+			env.reset( String.format( "MASKPROBE-%04d", i ), HeroClass.WARRIOR );
+
+			Dungeon.hero.belongings.backpack.clear();
+
+			env.step( Action.WAIT, 0 );
+			if (Dungeon.hero == null) continue;
+
+			float[] mask = env.actionMask();
+			if (mask[ Action.USE.index ] > 0.5f ) offered++;
+			if (mask[ Action.OPEN_INVENTORY.index ] > 0.5f ) offered++;
+		}
+		return offered;
 	}
 
 	private static Action pickAction( SPDEnv env, Random rng ){

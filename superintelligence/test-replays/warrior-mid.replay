@@ -1,168 +1,281 @@
 SPD-REPLAY
-version=3
+version=5
 seed=warrior-mid
 hero=WARRIOR
 challenges=0
 generation=0
-score=6.600000185426325
-depth=1
-turns=150
+score=766.8666317947209
+depth=2
+turns=261
 turn_limit=150
-max_slots=32
+max_slots=96
 allow_equipping=true
 termination=TURN_LIMIT
-steps=154
-USE 0 WORLD 744 -0.0020000000949949026  20 0.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 744 0.0 ThrowingStone:0,Waterskin:1 20 0.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 744 -0.0020000000949949026  20 1.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-OPEN_INVENTORY 0 WORLD 744 -0.0020000000949949026  20 1.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 0 INVENTORY 744 0.0 ThrowingStone:0,Waterskin:1 20 1.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 744 -0.0020000000949949026  20 2.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 708 -0.0020000000949949026  20 3.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 744 -0.0020000000949949026  20 5.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 708 -0.0020000000949949026  20 6.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 744 -0.0020000000949949026  20 7.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 708 -0.0020000000949949026  20 8.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 672 -0.0020000000949949026  20 9.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 636 -0.0020000000949949026  20 10.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 600 -0.0020000000949949026  20 11.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 564 -0.0020000000949949026  20 13.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 528 2.8980000019073486  20 14.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 492 1.5980000495910645  20 15.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 492 -0.0020000000949949026  20 16.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 492 -0.0020000000949949026  20 17.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 456 0.24799999594688416  20 18.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 420 0.1979999989271164  20 19.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_NW 0 WORLD 383 -0.0020000000949949026  20 20.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_NW 0 WORLD 346 0.7980000376701355  20 21.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 345 -0.0020000000949949026  20 22.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 344 -0.0020000000949949026  20 23.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 343 0.14800000190734863  20 24.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 342 0.04800000041723251  20 25.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_NW 0 WORLD 305 0.04800000041723251  20 26.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 304 0.2980000078678131  20 27.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 303 -0.0020000000949949026  20 28.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 302 0.8980000615119934  20 29.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-MOVE_NW 0 WORLD 265 0.6480000615119934  20 30.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 265 -0.10199999809265137  19 31.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 265 -0.3020000159740448  16 32.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 265 -0.10199999809265137  15 33.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 265 -0.0020000000949949026  15 33.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 265 0.0 ThrowingStone:0,Waterskin:1 15 33.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 8 TARGETING 265 -0.0020000000949949026  15 34.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 265 -0.0020000000949949026  15 34.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 265 0.0 ThrowingStone:0,Waterskin:1 15 34.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 8 TARGETING 265 -0.20200000703334808  13 35.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 265 -0.0020000000949949026  13 35.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 265 0.0 ThrowingStone:0,Waterskin:1 13 35.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1
-USE 8 TARGETING 265 -1.0019999742507935  13 36.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 265 -0.0020000000949949026  13 36.0 Food:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 265 -0.8019999861717224 Waterskin:1 10 39.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 265 -0.0020000000949949026  10 40.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 265 -0.0020000000949949026  10 41.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 265 -0.0020000000949949026  10 42.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 265 -0.20200000703334808  8 43.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 265 -0.0020000000949949026  8 44.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 265 -0.0020000000949949026  8 45.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 265 -0.0020000000949949026  8 46.0 VelvetPouch():1,Waterskin:1
-MOVE_NW 0 WORLD 228 0.24799999594688416  8 47.0 VelvetPouch():1,Waterskin:1
-MOVE_NW 0 WORLD 191 0.14800000190734863  8 48.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 191 -0.10199999809265137  7 49.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 191 -0.10199999809265137  6 50.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 191 0.49799999594688416  7 51.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 191 -0.0020000000949949026  7 52.0 VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 190 0.14800000190734863  7 53.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 154 1.0980000495910645  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 154 -0.0020000000949949026 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 154 -0.0020000000949949026  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1
+reward_profile=default
+group=
+steps=265
+USE 0 WORLD 744 -1.0  20 0.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 0 0 0
+USE 0 SLOT 744 0.0 ThrowingStone:0,Waterskin:1 20 0.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 0 0 1
+USE 0 TARGETING 744 -1.0  20 1.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 2 1099511628211 1
+OPEN_INVENTORY 0 WORLD 744 -0.5  20 1.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 2 1099511628211 1
+USE 0 INVENTORY 744 0.0 ThrowingStone:0,Waterskin:1 20 1.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 2 1099511628211 1
+USE 0 TARGETING 744 -1.0  20 2.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 4 624167462403310097 1
+MOVE_N 0 WORLD 708 -2.9800000190734863  20 3.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 5 -8707075024818417554 1
+INTERACT 0 WORLD 744 0.0  20 5.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 6 -1550519564128798967 1
+MOVE_N 0 WORLD 708 -2.9800000190734863  20 6.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 7 2538803176601324606 1
+INTERACT 0 WORLD 744 1.0  20 7.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 8 -5546916094148405717 1
+MOVE_N 0 WORLD 708 -2.9800000190734863  20 8.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 9 7848100616245261333 1
+MOVE_N 0 WORLD 672 -2.9600000381469727  20 9.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 10 4339583370405980819 1
+MOVE_N 0 WORLD 636 -2.940000057220459  20 10.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 11 -7939854489824488432 1
+MOVE_N 0 WORLD 600 -2.9200000762939453  20 11.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 12 -1837079660933319592 1
+INTERACT 0 WORLD 564 -3.8999996185302734  20 13.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 13 -6030989383549589528 1
+MOVE_N 0 WORLD 528 0.019999980926513672  20 14.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 16 5248144118176465857 1
+MOVE_N 0 WORLD 492 -1.2600005865097046  20 15.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 19 -1937749831504891314 1
+INTERACT 0 WORLD 492 -1.0  20 16.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 32 3073352848224563777 1
+INTERACT 0 WORLD 492 149.0  20 17.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 44 -9047419765146392722 1
+MOVE_N 0 WORLD 456 -2.5900001525878906  20 18.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 46 -5048998884771344023 1
+MOVE_N 0 WORLD 420 -2.619999647140503  20 19.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 48 -8094739222544443849 1
+MOVE_NW 0 WORLD 383 -2.799999237060547  20 20.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 50 4648878720148419068 1
+MOVE_NW 0 WORLD 346 -1.9800007343292236  20 21.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 51 -4994905794564481116 1
+MOVE_W 0 WORLD 345 -2.760000228881836  20 22.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 52 8096809322525727480 1
+MOVE_W 0 WORLD 344 -2.739999771118164  20 23.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 53 3331241401126704703 1
+MOVE_W 0 WORLD 343 -2.5700011253356934  20 24.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 54 -5995055115695840967 1
+MOVE_W 0 WORLD 342 -2.650000810623169  20 25.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 55 -3281295885709321765 1
+MOVE_NW 0 WORLD 305 -2.630000352859497  20 26.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 56 -8854245226446886527 1
+MOVE_W 0 WORLD 304 -2.359999895095825  20 27.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 59 -5191375897047323017 1
+MOVE_W 0 WORLD 303 -2.6399993896484375  20 28.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 60 -693788661043725827 1
+MOVE_W 0 WORLD 302 -1.719998836517334  20 29.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 62 6301035916128873088 1
+MOVE_NW 0 WORLD 265 -1.949998378753662  20 30.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 65 -422330566166587843 1
+INTERACT 0 WORLD 265 -41.0  19 31.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 78 8026378474181104779 1
+INTERACT 0 WORLD 265 179.0  16 32.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 111 -3670492083533265616 1
+INTERACT 0 WORLD 265 109.0  15 33.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 133 4246756133659071063 1
+USE 0 WORLD 265 -0.5  15 33.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 133 4246756133659071063 0
+USE 0 SLOT 265 0.0 ThrowingStone:0,Waterskin:1 15 33.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 133 4246756133659071063 1
+USE 8 TARGETING 265 -1.0  15 34.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 139 3292504800652900053 1
+USE 0 WORLD 265 -0.5  15 34.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 139 3292504800652900053 0
+USE 0 SLOT 265 0.0 ThrowingStone:0,Waterskin:1 15 34.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 139 3292504800652900053 1
+USE 8 TARGETING 265 -81.0  13 35.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 154 -3660360949528596543 1
+USE 0 WORLD 265 -0.5  13 35.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 154 -3660360949528596543 0
+USE 0 SLOT 265 0.0 ThrowingStone:0,Waterskin:1 13 35.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 154 -3660360949528596543 1
+USE 8 TARGETING 265 -2.5  13 36.0 Food:1,VelvetPouch():1,Waterskin:1 169 -9162589463358501835 1
+USE 0 WORLD 265 -0.5  13 36.0 Food:1,VelvetPouch():1,Waterskin:1 169 -9162589463358501835 0
+USE 0 SLOT 265 -124.0 Waterskin:1 10 39.0 VelvetPouch():1,Waterskin:1 193 -4309516303310425386 1
+INTERACT 0 WORLD 265 -1.0  10 40.0 VelvetPouch():1,Waterskin:1 197 -4435146864654822800 1
+INTERACT 0 WORLD 265 -1.0  10 41.0 VelvetPouch():1,Waterskin:1 210 -7353778823449285729 1
+INTERACT 0 WORLD 265 -1.0  10 42.0 VelvetPouch():1,Waterskin:1 224 3197115285364081238 1
+INTERACT 0 WORLD 265 -81.0  8 43.0 VelvetPouch():1,Waterskin:1 237 382258964588637795 1
+INTERACT 0 WORLD 265 -1.0  8 44.0 VelvetPouch():1,Waterskin:1 251 3405660488928329952 1
+INTERACT 0 WORLD 265 -1.0  8 45.0 VelvetPouch():1,Waterskin:1 255 -6260126121365702070 1
+INTERACT 0 WORLD 265 149.0  8 46.0 VelvetPouch():1,Waterskin:1 264 6285933205504301537 1
+MOVE_NW 0 WORLD 228 -2.3300018310546875  8 47.0 VelvetPouch():1,Waterskin:1 266 4213546111839013369 1
+MOVE_NW 0 WORLD 191 -2.410001277923584  8 48.0 VelvetPouch():1,Waterskin:1 267 -2514755363601387588 1
+INTERACT 0 WORLD 191 -41.0  7 49.0 VelvetPouch():1,Waterskin:1 280 -6791969390157533768 1
+INTERACT 0 WORLD 191 -41.0  6 50.0 VelvetPouch():1,Waterskin:1 293 4759986754079281830 1
+INTERACT 0 WORLD 191 -0.5  7 51.0 VelvetPouch():1,Waterskin:1 305 4342185357885423801 1
+INTERACT 0 WORLD 191 149.0  7 52.0 VelvetPouch():1,Waterskin:1 316 3071430216473636126 1
+MOVE_W 0 WORLD 190 -2.390000820159912  7 53.0 VelvetPouch():1,Waterskin:1 317 -7884077909803898053 1
+INTERACT 0 WORLD 154 -0.4400009214878082  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 318 -6779926301424508464 1
+USE 0 WORLD 154 -0.5  7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 318 -6779926301424508464 0
+USE 0 SLOT 154 -0.5 Waterskin:1 7 55.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 318 -6779926301424508464 1
+INTERACT 0 WORLD 189 -3.020000457763672  7 57.0 PotionOfHaste:1,ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 319 -7381802595221167264 1
+USE 0 WORLD 189 -0.5  7 57.0 PotionOfHaste:1,ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 319 -7381802595221167264 0
+USE 0 SLOT 189 -1.5 Waterskin:1 7 58.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 320 -1110487369210273140 1
+USE 0 WORLD 189 -0.5  7 58.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 320 -1110487369210273140 0
+USE 0 SLOT 189 -0.5 Waterskin:1 7 58.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 320 -1110487369210273140 1
+MOVE_S 0 WORLD 225 -0.5200004577636719  7 58.333332 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 323 1710304687390763574 1
+USE 0 WORLD 225 -0.5  7 58.333332 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 323 1710304687390763574 0
+USE 0 SLOT 225 -0.5 Waterskin:1 7 58.333332 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 323 1710304687390763574 1
+MOVE_S 0 WORLD 261 -0.5200004577636719  7 58.666664 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 324 3709188368061558490 1
+USE 0 WORLD 261 -0.5  7 58.666664 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 324 3709188368061558490 0
+USE 0 SLOT 261 -0.5 Waterskin:1 7 58.666664 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 324 3709188368061558490 1
+MOVE_SW 0 WORLD 296 0.15000009536743164  7 58.999996 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 325 -1006000133096879530 1
+USE 0 WORLD 296 -0.5  7 58.999996 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 325 -1006000133096879530 0
+USE 0 SLOT 296 -0.5 Waterskin:1 7 58.999996 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 325 -1006000133096879530 1
+INTERACT 0 WORLD 296 449.0  7 59.999996 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 336 3523320665067455955 1
+USE 0 WORLD 296 -0.5  7 59.999996 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 336 3523320665067455955 0
+USE 0 SLOT 296 -0.5 Waterskin:1 7 59.999996 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 336 3523320665067455955 1
+INTERACT 0 WORLD 331 -0.7133315801620483  8 61.33333 Food:1,ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 337 840114094356405087 1
+USE 0 WORLD 331 -0.5  8 61.33333 Food:1,ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 337 840114094356405087 0
+USE 0 SLOT 331 -4.0 Waterskin:1 8 64.33333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 337 840114094356405087 1
+USE 0 WORLD 331 -0.5  8 64.33333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 337 840114094356405087 0
+USE 0 SLOT 331 -0.5 Waterskin:1 8 64.33333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 337 840114094356405087 1
+MOVE_W 0 WORLD 330 -2.409999132156372  8 64.666664 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 338 8027418224880262261 1
+USE 0 WORLD 330 -0.5  8 64.666664 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 338 8027418224880262261 0
+USE 0 SLOT 330 -0.5 Waterskin:1 8 64.666664 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 338 8027418224880262261 1
+MOVE_NW 0 WORLD 293 -2.44000244140625  8 65.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 339 450048407622959727 1
+USE 0 WORLD 293 -0.5  8 65.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 339 450048407622959727 0
+USE 0 SLOT 293 -0.5 Waterskin:1 8 65.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 339 450048407622959727 1
+INTERACT 0 WORLD 293 1803.050048828125  8 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 340 -2429803902323551723 1
+USE 0 WORLD 293 -0.5  8 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 340 -2429803902323551723 0
+USE 0 SLOT 293 -0.5 Waterskin:1 8 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 340 -2429803902323551723 1
+MOVE_SE 0 WORLD 330 -2.9800000190734863  8 0.33333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 341 -548787889744157837 1
+USE 0 WORLD 330 -0.5  8 0.33333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 341 -548787889744157837 0
+USE 0 SLOT 330 -0.5 Waterskin:1 8 0.33333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 341 -548787889744157837 1
+INTERACT 0 WORLD 947 2.0  8 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 342 -1790647119264052524 1
+USE 0 WORLD 947 -0.5  8 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 342 -1790647119264052524 0
+USE 0 SLOT 947 -0.5 Waterskin:1 8 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 342 -1790647119264052524 1
+INTERACT 0 WORLD 947 259.0  7 1.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 363 3613935670636748243 1
+USE 0 WORLD 947 -0.5  7 1.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 363 3613935670636748243 0
+USE 0 SLOT 947 -0.5 Waterskin:1 7 1.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 363 3613935670636748243 1
+INTERACT 0 WORLD 947 149.0  7 2.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 374 5029109930122653060 1
+USE 0 WORLD 947 -0.5  7 2.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 374 5029109930122653060 0
+USE 0 SLOT 947 -0.5 Waterskin:1 7 2.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 374 5029109930122653060 1
+MOVE_NW 0 WORLD 909 1.4899985790252686  7 2.3333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 375 3808873207502220226 1
+USE 0 WORLD 909 -0.5  7 2.3333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 375 3808873207502220226 0
+USE 0 SLOT 909 -0.5 Waterskin:1 7 2.3333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 375 3808873207502220226 1
+INTERACT 0 WORLD 293 2.9000000953674316  7 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 376 -3613721511787588421 1
+USE 0 WORLD 293 -0.5  7 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 376 -3613721511787588421 0
+USE 0 SLOT 293 -0.5 Waterskin:1 7 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 376 -3613721511787588421 1
+MOVE_S 0 WORLD 329 -2.3299999237060547  8 0.33333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 377 7865230501403032183 1
+USE 0 WORLD 329 -0.5  8 0.33333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 377 7865230501403032183 0
+USE 0 SLOT 329 -0.5 Waterskin:1 8 0.33333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 377 7865230501403032183 1
+INTERACT 0 WORLD 246 2.950000047683716  8 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 378 -7361071901489547725 1
+USE 0 WORLD 246 -0.5  8 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 378 -7361071901489547725 0
+USE 0 SLOT 246 -0.5 Waterskin:1 8 0.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 378 -7361071901489547725 1
+MOVE_S 0 WORLD 280 1.6599960327148438  8 0.33333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 380 -2355535904257446385 1
+USE 0 WORLD 280 -0.5  8 0.33333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 380 -2355535904257446385 0
+USE 0 SLOT 280 -0.5 Waterskin:1 8 0.33333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 380 -2355535904257446385 1
+INTERACT 0 WORLD 246 -2.3199996948242188  8 0.6666667 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 381 -7202234799144564835 1
+USE 0 WORLD 246 -0.5  8 0.6666667 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 381 -7202234799144564835 0
+USE 0 SLOT 246 -0.5 Waterskin:1 8 0.6666667 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 381 -7202234799144564835 1
+MOVE_S 0 WORLD 280 1.6599960327148438  8 1.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 382 7002655088388747858 1
+USE 0 WORLD 280 -0.5  8 1.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 382 7002655088388747858 0
+USE 0 SLOT 280 -0.5 Waterskin:1 8 1.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 382 7002655088388747858 1
+MOVE_SW 0 WORLD 313 1.6899993419647217  8 1.3333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 384 -4960235274364778068 1
+USE 0 WORLD 313 -0.5  8 1.3333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 384 -4960235274364778068 0
+USE 0 SLOT 313 -0.5 Waterskin:1 8 1.3333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 384 -4960235274364778068 1
+MOVE_S 0 WORLD 347 1.8199989795684814  8 1.6666667 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 387 45136792850314784 1
+USE 0 WORLD 347 -0.5  8 1.6666667 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 387 45136792850314784 0
+USE 0 SLOT 347 -0.5 Waterskin:1 8 1.6666667 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 387 45136792850314784 1
+MOVE_S 0 WORLD 381 1.7999985218048096  8 2.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 390 -8541251279082274046 1
+USE 0 WORLD 381 -0.5  8 2.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 390 -8541251279082274046 0
+USE 0 SLOT 381 -0.5 Waterskin:1 8 2.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 390 -8541251279082274046 1
+MOVE_S 0 WORLD 415 1.7799980640411377  8 2.3333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 394 -1403066345524072980 1
+USE 0 WORLD 415 -0.5  8 2.3333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 394 -1403066345524072980 0
+USE 0 SLOT 415 -0.5 Waterskin:1 8 2.3333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 394 -1403066345524072980 1
+MOVE_S 0 WORLD 449 1.7599976062774658  8 2.6666665 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 397 7040169432003101664 1
+USE 0 WORLD 449 -0.5  8 2.6666665 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 397 7040169432003101664 0
+USE 0 SLOT 449 -0.5 Waterskin:1 8 2.6666665 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 397 7040169432003101664 1
+MOVE_S 0 WORLD 483 1.7400009632110596  8 2.9999998 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 400 3065777668869891806 1
+USE 0 WORLD 483 -0.5  8 2.9999998 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 400 3065777668869891806 0
+USE 0 SLOT 483 -0.5 Waterskin:1 8 2.9999998 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 400 3065777668869891806 1
+MOVE_SE 0 WORLD 518 2.2200005054473877  8 3.333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 401 7809598610910368481 1
+USE 0 WORLD 518 -0.5  8 3.333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 401 7809598610910368481 0
+USE 0 SLOT 518 -0.5 Waterskin:1 8 3.333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 401 7809598610910368481 1
+MOVE_E 0 WORLD 519 1.5  8 3.6666663 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 402 61995783738737651 1
+USE 0 WORLD 519 -0.5  8 3.6666663 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 402 61995783738737651 0
+USE 0 SLOT 519 -0.5 Waterskin:1 8 3.6666663 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 402 61995783738737651 1
+MOVE_E 0 WORLD 520 1.4799995422363281  8 3.9999995 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 403 -1735822467808710935 1
+USE 0 WORLD 520 -0.5  8 3.9999995 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 403 -1735822467808710935 0
+USE 0 SLOT 520 -0.5 Waterskin:1 8 3.9999995 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 403 -1735822467808710935 1
+MOVE_E 0 WORLD 521 1.4599990844726562  8 4.333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 404 8593079582398819602 1
+USE 0 WORLD 521 -0.5  8 4.333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 404 8593079582398819602 0
+USE 0 SLOT 521 -0.5 Waterskin:1 8 4.333333 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 404 8593079582398819602 1
+MOVE_E 0 WORLD 522 3.839998722076416  8 4.6666665 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 405 2377697331526836970 1
+USE 0 WORLD 522 -0.5  8 4.6666665 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 405 2377697331526836970 0
+USE 0 SLOT 522 -0.5 Waterskin:1 8 4.6666665 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 405 2377697331526836970 1
+INTERACT 0 WORLD 522 -1.0  8 5.6666665 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 406 -9123552210093382542 1
+USE 0 WORLD 522 -0.5  8 5.6666665 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 406 -9123552210093382542 0
+USE 0 SLOT 522 -0.5 Waterskin:1 8 5.6666665 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 406 -9123552210093382542 1
+INTERACT 0 WORLD 489 -1.340000867843628  8 6.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 407 -4766694141379284951 1
+USE 0 WORLD 489 -0.5  8 6.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 407 -4766694141379284951 0
+USE 0 SLOT 489 -0.5 Waterskin:1 8 6.0 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 407 -4766694141379284951 1
+INTERACT 0 WORLD 524 1.9899985790252686  8 6.3333335 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 409 3183618906785956884 1
+USE 0 WORLD 524 -0.5  8 6.3333335 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 409 3183618906785956884 0
+USE 0 SLOT 524 -0.5 Waterskin:1 8 6.3333335 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 409 3183618906785956884 1
+INTERACT 0 WORLD 489 -2.5400009155273438  8 7.3333335 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 411 6908077772776418824 1
+USE 0 WORLD 489 -0.5  8 7.3333335 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 411 6908077772776418824 0
+USE 0 SLOT 489 -0.5 Waterskin:1 8 7.3333335 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 411 6908077772776418824 1
+INTERACT 0 WORLD 524 1.4399981498718262  8 8.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 413 -5238843262075103316 1
+USE 0 WORLD 524 -0.5  8 8.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 413 -5238843262075103316 0
+USE 0 SLOT 524 -0.5 Waterskin:1 8 8.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 413 -5238843262075103316 1
+INTERACT 0 WORLD 489 -2.0400009155273438  9 9.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 414 -4796931169323848411 1
+USE 0 WORLD 489 -0.5  9 9.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 414 -4796931169323848411 0
+USE 0 SLOT 489 -0.5 Waterskin:1 9 9.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 414 -4796931169323848411 1
+INTERACT 0 WORLD 524 1.4399986267089844  9 10.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 415 -8090307619204208407 1
+USE 0 WORLD 524 -0.5  9 10.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 415 -8090307619204208407 0
+USE 0 SLOT 524 -0.5 Waterskin:1 9 10.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 415 -8090307619204208407 1
+INTERACT 0 WORLD 489 -2.5400009155273438  9 11.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 416 -27705841000255325 1
+USE 0 WORLD 489 -0.5  9 11.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 416 -27705841000255325 0
+USE 0 SLOT 489 -0.5 Waterskin:1 9 11.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 416 -27705841000255325 1
+INTERACT 0 WORLD 524 1.4399986267089844  9 12.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 417 5089154919541677657 1
+USE 0 WORLD 524 -0.5  9 12.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 417 5089154919541677657 0
+USE 0 SLOT 524 -0.5 Waterskin:1 9 12.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 417 5089154919541677657 1
+INTERACT 0 WORLD 524 -41.0  8 13.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 438 -7201955495910273362 1
+USE 0 WORLD 524 -0.5  8 13.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 438 -7201955495910273362 0
+USE 0 SLOT 524 -0.5 Waterskin:1 8 13.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 438 -7201955495910273362 1
+INTERACT 0 WORLD 524 -1.0  8 14.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 442 2149638278745959016 1
+USE 0 WORLD 524 -0.5  8 14.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 442 2149638278745959016 0
+USE 0 SLOT 524 -0.5 Waterskin:1 8 14.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 442 2149638278745959016 1
+INTERACT 0 WORLD 524 149.0  8 15.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 453 -225886254480479318 1
+USE 0 WORLD 524 -0.5  8 15.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 453 -225886254480479318 0
+USE 0 SLOT 524 -0.5 Waterskin:1 8 15.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 453 -225886254480479318 1
+INTERACT 0 WORLD 489 -0.8400008678436279  8 17.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 454 7890034612711042328 1
+USE 0 WORLD 489 -0.5  8 17.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 454 7890034612711042328 0
+USE 0 SLOT 489 -0.5 Waterskin:1 8 17.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 454 7890034612711042328 1
+INTERACT 0 WORLD 524 1.4399986267089844  9 19.333334 PotionOfLiquidFlame:1,ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 455 8909539170982693924 1
+USE 0 WORLD 524 -0.5  9 19.333334 PotionOfLiquidFlame:1,ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 455 8909539170982693924 0
+USE 0 SLOT 524 -121.5 Waterskin:1 6 20.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 461 4082712394591720941 1
+REST 0 WORLD 524 -120.0999984741211  3 21.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  3 22.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  3 23.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -0.800000011920929  3 24.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  3 25.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  3 26.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  3 27.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  3 28.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -0.5  4 29.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  4 30.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  4 31.333334 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0000019073486328  4 32.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  4 33.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  4 34.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  4 35.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  4 36.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  4 37.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  4 38.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -0.5  5 39.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  5 40.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  5 41.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  5 42.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  5 43.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  5 44.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  5 45.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  5 46.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  5 47.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  5 48.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -0.5  6 49.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  6 50.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  6 51.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  6 52.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  6 53.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  6 54.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  6 55.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  6 56.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  6 57.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -1.0  6 58.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+REST 0 WORLD 524 -0.5  7 59.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+USE 0 WORLD 524 -0.5  7 59.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 0
+USE 0 SLOT 524 -0.5 Waterskin:1 7 59.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 466 7573555989046147898 1
+MOVE_S 0 WORLD 558 1.9199981689453125  7 60.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 468 -1433780927571508462 1
+USE 0 WORLD 558 -0.5  7 60.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 468 -1433780927571508462 0
+USE 0 SLOT 558 -0.5 Waterskin:1 7 60.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 468 -1433780927571508462 1
+MOVE_S 0 WORLD 592 1.6500015258789062  7 61.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 469 -5460300093534715946 1
+USE 0 WORLD 592 -0.5  7 61.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 469 -5460300093534715946 0
+USE 0 SLOT 592 -0.5 Waterskin:1 7 61.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 469 -5460300093534715946 1
+MOVE_S 0 WORLD 626 1.5800011157989502  7 62.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 470 4081703356748388600 1
+USE 0 WORLD 626 -0.5  7 62.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 470 4081703356748388600 0
+USE 0 SLOT 626 -0.5 Waterskin:1 7 62.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 470 4081703356748388600 1
+MOVE_S 0 WORLD 660 1.4600006341934204  7 63.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 471 -1378523190145222136 1
+USE 0 WORLD 660 -0.5  7 63.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 471 -1378523190145222136 0
+USE 0 SLOT 660 -0.5 Waterskin:1 7 63.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 471 -1378523190145222136 1
+INTERACT 0 WORLD 695 1.4900001287460327  7 64.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 474 1544808910098391276 1
+USE 0 WORLD 695 -0.5  7 64.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 474 1544808910098391276 0
+USE 0 SLOT 695 -0.5 Waterskin:1 7 64.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 474 1544808910098391276 1
+INTERACT 0 WORLD 695 -81.0  5 65.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 487 679394157130400667 1
+USE 0 WORLD 695 -0.5  5 65.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 487 679394157130400667 0
+USE 0 SLOT 695 -0.5 Waterskin:1 5 65.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 487 679394157130400667 1
+INTERACT 0 WORLD 695 -1.0  5 66.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 499 -7103317926190189369 1
+USE 0 WORLD 695 -0.5  5 66.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 499 -7103317926190189369 0
+USE 0 SLOT 695 -0.5 Waterskin:1 5 66.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 499 -7103317926190189369 1
+INTERACT 0 WORLD 695 149.0  5 67.333336 ScrollOfIdentify:1,VelvetPouch():1,Waterskin:1 510 -4970007326618182657 1

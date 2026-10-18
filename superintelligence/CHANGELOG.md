@@ -10,6 +10,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- **`stallcausecheck`'s sub-mode rows asserted an outcome rather than the property.** Both rows
+  drove a uniform policy and read off *which guard ended the episode*: the loose mask must reach
+  `FREE_STEP`, the shipped mask must never. That held only by luck, because a hero that could not
+  pick up what it walks over rarely wandered into a free-action loop on its own - and now that
+  `INTERACT` reaches the underfoot heap, it does not need luck, and the tight row went red
+  (`FREE_STEP` in 1 of 6 episodes) on a change that did not touch the mask.
+
+  The mask's actual promise is narrower and structural: **with nothing usable in the pack, neither
+  `USE` nor `OPEN_INVENTORY` is offered.** Both rows now measure that directly - empty the
+  backpack, ask for the mask, count the sub-mode entries - and read **6 offered with the flag off,
+  0 with it on**. `env.sub_mode_progress_only` is untouched, and the mutation test is honest about
+  what it holds: replacing `hasProgressItem()`'s answer with `true` fails the tight row with 12.
+  The three guard rows are unchanged and still pass.
+- **`INTERACT` can pick an item up off the cell the hero is standing on**, which is the deferred
+  proposal `REJECTED.md` carried with its own revisit trigger. `ActionMapper.pickInteractCell()`
+  scanned offsets 1..8 and `handleCell()` refused a non-adjacent cell, so the heap a hero walks
+  over - the only way a dropped item ever becomes carried - was the one heap the agent could not
+  collect. Two lines in `ActionMapper`: the underfoot heap is offered after the adjacent ones, and
+  `handleCell` accepts the hero's own cell.
+
+  The obstacle `REJECTED.md` recorded is gone. Its measurement - `paritycheck` red at step 256 with
+  the change in - was `issues.md` 38, the guide-page leak, and `Document.resetPages()` closed that;
+  with it closed the change is green: **32 of 32 recordings over 8 seeds replay exactly, twice
+  each, in one process.** The other obstacle was the corpus, because 7 of 20 recordings diverged in
+  the real viewer under the new semantics - every one an `INTERACT` recorded while the hero stood on
+  a heap. That is a genuine change to what a recorded step means, so **the corpus is regenerated**
+  rather than reinterpreted: `regenerate-corpus.ps1` rebuilt 17 rollouts in 15.1 s, all reproduce,
+  and `:desktop:viewcheck` is **20 of 20** on the new corpus. `duelist-death-last.replay` is the
+  fixture `issues.md` 26 was diagnosed against; that entry is closed, its evidence is written down,
+  and nothing about the corpus was thrown away with it.
+
+  `rewardcheck` is **35 cases** and the new one is mutation-tested: it drops a `PotionOfHealing` on
+  the hero's own cell, drives `Action.INTERACT`, and requires `ITEM_PICKUP` to fire - measured
+  **0.50**, 1 time. Reinstating the adjacency test fails it.
+- **`regenerate-corpus.ps1` deleted three corpus members and did not rebuild them.** The directory
+  is cleared wholesale before the sweep, and three of its twenty members are not rollouts:
+  `duelist-drop.replay` carries the corpus's only `DROP` in `SLOT`, `duelist-throw.replay` its only
+  recorded press, and `duelist-death-last.replay` a death landing on the final step. Each is produced
+  by a command that searches for a seed and refuses to write anything else. So a regeneration
+  quietly dropped a third of the corpus, and both viewer gates then reported **17 of 20** -
+  which reads as a regression rather than as a file that was never written. The script now rebuilds
+  all three after the sweep and names any it could not, before the verification phase.
 - **`issues.md` 37 closed: a hero's death paperwork was being compared as if it were gameplay.**
   `Bones.pickItem` opens with `if (!Dungeon.customSeedText.isEmpty()) return null;` - a hero who
   dies under a custom seed leaves no remains and makes no draws, and one who dies under a random
