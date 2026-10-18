@@ -291,6 +291,15 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			System.err.println( "[replay] could not write the draw-site tally to " + out
 					+ " (" + e.getClass().getSimpleName() + ")" );
 		}
+
+		String prefix = rngTracePath + suffix;
+		try {
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngOrderLog
+					.writeCurrent( prefix );
+		} catch (java.io.IOException e){
+			System.err.println( "[replay] could not write the ordered draw logs to " + prefix
+					+ " (" + e.getClass().getSimpleName() + ")" );
+		}
 	}
 
 	/** Replays under the config the header carries. */

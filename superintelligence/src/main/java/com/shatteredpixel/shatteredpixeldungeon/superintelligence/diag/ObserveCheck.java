@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 public class ObserveCheck {
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 9;
 	private static final List< String > failures = new ArrayList<>();
 	private static int checksFailed = 0;
 	private static void check( Runnable body ){
@@ -46,6 +46,7 @@ public class ObserveCheck {
 		check( ObserveCheck::checkNoUnauditedPublicRandomMethods );
 		check( () -> checkTheOrderedLogNamesEveryDraw( env ) );
 		check( ObserveCheck::checkTheGeneratorLogIsInertWhenOff );
+		check( ObserveCheck::checkAStandInEmitterSpendsNoGameplayDraw );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
 		} else {
@@ -118,6 +119,49 @@ public class ObserveCheck {
 	}
 	private static void fail( String message ){
 		failures.add( message );
+	}
+
+	private static void checkAStandInEmitterSpendsNoGameplayDraw(){
+		com.watabou.noosa.particles.Emitter emitter =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessSprite()
+						.emitter();
+
+		RandomTrace.enable();
+		RandomTrace.reset();
+		long before = RandomTrace.draws();
+		emitter.start( null, 1f, 1 );
+		long afterStart = RandomTrace.draws();
+		emitter.burst( null, 1 );
+		long afterBurst = RandomTrace.draws();
+		RandomTrace.reset();
+		RandomTrace.disable();
+
+		if (afterStart != before){
+			fail( "starting the headless stand-in emitter spent " + (afterStart - before)
+					+ " value(s) from the gameplay RNG. The real Emitter starts by drawing its delay"
+					+ " from PRandom, so a stand-in that compensated on the gameplay stream spends a"
+					+ " value the game never spends and puts the trainer one value ahead of the"
+					+ " rendered game from the first particle effect onwards." );
+		}
+		if (afterBurst != afterStart){
+			fail( "bursting the headless stand-in emitter spent " + (afterBurst - afterStart)
+					+ " value(s) from the gameplay RNG, where the real one spends none" );
+		}
+
+		com.watabou.utils.PRandom.reseed( 987654321L );
+		float[] expected = new float[ 4 ];
+		for (int i = 0; i < expected.length; i++) expected[ i ] = com.watabou.utils.PRandom.Float( 1f );
+
+		com.watabou.utils.PRandom.reseed( 987654321L );
+		emitter.start( null, 1f, 1 );
+		float first = com.watabou.utils.PRandom.Float( 1f );
+		float second = com.watabou.utils.PRandom.Float( 1f );
+
+		if (first != expected[ 1 ] || second != expected[ 2 ]){
+			fail( "the headless stand-in emitter did not consume exactly one presentation value where"
+					+ " the real Emitter consumes one. The two environments have to spend the same"
+					+ " number of values on the same stream or nothing downstream of them agrees." );
+		}
 	}
 
 	private static void checkTheOrderedLogNamesEveryDraw( SPDEnv env ){

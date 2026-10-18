@@ -85,6 +85,8 @@ public class ViewCheck {
 	/** Playback speed for the gate. Pacing only; the path taken is the same at 1x. */
 	private static final float GATE_SPEED = 40f;
 
+	private static final int ALTERED_STEP = 10;
+
 	/**
 	 * Ceiling on a single playback, so a stuck viewer fails instead of hanging the gate.
 	 *
@@ -304,20 +306,23 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 
 	private static void checkContinueOnDivergeKeepsPlaying( File corpus, List< String > problems )
 			throws IOException, InterruptedException {
-		File diverging = null;
+		File source = null;
 		File[] files = corpus.listFiles( ( dir, name ) -> name.endsWith( ".replay" ) );
 		if (files != null){
 			for (File file : files){
-				if (file.getName().contains( "death-last" )) diverging = file;
+				if (file.getName().contains( "death-last" )) source = file;
 			}
 		}
 
-		if (diverging == null){
+		if (source == null){
 			problems.add( "no recording named *death-last* is in " + corpus.getAbsolutePath()
-					+ ", and that is the recording the continue-on-divergence flag exists for. Without"
-					+ " a fixture that diverges, the flag has nothing to be checked against." );
+					+ ", and that is the recording the continue-on-divergence flag is measured on. Without"
+					+ " a fixture the flag has nothing to be checked against." );
 			return;
 		}
+
+		File diverging = divergedCopy( source );
+		if (diverging == null) return;
 
 		Map< String, String > keepGoing = new LinkedHashMap<>();
 		keepGoing.put( "spd.replayContinueOnDiverge", "1" );
@@ -330,8 +335,10 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 		Integer off = appliedSteps( offSink.toString() );
 		Integer on = appliedSteps( onSink.toString() );
 
+		diverging.delete();
+
 		if (off == null || on == null){
-			problems.add( "neither run of " + diverging.getName() + " reported how many steps it"
+			problems.add( "neither run of the altered recording reported how many steps it"
 					+ " applied (off=" + off + ", on=" + on + "), so the two cannot be compared. The"
 					+ " FAIL line is the only place that number is printed." );
 			return;
@@ -345,7 +352,46 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 		}
 
 		System.out.println( "  spd.replayContinueOnDiverge keeps playing past the divergence: "
-				+ on + " steps applied against " + off + " without it" );
+				+ on + " steps applied against " + off + " without it, on a recording altered at step "
+				+ ALTERED_STEP );
+	}
+
+
+	/**
+	 * A copy of a committed recording whose step {@link #ALTERED_STEP} claims a cell the hero never
+	 * stood on, so the viewer has something to diverge from.
+	 *
+	 * <p>Built here rather than committed, and that is the point: the corpus is green because this
+	 * fault is fixed, so a recording that diverges in the viewer no longer exists in it. A flag whose
+	 * only fixture was a live defect stops being measured the day the defect closes, which is the
+	 * opposite of what a gate is for.
+	 */
+	private static File divergedCopy( File source ){
+		Replay replay;
+		try {
+			replay = ReplayIO.read( source );
+		} catch (IOException e){
+			System.err.println( "[WARN] cannot read " + source + ": " + e.getMessage() );
+			return null;
+		}
+
+		if (replay.steps.size() <= ALTERED_STEP){
+			System.err.println( "[WARN] " + source.getName() + " has only " + replay.steps.size()
+					+ " steps, so step " + ALTERED_STEP + " cannot be altered" );
+			return null;
+		}
+
+		replay.steps.get( ALTERED_STEP ).heroPos += 1;
+
+		File out = new File( System.getProperty( "java.io.tmpdir" ),
+				"spd-viewcheck-diverged-" + System.nanoTime() + ".replay" );
+		try {
+			ReplayIO.write( replay, out );
+		} catch (IOException e){
+			System.err.println( "[ERROR] cannot write the altered recording: " + e.getMessage() );
+			return null;
+		}
+		return out;
 	}
 
 

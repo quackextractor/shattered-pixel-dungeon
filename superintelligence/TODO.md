@@ -48,19 +48,6 @@ once.
 
 ## 4. Open engine and harness faults
 
-- [ ] **`issues.md` 26**, the viewer and the trainer disagreeing by 1 HP at step 95 of
-      `duelist-death-last.replay`. **The entry's own reading is now refuted and so is its
-      alternative.** A tripwire in `Char.damage`, run through both environments, shows the two
-      traces identical for 24 lines and then:
-
-      ```
-      headless  [HERODMG] turn=91.0 hp=7 dmg=0 src=Snake via=Hero.damage:1683
-      viewer    [HERODMG] turn=91.0 hp=7 dmg=1 src=Snake via=Hero.damage:1683
-      ```
-
-      Both sides take the hit. One snake attack lands on both, at the same engine time, with the
-      same health and the same source, and **the number arriving at `Char.damage` differs**. The
-      fault is upstream of `Char.damage`, in a computation that consumes randomness - which is why
-      per-step `baseDraws`, per-step fingerprints, 1,003 identical cells and a byte-identical roster
-      all came back clean. The next measurement is `RandomTrace.siteLog()` on both sides over that
-      window. Evidence: `out/evidence/issue-26/herodmg-diff.txt`.
+None. `issues.md` 26 was the last, and it closed on the ordered draw log: the headless stand-in for
+a particle emitter was compensating on the wrong stream, so the trainer ran one value ahead of the
+rendered game from the first scroll read. `:desktop:viewcheck` is **20 of 20**.

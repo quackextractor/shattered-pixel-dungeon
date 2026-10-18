@@ -7,6 +7,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngOrderLog;
 import com.watabou.utils.RandomTrace;
 
 import java.io.File;
@@ -47,6 +48,16 @@ public class ReproCheck {
 
 		if (args.length > 0 && args[ 0 ].equals( "diff" )){
 			diffDumps();
+			return;
+		}
+
+		if (args.length > 0 && args[ 0 ].equals( "cross" )){
+			cross( args );
+			return;
+		}
+
+		if (args.length > 0 && args[ 0 ].equals( "order" )){
+			orderLogs( args );
 			return;
 		}
 
@@ -132,8 +143,114 @@ private static void recordDeathFixture( EnvConfig config ) throws java.io.IOExce
 				+ out.getAbsolutePath() );
 	}
 
-	private static final String SAVED =
+private static final String SAVED =
 			"out/evidence/issue-38-PARITY-ALPHA-WARRIOR.replay";
+
+
+	private static void orderLogs( String[] args ) throws java.io.IOException {
+		if (args.length < 2){
+			System.err.println( "[ERROR] reprocheck order <recording> [<out-prefix>]" );
+			System.exit( 1 );
+			return;
+		}
+
+		java.io.File replayFile =
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.CliOptions
+						.resolve( new java.io.File( args[ 1 ] ));
+		if (!replayFile.exists()){
+			System.err.println( "[ERROR] no recording at " + replayFile.getAbsolutePath() );
+			System.exit( 1 );
+			return;
+		}
+
+		String prefix = args.length > 2 ? args[ 2 ] : "out/evidence/issue-26/headless";
+		prefix = com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.CliOptions
+				.resolve( new java.io.File( prefix ) ).getAbsolutePath();
+
+		Replay replay = ReplayIO.read( replayFile );
+
+		RandomTrace.enable();
+		RandomTrace.reset();
+		RandomTrace.attribute();
+
+		List< String > generation = new ArrayList<>();
+		List< String > generationPushes = new ArrayList<>();
+
+		ReplayIO.Verification result = ReplayIO.verify( replay,
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv(
+						new EnvConfig(), HeadlessGame.install() ),
+				new ReplayIO.StepObserver() {
+					@Override public void onReset(){
+						generation.addAll( RandomTrace.siteLog() );
+						generationPushes.addAll( RandomTrace.generatorLog() );
+					}
+					@Override public void onStep( int index, Replay.Step step, boolean running ){
+						if (index == 1){
+							RandomTrace.reset();
+							RandomTrace.enable();
+						}
+					}
+				} );
+
+		int stepDraws = RandomTrace.siteLog().size();
+		int stepPushes = RandomTrace.generatorLog().size();
+
+		RandomTrace.attribute( false );
+		RandomTrace.disable();
+
+		RngOrderLog.write( prefix + ".gen", generation, generationPushes );
+		RngOrderLog.writeCurrent( prefix + ".all" );
+
+		System.out.println( "headless " + replay.seedText + " " + replay.heroClass + ": diverged="
+				+ result.diverged + (result.diverged ? " at step " + result.divergedAt + " - "
+				+ result.divergence : "") + ", steps " + result.stepsVerified );
+		System.out.println( "  generation window " + generation.size() + " ordered draws, "
+				+ generationPushes.size() + " generator events" );
+		System.out.println( "  step window " + stepDraws + " ordered draws, "
+				+ stepPushes + " generator events" );
+		System.out.println( "  wrote " + prefix + ".gen" + RngOrderLog.ORDER_SUFFIX + ", "
+				+ prefix + ".all" + RngOrderLog.ORDER_SUFFIX );
+	}
+
+
+	private static void cross( String[] args ){
+		if (args.length < 3){
+			System.err.println( "[ERROR] reprocheck cross <left-prefix> <right-prefix>" );
+			System.exit( 1 );
+			return;
+		}
+		for (String window : new String[]{ ".gen", ".all", "" }){
+			crossPair( args[ 1 ], args[ 2 ], window + RngOrderLog.ORDER_SUFFIX );
+			crossPair( args[ 1 ], args[ 2 ], window + RngOrderLog.PUSHES_SUFFIX );
+		}
+	}
+
+	private static void crossPair( String leftPrefix, String rightPrefix, String suffix ){
+		List< String > left = readPath( leftPrefix + suffix );
+		List< String > right = readPath( rightPrefix + suffix );
+		if (left.isEmpty() || right.isEmpty()){
+			System.out.println( "[" + suffix + "] nothing to compare: " + left.size() + " and "
+					+ right.size() + " entries" );
+			return;
+		}
+		System.out.println( "[" + suffix + "] " + OrderedDiff.report( leftPrefix, rightPrefix,
+				left, right, 6 ));
+	}
+
+	private static List< String > readPath( String path ){
+		List< String > lines = new ArrayList<>();
+		java.nio.file.Path file = java.nio.file.Paths.get( path );
+		if (!java.nio.file.Files.exists( file )) return lines;
+		try {
+			for (String line : java.nio.file.Files.readAllLines( file )){
+				int tab = line.indexOf( '\t' );
+				lines.add( tab < 0 ? line : line.substring( tab + 1 ));
+			}
+		} catch (java.io.IOException e){
+			System.err.println( "[WARN] cannot read " + file + ": " + e.getMessage() );
+		}
+		return lines;
+	}
 
 
 	private static Replay readSaved(){

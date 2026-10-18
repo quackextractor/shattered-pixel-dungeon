@@ -9,7 +9,66 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- **`issues.md` 26 closed: the headless stand-in for a particle emitter was compensating on the
+  wrong stream.** `Emitter.start` opens with `startDelayed(..., PRandom.Float(interval))` - a
+  presentation draw - and `HeadlessSprite$Inert.start` stood in for it with `Random.Float(interval)`,
+  a **gameplay** draw, on the reasoning `ENGINE-CHANGES.md` §4 recorded: that a stand-in should
+  consume the same number of values as the thing it replaces. It consumed the same number of values
+  on the wrong stream, so the first particle effect the headless game started put the trainer
+  **one value ahead of the rendered game**, and every damage roll and defence roll after it read
+  from a different position in the stream.
+
+  The measurement is `RandomTrace.siteLog()`, which both sides now write. Over
+  `duelist-death-last.replay`'s step window the two agree for 460 draws and then:
+
+  ```
+  460  both      Char.attack:503
+  461  headless  HeadlessSprite$Inert.start:167
+  461  viewer    Scroll.readAnimation:206
+  ```
+
+  One extra gameplay draw, headless only, at the scroll read. `Inert.start` now draws from
+  `PRandom`, which is the stream `Emitter.start` draws from. After the fix the two logs are
+  identical across the 485 entries they share.
+
+  This is the shape the entry's own tripwire had already shown - both sides take the snake's hit at
+  `turn=91.0` from `Snake` with the hero at 7 HP, and the number arriving at `Char.damage` is 0
+  against 1 - and it is why every instrument that compared **step boundaries** came back clean: the
+  offset is one value wide and appears in the middle of a step.
+
+  Measured: `:desktop:viewcheck` **20 of 20 play clean in the real viewer** (109.3 s at 8 children),
+  against 19 of 20 for as long as the entry was open; `playbackcheck` 25 cases; `paritycheck` 32
+  recordings over 8 seeds, verified twice each in one process; the corpus verified 19 of 20, and
+  the one failure is `duelist-death-last.replay` itself, which carries the old stream. It was
+  re-recorded through `reprocheck --args="deathfixture"` - 101 steps, ends `DEATH`, accepted 94,
+  refused 7, verified headlessly in 101 steps - and is the only recording of the twenty that read
+  a scroll, so **no other file in the corpus changed**.
+
+  `observecheck` is **9 cases** and mutation-tests the stand-in directly: the gameplay counter must
+  not move across `start` or `burst`, and the presentation stream must advance by exactly the one
+  value `Emitter.start` takes. Reinstating `Random.Float` fails 3 assertions in 1 of the 9.
+- **`viewcheck`'s continue-on-divergence check had the fault it measures as its fixture, so it
+  stopped measuring the day the fault closed.** It played `duelist-death-last.replay` twice, with
+  and without `-Dspd.replayContinueOnDiverge`, and required the flagged run to apply more steps -
+  which only held because that recording diverged. With the corpus green it reported
+  `viewer diagnostics: 1 of 2 checks failed`. It now **builds its own diverging fixture**: a copy of
+  the death recording with step 10's cell moved by one, written to the temp directory and deleted
+  afterwards. Measured on it: the flagged run plays every step and the unflagged one halts at step
+  11. A flag whose only fixture was a live defect stops being measured on the day the defect is
+  fixed, which is the opposite of what a gate is for.
+
 ### Added
+- **The ordered draw log, written by both environments, and a comparison that reads it across
+  them.** `RandomTrace.siteLog()` and `generatorLog()` existed and only `reprocheck` wrote them; the
+  viewer wrote the unordered per-site tally, which is a claim about how much each piece of code drew
+  and not about where two runs of one seed stopped agreeing. `replay.RngOrderLog` is now the one
+  format both sides write, `ReplayPlayer` writes both logs beside its tally under `-Dspd.rngTrace`,
+  and `reprocheck --args="order <recording> <prefix>"` writes the headless half in the same two
+  windows the viewer splits on (`.gen` before the first applied step, `.all` after).
+  `reprocheck --args="cross <left-prefix> <right-prefix>"` diffs any two of them through
+  `OrderedDiff` and names the first entry at which they part. This is the instrument
+  `issues.md` 26, 37 and 38 were all blocked on, and the first entry it names is the cause of 26.
 - **An ordered draw log and a generator-stack log, and the call site `issues.md` 37 and 18 have
   been asking for since they were filed.** `RandomTrace` counted draws and tallied them per call
   site, and neither can answer *where two runs of one seed stopped agreeing*: a count has no order,

@@ -164,7 +164,7 @@ public class HeadlessSprite extends CharSprite {
 
 		@Override public void start( com.watabou.noosa.particles.Emitter.Factory factory,
 				float interval, int quantity ){
-			com.watabou.utils.Random.Float( interval );
+			com.watabou.utils.PRandom.Float( interval );
 		}
 
 		@Override public void burst( com.watabou.noosa.particles.Emitter.Factory factory, int quantity ){

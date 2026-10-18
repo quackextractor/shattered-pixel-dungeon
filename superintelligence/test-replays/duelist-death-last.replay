@@ -1,116 +1,117 @@
 SPD-REPLAY
-version=3
+version=5
 seed=DUELIST-LONG-16
 hero=DUELIST
 challenges=0
 generation=0
-score=-2980.7999998256564
+score=-2965.8800207301974
 depth=1
-turns=96
-turn_limit=1500
-max_slots=32
+turns=97
+turn_limit=400
+max_slots=96
 allow_equipping=true
 termination=DEATH
 reward_profile=default
 group=
-steps=100
-USE 0 WORLD 153 -1.0  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 1 SLOT 153 0.0 ThrowingSpike:1,Waterskin:2 20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 153 -1.0  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-OPEN_INVENTORY 0 WORLD 153 -0.5  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 1 INVENTORY 153 0.0 ThrowingSpike:1,Waterskin:2 20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 TARGETING 153 -2.5  20 2.0 Food:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 152 -1.0  20 3.0 Food:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 153 -0.5  20 5.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 152 -1.0  20 6.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 153 -1.0  20 7.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 152 -1.0  20 8.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_NW 0 WORLD 123 -1.0  20 9.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 94 -2.0  20 11.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 122 -1.0  20 12.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 150 -1.0  20 13.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 178 -1.0  20 14.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_SE 0 WORLD 207 -1.0  20 15.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_SE 0 WORLD 236 -1.0  20 16.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_SE 0 WORLD 265 -0.5  20 17.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 293 -1.0  20 18.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_SW 0 WORLD 320 -0.949999988079071  20 19.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 348 0.5500000715255737  20 20.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 376 -0.25  20 21.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 404 -0.1499999761581421  20 22.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_SE 0 WORLD 433 -0.3999999761581421  20 23.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 461 -40.95000076293945  19 24.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 461 -1.0  19 25.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 461 149.0  19 26.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 461 -41.0  18 27.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 461 -81.0  16 28.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 461 149.0  16 29.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 489 -0.8999999761581421  16 30.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 517 -1.899999976158142  16 32.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 545 -0.949999988079071  16 33.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 573 -0.15000000596046448  17 34.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_SE 0 WORLD 602 -0.8999999761581421  17 35.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_SE 0 WORLD 631 -0.949999988079071  17 36.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 659 0.0  17 37.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 687 -1.0  17 38.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 715 -1.0  17 39.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 743 -0.8999999761581421  17 40.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 771 -0.800000011920929  17 41.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_SE 0 WORLD 800 -0.6000000238418579  17 42.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_E 0 WORLD 801 -0.8999999761581421  17 43.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_SE 0 WORLD 830 -0.30000001192092896  18 44.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 858 -1.0  18 45.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 886 0.4500000476837158  18 46.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 914 -0.8999999761581421  18 47.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 942 -0.949999988079071  18 48.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 942 -41.0  17 49.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 942 149.0  17 50.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_S 0 WORLD 970 -1.0  17 51.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 999 -1.5  17 53.0 Food:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 998 -0.5  18 54.0 Food:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 998 -1.0  18 55.0 Food:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 997 -1.5  18 57.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 969 -1.0  18 58.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 941 -1.0  18 59.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 913 -1.0  18 60.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_NE 0 WORLD 886 -1.0  18 61.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 858 -1.0  18 62.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 830 -1.0  18 63.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_NW 0 WORLD 801 -0.5  19 64.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_W 0 WORLD 800 -1.0  19 65.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_NW 0 WORLD 771 -1.0  19 66.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 743 -1.0  19 67.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 715 -1.0  19 68.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 687 -1.0  19 69.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 659 -1.0  19 70.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 631 -1.0  19 71.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_N 0 WORLD 603 -0.949999988079071  19 72.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_NE 0 WORLD 576 -1.0  19 73.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_NE 0 WORLD 549 -0.5  20 74.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_E 0 WORLD 550 0.6499999761581421  20 75.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_E 0 WORLD 551 -0.699999988079071  20 76.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-MOVE_E 0 WORLD 552 -1.0  20 77.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 552 -1.0  20 78.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 552 -121.0  17 79.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 552 -41.0  16 80.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 552 -1.0  16 81.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 552 -81.0  14 82.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 552 -0.5  14 82.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 1 SLOT 552 0.0 ThrowingSpike:1,Waterskin:2 14 82.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 5 TARGETING 552 -1.0  14 83.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 552 -0.5  14 83.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 1 SLOT 552 0.0 ThrowingSpike:1,Waterskin:2 14 83.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1
-USE 5 TARGETING 552 -82.5  12 84.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 552 -0.5  12 84.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 552 -123.0 Waterskin:2 9 87.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 552 -0.5  9 87.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 552 -44.0 Waterskin:2 8 90.0 PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 552 -0.5  8 90.0 PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 552 -41.5 Waterskin:2 7 91.0 ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1
-USE 0 WORLD 552 -0.5  7 91.0 ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1
-USE 0 SLOT 552 -1.5 Waterskin:2 7 92.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 552 -1.0  7 93.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 552 -81.0  5 94.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 552 -1.0  5 95.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 552 -41.0  4 96.0 VelvetPouch():1,Waterskin:1
-INTERACT 0 WORLD 552 -2500.0  0 0.0 VelvetPouch():1,Waterskin:1
+steps=101
+USE 0 WORLD 153 -1.0  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 0
+USE 1 SLOT 153 0.0 ThrowingSpike:1,Waterskin:2 20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 1
+USE 0 TARGETING 153 -1.0  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 2 955475604726134 1
+OPEN_INVENTORY 0 WORLD 153 -0.5  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 2 955475604726134 1
+USE 1 INVENTORY 153 0.0 ThrowingSpike:1,Waterskin:2 20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 2 955475604726134 1
+USE 0 TARGETING 153 -2.5  20 2.0 Food:1,VelvetPouch():1,Waterskin:1 4 -7543192889563693159 1
+MOVE_W 0 WORLD 152 -2.9800000190734863  20 3.0 Food:1,VelvetPouch():1,Waterskin:1 5 -297469202651100501 1
+INTERACT 0 WORLD 153 1.5  20 5.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 6 -5566415696329058897 1
+MOVE_W 0 WORLD 152 -2.9800000190734863  20 6.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 7 228533771159931969 1
+INTERACT 0 WORLD 153 1.0  20 7.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 8 -3661687289792185806 1
+MOVE_W 0 WORLD 152 -2.9800000190734863  20 8.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 9 -2727508763246419327 1
+MOVE_NW 0 WORLD 123 -2.9600000381469727  20 9.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 10 -6381279021798404185 1
+INTERACT 0 WORLD 94 -3.940000057220459  20 11.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 11 -5270388175107658815 1
+MOVE_S 0 WORLD 122 -0.940000057220459  20 12.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 12 -8610581121637596925 1
+MOVE_S 0 WORLD 150 -0.940000057220459  20 13.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 13 -535923801583988059 1
+MOVE_S 0 WORLD 178 -0.940000057220459  20 14.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 14 -1424916610311062356 1
+MOVE_SE 0 WORLD 207 1.0399999618530273  20 15.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 15 1564148643815771162 1
+MOVE_SE 0 WORLD 236 -2.940000057220459  20 16.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 16 1651562967684986594 1
+MOVE_SE 0 WORLD 265 -2.4200000762939453  20 17.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 17 3281913186396125773 1
+MOVE_S 0 WORLD 293 -2.8999996185302734  20 18.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 18 -2084124442865540845 1
+MOVE_SW 0 WORLD 320 -2.830000162124634  20 19.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 19 3317792915421305905 1
+MOVE_S 0 WORLD 348 -1.3100005388259888  20 20.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 21 -5338222982822696003 1
+MOVE_S 0 WORLD 376 -2.0900001525878906  20 21.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 23 -1923242895066637331 1
+MOVE_S 0 WORLD 404 -1.9699996709823608  20 22.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 25 -5893999211080173471 1
+MOVE_SE 0 WORLD 433 -2.1999993324279785  20 23.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 28 153770202488119964 1
+MOVE_S 0 WORLD 461 -42.72999954223633  19 24.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 41 1422822564323428433 1
+INTERACT 0 WORLD 461 -1.0  19 25.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 64 6513771160451871343 1
+INTERACT 0 WORLD 461 149.0  19 26.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 75 1287709175996246389 1
+INTERACT 0 WORLD 461 -41.0  18 27.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 96 -5842695478052411702 1
+INTERACT 0 WORLD 461 -81.0  16 28.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 117 -2830293538841457677 1
+INTERACT 0 WORLD 461 149.0  16 29.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 128 -4441807777005224753 1
+MOVE_S 0 WORLD 489 -2.6600003242492676  16 30.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 129 -1695151041501315743 1
+INTERACT 0 WORLD 517 -3.6399998664855957  16 32.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 130 -7971148913304701380 1
+MOVE_S 0 WORLD 545 -2.670001268386841  16 33.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 131 2507092049160728308 1
+MOVE_S 0 WORLD 573 -1.8500007390975952  17 34.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 132 5993351434757734284 1
+MOVE_SE 0 WORLD 602 -2.580000400543213  17 35.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 133 -2211520053799923164 1
+MOVE_SE 0 WORLD 631 -2.609999895095825  17 36.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 134 -1889659020742881844 1
+MOVE_S 0 WORLD 659 -1.6399993896484375  17 37.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 135 9146955416211906785 1
+MOVE_S 0 WORLD 687 -2.6199989318847656  17 38.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 136 8613642018893009184 1
+MOVE_S 0 WORLD 715 -2.5999984741210938  17 39.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 137 2199121825637180816 1
+MOVE_S 0 WORLD 743 -2.480001926422119  17 40.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 138 4577917002304230134 1
+MOVE_S 0 WORLD 771 -2.3600013256073  17 41.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 139 -2387028564288722777 1
+MOVE_SE 0 WORLD 800 -2.140000820159912  17 42.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 140 5304572647911331878 1
+MOVE_E 0 WORLD 801 -2.4200005531311035  17 43.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 141 143515247273127794 1
+MOVE_SE 0 WORLD 830 -1.7999999523162842  18 44.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 142 -1519897551329946184 1
+MOVE_S 0 WORLD 858 -2.479999542236328  18 45.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 143 626272059877277956 1
+MOVE_S 0 WORLD 886 -1.0099990367889404  18 46.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 145 -7131529634589143790 1
+MOVE_S 0 WORLD 914 -2.3400025367736816  18 47.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 146 -3634383057686977850 1
+MOVE_S 0 WORLD 942 -2.370002031326294  18 48.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 159 -9176251817258061098 1
+INTERACT 0 WORLD 942 -41.0  17 49.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 180 -4013281971847486671 1
+INTERACT 0 WORLD 942 149.0  17 50.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 191 3480448914938350166 1
+MOVE_S 0 WORLD 970 -2.4000015258789062  17 51.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 192 -6505959791587438820 1
+INTERACT 0 WORLD 999 -2.8800010681152344  17 53.0 Food:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 193 -700707566723590577 1
+MOVE_W 0 WORLD 998 0.11999893188476562  18 54.0 Food:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 194 -2592142423271746748 1
+INTERACT 0 WORLD 998 -1.0  18 55.0 Food:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 194 -2592142423271746748 1
+INTERACT 0 WORLD 997 -0.8800010681152344  18 57.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 195 2096842166585756400 1
+MOVE_N 0 WORLD 969 1.5999984741210938  18 58.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 196 981314266251221064 1
+MOVE_N 0 WORLD 941 1.5799980163574219  18 59.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 197 8298016875719332888 1
+MOVE_N 0 WORLD 913 1.55999755859375  18 60.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 198 -7359714587594730398 1
+MOVE_NE 0 WORLD 886 1.5400009155273438  18 61.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 199 -7089393399713198666 1
+MOVE_N 0 WORLD 858 1.5200004577636719  18 62.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 200 6422397948151923232 1
+MOVE_N 0 WORLD 830 1.5  18 63.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 201 -5752620061995390732 1
+MOVE_NW 0 WORLD 801 1.9799995422363281  19 64.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 202 -1992767063586070783 1
+MOVE_W 0 WORLD 800 1.4599990844726562  19 65.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 203 -7669144940982203424 1
+MOVE_NW 0 WORLD 771 1.4399986267089844  19 66.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 204 -6464423048707502688 1
+MOVE_N 0 WORLD 743 1.4199981689453125  19 67.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 205 3483110578293546664 1
+MOVE_N 0 WORLD 715 1.4000015258789062  19 68.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 206 774584270484581902 1
+MOVE_N 0 WORLD 687 1.3800010681152344  19 69.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 207 -8837060202101544926 1
+MOVE_N 0 WORLD 659 1.3600006103515625  19 70.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 208 5779406492013234483 1
+MOVE_N 0 WORLD 631 1.3400001525878906  19 71.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 209 5919460162434260589 1
+MOVE_N 0 WORLD 603 1.369999647140503  19 72.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 210 2549128321381555669 1
+MOVE_NE 0 WORLD 576 1.2999992370605469  19 73.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 211 -3651169448621158165 1
+MOVE_NE 0 WORLD 549 1.779998779296875  20 74.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 212 -2961828300575212975 1
+MOVE_E 0 WORLD 550 -1.050000786781311  20 75.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 215 -6308633433312310102 1
+MOVE_E 0 WORLD 551 -2.380000352859497  20 76.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 217 3000465313720557084 1
+MOVE_E 0 WORLD 552 -2.6599998474121094  20 77.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 218 -250623365506144289 1
+INTERACT 0 WORLD 552 -1.0  20 78.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 222 -8418201939938510296 1
+INTERACT 0 WORLD 552 -121.0  17 79.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 246 7425658390744625697 1
+INTERACT 0 WORLD 552 -41.0  16 80.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 261 -8071697131396038435 1
+INTERACT 0 WORLD 552 -1.0  16 81.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 277 2423124207403601802 1
+INTERACT 0 WORLD 552 -81.0  14 82.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 302 347484517921213650 1
+USE 0 WORLD 552 -0.5  14 82.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 302 347484517921213650 0
+USE 1 SLOT 552 0.0 ThrowingSpike:1,Waterskin:2 14 82.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 302 347484517921213650 1
+USE 5 TARGETING 552 -1.0  14 83.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 320 7104776704897631908 1
+USE 0 WORLD 552 -0.5  14 83.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 320 7104776704897631908 0
+USE 1 SLOT 552 0.0 ThrowingSpike:1,Waterskin:2 14 83.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 320 7104776704897631908 1
+USE 5 TARGETING 552 -82.5  12 84.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 346 -247778640993101247 1
+USE 0 WORLD 552 -0.5  12 84.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 346 -247778640993101247 0
+USE 0 SLOT 552 -123.0 Waterskin:2 9 87.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 386 -4413325108440431727 1
+USE 0 WORLD 552 -0.5  9 87.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 386 -4413325108440431727 0
+USE 0 SLOT 552 -44.0 Waterskin:2 8 90.0 PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 447 -235035306180548122 1
+USE 0 WORLD 552 -0.5  8 90.0 PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 447 -235035306180548122 0
+USE 0 SLOT 552 -41.5 Waterskin:2 7 91.0 ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 461 5696593325072383411 1
+USE 0 WORLD 552 -0.5  7 91.0 ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 461 5696593325072383411 0
+USE 0 SLOT 552 -41.5 Waterskin:2 6 92.0 VelvetPouch():1,Waterskin:1 485 1103803734880684552 1
+INTERACT 0 WORLD 552 -1.0  6 93.0 VelvetPouch():1,Waterskin:1 511 -2658209034283156403 1
+INTERACT 0 WORLD 552 -41.0  5 94.0 VelvetPouch():1,Waterskin:1 536 -4478020632812576674 1
+INTERACT 0 WORLD 552 -121.0  2 95.0 VelvetPouch():1,Waterskin:1 561 -1789265943620447527 1
+INTERACT 0 WORLD 552 -1.0  2 96.0 VelvetPouch():1,Waterskin:1 577 -4503321102446954206 1
+INTERACT 0 WORLD 552 109.0  1 97.0 VelvetPouch():1,Waterskin:1 597 -1324609292446090591 1
+INTERACT 0 WORLD 552 -2500.0  0 0.0 VelvetPouch():1,Waterskin:1 616 -2244180122494164952 1

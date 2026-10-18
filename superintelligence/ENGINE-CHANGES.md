@@ -130,10 +130,18 @@ which is what that one cause looks like from the outside.
   consumes a stream that is discarded and cannot affect any outcome. Moving it would be churn for its
   own sake, and the generation-window tally records it so the difference is visible rather than
   surprising.
-- **`HeadlessSprite`'s inert emitter** deliberately *does* draw `Random.Float(interval)` where a real
-  `Emitter` would, so the two consume the same number of values. That is the right shape for a
-  substitution that stands in for the real thing, and it is the opposite of the fault above: this one
-  compensates, the four above failed to.
+- **`HeadlessSprite`'s inert emitter drew its compensation from the wrong stream, and the note below
+  was wrong about it.** `Emitter.start` opens with `startDelayed(..., PRandom.Float(interval))` - a
+  **presentation** draw - and the inert stand-in drew `Random.Float(interval)`, a **gameplay** draw.
+  The reasoning recorded here was that a stand-in should consume the same number of values as the
+  thing it replaces; it consumed the same number of values on the wrong stream, which is worse than
+  either error alone. **This was `issues.md` 26.** Measured with `RandomTrace.siteLog()` on both
+  sides: over `duelist-death-last.replay`'s step window the two agree for 460 draws and then the
+  headless side spends one gameplay value the rendered side does not, at the scroll read, after
+  which every damage and defence roll reads from a different position. `Inert.start` draws from
+  `PRandom` now, `observecheck` holds it, and `:desktop:viewcheck` is 20 of 20. `HeadlessSprite` is
+  installed by `HeadlessGame.install()` and by nothing else, so a game with a renderer never reads
+  it.
 - **`Sample.INSTANCE.play` sound pitch** at 11 sites is still on `Random`. It is the largest remaining
   presentation draw on the gameplay stream and it is symmetric — both environments make it — so it does
   not currently separate the two. It is worth moving on its own merits.
