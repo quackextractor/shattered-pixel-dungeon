@@ -7,32 +7,16 @@ findings are in `issues.md`; proposals that were declined or deferred are in `RE
 
 ## 1. Teach it to descend
 
-`meanScore` moved **+134.49 +/- 52.4** over the 30-generation re-measurement - about 2.6 sigma, and the
-first run in this project's history to clear its own error bar. **It is not a descent.** `depth>=2` is
-**0 of 960 episodes**, `bestDepth` is 1 in 30 of 30 generations, and the objective-only score moved
-+65.69 +/- 57.9, which is not significant. The policy got better at what the shaping pays for and did
-not get closer to the stairs. Evidence: `out/evidence/remeasure-30.csv`.
+`meanScore` moved **-182.32 +/- 56.4** over the 30-generation re-measurement — about 3 sigma in the
+**wrong** direction — and `depth>=2` is **0 of 960 episodes** again. `meanTurns` rose 542.79 →
+**758.65** with deaths flat, so the policy is learning to live longer rather than to descend. The
+shaped terms improved by about +72 an episode and the 216 extra turns consumed all of it.
+`STAIR_POTENTIAL` telescopes, so a rising net means the hero finishes closer to the exit than it
+starts: **the policy does not fail to want the stairs, it fails to walk to them.** The earlier
+`+134.49 +/- 52.4` did not reproduce, so a 30-generation run on this configuration does not clear its
+own error bar in either direction. Numbers and method: `CHANGELOG.md`; evidence
+`out/evidence/descend-30.csv`.
 
-- [ ] **The next measurement is not another reward weight — and the measurement has been taken.**
-      A 30-generation run on the re-measurement's exact configuration, after the guide-page fix,
-      came in **-182.32 +/- 56.4** on `meanScore` and **-253.66 +/- 62.1** on
-      `meanObjectiveScore`: about 3 and 4 sigma in the **wrong** direction, against `+134.49 +/-
-      52.4` for the same configuration before the fix. `depth>=2` is **0 of 960** again.
-      `meanTurns` rose 542.79 → **758.65**, so the policy is learning to *live longer* and getting
-      worse at the objective, with `death` flat at 56% and a third of every generation ending on
-      the turn limit.
-
-      **The candidate this section names is confirmed rather than assumed.** The shaped terms did
-      improve - the `exploration` type subtotal went +11.98 → **+26.54** per episode and `combat`
-      -737.54 → **-679.44**, about +72 an episode of shaped gain, all of it consumed by the 216
-      extra turns at `turn_cost` 1.0. `STAIR_POTENTIAL` telescopes, so a rising net means the hero
-      finishes closer to the exit than it starts: **the policy does not fail to want the stairs, it
-      fails to walk to them.** Evidence: `out/evidence/descend-30.csv`,
-      `out/evidence/descend-30-full.log`.
-
-      **And one caution belongs with the number.** The `Document` fix changed what every worker
-      plays, so this run and the one before it are two samples of two curricula, not two samples of
-      one.
 - [ ] Close `issues.md` 37. **`issues.md` 18 closed** on the guide-page fix and 8 green runs out of
       8; 37 did not close with it and reproduced on a new seed with the identical signature
       (`rng baseDraws diverged at step 1124 of 1125, delta -2`). What is narrowed: two verifications

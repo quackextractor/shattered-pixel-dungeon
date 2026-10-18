@@ -8,6 +8,7 @@ Edit this file, not `instructions.md`. `STATUS.md` records which of these have a
 - Windows 11 PowerShell. Never `&&` — use separate lines or `;`.
 - Paths: forward slashes or `Join-Path`.
 - No emojis in code, logs, or output. Use `[OK]` / `[WARN]` / `[ERROR]`.
+- Use the `edit` tool, not shell line-slicing, for editing files.
 
 ## Validation
 
