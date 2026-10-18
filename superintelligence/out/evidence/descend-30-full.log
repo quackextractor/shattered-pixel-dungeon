@@ -1,0 +1,531 @@
+> Task :core:processResources NO-SOURCE
+> Task :superintelligence:processResources UP-TO-DATE
+> Task :services:compileJava UP-TO-DATE
+> Task :services:processResources NO-SOURCE
+> Task :services:classes UP-TO-DATE
+> Task :services:jar UP-TO-DATE
+> Task :SPD-classes:compileJava UP-TO-DATE
+> Task :SPD-classes:processResources NO-SOURCE
+> Task :SPD-classes:classes UP-TO-DATE
+> Task :SPD-classes:jar UP-TO-DATE
+> Task :core:compileJava UP-TO-DATE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :superintelligence:compileJava UP-TO-DATE
+> Task :superintelligence:classes UP-TO-DATE
+
+> Task :superintelligence:train
+[WARN] train.random_seed_rate came from SPD_TRAIN_RANDOM_SEED_RATE rather than a file, so it is not part of the recorded configuration.
+[WARN] train.random_seed_rate came from SPD_TRAIN_RANDOM_SEED_RATE rather than a file, so it is not part of the recorded configuration.
+config file (none, compiled defaults), 1 key(s) applied, environment overrides [SPD_TRAIN_RANDOM_SEED_RATE]
+[OK]   started 8 worker processes
+machine   20 logical processors, pool of 8 workers, stall timeout 180s
+
+generation 0  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3883.78  best=-3227.00  worst=-5098.00  objective=-3128.98
+  depth   mean=1.0  best=1
+  events  kills=86  gold=0  pickups=1433  talents=0  crafted=0
+  stalls  none
+  types   exploration +15.62  combat -766.88  progression +2.47  items -6.02  costs -628.98  terminal -2500.00  (mean per episode)
+  turns   mean=580  total=18,550
+  ended   death 32 (100%)
+  ppo     policy=0.0885  value=5.7691  entropy=27.564  clip=0.87  kl=0.9104
+
+  speed   872 turns/s  1.5 episodes/s  21.27s wall  (ppo update 8.95s)  barrier 43%
+  data    1,429 sampled steps of 18,550 collected  advantage mean=-781.320 sd=859.861
+  buffer  16.8 MB resident, 51.5% of it the packed grid
+  usage   32% of machine (6.4 of 20 logical cores)  pool 8 x 4 episodes  workers 4.4 cores, trainer 0.04
+[#-----------------------]   3%  gen 1/30  0:30  eta 14:42  score -3,884  bestDepth 1
+
+generation 1  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3887.44  best=-3310.00  worst=-4736.00  objective=-3011.30
+  depth   mean=1.0  best=1
+  events  kills=71  gold=0  pickups=924  talents=0  crafted=0
+  stalls  none
+  types   exploration +14.85  combat -888.75  progression +3.19  items -5.42  costs -511.30  terminal -2500.00  (mean per episode)
+  turns   mean=443  total=14,165
+  ended   death 32 (100%)
+  ppo     policy=-0.2457  value=5.5351  entropy=23.818  clip=0.37  kl=0.0890
+
+  speed   898 turns/s  2.0 episodes/s  15.77s wall  (ppo update 7.66s)  barrier 49%
+  data    1,232 sampled steps of 14,165 collected  advantage mean=-888.770 sd=849.749
+  buffer  14.5 MB resident, 51.5% of it the packed grid
+  usage   26% of machine (5.3 of 20 logical cores)  pool 8 x 4 episodes  workers 5.9 cores, trainer 0.02
+[##----------------------]   7%  gen 2/30  0:54  eta 12:36  score -3,887  bestDepth 1
+
+generation 2  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3946.53  best=-3161.00  worst=-4869.00  objective=-3126.42
+  depth   mean=1.0  best=1
+  events  kills=106  gold=1  pickups=1367  talents=0  crafted=0
+  stalls  none
+  types   exploration +10.53  combat -830.63  progression +4.25  items -4.27  costs -626.42  terminal -2500.00  (mean per episode)
+  turns   mean=520  total=16,625
+  ended   death 32 (100%)
+  ppo     policy=0.0569  value=5.1132  entropy=24.982  clip=0.43  kl=0.0656
+
+  speed   1,002 turns/s  1.9 episodes/s  16.59s wall  (ppo update 8.59s)  barrier 52%
+  data    1,392 sampled steps of 16,625 collected  advantage mean=-766.855 sd=849.766
+  buffer  16.3 MB resident, 51.5% of it the packed grid
+  usage   30% of machine (6.0 of 20 logical cores)  pool 8 x 4 episodes  workers 6.8 cores, trainer 0.03
+[##----------------------]  10%  gen 3/30  1:19  eta 11:54  score -3,947  bestDepth 1
+
+generation 3  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3990.55  best=-3275.00  worst=-5270.00  objective=-3224.66
+  depth   mean=1.0  best=1
+  events  kills=81  gold=0  pickups=1157  talents=0  crafted=0
+  stalls  free_step 2 (6%) of 2 stalled episodes
+  types   exploration +9.15  combat -773.75  progression +3.08  items -4.38  costs -709.03  terminal -2515.63  (mean per episode)
+  turns   mean=600  total=19,210
+  ended   death 31 (97%)  stalled 1 (3%)
+  ppo     policy=0.0117  value=4.6135  entropy=25.944  clip=0.31  kl=0.0624
+
+  speed   940 turns/s  1.6 episodes/s  20.44s wall  (ppo update 9.62s)  barrier 48%
+  data    1,437 sampled steps of 19,210 collected  advantage mean=-720.511 sd=837.692
+  buffer  16.9 MB resident, 51.5% of it the packed grid
+  usage   39% of machine (7.7 of 20 logical cores)  pool 8 x 4 episodes  workers 6.9 cores, trainer 0.02
+[###---------------------]  13%  gen 4/30  1:49  eta 11:52  score -3,991  bestDepth 1
+
+generation 4  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3632.64  best=-3208.00  worst=-5148.00  objective=-2878.97
+  depth   mean=1.0  best=1
+  events  kills=53  gold=1  pickups=686  talents=0  crafted=0
+  stalls  none
+  types   exploration -4.70  combat -747.19  progression +1.63  items -3.41  costs -378.97  terminal -2500.00  (mean per episode)
+  turns   mean=319  total=10,207
+  ended   death 32 (100%)
+  ppo     policy=-0.0165  value=3.8037  entropy=23.423  clip=0.40  kl=0.0722
+
+  speed   777 turns/s  2.4 episodes/s  13.14s wall  (ppo update 6.06s)  barrier 47%
+  data    954 sampled steps of 10,207 collected  advantage mean=-1208.142 sd=783.448
+  buffer  11.2 MB resident, 51.5% of it the packed grid
+  usage   31% of machine (6.2 of 20 logical cores)  pool 8 x 4 episodes  workers 5.5 cores, trainer 0.02
+[####--------------------]  17%  gen 5/30  2:08  eta 10:44  score -3,633  bestDepth 1
+
+generation 5  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3653.62  best=-3265.00  worst=-4687.00  objective=-2938.50
+  depth   mean=1.0  best=1
+  events  kills=99  gold=0  pickups=743  talents=0  crafted=0
+  stalls  none
+  types   exploration -1.71  combat -711.88  progression +2.02  items -3.55  costs -438.50  terminal -2500.00  (mean per episode)
+  turns   mean=382  total=12,227
+  ended   death 32 (100%)
+  ppo     policy=0.1762  value=2.1671  entropy=24.957  clip=0.08  kl=0.0204
+
+  speed   903 turns/s  2.4 episodes/s  13.54s wall  (ppo update 6.25s)  barrier 47%
+  data    887 sampled steps of 12,227 collected  advantage mean=-1204.507 sd=808.149
+  buffer  10.4 MB resident, 51.5% of it the packed grid
+  usage   34% of machine (6.8 of 20 logical cores)  pool 8 x 4 episodes  workers 6.6 cores, trainer 0.02
+[#####-------------------]  20%  gen 6/30  2:28  eta 9:55  score -3,654  bestDepth 1
+
+generation 6  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3485.93  best=-3109.00  worst=-4217.00  objective=-2819.91
+  depth   mean=1.0  best=1
+  events  kills=69  gold=0  pickups=460  talents=0  crafted=0
+  stalls  none
+  types   exploration -8.46  combat -654.69  progression +1.16  items -4.03  costs -319.91  terminal -2500.00  (mean per episode)
+  turns   mean=284  total=9,082
+  ended   death 32 (100%)
+  ppo     policy=-0.0396  value=2.4140  entropy=24.740  clip=0.26  kl=0.0949
+
+  speed   843 turns/s  3.0 episodes/s  10.77s wall  (ppo update 6.89s)  barrier 65%
+  data    1,029 sampled steps of 9,082 collected  advantage mean=-1107.800 sd=873.496
+  buffer  12.1 MB resident, 51.5% of it the packed grid
+  usage   32% of machine (6.4 of 20 logical cores)  pool 8 x 4 episodes  workers 6.5 cores, trainer 0.03
+[######------------------]  23%  gen 7/30  2:46  eta 9:07  score -3,486  bestDepth 1
+
+generation 7  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3616.78  best=-3146.00  worst=-4326.00  objective=-2871.19
+  depth   mean=1.0  best=1
+  events  kills=72  gold=0  pickups=707  talents=0  crafted=0
+  stalls  none
+  types   exploration +0.22  combat -743.13  progression +2.08  items -4.77  costs -371.19  terminal -2500.00  (mean per episode)
+  turns   mean=353  total=11,288
+  ended   death 32 (100%)
+  ppo     policy=-0.6881  value=2.3954  entropy=25.163  clip=0.17  kl=0.0384
+
+  speed   854 turns/s  2.4 episodes/s  13.21s wall  (ppo update 6.36s)  barrier 49%
+  data    886 sampled steps of 11,288 collected  advantage mean=-1242.940 sd=829.962
+  buffer  10.4 MB resident, 51.5% of it the packed grid
+  usage   33% of machine (6.6 of 20 logical cores)  pool 8 x 4 episodes  workers 6.4 cores, trainer 0.02
+[######------------------]  27%  gen 8/30  3:06  eta 8:32  score -3,617  bestDepth 1
+
+generation 8  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3713.27  best=-3074.00  worst=-4685.00  objective=-3026.52
+  depth   mean=1.0  best=1
+  events  kills=116  gold=1  pickups=916  talents=0  crafted=0
+  stalls  none
+  types   exploration +12.20  combat -698.13  progression +3.02  items -3.85  costs -526.52  terminal -2500.00  (mean per episode)
+  turns   mean=465  total=14,869
+  ended   death 32 (100%)
+  ppo     policy=-0.0324  value=5.5320  entropy=27.371  clip=0.50  kl=0.1503
+
+  speed   849 turns/s  1.8 episodes/s  17.51s wall  (ppo update 10.44s)  barrier 60%
+  data    1,580 sampled steps of 14,869 collected  advantage mean=-710.312 sd=831.601
+  buffer  18.5 MB resident, 51.5% of it the packed grid
+  usage   33% of machine (6.6 of 20 logical cores)  pool 8 x 4 episodes  workers 6.1 cores, trainer 0.02
+[#######-----------------]  30%  gen 9/30  3:34  eta 8:20  score -3,713  bestDepth 1
+
+generation 9  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4033.56  best=-3340.00  worst=-5038.00  objective=-3311.70
+  depth   mean=1.0  best=1
+  events  kills=46  gold=0  pickups=1469  talents=0  crafted=0
+  stalls  free_step 9 (28%) of 9 stalled episodes
+  types   exploration +17.36  combat -736.88  progression +2.06  items -4.41  costs -764.83  terminal -2546.88  (mean per episode)
+  turns   mean=710  total=22,732
+  ended   death 29 (91%)  stalled 3 (9%)
+  ppo     policy=1.3997  value=4.9872  entropy=29.358  clip=0.41  kl=0.0838
+
+  speed   883 turns/s  1.2 episodes/s  25.75s wall  (ppo update 11.89s)  barrier 47%
+  data    1,721 sampled steps of 22,732 collected  advantage mean=-582.721 sd=796.625
+  buffer  20.2 MB resident, 51.5% of it the packed grid
+  usage   33% of machine (6.6 of 20 logical cores)  pool 8 x 4 episodes  workers 6.0 cores, trainer 0.02
+[########----------------]  33%  gen 10/30  4:12  eta 8:24  score -4,034  bestDepth 1
+
+generation 10  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3932.63  best=-3223.00  worst=-4610.00  objective=-3275.89
+  depth   mean=1.0  best=1
+  events  kills=96  gold=3  pickups=1316  talents=0  crafted=0
+  stalls  free_step 11 (34%) of 11 stalled episodes
+  types   exploration +26.12  combat -681.25  progression +2.42  items -4.03  costs -713.39  terminal -2562.50  (mean per episode)
+  turns   mean=685  total=21,921
+  ended   death 28 (88%)  stalled 4 (13%)
+  ppo     policy=0.1738  value=3.3761  entropy=27.211  clip=0.37  kl=0.0773
+
+  speed   633 turns/s  0.9 episodes/s  34.65s wall  (ppo update 23.32s)  barrier 68%
+  data    1,568 sampled steps of 21,921 collected  advantage mean=-594.525 sd=798.079
+  buffer  18.4 MB resident, 51.5% of it the packed grid
+  usage   33% of machine (6.6 of 20 logical cores)  pool 8 x 4 episodes  workers 6.2 cores, trainer 0.01
+[#########---------------]  37%  gen 11/30  5:10  eta 8:56  score -3,933  bestDepth 1
+
+generation 11  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3959.46  best=-2946.00  worst=-5030.00  objective=-3206.89
+  depth   mean=1.0  best=1
+  events  kills=111  gold=4  pickups=1337  talents=0  crafted=0
+  stalls  free_step 7 (22%) of 7 stalled episodes
+  types   exploration +25.61  combat -778.75  progression +4.06  items -3.49  costs -628.77  terminal -2578.13  (mean per episode)
+  turns   mean=611  total=19,548
+  ended   death 27 (84%)  stalled 5 (16%)
+  ppo     policy=0.3792  value=4.4341  entropy=25.914  clip=0.47  kl=0.1543
+
+  speed   382 turns/s  0.6 episodes/s  51.18s wall  (ppo update 21.00s)  barrier 41%
+  data    1,428 sampled steps of 19,548 collected  advantage mean=-654.782 sd=837.612
+  buffer  16.8 MB resident, 51.5% of it the packed grid
+  usage   34% of machine (6.8 of 20 logical cores)  pool 8 x 4 episodes  workers 6.1 cores, trainer 0.01
+[##########--------------]  40%  gen 12/30  6:23  eta 9:34  score -3,959  bestDepth 1
+
+generation 12  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3972.16  best=-3250.00  worst=-5228.00  objective=-3200.78
+  depth   mean=1.0  best=1
+  events  kills=104  gold=2  pickups=1105  talents=0  crafted=0
+  stalls  free_step 3 (9%) of 3 stalled episodes
+  types   exploration +16.63  combat -788.75  progression +3.81  items -3.08  costs -669.53  terminal -2531.25  (mean per episode)
+  turns   mean=618  total=19,761
+  ended   death 30 (94%)  stalled 2 (6%)
+  ppo     policy=-0.1779  value=5.3696  entropy=26.404  clip=0.50  kl=0.1401
+
+  speed   324 turns/s  0.5 episodes/s  60.96s wall  (ppo update 25.69s)  barrier 42%
+  data    1,744 sampled steps of 19,761 collected  advantage mean=-587.149 sd=804.031
+  buffer  20.5 MB resident, 51.5% of it the packed grid
+  usage   34% of machine (6.8 of 20 logical cores)  pool 8 x 4 episodes  workers 5.0 cores, trainer 0.01
+[##########--------------]  43%  gen 13/30  7:49  eta 10:14  score -3,972  bestDepth 1
+
+generation 13  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4021.32  best=-3025.00  worst=-4684.00  objective=-3449.83
+  depth   mean=1.0  best=1
+  events  kills=72  gold=3  pickups=1408  talents=0  crafted=0
+  stalls  free_step 22 (69%) of 22 stalled episodes
+  types   exploration +25.31  combat -594.69  progression +1.88  items -3.99  costs -777.95  terminal -2671.88  (mean per episode)
+  turns   mean=770  total=24,629
+  ended   death 21 (66%)  stalled 11 (34%)
+  ppo     policy=-0.0617  value=2.9230  entropy=28.936  clip=0.33  kl=0.0997
+
+  speed   384 turns/s  0.5 episodes/s  64.14s wall  (ppo update 30.15s)  barrier 53%
+  data    2,098 sampled steps of 24,629 collected  advantage mean=-363.564 sd=671.321
+  buffer  24.6 MB resident, 51.5% of it the packed grid
+  usage   37% of machine (7.4 of 20 logical cores)  pool 8 x 4 episodes  workers 6.3 cores, trainer 0.01
+[###########-------------]  47%  gen 14/30  9:28  eta 10:49  score -4,021  bestDepth 1
+
+generation 14  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4102.68  best=-3421.00  worst=-5191.00  objective=-3454.48
+  depth   mean=1.0  best=1
+  events  kills=71  gold=0  pickups=1205  talents=0  crafted=0
+  stalls  free_step 15 (47%) of 15 stalled episodes
+  types   exploration +20.97  combat -667.81  progression +1.70  items -3.06  costs -829.48  terminal -2625.00  (mean per episode)
+  turns   mean=804  total=25,725
+  ended   death 24 (75%)  stalled 8 (25%)
+  ppo     policy=-0.0198  value=3.2994  entropy=27.610  clip=0.19  kl=0.0321
+
+  speed   373 turns/s  0.5 episodes/s  68.89s wall  (ppo update 22.79s)  barrier 33%
+  data    1,536 sampled steps of 25,725 collected  advantage mean=-523.260 sd=779.868
+  buffer  18.0 MB resident, 51.5% of it the packed grid
+  usage   36% of machine (7.2 of 20 logical cores)  pool 8 x 4 episodes  workers 6.3 cores, trainer 0.01
+[############------------]  50%  gen 15/30  11:00  eta 11:00  score -4,103  bestDepth 1
+
+generation 15  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4175.97  best=-3461.00  worst=-5235.00  objective=-3464.52
+  depth   mean=1.0  best=1
+  events  kills=44  gold=0  pickups=1534  talents=0  crafted=0
+  stalls  free_step 17 (53%) of 17 stalled episodes
+  types   exploration +22.75  combat -731.88  progression +1.89  items -4.22  costs -855.14  terminal -2609.38  (mean per episode)
+  turns   mean=808  total=25,864
+  ended   death 25 (78%)  stalled 7 (22%)
+  ppo     policy=-0.4448  value=2.3968  entropy=26.412  clip=0.31  kl=0.0712
+
+  speed   590 turns/s  0.7 episodes/s  43.87s wall  (ppo update 17.56s)  barrier 40%
+  data    1,375 sampled steps of 25,864 collected  advantage mean=-596.300 sd=797.142
+  buffer  16.1 MB resident, 51.5% of it the packed grid
+  usage   39% of machine (7.7 of 20 logical cores)  pool 8 x 4 episodes  workers 6.5 cores, trainer 0.01
+[#############-----------]  53%  gen 16/30  12:01  eta 10:31  score -4,176  bestDepth 1
+
+generation 16  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4034.53  best=-3315.00  worst=-5490.00  objective=-3337.89
+  depth   mean=1.0  best=1
+  events  kills=83  gold=0  pickups=1180  talents=0  crafted=0
+  stalls  free_step 9 (28%) of 9 stalled episodes
+  types   exploration +23.30  combat -718.44  progression +2.14  items -3.64  costs -775.39  terminal -2562.50  (mean per episode)
+  turns   mean=746  total=23,879
+  ended   death 28 (88%)  stalled 4 (13%)
+  ppo     policy=-0.0156  value=3.4235  entropy=27.329  clip=0.29  kl=0.0606
+
+  speed   440 turns/s  0.6 episodes/s  54.21s wall  (ppo update 25.93s)  barrier 48%
+  data    1,635 sampled steps of 23,879 collected  advantage mean=-568.143 sd=804.864
+  buffer  19.2 MB resident, 51.5% of it the packed grid
+  usage   35% of machine (7.0 of 20 logical cores)  pool 8 x 4 episodes  workers 6.8 cores, trainer 0.01
+[##############----------]  57%  gen 17/30  13:22  eta 10:13  score -4,035  bestDepth 1
+
+generation 17  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4184.77  best=-3055.00  worst=-5161.00  objective=-3645.53
+  depth   mean=1.0  best=1
+  events  kills=51  gold=5  pickups=1171  talents=0  crafted=0
+  stalls  free_step 32 (100%) of 32 stalled episodes
+  types   exploration +37.22  combat -575.31  progression +2.30  items -3.44  costs -879.91  terminal -2765.63  (mean per episode)
+  turns   mean=882  total=28,215
+  ended   stalled 18 (56%)  death 13 (41%)  turn_limit 1 (3%)
+  ppo     policy=0.2612  value=1.8827  entropy=27.226  clip=0.28  kl=0.1045
+
+  speed   428 turns/s  0.5 episodes/s  65.97s wall  (ppo update 14.75s)  barrier 23%
+  data    1,376 sampled steps of 28,215 collected  advantage mean=-309.644 sd=622.625
+  buffer  16.1 MB resident, 51.5% of it the packed grid
+  usage   41% of machine (8.2 of 20 logical cores)  pool 8 x 4 episodes  workers 7.2 cores, trainer 0.01
+[##############----------]  60%  gen 18/30  14:43  eta 9:48  score -4,185  bestDepth 1
+
+generation 18  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4108.85  best=-3248.00  worst=-5104.00  objective=-3499.34
+  depth   mean=1.0  best=1
+  events  kills=52  gold=0  pickups=1468  talents=0  crafted=0
+  stalls  free_step 20 (63%) of 20 stalled episodes
+  types   exploration +35.73  combat -643.75  progression +1.94  items -3.42  costs -843.09  terminal -2656.25  (mean per episode)
+  turns   mean=836  total=26,766
+  ended   death 22 (69%)  stalled 10 (31%)
+  ppo     policy=0.0079  value=3.1878  entropy=29.217  clip=0.26  kl=0.0408
+
+  speed   396 turns/s  0.5 episodes/s  67.58s wall  (ppo update 29.12s)  barrier 43%
+  data    1,989 sampled steps of 26,766 collected  advantage mean=-367.194 sd=682.763
+  buffer  23.3 MB resident, 51.5% of it the packed grid
+  usage   33% of machine (6.6 of 20 logical cores)  pool 8 x 4 episodes  workers 6.5 cores, trainer 0.01
+[###############---------]  63%  gen 19/30  16:20  eta 9:27  score -4,109  bestDepth 1
+
+generation 19  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3975.61  best=-3291.00  worst=-4593.00  objective=-3277.50
+  depth   mean=1.0  best=1
+  events  kills=77  gold=0  pickups=1311  talents=0  crafted=0
+  stalls  free_step 9 (28%) of 9 stalled episodes
+  types   exploration +21.65  combat -716.25  progression +1.84  items -5.36  costs -730.63  terminal -2546.88  (mean per episode)
+  turns   mean=709  total=22,691
+  ended   death 29 (91%)  stalled 3 (9%)
+  ppo     policy=0.0000  value=3.2187  entropy=26.215  clip=0.17  kl=0.0434
+
+  speed   405 turns/s  0.6 episodes/s  55.97s wall  (ppo update 17.21s)  barrier 31%
+  data    1,136 sampled steps of 22,691 collected  advantage mean=-851.875 sd=868.572
+  buffer  13.3 MB resident, 51.5% of it the packed grid
+  usage   35% of machine (7.0 of 20 logical cores)  pool 8 x 4 episodes  workers 6.8 cores, trainer 0.01
+[################--------]  67%  gen 20/30  17:33  eta 8:46  score -3,976  bestDepth 1
+
+generation 20  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3976.29  best=-3183.00  worst=-5205.00  objective=-3290.56
+  depth   mean=1.0  best=1
+  events  kills=74  gold=5  pickups=1341  talents=0  crafted=0
+  stalls  free_step 16 (50%) of 16 stalled episodes
+  types   exploration +24.46  combat -707.50  progression +2.34  items -5.03  costs -712.44  terminal -2578.13  (mean per episode)
+  turns   mean=697  total=22,299
+  ended   death 27 (84%)  stalled 5 (16%)
+  ppo     policy=0.2056  value=2.6322  entropy=29.463  clip=0.13  kl=0.0140
+
+  speed   395 turns/s  0.6 episodes/s  56.51s wall  (ppo update 29.54s)  barrier 53%
+  data    1,968 sampled steps of 22,299 collected  advantage mean=-481.263 sd=763.154
+  buffer  23.1 MB resident, 51.5% of it the packed grid
+  usage   32% of machine (6.4 of 20 logical cores)  pool 8 x 4 episodes  workers 6.5 cores, trainer 0.01
+[#################-------]  70%  gen 21/30  18:59  eta 8:08  score -3,976  bestDepth 1
+
+generation 21  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3980.12  best=-3355.00  worst=-4987.00  objective=-3326.90
+  depth   mean=1.0  best=1
+  events  kills=59  gold=0  pickups=1436  talents=0  crafted=0
+  stalls  free_step 12 (38%) of 12 stalled episodes
+  types   exploration +24.67  combat -673.44  progression +1.08  items -5.53  costs -748.77  terminal -2578.13  (mean per episode)
+  turns   mean=748  total=23,922
+  ended   death 27 (84%)  stalled 5 (16%)
+  ppo     policy=-2.1436  value=1.8158  entropy=29.868  clip=0.11  kl=0.0188
+
+  speed   365 turns/s  0.5 episodes/s  65.55s wall  (ppo update 25.52s)  barrier 39%
+  data    1,685 sampled steps of 23,922 collected  advantage mean=-564.283 sd=793.514
+  buffer  19.8 MB resident, 51.5% of it the packed grid
+  usage   31% of machine (6.2 of 20 logical cores)  pool 8 x 4 episodes  workers 5.9 cores, trainer 0.01
+[##################------]  73%  gen 22/30  20:31  eta 7:27  score -3,980  bestDepth 1
+
+generation 22  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3793.76  best=-3224.00  worst=-4637.00  objective=-3175.41
+  depth   mean=1.0  best=1
+  events  kills=104  gold=1  pickups=1041  talents=0  crafted=0
+  stalls  free_step 6 (19%) of 6 stalled episodes
+  types   exploration +24.44  combat -639.38  progression +2.20  items -5.63  costs -612.91  terminal -2562.50  (mean per episode)
+  turns   mean=609  total=19,500
+  ended   death 28 (88%)  stalled 4 (13%)
+  ppo     policy=-0.2278  value=2.5234  entropy=28.828  clip=0.08  kl=0.0080
+
+  speed   441 turns/s  0.7 episodes/s  44.22s wall  (ppo update 25.86s)  barrier 59%
+  data    1,780 sampled steps of 19,500 collected  advantage mean=-539.809 sd=781.709
+  buffer  20.9 MB resident, 51.5% of it the packed grid
+  usage   35% of machine (6.9 of 20 logical cores)  pool 8 x 4 episodes  workers 7.0 cores, trainer 0.01
+[##################------]  77%  gen 23/30  21:41  eta 6:36  score -3,794  bestDepth 1
+
+generation 23  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4250.69  best=-3530.00  worst=-5224.00  objective=-3549.73
+  depth   mean=1.0  best=1
+  events  kills=67  gold=0  pickups=1678  talents=0  crafted=0
+  stalls  free_step 14 (44%) of 14 stalled episodes
+  types   exploration +35.03  combat -733.44  progression +2.72  items -5.27  costs -924.73  terminal -2625.00  (mean per episode)
+  turns   mean=909  total=29,087
+  ended   death 24 (75%)  stalled 8 (25%)
+  ppo     policy=-0.0172  value=2.4320  entropy=29.712  clip=0.09  kl=0.0196
+
+  speed   592 turns/s  0.7 episodes/s  49.12s wall  (ppo update 14.03s)  barrier 29%
+  data    2,122 sampled steps of 29,087 collected  advantage mean=-376.657 sd=695.574
+  buffer  24.9 MB resident, 51.5% of it the packed grid
+  usage   40% of machine (8.0 of 20 logical cores)  pool 8 x 4 episodes  workers 7.1 cores, trainer 0.01
+[###################-----]  80%  gen 24/30  22:45  eta 5:41  score -4,251  bestDepth 1
+
+generation 24  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4082.29  best=-3051.00  worst=-5419.00  objective=-3401.11
+  depth   mean=1.0  best=1
+  events  kills=62  gold=3  pickups=1684  talents=0  crafted=0
+  stalls  free_step 25 (78%) of 25 stalled episodes
+  types   exploration +29.18  combat -707.19  progression +2.48  items -5.66  costs -776.11  terminal -2625.00  (mean per episode)
+  turns   mean=772  total=24,700
+  ended   death 22 (69%)  stalled 9 (28%)  turn_limit 1 (3%)
+  ppo     policy=1.3611  value=2.6210  entropy=31.824  clip=0.16  kl=0.0266
+
+  speed   522 turns/s  0.7 episodes/s  47.34s wall  (ppo update 39.18s)  barrier 84%
+  data    2,726 sampled steps of 24,700 collected  advantage mean=-294.906 sd=627.055
+  buffer  32.0 MB resident, 51.5% of it the packed grid
+  usage   32% of machine (6.4 of 20 logical cores)  pool 8 x 4 episodes  workers 5.9 cores, trainer 0.01
+saved   C:\Users\Soul\Documents\GitHub\shattered-pixel-dungeon\superintelligence\out\evidence\descend-30\weights.bin  (generation 25, adam step 212)
+[####################----]  83%  gen 25/30  24:12  eta 4:50  score -4,082  bestDepth 1
+
+generation 25  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4027.27  best=-3196.00  worst=-5037.00  objective=-3502.28
+  depth   mean=1.0  best=1
+  events  kills=53  gold=0  pickups=1750  talents=0  crafted=0
+  stalls  free_step 32 (100%) of 32 stalled episodes
+  types   exploration +24.83  combat -546.56  progression +1.28  items -4.55  costs -783.53  terminal -2718.75  (mean per episode)
+  turns   mean=787  total=25,197
+  ended   death 18 (56%)  stalled 14 (44%)
+  ppo     policy=0.1870  value=1.1557  entropy=30.258  clip=0.13  kl=0.0198
+
+  speed   686 turns/s  0.9 episodes/s  36.74s wall  (ppo update 16.48s)  barrier 45%
+  data    2,456 sampled steps of 25,197 collected  advantage mean=-258.440 sd=585.876
+  buffer  28.8 MB resident, 51.5% of it the packed grid
+  usage   37% of machine (7.4 of 20 logical cores)  pool 8 x 4 episodes  workers 6.7 cores, trainer 0.02
+[#####################---]  87%  gen 26/30  25:05  eta 3:51  score -4,027  bestDepth 1
+
+generation 26  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4053.70  best=-3340.00  worst=-5589.00  objective=-3375.36
+  depth   mean=1.0  best=1
+  events  kills=71  gold=0  pickups=1446  talents=0  crafted=0
+  stalls  free_step 25 (78%) of 25 stalled episodes
+  types   exploration +26.40  combat -702.50  progression +2.45  items -4.70  costs -734.73  terminal -2640.63  (mean per episode)
+  turns   mean=732  total=23,416
+  ended   death 23 (72%)  stalled 9 (28%)
+  ppo     policy=-0.2609  value=2.6377  entropy=29.844  clip=0.06  kl=0.0103
+
+  speed   893 turns/s  1.2 episodes/s  26.21s wall  (ppo update 14.69s)  barrier 56%
+  data    1,995 sampled steps of 23,416 collected  advantage mean=-409.151 sd=698.506
+  buffer  23.4 MB resident, 51.5% of it the packed grid
+  usage   35% of machine (7.0 of 20 logical cores)  pool 8 x 4 episodes  workers 6.4 cores, trainer 0.02
+[######################--]  90%  gen 27/30  25:46  eta 2:51  score -4,054  bestDepth 1
+
+generation 27  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3909.35  best=-3259.00  worst=-5099.00  objective=-3203.52
+  depth   mean=1.0  best=1
+  events  kills=57  gold=0  pickups=1074  talents=0  crafted=0
+  stalls  free_step 3 (9%) of 3 stalled episodes
+  types   exploration +22.90  combat -724.38  progression +1.75  items -6.11  costs -672.27  terminal -2531.25  (mean per episode)
+  turns   mean=664  total=21,247
+  ended   death 30 (94%)  stalled 2 (6%)
+  ppo     policy=-0.0698  value=2.6848  entropy=29.454  clip=0.08  kl=0.0092
+
+  speed   961 turns/s  1.4 episodes/s  22.11s wall  (ppo update 12.47s)  barrier 57%
+  data    1,744 sampled steps of 21,247 collected  advantage mean=-592.640 sd=794.939
+  buffer  20.5 MB resident, 51.5% of it the packed grid
+  usage   37% of machine (7.5 of 20 logical cores)  pool 8 x 4 episodes  workers 6.6 cores, trainer 0.02
+[######################--]  93%  gen 28/30  26:21  eta 1:52  score -3,909  bestDepth 1
+
+generation 28  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-3978.03  best=-3233.00  worst=-4654.00  objective=-3283.69
+  depth   mean=1.0  best=1
+  events  kills=68  gold=0  pickups=1766  talents=0  crafted=0
+  stalls  free_step 5 (16%) of 5 stalled episodes
+  types   exploration +21.72  combat -712.81  progression +2.00  items -5.25  costs -721.19  terminal -2562.50  (mean per episode)
+  turns   mean=709  total=22,685
+  ended   death 28 (88%)  stalled 4 (13%)
+  ppo     policy=-0.0353  value=2.5619  entropy=29.311  clip=0.08  kl=0.0154
+
+  speed   396 turns/s  0.6 episodes/s  57.23s wall  (ppo update 13.70s)  barrier 24%
+  data    1,584 sampled steps of 22,685 collected  advantage mean=-589.748 sd=810.022
+  buffer  18.6 MB resident, 51.5% of it the packed grid
+  usage   34% of machine (6.9 of 20 logical cores)  pool 8 x 4 episodes  workers 6.2 cores, trainer 0.01
+[#######################-]  97%  gen 29/30  27:32  eta 0:56  score -3,978  bestDepth 1
+
+generation 29  episodes=32  seeds=1/100  shaping=1.00
+  score   mean=-4035.97  best=-3035.00  worst=-4931.00  objective=-3397.59
+  depth   mean=1.0  best=1
+  events  kills=52  gold=0  pickups=1400  talents=0  crafted=0
+  stalls  free_step 14 (44%) of 14 stalled episodes
+  types   exploration +23.83  combat -658.75  progression +1.17  items -4.64  costs -772.59  terminal -2625.00  (mean per episode)
+  turns   mean=771  total=24,686
+  ended   death 24 (75%)  stalled 8 (25%)
+  ppo     policy=0.0000  value=1.9092  entropy=30.577  clip=0.09  kl=0.0113
+
+  speed   384 turns/s  0.5 episodes/s  64.31s wall  (ppo update 32.48s)  barrier 51%
+  data    2,188 sampled steps of 24,686 collected  advantage mean=-382.236 sd=694.924
+  buffer  25.7 MB resident, 51.5% of it the packed grid
+  usage   31% of machine (6.3 of 20 logical cores)  pool 8 x 4 episodes  workers 5.8 cores, trainer 0.01
+saved   C:\Users\Soul\Documents\GitHub\shattered-pixel-dungeon\superintelligence\out\evidence\descend-30\weights.bin  (generation 30, adam step 262)
+[########################] 100%  gen 30/30  29:10  eta -  score -4,036  bestDepth 1
+
+[OK]   wrote 2 replays from 960 episodes (best per seed, plus the run's worst) to C:\Users\Soul\Documents\GitHub\shattered-pixel-dungeon\superintelligence\trainer-replays\descend-30  (group descend-30)
+
+trend   30 generations, C:\Users\Soul\Documents\GitHub\shattered-pixel-dungeon\superintelligence\out\evidence\descend-30\metrics.csv
+  score     ??????????????? ? ????? ??????  -4250.7..-3485.9
+  depth     ??????????????????????????????  1.0 (flat)
+  turns     ???? ?  ??????????????????????  283.8..909.0
+  polcl     ????????????????????? ????????  -2.1..1.4
+  valcl     ????????????????????????? ????  1.2..5.8
+  windows first 15 generations against the last 15
+  score       -3855.49 sd=185.8 sem=48.0   ->   -4037.81 sd=114.6 sem=29.6   delta=-182.32 +/- 56.4
+  objective   -3128.40 sd=201.7 sem=52.1   ->   -3382.06 sd=131.4 sem=33.9   delta=-253.66 +/- 62.1
+  depth>=2 0.0% -> 0.0%  (share of episodes reaching floor 2 or deeper)
+  ended   death 56%->56%  stalled 6%->6%  (first third -> last third)
+  score7 [7-gen mean] ??????????????     ??????? ???  -4086.2..-3719.9
+
+[Incubating] Problems report is available at: file:///C:/Users/Soul/Documents/GitHub/shattered-pixel-dungeon/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.5.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 29m 13s
+9 actionable tasks: 1 executed, 8 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.5.0/userguide/configuration_cache_enabling.html

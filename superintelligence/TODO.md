@@ -13,17 +13,33 @@ first run in this project's history to clear its own error bar. **It is not a de
 +65.69 +/- 57.9, which is not significant. The policy got better at what the shaping pays for and did
 not get closer to the stairs. Evidence: `out/evidence/remeasure-30.csv`.
 
-- [ ] **The next measurement is not another reward weight.** The objective terms are working and the
-      shaping is what moved. The candidate is the policy's inability to survive the walk to the
-      stairs on floor 1, and `issues.md` 20's arithmetic - under a profile that pays only for depth,
-      a policy that cannot yet descend learns to die cheaply - applies to any further change to that
-      balance.
-- [ ] Close `issues.md` 37 and 18 together. Both are "a recording the trainer wrote does not replay",
-      and both carry the evidence that would locate one. 37 is localised and not diagnosed: one of two
-      worker recordings diverges at step 1421 of 1422 with `rng baseDraws: replayed 745, recorded 747
-      (delta -2)` on a `SEARCH`, identically on both runs, so the streams parted in the generator and
-      the recording drew *more*. 18 is still 1 in 8. Both need `rngtrace` with `-Dspd.rngTrace`, whose
-      tally names the call site; neither is guessed at. Evidence in `out/evidence/issue-37-smoke/`.
+- [ ] **The next measurement is not another reward weight — and the measurement has been taken.**
+      A 30-generation run on the re-measurement's exact configuration, after the guide-page fix,
+      came in **-182.32 +/- 56.4** on `meanScore` and **-253.66 +/- 62.1** on
+      `meanObjectiveScore`: about 3 and 4 sigma in the **wrong** direction, against `+134.49 +/-
+      52.4` for the same configuration before the fix. `depth>=2` is **0 of 960** again.
+      `meanTurns` rose 542.79 → **758.65**, so the policy is learning to *live longer* and getting
+      worse at the objective, with `death` flat at 56% and a third of every generation ending on
+      the turn limit.
+
+      **The candidate this section names is confirmed rather than assumed.** The shaped terms did
+      improve - the `exploration` type subtotal went +11.98 → **+26.54** per episode and `combat`
+      -737.54 → **-679.44**, about +72 an episode of shaped gain, all of it consumed by the 216
+      extra turns at `turn_cost` 1.0. `STAIR_POTENTIAL` telescopes, so a rising net means the hero
+      finishes closer to the exit than it starts: **the policy does not fail to want the stairs, it
+      fails to walk to them.** Evidence: `out/evidence/descend-30.csv`,
+      `out/evidence/descend-30-full.log`.
+
+      **And one caution belongs with the number.** The `Document` fix changed what every worker
+      plays, so this run and the one before it are two samples of two curricula, not two samples of
+      one.
+- [ ] Close `issues.md` 37. **`issues.md` 18 closed** on the guide-page fix and 8 green runs out of
+      8; 37 did not close with it and reproduced on a new seed with the identical signature
+      (`rng baseDraws diverged at step 1124 of 1125, delta -2`). What is narrowed: two verifications
+      of one file agree exactly, and `paritycheck` is green across 32 episode boundaries in one
+      process, so the leak is reached by the **trained** policy and lives in the process that made
+      the recording. The next measurement is `RandomTrace.siteLog()` inside the worker, per episode,
+      diffed against a verification of the same file. Evidence: `out/evidence/issue-37-recheck.txt`.
 
 ## 2. Reward signals
 
@@ -41,15 +57,26 @@ not get closer to the stairs. Evidence: `out/evidence/remeasure-30.csv`.
 
 ## 3. Missing subsystems
 
-| # | Task | Document | Size |
-| --- | --- | --- | --- |
-| 3.1 | libGDX trainer UI in the `desktop` module | research.md:16, docs.md:10 | L |
-| 3.3 | Live play with real-time reward/term monitoring | docs.md:10 | M |
+None. The two that were listed here - the libGDX trainer dashboard and the live reward monitor -
+are **declined**, with their reasoning and the trigger that would change it, in `REJECTED.md`.
+`TODO.md` carries open work only, and an entry that appears in both files is read twice and closed
+once.
 
 ## 4. Open engine and harness faults
 
-- [ ] **`issues.md` 26**, the viewer spending 1 HP the recording does not contain. **Animation timing
-      is refuted** - with `-PspdFixedDelta=0.05` the divergence is bit-for-bit identical - and the 11
-      refused steps are **not** the asymmetry either: `spd.trace` shows slot 0 holds exactly the item
-      the trainer consumed, and `Replay.Step` does not record whether an action was accepted, so a
-      refusal cannot be told from a skipped step. Recording that bit is the next measurement.
+- [ ] **`issues.md` 26**, the viewer and the trainer disagreeing by 1 HP at step 95 of
+      `duelist-death-last.replay`. **The entry's own reading is now refuted and so is its
+      alternative.** A tripwire in `Char.damage`, run through both environments, shows the two
+      traces identical for 24 lines and then:
+
+      ```
+      headless  [HERODMG] turn=91.0 hp=7 dmg=0 src=Snake via=Hero.damage:1683
+      viewer    [HERODMG] turn=91.0 hp=7 dmg=1 src=Snake via=Hero.damage:1683
+      ```
+
+      Both sides take the hit. One snake attack lands on both, at the same engine time, with the
+      same health and the same source, and **the number arriving at `Char.damage` differs**. The
+      fault is upstream of `Char.damage`, in a computation that consumes randomness - which is why
+      per-step `baseDraws`, per-step fingerprints, 1,003 identical cells and a byte-identical roster
+      all came back clean. The next measurement is `RandomTrace.siteLog()` on both sides over that
+      window. Evidence: `out/evidence/issue-26/herodmg-diff.txt`.

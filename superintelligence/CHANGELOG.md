@@ -421,6 +421,42 @@ uncommitted. The external code review that asked for it to be committed found it
   (was 35), `reward.kill_reward` 150.0 and `reward.sneak_attack_reward` 300.0 (were 12.0 and 22.0).
 
 ### Measured
+- **The 30-generation re-measurement, repeated after the guide-page fix: the policy got *worse*, by
+  about 3 sigma, and reached floor 2 in 0 of 960 episodes.** The same configuration as the run
+  `issues.md` 27 measured and the one this file recorded as the first run to clear its own error bar:
+  8 workers x 4 episodes, 4 update threads, seed 20261016, `train.random_seed_rate=0`, every other
+  default unchanged. 30 generations in **29m13s**.
+
+  | | generations 0-14 | generations 15-29 | difference |
+  | --- | --- | --- | --- |
+  | `meanScore` | **-3855.49** sd 185.8, sem 48.0 | **-4037.81** sd 114.6, sem 29.6 | **-182.32 +/- 56.4** |
+  | `meanObjectiveScore` | -3128.40 sd 201.7, sem 52.1 | -3382.06 sd 131.4, sem 33.9 | **-253.66 +/- 62.1** |
+  | `meanTurns` | 542.79 | 758.65 | **+215.86** |
+  | `depth>=2` | 0.0% | 0.0% | **0 of 960 episodes** |
+
+  **Against `+134.49 +/- 52.4` on the same configuration before the fix, this is the opposite sign at
+  a similar magnitude.** The earlier result did not reproduce, and the honest reading is that a
+  30-generation run on this configuration does not clear its own error bar in either direction - the
+  run `issues.md` 27 measured and this one are two samples of a quantity whose spread is larger than
+  its trend.
+
+  **It is worth saying plainly that the fix itself changed the training distribution.** The
+  `Document` reset makes every episode's floors a function of its seed alone, where before they were
+  a function of the seed *and* whichever guide pages an earlier episode in the same worker had
+  collected. That is the correct behaviour and it is also a different curriculum, so the regression
+  and the fix are not separated by this run.
+
+  **And the run answers `TODO.md` §1.** The policy is learning to **live longer** - `meanTurns` +40%,
+  with `death` flat at 56% and `stalled` flat at 6%, so a third of every generation now ends on the
+  turn limit - and it is getting worse on everything the objective names. The shaped exploration
+  terms did improve, +11.98 to **+26.54** per episode on the `exploration` type and -737.54 to
+  **-679.44** on `combat`, which is about +72 per episode of shaped gain; the extra 216 turns cost
+  more than that at `turn_cost` 1.0. `STAIR_POTENTIAL` telescopes, so a rising net means the hero
+  finishes closer to the exit than it started - **and 0 of 960 episodes ever reached it.** That is
+  `TODO.md` §1's candidate, confirmed rather than assumed: the policy does not fail to want the
+  stairs, it fails to *walk to them*.
+
+  Evidence: `out/evidence/descend-30.csv`, `out/evidence/descend-30-full.log`.
 - **`issues.md` 26: both sides take the hit, and one roll differs.** A tripwire in `Char.damage`
   records every hit the hero takes with the engine time, the health going in, the number, the
   source and the first frame outside `Char` and `Actor`. Run on `duelist-death-last.replay` through
