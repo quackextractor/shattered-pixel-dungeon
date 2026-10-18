@@ -29,8 +29,12 @@ not get closer to the stairs. Evidence: `out/evidence/remeasure-30.csv`.
 
 - [ ] **Coverage of the terms that fire.** `KILL`, `GOLD_GAIN` and `ITEM_PICKUP` are all proven to
       fire and a trainer run reports 6-9 kills and 100-188 pickups per generation. What is left is
-      whether an untrained policy gets there on its own, and `issues.md` 38 says why it cannot: the
-      hero cannot pick an item up off the cell it stands on.
+      whether an untrained policy gets there on its own. **The blocker is no longer `issues.md` 38**,
+      which is closed: the cause was a guidebook page read out of the process-wide `Document`, and
+      `Document.resetPages()` is now called on every reset. The blocker is now the **committed
+      corpus** - `viewcheck` reports 7 of 20 recordings diverging under the own-cell `INTERACT`
+      semantics, and regenerating it would destroy the fixture `issues.md` 26 is diagnosed against.
+      Measured, with the numbers, in `REJECTED.md`.
 - [ ] **The shaping fade has never faded anything.** Wired and measured - 0.6064 at depth 6 - but it
       starts at depth 3 and no run has passed floor 2. The fix is an agent that descends, not a
       retune.
