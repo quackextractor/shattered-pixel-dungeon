@@ -204,14 +204,21 @@ draws is made by *both* environments, which is why §4 says they cannot separate
 symmetry is also why moving them is not free. Taking a draw off the gameplay stream changes the
 number of values a footstep consumes, so the first step on the first floor diverges from every
 recording in `test-replays/`, including `duelist-death-last.replay`, which is the fixture
-`issues.md` 26 is diagnosed against and `viewcheck` is 19 of 20 because of.
+`issues.md` 26 is diagnosed against and `viewcheck` is 19 of 20 because of. **Both of those are
+closed now** - 26 on the ordered draw log, and the corpus has been regenerated since - so the
+objection has become arithmetic rather than a blocker: the corpus is one command and 15 seconds, and
+taking a draw off the gameplay stream would need it regenerated once more.
 
 **What it buys is tidiness and nothing else.** A sound's pitch is still random; the only effect is
 that the presentation draw stops consuming the gameplay stream, which the game's own `PRandom`
 exists for. It cannot fix a divergence, because it cannot cause one.
 
 **Revisit when** the corpus is regenerated for another reason - a changed observation width, a new
-action head - at which point it is ten mechanical edits and no recording is lost by them.
+action head - at which point it is ten mechanical edits and no recording is lost by them. **That
+trigger has now fired twice**: the corpus was regenerated for the own-cell `INTERACT` semantics and
+`regenerate-corpus.ps1` rebuilds all twenty in 15 s. It is still declined, because taking ten draws
+off the gameplay stream shifts the layout of every dungeon in the game for a given seed, and tidiness
+is not worth that on its own.
 
 ## Making `holdAllies` reachable in the trainer
 
