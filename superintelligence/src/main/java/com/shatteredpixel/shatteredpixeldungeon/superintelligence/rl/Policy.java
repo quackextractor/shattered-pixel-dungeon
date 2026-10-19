@@ -91,7 +91,11 @@ public class Policy {
 
 		float dLogProbability = clipBinding ? 0f : advantage * ratio;
 
-		outGradient[ chosenIndex ] += dLogProbability * (1f - newProbability);
+		for (int i = 0; i < probabilities.length; i++){
+			if (mask[ i ] <= 0.5f ) continue;
+			float oneHot = i == chosenIndex ? 1f : 0f;
+			outGradient[ i ] -= dLogProbability * (oneHot - probabilities[ i ]);
+		}
 
 		if (entropyCoeff != 0f){
 			float h = entropy( probabilities );

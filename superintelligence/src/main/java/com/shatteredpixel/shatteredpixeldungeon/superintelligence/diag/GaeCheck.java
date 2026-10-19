@@ -23,7 +23,7 @@ import java.util.Random;
 public class GaeCheck {
 	private static final float GAMMA = 0.987f;
 	private static final float LAMBDA = 0.913f;
-	private static final int CHECKS = 16;
+	private static final int CHECKS = 17;
 	private static final List< String > failures = new ArrayList<>();
 	public static void main( String[] args ){
 		checkScalarMatchesTransitionList();
@@ -42,6 +42,7 @@ checkTerminalZerosTheTail();
 		checkThePackedGridIsEightTimesSmaller();
 		checkAFrameOfManyTransitionsRoundTrips();
 		checkClipFractionIsNotAdvantageMagnitude();
+		checkAnUpdateMovesTheChosenProbabilityWithTheAdvantage();
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     GAE: " + CHECKS + " checks passed" );
 		} else {
@@ -553,6 +554,48 @@ private static void checkAPenalisedTruncationStillCarriesItsPenalty(){
 		float[] gradient = new float[ probabilities.length ];
 		return Policy.accumulatePolicyGradient( probabilities, mask, chosen,
 				oldLogProbability, 1f, epsilon, 0f, gradient );
+	}
+	private static void checkAnUpdateMovesTheChosenProbabilityWithTheAdvantage(){
+		float[] up = chosenProbabilityAcrossOneUpdate( 1f );
+		float[] down = chosenProbabilityAcrossOneUpdate( -1f );
+		if (!(up[ 1 ] > up[ 0 ])){
+			fail( "one update at advantage +1 moved p(chosen) from " + up[ 0 ] + " to " + up[ 1 ]
+					+ "; a rewarded action has to become more likely" );
+		}
+		if (!(down[ 1 ] < down[ 0 ])){
+			fail( "one update at advantage -1 moved p(chosen) from " + down[ 0 ] + " to " + down[ 1 ]
+					+ "; a punished action has to become less likely" );
+		}
+		System.out.println( "  one update moves p(chosen) " + up[ 0 ] + " -> " + up[ 1 ] + " at A=+1, "
+				+ down[ 0 ] + " -> " + down[ 1 ] + " at A=-1" );
+	}
+	private static float[] chosenProbabilityAcrossOneUpdate( float advantage ){
+		EnvConfig config = new EnvConfig();
+		Network net = new Network( config, new Random( 777L ));
+		float[] grid = new float[ net.gridLength() ];
+		float[] inventory = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
+		float[] hero = new float[ HeroEncoder.FEATURES ];
+		Random rng = new Random( 778L );
+		for (int i = 0; i < grid.length; i++) grid[ i ] = rng.nextInt( 5 ) == 0 ? 1f : 0f;
+		for (int i = 0; i < hero.length; i++) hero[ i ] = rng.nextFloat();
+		float[] mask = new float[ net.actionCount() ];
+		java.util.Arrays.fill( mask, 1f );
+		float[] probabilities = new float[ mask.length ];
+		int chosen = 3;
+		net.resetState();
+		net.forward( grid, inventory, hero );
+		Policy.probabilities( net.actionLogits(), mask, probabilities );
+		float before = probabilities[ chosen ];
+		float[] gradient = new float[ mask.length ];
+		Policy.accumulatePolicyGradient( probabilities, mask, chosen, Policy.logProbability( probabilities, chosen ),
+				advantage, 0.2f, 0f, gradient );
+		net.zeroGrad();
+		net.backward( gradient, null, null, 0f );
+		net.step( 1f );
+		net.resetState();
+		net.forward( grid, inventory, hero );
+		Policy.probabilities( net.actionLogits(), mask, probabilities );
+		return new float[]{ before, probabilities[ chosen ] };
 	}
 	private static boolean retainsStep( EpisodeRecord record, int step ){
 		for (int i = 0; i < record.sampledCount(); i++){
