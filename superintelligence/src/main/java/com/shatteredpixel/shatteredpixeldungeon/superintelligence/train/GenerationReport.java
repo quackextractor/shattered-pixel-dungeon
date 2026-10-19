@@ -194,4 +194,68 @@ public static class Snapshot {
 	private static double pct( double used, double total ){
 		return total <= 0 ? 0 : used / total * 100;
 	}
+
+	static void tally( Snapshot s, java.util.List<Episode> episodes ){
+		long totalTurns = 0;
+		int best = Integer.MIN_VALUE, worst = Integer.MAX_VALUE;
+		Episode bestEpisode = null;
+
+		for (Episode e : episodes){
+			s.meanScore += e.score;
+			s.meanDepth += e.depth;
+			s.meanTurns += e.turns;
+			s.meanObjectiveScore += e.objectiveScore;
+			if (e.depth >= 2) s.depth2PlusEpisodes++;
+			s.kills += e.termCounts[ RewardTerm.KILL.ordinal() ];
+			s.goldGains += e.termCounts[ RewardTerm.GOLD_GAIN.ordinal() ];
+			s.itemPickups += e.termCounts[ RewardTerm.ITEM_PICKUP.ordinal() ];
+			s.talentsSpent += e.termCounts[ RewardTerm.TALENT_UPGRADE.ordinal() ];
+			s.itemsCrafted += e.termCounts[ RewardTerm.CRAFTED.ordinal() ];
+			for (RewardTerm term : RewardTerm.values()){
+				s.typeTotals[ term.type().ordinal() ] += e.termTotals[ term.ordinal() ];
+			}
+			s.stallCauses[ e.stallCause ]++;
+			totalTurns += e.turns;
+			best = Math.max( best, (int) e.score );
+			worst = Math.min( worst, (int) e.score );
+			if (bestEpisode == null || e.score > bestEpisode.score) bestEpisode = e;
+
+			countEndReason( s, e.reason );
+		}
+
+		int n = episodes.size();
+		s.meanScore /= n;
+		s.meanObjectiveScore /= n;
+		s.meanDepth /= n;
+		s.meanTurns /= n;
+		s.bestScore = best;
+		s.worstScore = worst;
+		s.bestDepth = bestEpisode.depth;
+		s.totalTurns = totalTurns;
+	}
+
+	private static void countEndReason( GenerationReport.Snapshot s, String reason ){
+		if (reason == null || reason.isEmpty()){
+			s.endReasons[ RewardModel.TerminateReason.OTHER.ordinal() ]++;
+			return;
+		}
+
+		RewardModel.TerminateReason[] reasons = RewardModel.TerminateReason.values();
+		for (int i = 0; i < reasons.length; i++){
+			if (reasons[ i ].name().equals( reason )){
+				s.endReasons[ i ]++;
+				return;
+			}
+		}
+
+		s.endReasons[ RewardModel.TerminateReason.OTHER.ordinal() ]++;
+		if (!warnedUnknownReason){
+			warnedUnknownReason = true;
+			System.err.println( "[WARN] a worker reported the end reason '" + reason
+					+ "', which this build does not know. Counted as OTHER; the trainer and workers are"
+					+ " probably from different builds." );
+		}
+	}
+
+	private static boolean warnedUnknownReason;
 }

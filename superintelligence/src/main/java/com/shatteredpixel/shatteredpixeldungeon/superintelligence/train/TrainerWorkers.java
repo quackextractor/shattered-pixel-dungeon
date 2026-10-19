@@ -24,6 +24,8 @@ public class TrainerWorkers {
 
 	private WorkerPool.ParamWriter paramWriter = out -> {};
 
+	private final Map<String, Double> lastCpuByWorker = new java.util.HashMap<>();
+
 	public TrainerWorkers( EnvConfig config, PPO ppo ){
 		this.config = config;
 		this.ppo = ppo;
@@ -164,6 +166,20 @@ public class TrainerWorkers {
 		return episodes;
 	}
 
+
+	double cpuSecondsSinceLast( List<Episode> episodes ){
+		double total = 0;
+		for (Episode e : episodes){
+			if (e.workerCpuTotal < 0 || e.workerName == null) continue;
+			Double previous = lastCpuByWorker.get( e.workerName );
+			if (previous != null){
+				double delta = e.workerCpuTotal - previous;
+				if (delta > 0) total += delta;
+			}
+			lastCpuByWorker.put( e.workerName, e.workerCpuTotal );
+		}
+		return total;
+	}
 
 	public void pushWeights() throws IOException {
 		List<Thread> threads = new ArrayList<>();

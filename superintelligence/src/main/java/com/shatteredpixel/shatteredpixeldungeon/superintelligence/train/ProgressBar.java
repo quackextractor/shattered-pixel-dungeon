@@ -6,7 +6,25 @@ public final class ProgressBar {
 
 	private static final int WIDTH = 24;
 
-	private ProgressBar() {}
+	private boolean drawn;
+
+	void draw( int done, int total, long startedAt, MetricsHistory metrics ){
+		double meanScore = Double.NaN;
+		int bestDepth = 0;
+		MetricsHistory.Snapshot last = metrics == null ? null : metrics.latest();
+		if (last != null){
+			meanScore = last.meanScore;
+			bestDepth = last.bestDepth;
+		}
+		System.out.print( render( done, total, startedAt, meanScore, bestDepth ) );
+		drawn = true;
+	}
+
+	void clear(){
+		if (!drawn) return;
+		System.out.println();
+		drawn = false;
+	}
 
 	public static String render( int done, int total, long startedMs, double meanScore, int bestDepth ){
 		int safeTotal = Math.max( 1, total );
