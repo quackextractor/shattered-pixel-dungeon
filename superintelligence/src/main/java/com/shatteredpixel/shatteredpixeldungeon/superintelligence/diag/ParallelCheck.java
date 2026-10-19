@@ -13,7 +13,7 @@ import java.util.Set;
 
 public class ParallelCheck {
 
-	private static final int CHECKS = 3;
+	private static final int CHECKS = 4;
 
 	private static final float TOLERANCE = 1e-3f;
 
@@ -29,6 +29,7 @@ public class ParallelCheck {
 		checkThreadCountDoesNotChangeTheUpdate( config, 2 );
 		checkThreadCountDoesNotChangeTheUpdate( config, 4 );
 		checkShardsOwnTheirOwnNetwork( config );
+		checkAFailingShardFailsTheUpdate( config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     parallel update: " + CHECKS + " checks passed" );
@@ -168,6 +169,36 @@ public class ParallelCheck {
 					+ " distinct networks, none the master's; entropy " + ppo.lastEntropy
 					+ " (reported, not asserted - see the case's own comment)" );
 		} finally {
+			ppo.close();
+		}
+	}
+
+	private static void checkAFailingShardFailsTheUpdate( EnvConfig config ){
+		PPO ppo = new PPO( config, new Random( SEED ) );
+		ppo.threads = 4;
+		ppo.epochs = 1;
+		ppo.minibatchSize = 32;
+		ppo.buffer().addAll( ParallelFixtures.batch( ppo.network, config, 32, 4242L ) );
+		ppo.buffer().get( 5 ).inventory = null;
+
+		java.util.concurrent.ExecutorService runner = java.util.concurrent.Executors.newSingleThreadExecutor( r -> {
+			Thread t = new Thread( r, "parallelcheck" );
+			t.setDaemon( true );
+			return t;
+		} );
+		try {
+			runner.submit( ppo::update ).get( 30, java.util.concurrent.TimeUnit.SECONDS );
+			fail( "an update whose shard threw returned normally, so the failure was swallowed" );
+		} catch (java.util.concurrent.ExecutionException e){
+			System.out.println( "  a shard that throws fails the update: " + e.getCause() );
+		} catch (java.util.concurrent.TimeoutException e){
+			fail( "an update whose shard threw was still waiting after 30s: the shard never counted down,"
+					+ " so the trainer hangs forever on one bad transition" );
+		} catch (InterruptedException e){
+			Thread.currentThread().interrupt();
+			fail( "interrupted while waiting for the failing update" );
+		} finally {
+			runner.shutdownNow();
 			ppo.close();
 		}
 	}

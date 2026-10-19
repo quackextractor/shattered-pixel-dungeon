@@ -8,6 +8,7 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 final class ShardedUpdate {
@@ -80,38 +81,47 @@ final class ShardedUpdate {
 		float[] clipped = new float[ n ];
 
 		CountDownLatch ready = new CountDownLatch( n );
+		AtomicReference< Throwable > failure = new AtomicReference<>();
 		for (int s = 0; s < n; s++){
 			final int shard = s;
 			final int lo = from + (int) ((long) s * count / n );
 			final int hi = from + (int) ((long) ( s + 1 ) * count / n );
 
 			pool.execute( () -> {
-				Shard w = shards.get( shard );
-				w.network.copyParametersFrom( ppo.network );
-				w.network.clearGradients();
+				try {
+					Shard w = shards.get( shard );
+					w.network.copyParametersFrom( ppo.network );
+					w.network.clearGradients();
 
-				float p = 0, v = 0, e = 0, k = 0, c = 0;
-				for (int i = lo; i < hi; i++){
-					PPO.Stats s2 = ppo.oneChunk( w.network, chunks.get( i ), w.grid,
-							w.slotProbs, w.targetProbs, w.actionProbs,
-							w.slotGrad, w.targetGrad, w.actionGrad, w.caches, w.maxChunk );
-					p += s2.policyLoss;
-					v += s2.valueLoss;
-					e += s2.entropy;
-					k += s2.kl;
-					if (s2.clipBinding) c++;
+					float p = 0, v = 0, e = 0, k = 0, c = 0;
+					for (int i = lo; i < hi; i++){
+						PPO.Stats s2 = ppo.oneChunk( w.network, chunks.get( i ), w.grid,
+								w.slotProbs, w.targetProbs, w.actionProbs,
+								w.slotGrad, w.targetGrad, w.actionGrad, w.caches, w.maxChunk );
+						p += s2.policyLoss;
+						v += s2.valueLoss;
+						e += s2.entropy;
+						k += s2.kl;
+						if (s2.clipBinding) c++;
+					}
+
+					policy[ shard ] = p;
+					value[ shard ] = v;
+					entropy[ shard ] = e;
+					kl[ shard ] = k;
+					clipped[ shard ] = c;
+				} catch (Throwable t){
+					failure.compareAndSet( null, t );
+				} finally {
+					ready.countDown();
 				}
-
-				policy[ shard ] = p;
-				value[ shard ] = v;
-				entropy[ shard ] = e;
-				kl[ shard ] = k;
-				clipped[ shard ] = c;
-				ready.countDown();
 			} );
 		}
 
-await( ready );
+		await( ready );
+		if (failure.get() != null){
+			throw new IllegalStateException( "an update shard failed", failure.get() );
+		}
 
 		PPO.Minibatch result = new PPO.Minibatch();
 		for (int s = 0; s < n; s++){
