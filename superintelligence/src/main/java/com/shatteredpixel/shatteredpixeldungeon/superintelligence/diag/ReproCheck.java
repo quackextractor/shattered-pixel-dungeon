@@ -16,17 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Records a run, verifies it repeatedly in one process, and names the draw site whose tally moved.
- *
- * <p>The question `issues.md` 37 and 18 could not answer is *which call site* spends the draws, and
- * `baseDraws` is cumulative so it cannot say. `RandomTrace.attribute()` is the instrument that can,
- * and what was missing was a reproduction to point it at. `paritycheck --seeds 1 --heroes 1` is one.
- *
- * <p>Run it twice. The first run's *first* verification is the baseline a fresh JVM produces; the
- * second run repeats the same work after an episode has run in the process, which is where the two
- * part.
- */
 public class ReproCheck {
 
 	private static final String SEED = "PARITY-ALPHA";

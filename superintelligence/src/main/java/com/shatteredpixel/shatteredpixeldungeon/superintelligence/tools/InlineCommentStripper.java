@@ -49,7 +49,7 @@ public class InlineCommentStripper {
 
 	private static List< Path > javaFiles( Path dir ) throws IOException {
 		try (java.util.stream.Stream< Path > walk = Files.walk( dir )){
-			return walk.filter( p -> p.toString().endsWith( ".java" ) && !p.toString().contains( "/build/" ))
+			return walk.filter( p -> p.toString().endsWith( ".java" ) && !p.toString().replace( '\\', '/' ).contains( "/build/" ))
 					.collect( java.util.stream.Collectors.toList() );
 		}
 	}
@@ -85,8 +85,7 @@ static String strip( String source ){
 				boolean lineIsOnlyComment = out.substring( lineStart ).toString().isBlank();
 				if (lineIsOnlyComment){
 					out.setLength( lineStart );
-					if (end < n ) i = end + 1;
-					else i = end;
+					i = source.startsWith( "\r\n", end ) ? end + 2 : source.startsWith( "\n", end ) ? end + 1 : end;
 					lineStart = out.length();
 					continue;
 				}
@@ -135,6 +134,10 @@ static String strip( String source ){
 	}
 
 	private static int countStripped( String before, String after ){
-		return (before.length() - after.length()) / 40 + 1;
+		return lines( before ) - lines( after );
+	}
+
+	private static int lines( String text ){
+		return (int) text.chars().filter( c -> c == '\n' ).count();
 	}
 }

@@ -42,7 +42,8 @@ public class JavaLint {
 					"-classpath", System.getProperty( "java.class.path" ) ) );
 			boolean ok = compiler.getTask( null, files, diagnostics, options, null, units ).call();
 			report( diagnostics );
-			System.exit( ok ? 0 : 1 );
+			boolean uncommented = reportComments( sources );
+			System.exit( ok && uncommented ? 0 : 1 );
 		} catch (java.io.IOException e){
 			System.err.println( "[ERROR] javaclint: " + e.getMessage() );
 			System.exit( 2 );
@@ -56,6 +57,17 @@ public class JavaLint {
 			if (f.isDirectory()) collect( f, out );
 			else if (f.getName().endsWith( ".java" )) out.add( f );
 		}
+	}
+
+	private static boolean reportComments( List< File > sources ) throws java.io.IOException {
+		boolean clean = true;
+		for (File f : sources){
+			String source = java.nio.file.Files.readString( f.toPath() );
+			if (InlineCommentStripper.strip( source, true ).equals( source )) continue;
+			System.out.println( "[ERROR] javaclint: " + f + " carries a // or /** comment" );
+			clean = false;
+		}
+		return clean;
 	}
 
 	private static void report( DiagnosticCollector< JavaFileObject > diagnostics ){
