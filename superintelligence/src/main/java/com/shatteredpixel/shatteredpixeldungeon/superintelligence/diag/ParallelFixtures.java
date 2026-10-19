@@ -6,11 +6,8 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -19,10 +16,6 @@ final class ParallelFixtures {
 
 	private ParallelFixtures() {}
 
-	static final int BATCH = 32;
-
-	private static final Random ADVANTAGE_SEED = new Random( 90210L );
-
 	static List< Transition > batch( Network net, EnvConfig config, int n, long seed ){
 		Random rng = new Random( seed );
 		List< Transition > out = new ArrayList<>( n );
@@ -30,7 +23,7 @@ final class ParallelFixtures {
 
 		for (int i = 0; i < n; i++ ){
 			Transition t = new Transition();
-			t.gridCells = config.spatialChannels() * config.gridWidth * config.gridWidth;
+			t.gridCells = net.gridLength();
 		t.grid = new byte[ Transition.packedGridBytes( t.gridCells ) ];
 			t.inventory = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
 			t.hero = new float[ HeroEncoder.FEATURES ];
@@ -64,33 +57,6 @@ final class ParallelFixtures {
 			t.returnValue = (float) (adv.nextGaussian() * 3.0 );
 		}
 		return out;
-	}
-
-	static void oneSample( PPO ppo, Network net, Transition t ){
-		Method m = method();
-		try {
-			m.invoke( ppo, net, t, new float[ net.gridLength() ],
-					new float[ net.slotCount() ], new float[ net.targetCount() ],
-					new float[ net.actionCount() ],
-					new float[ net.slotCount() ], new float[ net.targetCount() ],
-					new float[ net.actionCount() ] );
-		} catch (ReflectiveOperationException e){
-			throw new IllegalStateException( "cannot drive PPO.oneSample", e );
-		}
-	}
-
-	private static Method method(){
-		try {
-			Method m = PPO.class.getDeclaredMethod( "oneSample", Network.class, Transition.class,
-					float[].class, float[].class, float[].class, float[].class,
-					float[].class, float[].class, float[].class );
-			m.setAccessible( true );
-			return m;
-		} catch (NoSuchMethodException e){
-			throw new IllegalStateException( "PPO.oneSample is gone or renamed; this fixture is the"
-					+ " only thing that knows its shape, so it fails here rather than silently testing"
-					+ " something else", e );
-		}
 	}
 
 	static float[] gridOf( Transition t ){

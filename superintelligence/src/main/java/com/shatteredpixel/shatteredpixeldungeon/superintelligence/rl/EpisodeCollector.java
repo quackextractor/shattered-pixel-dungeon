@@ -128,7 +128,7 @@ public class EpisodeCollector {
 		this.maxSampled = maxSampled;
 		this.chunkLength = Math.max( 1, chunkLength );
 
-		this.gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		this.gridSize = config.spatialChannels() * config.gridWidth * config.gridHeight;
 		this.inventorySize = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		this.heroSize = HeroEncoder.FEATURES;
 

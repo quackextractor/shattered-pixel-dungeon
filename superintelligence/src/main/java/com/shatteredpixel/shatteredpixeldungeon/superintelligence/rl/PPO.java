@@ -108,7 +108,7 @@ public float lastClipFraction;
 		this.network = new Network( config, rng );
 		this.network.learningRate = learningRate;
 
-		this.gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		this.gridSize = config.spatialChannels() * config.gridWidth * config.gridHeight;
 		this.inventorySize = config.maxSlots
 				* com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder.FEATURES_PER_SLOT;
 		this.heroSize = com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder.FEATURES;
