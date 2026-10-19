@@ -16,7 +16,7 @@ import java.util.List;
 
 public class VerifyCheck {
 
-	private static final int CHECKS = 14;
+	private static final int CHECKS = 15;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -40,6 +40,7 @@ public class VerifyCheck {
 		checkAPrefixDoesNotVerify( good );
 		checkTheHeaderCarriesTheRunLimits( good );
 		checkVerifyLeavesACallersTraceOn( good );
+		checkAnUnknownHeroIsRefused( good );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     verification detects divergence: " + CHECKS + " checks passed" );
@@ -398,6 +399,17 @@ public class VerifyCheck {
 			fail( where, "wrote 11/12/13/14, read back " + read.turnLimitTotal + "/" + read.stallLimit + "/"
 					+ read.freeStepBudget + "/" + read.actorStepLimit
 					+ ", so verify replays under limits the run never had" );
+		}
+	}
+
+	private static void checkAnUnknownHeroIsRefused( Replay source ){
+		Replay copy = copyOf( source );
+		copy.heroClass = "BARBARIAN";
+		ReplayIO.Verification result = verify( copy );
+		if (result.unwatchableAt != 0){
+			fail( "an unknown hero class is refused", "a recording of hero BARBARIAN was "
+					+ ( result.diverged ? "replayed as a Warrior and diverged at step " + result.divergedAt
+							: "replayed without complaint" ) );
 		}
 	}
 

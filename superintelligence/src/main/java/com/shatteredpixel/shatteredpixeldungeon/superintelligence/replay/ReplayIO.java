@@ -321,7 +321,10 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		try {
 			heroClass = HeroClass.valueOf( replay.heroClass );
 		} catch (IllegalArgumentException e){
-			heroClass = HeroClass.WARRIOR;
+			result.unwatchableAt = 0;
+			result.unwatchable = "hero class " + replay.heroClass + " is not one this build knows, so the"
+					+ " run cannot be rebuilt";
+			return result;
 		}
 
 		EnvConfig replayed = configFor( replay );
