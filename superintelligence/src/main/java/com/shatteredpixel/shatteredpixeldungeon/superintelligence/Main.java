@@ -37,7 +37,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCos
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ValueScale;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.VerifyCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.WeightsDiff;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayCatalog;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayListing;
 
 public class Main {
 
@@ -88,7 +88,7 @@ public class Main {
 		case "seedcheck": SeedScheduleCheck.main( rest ); break;
 		case "doccheck": DocCheck.main( rest ); break;
 		case "weightsdiff": WeightsDiff.main( rest ); break;
-		case "replays":  ReplayCatalog.main( rest ); break;
+		case "replays":  ReplayListing.main( rest ); break;
 		case "replaycheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag
 				.ReplayCatalogCheck.main( rest ); break;
 		case "dropfixture": FixtureCommand.dropfixture( rest ); break;
