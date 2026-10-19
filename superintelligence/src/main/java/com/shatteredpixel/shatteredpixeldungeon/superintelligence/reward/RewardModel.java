@@ -211,6 +211,9 @@ public class RewardModel {
 	private int prevHeroPos = -1;
 	private final StairPotential stairPotential = new StairPotential();
 	private final float gamma = 0.99f;
+	public float gamma(){
+		return gamma;
+	}
 	private void snapshot(){
 		Hero hero = Dungeon.hero;
 		if (hero == null) return;

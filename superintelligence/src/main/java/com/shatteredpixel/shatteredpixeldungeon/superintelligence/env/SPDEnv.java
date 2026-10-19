@@ -363,6 +363,7 @@ public float[] actionMask(){ return actionMask; }
 	public int gridHeight(){ return encoder.gridHeight(); }
 	public int spatialChannels(){ return encoder.spatialChannels(); }
 	public RewardLedger ledger(){ return ledger; }
+	public float shapingGamma(){ return reward.gamma(); }
 	public Curriculum curriculum(){ return curriculum; }
 	public ActionMapper mapper(){ return mapper; }
 	public EnvConfig config(){ return config; }

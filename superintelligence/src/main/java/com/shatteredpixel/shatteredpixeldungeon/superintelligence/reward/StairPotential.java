@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
+import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 
 public final class StairPotential {
 
@@ -44,9 +45,9 @@ public final class StairPotential {
 		return gamma * ( -b ) - ( -a );
 	}
 
-	private int exitCell( Level level ){
-		if (level.getTransition( null ) == null) return -1;
-		return level.getTransition( null ).cell();
+	public static int exitCell( Level level ){
+		LevelTransition exit = level.getTransition( LevelTransition.Type.REGULAR_EXIT );
+		return exit != null && exit.type == LevelTransition.Type.REGULAR_EXIT ? exit.cell() : -1;
 	}
 
 	private void ensureField( Level level, int exit ){

@@ -2,6 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
+import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
@@ -171,6 +172,9 @@ public final class RewardShapingCheck {
 		double toward;
 		int awaySteps;
 		int towardSteps;
+		int exit = -1;
+		int distanceAtExit = -1;
+		double expected;
 
 		double net(){ return away + toward; }
 	}
@@ -178,6 +182,13 @@ public final class RewardShapingCheck {
 
 	public static void checkClosingTheGapToTheStairsPays( EnvConfig config ){
 		StairWalk walk = walkOutAndBack( config.copy(), 2f, 4 );
+
+		if (walk.exit < 0 || walk.distanceAtExit != 0){
+			fail( "the stair potential is " + walk.distanceAtExit + " steps from zero on the downstairs at "
+					+ walk.exit + ". Level.getTransition(null) returns the entrance, so a potential built"
+					+ " on it pays the agent for walking back up." );
+			return;
+		}
 
 		if (walk.awaySteps == 0 || walk.towardSteps == 0){
 			fail( "the walk away took " + walk.awaySteps + " step(s) and the walk back "
@@ -209,18 +220,23 @@ public final class RewardShapingCheck {
 	public static void checkStairShapingCannotBeFarmed( EnvConfig config ){
 		StairWalk walk = walkOutAndBack( config.copy(), 2f, 4 );
 
-		double allowed = 0.5 * Math.max( 1, Math.abs( walk.toward ) );
-		if (Math.abs( walk.net() ) > allowed){
-			fail( "walking " + walk.awaySteps + " steps away from the stairs and "
-					+ walk.towardSteps + " back nets " + fmt( walk.net() ) + " of STAIR_POTENTIAL ("
-					+ fmt( walk.away ) + " then " + fmt( walk.toward ) + "). Potential-based shaping"
-					+ " telescopes, so a round trip pays nothing however many times it is repeated -"
-					+ " which is the whole difference between shaping and a farmable reward." );
+		if (walk.awaySteps == 0 || walk.towardSteps == 0){
+			fail( "the round trip took " + walk.awaySteps + " step(s) out and " + walk.towardSteps
+					+ " back, so it measured nothing." );
 			return;
 		}
 
-		System.out.println( "  a round trip away from the stairs and back nets " + fmt( walk.net() )
-				+ " of STAIR_POTENTIAL, so it cannot be farmed" );
+		if (Math.abs( walk.net() - walk.expected ) > 1e-3){
+			fail( "walking " + walk.awaySteps + " steps away from the stairs and "
+					+ walk.towardSteps + " back nets " + fine( walk.net() ) + " of STAIR_POTENTIAL ("
+					+ fmt( walk.away ) + " then " + fmt( walk.toward ) + ") where gamma*Phi(s') - Phi(s)"
+					+ " summed over the same cells is " + fine( walk.expected ) + ". Potential-based"
+					+ " shaping telescopes under the discount, so anything else is a farmable reward." );
+			return;
+		}
+
+		System.out.println( "  a round trip away from the stairs and back nets " + fine( walk.net() )
+				+ " of STAIR_POTENTIAL, exactly the discounted potential difference" );
 	}
 
 
@@ -229,6 +245,11 @@ public final class RewardShapingCheck {
 		local.stairPotentialWeight = 0f;
 
 		StairWalk walk = walkOutAndBack( local, 0f, 4 );
+
+		if (walk.awaySteps == 0){
+			fail( "with reward.stair_potential_weight = 0 the walk took no step, so it measured nothing." );
+			return;
+		}
 
 		if (walk.net() != 0){
 			fail( "with reward.stair_potential_weight = 0 the term still paid " + fmt( walk.net() )
@@ -411,6 +432,13 @@ public final class RewardShapingCheck {
 		play( config, each * 3 + 8, "SHAPEWALK", turn -> {
 			Action step = null;
 
+			if (turn.step == 0){
+				result.exit = regularExit();
+				if (result.exit >= 0) result.distanceAtExit = potential.distanceFrom( result.exit );
+				turn.env.step( Action.WAIT, 0 );
+				return;
+			}
+
 			if (!returning[ 0 ] && outward.size() >= each) returning[ 0 ] = true;
 
 			boolean outwardPhase = !returning[ 0 ];
@@ -426,8 +454,11 @@ public final class RewardShapingCheck {
 			if (step == null) return;
 
 			double before = turn.env.ledger().termTotal( RewardTerm.STAIR_POTENTIAL );
+			int from = Dungeon.hero.pos;
+			int depth = Dungeon.depth;
 			turn.env.step( step, 0 );
 			double paid = turn.env.ledger().termTotal( RewardTerm.STAIR_POTENTIAL ) - before;
+			result.expected += expectedShaping( turn.env, potential, weight, depth, from );
 
 			if (outwardPhase){
 				outward.add( step );
@@ -440,6 +471,18 @@ public final class RewardShapingCheck {
 		} );
 
 		return result;
+	}
+
+
+	private static double expectedShaping( SPDEnv env, StairPotential potential, float weight,
+			int depth, int from ){
+		int to = Dungeon.hero.pos;
+		if (Dungeon.depth != depth || to == from) return 0;
+		int a = potential.distanceFrom( from );
+		int b = potential.distanceFrom( to );
+		if (a == StairPotential.UNREACHABLE || b == StairPotential.UNREACHABLE) return 0;
+		float shaped = env.shapingGamma() * -b + a;
+		return weight * shaped * env.ledger().shapingScale();
 	}
 
 
@@ -461,9 +504,17 @@ public final class RewardShapingCheck {
 	}
 
 
+	private static int regularExit(){
+		for (LevelTransition transition : Dungeon.level.transitions){
+			if (transition.type == LevelTransition.Type.REGULAR_EXIT) return transition.cell();
+		}
+		return -1;
+	}
+
+
 	private static Action bestStepTowards( SPDEnv env, StairPotential potential, boolean toward ){
 		if (Dungeon.level == null || Dungeon.hero == null) return null;
-		if (Dungeon.level.getTransition( null ) == null) return null;
+		if (regularExit() < 0) return null;
 
 		int here = Dungeon.hero.pos;
 		int width = Dungeon.level.width();

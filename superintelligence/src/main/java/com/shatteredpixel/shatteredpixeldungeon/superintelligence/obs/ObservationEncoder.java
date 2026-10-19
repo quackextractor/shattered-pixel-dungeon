@@ -125,7 +125,7 @@ public class ObservationEncoder {
 
 		int cell = seenTransitionCell;
 		if (cell < 0){
-			cell = level.getTransition( null ) != null ? level.getTransition( null ).cell() : -1;
+			cell = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.StairPotential.exitCell( level );
 			if (cell < 0 ) return;
 			if (!level.visited[ cell ] ) return;
 			seenTransitionCell = cell;
