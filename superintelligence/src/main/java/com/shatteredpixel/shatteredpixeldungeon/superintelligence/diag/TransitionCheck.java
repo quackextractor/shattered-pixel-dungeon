@@ -13,6 +13,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardLedger;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.StairPotential;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Re
 
 public class TransitionCheck {
 
-	private static final int CHECKS = 9;
+	private static final int CHECKS = 10;
 
 	private static final String SEED = "TRANSITION";
 
@@ -49,6 +50,7 @@ public class TransitionCheck {
 		checkTheEngineClockRestartsWithTheFloor();
 		checkTheHeroActsOnArrivalBeforeTheAgentDoes();
 		checkAscendingAfterDescendingIsServiced();
+		checkTheStairsAreNotShapedAcrossAFloorChange();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     floor transitions: " + CHECKS + " checks passed" );
@@ -410,6 +412,57 @@ public class TransitionCheck {
 
 		System.out.println( "  descend then ascend: depth " + start + " -> " + ( start + 1 ) + " -> "
 				+ Dungeon.depth + ", hero alive on " + Dungeon.hero.pos + " at engine time " + Actor.now() );
+	}
+
+
+	private static void checkTheStairsAreNotShapedAcrossAFloorChange(){
+		SPDEnv env = freshRun();
+		env.config().stairPotentialWeight = 2f;
+
+		StairPotential upstairs = new StairPotential();
+		boolean[] reachableAbove = new boolean[ Dungeon.level.length() ];
+		for (int c = 0; c < reachableAbove.length; c++){
+			reachableAbove[ c ] = upstairs.distanceFrom( c ) != StairPotential.UNREACHABLE;
+		}
+
+		if (!descend( env )){
+			fail( "no exit to descend from, so this case measured nothing." );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+
+		int shared = -1;
+		for (int c = 0; c < Dungeon.level.length() && c < reachableAbove.length; c++){
+			if (reachableAbove[ c ] && Dungeon.level.passable[ c ] && Actor.findChar( c ) == null){
+				shared = c;
+				break;
+			}
+		}
+		if (shared < 0){
+			fail( "no cell of depth 2 is open and also on depth 1's path to the stairs, so this case"
+					+ " measured nothing." );
+			return;
+		}
+		Dungeon.hero.pos = shared;
+		env.step( Action.WAIT, 0 );
+
+		double before = env.ledger().termTotal( RewardTerm.STAIR_POTENTIAL );
+		if (!ascend( env )){
+			fail( "depth 2 has no entrance to climb, so this case measured nothing." );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+		double paid = env.ledger().termTotal( RewardTerm.STAIR_POTENTIAL ) - before;
+
+		if (Dungeon.depth != 1 || paid != 0){
+			fail( "the step that climbed from cell " + shared + " of depth 2 to depth " + Dungeon.depth
+					+ " paid " + paid + " of STAIR_POTENTIAL. The previous cell belongs to the floor below,"
+					+ " and its distance on the new floor's field is a number about a different map." );
+			return;
+		}
+
+		System.out.println( "  a floor change pays no stair shaping: climbing from cell " + shared
+				+ ", open on both floors, paid 0" );
 	}
 
 

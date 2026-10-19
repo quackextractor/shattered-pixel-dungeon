@@ -171,6 +171,7 @@ public class RewardModel {
 	}
 	private float stairShaping( Hero hero ){
 		if (config.stairPotentialWeight == 0f) return 0f;
+		if (Dungeon.depth != prevDepth || Dungeon.branch != prevBranch) return 0f;
 		if (hero.pos == prevHeroPos) return 0f;
 		return stairPotential.shaping( gamma, prevHeroPos, hero.pos );
 	}
