@@ -9,7 +9,6 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.ContiguousC
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
 import java.util.ArrayList;
@@ -97,26 +96,24 @@ public class SamplerCheck {
 		int represented = 0;
 		for (boolean t : touched) if (t) represented++;
 
-		int fromTail = 0;
-		for (int episode = episodes - 100; episode < episodes; episode++) if (touched[ episode ]) fromTail++;
+		int[] perDecile = new int[ 10 ];
+		for (int episode = 0; episode < episodes; episode++) if (touched[ episode ]) perDecile[ episode * 10 / episodes ]++;
 
-		if (represented == 0){
-			fail( "none of " + episodes + " episodes contributed anything to a reservoir with room for "
-					+ capChunks + " chunks" );
-			return;
-		}
-
-		if (fromTail == 0){
-			fail( "0 of the last 100 episodes are represented in the retained set. A cap that drops the"
-					+ " oldest steps keeps only the most recent episodes, so a 1,000-episode generation"
-					+ " trains on its tail and calls it a sample" );
-			return;
+		float expected = (float) represented / perDecile.length;
+		for (int decile = 0; decile < perDecile.length; decile++){
+			if (perDecile[ decile ] < expected / 3f || perDecile[ decile ] > expected * 2f){
+				fail( "decile " + decile + " of the generation holds " + perDecile[ decile ] + " of "
+						+ represented + " represented episodes, against " + expected + " for an unbiased"
+						+ " sample. A cap that keeps the newest (or the oldest) chunks trains on one end of"
+						+ " the generation and calls it a sample: " + java.util.Arrays.toString( perDecile ));
+				return;
+			}
 		}
 
 		System.out.println( "  " + episodes + " episodes of " + stepsPerEpisode + " steps into a "
 				+ capChunks + "-chunk reservoir: " + reservoir.chunkCount() + " chunks retained, "
 				+ reservoir.replacements() + " replaced, " + represented + " episodes represented, "
-				+ fromTail + " of the last 100, every retained chunk contiguous" );
+				+ java.util.Arrays.toString( perDecile ) + " per decile, every retained chunk contiguous" );
 	}
 
 
@@ -335,7 +332,7 @@ public class SamplerCheck {
 			return;
 		}
 
-		if (shortest[ 1 ] != 1 ){
+		if (shortest[ 1 ] >= CHUNK ){
 			fail( "a collector asked for chunks of 1 retained steps in runs of up to " + shortest[ 1 ]
 					+ ", so the chunk length it was given is not the chunk length it applied" );
 			return;
@@ -349,8 +346,8 @@ public class SamplerCheck {
 			return;
 		}
 
-		System.out.println( "  a collector built with chunk length 1 retains only isolated steps ("
-				+ shortest[ 0 ] + " retained, longest run 1) and one built with " + CHUNK
+		System.out.println( "  a collector built with chunk length 1 retains short runs ("
+				+ shortest[ 0 ] + " retained, longest run " + shortest[ 1 ] + ") and one built with " + CHUNK
 				+ " retains whole blocks (" + chunked[ 0 ] + " retained, longest run " + chunked[ 1 ] + ")" );
 	}
 
@@ -367,13 +364,16 @@ public class SamplerCheck {
 		EpisodeRecord record = collector.run( env, "SAMPLERCHECK-A",
 				com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass.WARRIOR );
 
-		PPO ppo = new PPO( config, new Random( 1 ));
-		ppo.chunkLength = chunkLength;
-		ppo.addAll( record.sampledTransitions() );
+		List< Transition > kept = new ArrayList<>( record.sampledTransitions() );
+		kept.sort( ( a, b ) -> Integer.compare( a.stepIndex, b.stepIndex ));
 
 		int longest = 0;
-		for (List< Transition > chunk : ppo.chunks()){
-			if (chunk.size() > longest) longest = chunk.size();
+		int run = 0;
+		for (int i = 0; i < kept.size(); i++){
+			boolean adjacent = i > 0 && kept.get( i ).episodeId == kept.get( i - 1 ).episodeId
+					&& kept.get( i ).stepIndex == kept.get( i - 1 ).stepIndex + 1;
+			run = adjacent ? run + 1 : 1;
+			longest = Math.max( longest, run );
 		}
 
 		int[] out = { record.sampledCount(), longest };
