@@ -71,9 +71,10 @@ public class RewardModel {
 				ledger.add( RewardTerm.DEPTH_ADVANCE, 0, false );
 			}
 		}
-		if (hero.HP > prevHp){
+		int healed = hero.HP - prevHp - Math.max( 0, hero.HT - prevMaxHp );
+		if (healed > 0){
 			ledger.add( RewardTerm.MAX_HP_GAIN,
-					config.maxHpReward * Math.min( hero.HP - prevHp, config.maxHpGainCap ), false );
+					config.maxHpReward * Math.min( healed, config.maxHpGainCap ), false );
 		} else if (hero.HP < prevHp){
 			ledger.add( RewardTerm.DAMAGE_TAKEN,
 					-config.damagePenalty * (prevHp - hero.HP), false );
