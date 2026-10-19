@@ -79,15 +79,15 @@ public final class AlchemyAction {
 		for (ArrayList< Item > ingredients : ingredientSets( hero )){
 			if (!Recipe.findRecipes( new ArrayList<>( ingredients )).contains( recipe )) continue;
 
-			ArrayList< Item > working = detach( hero, ingredients );
-			if (working == null) return false;
-
-			int cost = recipe.cost( new ArrayList<>( working ));
+			int cost = recipe.cost( new ArrayList<>( ingredients ));
 			if (cost > Dungeon.energy ) return false;
 			Dungeon.energy -= cost;
 
-			Item result = recipe.brew( working );
+			Item result = recipe.brew( ingredients );
 			if (result == null) return false;
+			for (Item item : ingredients){
+				if (item.quantity() <= 0) item.detachAll( hero.belongings.backpack );
+			}
 
 			int quantity = result.quantity();
 			if (!result.collect()) Dungeon.level.drop( result, hero.pos );
@@ -106,14 +106,4 @@ public final class AlchemyAction {
 				&& Dungeon.level.adjacent( hero.pos, cell );
 	}
 
-
-	private static ArrayList< Item > detach( Hero hero, List< Item > ingredients ){
-		ArrayList< Item > working = new ArrayList<>();
-		for (Item item : ingredients){
-			Item detached = item.detach( hero.belongings.backpack );
-			if (detached == null) return null;
-			working.add( detached );
-		}
-		return working;
-	}
 }

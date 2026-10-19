@@ -1,8 +1,14 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.Recipe;
+import com.shatteredpixel.shatteredpixeldungeon.items.LiquidMetal;
+import com.shatteredpixel.shatteredpixeldungeon.items.spells.TelekineticGrab;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.AlchemyAction;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
@@ -16,7 +22,7 @@ import java.util.List;
 
 public class ActionCheck {
 
-	private static final int CHECKS = 3;
+	private static final int CHECKS = 4;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -32,6 +38,7 @@ public class ActionCheck {
 		checkEveryDirectionMovesTheWayItIsNamed();
 		checkDirectionOffsetsMatchTheGamesConvention();
 		checkTheActionSpaceIsStillComplete();
+		checkAQuantityRecipeBrewsFromOneStack();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     action semantics: " + CHECKS + " checks passed" );
@@ -43,6 +50,38 @@ public class ActionCheck {
 		}
 	}
 
+
+	private static void checkAQuantityRecipeBrewsFromOneStack(){
+		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );
+		env.reset( "ACTIONCHECK-ALCHEMY", HeroClass.WARRIOR );
+		Hero hero = Dungeon.hero;
+		hero.belongings.backpack.items.clear();
+		new LiquidMetal().quantity( 12 ).collect();
+		Dungeon.energy = 10;
+
+		java.util.List< Recipe > recipes = AlchemyAction.recipes( hero );
+		int index = -1;
+		for (int i = 0; i < recipes.size(); i++){
+			if (recipes.get( i ) instanceof TelekineticGrab.Recipe) index = i;
+		}
+		if (index < 0){
+			failures.add( "twelve liquid metal did not offer the telekinetic grab recipe" );
+			return;
+		}
+
+		boolean brewed = AlchemyAction.craft( hero, index );
+		Item grab = hero.belongings.getItem( TelekineticGrab.class );
+		Item metal = hero.belongings.getItem( LiquidMetal.class );
+		if (!brewed || grab == null || grab.quantity() != 8 || metal == null || metal.quantity() != 2
+				|| Dungeon.energy != 0){
+			failures.add( "brewing telekinetic grab from 12 liquid metal: brewed=" + brewed + ", grab="
+					+ (grab == null ? 0 : grab.quantity()) + ", metal left="
+					+ (metal == null ? 0 : metal.quantity()) + ", energy=" + Dungeon.energy
+					+ ". The alchemy scene loads the whole stack and gives 8 grabs, leaving 2 metal." );
+			return;
+		}
+		System.out.println( "  a ten-metal recipe brews from one stack and leaves the remainder" );
+	}
 
 	private static void checkEveryDirectionMovesTheWayItIsNamed(){
 		EnvConfig config = new EnvConfig();
