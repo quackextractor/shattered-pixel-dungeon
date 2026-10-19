@@ -36,6 +36,11 @@ public class ObservationEncoder {
 
 	private final float[] heroFeatures;
 
+	private final int spanX;
+	private final int spanY;
+	private final float stepX;
+	private final float stepY;
+
 	private final ActionMapper mapper;
 
 	public ObservationEncoder( EnvConfig config, ActionMapper mapper ){
@@ -47,6 +52,10 @@ public class ObservationEncoder {
 		this.inventory = new float[config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT];
 		this.heroFeatures = new float[HeroEncoder.FEATURES];
 		this.edges = new float[gridWidth * gridHeight];
+		this.spanX = gridWidth + MARGIN * 2;
+		this.spanY = gridHeight + MARGIN * 2;
+		this.stepX = (float) spanX / gridWidth;
+		this.stepY = (float) spanY / gridHeight;
 		this.PLANE_AREA = gridWidth * gridHeight;
 	}
 
@@ -85,31 +94,19 @@ public class ObservationEncoder {
 		int width = level.width();
 		int height = level.height();
 
-		int originX = hero.pos % width - MARGIN;
-		int originY = hero.pos / width - MARGIN;
-		int spanX = gridWidth + MARGIN * 2;
-		int spanY = gridHeight + MARGIN * 2;
-
-		float stepX = (float) spanX / gridWidth;
-		float stepY = (float) spanY / gridHeight;
-
-		float scale = Math.max( 1f, Math.max( stepX, stepY ) );
-		int x0 = Math.max( 0, originX );
-		int y0 = Math.max( 0, originY );
-		int x1 = Math.min( width - 1, originX + spanX - 1 );
-		int y1 = Math.min( height - 1, originY + spanY - 1 );
+		int originX = hero.pos % width - spanX / 2;
+		int originY = hero.pos / width - spanY / 2;
 
 		float[] edges = this.edges;
+		java.util.Arrays.fill( edges, 0f );
 
 		for (int gy = 0; gy < gridHeight; gy++){
-			int sy = y0 + Math.round( gy * stepY );
-			if (sy > y1 ) sy = y1;
-			if (sy < y0 ) sy = y0;
+			int sy = originY + Math.round( gy * stepY );
+			if (sy < 0 || sy >= height) continue;
 
 			for (int gx = 0; gx < gridWidth; gx++){
-				int sx = x0 + Math.round( gx * stepX );
-				if (sx > x1 ) sx = x1;
-				if (sx < x0 ) sx = x0;
+				int sx = originX + Math.round( gx * stepX );
+				if (sx < 0 || sx >= width) continue;
 
 				int cell = sx + sy * width;
 				int p = gx + gy * gridWidth;
@@ -150,13 +147,8 @@ public class ObservationEncoder {
 		int hx = hero.pos % width;
 		int hy = hero.pos / width;
 
-		int spanX = gridWidth + MARGIN * 2;
-		int spanY = gridHeight + MARGIN * 2;
-		float stepX = Math.max( 1f, (float) spanX / gridWidth );
-		float stepY = Math.max( 1f, (float) spanY / gridHeight );
-
-		int gx = Math.round( (cx - ( hx - MARGIN )) / stepX );
-		int gy = Math.round( (cy - ( hy - MARGIN )) / stepY );
+		int gx = Math.round( (cx - ( hx - spanX / 2 )) / stepX );
+		int gy = Math.round( (cy - ( hy - spanY / 2 )) / stepY );
 
 		if (gx < 0 || gx >= gridWidth || gy < 0 || gy >= gridHeight ) return -1;
 		return gx + gy * gridWidth;

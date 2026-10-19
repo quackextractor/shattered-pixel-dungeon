@@ -19,6 +19,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.GridChannel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.ObservationEncoder;
@@ -31,7 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 public class ObserveCheck {
-	private static final int CHECKS = 12;
+	private static final int CHECKS = 13;
 	private static final List< String > failures = new ArrayList<>();
 	private static int checksFailed = 0;
 	private static void check( Runnable body ){
@@ -66,6 +67,7 @@ public class ObserveCheck {
 		check( ObserveCheck::checkInventoryShowsOnlyWhatThePlayerSees );
 		check( ObserveCheck::checkHeroFeaturesHideAnUnknownLevel );
 		check( () -> checkAnUnseenFloorEncodesToNothing( encoder ) );
+		check( () -> checkTheWindowIsCentredOnTheHero( encoder ) );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
 		} else {
@@ -204,6 +206,26 @@ public class ObserveCheck {
 		if (lit != 0){
 			fail( "a floor with nothing seen, visited or mapped still lit " + lit + " grid values,"
 					+ " so the observation draws the layout the player has not uncovered" );
+		}
+	}
+
+	private static void checkTheWindowIsCentredOnTheHero( ObservationEncoder encoder ){
+		encoder.encode();
+		int plane = 0;
+		for (GridChannel c : GridChannel.values()){
+			if (c == GridChannel.HERO) break;
+			if (c.kind != GridChannel.Kind.SCALAR) plane++;
+		}
+		int area = encoder.gridWidth() * encoder.gridHeight();
+		int found = -1;
+		for (int p = 0; p < area; p++) if (encoder.grid()[ plane * area + p ] != 0f) found = p;
+		int gx = found % encoder.gridWidth();
+		int gy = found / encoder.gridWidth();
+		float cx = (encoder.gridWidth() - 1) / 2f;
+		float cy = (encoder.gridHeight() - 1) / 2f;
+		if (found < 0 || Math.abs( gx - cx ) > 1f || Math.abs( gy - cy ) > 1f){
+			fail( "the hero is drawn at grid (" + gx + "," + gy + "), not the centre of a "
+					+ encoder.gridWidth() + "x" + encoder.gridHeight() + " window" );
 		}
 	}
 
