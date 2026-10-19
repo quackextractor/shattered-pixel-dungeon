@@ -181,6 +181,7 @@ public class CurriculumCheck {
 
 		final float[] ledgerScale = { -1f };
 		final int[] depth = { 0 };
+		final SPDEnv[] used = { null };
 
 		play( config, 300, "CURRICULUM-B", turn -> {
 			SPDEnv env = turn.env;
@@ -190,6 +191,7 @@ public class CurriculumCheck {
 			}
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()) return;
 
+			used[ 0 ] = env;
 			if (turn.step % 12 == 0 && env.deepestDepth() < 6 && descend( env )) return;
 
 			depth[ 0 ] = env.deepestDepth();
@@ -215,8 +217,17 @@ public class CurriculumCheck {
 			return;
 		}
 
+		used[ 0 ].reset( "CURRICULUM-B", HeroClass.WARRIOR );
+		if (used[ 0 ].ledger().shapingScale() != 1.0){
+			fail( "a new episode on floor 1 prices shaping at " + used[ 0 ].ledger().shapingScale()
+					+ ", the scale the previous episode left at depth " + depth[ 0 ] + ". The curriculum"
+					+ " is reset and the ledger was not, so every episode after a deep one is under-paid"
+					+ " until it changes floor" );
+			return;
+		}
+
 		System.out.println( "  the ledger's shaping scale follows the floor: "
 				+ String.format( java.util.Locale.ROOT, "%.4f", ledgerScale[ 0 ] )
-				+ " on a run that reached depth " + depth[ 0 ] );
+				+ " on a run that reached depth " + depth[ 0 ] + ", and 1 again after a reset" );
 	}
 }

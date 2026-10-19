@@ -60,6 +60,7 @@ public class SPDEnv {
 		double previous = ledger.total();
 		ledger.reset();
 		curriculum.reset();
+		ledger.shapingScale( curriculum.shapingScale() );
 		reward.resetSnapshot();
 		this.seedText = (seed == null) ? "" : seed;
 		this.heroClass = heroClass;
