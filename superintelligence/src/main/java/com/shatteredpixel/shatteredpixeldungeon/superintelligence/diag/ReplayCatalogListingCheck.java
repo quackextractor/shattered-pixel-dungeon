@@ -33,7 +33,7 @@ public final class ReplayCatalogListingCheck {
 		write( trainer, "TRAINER-ONE", "WARRIOR", -40.0, 2, 300, 1, 1 );
 		write( trainer, "TRAINER-TWO", "CLERIC", -90.0, 1, 500, 1, 1 );
 
-		ReplayCatalog catalog = new ReplayCatalog().scan( List.of( corpus, trainer ));
+		ReplayCatalog catalog = new ReplayCatalog().corpus( corpus ).scan( List.of( corpus, trainer ));
 
 		Map<String, Map<String, List<ReplayCatalog.Entry>>> sections = catalog.sections();
 		if (sections == null || !sections.containsKey( ReplayCatalog.SECTION_CORPUS )
@@ -102,7 +102,7 @@ public final class ReplayCatalogListingCheck {
 		ReplayCatalogFixture.dropEveryStepField( droppedReplay );
 		writeBack( dropped, droppedReplay );
 
-		ReplayCatalog relisted = new ReplayCatalog().scan( List.of( corpus, trainer ));
+		ReplayCatalog relisted = new ReplayCatalog().corpus( corpus ).scan( List.of( corpus, trainer ));
 		String rows = relisted.render( true );
 
 		if (!rowFor( rows, "TRAINER-DROPPED" ).contains( "not watchable" )){
@@ -115,6 +115,20 @@ public final class ReplayCatalogListingCheck {
 					+ " that sentence is now per file, so it is no longer merely harmless - it tells a"
 					+ " reader not to watch the recordings the fixed wire produced" );
 			return;
+		}
+	}
+
+
+	public static void checkATrainerDirectoryAloneIsNotTheCorpus(){
+		File trainer = dir( "trainer-alone" );
+		write( trainer, "TRAINER-ALONE", "WARRIOR", 1.0, 1, 10 );
+
+		ReplayCatalog catalog = new ReplayCatalog().scan( List.of( trainer ));
+		int inCorpus = flatten( catalog.sections().get( ReplayCatalog.SECTION_CORPUS )).size();
+		if (inCorpus != 0){
+			fail( "replays --dir <trainer dir> lists " + inCorpus + " trainer recording(s) as "
+					+ ReplayCatalog.SECTION_CORPUS + ", because the first directory scanned was taken to be"
+					+ " the corpus" );
 		}
 	}
 

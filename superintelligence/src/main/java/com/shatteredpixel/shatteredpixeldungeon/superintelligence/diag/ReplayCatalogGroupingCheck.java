@@ -114,7 +114,7 @@ File dropped = write( dir, "DROPPED", "DUELIST", -2.0, 1, 3 );
 		writeBack( dropped, replay );
 		if (good == null || dropped == null) return;
 
-		String listing = new ReplayCatalog().scan( List.of( corpus, trainer )).render( true );
+		String listing = new ReplayCatalog().corpus( corpus ).scan( List.of( corpus, trainer )).render( true );
 
 		if (listing.contains( "every one of them is watchable" )){
 			fail( "the trainer section's header still claims every recording is watchable while the same"
@@ -312,7 +312,7 @@ File dropped = write( dir, "DROPPED", "DUELIST", -2.0, 1, 3 );
 		writeGrouped( trainer, "run-a-60", "RUN-A-TWO", "ROGUE", -40.0, 1, 70 );
 		writeGrouped( trainer, "run-b-60", "RUN-B-ONE", "MAGE", -30.0, 1, 90 );
 
-		ReplayCatalog catalog = new ReplayCatalog().scan( List.of( corpus, trainer ));
+		ReplayCatalog catalog = new ReplayCatalog().corpus( corpus ).scan( List.of( corpus, trainer ));
 		Map<String, Map<String, List<ReplayCatalog.Entry>>> sections = catalog.sections();
 
 		String runA = ReplayCatalog.GROUP_PREFIX + "RUN-A-60";

@@ -76,7 +76,7 @@ public class ReplayCatalog {
 		public int copies = 1;
 
 
-		public int sourceIndex;
+		public boolean inCorpus;
 
 		public boolean damaged(){
 			return error != null || truncatedAt >= 0;
@@ -113,6 +113,18 @@ public class ReplayCatalog {
 
 	private final List<Entry> allEntries = new ArrayList<>();
 
+	private File corpus = corpusDirectory();
+
+	public ReplayCatalog corpus( File dir ){
+		corpus = canonical( dir );
+		return this;
+	}
+
+	private static File corpusDirectory(){
+		File repo = repositoryRoot();
+		return repo == null ? null : canonical( new File( repo, "superintelligence/test-replays" ));
+	}
+
 	public List<Entry> entries(){
 		return entries;
 	}
@@ -128,7 +140,7 @@ public class ReplayCatalog {
 
 		File repo = repositoryRoot();
 		if (repo != null){
-			dirs.add( canonical( new File( repo, "superintelligence/test-replays" )));
+			dirs.add( corpusDirectory() );
 			dirs.add( canonical( new File( repo, "superintelligence/trainer-replays" )));
 		}
 
@@ -167,8 +179,7 @@ public class ReplayCatalog {
 
 		Set<String> seen = new LinkedHashSet<>();
 
-		for (int dirIndex = 0; dirIndex < directories.size(); dirIndex++){
-			File dir = directories.get( dirIndex );
+		for (File dir : directories){
 			if (dir == null || !dir.isDirectory()) continue;
 
 File canonical = canonical( dir );
@@ -187,7 +198,7 @@ File canonical = canonical( dir );
 					entry = new Entry( file, e.getMessage() );
 				}
 
-				entry.sourceIndex = dirIndex;
+				entry.inCorpus = canonical.equals( corpus );
 
 				String key = entry.seed == null || entry.seed.isEmpty() ? file.getName() : entry.seed;
 				if (!bySeed.containsKey( key )) bySeed.put( key, entry );
@@ -312,7 +323,7 @@ File canonical = canonical( dir );
 	}
 
 	public String sectionOf( Entry entry ){
-		if (entry.sourceIndex == 0) return SECTION_CORPUS;
+		if (entry.inCorpus) return SECTION_CORPUS;
 		return entry.group.isEmpty() ? SECTION_TRAINER : GROUP_PREFIX + entry.group.toUpperCase( Locale.ROOT );
 	}
 
@@ -346,7 +357,7 @@ File canonical = canonical( dir );
 	private Set<String> namedGroups(){
 		Set<String> groups = new LinkedHashSet<>();
 		for (Entry entry : entries){
-			if (entry.sourceIndex != 0 && !entry.group.isEmpty()) groups.add( entry.group.toUpperCase( Locale.ROOT ));
+			if (!entry.inCorpus && !entry.group.isEmpty()) groups.add( entry.group.toUpperCase( Locale.ROOT ));
 		}
 		return groups;
 	}

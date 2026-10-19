@@ -6,7 +6,7 @@ import java.nio.file.Files;
 
 public class ReplayCatalogCheck {
 
-	private static final int CHECKS = 21;
+	private static final int CHECKS = 22;
 
 	public static void main( String[] args ){
 		try {
@@ -31,6 +31,7 @@ public class ReplayCatalogCheck {
 			ReplayCatalogListingCheck.checkLookupIsCaseInsensitiveAndAcceptsAPath();
 			ReplayCatalogListingCheck.checkSectionsSplitByProvenance();
 			ReplayCatalogListingCheck.checkDepthIsAReadableColumn();
+			ReplayCatalogListingCheck.checkATrainerDirectoryAloneIsNotTheCorpus();
 
 			ReplayCatalogGroupingCheck.checkHeaderOnlyReadMatchesAFullRead();
 			ReplayCatalogGroupingCheck.checkHeaderOnlyReadAgreesOnWatchability();
