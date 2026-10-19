@@ -80,6 +80,8 @@ public class Trainer {
 
 	private int lastSavedGeneration = -1;
 
+	private int completedGeneration;
+
 
 	private long rngSeed;
 
@@ -237,6 +239,7 @@ public class Trainer {
 		resumedFrom = meta;
 
 		lastSavedGeneration = meta.generation;
+		completedGeneration = meta.generation;
 
 		seeds.resume( meta.seedPoolSeed, meta.seedScheduleSeed, meta.seedDraws, meta.seedPoolSize,
 				meta.activeSeeds );
@@ -374,6 +377,7 @@ Worker.writeWeights( out, ppo.network );
 			}
 
 			report( g, episodes, gen );
+			completedGeneration = g + 1;
 
 			maybeCheckpoint( g + 1 );
 
@@ -425,8 +429,8 @@ Worker.writeWeights( out, ppo.network );
 
 	public void saveOnExit(){
 		if (saveFile == null) return;
-		if (lastSavedGeneration >= lastGeneration) return;
-		writeCheckpoint( lastGeneration );
+		if (lastSavedGeneration >= completedGeneration) return;
+		writeCheckpoint( completedGeneration );
 	}
 
 

@@ -40,6 +40,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 				options.recordEverySet ? options.recordEvery : options.hyper.recordEvery,
 				options.rngTraceDir == null ? null : options.rngTraceDir.getAbsolutePath() );
 
+		int exitCode = 0;
 		try {
 			trainer.pool.stallTimeoutMs( options.stallSeconds * 1000 );
 
@@ -60,7 +61,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			System.err.println( "[ERROR] training failed: " + e.getMessage() );
 
 			e.printStackTrace();
-			System.exit( 1 );
+			exitCode = 1;
 		} finally {
 
 			try {
@@ -73,6 +74,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			trainer.closeUpdate();
 			if (trainer.metrics() != null) trainer.metrics().close();
 		}
+		if (exitCode != 0) System.exit( exitCode );
 	}
 
 	public static EnvConfig loadedConfig( Path configFile ) throws IOException {
