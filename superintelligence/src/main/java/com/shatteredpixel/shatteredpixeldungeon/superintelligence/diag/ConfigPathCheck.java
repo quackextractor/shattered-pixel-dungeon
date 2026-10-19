@@ -37,13 +37,12 @@ public final class ConfigPathCheck {
 			return;
 		}
 
-		for (String setting : new String[]{ "SPD_WORKER_HEAP_MIN", "SPD_WORKER_HEAP_MAX",
-				"SPD_WORKER_GC_PAUSE_MS" }){
+		for (String setting : new String[]{ "'worker.heap_min'", "'worker.heap_max'",
+				"'worker.gc_pause_ms'", "'SPD_'", "file('.env')", "file('superintelligence.properties')" }){
 			if (script.contains( setting )) continue;
 			fail( "the build script does not read " + setting + ", so the heap the trainer JVM is"
-					+ " launched with is a literal in a Gradle file while worker.heap_min,"
-					+ " worker.heap_max and worker.gc_pause_ms are documented settings that do not"
-					+ " reach it. Two places that decide one run's heap, one of them unreachable." );
+					+ " launched with does not follow worker.heap_min, worker.heap_max and"
+					+ " worker.gc_pause_ms through process environment, .env and the properties file." );
 			return;
 		}
 
@@ -54,8 +53,8 @@ public final class ConfigPathCheck {
 			return;
 		}
 
-		System.out.println( "  the trainer JVM's heap and GC pause come from SPD_WORKER_HEAP_MIN,"
-				+ " SPD_WORKER_HEAP_MAX and SPD_WORKER_GC_PAUSE_MS, not from literals" );
+		System.out.println( "  the trainer JVM's heap and GC pause come from the worker.* settings via"
+				+ " SPD_ environment, .env and the properties file, not from literals" );
 	}
 
 

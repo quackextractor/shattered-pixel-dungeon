@@ -13,14 +13,30 @@ processResources {
     from new File(project(':core').projectDir, '/src/main/assets')
     from new File(projectDir, '/src/main/assets')
 }
-def trainerSetting = { String envName, String projectProperty, String compiledDefault ->
-    return System.getenv( envName ) ?: ( project.findProperty( projectProperty )?.toString() ) ?: compiledDefault
+def shippedProperties = new Properties()
+file('superintelligence.properties').withInputStream { shippedProperties.load(it) }
+def dotEnv = [:]
+if (file('.env').isFile()) {
+    file('.env').eachLine { line ->
+        def eq = line.indexOf('=')
+        if (line.trim().startsWith('#') || eq <= 0) return
+        def value = line.substring(eq + 1).trim()
+        if (value.length() >= 2 && (value[0] == '"' || value[0] == "'") && value[-1] == value[0]) {
+            value = value.substring(1, value.length() - 1)
+        }
+        dotEnv[line.substring(0, eq).trim().toUpperCase()] = value
+    }
+}
+def trainerSetting = { String key, String projectProperty, String compiledDefault ->
+    def envName = 'SPD_' + key.toUpperCase().replace('.', '_')
+    return System.getenv( envName ) ?: ( project.findProperty( projectProperty )?.toString() ) ?:
+            dotEnv[envName] ?: shippedProperties.getProperty( key )?.trim() ?: compiledDefault
 }
 def trainerJvmArgs = [
-        '-Xms' + trainerSetting( 'SPD_WORKER_HEAP_MIN', 'spd.workerHeapMin', '256m' ),
-        '-Xmx' + trainerSetting( 'SPD_WORKER_HEAP_MAX', 'spd.workerHeapMax', '1536m' ),
+        '-Xms' + trainerSetting( 'worker.heap_min', 'spd.workerHeapMin', '256m' ),
+        '-Xmx' + trainerSetting( 'worker.heap_max', 'spd.workerHeapMax', '1536m' ),
         '-XX:+UseParallelGC',
-        '-XX:MaxGCPauseMillis=' + trainerSetting( 'SPD_WORKER_GC_PAUSE_MS', 'spd.workerGcPauseMs', '200' ),
+        '-XX:MaxGCPauseMillis=' + trainerSetting( 'worker.gc_pause_ms', 'spd.workerGcPauseMs', '200' ),
         '-XX:+IgnoreUnrecognizedVMOptions',
         '--enable-native-access=ALL-UNNAMED',
         '-Djava.awt.headless=true'
