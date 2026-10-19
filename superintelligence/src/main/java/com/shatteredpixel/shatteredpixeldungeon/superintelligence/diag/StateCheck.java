@@ -10,6 +10,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
 import java.util.ArrayList;
@@ -18,7 +19,7 @@ import java.util.Random;
 
 public class StateCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 5;
 
 	private static final List< float[] > liveGrids = new ArrayList<>();
 
@@ -43,8 +44,56 @@ public class StateCheck {
 			checkMissingStateIsDetectable( network, transitions );
 			reportPackingDrift( network, transitions );
 		}
+		checkEveryHeadTrainsTheIndexItSampled();
 
 		System.exit( GateReport.report( "recurrent state", CHECKS ));
+	}
+
+	private static void checkEveryHeadTrainsTheIndexItSampled(){
+		EnvConfig config = new EnvConfig();
+		config.turnLimitPerFloor = 400;
+		config.turnLimitTotal = 400;
+
+		int targets = 0;
+		int secondaries = 0;
+		for (int attempt = 0; attempt < 8 && targets == 0; attempt++){
+			SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+			EpisodeCollector collector = new EpisodeCollector( config,
+					new Network( config, new Random( 500L + attempt ) ), new Random( attempt ),
+					new Random( 97L ), 0.99f, 0.95f, 1f, 1 << 16 );
+			List< Integer > sent = new ArrayList<>();
+			collector.listener( new EpisodeCollector.Listener() {
+				@Override public void onEpisodeStart( String seedText, String heroClass ){}
+
+				@Override public void onDecision( EnvMode mode, Action action, int secondary ){
+					sent.add( secondary );
+				}
+			} );
+			EpisodeRecord record = collector.run( env, "HEADCHECK-" + attempt, HeroClass.HUNTRESS );
+
+			for (Transition t : record.sampledTransitions()){
+				if (t.liveHead == Policy.HEAD_ACTION) continue;
+				secondaries++;
+				if (t.liveHead == Policy.HEAD_TARGET) targets++;
+				if (t.slotIndex != sent.get( t.stepIndex )){
+					GateReport.fail( "step " + t.stepIndex + " on head " + t.liveHead + " sent index "
+							+ sent.get( t.stepIndex ) + " to the environment and recorded " + t.slotIndex
+							+ " for the update, so PPO compares a new probability for one index with the"
+							+ " behaviour probability of another" );
+					record.release();
+					return;
+				}
+			}
+			record.release();
+		}
+
+		if (targets == 0){
+			GateReport.fail( "no collected episode reached TARGETING, so the target head's recorded index"
+					+ " was never compared with the one sent" );
+			return;
+		}
+		System.out.println( "  " + secondaries + " slot and target decisions (" + targets + " targets)"
+				+ " record the index the environment was sent" );
 	}
 
 	private static void checkReplayMatchesRolloutInAnyOrder( Network network, List< Transition > transitions ){
