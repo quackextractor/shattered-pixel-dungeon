@@ -119,9 +119,9 @@ public final class ConfigPathCheck {
 			return;
 		}
 
-		if ( !options.saveTo.getPath().startsWith( root.getPath() ) ){
+		if ( !resolvesTo( options.saveTo, root, "trainer-replays/probe.replay" ) ){
 			fail( "'--save trainer-replays/probe.replay' resolved to " + options.saveTo
-					+ ", which is not under the repository root " + root + ". The rule this check holds"
+					+ ", which is not that path under the repository root " + root + ". The rule this check holds"
 					+ " is that a relative path on the command line means a path from the repository"
 					+ " root, whatever directory the process was started in." );
 			return;
@@ -159,11 +159,16 @@ public final class ConfigPathCheck {
 		}
 
 		java.util.List< String > wrong = new java.util.ArrayList<>();
-		if ( !under( options.workDir, root )) wrong.add( "--out -> " + options.workDir );
-		if ( !under( options.replayDir, root )) wrong.add( "--replay-dir -> " + options.replayDir );
-		if ( !under( options.metricsCsv, root )) wrong.add( "--metrics -> " + options.metricsCsv );
-		if ( !under( options.save, root )) wrong.add( "--save -> " + options.save );
-		if ( !under( options.resume, root )) wrong.add( "--resume -> " + options.resume );
+		if ( !resolvesTo( options.workDir, root, "superintelligence/out/evidence/probe" ))
+			wrong.add( "--out -> " + options.workDir );
+		if ( !resolvesTo( options.replayDir, root, "superintelligence/trainer-replays/probe" ))
+			wrong.add( "--replay-dir -> " + options.replayDir );
+		if ( !resolvesTo( options.metricsCsv, root, "superintelligence/out/evidence/probe/metrics.csv" ))
+			wrong.add( "--metrics -> " + options.metricsCsv );
+		if ( !resolvesTo( options.save, root, "superintelligence/out/evidence/probe/weights.bin" ))
+			wrong.add( "--save -> " + options.save );
+		if ( !resolvesTo( options.resume, root, "superintelligence/out/evidence/probe/weights.bin" ))
+			wrong.add( "--resume -> " + options.resume );
 
 		if (!wrong.isEmpty()){
 			fail( "the trainer's own option parser left these paths relative, so they resolve against "
@@ -181,8 +186,8 @@ public final class ConfigPathCheck {
 	}
 
 
-	private static boolean under( File path, File root ){
+	private static boolean resolvesTo( File path, File root, String relative ){
 		if (path == null || !path.isAbsolute() || root == null) return false;
-		return path.getPath().startsWith( root.getPath() );
+		return path.toPath().normalize().equals( new File( root, relative ).toPath().normalize() );
 	}
 }
