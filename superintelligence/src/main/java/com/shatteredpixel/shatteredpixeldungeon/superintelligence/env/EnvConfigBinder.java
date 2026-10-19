@@ -197,8 +197,8 @@ public class EnvConfigBinder {
 			if (value == null) continue;
 
 			String origin = fromEnv != null ? ("environment variable " + envName)
-					: ("key " + key + " in "
-							+ (fromDotEnv.containsKey( key ) ? dotEnv : file ));
+					: fromDotEnvFile != null ? ("key " + envName + " in " + dotEnv)
+					: ("key " + key + " in " + file);
 			binder.apply( config, hyper, key, value, origin );
 			applied++;
 			if (!fromFile && (fromEnv != null || fromDotEnvFile != null)){

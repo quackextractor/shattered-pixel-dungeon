@@ -94,6 +94,34 @@ public final class ConfigDotEnvCheck {
 	}
 
 
+	public static void checkABadDotEnvValueNamesTheDotEnv(){
+		File dir = new File( ConfigDefaults.scratch, "dotenv-origin" );
+		dir.mkdirs();
+
+		Path file = new File( dir, "run.properties" ).toPath();
+		try {
+			Files.writeString( file, "" );
+			Files.writeString( new File( dir, ".env" ).toPath(), "SPD_ENV_MAX_SLOTS=wide\n" );
+		} catch (IOException e){
+			fail( "could not write the origin fixture: " + e.getMessage() );
+			return;
+		}
+
+		try {
+			EnvConfigBinder.load( file );
+			fail( "SPD_ENV_MAX_SLOTS=wide in .env was accepted" );
+		} catch (IOException e){
+			fail( "the origin fixture could not be read: " + e.getMessage() );
+		} catch (IllegalArgumentException e){
+			if (!e.getMessage().contains( "SPD_ENV_MAX_SLOTS in " + new File( dir, ".env" ).toPath() )){
+				fail( "a bad .env value was blamed on the wrong source: " + e.getMessage() );
+				return;
+			}
+			System.out.println( "  a bad .env value names the .env entry it came from" );
+		}
+	}
+
+
 	public static void checkTheExampleFileNamesEveryDocumentedKey(){
 		Path example = exampleFile();
 		if (example == null ) return;
