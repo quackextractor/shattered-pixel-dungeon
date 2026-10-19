@@ -41,7 +41,7 @@ public class GradientCheck {
 
 		Random obs = new Random( seed * 31 + 7 );
 		for (int t = 0; t < STEPS; t++){
-			grids[ t ] = new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
+			grids[ t ] = new float[ config.spatialChannels() * config.gridWidth * config.gridHeight ];
 			inventories[ t ] = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
 			heroes[ t ] = new float[ HeroEncoder.FEATURES ];
 			for (int i = 0; i < grids[ t ].length; i++) grids[ t ][ i ] = (obs.nextFloat() < 0.2f) ? 1f : 0f;
@@ -137,6 +137,43 @@ public class GradientCheck {
 		return 0;
 	}
 
+
+	public static EnvConfig nonSquare(){
+		EnvConfig config = new EnvConfig();
+		config.gridWidth = 10;
+		config.gridHeight = 18;
+		return config;
+	}
+
+	public static int checkGridShape( EnvConfig config ){
+		Network net = new Network( config, new Random( 11L ) );
+		int area = config.gridWidth * config.gridHeight;
+		int expected = config.spatialChannels() * area;
+		if (net.gridLength() != expected){
+			System.err.println( "[ERROR] a " + config.gridWidth + "x" + config.gridHeight + " grid has "
+					+ expected + " cells but the network takes " + net.gridLength() );
+			return 1;
+		}
+		float[] grid = new float[ expected ];
+		net.forward( grid, new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ],
+				new float[ HeroEncoder.FEATURES ] );
+		float empty = net.value();
+		int lastRow = ( config.gridHeight - 1 ) * config.gridWidth;
+		for (int plane = 0; plane < config.spatialChannels(); plane++){
+			for (int x = 0; x < config.gridWidth; x++) grid[ plane * area + lastRow + x ] = 1f;
+		}
+		net.resetState();
+		net.forward( grid, new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ],
+				new float[ HeroEncoder.FEATURES ] );
+		if (net.value() == empty){
+			System.err.println( "[ERROR] the bottom row of a " + config.gridWidth + "x"
+					+ config.gridHeight + " grid does not reach the network" );
+			return 1;
+		}
+		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "     a " + config.gridWidth + "x"
+				+ config.gridHeight + " grid is " + expected + " network inputs, bottom row included" );
+		return 0;
+	}
 
 	private double central( float[] param, int index, float original, double eps ){
 		param[ index ] = (float) (original + eps );

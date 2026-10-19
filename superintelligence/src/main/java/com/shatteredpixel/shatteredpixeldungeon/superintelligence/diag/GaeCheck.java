@@ -48,7 +48,7 @@ checkTerminalZerosTheTail();
 	}
 	private static void checkThePackedGridSurvivesARoundTrip(){
 		EnvConfig config = new EnvConfig();
-		int cells = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		int cells = config.spatialChannels() * config.gridWidth * config.gridHeight;
 		Transition t = new Transition();
 		t.gridCells = cells;
 		t.grid = new byte[ Transition.packedGridBytes( cells ) ];
@@ -79,7 +79,7 @@ checkTerminalZerosTheTail();
 	}
 	private static void checkThePackedGridIsCompact(){
 		EnvConfig config = new EnvConfig();
-		int cells = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		int cells = config.spatialChannels() * config.gridWidth * config.gridHeight;
 		int packed = Transition.packedGridBytes( cells );
 		if (packed * 4 >= cells){
 			fail( "the packed grid is " + packed + " bytes for " + cells + " cells, which is not the"
@@ -93,8 +93,8 @@ checkTerminalZerosTheTail();
 		return String.format( "%.3f", v );
 	}
 	private static void checkAFrameOfManyTransitionsRoundTrips(){
-		EnvConfig config = new EnvConfig();
-		int cells = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		EnvConfig config = GradientCheck.nonSquare();
+		int cells = config.spatialChannels() * config.gridWidth * config.gridHeight;
 		int stateFloats = 2 * 128;
 		Network net = new Network( config, new java.util.Random( 5150L ));
 		int count = 5;
@@ -335,7 +335,7 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 	}
 	private static void checkTransitionCodecRoundTrip(){
 		EnvConfig config = new EnvConfig();
-		int gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		int gridSize = config.spatialChannels() * config.gridWidth * config.gridHeight;
 		int stateFloats = 2 * 128;
 		Transition sent = new Transition();
 		sent.gridCells = gridSize;

@@ -25,7 +25,7 @@ public class ReplayProbe {
 
 		int n = 12;
 		List<Transition> transitions = new ArrayList<>();
-		float[] scratch = new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
+		float[] scratch = new float[ config.spatialChannels() * config.gridWidth * config.gridHeight ];
 
 		for (int i = 0; i < n; i++){
 			Transition t = new Transition();

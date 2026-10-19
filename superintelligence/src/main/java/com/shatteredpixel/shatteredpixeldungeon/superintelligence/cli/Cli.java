@@ -56,7 +56,9 @@ public final class Cli {
 			if (a.equals( "--verbose" )) verbose = true;
 		}
 
-		GradientCheck check = new GradientCheck( new EnvConfig(), 7 );
-		return check.run( verbose ) > 0 ? 1 : 0;
+		int failures = new GradientCheck( new EnvConfig(), 7 ).run( verbose )
+				+ new GradientCheck( GradientCheck.nonSquare(), 7 ).run( verbose )
+				+ GradientCheck.checkGridShape( GradientCheck.nonSquare() );
+		return failures > 0 ? 1 : 0;
 	}
 }

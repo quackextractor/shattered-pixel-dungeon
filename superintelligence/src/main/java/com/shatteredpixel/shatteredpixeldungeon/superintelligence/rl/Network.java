@@ -78,10 +78,10 @@ public class Network {
 
 		this.extraInputs = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT + HeroEncoder.FEATURES;
 
-		this.conv = new Conv2D( config.spatialChannels(), config.gridWidth,
+		this.conv = new Conv2D( config.spatialChannels(), config.gridWidth, config.gridHeight,
 				CONV_FILTERS, CONV_KERNEL, CONV_STRIDE, rng );
 
-		this.reduce = new Conv2D( conv.outChannels, conv.outSize,
+		this.reduce = new Conv2D( conv.outChannels, conv.outWidth, conv.outHeight,
 				REDUCE_FILTERS, REDUCE_KERNEL, REDUCE_STRIDE, rng );
 
 		int convFeatures = reduce.outputSize();
@@ -119,7 +119,7 @@ public class Network {
 		this.dReduce = new Tensor( 1, convFeatures );
 		this.dConv = new Tensor( 1, conv.outputSize() );
 
-		this.dGrid = new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
+		this.dGrid = new float[ config.spatialChannels() * config.gridWidth * config.gridHeight ];
 		this.gridSnapshot = new float[ dGrid.length ];
 
 		this.gradients = new Tensor[] {

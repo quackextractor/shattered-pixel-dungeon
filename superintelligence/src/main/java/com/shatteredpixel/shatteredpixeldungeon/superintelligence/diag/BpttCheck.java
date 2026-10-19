@@ -214,7 +214,7 @@ Transition t = transition( config, ppo, 3, i );
 	}
 
 	private static Transition transition( EnvConfig config, PPO ppo, int episode, int step ){
-		int gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		int gridSize = config.spatialChannels() * config.gridWidth * config.gridHeight;
 		int inventorySize = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 
 		Transition t = Transition.take( gridSize, inventorySize, HeroEncoder.FEATURES,

@@ -79,7 +79,7 @@ public final class TransitionCodec {
 			int stateSize ) throws IOException {
 		int count = in.readInt();
 
-int gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		int gridSize = config.spatialChannels() * config.gridWidth * config.gridHeight;
 		int gridCells = gridSize;
 		int packedGrid = com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition
 				.packedGridBytes( gridCells );

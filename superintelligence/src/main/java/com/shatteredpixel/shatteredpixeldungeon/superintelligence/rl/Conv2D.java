@@ -11,24 +11,28 @@ public class Conv2D {
 	final Tensor gW, gb;
 
 	public final int inChannels;
-	public final int inSize;
+	public final int inWidth;
+	public final int inHeight;
 	public final int kernel;
 	public final int stride;
-	public final int outSize;
+	public final int outWidth;
+	public final int outHeight;
 	public final int outChannels;
 
 	private final Tensor col;
 
 	private final float[] preAct;
 
-	public Conv2D( int inChannels, int inSize, int outChannels, int kernel, int stride, Random rng ){
+	public Conv2D( int inChannels, int inWidth, int inHeight, int outChannels, int kernel, int stride, Random rng ){
 		this.inChannels = inChannels;
-		this.inSize = inSize;
+		this.inWidth = inWidth;
+		this.inHeight = inHeight;
 		this.kernel = kernel;
 		this.stride = stride;
 		this.outChannels = outChannels;
 
-		this.outSize = (inSize - kernel) / stride + 1;
+		this.outWidth = (inWidth - kernel) / stride + 1;
+		this.outHeight = (inHeight - kernel) / stride + 1;
 
 		int patch = kernel * kernel * inChannels;
 		this.W = new Tensor( patch, outChannels );
@@ -42,15 +46,15 @@ public class Conv2D {
 		this.gW = new Tensor( patch, outChannels );
 		this.gb = new Tensor( 1, outChannels );
 
-		this.col = new Tensor( patch, outSize * outSize );
-		this.preAct = new float[ outSize * outSize * outChannels ];
+		this.col = new Tensor( patch, outWidth * outHeight );
+		this.preAct = new float[ outWidth * outHeight * outChannels ];
 
 		W.randomNormal( rng, (float) Math.sqrt( 2.0 / patch ) );
 		b.fill( 0f );
 	}
 
 	public int outputSize(){
-		return outSize * outSize * outChannels;
+		return outWidth * outHeight * outChannels;
 	}
 
 	public int preActivationSize(){
@@ -70,7 +74,7 @@ public class Conv2D {
 
 		java.util.Arrays.fill( out.data, 0f );
 
-		for (int p = 0; p < outSize * outSize; p++){
+		for (int p = 0; p < outWidth * outHeight; p++){
 			int cOff = p * outChannels;
 			for (int q = 0; q < outChannels; q++){
 				float sum = b.data[ q ];
@@ -88,7 +92,7 @@ public class Conv2D {
 	}
 
 	private void im2col( float[] input ){
-		int planeSize = inSize * inSize;
+		int planeSize = inWidth * inHeight;
 		java.util.Arrays.fill( col.data, 0f );
 
 		for (int ch = 0; ch < inChannels; ch++){
@@ -99,15 +103,15 @@ public class Conv2D {
 					int row = (ch * kernel + ky) * kernel + kx;
 					int rowOff = row * col.cols;
 
-					for (int oy = 0; oy < outSize; oy++){
+					for (int oy = 0; oy < outHeight; oy++){
 						int iy = oy * stride + ky;
-						if (iy >= inSize) continue;
-						int inRowBase = inOff + iy * inSize;
-						int outRowBase = oy * outSize;
+						if (iy >= inHeight) continue;
+						int inRowBase = inOff + iy * inWidth;
+						int outRowBase = oy * outWidth;
 
-						for (int ox = 0; ox < outSize; ox++){
+						for (int ox = 0; ox < outWidth; ox++){
 							int ix = ox * stride + kx;
-							if (ix >= inSize) continue;
+							if (ix >= inWidth) continue;
 							col.data[ rowOff + outRowBase + ox ] = input[ inRowBase + ix ];
 						}
 					}
@@ -120,14 +124,14 @@ public class Conv2D {
 		im2col( input );
 		java.util.Arrays.fill( gradIn, 0f );
 
-		int planeSize = inSize * inSize;
+		int planeSize = inWidth * inHeight;
 
 		int outLen = outputSize();
 		for (int i = 0; i < outLen; i++){
 			if (preAct[ i ] <= 0f ) gradOut.data[ i ] = 0f;
 		}
 
-		for (int p = 0; p < outSize * outSize; p++){
+		for (int p = 0; p < outWidth * outHeight; p++){
 			int cOff = p * outChannels;
 
 			for (int ch = 0; ch < inChannels; ch++){
@@ -143,10 +147,10 @@ public class Conv2D {
 							int wOff = row * outChannels + q;
 							gW.data[ wOff ] += col.data[ rowOff + p ] * g;
 
-							int iy = (p / outSize) * stride + ky;
-							int ix = (p % outSize) * stride + kx;
-							if (iy < inSize && ix < inSize){
-								gradIn[ inOff + iy * inSize + ix ] += g * W.data[ wOff ];
+							int iy = (p / outWidth) * stride + ky;
+							int ix = (p % outWidth) * stride + kx;
+							if (iy < inHeight && ix < inWidth){
+								gradIn[ inOff + iy * inWidth + ix ] += g * W.data[ wOff ];
 							}
 						}
 					}
@@ -156,7 +160,7 @@ public class Conv2D {
 
 		for (int q = 0; q < outChannels; q++){
 			float sum = 0;
-			for (int p = 0; p < outSize * outSize; p++){
+			for (int p = 0; p < outWidth * outHeight; p++){
 				sum += gradOut.data[ p * outChannels + q ];
 			}
 			gb.data[ q ] += sum;
