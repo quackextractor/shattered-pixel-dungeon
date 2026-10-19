@@ -305,6 +305,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		headGradient( valueHead, dValueOut );
 
 		copyInto( dHidden.data, dHiddenT );
+		dHiddenT.addScaled( dPrev, 1f );
 
 		memory.backward( hidden, dHiddenT, dPrev, dCell );
 

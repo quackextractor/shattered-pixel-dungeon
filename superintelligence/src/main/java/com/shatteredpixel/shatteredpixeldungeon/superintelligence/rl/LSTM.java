@@ -205,7 +205,7 @@ public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 			if (r < x.cols){
 				inputGrad[ r ] += sum;
 			} else {
-				dHPrev.data[ r - x.cols ] += sum;
+				dHPrev.data[ r - x.cols ] = sum;
 			}
 		}
 
