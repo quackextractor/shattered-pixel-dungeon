@@ -36,7 +36,7 @@ public class CollectCheck {
 	private static final int ATTEMPTS = 12;
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-collectcheck" ));
+		HeadlessServices.install( Scratch.dir( "collectcheck" ));
 		HeadlessServices.disableSaving( true );
 
 		EnvConfig config = new EnvConfig();

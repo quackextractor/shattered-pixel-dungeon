@@ -31,7 +31,7 @@ public class ConfigCheck {
 			ConfigDefaults.verbose = true;
 		}
 
-		ConfigDefaults.scratch = new File( System.getProperty( "java.io.tmpdir" ), "spd-configcheck" );
+		ConfigDefaults.scratch = Scratch.dir( "configcheck" );
 
 		ConfigDefaults.scratch.mkdirs();
 

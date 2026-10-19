@@ -21,7 +21,7 @@ import java.util.Random;
 public class StallBreakdown {
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-stallbreakdown" ));
+		HeadlessServices.install( Scratch.dir( "stallbreakdown" ));
 		HeadlessServices.disableSaving( true );
 
 		EnvConfig config = new EnvConfig();

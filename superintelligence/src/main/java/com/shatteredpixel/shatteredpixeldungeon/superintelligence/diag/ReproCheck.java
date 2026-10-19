@@ -22,7 +22,7 @@ public class ReproCheck {
 	private static final int TURNS = 400;
 
 	public static void main( String[] args ) throws java.io.IOException {
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-reprocheck" ));
+		HeadlessServices.install( Scratch.dir( "reprocheck" ));
 		HeadlessServices.disableSaving( true );
 
 		EnvConfig config = new EnvConfig();

@@ -38,7 +38,7 @@ public class JavaLint {
 					"-Xlint:all",
 					"-Werror",
 					"-proc:none",
-					"-d", new File( System.getProperty( "java.io.tmpdir" ), "spd-javaclint" ).getAbsolutePath(),
+					"-d", com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Scratch.dir( "javaclint" ).getAbsolutePath(),
 					"-classpath", System.getProperty( "java.class.path" ) ) );
 			boolean ok = compiler.getTask( null, files, diagnostics, options, null, units ).call();
 			report( diagnostics );

@@ -21,7 +21,7 @@ public class VerifyCheck {
 	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-verifycheck" ));
+		HeadlessServices.install( Scratch.dir( "verifycheck" ));
 		HeadlessServices.disableSaving( true );
 
 		Replay good = recordAShortRun();

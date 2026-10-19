@@ -25,7 +25,7 @@ public class SlotCheck {
 	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-slotcheck" ));
+		HeadlessServices.install( Scratch.dir( "slotcheck" ));
 		HeadlessServices.disableSaving( true );
 
 		EnvConfig config = new EnvConfig();

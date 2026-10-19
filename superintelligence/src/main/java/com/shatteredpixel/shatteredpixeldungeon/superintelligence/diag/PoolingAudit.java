@@ -19,7 +19,7 @@ public class PoolingAudit {
 	private static final int MEASURED = 4000;
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-poolingaudit" ));
+		HeadlessServices.install( Scratch.dir( "poolingaudit" ));
 		HeadlessServices.disableSaving( true );
 
 		EnvConfig config = new EnvConfig();

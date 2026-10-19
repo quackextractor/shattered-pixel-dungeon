@@ -28,7 +28,7 @@ public class WorldTrace {
 		int limit = args.length > 2 && !args[2].startsWith( "--" )
 				? Integer.parseInt( args[2] ) : Integer.MAX_VALUE;
 		boolean cells = !List.of( args ).contains( "--no-cells" );
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-worldtrace" ));
+		HeadlessServices.install( Scratch.dir( "worldtrace" ));
 		HeadlessServices.disableSaving( true );
 		Replay replay;
 		try {

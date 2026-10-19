@@ -28,7 +28,7 @@ public class DialogCheck {
 	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-dialogcheck" ));
+		HeadlessServices.install( Scratch.dir( "dialogcheck" ));
 		HeadlessServices.disableSaving( true );
 
 		checkTheGamesOwnDialogIsAgedAndAnswered();

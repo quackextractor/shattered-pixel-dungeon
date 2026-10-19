@@ -215,7 +215,7 @@ public class MobSpriteCheck {
 	}
 
 	private static SPDEnv freshRun( String seed ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-mobspritecheck" ));
+		HeadlessServices.install( Scratch.dir( "mobspritecheck" ));
 		HeadlessServices.disableSaving( true );
 
 		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );

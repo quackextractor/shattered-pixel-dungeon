@@ -313,7 +313,7 @@ public class SamplerCheck {
 
 
 	private static void checkTheCollectorKeepsContiguousRunsAcrossARealEpisode(){
-		HeadlessServices.install( new java.io.File( System.getProperty( "java.io.tmpdir" ), "spd-samplercheck" ));
+		HeadlessServices.install( Scratch.dir( "samplercheck" ));
 		HeadlessServices.disableSaving( true );
 
 		EnvConfig config = new EnvConfig();

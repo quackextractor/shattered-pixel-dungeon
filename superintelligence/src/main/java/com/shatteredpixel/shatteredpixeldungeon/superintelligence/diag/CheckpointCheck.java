@@ -19,7 +19,7 @@ public class CheckpointCheck {
 	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
-		File dir = new File( System.getProperty( "java.io.tmpdir" ), "spd-checkpointcheck" );
+		File dir = Scratch.dir( "checkpointcheck" );
 
 		try {
 			EnvConfig config = new EnvConfig();
@@ -52,8 +52,6 @@ Checkpoint.save( new File( dir, "default.bin" ),
 
 		} catch (IOException e){
 			fail( "the check threw: " + e.getMessage() );
-		} finally {
-			deleteAll( dir );
 		}
 
 		if (failures.isEmpty()){
@@ -355,13 +353,6 @@ Checkpoint.save( new File( dir, "default.bin" ),
 			for (int i = 0; i < m.vb.length; i++) m.vb[ i ] = (i % 13) * 1e-8f;
 		}
 		net.adamSteps( 137 );
-	}
-
-	private static void deleteAll( File dir ){
-		File[] files = dir.listFiles();
-		if (files == null) return;
-		for (File f : files) f.delete();
-		dir.delete();
 	}
 
 	private static void fail( String message ){

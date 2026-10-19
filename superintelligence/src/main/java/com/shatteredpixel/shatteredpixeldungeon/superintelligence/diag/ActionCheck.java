@@ -32,7 +32,7 @@ public class ActionCheck {
 	};
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-actioncheck" ));
+		HeadlessServices.install( Scratch.dir( "actioncheck" ));
 		HeadlessServices.disableSaving( true );
 
 		checkEveryDirectionMovesTheWayItIsNamed();

@@ -21,7 +21,7 @@ public class EpisodeDiff {
 	private static final String[] SEEDS =
 			{ "RESETCHECK-A", "RESETCHECK-B", "RESETCHECK-C", "RESETCHECK-D" };
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-episodediff" ));
+		HeadlessServices.install( Scratch.dir( "episodediff" ));
 		HeadlessServices.disableSaving( true );
 		int steps = args.length > 0 ? Integer.parseInt( args[0] ) : TRACE_STEPS;
 		boolean includeRoster = args.length < 2 || !args[1].equals( "lean" );

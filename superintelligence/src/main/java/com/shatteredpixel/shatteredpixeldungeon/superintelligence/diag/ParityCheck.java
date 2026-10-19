@@ -59,7 +59,7 @@ public class ParityCheck {
 		if (full){
 			turnLimit = 1500;
 		}
-		outDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-paritycheck" );
+		outDir = Scratch.dir( "paritycheck" );
 		outDir.mkdirs();
 		HeadlessServices.install( outDir );
 		HeadlessServices.disableSaving( true );

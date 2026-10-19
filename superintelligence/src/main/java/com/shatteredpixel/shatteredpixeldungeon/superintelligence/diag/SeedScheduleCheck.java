@@ -132,7 +132,7 @@ public class SeedScheduleCheck {
 
 
 	private static void checkAResumedPoolDoesNotRepeatGenerationZero(){
-		File dir = new File( System.getProperty( "java.io.tmpdir" ), "spd-seedcheck" );
+		File dir = Scratch.dir( "seedcheck" );
 		dir.mkdirs();
 		File file = new File( dir, "weights.bin" );
 

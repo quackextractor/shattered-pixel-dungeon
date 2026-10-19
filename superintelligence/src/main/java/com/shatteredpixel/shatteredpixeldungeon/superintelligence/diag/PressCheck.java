@@ -26,7 +26,7 @@ public class PressCheck {
 	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-presscheck" ));
+		HeadlessServices.install( Scratch.dir( "presscheck" ));
 		HeadlessServices.disableSaving( true );
 
 		checkDroppingAnItemPressesTheCell();

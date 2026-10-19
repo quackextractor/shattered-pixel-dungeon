@@ -45,7 +45,7 @@ public class ObserveCheck {
 		if (failures.size() > before) checksFailed++;
 	}
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-observecheck" ));
+		HeadlessServices.install( Scratch.dir( "observecheck" ));
 		HeadlessServices.disableSaving( true );
 		EnvConfig config = new EnvConfig();
 		config.turnLimitPerFloor = 200;

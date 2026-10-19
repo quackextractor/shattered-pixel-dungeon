@@ -24,7 +24,7 @@ public class StateCheck {
 	private static final List< float[] > liveGrids = new ArrayList<>();
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new java.io.File( System.getProperty( "java.io.tmpdir" ), "spd-statecheck" ));
+		HeadlessServices.install( Scratch.dir( "statecheck" ));
 		HeadlessServices.disableSaving( true );
 
 		EnvConfig config = new EnvConfig();

@@ -31,7 +31,7 @@ public class FreeActionCheck {
 	};
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-freeactioncheck" ));
+		HeadlessServices.install( Scratch.dir( "freeactioncheck" ));
 		HeadlessServices.disableSaving( true );
 
 		EnvConfig config = new EnvConfig();
