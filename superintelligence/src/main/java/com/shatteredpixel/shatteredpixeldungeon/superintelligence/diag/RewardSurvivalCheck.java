@@ -99,6 +99,60 @@ public final class RewardSurvivalCheck {
 	}
 
 
+	public static void checkOnlyIdentifyingSomethingCarriedPays( EnvConfig config ){
+		final double[] onPickup = { Double.NaN };
+		final double[] onIdentify = { Double.NaN };
+		final Item[] ring = { null };
+
+		play( config, 8, "IDENTIFY", turn -> {
+			SPDEnv env = turn.env;
+			com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero hero =
+					com.shatteredpixel.shatteredpixeldungeon.Dungeon.hero;
+			double before = env.ledger().termTotal( RewardTerm.IDENTIFIED );
+			if (turn.step == 1){
+				com.shatteredpixel.shatteredpixeldungeon.Dungeon.level.drop(
+						new com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Sword().identify(),
+						hero.pos );
+				env.step( Action.INTERACT, 0 );
+				onPickup[ 0 ] = env.ledger().termTotal( RewardTerm.IDENTIFIED ) - before;
+				return;
+			}
+			if (turn.step == 2){
+				ring[ 0 ] = new com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfAccuracy();
+				ring[ 0 ].collect( hero.belongings.backpack );
+				env.step( Action.WAIT, 0 );
+				return;
+			}
+			if (turn.step == 3){
+				ring[ 0 ].identify();
+				env.step( Action.WAIT, 0 );
+				onIdentify[ 0 ] = env.ledger().termTotal( RewardTerm.IDENTIFIED ) - before;
+				return;
+			}
+			env.step( Action.WAIT, 0 );
+		} );
+
+		if (Double.isNaN( onPickup[ 0 ] ) || Double.isNaN( onIdentify[ 0 ] )){
+			fail( "the driver never reached both the pickup and the identification, so this case"
+					+ " measured nothing." );
+			return;
+		}
+		if (onPickup[ 0 ] != 0){
+			fail( "picking up a sword that was already identified paid " + fmt( onPickup[ 0 ] )
+					+ " of IDENTIFIED. Nothing was learned; the carried count went up by one." );
+			return;
+		}
+		if (Math.abs( onIdentify[ 0 ] - config.identifiedReward ) > 1e-6){
+			fail( "identifying a carried ring paid " + fmt( onIdentify[ 0 ] ) + " of IDENTIFIED where "
+					+ fmt( config.identifiedReward ) + " was expected." );
+			return;
+		}
+
+		System.out.println( "  IDENTIFIED pays " + fmt( onIdentify[ 0 ] ) + " for identifying a carried"
+				+ " ring and nothing for picking up a known sword" );
+	}
+
+
 	static int slotOf( SPDEnv env, Class< ? extends Item > type ){
 		List< Item > slots = env.mapper().slots();
 		for (int i = 0; i < slots.size(); i++){

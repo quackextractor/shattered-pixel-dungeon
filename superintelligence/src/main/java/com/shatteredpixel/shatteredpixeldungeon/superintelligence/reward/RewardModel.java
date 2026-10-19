@@ -108,8 +108,9 @@ public class RewardModel {
 		} else if (carried < prevItemValue){
 			ledger.add( RewardTerm.ITEM_DROPPED, carried - prevItemValue, false );
 		}
+		int stillCarried = countCarried();
 		int identified = countIdentified();
-		if (identified != prevIdentified){
+		if (identified > prevIdentified && stillCarried == prevCarried){
 			ledger.add( RewardTerm.IDENTIFIED, config.identifiedReward * (identified - prevIdentified), false );
 		}
 		int debuffs = countDebuffs();
@@ -131,7 +132,6 @@ public class RewardModel {
 		if (cursedEquipped > prevCursedEquipped){
 			ledger.add( RewardTerm.CURSE_EQUIPPED, config.curseEquippedPenalty * (cursedEquipped - prevCursedEquipped), false );
 		}
-		int stillCarried = countCarried();
 		int cursedCarried = countCursedCarried();
 		if (cursedCarried < prevCursedCarried && stillCarried == prevCarried){
 			ledger.add( RewardTerm.CURSE_REMOVED,
