@@ -6,7 +6,7 @@ import java.nio.file.Files;
 
 public class ReplayCatalogCheck {
 
-	private static final int CHECKS = 19;
+	private static final int CHECKS = 21;
 
 	public static void main( String[] args ){
 		try {
@@ -23,6 +23,7 @@ public class ReplayCatalogCheck {
 			ReplayCatalogListingCheck.checkDepthBreaksAScoreTie();
 			ReplayCatalogListingCheck.checkDamagedFilesAreListedNotHidden();
 			ReplayCatalogListingCheck.checkDamagedFilesSortLast();
+			ReplayCatalogListingCheck.checkAMalformedFileIsListedNotFatal();
 			ReplayCatalogListingCheck.checkLookupBySeedWithoutExtension();
 			ReplayCatalogListingCheck.checkLookupByFilenameWithExtension();
 			ReplayCatalogListingCheck.checkLookupIsCaseInsensitiveAndAcceptsAPath();

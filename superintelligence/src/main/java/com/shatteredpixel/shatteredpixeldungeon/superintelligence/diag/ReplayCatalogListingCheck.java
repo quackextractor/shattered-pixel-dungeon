@@ -336,6 +336,43 @@ public final class ReplayCatalogListingCheck {
 	}
 
 
+	public static void checkAMalformedFileIsListedNotFatal(){
+		File dir = dir( "malformed" );
+		write( dir, "good", "WARRIOR", 1.0, 1, 10 );
+		File badHeader = new File( dir, "bad-header.replay" );
+		File badStep = new File( dir, "bad-step.replay" );
+		try {
+			Files.write( badHeader.toPath(), Arrays.asList( Replay.MAGIC, "score=abc", "steps=0" ),
+					StandardCharsets.UTF_8 );
+			Files.write( badStep.toPath(), Arrays.asList( Replay.MAGIC, "steps=1", "FLY 0 WORLD" ),
+					StandardCharsets.UTF_8 );
+		} catch (IOException e){
+			fail( "could not write the malformed fixture: " + e.getMessage() );
+			return;
+		}
+
+		try {
+			ReplayCatalog catalog = new ReplayCatalog().scan( List.of( dir ) );
+			if (catalog.entries().size() != 3){
+				fail( "a malformed header was dropped rather than listed: " + catalog.entries().size() + " of 3" );
+				return;
+			}
+		} catch (RuntimeException e){
+			fail( "one malformed header took the whole listing down: " + e );
+			return;
+		}
+
+		try {
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.read( badStep );
+			fail( "a step naming no action was read without complaint" );
+		} catch (IOException e){
+			return;
+		} catch (RuntimeException e){
+			fail( "a step naming no action escaped as " + e + " instead of an IOException" );
+		}
+	}
+
+
 	public static void checkLookupBySeedWithoutExtension(){
 		File dir = dir( "lookup-seed" );
 		write( dir, "YVU-UBS-QFE", "WARRIOR", 44.0, 1, 254 );

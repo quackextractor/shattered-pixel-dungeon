@@ -103,10 +103,17 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 	}
 
 	public static Replay read( File file ) throws IOException {
-
 		java.util.List<String> lines = Files.readAllLines( file.toPath(), StandardCharsets.UTF_8 );
+		try {
+			return parse( lines, file.getPath() );
+		} catch (IllegalArgumentException e){
+			throw new IOException( "Malformed replay " + file.getPath() + ": " + e.getMessage(), e );
+		}
+	}
 
-		Replay replay = parseHeader( lines, file.getPath() );
+	private static Replay parse( java.util.List<String> lines, String path ) throws IOException {
+
+		Replay replay = parseHeader( lines, path );
 		int declaredSteps = replay.declaredSteps;
 		replay.steps.clear();
 		int index = headerEnd( lines );
@@ -124,7 +131,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			}
 
 			Replay.Step step = new Replay.Step();
-			step.action = parts[ 0 ];
+			step.action = Action.valueOf( parts[ 0 ] ).name();
 			step.slot = Integer.parseInt( parts[ 1 ] );
 			step.mode = parts[ 2 ];
 			if (parts.length > 3) step.heroPos = Integer.parseInt( parts[ 3 ] );
@@ -146,7 +153,12 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 
 	public static Replay readHeader( File file ) throws IOException {
 		java.util.List<String> lines = Files.readAllLines( file.toPath(), StandardCharsets.UTF_8 );
-		Replay replay = parseHeader( lines, file.getPath() );
+		Replay replay;
+		try {
+			replay = parseHeader( lines, file.getPath() );
+		} catch (IllegalArgumentException e){
+			throw new IOException( "Malformed replay header " + file.getPath() + ": " + e.getMessage(), e );
+		}
 
 		int available = Math.max( 0, lines.size() - headerEnd( lines ) );
 		replay.truncatedAt = available < replay.declaredSteps ? available : -1;
