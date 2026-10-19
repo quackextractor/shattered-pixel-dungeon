@@ -246,24 +246,20 @@ Transition t = transition( config, ppo, 3, i );
 
 	private static void oneChunk( PPO ppo, Network net, List< Transition > chunk, StepCache[] caches ){
 		Method m = method( "oneChunk", Network.class, List.class, float[].class, float[].class,
-				float[].class, float[].class, float[].class, float[].class, float[].class,
-				StepCache[].class, int.class );
+				float[].class, float[].class, StepCache[].class, int.class );
 
 		invoke( m, "oneChunk", ppo, new Object[] { net, chunk, new float[ net.gridLength() ],
 				new float[ net.slotCount() ], new float[ net.targetCount() ],
-				new float[ net.actionCount() ], new float[ net.slotCount() ],
-				new float[ net.targetCount() ], new float[ net.actionCount() ],
-				caches, caches.length } );
+				new float[ net.actionCount() ], caches, caches.length } );
 	}
 
 	private static void oneSample( PPO ppo, Network net, Transition t ){
-Method m = method( "oneSample", Network.class, Transition.class, float[].class, float[].class,
-				float[].class, float[].class, float[].class, float[].class, float[].class );
+		Method m = method( "oneSample", Network.class, Transition.class, float[].class, float[].class,
+				float[].class, float[].class );
 
 		invoke( m, "oneSample", ppo, new Object[] { net, t, new float[ net.gridLength() ],
 				new float[ net.slotCount() ], new float[ net.targetCount() ],
-				new float[ net.actionCount() ], new float[ net.slotCount() ],
-				new float[ net.targetCount() ], new float[ net.actionCount() ] } );
+				new float[ net.actionCount() ] } );
 	}
 
 	private static Method method( String name, Class<?>... signature ){

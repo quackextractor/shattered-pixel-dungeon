@@ -96,8 +96,7 @@ final class ShardedUpdate {
 					float p = 0, v = 0, e = 0, k = 0, c = 0;
 					for (int i = lo; i < hi; i++){
 						PPO.Stats s2 = ppo.oneChunk( w.network, chunks.get( i ), w.grid,
-								w.slotProbs, w.targetProbs, w.actionProbs,
-								w.slotGrad, w.targetGrad, w.actionGrad, w.caches, w.maxChunk );
+								w.slotProbs, w.targetProbs, w.actionProbs, w.caches, w.maxChunk );
 						p += s2.policyLoss;
 						v += s2.valueLoss;
 						e += s2.entropy;
@@ -156,9 +155,6 @@ final class ShardedUpdate {
 		final float[] slotProbs;
 		final float[] targetProbs;
 		final float[] actionProbs;
-		final float[] slotGrad;
-		final float[] targetGrad;
-		final float[] actionGrad;
 		final StepCache[] caches;
 		final int maxChunk;
 
@@ -168,9 +164,6 @@ final class ShardedUpdate {
 			this.slotProbs = new float[ network.slotCount() ];
 			this.targetProbs = new float[ network.targetCount() ];
 			this.actionProbs = new float[ network.actionCount() ];
-			this.slotGrad = new float[ network.slotCount() ];
-			this.targetGrad = new float[ network.targetCount() ];
-			this.actionGrad = new float[ network.actionCount() ];
 			this.maxChunk = Math.max( 1, maxChunk );
 			this.caches = new StepCache[ this.maxChunk ];
 			for (int i = 0; i < this.maxChunk; i++) this.caches[ i ] = network.takeCache();

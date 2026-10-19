@@ -15,6 +15,11 @@ public class StepCache {
 	final float[] targetPreAct;
 	final float[] valuePreAct;
 
+	final float[] actionGrad;
+	final float[] slotGrad;
+	final float[] targetGrad;
+	float valueGrad;
+
 	final float[] memoryOut;
 	final float[] lstm;
 	final int lstmStride;
@@ -30,6 +35,9 @@ public class StepCache {
 		this.slotPreAct = new float[ net.slotCount() ];
 		this.targetPreAct = new float[ net.targetCount() ];
 		this.valuePreAct = new float[ 1 ];
+		this.actionGrad = new float[ net.actionCount() ];
+		this.slotGrad = new float[ net.slotCount() ];
+		this.targetGrad = new float[ net.targetCount() ];
 		this.memoryOut = new float[ net.memoryOut() ];
 		this.lstmStride = net.lstmCacheLength();
 		this.lstm = new float[ net.lstmCacheLength() ];

@@ -72,9 +72,6 @@ public class PPO {
 	private final float[] targetProbs;
 
 	private final float[] scratchGrid;
-	private final float[] scratchGradAction;
-	private final float[] scratchGradSlot;
-	private final float[] scratchGradTarget;
 
 	private StepCache[] chunkCaches;
 
@@ -119,10 +116,6 @@ public float lastClipFraction;
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.TARGET_COUNT ];
 
 		this.scratchGrid = new float[ gridSize ];
-		this.scratchGradAction = new float[ Action.size() ];
-		this.scratchGradSlot = new float[ config.maxSlots ];
-		this.scratchGradTarget = new float[
-				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.TARGET_COUNT ];
 
 		resizeCaches();
 	}
@@ -312,38 +305,32 @@ public float lastClipFraction;
 
 
 Stats oneSample( Network net, Transition t, float[] grid,
-			float[] slotProbs, float[] targetProbs, float[] actionProbs,
-			float[] slotGrad, float[] targetGrad, float[] actionGrad ){
+			float[] slotProbs, float[] targetProbs, float[] actionProbs ){
 
 		StepCache[] caches = new StepCache[]{ net.takeCache() };
 
 		return oneChunk( net, java.util.Collections.singletonList( t ), grid,
-				slotProbs, targetProbs, actionProbs, slotGrad, targetGrad, actionGrad,
-				caches, 1 );
+				slotProbs, targetProbs, actionProbs, caches, 1 );
 	}
 
 	Stats oneChunk( Network net, List< Transition > chunk, float[] grid,
 			float[] slotProbs, float[] targetProbs, float[] actionProbs,
-			float[] slotGrad, float[] targetGrad, float[] actionGrad,
 			StepCache[] caches, int maxSteps ){
 
 		Stats s = new Stats();
 		int steps = Math.min( chunk.size(), maxSteps );
 		if (steps <= 0) return s;
 
-		List< float[] > dValues = new ArrayList<>( steps );
-		List< float[] > dHead = new ArrayList<>( steps );
-		List< float[] > headProbs = new ArrayList<>( steps );
-
 		net.beginBackward();
 
 		for (int i = 0; i < steps; i++){
 			Transition t = chunk.get( i );
+			StepCache cache = caches[ i ];
 
 			if (i == 0 && t.recurrentState != null) net.loadState( t.recurrentState );
 
 			t.unpackGrid( grid );
-			net.forwardCached( grid, t.inventory, t.hero, caches[ i ] );
+			net.forwardCached( grid, t.inventory, t.hero, cache );
 
 			float[] probabilities;
 			float[] mask;
@@ -357,21 +344,21 @@ Stats oneSample( Network net, Transition t, float[] grid,
 					mask = t.slotMask;
 					chosen = t.slotIndex;
 					probabilities = slotProbs;
-					gradient = slotGrad;
+					gradient = cache.slotGrad;
 					break;
 				case Policy.HEAD_TARGET:
 					logits = net.targetLogits();
 					mask = t.targetMask;
 					chosen = t.slotIndex;
 					probabilities = targetProbs;
-					gradient = targetGrad;
+					gradient = cache.targetGrad;
 					break;
 				default:
 					logits = net.actionLogits();
 					mask = t.actionMask;
 					chosen = t.actionIndex;
 					probabilities = actionProbs;
-					gradient = actionGrad;
+					gradient = cache.actionGrad;
 					break;
 			}
 
@@ -383,10 +370,8 @@ Stats oneSample( Network net, Transition t, float[] grid,
 					t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
 
 			float target = valueTarget( t );
-			dValues.add( new float[]{ Policy.valueGradient( net.value(), target, valueGradientClip )
-					* valueLossCoefficient });
-			dHead.add( gradient.clone() );
-			headProbs.add( probabilities.clone() );
+			cache.valueGrad = Policy.valueGradient( net.value(), target, valueGradientClip )
+					* valueLossCoefficient;
 
 			s.policyLoss += surrogateLoss( probabilities, chosen, t.oldLogProbability, t.advantage );
 			s.valueLoss += Policy.valueLoss( net.value(), target, huberValues );
@@ -396,12 +381,12 @@ Stats oneSample( Network net, Transition t, float[] grid,
 
 		for (int i = steps - 1; i >= 0; i--){
 			Transition t = chunk.get( i );
-			float[] gradient = dHead.get( i );
+			StepCache cache = caches[ i ];
 
-			net.backwardStep( t.liveHead == Policy.HEAD_ACTION ? gradient : null,
-					t.liveHead == Policy.HEAD_SLOT ? gradient : null,
-					t.liveHead == Policy.HEAD_TARGET ? gradient : null,
-					dValues.get( i )[ 0 ], caches[ i ] );
+			net.backwardStep( t.liveHead == Policy.HEAD_ACTION ? cache.actionGrad : null,
+					t.liveHead == Policy.HEAD_SLOT ? cache.slotGrad : null,
+					t.liveHead == Policy.HEAD_TARGET ? cache.targetGrad : null,
+					cache.valueGrad, cache );
 		}
 
 		return s;
@@ -442,7 +427,7 @@ Stats oneSample( Network net, Transition t, float[] grid,
 		for (int i = from; i < to; i++){
 			List< Transition > chunk = chunks.get( i );
 			Stats s = oneChunk( network, chunk, scratchGrid, slotProbs, targetProbs, actionProbs,
-					scratchGradSlot, scratchGradTarget, scratchGradAction, chunkCaches, chunkLength );
+					chunkCaches, chunkLength );
 
 			policyLoss += s.policyLoss;
 			valueLoss += s.valueLoss;
