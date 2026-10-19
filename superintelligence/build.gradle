@@ -157,7 +157,7 @@ cliTask('transitioncheck', 'Fails if descending ends the episode, or is worth no
 cliTask('statecheck', 'Fails if a sampled observation does not replay to the value the rollout saw.')
 cliTask('freeactioncheck', 'Fails if a free action can be repeated forever, or a talent point cannot be spent.')
 cliTask('bpttcheck', 'Fails if the recurrent gradient does not cross a timestep, or the critic is asked for thousands.')
-cliTask('pushcheck', 'Fails if the policy push is not chunked and retried.')
+cliTask('pushcheck', 'Fails if the policy push is not chunked, or retries a failed write.')
 cliTask('curriculumcheck', 'Fails if the shaping fade is wired to nothing.')
 cliTask('samplercheck', 'Fails if sampling shatters the recurrent chunk, or the trunk is not downsampled.')
 cliTask('seedcheck', 'Fails if resuming a run replays the seed sequence from generation 0.')

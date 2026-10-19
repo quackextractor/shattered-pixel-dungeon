@@ -24,8 +24,8 @@ public class PushCheck {
 		checkTheBytesArriveIntact( chunk, payload );
 		checkAPayloadOfOneChunkIsOneWrite( chunk );
 		checkAnEmptyPayloadWritesNothing( chunk );
-		checkATransientFailureIsRetried( chunk );
-		checkAPersistentFailureIsRefusedByName( chunk );
+		checkAFailureIsNotRetried( chunk );
+		checkAFailureIsRefusedByName( chunk );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     policy push: " + CHECKS + " checks passed" );
@@ -116,52 +116,41 @@ public class PushCheck {
 		}
 	}
 
-	private static void checkATransientFailureIsRetried( int chunk ){
+	private static void checkAFailureIsNotRetried( int chunk ){
 		byte[] payload = payload( 2, chunk );
 		Recording recording = new Recording( payload.length + 1 );
-		recording.failFirst = 2;
+		recording.failFirst = 1;
 
 		try {
 			TrainerWorkers.writeFully( new DataOutputStream( recording ), "policy", payload );
+			failures.add( "a push whose first write failed still reported success after "
+					+ recording.attempts + " attempts. A buffered stream may already hold part of the"
+					+ " failed write, so a retry duplicates bytes and desynchronises the protocol." );
 		} catch (IOException e){
-			failures.add( "two failed writes out of many abandoned the push rather than retrying it:"
-					+ " " + e.getMessage() );
-			return;
-		}
-
-		if (recording.attempts < 3){
-			failures.add( "the stream failed its first " + recording.failFirst + " writes and the push"
-					+ " recorded " + recording.attempts + " attempts, so the retry did not run" );
-			return;
-		}
-
-		if (!Arrays.equals( payload, recording.delivered() )){
-			failures.add( "a retried push delivered " + recording.delivered().length
-					+ " bytes against " + payload.length + ", so a retry resumed at the wrong offset" );
+			if (recording.attempts != 1){
+				failures.add( "a failed write was followed by " + (recording.attempts - 1)
+						+ " more, so the push retried instead of failing fast" );
+			}
 		}
 	}
 
-	private static void checkAPersistentFailureIsRefusedByName( int chunk ){
+	private static void checkAFailureIsRefusedByName( int chunk ){
 		byte[] payload = payload( 1, chunk );
 		Recording recording = new Recording( 8 );
 		recording.failFirst = Integer.MAX_VALUE;
 
-		int retries = TrainerWorkers.pushRetries;
-		TrainerWorkers.pushRetries = 2;
 		try {
 			TrainerWorkers.writeFully( new DataOutputStream( recording ), "weights-for-worker-3", payload );
 			failures.add( "a stream that never accepted a byte still reported a successful push" );
 		} catch (IOException e){
 			String message = e.getMessage() == null ? "" : e.getMessage();
 			if (!message.contains( "weights-for-worker-3" )){
-				failures.add( "a push that failed for ever was refused without naming what failed:"
+				failures.add( "a failed push was refused without naming what failed:"
 						+ " \"" + message + "\"" );
 			} else if (!message.contains( "bytes" )){
-				failures.add( "a push that failed for ever was refused without saying how much it"
+				failures.add( "a failed push was refused without saying how much it"
 						+ " refused: \"" + message + "\"" );
 			}
-		} finally {
-			TrainerWorkers.pushRetries = retries;
 		}
 	}
 

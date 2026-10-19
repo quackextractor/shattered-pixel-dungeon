@@ -154,7 +154,6 @@ public class Trainer {
 		WorkerPool.heapMax = hyper.workerHeapMax;
 		WorkerPool.gcPauseMs = hyper.workerGcPauseMs;
 		TrainerWorkers.pushChunkBytes = hyper.pushChunkBytes;
-		TrainerWorkers.pushRetries = hyper.pushRetries;
 		this.seeds.randomFraction = (float) hyper.randomSeedRate;
 		learning( hyper );
 	}

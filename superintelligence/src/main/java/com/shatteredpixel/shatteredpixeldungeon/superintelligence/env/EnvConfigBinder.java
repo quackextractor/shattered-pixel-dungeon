@@ -109,8 +109,6 @@ public class EnvConfigBinder {
 			"ipc.pipe_buffer_bytes",
 			"ipc.push_chunk_bytes",
 
-			"trainer.push_retries",
-
 			"worker.heap_min",
 			"worker.heap_max",
 			"worker.gc_pause_ms"
@@ -353,7 +351,6 @@ public class EnvConfigBinder {
 
 			case "ipc.pipe_buffer_bytes":     hyper.pipeBufferBytes = integer( key, value, origin ); break;
 			case "ipc.push_chunk_bytes":      hyper.pushChunkBytes = integer( key, value, origin ); break;
-			case "trainer.push_retries":      hyper.pushRetries = integer( key, value, origin ); break;
 
 			case "worker.heap_min":           hyper.workerHeapMin = text( key, value, origin ); break;
 			case "worker.heap_max":           hyper.workerHeapMax = text( key, value, origin ); break;

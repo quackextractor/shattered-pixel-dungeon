@@ -206,38 +206,15 @@ public class TrainerWorkers {
 
 	public static int pushChunkBytes = 32 * 1024;
 
-	public static int pushRetries = 8;
-
-	private static final long PUSH_BACKOFF_MAX_MS = 1000L;
-
 	public static void writeFully( DataOutputStream out, String name, byte[] payload ) throws IOException {
 		int sent = 0;
 		while (sent < payload.length){
 			int end = Math.min( payload.length, sent + pushChunkBytes );
-			boolean written = false;
-			IOException last = null;
-			for (int attempt = 0; attempt < pushRetries && !written; attempt++){
-				if (attempt > 0){
-
-					long wait = Math.min( PUSH_BACKOFF_MAX_MS, 50L * attempt * attempt );
-					try {
-						Thread.sleep( wait );
-					} catch (InterruptedException e){
-						Thread.currentThread().interrupt();
-						throw new IOException( name + " was interrupted pushing weights", e );
-					}
-				}
-				try {
-					out.write( payload, sent, end - sent );
-					written = true;
-				} catch (IOException e){
-					last = e;
-				}
-			}
-			if (!written){
-throw new IOException( name + " refused " + (end - sent )
-					+ " bytes of a policy push at offset " + sent + " after " + pushRetries
-					+ " attempts", last );
+			try {
+				out.write( payload, sent, end - sent );
+			} catch (IOException e){
+				throw new IOException( name + " refused " + (end - sent) + " bytes of a policy push at offset "
+						+ sent + ". The stream may hold part of them, so the push is not retried.", e );
 			}
 			sent = end;
 		}

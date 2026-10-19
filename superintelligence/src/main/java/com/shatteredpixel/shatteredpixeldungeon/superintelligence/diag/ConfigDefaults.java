@@ -138,7 +138,6 @@ public final class ConfigDefaults {
 
 			case "ipc.pipe_buffer_bytes":     return String.valueOf( hyper.pipeBufferBytes );
 			case "ipc.push_chunk_bytes":      return String.valueOf( hyper.pushChunkBytes );
-			case "trainer.push_retries":      return String.valueOf( hyper.pushRetries );
 			case "worker.heap_min":           return hyper.workerHeapMin;
 			case "worker.heap_max":           return hyper.workerHeapMax;
 			case "worker.gc_pause_ms":        return String.valueOf( hyper.workerGcPauseMs );
@@ -258,7 +257,6 @@ public final class ConfigDefaults {
 
 			case "ipc.pipe_buffer_bytes":     return "65536";
 			case "ipc.push_chunk_bytes":      return "8192";
-			case "trainer.push_retries":      return "2";
 			case "worker.gc_pause_ms":        return "50";
 
 			default:
