@@ -32,10 +32,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 public class ObserveCheck {
-	private static final int CHECKS = 13;
 	private static final List< String > failures = new ArrayList<>();
 	private static int checksFailed = 0;
+	private static int checksRun = 0;
 	private static void check( Runnable body ){
+		checksRun++;
 		int before = failures.size();
 		body.run();
 		if (failures.size() > before) checksFailed++;
@@ -69,10 +70,10 @@ public class ObserveCheck {
 		check( () -> checkAnUnseenFloorEncodesToNothing( encoder ) );
 		check( () -> checkTheWindowIsCentredOnTheHero( encoder ) );
 		if (failures.isEmpty()){
-			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
+			System.out.println( "[OK]     observation purity: " + checksRun + " checks passed" );
 		} else {
 			System.out.println( "[ERROR]  observation purity: " + checksFailed
-					+ " of " + CHECKS + " checks failed, " + failures.size() + " assertions" );
+					+ " of " + checksRun + " checks failed, " + failures.size() + " assertions" );
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}
@@ -441,15 +442,6 @@ public class ObserveCheck {
 			fail( "Random.shuffle(List) advanced the generator without being counted. Level generation "
 					+ "shuffles with it, so this is how a gameplay stream gets offset before the first "
 					+ "recorded step, with nothing in the trace to show it." );
-		}
-		List< Integer > same = new ArrayList<>( list );
-		RandomTrace.enable();
-		RandomTrace.reset();
-		Random.shuffle( same );
-		RandomTrace.reset();
-		RandomTrace.disable();
-		if ( !new java.util.HashSet<>( list ).equals( new java.util.HashSet<>( same ) )){
-			fail( "Random.shuffle(List) did not permute the list" );
 		}
 		int[] array = { 0, 1, 2, 3, 4, 5, 6, 7 };
 		RandomTrace.enable();

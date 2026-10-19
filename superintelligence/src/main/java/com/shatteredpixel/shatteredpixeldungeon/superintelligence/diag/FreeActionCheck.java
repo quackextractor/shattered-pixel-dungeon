@@ -46,7 +46,6 @@ public class FreeActionCheck {
 		checkTalentIsOfferedOnlyWithAPointToSpend( config );
 		checkTalentPointCanBeSpentAndPays( config );
 
-		reportEngineTimePerAction( config );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     free actions: " + CHECKS + " checks passed" );
@@ -361,63 +360,6 @@ public class FreeActionCheck {
 
 		System.out.println( "  a talent point was spent through the environment and paid ("
 				+ notes + " note(s))" );
-	}
-
-	private static void reportEngineTimePerAction( EnvConfig config ){
-		EnvConfig local = config.copy();
-		local.turnLimitPerFloor = 200;
-		local.stallLimit = 100000;
-		local.freeStepBudget = 1000000;
-
-		java.util.Map< String, int[] > tally = new java.util.LinkedHashMap<>();
-
-		for (String seed : SEEDS){
-			SPDEnv env = new SPDEnv( local, HeadlessGame.install() );
-			env.reset( seed, HeroClass.WARRIOR );
-
-			for (int i = 0; i < 120 && env.running(); i++ ){
-				float before = Actor.now();
-
-				Action a;
-				int secondary = 0;
-				if (env.mode() == EnvMode.INVENTORY || env.mode() == EnvMode.SLOT
-						|| env.mode() == EnvMode.TARGETING){
-					a = Action.CANCEL;
-				} else if (env.mode() == EnvMode.TALENT){
-					a = Action.MENU_SELECT;
-				} else if (env.mode() == EnvMode.MENU){
-					a = Action.MENU_SELECT;
-				} else {
-					secondary = 0;
-					a = rotate( i );
-					if (env.actionMask()[ a.index ] == 0f ) a = Action.WAIT;
-				}
-
-				env.step( a, secondary );
-
-				String key = env.describeMode() + " before " + a;
-				int[] row = tally.computeIfAbsent( key, k -> new int[ 2 ] );
-				row[ 0 ]++;
-				if (Actor.now() > before) row[ 1 ]++;
-			}
-		}
-
-		System.out.println( "  engine time bought per action:" );
-		for (java.util.Map.Entry< String, int[] > e : tally.entrySet()){
-			int[] row = e.getValue();
-			System.out.printf( "    %-34s %4d used, %4d free (%5.1f%% free)%n",
-					e.getKey(), row[ 0 ], row[ 0 ] - row[ 1 ],
-					100.0 * (row[ 0 ] - row[ 1 ] ) / Math.max( 1, row[ 0 ] ) );
-		}
-	}
-
-	private static Action rotate( int i ){
-		Action[] all = {
-			Action.MOVE_E, Action.MOVE_W, Action.MOVE_S, Action.MOVE_N,
-			Action.MOVE_NE, Action.MOVE_SW, Action.MOVE_NW, Action.MOVE_SE,
-			Action.REST, Action.SEARCH, Action.INTERACT, Action.WAIT
-		};
-		return all[ i % all.length ];
 	}
 
 	private static Action move( SPDEnv env ){
