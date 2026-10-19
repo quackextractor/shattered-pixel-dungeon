@@ -24,39 +24,71 @@ public class CliOptions {
 	public Path rngTraceSites;
 
 	public static CliOptions parse( String[] args ){
+		try {
+			return parseOrThrow( args );
+		} catch (IllegalArgumentException e){
+			System.err.println( "[ERROR] " + e.getMessage() );
+			System.exit( 1 );
+			return null;
+		}
+	}
+
+	private static String value( String[] args, int flag ){
+		if (flag + 1 >= args.length) throw new IllegalArgumentException( args[ flag ] + " needs a value" );
+		return args[ flag + 1 ];
+	}
+
+	private static HeroClass hero( String name ){
+		try {
+			return HeroClass.valueOf( name.toUpperCase() );
+		} catch (IllegalArgumentException e){
+			throw new IllegalArgumentException( "--hero needs one of "
+					+ java.util.Arrays.toString( HeroClass.values() ) + ", not " + name );
+		}
+	}
+
+	private static int count( String flag, String text ){
+		try {
+			return Integer.parseInt( text );
+		} catch (NumberFormatException e){
+			throw new IllegalArgumentException( flag + " needs a whole number, not " + text );
+		}
+	}
+
+	public static CliOptions parseOrThrow( String[] args ){
 		CliOptions o = new CliOptions();
 		for (int i = 0; i < args.length; i++){
 			switch (args[ i ]) {
 				case "--seed":
-					o.seed = args[ ++i ];
+					o.seed = value( args, i++ );
 					o.seedProvided = true;
 					break;
 				case "--hero":
-					o.hero = HeroClass.valueOf( args[ ++i ].toUpperCase() );
+					o.hero = hero( value( args, i++ ) );
 					break;
 				case "--save":
-					o.saveTo = resolve( new File( args[ ++i ] ));
+					o.saveTo = resolve( new File( value( args, i++ ) ));
 					break;
 				case "--out":
-					o.outDir = resolve( new File( args[ ++i ] ));
+					o.outDir = resolve( new File( value( args, i++ ) ));
 					break;
 				case "--max-turns":
-					o.maxTurns = Integer.parseInt( args[ ++i ] );
+					o.maxTurns = count( "--max-turns", value( args, i++ ) );
 					break;
 				case "--config":
-					o.configFile = resolve( new File( args[ ++i ] )).toPath();
+					o.configFile = resolve( new File( value( args, i++ ) )).toPath();
 					break;
 				case "--no-color":
 					o.noColor = true;
 					break;
 				case "--rng-trace-out":
-					o.rngTraceOut = resolve( new File( args[ ++i ] )).toPath();
+					o.rngTraceOut = resolve( new File( value( args, i++ ) )).toPath();
 					break;
 				case "--rng-trace-sites":
-					o.rngTraceSites = resolve( new File( args[ ++i ] )).toPath();
+					o.rngTraceSites = resolve( new File( value( args, i++ ) )).toPath();
 					break;
 				case "--rng-trace-golden":
-					o.rngTraceGolden = resolve( new File( args[ ++i ] )).toPath();
+					o.rngTraceGolden = resolve( new File( value( args, i++ ) )).toPath();
 					break;
 				case "--persist-saves":
 					o.persistSaves = true;
