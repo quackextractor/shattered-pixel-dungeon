@@ -174,8 +174,7 @@ public class RewardModel {
 	private float stairShaping( Hero hero ){
 		if (config.stairPotentialWeight == 0f) return 0f;
 		if (Dungeon.depth != prevDepth || Dungeon.branch != prevBranch) return 0f;
-		if (hero.pos == prevHeroPos) return 0f;
-		return stairPotential.shaping( gamma, prevHeroPos, hero.pos );
+		return stairPotential.shaping( config.shapingGamma, prevHeroPos, hero.pos );
 	}
 	private float engineTurnsSpent( int depthAtStepStart ){
 		if (depthAtStepStart != prevDepth) return 0f;
@@ -213,9 +212,8 @@ public class RewardModel {
 	}
 	private int prevHeroPos = -1;
 	private final StairPotential stairPotential = new StairPotential();
-	private final float gamma = 0.99f;
 	public float gamma(){
-		return gamma;
+		return config.shapingGamma;
 	}
 	private void snapshot(){
 		Hero hero = Dungeon.hero;

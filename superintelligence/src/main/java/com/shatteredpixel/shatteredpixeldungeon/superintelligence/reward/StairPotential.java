@@ -39,10 +39,7 @@ public final class StairPotential {
 	}
 
 	public float shaping( float gamma, int from, int to ){
-		int a = distanceFrom( from );
-		int b = distanceFrom( to );
-		if (a == UNREACHABLE || b == UNREACHABLE) return 0f;
-		return gamma * ( -b ) - ( -a );
+		return gamma * potential( to ) - potential( from );
 	}
 
 	public static int exitCell( Level level ){

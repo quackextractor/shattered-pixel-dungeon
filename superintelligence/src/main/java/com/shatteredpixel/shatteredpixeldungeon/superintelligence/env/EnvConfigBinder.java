@@ -313,7 +313,7 @@ public class EnvConfigBinder {
 				config.curriculumFadeEndDepth = integer( key, value, origin ); break;
 
 			case "rl.learning_rate":     hyper.learningRate = decimal( key, value, origin ); break;
-			case "rl.gamma":             hyper.gamma = decimal( key, value, origin ); break;
+			case "rl.gamma":             hyper.gamma = decimal( key, value, origin ); config.shapingGamma = hyper.gamma; break;
 			case "rl.gae_lambda":        hyper.lambda = decimal( key, value, origin ); break;
 			case "rl.clip_epsilon":      hyper.clipEpsilon = decimal( key, value, origin ); break;
 			case "rl.entropy_coefficient": hyper.entropyCoeff = decimal( key, value, origin ); break;

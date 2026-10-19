@@ -129,6 +129,8 @@ public class EnvConfig {
 
 	public float stairPotentialWeight = 2f;
 
+	public float shapingGamma = 0.99f;
+
 
 	public float goldReward = 0.05f;
 
@@ -178,6 +180,7 @@ public class EnvConfig {
 		out.writeFloat( depthReward );
 		out.writeFloat( exploreReward );
 		out.writeFloat( stairPotentialWeight );
+		out.writeFloat( shapingGamma );
 		out.writeFloat( maxHpReward );
 		out.writeFloat( talentReward );
 		out.writeFloat( goldReward );
@@ -232,6 +235,7 @@ public class EnvConfig {
 		depthReward = in.readFloat();
 		exploreReward = in.readFloat();
 		stairPotentialWeight = in.readFloat();
+		shapingGamma = in.readFloat();
 		maxHpReward = in.readFloat();
 		talentReward = in.readFloat();
 		goldReward = in.readFloat();
@@ -292,6 +296,7 @@ public class EnvConfig {
 		c.depthReward = depthReward;
 		c.exploreReward = exploreReward;
 		c.stairPotentialWeight = stairPotentialWeight;
+		c.shapingGamma = shapingGamma;
 		c.maxHpReward = maxHpReward;
 		c.talentReward = talentReward;
 		c.goldReward = goldReward;

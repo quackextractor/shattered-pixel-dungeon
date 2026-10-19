@@ -172,6 +172,7 @@ public final class RewardShapingCheck {
 		double toward;
 		int awaySteps;
 		int towardSteps;
+		int waits;
 		int exit = -1;
 		int distanceAtExit = -1;
 		double expected;
@@ -218,11 +219,13 @@ public final class RewardShapingCheck {
 
 
 	public static void checkStairShapingCannotBeFarmed( EnvConfig config ){
-		StairWalk walk = walkOutAndBack( config.copy(), 2f, 4 );
+		EnvConfig local = config.copy();
+		local.shapingGamma = 0.9f;
+		StairWalk walk = walkOutAndBack( local, 2f, 4 );
 
-		if (walk.awaySteps == 0 || walk.towardSteps == 0){
-			fail( "the round trip took " + walk.awaySteps + " step(s) out and " + walk.towardSteps
-					+ " back, so it measured nothing." );
+		if (walk.awaySteps == 0 || walk.towardSteps == 0 || walk.waits == 0){
+			fail( "the round trip took " + walk.awaySteps + " step(s) out, " + walk.towardSteps
+					+ " back and " + walk.waits + " wait(s), so it measured nothing." );
 			return;
 		}
 
@@ -441,9 +444,12 @@ public final class RewardShapingCheck {
 
 			if (!returning[ 0 ] && outward.size() >= each) returning[ 0 ] = true;
 
-			boolean outwardPhase = !returning[ 0 ];
+			boolean outwardPhase = !returning[ 0 ] || result.waits == 0;
 
-			if (outwardPhase){
+			if (returning[ 0 ] && result.waits == 0){
+				step = Action.WAIT;
+				result.waits++;
+			} else if (outwardPhase){
 				step = bestStepTowards( turn.env, potential, false );
 				if (step == null) returning[ 0 ] = true;
 			} else if (result.towardSteps < outward.size()){
@@ -461,7 +467,7 @@ public final class RewardShapingCheck {
 			result.expected += expectedShaping( turn.env, potential, weight, depth, from );
 
 			if (outwardPhase){
-				outward.add( step );
+				if (step != Action.WAIT) outward.add( step );
 				result.away += paid;
 				result.awaySteps++;
 			} else {
@@ -477,11 +483,8 @@ public final class RewardShapingCheck {
 	private static double expectedShaping( SPDEnv env, StairPotential potential, float weight,
 			int depth, int from ){
 		int to = Dungeon.hero.pos;
-		if (Dungeon.depth != depth || to == from) return 0;
-		int a = potential.distanceFrom( from );
-		int b = potential.distanceFrom( to );
-		if (a == StairPotential.UNREACHABLE || b == StairPotential.UNREACHABLE) return 0;
-		float shaped = env.shapingGamma() * -b + a;
+		if (Dungeon.depth != depth) return 0;
+		float shaped = env.config().shapingGamma * potential.potential( to ) - potential.potential( from );
 		return weight * shaped * env.ledger().shapingScale();
 	}
 
