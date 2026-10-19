@@ -50,6 +50,7 @@ public class Network {
 	private final Tensor dValueOut;
 	private final Tensor dCell;
 	private final Tensor dHidden;
+	private final Tensor dHiddenT;
 	private final Tensor dHeadScratch;
 	private final Tensor dPrev;
 	private final Tensor dLstmIn;
@@ -110,6 +111,7 @@ public class Network {
 		this.dValueOut = new Tensor( 1, 1 );
 		this.dCell = new Tensor( 1, memory.size );
 		this.dHidden = new Tensor( 1, memory.size );
+		this.dHiddenT = new Tensor( 1, memory.size );
 		this.dHeadScratch = new Tensor( 1, memory.size );
 		this.dPrev = new Tensor( 1, memory.size );
 		this.dLstmIn = new Tensor( 1, 256 );
@@ -286,8 +288,6 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 			float dCritic, StepCache cache ){
 
 		if (cache != null) restore( cache );
-
-		Tensor dHiddenT = new Tensor( 1, memoryOut.cols );
 
 		if (dActionLogits != null) copyInto( dActionLogits, dAction );
 		else dAction.fill( 0f );
