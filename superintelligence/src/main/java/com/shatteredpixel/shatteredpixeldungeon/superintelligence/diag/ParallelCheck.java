@@ -19,6 +19,8 @@ public class ParallelCheck {
 
 	private static final long SEED = 20261007L;
 
+	private static final String[] METRICS = { "policy loss", "value loss", "entropy", "KL", "clip fraction" };
+
 	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
@@ -79,13 +81,31 @@ public class ParallelCheck {
 			return;
 		}
 
+		for (int m = 0; m < METRICS.length; m++){
+			float a = serial.metrics[ m ];
+			float b = parallel.metrics[ m ];
+			if (Math.abs( a - b ) > TOLERANCE * Math.max( 1f, Math.abs( b ))){
+				fail( threads + " threads report " + METRICS[ m ] + " " + b + " and 1 thread reports " + a
+						+ " for the same update. The two paths have to average the same way." );
+				return;
+			}
+		}
+		if (Math.abs( serial.metrics[ 0 ] ) < 1e-4f){
+			fail( "the reported policy loss is " + serial.metrics[ 0 ] + " over a buffer whose ratios are not"
+					+ " 1, so it is not the clipped surrogate: -advantage averages to zero after"
+					+ " normalisation." );
+			return;
+		}
+
 		System.out.println( "  " + threads + " threads (" + parallel.shards + " shards) and 1 thread move the"
-				+ " parameters alike: worst difference " + worst + " of the step's norm" );
+				+ " parameters alike: worst difference " + worst + " of the step's norm; policy loss "
+				+ serial.metrics[ 0 ] + ", entropy " + serial.metrics[ 2 ] + " on both" );
 	}
 
 	private static class Run {
 		Network.Layer[] layers;
 		int shards;
+		float[] metrics;
 	}
 
 	private static Run update( EnvConfig config, int threads ){
@@ -99,6 +119,8 @@ public class ParallelCheck {
 			Run r = new Run();
 			r.layers = ppo.network.layers();
 			r.shards = ppo.updateShardNetworks().size();
+			r.metrics = new float[]{ ppo.lastPolicyLoss, ppo.lastValueLoss, ppo.lastEntropy,
+					ppo.lastKLDivergence, ppo.lastClipFraction };
 			return r;
 		} finally {
 			ppo.close();

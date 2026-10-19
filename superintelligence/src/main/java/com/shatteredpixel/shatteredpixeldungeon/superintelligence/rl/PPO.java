@@ -388,10 +388,10 @@ Stats oneSample( Network net, Transition t, float[] grid,
 			dHead.add( gradient.clone() );
 			headProbs.add( probabilities.clone() );
 
-			s.policyLoss += -t.advantage;
+			s.policyLoss += surrogateLoss( probabilities, chosen, t.oldLogProbability, t.advantage );
 			s.valueLoss += Policy.valueLoss( net.value(), target, huberValues );
 			s.entropy += Policy.entropy( probabilities );
-			s.kl += approximateKL( t, t.oldLogProbability, mask, probabilities );
+			s.kl += approximateKL( chosen, t.oldLogProbability, probabilities );
 		}
 
 		for (int i = steps - 1; i >= 0; i--){
@@ -454,20 +454,25 @@ Stats oneSample( Network net, Transition t, float[] grid,
 		network.scaleGradients( 1f / count );
 		float norm = network.clipGradients( network.gradClip );
 
-		result.policyLoss = policyLoss / count;
-		result.valueLoss = valueLoss / count;
-		result.entropy = entropy / count;
-		result.kl = kl / count;
-		result.clipped = clipped / count;
+		result.policyLoss = policyLoss;
+		result.valueLoss = valueLoss;
+		result.entropy = entropy;
+		result.kl = kl;
+		result.clipped = clipped;
 		result.gradNorm = norm;
 		if (norm > network.gradClip) result.gradClipped = 1;
 
 		return result;
 	}
 
-	private float approximateKL( Transition t, float behaviourLogProbability, float[] mask, float[] probabilities ){
-		int chosen = (t.liveHead == Policy.HEAD_ACTION) ? t.actionIndex : t.slotIndex;
+	private float surrogateLoss( float[] probabilities, int chosen, float behaviourLogProbability,
+			float advantage ){
+		float ratio = (float) Math.exp( Policy.logProbability( probabilities, chosen ) - behaviourLogProbability );
+		float clipped = Math.max( 1f - clipEpsilon, Math.min( 1f + clipEpsilon, ratio ));
+		return -Math.min( ratio * advantage, clipped * advantage );
+	}
 
+	private static float approximateKL( int chosen, float behaviourLogProbability, float[] probabilities ){
 		float newLog = Policy.logProbability( probabilities, chosen );
 		float ratio = (float) Math.exp( newLog - behaviourLogProbability );
 
