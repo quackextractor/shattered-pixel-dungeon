@@ -13,7 +13,14 @@ public class ReplayIndex {
 
 	private ReplayIndex() {}
 
+	private static volatile File override;
+
+	public static void useIndexFile( File file ){
+		override = file;
+	}
+
 	public static File indexFile(){
+		if (override != null) return override;
 		return new File( com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer.outDirDefault(), "replay-dirs.txt" );
 	}
 

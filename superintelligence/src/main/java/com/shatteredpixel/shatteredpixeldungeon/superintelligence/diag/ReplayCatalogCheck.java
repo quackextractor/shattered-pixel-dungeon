@@ -11,6 +11,8 @@ public class ReplayCatalogCheck {
 	public static void main( String[] args ){
 		try {
 			ReplayCatalogFixture.workDir = Files.createTempDirectory( "spd-replaycheck" ).toFile();
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIndex.useIndexFile(
+					new File( ReplayCatalogFixture.workDir, "replay-dirs.txt" ));
 		} catch (IOException e){
 			System.err.println( "[ERROR] could not create a scratch directory: " + e.getMessage() );
 			System.exit( 2 );
