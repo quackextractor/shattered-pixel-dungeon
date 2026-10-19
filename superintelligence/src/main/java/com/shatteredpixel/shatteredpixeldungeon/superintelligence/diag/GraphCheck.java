@@ -200,8 +200,8 @@ public class GraphCheck {
 		String end = ProgressBar.render( 30, 30, now, 1200, 3 );
 		String over = ProgressBar.render( 40, 30, now, 1200, 3 );
 
-		if (!start.contains( "0%" ) || !half.contains( "50%" ) || !end.contains( "100%" )
-				|| !over.contains( "100%" )){
+		if (!pct( start ).equals( "0%" ) || !pct( half ).equals( "50%" ) || !pct( end ).equals( "100%" )
+				|| !pct( over ).equals( "100%" )){
 			fail( "the progress bar's percentages are wrong: 0 -> '" + pct( start ) + "', 15/30 -> '"
 					+ pct( half ) + "', 30/30 -> '" + pct( end ) + "', 40/30 -> '" + pct( over )
 					+ "'. A run asked for 30 generations and given 40 must still say 100%, or a resumed run"
@@ -209,13 +209,14 @@ public class GraphCheck {
 			return;
 		}
 
-		if (countCells( start ) != countCells( half ) || countCells( half ) != countCells( end )){
-			fail( "the bar is not a fixed width (" + countCells( start ) + ", " + countCells( half )
-					+ ", " + countCells( end ) + " cells), so the line jumps as the fraction changes." );
+		if (countCells( end ) == 0){
+			fail( "the bar '" + end + "' has no [..] cells to measure." );
 			return;
 		}
 
-		if (countCells( end ) != countCells( half )){
+		if (countCells( start ) != countCells( half ) || countCells( half ) != countCells( end )){
+			fail( "the bar is not a fixed width (" + countCells( start ) + ", " + countCells( half )
+					+ ", " + countCells( end ) + " cells), so the line jumps as the fraction changes." );
 			return;
 		}
 
