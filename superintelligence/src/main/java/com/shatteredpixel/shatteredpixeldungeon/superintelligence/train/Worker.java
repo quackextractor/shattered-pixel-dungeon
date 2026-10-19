@@ -199,8 +199,7 @@ private EnvConfig config;
 			return;
 		}
 
-		String prefix = new java.io.File( dir, seed.replaceAll( "[^A-Za-z0-9._-]", "_" )
-				+ ".worker" ).getAbsolutePath();
+		String prefix = new java.io.File( dir, safeFileName( seed ) + ".worker" ).getAbsolutePath();
 
 		try {
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngOrderLog
@@ -211,6 +210,11 @@ private EnvConfig config;
 			System.err.println( "[WARN] worker: cannot write the ordered draw logs to " + prefix
 					+ " (" + e.getClass().getSimpleName() + ")" );
 		}
+	}
+
+
+	static String safeFileName( String text ){
+		return text.replaceAll( "[^A-Za-z0-9._-]", "_" );
 	}
 
 

@@ -716,7 +716,7 @@ Worker.writeWeights( out, ppo.network );
 
 
 	private static File uniqueFile( File dir, String seed ){
-		String stem = seed.isEmpty() ? "random" : seed;
+		String stem = seed.isEmpty() ? "random" : Worker.safeFileName( seed );
 		File file = new File( dir, stem + ".dat" );
 		int run = 2;
 		while (file.exists() && run < 10000){
