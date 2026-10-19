@@ -2,11 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 public class ValueScale {
@@ -20,26 +16,11 @@ public class ValueScale {
 		System.out.println();
 
 		Network network = new Network( config, new Random( 5L ) );
-		PPO ppo = new PPO( config, new Random( 5L ) );
 
 		float[] targets = {
 				0.02f, -0.01f, 0.05f, 0.11f, 0.04f, -0.02f, 0.03f, 12.4f, 8.1f, -3.2f,
 				-config.deathPenalty, config.victoryReward, 0.07f, -0.04f
 		};
-
-		List<Transition> batch = new ArrayList<>();
-		for (float target : targets){
-			Transition t = new Transition();
-			t.grid = new byte[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
-			t.inventory = new float[ config.maxSlots
-					* com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder.FEATURES_PER_SLOT ];
-			t.hero = new float[ com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder.FEATURES ];
-			t.actionMask = new float[ com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action.size() ];
-			t.slotMask = new float[ config.maxSlots ];
-			t.targetMask = new float[ com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.TARGET_COUNT ];
-			t.returnValue = target;
-			batch.add( t );
-		}
 
 		float[] sorted = targets.clone();
 		java.util.Arrays.sort( sorted );
@@ -62,7 +43,7 @@ public class ValueScale {
 		network.resetState();
 		float observed = 0;
 		for (int i = 0; i < 8; i++){
-			network.forward( new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ],
+			network.forward( new float[ network.gridLength() ],
 					new float[ config.maxSlots
 					* com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder.FEATURES_PER_SLOT ],
 					new float[ com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder.FEATURES ] );

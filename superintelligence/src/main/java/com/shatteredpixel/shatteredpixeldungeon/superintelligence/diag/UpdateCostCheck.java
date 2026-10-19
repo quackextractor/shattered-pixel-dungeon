@@ -28,7 +28,7 @@ public class UpdateCostCheck {
 		}
 
 		EnvConfig config = new EnvConfig();
-		int gridSize = config.spatialChannels() * config.gridWidth * config.gridWidth;
+		int gridSize = config.spatialChannels() * config.gridWidth * config.gridHeight;
 
 		Network network = new Network( config, new Random( 12345L ) );
 		Transition[] batch = syntheticBatch( config, gridSize, samples, 4242L );
@@ -97,11 +97,11 @@ public class UpdateCostCheck {
 					Action.size(), config.maxSlots, ActionMapper.TARGET_COUNT );
 
 			t.packGrid( gridSrc );
-			for (float v : t.inventory) v = rng.nextFloat();
-			for (float v : t.hero) v = rng.nextFloat();
-			for (float v : t.actionMask) v = 1f;
-			for (float v : t.slotMask) v = 1f;
-			for (float v : t.targetMask) v = 1f;
+			for (int k = 0; k < t.inventory.length; k++) t.inventory[ k ] = rng.nextFloat();
+			for (int k = 0; k < t.hero.length; k++) t.hero[ k ] = rng.nextFloat();
+			java.util.Arrays.fill( t.actionMask, 1f );
+			java.util.Arrays.fill( t.slotMask, 1f );
+			java.util.Arrays.fill( t.targetMask, 1f );
 
 			t.actionIndex = rng.nextInt( Action.size() );
 			t.slotIndex = rng.nextInt( config.maxSlots );
