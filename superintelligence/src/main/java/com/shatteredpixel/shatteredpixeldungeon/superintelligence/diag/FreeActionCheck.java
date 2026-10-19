@@ -2,6 +2,8 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Slow;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
@@ -20,7 +22,7 @@ import java.util.List;
 
 public class FreeActionCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 
 	private static final List<String> failures = new ArrayList<>();
 
@@ -36,6 +38,7 @@ public class FreeActionCheck {
 		config.turnLimitPerFloor = 400;
 
 		checkRestAdvancesTheEngineClock( config );
+		checkWaitingIgnoresSlow( config );
 		checkOpeningAMenuCostsNoTurn( config );
 		checkAZeroTimeModeExitIsMaskedOut( config );
 		checkTheRefusalLastsExactlyOneStep( config );
@@ -80,6 +83,23 @@ public class FreeActionCheck {
 		}
 
 		System.out.println( "  REST advanced the engine clock on " + advanced + " of " + rested );
+	}
+
+	private static void checkWaitingIgnoresSlow( EnvConfig config ){
+		for (Action action : new Action[]{ Action.WAIT, Action.REST }){
+			SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+			env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+			Buff.affect( Dungeon.hero, Slow.class, 20f );
+			float before = Actor.now();
+			env.step( action, 0 );
+			float spent = Actor.now() - before;
+			if (spent != Actor.TICK){
+				failures.add( action + " under Slow took " + spent + " turns. Hero.rest spends one"
+						+ " turn as a constant, which Slow does not stretch." );
+				return;
+			}
+		}
+		System.out.println( "  WAIT and REST under Slow each take one turn" );
 	}
 
 	private static void checkOpeningAMenuCostsNoTurn( EnvConfig config ){

@@ -270,13 +270,11 @@ public class ActionMapper {
 
 		switch (action) {
 			case WAIT:
-
-				hero.spendAndNext( 1f );
+				hero.rest( false );
 				return true;
 
 			case REST:
-				hero.resting = true;
-				hero.spendAndNext( Actor.TICK );
+				hero.rest( true );
 				hero.resting = false;
 				return true;
 
