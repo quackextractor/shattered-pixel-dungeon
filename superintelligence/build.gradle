@@ -44,6 +44,10 @@ tasks.register('train', JavaExec) {
     mainClass = appMainClass
     jvmArgs trainerJvmArgs
     withSubcommand(delegate, 'train')
+    def shippedConfig = file('superintelligence.properties').absolutePath
+    doFirst {
+        if (!args.contains('--config')) args = args + ['--config', shippedConfig]
+    }
 }
 def cliTask = { String taskName, String taskDescription ->
     tasks.register(taskName, JavaExec) {
