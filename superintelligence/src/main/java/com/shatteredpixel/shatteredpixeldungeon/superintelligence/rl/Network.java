@@ -88,9 +88,9 @@ public class Network {
 		this.trunk = new Dense( convFeatures + extraInputs, 256, rng, 1f );
 		this.memory = new LSTM( 256, 128, rng );
 
-		this.actionHead = new Dense( 128, Action.size(), rng, 1f );
-		this.slotHead = new Dense( 128, config.maxSlots, rng, 1f );
-		this.targetHead = new Dense( 128, ActionMapper.TARGET_COUNT, rng, 1f );
+		this.actionHead = new Dense( 128, Action.size(), rng, 1f, false );
+		this.slotHead = new Dense( 128, config.maxSlots, rng, 1f, false );
+		this.targetHead = new Dense( 128, ActionMapper.TARGET_COUNT, rng, 1f, false );
 
 		this.valueHead = new Dense( 128, 1, rng, 1f, false );
 
