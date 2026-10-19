@@ -1,6 +1,5 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
-import java.util.ArrayList;
 import java.util.Random;
 
 
@@ -141,21 +140,6 @@ public class Policy {
 
 		float magnitude = Math.abs( delta );
 		return magnitude <= 1f ? 0.5f * delta * delta : magnitude - 0.5f;
-	}
-
-
-	public static void computeReturnsAndAdvantages( ArrayList<Transition> buffer, int from, int to,
-			float gamma, float lambda ){
-		float lastGae = 0f;
-		for (int i = to - 1; i >= from; i--){
-			Transition t = buffer.get( i );
-			float nextValue = (i == to - 1) ? t.nextValue : buffer.get( i + 1 ).value;
-			float nonTerminal = t.terminal ? 0f : 1f;
-			float delta = t.reward + gamma * nextValue * nonTerminal - t.value;
-			lastGae = delta + gamma * lambda * nonTerminal * lastGae;
-			t.advantage = lastGae;
-			t.returnValue = t.advantage + t.value;
-		}
 	}
 
 

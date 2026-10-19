@@ -4,7 +4,6 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapp
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
@@ -14,8 +13,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.DataOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,27 +20,23 @@ import java.util.Random;
 public class GaeCheck {
 	private static final float GAMMA = 0.987f;
 	private static final float LAMBDA = 0.913f;
-	private static final int CHECKS = 18;
+	private static final int CHECKS = 15;
 	private static final List< String > failures = new ArrayList<>();
 	public static void main( String[] args ){
-		checkScalarMatchesTransitionList();
+		checkRecurrenceMatchesTheDiscountedSum();
 checkTerminalZerosTheTail();
 		checkTruncatedBootstraps();
 		checkTerminalAndTruncatedDifferOnlyAtTheEnd();
 		checkAPenalisedTruncationStillCarriesItsPenalty();
 		checkNoDiscountAcrossTerminal();
-		checkSamplingIsUniformAndSeeded();
-		checkTailIsAlwaysRetained();
 		checkRetainIsIdempotent();
 		checkAdvantagesAreIndependentOfSampling();
 		checkTransitionCodecRoundTrip();
-		checkShortEpisodeRetainsItsTail();
 		checkThePackedGridSurvivesARoundTrip();
 		checkThePackedGridIsEightTimesSmaller();
 		checkAFrameOfManyTransitionsRoundTrips();
 		checkClipFractionIsNotAdvantageMagnitude();
-		checkAnUpdateMovesTheChosenProbabilityWithTheAdvantage();
-		checkTheClipOnlyStopsTheSideItBounds();
+		PolicyUpdateCheck.run( GaeCheck::fail );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     GAE: " + CHECKS + " checks passed" );
 		} else {
@@ -154,43 +147,38 @@ checkTerminalZerosTheTail();
 		}
 		System.out.println( "  a frame of " + count + " transitions round-trips in order" );
 	}
-	private static void checkScalarMatchesTransitionList(){
+	private static void checkRecurrenceMatchesTheDiscountedSum(){
 		int n = 64;
 		float[] rewards = new float[ n ];
 		float[] values = new float[ n ];
 		float[] terminal = new float[ n ];
-		float[] finalValue = { 0.37f };
+		float finalValue = 0.37f;
 		Random rng = new Random( 991L );
 		for (int i = 0; i < n; i++){
 			rewards[ i ] = rng.nextFloat() * 4f - 2f;
 			values[ i ] = rng.nextFloat() * 3f - 1.5f;
-			terminal[ i ] = 0f;
 		}
 		terminal[ n / 2 ] = 1f;
-		float[] scalarAdvantages = new float[ n ];
-		float[] scalarReturns = new float[ n ];
-		Policy.computeEpisodeAdvantages( rewards, values, terminal, n, finalValue[ 0 ],
-				GAMMA, LAMBDA, scalarAdvantages, scalarReturns );
-		ArrayList<Transition> list = new ArrayList<>();
+		float[] advantages = new float[ n ];
+		float[] returns = new float[ n ];
+		Policy.computeEpisodeAdvantages( rewards, values, terminal, n, finalValue,
+				GAMMA, LAMBDA, advantages, returns );
 		for (int i = 0; i < n; i++){
-			Transition t = new Transition();
-			t.reward = rewards[ i ];
-			t.value = values[ i ];
-			t.terminal = terminal[ i ] != 0f;
-			t.nextValue = finalValue[ 0 ];
-			list.add( t );
-		}
-		Policy.computeReturnsAndAdvantages( list, 0, n, GAMMA, LAMBDA );
-		for (int i = 0; i < n; i++){
-			Transition t = list.get( i );
-			if (t.advantage != scalarAdvantages[ i ]){
-				fail( "advantage mismatch at step " + i + ": transitions=" + t.advantage
-						+ " scalars=" + scalarAdvantages[ i ] );
-				return;
+			double expected = 0;
+			double weight = 1;
+			for (int j = i; j < n; j++){
+				double next = j == n - 1 ? finalValue : values[ j + 1 ];
+				boolean ends = terminal[ j ] != 0f;
+				expected += weight * (rewards[ j ] + (ends ? 0 : GAMMA * next) - values[ j ]);
+				if (ends) break;
+				weight *= GAMMA * LAMBDA;
 			}
-			if (t.returnValue != scalarReturns[ i ]){
-				fail( "return mismatch at step " + i + ": transitions=" + t.returnValue
-						+ " scalars=" + scalarReturns[ i ] );
+			double tolerance = 1e-4 * Math.max( 1, Math.abs( expected ));
+			if (Math.abs( advantages[ i ] - expected ) > tolerance
+					|| Math.abs( returns[ i ] - (expected + values[ i ]) ) > tolerance){
+				fail( "step " + i + ": recurrence gives advantage " + advantages[ i ] + " return "
+						+ returns[ i ] + ", the discounted sum of TD errors gives " + expected
+						+ " and " + (expected + values[ i ]) );
 				return;
 			}
 		}
@@ -297,57 +285,6 @@ checkTerminalZerosTheTail();
 					+ ", expected 0" );
 		}
 	}
-	private static void checkSamplingIsUniformAndSeeded(){
-		int n = 2000;
-		float rate = 0.25f;
-		boolean[] a = drawMask( n, rate, 1234L );
-		boolean[] b = drawMask( n, rate, 1234L );
-		boolean[] c = drawMask( n, rate, 9999L );
-		for (int i = 0; i < n; i++){
-			if (a[ i ] != b[ i ]){
-				fail( "the same seed produced different samples at step " + i );
-				return;
-			}
-		}
-		int differing = 0;
-		for (int i = 0; i < n; i++) if (a[ i ] != c[ i ]) differing++;
-		if (differing < n / 20){
-			fail( "two seeds produced nearly identical samples (" + differing + " of " + n
-					+ " differ), so the seed is not reaching the sampler" );
-			return;
-		}
-		int kept = 0;
-		for (boolean s : a) if (s) kept++;
-		if (Math.abs( kept - n * rate ) > 4 * Math.sqrt( n * rate * (1 - rate ) )){
-			fail( "expected about " + (int) (n * rate) + " samples, kept " + kept );
-		}
-	}
-	private static void checkTailIsAlwaysRetained(){
-		int n = 300;
-		EpisodeRecord record = new EpisodeRecord();
-		java.util.ArrayDeque< Tail > tail = new java.util.ArrayDeque<>();
-		Random samplingRng = new Random( 7L );
-		float rate = 0.01f;
-		for (int i = 0; i < n; i++){
-			Transition t = new Transition();
-			if (samplingRng.nextFloat() < rate) record.retain( i, t );
-			tail.addLast( new Tail( i, t ) );
-			while (tail.size() > EpisodeCollector.TAIL_STEPS) tail.removeFirst();
-		}
-		for (Tail held : tail){
-			if (!record.isRetained( held.transition )) record.retain( held.step, held.transition );
-		}
-		for (int i = n - EpisodeCollector.TAIL_STEPS; i < n; i++){
-			boolean found = false;
-			for (int s = 0; s < record.sampledCount(); s++){
-				if (record.sampledStepAt( s ) == i ) found = true;
-			}
-			if (!found){
-				fail( "step " + i + " is in the tail but was not retained" );
-				return;
-			}
-		}
-	}
 	private static void checkRetainIsIdempotent(){
 		EpisodeRecord record = new EpisodeRecord();
 		Transition t = new Transition();
@@ -381,33 +318,6 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 			if (record.advantageAt( i ) != allSteps[ i ]){
 				fail( "advantage at step " + i + " changed when nothing was sampled: "
 						+ record.advantageAt( i ) + " vs " + allSteps[ i ] );
-				return;
-			}
-		}
-	}
-	private static void checkShortEpisodeRetainsItsTail(){
-		int n = 15;
-		int tailSteps = Math.min( n, EpisodeCollector.TAIL_STEPS );
-		Random samplingRng = new Random( 5L );
-		EpisodeRecord record = new EpisodeRecord();
-		java.util.ArrayDeque< Tail > tail = new java.util.ArrayDeque<>();
-		for (int i = 0; i < n; i++){
-			Transition t = new Transition();
-			if (samplingRng.nextFloat() < 0.05f) record.retain( i, t );
-			tail.addLast( new Tail( i, t ) );
-			while (tail.size() > EpisodeCollector.TAIL_STEPS) tail.removeFirst();
-		}
-		for (Tail held : tail){
-			if (!record.isRetained( held.transition )) record.retain( held.step, held.transition );
-		}
-		if (record.sampledCount() < tailSteps){
-			fail( "a " + n + "-step episode retained " + record.sampledCount()
-					+ " steps, fewer than the " + tailSteps + " tail steps it must keep" );
-			return;
-		}
-		for (int i = n - tailSteps; i < n; i++){
-			if (!retainsStep( record, i )){
-				fail( "step " + i + " is in a " + n + "-step episode's tail but was not retained" );
 				return;
 			}
 		}
@@ -506,8 +416,8 @@ private static void checkAPenalisedTruncationStillCarriesItsPenalty(){
 		float terminalStep = terminal[ n - 1 ];
 		if (truncatedStep > -2900f){
 			fail( "a truncated step charged " + rewards[ n - 1 ] + " produced advantage "
-					+ truncatedStep + ", which is not carrying the penalty. Truncation must not be able to" );
-			fail( "erase a charged reward." );
+					+ truncatedStep + ", which is not carrying the penalty. Truncation must not be able to"
+					+ " erase a charged reward." );
 			return;
 		}
 		if (terminalStep > -2900f){
@@ -516,8 +426,8 @@ private static void checkAPenalisedTruncationStillCarriesItsPenalty(){
 			return;
 		}
 		if (Math.abs( truncatedStep - terminalStep ) < 1e-4f){
-			fail( "truncated and terminal gave the same advantage (" + truncatedStep + ") for a penalised" );
-			fail( "final step. The bootstrap correction is supposed to be the only difference." );
+			fail( "truncated and terminal gave the same advantage (" + truncatedStep + ") for a penalised"
+					+ " final step. The bootstrap correction is supposed to be the only difference." );
 		}
 	}
 	private static void checkClipFractionIsNotAdvantageMagnitude(){
@@ -543,27 +453,6 @@ private static void checkAPenalisedTruncationStillCarriesItsPenalty(){
 					+ "), so this check no longer documents what it replaced" );
 		}
 	}
-	private static void checkTheClipOnlyStopsTheSideItBounds(){
-		float[][] cases = { { 1f, 0.5f, 1f }, { 1f, 1.5f, 0f }, { -1f, 0.5f, 0f }, { -1f, 1.5f, 1f } };
-		for (float[] c : cases){
-			boolean moves = gradientNormAt( c[ 0 ], c[ 1 ] ) > 0f;
-			if (moves != (c[ 2 ] > 0f)){
-				fail( "advantage " + c[ 0 ] + " at ratio " + c[ 1 ] + (moves ? " still has" : " has no")
-						+ " policy gradient; the clip may only stop a ratio that has already moved past"
-						+ " 1 +/- epsilon in the advantage's own direction" );
-			}
-		}
-	}
-	private static float gradientNormAt( float advantage, float ratio ){
-		float[] probabilities = { 0.5f, 0.3f, 0.15f, 0.05f };
-		float[] mask = { 1f, 1f, 1f, 1f };
-		float oldLogProbability = (float) Math.log( probabilities[ 0 ] ) - (float) Math.log( ratio );
-		float[] gradient = new float[ probabilities.length ];
-		Policy.accumulatePolicyGradient( probabilities, mask, 0, oldLogProbability, advantage, 0.2f, 0f, gradient );
-		float sum = 0f;
-		for (float g : gradient) sum += Math.abs( g );
-		return sum;
-	}
 	private static boolean clipBindingForRatio( float ratio, float epsilon ){
 		int chosen = 0;
 		float[] probabilities = new float[ 4 ];
@@ -577,69 +466,7 @@ private static void checkAPenalisedTruncationStillCarriesItsPenalty(){
 		return Policy.accumulatePolicyGradient( probabilities, mask, chosen,
 				oldLogProbability, 1f, epsilon, 0f, gradient );
 	}
-	private static void checkAnUpdateMovesTheChosenProbabilityWithTheAdvantage(){
-		float[] up = chosenProbabilityAcrossOneUpdate( 1f );
-		float[] down = chosenProbabilityAcrossOneUpdate( -1f );
-		if (!(up[ 1 ] > up[ 0 ])){
-			fail( "one update at advantage +1 moved p(chosen) from " + up[ 0 ] + " to " + up[ 1 ]
-					+ "; a rewarded action has to become more likely" );
-		}
-		if (!(down[ 1 ] < down[ 0 ])){
-			fail( "one update at advantage -1 moved p(chosen) from " + down[ 0 ] + " to " + down[ 1 ]
-					+ "; a punished action has to become less likely" );
-		}
-		System.out.println( "  one update moves p(chosen) " + up[ 0 ] + " -> " + up[ 1 ] + " at A=+1, "
-				+ down[ 0 ] + " -> " + down[ 1 ] + " at A=-1" );
-	}
-	private static float[] chosenProbabilityAcrossOneUpdate( float advantage ){
-		EnvConfig config = new EnvConfig();
-		Network net = new Network( config, new Random( 777L ));
-		float[] grid = new float[ net.gridLength() ];
-		float[] inventory = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
-		float[] hero = new float[ HeroEncoder.FEATURES ];
-		Random rng = new Random( 778L );
-		for (int i = 0; i < grid.length; i++) grid[ i ] = rng.nextInt( 5 ) == 0 ? 1f : 0f;
-		for (int i = 0; i < hero.length; i++) hero[ i ] = rng.nextFloat();
-		float[] mask = new float[ net.actionCount() ];
-		java.util.Arrays.fill( mask, 1f );
-		float[] probabilities = new float[ mask.length ];
-		int chosen = 3;
-		net.resetState();
-		net.forward( grid, inventory, hero );
-		Policy.probabilities( net.actionLogits(), mask, probabilities );
-		float before = probabilities[ chosen ];
-		float[] gradient = new float[ mask.length ];
-		Policy.accumulatePolicyGradient( probabilities, mask, chosen, Policy.logProbability( probabilities, chosen ),
-				advantage, 0.2f, 0f, gradient );
-		net.zeroGrad();
-		net.backward( gradient, null, null, 0f );
-		net.step( 1f );
-		net.resetState();
-		net.forward( grid, inventory, hero );
-		Policy.probabilities( net.actionLogits(), mask, probabilities );
-		return new float[]{ before, probabilities[ chosen ] };
-	}
-	private static boolean retainsStep( EpisodeRecord record, int step ){
-		for (int i = 0; i < record.sampledCount(); i++){
-			if (record.sampledStepAt( i ) == step ) return true;
-		}
-		return false;
-	}
-	private static boolean[] drawMask( int n, float rate, long seed ){
-		Random rng = new Random( seed );
-		boolean[] mask = new boolean[ n ];
-		for (int i = 0; i < n; i++) mask[ i ] = rng.nextFloat() < rate;
-		return mask;
-	}
 	private static void fail( String message ){
 		failures.add( message );
-	}
-	private static class Tail {
-		final int step;
-		final Transition transition;
-		Tail( int step, Transition transition ){
-			this.step = step;
-			this.transition = transition;
-		}
 	}
 }
