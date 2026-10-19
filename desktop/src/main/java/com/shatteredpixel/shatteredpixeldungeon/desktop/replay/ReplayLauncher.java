@@ -201,7 +201,7 @@ static Lwjgl3ApplicationConfiguration windowConfig(){
 		try {
 			Game.versionCode = Integer.parseInt( Game.version );
 		} catch (NumberFormatException e){
-			Game.versionCode = 401;
+			Game.versionCode = com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon.v4_0_0;
 		}
 
 		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();

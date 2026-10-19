@@ -25,7 +25,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Re
 
 public class TransitionCheck {
 
-	private static final int CHECKS = 11;
+	private static final int CHECKS = 12;
 
 	private static final String SEED = "TRANSITION";
 
@@ -52,6 +52,7 @@ public class TransitionCheck {
 		checkAscendingAfterDescendingIsServiced();
 		checkTheStairsAreNotShapedAcrossAFloorChange();
 		checkClimbingBackDoesNotRefillTheFloorsTurns();
+		checkAVisitedFloorIsTheSameFloor();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     floor transitions: " + CHECKS + " checks passed" );
@@ -500,6 +501,53 @@ public class TransitionCheck {
 
 		System.out.println( "  climbing back resumes the floor's turn budget: TURN_LIMIT after " + back
 				+ " more turns on depth 1" );
+	}
+
+
+	private static void checkAVisitedFloorIsTheSameFloor(){
+		SPDEnv env = freshRun();
+
+		int marker = -1;
+		for (int c = 0; c < Dungeon.level.length() && marker < 0; c++){
+			if (Dungeon.level.passable[ c ] && !Dungeon.level.pit[ c ] && c != Dungeon.hero.pos
+					&& Dungeon.level.heaps.get( c ) == null && Actor.findChar( c ) == null) marker = c;
+		}
+		Dungeon.level.drop( new com.shatteredpixel.shatteredpixeldungeon.items.Gold( 777 ), marker );
+		String before = floorState();
+
+		if (!descend( env )){
+			fail( "no exit to descend from, so this case measured nothing." );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+		if (!ascend( env )){
+			fail( "depth " + Dungeon.depth + " has no entrance to climb, so this case measured nothing." );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+		String after = floorState();
+
+		if (Dungeon.depth != 1 || !before.equals( after )){
+			fail( "depth 1 left as [" + before + "] came back as [" + after + "] on depth " + Dungeon.depth
+					+ ". InterlevelScene saves the floor it leaves and loads it again on return; building"
+					+ " it afresh refills its items and mobs and loses what the hero dropped there." );
+			return;
+		}
+
+		System.out.println( "  a floor climbed back to is the floor that was left: " + after );
+	}
+
+
+	private static String floorState(){
+		com.shatteredpixel.shatteredpixeldungeon.levels.Level level = Dungeon.level;
+		StringBuilder heaps = new StringBuilder();
+		for (int c = 0; c < level.length(); c++){
+			com.shatteredpixel.shatteredpixeldungeon.items.Heap heap = level.heaps.get( c );
+			if (heap != null) heaps.append( c ).append( ':' ).append( heap.peek().name() )
+					.append( 'x' ).append( heap.peek().quantity() ).append( ',' );
+		}
+		return "map " + java.util.Arrays.hashCode( level.map ) + " mobs " + level.mobs.size()
+				+ " heaps " + level.heaps.valueList().size() + " " + Integer.toHexString( heaps.toString().hashCode() );
 	}
 
 

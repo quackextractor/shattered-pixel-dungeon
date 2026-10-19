@@ -212,11 +212,15 @@ public class LevelPipeline {
 				? Transition.DESCEND
 				: Transition.ASCEND;
 
+		boolean cityQuest = transition.destBranch != Dungeon.branch
+				&& Dungeon.depth >= 16 && Dungeon.depth <= 20;
+		if (!cityQuest) com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob.holdAllies( Dungeon.level );
+		saveAll();
+
 		Dungeon.depth    = transition.destDepth;
 		Dungeon.branch   = transition.destBranch;
 
-		Dungeon.generatedLevels.clear();
-		Level level = Dungeon.newLevel();
+		Level level = loadOrGenerate();
 
 		com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.curTransition = null;
 
@@ -237,12 +241,12 @@ public class LevelPipeline {
 	public void handleFall(){
 		fixTimeBeforeSwitching();
 
+		com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob.holdAllies( Dungeon.level );
 		Buff.affect( Dungeon.hero, com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm.Falling.class );
+		saveAll();
 
 		Dungeon.depth++;
-		Dungeon.generatedLevels.clear();
-
-		Level level = Dungeon.newLevel();
+		Level level = loadOrGenerate();
 
 		Dungeon.switchLevel( level, level.fallCell(
 				com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.fallIntoPit ));
@@ -253,6 +257,24 @@ public class LevelPipeline {
 		clearSwitchRequest();
 	}
 
+
+	private static void saveAll(){
+		try {
+			Dungeon.saveAll();
+		} catch (java.io.IOException e){
+			throw new IllegalStateException( "could not save the floor being left", e );
+		}
+	}
+
+	private static Level loadOrGenerate(){
+		if (!Dungeon.levelHasBeenGenerated( Dungeon.depth, Dungeon.branch )) return Dungeon.newLevel();
+		try {
+			return Dungeon.loadLevel( GamesInProgress.curSlot );
+		} catch (java.io.IOException e){
+			throw new IllegalStateException( "could not load depth " + Dungeon.depth + " branch "
+					+ Dungeon.branch + ", which this run already generated", e );
+		}
+	}
 
 	private static void fixTimeBeforeSwitching(){
 		com.shatteredpixel.shatteredpixeldungeon.actors.Actor.fixTime();

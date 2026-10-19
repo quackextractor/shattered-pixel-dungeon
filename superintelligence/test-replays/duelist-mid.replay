@@ -4,16 +4,16 @@ seed=duelist-mid
 hero=DUELIST
 challenges=0
 generation=0
-score=-880.3000528998673
+score=365.5199479870498
 depth=2
-turns=183
+turns=166
 turn_limit=150
 max_slots=96
 allow_equipping=true
-termination=DEATH
+termination=TURN_LIMIT
 reward_profile=default
 group=
-steps=209
+steps=189
 USE 0 WORLD 1295 -1.0  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 1 SLOT 1295 0.0 ThrowingSpike:1,Waterskin:2 20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 0 TARGETING 1295 -1.0  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 2 0 1
@@ -173,53 +173,33 @@ INTERACT 0 WORLD 298 -1.4800000190734863  20 126.0 Food:1,PotionOfStrength:1,Sty
 INTERACT 0 WORLD 337 -1.9800000190734863  20 128.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 398 4036425237856751522 1
 INTERACT 0 WORLD 88 1801.25  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 399 2438896926053896769 1
 MOVE_E 0 WORLD 89 -0.6499999761581421  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 406 -185644291811703110 1
-INTERACT 0 WORLD 282 3.5  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 413 1695209628600949418 1
-MOVE_SE 0 WORLD 317 -2.9800000190734863  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 416 7894276235694761382 1
-INTERACT 0 WORLD 282 1.0  20 2.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 417 -209526656567795852 1
-MOVE_SE 0 WORLD 317 -2.9800000190734863  20 3.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 430 3507921704563108798 1
-INTERACT 0 WORLD 317 -81.0  18 4.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 451 7694766201418603856 1
-INTERACT 0 WORLD 317 -81.0  16 5.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 476 -485996660209609397 1
-INTERACT 0 WORLD 317 -41.0  15 6.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 491 -888944041508484596 1
-USE 0 WORLD 317 -0.5  15 6.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 491 -888944041508484596 1
-USE 1 SLOT 317 0.0 ThrowingSpike:1,Waterskin:2 15 6.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 491 -888944041508484596 1
-USE 5 TARGETING 317 -41.0  14 7.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 530 -4706521247367235197 1
-USE 0 WORLD 317 -0.5  14 7.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 530 -4706521247367235197 1
-USE 1 SLOT 317 0.0 ThrowingSpike:1,Waterskin:2 14 7.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 530 -4706521247367235197 1
-USE 5 TARGETING 317 68.0  12 8.0 Food:1,PotionOfStrength:1,Stylus:1,VelvetPouch():1,Waterskin:1 558 7351294196633450332 1
-USE 0 WORLD 317 -0.5  12 8.0 Food:1,PotionOfStrength:1,Stylus:1,VelvetPouch():1,Waterskin:1 558 7351294196633450332 1
-USE 0 SLOT 317 -84.5 Waterskin:2 10 11.0 PotionOfStrength:1,Stylus:1,VelvetPouch():1,Waterskin:1 593 -798892841353766524 1
-USE 0 WORLD 317 -0.5  10 11.0 PotionOfStrength:1,Stylus:1,VelvetPouch():1,Waterskin:1 593 -798892841353766524 1
-USE 0 SLOT 317 -40.5 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1 605 8408013751962156540 1
-USE 0 WORLD 317 -0.5  9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1 605 8408013751962156540 1
-USE 0 SLOT 317 -0.5 Waterskin:2 9 12.0 Stylus:1,VelvetPouch():1,Waterskin:1 605 8408013751962156540 1
-INTERACT 0 WORLD 317 -1.0  9 13.0 Stylus:1,VelvetPouch():1,Waterskin:1 619 5037980720272352736 1
-USE 0 WORLD 317 -0.5  9 13.0 Stylus:1,VelvetPouch():1,Waterskin:1 619 5037980720272352736 1
-USE 0 SLOT 317 -0.5 Waterskin:2 9 13.0 Stylus:1,VelvetPouch():1,Waterskin:1 619 5037980720272352736 1
-INTERACT 0 WORLD 317 -81.0  7 14.0 Stylus:1,VelvetPouch():1,Waterskin:1 632 -3824702687845893529 1
-USE 0 WORLD 317 -0.5  7 14.0 Stylus:1,VelvetPouch():1,Waterskin:1 632 -3824702687845893529 1
-USE 0 SLOT 317 -0.5 Waterskin:2 7 14.0 Stylus:1,VelvetPouch():1,Waterskin:1 632 -3824702687845893529 1
-INTERACT 0 WORLD 317 -1.0  7 15.0 Stylus:1,VelvetPouch():1,Waterskin:1 646 926025740313065352 1
-USE 0 WORLD 317 -0.5  7 15.0 Stylus:1,VelvetPouch():1,Waterskin:1 646 926025740313065352 1
-USE 0 SLOT 317 -0.5 Waterskin:2 7 15.0 Stylus:1,VelvetPouch():1,Waterskin:1 646 926025740313065352 1
-INTERACT 0 WORLD 317 -41.0  6 16.0 Stylus:1,VelvetPouch():1,Waterskin:1 659 -8479329330643724870 1
-USE 0 WORLD 317 -0.5  6 16.0 Stylus:1,VelvetPouch():1,Waterskin:1 659 -8479329330643724870 1
-USE 0 SLOT 317 -0.5 Waterskin:2 6 16.0 Stylus:1,VelvetPouch():1,Waterskin:1 659 -8479329330643724870 1
-INTERACT 0 WORLD 317 -1.0  6 17.0 Stylus:1,VelvetPouch():1,Waterskin:1 663 -3112422237146281484 1
-USE 0 WORLD 317 -0.5  6 17.0 Stylus:1,VelvetPouch():1,Waterskin:1 663 -3112422237146281484 1
-USE 0 SLOT 317 -0.5 Waterskin:2 6 17.0 Stylus:1,VelvetPouch():1,Waterskin:1 663 -3112422237146281484 1
-INTERACT 0 WORLD 317 -41.0  5 18.0 Stylus:1,VelvetPouch():1,Waterskin:1 676 3228390624133096357 1
-USE 0 WORLD 317 -0.5  5 18.0 Stylus:1,VelvetPouch():1,Waterskin:1 676 3228390624133096357 1
-USE 0 SLOT 317 -0.5 Waterskin:2 5 18.0 Stylus:1,VelvetPouch():1,Waterskin:1 676 3228390624133096357 1
-INTERACT 0 WORLD 317 -41.0  4 19.0 Stylus:1,VelvetPouch():1,Waterskin:1 689 -5078581208328148442 1
-USE 0 WORLD 317 -0.5  4 19.0 Stylus:1,VelvetPouch():1,Waterskin:1 689 -5078581208328148442 1
-USE 0 SLOT 317 -0.5 Waterskin:2 4 19.0 Stylus:1,VelvetPouch():1,Waterskin:1 689 -5078581208328148442 1
-INTERACT 0 WORLD 317 -41.0  3 20.0 Stylus:1,VelvetPouch():1,Waterskin:1 702 3634278675951624658 1
-USE 0 WORLD 317 -0.5  3 20.0 Stylus:1,VelvetPouch():1,Waterskin:1 702 3634278675951624658 1
-USE 0 SLOT 317 -0.5 Waterskin:2 3 20.0 Stylus:1,VelvetPouch():1,Waterskin:1 702 3634278675951624658 1
-INTERACT 0 WORLD 317 -81.0  1 21.0 Stylus:1,VelvetPouch():1,Waterskin:1 715 6999091213233938421 1
-USE 0 WORLD 317 -0.5  1 21.0 Stylus:1,VelvetPouch():1,Waterskin:1 715 6999091213233938421 1
-USE 0 SLOT 317 -0.5 Waterskin:2 1 21.0 Stylus:1,VelvetPouch():1,Waterskin:1 715 6999091213233938421 1
-INTERACT 0 WORLD 317 -1.0  1 22.0 Stylus:1,VelvetPouch():1,Waterskin:1 719 -6247399542346127055 1
-USE 0 WORLD 317 -0.5  1 22.0 Stylus:1,VelvetPouch():1,Waterskin:1 719 -6247399542346127055 1
-USE 0 SLOT 317 -0.5 Waterskin:2 1 22.0 Stylus:1,VelvetPouch():1,Waterskin:1 719 -6247399542346127055 1
-INTERACT 0 WORLD 317 -2500.0  0 0.0 Stylus:1,VelvetPouch():1,Waterskin:1 -1 0 1
+INTERACT 0 WORLD 338 15.0  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 417 -209526656567795852 1
+MOVE_N 0 WORLD 298 -2.9800000190734863  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 418 339783976360170904 1
+INTERACT 0 WORLD 88 1.6000001430511475  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 424 3399762642654853687 1
+MOVE_E 0 WORLD 89 -1.0  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 433 6555189506060929435 1
+INTERACT 0 WORLD 338 15.0  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 442 828080977345068637 1
+MOVE_N 0 WORLD 298 -2.9800000190734863  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 443 3628134941867220241 1
+INTERACT 0 WORLD 88 1.6000001430511475  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 449 198147012827032958 1
+MOVE_E 0 WORLD 89 -1.0  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 452 -1754711431720851480 1
+INTERACT 0 WORLD 338 15.0  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 459 9216624642742465268 1
+MOVE_N 0 WORLD 298 -2.9800000190734863  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 460 6653308802275460202 1
+INTERACT 0 WORLD 88 1.6000001430511475  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 466 1221550278463455341 1
+MOVE_E 0 WORLD 89 -1.0  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 471 2443579081952864367 1
+INTERACT 0 WORLD 338 15.0  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 480 1047473989061532377 1
+MOVE_N 0 WORLD 298 -2.9800000190734863  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 481 -1105252209021713160 1
+INTERACT 0 WORLD 88 1.6000001430511475  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 487 -6957969382399366368 1
+MOVE_E 0 WORLD 89 -1.0  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 492 7954398359317112863 1
+INTERACT 0 WORLD 338 15.0  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 503 -2816716709755444909 1
+MOVE_N 0 WORLD 298 -2.9800000190734863  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 504 -4463597476424922516 1
+INTERACT 0 WORLD 88 1.6000001430511475  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 510 6410404411203801905 1
+MOVE_E 0 WORLD 89 -1.0  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 513 5956868497579121349 1
+INTERACT 0 WORLD 338 15.0  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 518 -5378933061022009540 1
+MOVE_N 0 WORLD 298 -2.9800000190734863  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 519 -2493188397333578924 1
+INTERACT 0 WORLD 88 1.6000001430511475  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 525 4877373589143888052 1
+MOVE_E 0 WORLD 89 -1.0  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 526 421741402855829726 1
+INTERACT 0 WORLD 338 15.0  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 531 3607829001097868948 1
+MOVE_N 0 WORLD 298 -2.9800000190734863  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 532 1313354071200073156 1
+INTERACT 0 WORLD 88 1.6000001430511475  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 538 -8692757477569031395 1
+MOVE_E 0 WORLD 89 -1.0  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 539 -7552419233130840577 1
+INTERACT 0 WORLD 338 15.0  20 0.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 544 1704592009522353075 1
+MOVE_N 0 WORLD 298 -2.9800000190734863  20 1.0 Food:1,PotionOfStrength:1,Stylus:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 545 1244080015126698805 1

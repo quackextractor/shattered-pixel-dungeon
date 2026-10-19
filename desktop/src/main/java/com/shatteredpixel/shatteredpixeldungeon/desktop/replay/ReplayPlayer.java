@@ -693,8 +693,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			}
 
 			if (com.watabou.noosa.Game.switchingScene()){
-				Dungeon.generatedLevels.clear();
-
 				pendingFrames++;
 				if (++switchPendingFrames > SWITCH_PENDING_FRAMES){
 					playback.finish();

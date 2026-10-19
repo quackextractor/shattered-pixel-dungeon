@@ -42,7 +42,7 @@ public class HeadlessGame extends Game {
 		height = 320;
 		density = 1f;
 		version = "";
-		versionCode = 0;
+		versionCode = com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon.v4_0_0;
 		timeScale = 1f;
 		elapsed = 1f/60f;
 		timeTotal = 0f;
