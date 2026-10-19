@@ -236,7 +236,7 @@ public final class RewardCombatCheck {
 			fail( "TALENT_UPGRADE was recorded " + notes + " time(s) and paid " + paid + "." );
 			return;
 		}
-		double levelUp = 2f;
+		double levelUp = config.levelUpReward;
 		if (!( paid > levelUp * notes )){
 			fail( "a talent point pays " + ( paid / notes ) + " against " + levelUp + " for a level."
 					+ " Levelling raises attack, defence and max HP by one each and happens whether the"
