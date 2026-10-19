@@ -242,24 +242,17 @@ Checkpoint.save( new File( dir, "default.bin" ),
 		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
 
 		Network target = new Network( config, new Random( 555L ) );
-		Network.Layer[] before = target.layers();
-		Network.Layer[] after = target.layers();
-
-		boolean anyDifferent = false;
-		for (int i = 0; i < before.length; i++){
-			if (!java.util.Arrays.equals( before[ i ].weights, after[ i ].weights )) anyDifferent = true;
-		}
-		if (anyDifferent){
-			fail( "a network changed between two calls to layers(), which would make this check"
-					+ " meaningless" );
-			return;
-		}
+		Network.Layer[] live = target.layers();
+		float[][] initial = new float[ live.length ][];
+		for (int i = 0; i < live.length; i++) initial[ i ] = live[ i ].weights.clone();
 
 		Checkpoint.load( file, target, config );
 		Network.Layer[] restored = target.layers();
+		Network.Layer[] saved = original.layers();
 
 		for (int i = 0; i < restored.length; i++){
-			if (!java.util.Arrays.equals( restored[ i ].weights, before[ i ].weights )){
+			if (!java.util.Arrays.equals( restored[ i ].weights, saved[ i ].weights )
+					|| java.util.Arrays.equals( restored[ i ].weights, initial[ i ] )){
 				fail( "loading did not overwrite " + restored[ i ].name
 						+ ", so a resume would keep part of the random initialisation" );
 				return;
