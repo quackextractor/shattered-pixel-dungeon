@@ -24,6 +24,7 @@ public class SPDEnv {
 	private final float[] targetMask = new float[ ActionMapper.TARGET_COUNT ];
 	private EnvMode mode = EnvMode.WORLD;
 	private int turnsThisFloor;
+	private final java.util.HashMap< Integer, Integer > turnsByFloor = new java.util.HashMap<>();
 	private int turnsTotal;
 	private int lastDepth = 1;
 	private int lastBranch = 0;
@@ -71,6 +72,7 @@ public class SPDEnv {
 		}
 		mode = EnvMode.WORLD;
 		turnsThisFloor = 0;
+		turnsByFloor.clear();
 		turnsTotal = 0;
 		lastDepth = 1;
 		lastBranch = 0;
@@ -265,9 +267,10 @@ if (++guard > config.actorStepLimit){
 			if (depth > lastDepth){
 				ledger.markFloorCleared();
 			}
+			turnsByFloor.put( lastDepth + 1000 * lastBranch, turnsThisFloor );
+			turnsThisFloor = turnsByFloor.getOrDefault( depth + 1000 * branch, 0 );
 			lastDepth = depth;
 			lastBranch = branch;
-			turnsThisFloor = 0;
 			encoder.resetExplored();
 			mapper.refreshSlots();
 			stallCount = 0;

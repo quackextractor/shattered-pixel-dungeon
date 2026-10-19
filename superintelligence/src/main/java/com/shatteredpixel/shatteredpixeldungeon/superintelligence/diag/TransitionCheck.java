@@ -25,7 +25,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Re
 
 public class TransitionCheck {
 
-	private static final int CHECKS = 10;
+	private static final int CHECKS = 11;
 
 	private static final String SEED = "TRANSITION";
 
@@ -51,6 +51,7 @@ public class TransitionCheck {
 		checkTheHeroActsOnArrivalBeforeTheAgentDoes();
 		checkAscendingAfterDescendingIsServiced();
 		checkTheStairsAreNotShapedAcrossAFloorChange();
+		checkClimbingBackDoesNotRefillTheFloorsTurns();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     floor transitions: " + CHECKS + " checks passed" );
@@ -463,6 +464,42 @@ public class TransitionCheck {
 
 		System.out.println( "  a floor change pays no stair shaping: climbing from cell " + shared
 				+ ", open on both floors, paid 0" );
+	}
+
+
+	private static void checkClimbingBackDoesNotRefillTheFloorsTurns(){
+		EnvConfig config = new EnvConfig();
+		config.turnLimitPerFloor = 12;
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		env.reset( SEED, HeroClass.WARRIOR );
+
+		for (int i = 0; i < 8 && env.running(); i++) env.step( Action.WAIT, 0 );
+		if (!descend( env )){
+			fail( "no exit to descend from, so this case measured nothing." );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+		if (!ascend( env )){
+			fail( "depth 2 has no entrance to climb, so this case measured nothing." );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+		int back = 0;
+		while (env.running() && back < 12){
+			env.step( Action.WAIT, 0 );
+			back++;
+		}
+
+		if (env.running() || env.endReason() != RewardModel.TerminateReason.TURN_LIMIT || back > 4){
+			fail( "with a 12-turn floor limit the hero spent 8 turns on depth 1, went down and came back,"
+					+ " and then waited " + back + " more turns there (episode "
+					+ ( env.running() ? "still running" : "ended " + env.endReason() ) + "). A floor's"
+					+ " budget restarting on every return lets a stair dance outlive any per-floor limit." );
+			return;
+		}
+
+		System.out.println( "  climbing back resumes the floor's turn budget: TURN_LIMIT after " + back
+				+ " more turns on depth 1" );
 	}
 
 
