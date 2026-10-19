@@ -110,6 +110,11 @@ public class WorldDiff {
 						+ ", which the expected snapshot does not have";
 			}
 		}
+		if (!expected.equals( actual )){
+			return "at " + label + ": " + name
+					+ "\n  expected: " + expected
+					+ "\n  actual:   " + actual;
+		}
 		return "";
 	}
 	private static Map< String, String > fields( String row ){
