@@ -251,9 +251,10 @@ if (++guard > config.actorStepLimit){
 		}
 		int depth = Dungeon.depth;
 		int branch = Dungeon.branch;
+		boolean newFloor = depth > curriculum.deepestSeen();
 		curriculum.observe( depth );
 		ledger.shapingScale( curriculum.shapingScale() );
-		if (depth > lastDepth && Dungeon.bossLevel()){
+		if (newFloor && lastBranch == 0 && Dungeon.bossLevel( lastDepth )){
 			reward.note( RewardTerm.BOSS_SLAIN, config.depthReward );
 		}
 		if (depth > MAX_FLOOR_DEPTH){

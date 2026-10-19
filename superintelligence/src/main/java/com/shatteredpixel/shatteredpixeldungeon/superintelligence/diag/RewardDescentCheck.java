@@ -27,6 +27,46 @@ public final class RewardDescentCheck {
 
 	private RewardDescentCheck(){}
 
+	public static void checkTheBossIsPaidForOnLeavingItsFloor( EnvConfig config ){
+		final int[] onArrival = { -1 };
+
+		Outcome o = play( config, 60, "BOSSFLOOR", turn -> {
+			SPDEnv env = turn.env;
+			if (env.mode() != EnvMode.WORLD ){
+				env.step( Action.CANCEL, 0 );
+				return;
+			}
+			if (Dungeon.depth == 5 && onArrival[ 0 ] < 0){
+				onArrival[ 0 ] = env.ledger().notes( RewardTerm.BOSS_SLAIN );
+			}
+			if (Dungeon.depth < 6 && descend( env )){
+				env.step( Action.WAIT, 0 );
+				return;
+			}
+			env.step( Action.WAIT, 0 );
+		} );
+
+		if (onArrival[ 0 ] < 0 || o.deepest < 6){
+			fail( "the driver reached depth " + o.deepest + " and not 6, so neither the arrival on the"
+					+ " sewer boss floor nor the departure from it was measured." );
+			return;
+		}
+		if (onArrival[ 0 ] != 0){
+			fail( "arriving on depth 5 noted BOSS_SLAIN " + onArrival[ 0 ] + " time(s) before Goo was"
+					+ " even seen. SPDEnv asked Dungeon.bossLevel() of the depth it had just arrived on." );
+			return;
+		}
+		if (o.notes( RewardTerm.BOSS_SLAIN ) != 1){
+			fail( "leaving depth 5 for depth 6 noted BOSS_SLAIN " + o.notes( RewardTerm.BOSS_SLAIN )
+					+ " time(s), expected once. The game unlocks a boss floor's exit when the boss dies." );
+			return;
+		}
+
+		System.out.println( "  BOSS_SLAIN is paid leaving depth 5 (" + fmt( o.termTotal( RewardTerm.BOSS_SLAIN ) )
+				+ "), not arriving on it" );
+	}
+
+
 	public static void checkOnlyANewFloorIsPaidFor( EnvConfig config ){
 		final int[] descents = { 0 };
 		final int[] ascents = { 0 };
