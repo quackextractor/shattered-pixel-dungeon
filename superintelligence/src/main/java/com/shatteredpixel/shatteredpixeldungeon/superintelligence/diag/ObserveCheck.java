@@ -1,10 +1,22 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.armor.LeatherArmor;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfFrost;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfMindVision;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfToxicGas;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfLullaby;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfMirrorImage;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTerror;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.ObservationEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots;
@@ -15,7 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 public class ObserveCheck {
-	private static final int CHECKS = 9;
+	private static final int CHECKS = 10;
 	private static final List< String > failures = new ArrayList<>();
 	private static int checksFailed = 0;
 	private static void check( Runnable body ){
@@ -47,6 +59,7 @@ public class ObserveCheck {
 		check( () -> checkTheOrderedLogNamesEveryDraw( env ) );
 		check( ObserveCheck::checkTheGeneratorLogIsInertWhenOff );
 		check( ObserveCheck::checkAStandInEmitterSpendsNoGameplayDraw );
+		check( ObserveCheck::checkInventoryShowsOnlyWhatThePlayerSees );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
 		} else {
@@ -117,6 +130,39 @@ public class ObserveCheck {
 			fail( "Quickslots.capture returned null" );
 		}
 	}
+	private static void checkInventoryShowsOnlyWhatThePlayerSees(){
+		List< Item > potions = new ArrayList<>();
+		List< Item > scrolls = new ArrayList<>();
+		for (Item item : new Item[]{ new PotionOfStrength(), new PotionOfToxicGas(), new PotionOfFrost(),
+				new PotionOfMindVision(), new ScrollOfUpgrade(), new ScrollOfTerror(), new ScrollOfLullaby(),
+				new ScrollOfMirrorImage() }){
+			if (item.isIdentified()) continue;
+			(item instanceof Potion ? potions : scrolls).add( item );
+		}
+		if (potions.size() < 2 || scrolls.size() < 2){
+			fail( "the fixture needs two unidentified potions and two unidentified scrolls" );
+			return;
+		}
+		Item plain = new LeatherArmor();
+		Item hidden = new LeatherArmor().upgrade( 3 );
+		hidden.cursed = true;
+		sameEncoding( "two unidentified potions", potions.get( 0 ), potions.get( 1 ));
+		sameEncoding( "two unidentified scrolls", scrolls.get( 0 ), scrolls.get( 1 ));
+		sameEncoding( "armor with an unknown +3 and an unknown curse", plain, hidden );
+	}
+
+	private static void sameEncoding( String what, Item a, Item b ){
+		int width = InventoryEncoder.FEATURES_PER_SLOT;
+		float[] out = new float[ 2 * width ];
+		InventoryEncoder.encode( Arrays.asList( a, b ), out, 2 );
+		float[] first = Arrays.copyOfRange( out, 0, width );
+		float[] second = Arrays.copyOfRange( out, width, 2 * width );
+		if (!Arrays.equals( first, second )){
+			fail( what + " encode differently, so the inventory shows what the game hides: "
+					+ Arrays.toString( first ) + " vs " + Arrays.toString( second ));
+		}
+	}
+
 	private static void fail( String message ){
 		failures.add( message );
 	}

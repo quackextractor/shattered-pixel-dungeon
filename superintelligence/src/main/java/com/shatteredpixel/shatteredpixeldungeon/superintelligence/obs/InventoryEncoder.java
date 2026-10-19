@@ -7,7 +7,10 @@ import com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.exotic.ExoticPotion;
+import com.shatteredpixel.shatteredpixeldungeon.items.rings.Ring;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.exotic.ExoticScroll;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
@@ -51,11 +54,11 @@ public class InventoryEncoder {
 			out[ base + F_PRESENT ]     = 1f;
 			out[ base + F_TYPE_EMBED ]  = typeIndex( item );
 			out[ base + F_CATEGORY ]    = category( item );
-			out[ base + F_LEVEL ]       = item.level();
-			out[ base + F_UPGRADE ]     = item.level();
+			out[ base + F_LEVEL ]       = item.visiblyUpgraded();
+			out[ base + F_UPGRADE ]     = item.visiblyUpgraded();
 			out[ base + F_QUANTITY ]    = item.quantity();
 			out[ base + F_VALUE ]       = Math.min( 1000f, item.value() ) / 1000f;
-			out[ base + F_CURSED ]      = item.cursed ? 1f : 0f;
+			out[ base + F_CURSED ]      = item.visiblyCursed() ? 1f : 0f;
 			out[ base + F_CURSED_KNOWN]= item.cursedKnown ? 1f : 0f;
 			out[ base + F_LEVEL_KNOWN ] = item.levelKnown ? 1f : 0f;
 			out[ base + F_IDENTIFIED ]  = item.isIdentified() ? 1f : 0f;
@@ -66,7 +69,16 @@ public class InventoryEncoder {
 	}
 
 	private static float typeIndex( Item item ){
-		return TypeRegistry.indexOf( item.getClass() );
+		return TypeRegistry.indexOf( visibleClass( item ) );
+	}
+
+	private static Class<?> visibleClass( Item item ){
+		if (item instanceof ExoticPotion && !((Potion) item).isKnown()) return ExoticPotion.class;
+		if (item instanceof Potion && !((Potion) item).isKnown()) return Potion.class;
+		if (item instanceof ExoticScroll && !((Scroll) item).isKnown()) return ExoticScroll.class;
+		if (item instanceof Scroll && !((Scroll) item).isKnown()) return Scroll.class;
+		if (item instanceof Ring && !((Ring) item).isKnown()) return Ring.class;
+		return item.getClass();
 	}
 
 	private static float category( Item item ){
@@ -81,10 +93,9 @@ public class InventoryEncoder {
 	}
 
 	private static float knownKindIndex( Item item ){
-		if (item.isIdentified()) return 0f;
-		if (item instanceof Potion) return item.icon;
-		if (item instanceof Scroll) return item.icon;
-		return 0f;
+		if (item.icon == -1) return 0f;
+		boolean shown = item.isIdentified() || (item instanceof Ring && ((Ring) item).isKnown());
+		return shown ? item.icon + 1 : 0f;
 	}
 
 	private static boolean isEquipped( Hero hero, Item item ){
