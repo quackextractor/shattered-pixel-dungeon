@@ -12,7 +12,7 @@ rem
 rem   replay-viewer                    list the recordings and play one by number
 rem   replay-viewer <file>             play a specific recording
 rem   replay-viewer --list             list the available recordings and stop
-rem   replay-viewer --record <seed>    record a new episode into test-replays\
+rem   replay-viewer --record <seed>    record a new episode into trainer-replays\
 rem   replay-viewer --verify <file>    check a recording still reproduces, headless
 rem
 rem With no argument it lists every recording, grouped by hero class and ranked
@@ -61,6 +61,9 @@ for %%I in ("%ROOT%") do set "ROOT=%%~fI"
 rem What the footer tells a reader to type, which is a path into the module and
 rem not a bare name - the script is no longer on the repository root.
 set "MODULE_NAME=superintelligence\replay-viewer.bat"
+
+set "APPVERSIONCODE="
+for /f "tokens=2 delims==" %%V in ('findstr /r /c:"appVersionCode *=" "%ROOT%\build.gradle"') do set /a "APPVERSIONCODE=%%V" >nul
 
 set "TESTREPLAYDIR=%MODULE%\test-replays"
 set "TRAINERREPLAYDIR=%MODULE%\trainer-replays"
@@ -284,26 +287,23 @@ exit /b 0
 
 rem --- record ----------------------------------------------------------------
 
-rem --record writes into the test corpus, not the trainer directory. It records through the scripted
-rem policy, which is the same path the committed fixtures were built by and the only one that is
-rem known to produce a recording the viewer can play end to end.
 :record
 if "%~2"=="" (
     echo Usage: %MODULE_NAME% --record ^<seed^>
     exit /b 1
 )
-if not exist "%TESTREPLAYDIR%" mkdir "%TESTREPLAYDIR%"
+if not exist "%TRAINERREPLAYDIR%" mkdir "%TRAINERREPLAYDIR%"
 echo Recording seed "%~2" with the scripted policy. Deterministic, so the same
 echo seed always produces the same recording.
 echo.
-call "%GRADLE%" --offline --no-daemon -q :superintelligence:run --args="rollout --seed %~2 --max-turns 1500 --no-color --save %TESTREPLAYDIR%/%~2.replay"
+call "%GRADLE%" --offline --no-daemon -q :superintelligence:run --args="rollout --seed %~2 --max-turns 1500 --no-color --save %TRAINERREPLAYDIR%/%~2.replay"
 if errorlevel 1 (
     echo.
     echo Recording failed.
     exit /b 1
 )
 echo.
-echo Saved %TESTREPLAYDIR%\%~2.replay
+echo Saved %TRAINERREPLAYDIR%\%~2.replay
 echo Play it with:  %MODULE_NAME% %~2.replay
 exit /b 0
 
@@ -360,7 +360,7 @@ if not exist "%RUNBAT%" (
     exit /b !RC!
 )
 
-call "%RUNBAT%" %SPDJOPTS% -DImplementation-Title=shatteredpixel -DImplementation-Version=4.0.1 com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ReplayLauncher --file "%FILE%"
+call "%RUNBAT%" %SPDJOPTS% -DImplementation-Title=shatteredpixel -DImplementation-Version=%APPVERSIONCODE% com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ReplayLauncher --file "%FILE%"
 
 rem Captured before anything else can run: the menu prompt, the catalog, even a failed
 rem lookup would overwrite it, and the exit code is the only report the caller gets about
@@ -417,7 +417,8 @@ rem produce one. Nothing else about listing, resolving or playing a recording ne
 :supervisor
 set "SUPARGS=%~1"
 set "RUNBAT=%ROOT%\desktop\build\replay-run.bat"
-set "SUPJAR=%MODULE%\build\libs\superintelligence-4.0.2.jar"
+set "SUPJAR="
+for %%J in ("%MODULE%\build\libs\superintelligence-*.jar") do set "SUPJAR=%%~fJ"
 
 if not exist "%RUNBAT%" goto :supbuild
 rem The launcher bakes in a classpath, so it goes stale when the classes it names are rebuilt under
