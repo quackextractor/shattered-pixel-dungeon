@@ -52,10 +52,7 @@ param(
     [string] $Name,
 
     # Continue the run in out/run/weights.bin instead of starting fresh.
-    [switch] $Resume,
-
-    # Extra gradle output.
-    [switch] $GradleInfo
+    [switch] $Resume
 )
 
 $ErrorActionPreference = 'Stop'
@@ -152,13 +149,9 @@ try {
     }
 
     if (-not $Name) { $Name = "$Profile-$Generations" }
-    # The run's name is also its group: the trainer files this run's recordings under it and the
-    # catalogue lists them as a section of their own, so two runs can be compared against each other.
-    # Sanitised rather than refused, because a name is a label and a label is not worth failing a run
-    # over - a space or a slash becomes a dash.
     $group = ($Name -replace '[^A-Za-z0-9._-]', '-')
-    $csv = Join-Path $evidence "$Name.csv"
-    $log = Join-Path $evidence "$Name.log"
+    $csv = Join-Path $evidence "$group.csv"
+    $log = Join-Path $evidence "$group.log"
     $bin = Join-Path $runDir 'weights.bin'
 
     # a stale CSV would make the summary below describe the previous run
@@ -195,14 +188,11 @@ try {
     Write-Host ''
 
     $watch = [System.Diagnostics.Stopwatch]::StartNew()
-    if ($GradleInfo) {
-        & ./gradlew :superintelligence:train --offline --console=plain "--args=$argLine" *>&1 |
-            Tee-Object -FilePath $log
-    } else {
-        & ./gradlew :superintelligence:train --offline --console=plain "--args=$argLine" *>&1 |
-            Tee-Object -FilePath $log
-    }
+    $ErrorActionPreference = 'Continue'
+    & ./gradlew :superintelligence:train --offline --console=plain "--args=$argLine" *>&1 |
+        Tee-Object -FilePath $log
     $exit = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
     $watch.Stop()
 
     if ($exit -ne 0) {
