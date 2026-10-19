@@ -1,49 +1,72 @@
 #!/bin/sh
-#
-# Pre-commit gate.
-#
-# Three checks, in order of cost. The two badge syncs run first because they are instant and their
-# failure modes are trivially fixable, so there is no reason to spend the test suite's time to then
-# find out the commit would have been rejected for a version number.
-#
-# Both the badges and the test suite abort the commit. Neither is ever bypassed: a hook that can be
-# skipped with --no-verify is a suggestion, and the value here is that a broken gate stops the commit
-# rather than being noticed later.
-#
-# The test suite is `verifyall`, not `:superintelligence:gates`. Those are not the same thing and the
-# difference mattered: gates covers only the Superintelligence module, so a commit touching the desktop
-# replay player - ReplayController, ReplayPlayer, ReplayLauncher, replay-viewer.bat - passed this hook
-# without a single one of its own tests running. verifyall adds :desktop:playbackcheck, which drives
-# ReplayPlayer directly and is the cheapest check there is for the code most replay work changes.
-#
-# ---------------------------------------------------------------------------------------------------
-# TWO VERSION LINES, AND THIS IS THE PART THAT IS EASY TO GET WRONG
-#
-# The repository versions two subjects that move for different reasons and must never be compared to
-# each other:
-#
-#   the game              - upstream Shattered Pixel Dungeon. Its badge is checked against the newest
-#                           `v*` git tag, because that tag *is* the game's version. Nothing written by
-#                           hand can outvote it, and a merge brings the two into agreement by itself.
-#   the Superintelligence - this fork's module, versioned on its own line. Its badge is checked against
-#                           `superintelligence/CHANGELOG.md`.
-#
-# Before the split there was one changelog and one badge, and the hook read both at the repo root. Left
-# as it was, it would compare the *game's* badge against the *module's* changelog and, finding a
-# mismatch, silently rewrite the game's readme with a module version - a wrong answer committed by a
-# check that reported success. The two are read from their own file and their own source, and the game
-# check is skipped with a warning rather than guessed at when the clone has no tags.
 
 set -e
 
 repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root"
 
-# BSD and GNU sed disagree about -i, so every file below is rewritten rather than edited in place. One
-# extra temp file in a hook that runs once per commit costs nothing; a sed that works on the developer's
-# machine and silently does nothing on CI is worth more.
+git_dir=$(git rev-parse --absolute-git-dir)
+unstaged_patch="$git_dir/pre-commit-unstaged.patch"
+untracked_dir="$git_dir/pre-commit-untracked"
+untracked_list="$git_dir/pre-commit-untracked.list"
+
+if [ -e "$unstaged_patch" ] || [ -e "$untracked_dir" ]; then
+    echo "[ERROR] an earlier pre-commit run left work set aside and could not restore it:"
+    echo "        $unstaged_patch (git apply it) and $untracked_dir (move its files back)."
+    echo "        Restore them, delete both, and commit again."
+    exit 1
+fi
+
+restore_worktree() {
+    _status=$?
+    trap - EXIT INT TERM
+    set +e
+    if [ -d "$untracked_dir" ]; then
+        while IFS= read -r _f; do
+            if [ -e "$untracked_dir/$_f" ]; then
+                mkdir -p "$(dirname "$_f")"
+                mv "$untracked_dir/$_f" "$_f" || _status=1
+            fi
+        done < "$untracked_list"
+        if [ -z "$(find "$untracked_dir" -type f 2>/dev/null | head -1)" ]; then
+            rm -rf "$untracked_dir" "$untracked_list"
+        else
+            echo "[ERROR] some untracked files could not be moved back; they are under $untracked_dir"
+            _status=1
+        fi
+    fi
+    rm -f "$untracked_list"
+    if [ -s "$unstaged_patch" ]; then
+        if git apply --binary --whitespace=nowarn "$unstaged_patch"; then
+            rm -f "$unstaged_patch"
+        else
+            echo "[ERROR] could not restore unstaged changes; they are saved in $unstaged_patch"
+            exit 1
+        fi
+    else
+        rm -f "$unstaged_patch"
+    fi
+    exit $_status
+}
+
+git diff --binary > "$unstaged_patch"
+git ls-files --others --exclude-standard > "$untracked_list"
+trap restore_worktree EXIT
+trap 'exit 130' INT TERM
+
+if [ -s "$unstaged_patch" ]; then
+    git checkout -- .
+fi
+if [ -s "$untracked_list" ]; then
+    while IFS= read -r _f; do
+        mkdir -p "$untracked_dir/$(dirname "$_f")"
+        mv "$_f" "$untracked_dir/$_f"
+    done < "$untracked_list"
+else
+    rm -f "$untracked_list"
+fi
+
 set_badge() {
-    # $1 file, $2 label the badge carries, $3 current value, $4 correct value
     _file="$1"; _label="$2"; _have="$3"; _want="$4"
 
     if [ -z "$_have" ]; then
@@ -65,14 +88,10 @@ set_badge() {
 }
 
 read_badge() {
-    # $1 file, $2 badge label. First match wins, which is why the two badges in README.md carry
-    # different labels rather than the same one twice - `version-` and `superintelligence-`.
     grep -a -o "img.shields.io/badge/$2-[0-9][^-]*-blue.svg" "$1" \
         | head -1 \
         | sed "s|.*$2-||; s|-blue.svg||"
 }
-
-# ---------------------------------------------------------------- the game: newest v* tag
 
 game_version=$(git tag --list 'v[0-9]*' --sort=-v:refname 2>/dev/null | head -1 | sed 's/^v//')
 
@@ -84,14 +103,6 @@ else
     set_badge README.md 'version' "$readme_game" "$game_version"
 fi
 
-# ---------------------------------------------------------------- the module: its own changelog
-
-# A NUL anywhere makes grep read the file as binary and print 'Binary file ... matches' to stdout
-# instead of the matches. `$(...)` captures that, the pattern does not match it, and the garbage is
-# then written straight into a README badge - which is how both badges in this repository came to
-# read 'version-Binary file superintelligence/CHANGELOG.md matches-blue.svg'. `-a` below removes the
-# failure mode; this refuses rather than repairs, because a changelog with a NUL in it is a bug in
-# whatever wrote it and a badge that silently absorbs the bug hides it.
 for _md in README.md $(ls superintelligence/*.md docs/*.md 2>/dev/null); do
     if LC_ALL=C tr -d '\11\12\15\40-\376' < "$_md" | grep -q . 2>/dev/null; then
         echo "[ERROR] $_md carries a control byte."
@@ -101,8 +112,6 @@ for _md in README.md $(ls superintelligence/*.md docs/*.md 2>/dev/null); do
     fi
 done
 
-# The changelog's newest *released* heading. 'Unreleased' does not match the numeric pattern, so an
-# unreleased section above it is skipped rather than being read as the current version.
 si_changelog_version=$(grep -a -o '^## \[[0-9][^]]*\]' superintelligence/CHANGELOG.md \
     | head -1 \
     | sed 's/^## \[//; s/\]$//')
@@ -116,24 +125,15 @@ fi
 si_readme_version=$(read_badge superintelligence/README.md 'version')
 set_badge superintelligence/README.md 'version' "$si_readme_version" "$si_changelog_version"
 
-# The root README carries the module's version a second time, as its own badge, because that is the one
-# place a reader arrives who has not opened this directory yet. Checked against the same source rather
-# than copied, so the two cannot disagree.
 root_si_version=$(read_badge README.md 'superintelligence')
 set_badge README.md 'superintelligence' "$root_si_version" "$si_changelog_version"
 
-# ---------------------------------------------------------------- test suite
-
-# verifyall = :superintelligence:gates + :desktop:playbackcheck. See the note at the top for why the
-# aggregate rather than the Superintelligence half.
-echo "[INFO] running verifyall (:superintelligence:gates + :desktop:playbackcheck)"
+echo "[INFO] running verifyall (:superintelligence:gates + :desktop:playbackcheck) on the staged tree"
 
 if ! ./gradlew --quiet verifyall; then
     echo ""
     echo "[ERROR] the gate suite failed. The commit was not made."
     echo "        Run './gradlew verifyall' on its own to see which gate, and why."
-    echo "        A failing gate is never to be worked around by disabling it; see the project's own"
-    echo "        notes on why each one exists."
     exit 1
 fi
 
