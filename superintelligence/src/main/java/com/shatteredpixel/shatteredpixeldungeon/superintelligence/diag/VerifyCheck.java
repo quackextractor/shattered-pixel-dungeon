@@ -16,7 +16,7 @@ import java.util.List;
 
 public class VerifyCheck {
 
-	private static final int CHECKS = 14;
+	private static final int CHECKS = 15;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -40,6 +40,7 @@ public class VerifyCheck {
 		checkTheDeathStepIsNotHeldToADrawCount();
 		checkAPrefixDoesNotVerify( good );
 		checkTheHeaderCarriesTheRunLimits( good );
+		checkVerifyLeavesACallersTraceOn( good );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     verification detects divergence: " + CHECKS + " checks passed" );
@@ -413,6 +414,19 @@ public class VerifyCheck {
 			fail( where, "wrote 11/12/13/14, read back " + read.turnLimitTotal + "/" + read.stallLimit + "/"
 					+ read.freeStepBudget + "/" + read.actorStepLimit
 					+ ", so verify replays under limits the run never had" );
+		}
+	}
+
+	private static void checkVerifyLeavesACallersTraceOn( Replay source ){
+		Replay copy = copyOf( source );
+		for (Replay.Step step : copy.steps) step.baseDraws = -1;
+		com.watabou.utils.RandomTrace.enable();
+		verify( copy );
+		boolean on = com.watabou.utils.RandomTrace.enabled();
+		com.watabou.utils.RandomTrace.disable();
+		if (!on){
+			fail( "verify leaves a caller's RNG trace on", "verifying a recording without draw counts turned"
+					+ " the trace off, so rngtrace on such a file reports zero draws for every step" );
 		}
 	}
 

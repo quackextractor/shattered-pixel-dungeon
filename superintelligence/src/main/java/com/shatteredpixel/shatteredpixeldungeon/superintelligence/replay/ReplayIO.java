@@ -330,12 +330,9 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		env.reset( replay.seedText, heroClass );
 		if (observer != null) observer.onReset();
 
-		boolean traceStream = replay.recordsRngFingerprint();
-		if (traceStream ){
+		if (replay.recordsRngFingerprint()){
 			com.watabou.utils.RandomTrace.reset();
 			com.watabou.utils.RandomTrace.enable();
-		} else {
-			com.watabou.utils.RandomTrace.disable();
 		}
 
 		boolean wireDroppedFields = replay.wireDroppedStepFields();
