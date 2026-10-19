@@ -4,7 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 
 public class RewardCheck {
 
-	private static final int CHECKS = 36;
+	private static final int CHECKS = 37;
 
 	public static void main( String[] args ){
 		EnvConfig config = new EnvConfig();
@@ -25,6 +25,7 @@ public class RewardCheck {
 
 		RewardDescentCheck.checkOnlyANewFloorIsPaidFor( config );
 		RewardDescentCheck.checkTheBossIsPaidForOnLeavingItsFloor( config );
+		RewardDescentCheck.checkPickingUpTheAmuletWins( config );
 		RewardDescentCheck.checkDefaultProfilePaysEveryTerm();
 		RewardDescentCheck.checkDepthOnlyPaysOnlyForDepth();
 		RewardDescentCheck.checkDepthOnlyKeepsTheFourNegatives();

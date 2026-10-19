@@ -11,7 +11,6 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardL
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 public class SPDEnv {
-	public static final int MAX_FLOOR_DEPTH = 26;
 	private final EnvConfig config;
 	private final HeadlessGame game;
 	private final LevelPipeline pipeline;
@@ -257,7 +256,7 @@ if (++guard > config.actorStepLimit){
 		if (newFloor && lastBranch == 0 && Dungeon.bossLevel( lastDepth )){
 			reward.note( RewardTerm.BOSS_SLAIN, config.depthReward );
 		}
-		if (depth > MAX_FLOOR_DEPTH){
+		if (wonTheGame()){
 			settleHeroOnLanding();
 			return terminate( RewardModel.TerminateReason.VICTORY );
 		}
@@ -277,6 +276,10 @@ if (++guard > config.actorStepLimit){
 		}
 		refreshMasksAfterDrain();
 		return ledger.flushTurn();
+	}
+	private static boolean wonTheGame(){
+		return com.shatteredpixel.shatteredpixeldungeon.Statistics.ascended
+				|| Dungeon.hero.belongings.getItem( com.shatteredpixel.shatteredpixeldungeon.items.Amulet.class ) != null;
 	}
 	private void settleHeroOnLanding(){
 		mapper.refreshSlots();

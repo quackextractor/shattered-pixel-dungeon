@@ -67,6 +67,31 @@ public final class RewardDescentCheck {
 	}
 
 
+	public static void checkPickingUpTheAmuletWins( EnvConfig config ){
+		Outcome o = play( config, 6, "AMULET", turn -> {
+			if (turn.step == 1){
+				Dungeon.level.drop( new com.shatteredpixel.shatteredpixeldungeon.items.Amulet(),
+						Dungeon.hero.pos );
+				turn.env.step( Action.INTERACT, 0 );
+				return;
+			}
+			turn.env.step( Action.WAIT, 0 );
+		} );
+
+		if (o.endReason != com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel
+				.TerminateReason.VICTORY || o.termTotal( RewardTerm.VICTORY ) != config.victoryReward){
+			fail( "the hero picked up the Amulet of Yendor and the episode ended " + o.endReason + " with "
+					+ fmt( o.termTotal( RewardTerm.VICTORY ) ) + " of VICTORY. Picking it up is where the game"
+					+ " offers to end the run as a win, and the old test - depth > 26 - is a floor that"
+					+ " does not exist: depth 26 has an entrance and no exit." );
+			return;
+		}
+
+		System.out.println( "  picking up the Amulet ends the run as VICTORY, paying "
+				+ fmt( o.termTotal( RewardTerm.VICTORY ) ) );
+	}
+
+
 	public static void checkOnlyANewFloorIsPaidFor( EnvConfig config ){
 		final int[] descents = { 0 };
 		final int[] ascents = { 0 };
