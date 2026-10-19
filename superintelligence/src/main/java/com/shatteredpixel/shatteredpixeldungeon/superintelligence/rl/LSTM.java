@@ -97,11 +97,6 @@ this.h = new Tensor( 1, size );
 		System.arraycopy( from, size, c.data, 0, size );
 	}
 
-	public void stateFrom( Tensor other ){
-		h.copyFrom( other );
-	}
-
-
 	public int cacheLength(){
 		return preAct.cols + hPrev.cols + cPrev.cols + c.cols + scratch.cols;
 	}
@@ -255,10 +250,5 @@ public void backward( Tensor x, Tensor dOut, Tensor dHPrev, Tensor dCPrev ){
 		if (x >= 0) return (float) (1.0 / (1.0 + Math.exp( -x )));
 		float e = (float) Math.exp( x );
 		return e / (1f + e);
-	}
-
-	private static float tanhSq( float x ){
-		float t = (float) Math.tanh( x );
-		return t * t;
 	}
 }

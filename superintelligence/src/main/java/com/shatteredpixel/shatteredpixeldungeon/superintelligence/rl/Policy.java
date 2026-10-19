@@ -116,21 +116,10 @@ public class Policy {
 	}
 
 
-	public static float valueGradient( float predicted, float target ){
-		return predicted - target;
-	}
-
-
 	public static float valueGradient( float predicted, float target, float maxResidual ){
 		float delta = predicted - target;
 		if (maxResidual > 0f) return Math.max( -maxResidual, Math.min( maxResidual, delta ));
 		return delta;
-	}
-
-
-	public static float valueLoss( float predicted, float target ){
-		float delta = predicted - target;
-		return 0.5f * delta * delta;
 	}
 
 
