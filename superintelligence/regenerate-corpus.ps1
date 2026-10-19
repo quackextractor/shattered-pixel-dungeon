@@ -138,19 +138,23 @@ function Report-Recording {
     }
 }
 
-$failed = @()
-$running = @()
-foreach ($entry in $plan) {
-    while ($running.Count -ge $Parallel) {
-        Report-Recording (Complete-Recording $running[0])
-        $running = @($running | Select-Object -Skip 1)
+function Invoke-Throttled {
+    param($Items, [scriptblock]$Start, [scriptblock]$Finish)
+    $running = @()
+    foreach ($item in $Items) {
+        while ($running.Count -ge $Parallel) {
+            & $Finish $running[0]
+            $running = @($running | Select-Object -Skip 1)
+        }
+        $running += , (& $Start $item)
     }
-    $running += Start-Recording -Name $entry[0] -Hero $entry[1] -Turns $entry[2] -Seed $entry[0]
+    foreach ($job in $running) { & $Finish $job }
 }
-while ($running.Count -gt 0) {
-    Report-Recording (Complete-Recording $running[0])
-    $running = @($running | Select-Object -Skip 1)
-}
+
+$failed = @()
+Invoke-Throttled $plan `
+    { param($entry) Start-Recording -Name $entry[0] -Hero $entry[1] -Turns $entry[2] -Seed $entry[0] } `
+    { param($job) Report-Recording (Complete-Recording $job) }
 
 Write-Host "probing for a death-terminated run (up to ${DeathProbeSeconds}s)"
 
@@ -238,44 +242,40 @@ if (Test-Path $deathBuilt) {
 
 Write-Host "verifying every recording reproduces, $Parallel at a time"
 
-$files = @(Get-ChildItem $Dir -File -Filter *.replay | Sort-Object Name)
-$pending = @()
-foreach ($f in $files) {
-    $log = Join-Path $logDir "verify-$($f.BaseName).log"
-    $work = Join-Path $logDir "verifywork-$($f.BaseName)"
+function Start-Verify {
+    param($File)
+    $log = Join-Path $logDir "verify-$($File.BaseName).log"
+    $work = Join-Path $logDir "verifywork-$($File.BaseName)"
     if (Test-Path $work) { Remove-Item $work -Recurse -Force }
     New-Item -ItemType Directory -Path $work | Out-Null
 
     $proc = Start-Process -FilePath 'java' -PassThru -NoNewWindow `
         -RedirectStandardOutput $log -RedirectStandardError "$log.err" `
-        -ArgumentList @('-cp', $cp, $main, 'verify', $f.FullName, '--out', $work, '--no-color')
+        -ArgumentList @('-cp', $cp, $main, 'verify', $File.FullName, '--out', $work, '--no-color')
     $null = $script:spawned.Add($proc)
-    $pending += , [PSCustomObject]@{ File = $f; Proc = $proc; Log = $log }
+    [PSCustomObject]@{ File = $File; Proc = $proc; Log = $log }
+}
+
+function Complete-Verify {
+    param($Item)
+    $Item.Proc.WaitForExit($PerFileSeconds * 1000) | Out-Null
+    if (-not $Item.Proc.HasExited) { $Item.Proc.Kill(); $Item.Proc.WaitForExit(5000) | Out-Null }
+    $out = (Get-Content $Item.Log -Raw -ErrorAction SilentlyContinue)
+    if ($Item.Proc.HasExited -and $out -match '\[OK\]') {
+        $steps = (Select-String -InputObject $out -Pattern 'steps=(\d+)').Matches.Groups[1].Value
+        $script:verified += , [PSCustomObject]@{ Name = $Item.File.Name; Steps = [int]$steps }
+    } else {
+        $script:bad += $Item.File.Name
+        if (-not (Test-Path $rejected)) { New-Item -ItemType Directory -Path $rejected | Out-Null }
+        Move-Item $Item.File.FullName (Join-Path $rejected $Item.File.Name) -Force
+    }
 }
 
 $bad = @()
 $verified = @()
-while ($pending.Count -gt 0) {
-    $item = $pending[0]
-    $pending = @($pending | Select-Object -Skip 1)
-
-    $item.Proc.WaitForExit($PerFileSeconds * 1000) | Out-Null
-    if (-not $item.Proc.HasExited) {
-        $item.Proc.Kill()
-        $bad += $item.File.Name
-        continue
-    }
-
-    $out = (Get-Content $item.Log -Raw -ErrorAction SilentlyContinue)
-    if ($out -match '\[OK\]') {
-        $steps = (Select-String -InputObject $out -Pattern 'steps=(\d+)').Matches.Groups[1].Value
-        $verified += , [PSCustomObject]@{ Name = $item.File.Name; Steps = [int]$steps }
-    } else {
-        $bad += $item.File.Name
-        if (-not (Test-Path $rejected)) { New-Item -ItemType Directory -Path $rejected | Out-Null }
-        Move-Item $item.File.FullName (Join-Path $rejected $item.File.Name) -Force
-    }
-}
+Invoke-Throttled @(Get-ChildItem $Dir -File -Filter *.replay | Sort-Object Name) `
+    { param($file) Start-Verify $file } `
+    { param($item) Complete-Verify $item }
 
 foreach ($v in ($verified | Sort-Object Name)) {
     Write-Host ("  {0,-24} reproduces ({1} steps)" -f $v.Name, $v.Steps)
