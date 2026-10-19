@@ -98,6 +98,33 @@ public final class ConfigDotEnvCheck {
 	}
 
 
+	public static void checkALoneQuoteIsAValue(){
+		File dir = new File( ConfigDefaults.scratch, "dotenv-quote" );
+		dir.mkdirs();
+
+		Path file = new File( dir, "run.properties" ).toPath();
+		try {
+			Files.writeString( file, "" );
+			Files.writeString( new File( dir, ".env" ).toPath(), "SPD_WORKER_HEAP_MAX='\n" );
+		} catch (IOException e){
+			fail( "could not write the quote fixture: " + e.getMessage() );
+			return;
+		}
+
+		try {
+			EnvConfigBinder.Loaded loaded = EnvConfigBinder.load( file );
+			if (!"'".equals( loaded.hyper.workerHeapMax )){
+				fail( "a lone quote in .env became \"" + loaded.hyper.workerHeapMax + "\", not '" );
+				return;
+			}
+		} catch (IOException | RuntimeException e){
+			fail( "a lone quote in .env crashed the load: " + e );
+			return;
+		}
+		System.out.println( "  a lone quote in .env is read as itself" );
+	}
+
+
 	public static void checkABadDotEnvValueNamesTheDotEnv(){
 		File dir = new File( ConfigDefaults.scratch, "dotenv-origin" );
 		dir.mkdirs();

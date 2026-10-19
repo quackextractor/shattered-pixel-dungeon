@@ -415,8 +415,8 @@ public class EnvConfigBinder {
 
 	private static String unquote( String value ){
 		if (value.length() >= 2
-				&& (value.startsWith( "\"" ) && value.endsWith( "\"" ))
-				|| (value.startsWith( "'" ) && value.endsWith( "'" ))){
+				&& ((value.startsWith( "\"" ) && value.endsWith( "\"" ))
+				|| (value.startsWith( "'" ) && value.endsWith( "'" )))){
 			return value.substring( 1, value.length() - 1 );
 		}
 		return value;

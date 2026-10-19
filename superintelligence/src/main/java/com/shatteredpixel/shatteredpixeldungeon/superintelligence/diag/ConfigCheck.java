@@ -24,7 +24,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Co
 
 public class ConfigCheck {
 
-	private static final int CHECKS = 16;
+	private static final int CHECKS = 17;
 
 	public static void main( String[] args ) throws IOException {
 		if (args.length > 0 && (args[ 0 ].equals( "--verbose" ) || args[ 0 ].equals( "-v" ) )){
@@ -46,6 +46,7 @@ checkOutputPathsFollowTheWorkingDirectory();
 		ConfigDotEnvCheck.checkDotEnvIsRead();
 		ConfigDotEnvCheck.checkDotEnvBeatsThePropertiesFile();
 		ConfigDotEnvCheck.checkABadDotEnvValueNamesTheDotEnv();
+		ConfigDotEnvCheck.checkALoneQuoteIsAValue();
 		ConfigDotEnvCheck.checkTheExampleFileNamesEveryDocumentedKey();
 		ConfigPathCheck.checkTheBuildScriptReadsTheHeapItDocuments();
 		ConfigPathCheck.checkEveryPathIsReportedAbsolute();
