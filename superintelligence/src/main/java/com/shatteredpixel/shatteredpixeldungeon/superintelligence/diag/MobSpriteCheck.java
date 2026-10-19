@@ -110,13 +110,11 @@ public class MobSpriteCheck {
 	private static void checkARenderedGameNeverReachesTheBranch(){
 		final int[] consulted = { 0 };
 
-		boolean wasHeadless = GameScene.headlessGameplay();
-		java.util.function.Consumer< com.shatteredpixel.shatteredpixeldungeon.actors.Char > previous = null;
+		freshRun( "MOBSPROUT-C" );
 		GameScene.headlessGameplay( false );
 		GameScene.headlessMobSprite( ch -> consulted[ 0 ]++ );
 
 		try {
-			SPDEnv env = freshRun( "MOBSPROUT-C" );
 			Mob probe = Dungeon.level.createMob();
 			if (probe == null){
 				fail( "the level produced no mob to add, so the branch was never reached with the flag off."
@@ -129,8 +127,7 @@ public class MobSpriteCheck {
 			fail( "GameScene.add(mob) threw with the headless flag off: " + e );
 			return;
 		} finally {
-			GameScene.headlessGameplay( wasHeadless );
-			GameScene.headlessMobSprite( previous );
+			HeadlessGame.install();
 		}
 
 		if (consulted[ 0 ] != 0 ){
