@@ -23,7 +23,7 @@ import java.util.Random;
 public class GaeCheck {
 	private static final float GAMMA = 0.987f;
 	private static final float LAMBDA = 0.913f;
-	private static final int CHECKS = 17;
+	private static final int CHECKS = 18;
 	private static final List< String > failures = new ArrayList<>();
 	public static void main( String[] args ){
 		checkScalarMatchesTransitionList();
@@ -43,6 +43,7 @@ checkTerminalZerosTheTail();
 		checkAFrameOfManyTransitionsRoundTrips();
 		checkClipFractionIsNotAdvantageMagnitude();
 		checkAnUpdateMovesTheChosenProbabilityWithTheAdvantage();
+		checkTheClipOnlyStopsTheSideItBounds();
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     GAE: " + CHECKS + " checks passed" );
 		} else {
@@ -541,6 +542,27 @@ private static void checkAPenalisedTruncationStillCarriesItsPenalty(){
 			fail( "the |advantage| expression is no longer near 0.8415 (" + constant
 					+ "), so this check no longer documents what it replaced" );
 		}
+	}
+	private static void checkTheClipOnlyStopsTheSideItBounds(){
+		float[][] cases = { { 1f, 0.5f, 1f }, { 1f, 1.5f, 0f }, { -1f, 0.5f, 0f }, { -1f, 1.5f, 1f } };
+		for (float[] c : cases){
+			boolean moves = gradientNormAt( c[ 0 ], c[ 1 ] ) > 0f;
+			if (moves != (c[ 2 ] > 0f)){
+				fail( "advantage " + c[ 0 ] + " at ratio " + c[ 1 ] + (moves ? " still has" : " has no")
+						+ " policy gradient; the clip may only stop a ratio that has already moved past"
+						+ " 1 +/- epsilon in the advantage's own direction" );
+			}
+		}
+	}
+	private static float gradientNormAt( float advantage, float ratio ){
+		float[] probabilities = { 0.5f, 0.3f, 0.15f, 0.05f };
+		float[] mask = { 1f, 1f, 1f, 1f };
+		float oldLogProbability = (float) Math.log( probabilities[ 0 ] ) - (float) Math.log( ratio );
+		float[] gradient = new float[ probabilities.length ];
+		Policy.accumulatePolicyGradient( probabilities, mask, 0, oldLogProbability, advantage, 0.2f, 0f, gradient );
+		float sum = 0f;
+		for (float g : gradient) sum += Math.abs( g );
+		return sum;
 	}
 	private static boolean clipBindingForRatio( float ratio, float epsilon ){
 		int chosen = 0;

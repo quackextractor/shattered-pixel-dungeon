@@ -86,10 +86,10 @@ public class Policy {
 
 		float low = 1f - epsilon;
 		float high = 1f + epsilon;
-		float clippedRatio = ratio < low ? low : (ratio > high ? high : ratio);
-		boolean clipBinding = clippedRatio != ratio;
+		boolean clipBinding = ratio < low || ratio > high;
+		boolean gradientStopped = (advantage > 0f && ratio > high) || (advantage < 0f && ratio < low);
 
-		float dLogProbability = clipBinding ? 0f : advantage * ratio;
+		float dLogProbability = gradientStopped ? 0f : advantage * ratio;
 
 		for (int i = 0; i < probabilities.length; i++){
 			if (mask[ i ] <= 0.5f ) continue;
