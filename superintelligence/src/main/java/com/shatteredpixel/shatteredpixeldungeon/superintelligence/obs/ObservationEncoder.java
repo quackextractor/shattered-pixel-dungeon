@@ -4,7 +4,6 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
-import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mimic;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
@@ -198,37 +197,24 @@ public class ObservationEncoder {
 
 			Char ch = Actor.findChar( cell );
 			if (ch != null && ch != hero){
-
-				boolean shown = visible || mimicStillVisible( ch, visible );
-				if (shown){
-					switch (ch.alignment){
-						case ENEMY:
-							put( GridChannel.ENEMY, p, 1f );
-							break;
-						case ALLY:
-							put( GridChannel.ALLY, p, 1f );
-							break;
-						default:
-							put( GridChannel.NEUTRAL, p, 1f );
-							break;
-					}
-					if (isThreatening( (Mob) ch )) put( GridChannel.THREATENING, p, 1f );
+				switch (ch.alignment){
+					case ENEMY:
+						put( GridChannel.ENEMY, p, 1f );
+						break;
+					case ALLY:
+						put( GridChannel.ALLY, p, 1f );
+						break;
+					default:
+						put( GridChannel.NEUTRAL, p, 1f );
+						break;
 				}
+				if (isThreatening( (Mob) ch )) put( GridChannel.THREATENING, p, 1f );
 			}
 
 			if (cell == hero.pos) put( GridChannel.HERO, p, 1f );
 		}
 	}
 
-
-	private boolean mimicStillVisible( Char ch, boolean visible ){
-		if (visible) return true;
-		if (!config.mimicsVisibleOutOfFog) return false;
-		if (!(ch instanceof Mimic)) return false;
-		if (!Dungeon.level.visited[ ch.pos ]) return false;
-		Mimic mimic = (Mimic) ch;
-		return mimic.state == mimic.PASSIVE && mimic.stealthy();
-	}
 
 	private boolean heapSeen( Heap heap ){
 		return heap.seen;
