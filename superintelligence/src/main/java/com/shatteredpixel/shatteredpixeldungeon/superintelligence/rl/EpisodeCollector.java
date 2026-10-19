@@ -67,6 +67,19 @@ public class EpisodeCollector {
 
 	private Listener listener;
 
+	private float valueMean = 0f;
+	private float valueStd = 1f;
+
+
+	public void valueScale( float mean, float std ){
+		this.valueMean = mean;
+		this.valueStd = std;
+	}
+
+	private float baseline(){
+		return valueMean + valueStd * network.value();
+	}
+
 
 	private com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.WorldSnapshot trace;
 
@@ -189,12 +202,12 @@ public class EpisodeCollector {
 
 			if (listener != null) listener.onStep( heroPosition, reward, env.lastStepActed() );
 
-			record.add( reward, network.value(), env.endedNaturally(), liveHead, actionIndex, secondary,
+			record.add( reward, baseline(), env.endedNaturally(), liveHead, actionIndex, secondary,
 					logProbability );
 
 			if (!env.running()){
 				network.forward( env.grid(), env.inventory(), env.heroFeatures() );
-				record.finalValue( network.value() );
+				record.finalValue( baseline() );
 			}
 		}
 

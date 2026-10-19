@@ -13,9 +13,13 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardP
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.ReplayCodec;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
@@ -272,5 +276,46 @@ public final class CollectWireCheck {
 		System.out.println( "  worker wire carries every step field over " + n + " recorded steps;"
 				+ " " + inventories.size() + " distinct inventories, hp, turn and the RNG draw count"
 				+ " on every step" );
+	}
+
+	public static void checkTheBaselineIsInTheUnitsOfTheReturns( EnvConfig config ){
+		PPO ppo = new PPO( config, new Random( 1L ) );
+		List< Transition > returns = new ArrayList<>();
+		for (int i = 0; i < 64; i++){
+			Transition t = new Transition();
+			t.returnValue = 100f + ( i % 2 == 0 ? 4f : -4f );
+			returns.add( t );
+		}
+		ppo.valueNorm.update( returns );
+
+		List< Transition > raw = baselines( config, 0f, 1f );
+		List< Transition > scaled = baselines( config, ppo.baselineMean(), ppo.baselineStd() );
+
+		double worst = 0;
+		for (int i = 0; i < Math.min( raw.size(), scaled.size() ); i++){
+			float expected = ppo.baselineMean() + ppo.baselineStd() * raw.get( i ).value;
+			worst = Math.max( worst, Math.abs( scaled.get( i ).value - expected ));
+		}
+
+		if (raw.isEmpty() || raw.size() != scaled.size() || worst > 1e-3){
+			fail( "with the critic trained on returns normalised by mean " + ppo.baselineMean() + " and std "
+					+ ppo.baselineStd() + ", the collector's baseline is off its return-unit value by "
+					+ worst + " over " + raw.size() + " steps. GAE subtracts that baseline from raw rewards,"
+					+ " so it has to be denormalised before it is stored." );
+			return;
+		}
+		System.out.println( "  the collector stores the critic's value denormalised by mean "
+				+ ppo.baselineMean() + " and std " + ppo.baselineStd() + " over " + raw.size() + " steps" );
+	}
+
+	private static List< Transition > baselines( EnvConfig config, float mean, float std ){
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		EpisodeCollector collector = new EpisodeCollector( config, new Network( config, new Random( 3L ) ),
+				new Random( 4L ), new Random( 5L ), 0.99f, 0.95f, 1f, 4096 );
+		collector.valueScale( mean, std );
+		List< Transition > out = new ArrayList<>( collector.run( env, "BASELINE", HeroClass.WARRIOR )
+				.sampledTransitions() );
+		out.sort( ( a, b ) -> Integer.compare( a.stepIndex, b.stepIndex ));
+		return out;
 	}
 }

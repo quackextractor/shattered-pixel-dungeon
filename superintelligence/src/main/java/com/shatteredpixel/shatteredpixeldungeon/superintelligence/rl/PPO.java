@@ -407,6 +407,14 @@ Stats oneSample( Network net, Transition t, float[] grid,
 		return s;
 	}
 
+	public float baselineMean(){
+		return normaliseValues && valueNorm.ready() ? valueNorm.mean() : 0f;
+	}
+
+	public float baselineStd(){
+		return normaliseValues && valueNorm.ready() ? valueNorm.std() : 1f;
+	}
+
 	public float valueTarget( Transition t ){
 		return normaliseValues && valueNorm.ready() ? valueNorm.normalize( t.returnValue )
 				: t.returnValue;

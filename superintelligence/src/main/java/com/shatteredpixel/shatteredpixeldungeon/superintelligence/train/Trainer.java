@@ -260,6 +260,8 @@ public class Trainer {
 
 		out.writeFloat( ppo.gamma );
 		out.writeFloat( ppo.lambda );
+		out.writeFloat( ppo.baselineMean() );
+		out.writeFloat( ppo.baselineStd() );
 
 		out.writeUTF( traceWorldPath == null ? "" : traceWorldPath );
 		out.writeUTF( rngTraceDir == null ? "" : rngTraceDir );
