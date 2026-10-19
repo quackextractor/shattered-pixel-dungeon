@@ -69,7 +69,7 @@ public class InventoryEncoder {
 	}
 
 	private static float typeIndex( Item item ){
-		return TypeRegistry.indexOf( visibleClass( item ) );
+		return (visibleClass( item ).getName().hashCode() & Integer.MAX_VALUE) / (float) Integer.MAX_VALUE;
 	}
 
 	private static Class<?> visibleClass( Item item ){
@@ -106,10 +106,6 @@ public class InventoryEncoder {
 				|| item == b.misc()
 				|| item == b.ring()
 				|| item == b.secondWep();
-	}
-
-	public static int typeCount(){
-		return TypeRegistry.size();
 	}
 
 	static {
