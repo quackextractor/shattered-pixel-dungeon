@@ -13,6 +13,8 @@ public final class StairPotential {
 	private int[] distance = new int[ 0 ];
 	private int width;
 	private int height;
+	private int terrainHash;
+	private int builds;
 
 	public void reset(){
 		levelId = -1;
@@ -47,15 +49,23 @@ public final class StairPotential {
 		return exit != null && exit.type == LevelTransition.Type.REGULAR_EXIT ? exit.cell() : -1;
 	}
 
+	public int builds(){
+		return builds;
+	}
+
 	private void ensureField( Level level, int exit ){
+		int terrain = java.util.Arrays.hashCode( level.map ) * 31 + exit;
 		if (levelId == System.identityHashCode( level )
+				&& terrainHash == terrain
 				&& width == level.width()
 				&& height == level.height()
 				&& distance.length == level.length()){
 			return;
 		}
 
+		builds++;
 		levelId = System.identityHashCode( level );
+		terrainHash = terrain;
 		width = level.width();
 		height = level.height();
 		distance = new int[ level.length() ];

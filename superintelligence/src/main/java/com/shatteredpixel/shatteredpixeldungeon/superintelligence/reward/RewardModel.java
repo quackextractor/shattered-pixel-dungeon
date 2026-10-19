@@ -42,6 +42,10 @@ public class RewardModel {
 	public void resetSnapshot(){
 		snapshotValid = false;
 		deepestPaid = 0;
+		stairPotential.reset();
+	}
+	public StairPotential stairPotential(){
+		return stairPotential;
 	}
 	public RewardLedger ledger(){
 		return ledger;
@@ -237,7 +241,6 @@ public class RewardModel {
 		prevKills = kills();
 		prevCrafted = Statistics.itemsCrafted;
 		prevHeroPos = hero.pos;
-		stairPotential.reset();
 		prevSneaks = sneaks();
 		prevTalentsSpent = talentsSpent();
 		prevEngineTime = Actor.now();

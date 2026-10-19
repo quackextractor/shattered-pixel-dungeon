@@ -43,6 +43,7 @@ public class RewardCheck {
 		RewardShapingCheck.checkClosingTheGapToTheStairsPays( config );
 		RewardShapingCheck.checkStairShapingCannotBeFarmed( config );
 RewardShapingCheck.checkStairShapingIsOffAtZero( config );
+		StairPotentialCheck.checkTheFieldIsBuiltOncePerTerrain();
 RewardShapingCheck.checkPickingUpAnItemPays();
     	RewardShapingCheck.checkPickingUpGoldPays();
     	RewardShapingCheck.checkPickingUpUnderfootPays();
