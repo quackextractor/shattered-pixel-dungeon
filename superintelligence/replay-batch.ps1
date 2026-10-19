@@ -34,34 +34,37 @@ $diverged = 0; $clean = 0; $other = 0
 $parallel = [Math]::Max(1, $Parallel)
 $running = @()
 
+$logDir = Join-Path $module 'out\evidence\replay-batch-log'
+New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+
 function Start-Playback {
-  param($File, $CP, $SpeedValue)
+  param($File, $CP, $SpeedValue, $Index)
 
-  $job = Start-Job -ScriptBlock {
-    param($cp, $file, $speed)
-    & java -cp $cp "-Dspd.mute=1" "-Dspd.autoClose=1" "-Dspd.fast=$speed" "-Dspd.monitorX=3000" "-Dspd.monitorY=0" `
-          com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ReplayLauncher --file $file 2>&1 | Out-String
-  } -ArgumentList $CP, $File.FullName, $SpeedValue
+  $log = Join-Path $logDir "$Index-$($File.BaseName).log"
+  $proc = Start-Process -FilePath 'java' -PassThru -NoNewWindow `
+    -RedirectStandardOutput $log -RedirectStandardError "$log.err" `
+    -ArgumentList @('-cp', $CP, '-Dspd.mute=1', '-Dspd.autoClose=1', "-Dspd.fast=$SpeedValue",
+                    '-Dspd.monitorX=3000', '-Dspd.monitorY=0',
+                    'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ReplayLauncher', '--file', $File.FullName)
 
-  [PSCustomObject]@{ File = $File; Job = $job; Watch = [Diagnostics.Stopwatch]::StartNew() }
+  [PSCustomObject]@{ File = $File; Proc = $proc; Log = $log; Watch = [Diagnostics.Stopwatch]::StartNew() }
 }
 
 function Complete-Playback {
   param($Item, $PerFile)
 
-  $done = Wait-Job $Item.Job -Timeout $PerFile
+  $Item.Proc.WaitForExit($PerFile * 1000) | Out-Null
   $Item.Watch.Stop()
   $f = $Item.File
 
-  if ($null -eq $done) {
-    Stop-Job $Item.Job -ErrorAction SilentlyContinue
+  if (-not $Item.Proc.HasExited) {
+    & taskkill /T /F /PID $Item.Proc.Id 2>&1 | Out-Null
     Write-Output ("  {0,-22} TIMED OUT after {1}s" -f $f.BaseName, $PerFile)
     $script:other++
     return
   }
 
-  $out = Receive-Job $Item.Job
-  Remove-Job $Item.Job -Force -ErrorAction SilentlyContinue
+  $out = "$(Get-Content $Item.Log -Raw -ErrorAction SilentlyContinue)`n$(Get-Content "$($Item.Log).err" -Raw -ErrorAction SilentlyContinue)"
 
   if ($out -match 'DIVERGED at step (\d+)') {
     $detail = ($out -split "`n" | Where-Object { $_ -match 'DIVERGED at step' } | Select-Object -First 1)
@@ -75,18 +78,19 @@ function Complete-Playback {
     $script:clean++
   } else {
     $why = ($out -split "`n" | Where-Object { $_ -match 'halted' } | Select-Object -First 1)
-    Write-Output ("  {0,-22} HALTED     {1,6}ms  {2}" -f $f.BaseName, $Item.Watch.Elapsed.TotalMilliseconds, $why.Trim())
+    Write-Output ("  {0,-22} HALTED     {1,6}ms  {2}" -f $f.BaseName, $Item.Watch.Elapsed.TotalMilliseconds, "$why".Trim())
     $script:other++
   }
 }
 
 $started = [System.Diagnostics.Stopwatch]::StartNew()
+$index = 0
 foreach ($f in $files) {
   while ($running.Count -ge $parallel) {
     Complete-Playback $running[0] $PerFileSeconds
     $running = @($running | Select-Object -Skip 1)
   }
-  $running += Start-Playback -File $f -CP $cp -SpeedValue $Speed
+  $running += Start-Playback -File $f -CP $cp -SpeedValue $Speed -Index ($index++)
 }
 while ($running.Count -gt 0) {
   Complete-Playback $running[0] $PerFileSeconds
@@ -94,10 +98,8 @@ while ($running.Count -gt 0) {
 }
 $started.Stop()
 
-Get-CimInstance Win32_Process -Filter "Name='java.exe'" -ErrorAction SilentlyContinue |
-  Where-Object { $_.CommandLine -match 'ReplayLauncher' } |
-  ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-
 Write-Output ""
 Write-Output "  total $($files.Count)  clean $clean  diverged $diverged  other $other"
 Write-Output "  $parallel at a time, $([Math]::Round($started.Elapsed.TotalSeconds,1))s wall"
+
+if ($diverged + $other -gt 0) { exit 1 }
