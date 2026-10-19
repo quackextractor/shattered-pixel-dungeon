@@ -183,8 +183,9 @@ public class RolloutCheck {
 			fail( "rollout with --max-turns was refused: " + result.refusal );
 			return;
 		}
-		if ( result.turns > 40 * 4 ){
-			fail( "--max-turns 40 produced " + result.turns + " engine turns. The flag overrides"
+		if ( result.turnLimitPerFloor != 40 ){
+			fail( "--max-turns 40 left the environment at turn_limit_per_floor "
+					+ result.turnLimitPerFloor + " (" + result.turns + " engine turns). The flag overrides"
 					+ " env.turn_limit_per_floor, and a flag that does not reach the environment is a"
 					+ " knob that does nothing - which is what issues.md 30 found for twenty of the"
 					+ " thirty settings that were on the wire but not in the worker." );

@@ -21,6 +21,7 @@ public final class RunCommand {
 		public String heroClass = "";
 		public int steps;
 		public int turns;
+		public int turnLimitPerFloor;
 		public File savedTo;
 
 		public boolean refused(){ return exitCode != 0; }
@@ -62,6 +63,7 @@ public final class RunCommand {
 		result.heroClass = episode.replay.heroClass;
 		result.steps = episode.replay.length();
 		result.turns = episode.env.turnsTotal();
+		result.turnLimitPerFloor = episode.env.config().turnLimitPerFloor;
 
 		System.out.println();
 		System.out.println( episode.report.render( 72 ) );
