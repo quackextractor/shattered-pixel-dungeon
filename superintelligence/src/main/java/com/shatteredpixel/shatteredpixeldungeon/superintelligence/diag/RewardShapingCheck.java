@@ -333,20 +333,26 @@ public final class RewardShapingCheck {
 	public static void checkAMultiTurnActionPaysForEveryTurn( EnvConfig config ){
 		final float[] spent = new float[ 1 ];
 		final int[] steps = new int[ 1 ];
+		final double[] charged = new double[ 1 ];
+		final double[] worst = new double[ 1 ];
 
-		Outcome o = play( config, 40, "MULTITURNCHECK", turn -> {
+		play( config, 40, "MULTITURNCHECK", turn -> {
 			if (turn.env.mode() != EnvMode.WORLD ){
 				turn.env.step( Action.CANCEL, 0 );
 				return;
 			}
 			float before = Actor.now();
+			double costBefore = turn.env.ledger().termTotal( RewardTerm.TURN_COST );
 			turn.env.step( Action.SEARCH, 0 );
 			float after = Actor.now();
+			double cost = costBefore - turn.env.ledger().termTotal( RewardTerm.TURN_COST );
+			float turns = Math.max( 1f, after - before );
+			double due = config.turnCost * turns;
+			worst[ 0 ] = Math.max( worst[ 0 ], Math.abs( cost - due ) );
 			if (after > before) spent[ 0 ] += after - before;
+			charged[ 0 ] += cost;
 			steps[ 0 ]++;
 		} );
-
-		double charged = -o.termTotal( RewardTerm.TURN_COST );
 
 		if (spent[ 0 ] <= 0f || steps[ 0 ] == 0 ){
 			fail( steps[ 0 ] + " SEARCH step(s) consumed " + fmt( spent[ 0 ] ) + " engine turns in"
@@ -355,26 +361,18 @@ public final class RewardShapingCheck {
 			return;
 		}
 
-		double flat = config.turnCost * steps[ 0 ];
-		if (charged < flat * 1.5 ){
+		if (worst[ 0 ] > 1e-4 ){
 			fail( "SEARCH consumed " + fmt( spent[ 0 ] ) + " engine turns over " + steps[ 0 ]
-					+ " step(s) and was charged " + fmt( charged ) + ", against " + fmt( flat )
-					+ " for one turn each. TURN_COST is charged per step, so an action costing more than"
-					+ " one turn is cheaper per turn than one costing exactly one - which is why 189"
-					+ " searches took half of a 940-step run's engine time." );
+					+ " step(s) and was charged " + fmt( charged[ 0 ] ) + "; one step was off by "
+					+ fine( worst[ 0 ] ) + " from turn_cost x max(1, engine turns spent). An action"
+					+ " costing more than one turn must not be cheaper per turn than one costing exactly"
+					+ " one - which is why 189 searches took half of a 940-step run's engine time." );
 			return;
 		}
 
-		double perTurn = charged / spent[ 0 ];
-		if (Math.abs( perTurn - config.turnCost ) > config.turnCost * 0.5 ){
-			fail( "SEARCH cost " + fmt( perTurn ) + " per engine turn against a configured "
-					+ config.turnCost + ". The charge is scaled by the engine clock now, so this should be"
-					+ " the configured price whatever the action costs." );
-			return;
-		}
-
+		double perTurn = charged[ 0 ] / spent[ 0 ];
 		System.out.println( "  " + steps[ 0 ] + " searches over " + fmt( spent[ 0 ] ) + " engine turns"
-				+ " cost " + fmt( charged ) + " - " + fine( perTurn ) + " per turn, against "
+				+ " cost " + fmt( charged[ 0 ] ) + " - " + fine( perTurn ) + " per turn, against "
 				+ fine( config.turnCost ) + " for a single-turn action" );
 	}
 
