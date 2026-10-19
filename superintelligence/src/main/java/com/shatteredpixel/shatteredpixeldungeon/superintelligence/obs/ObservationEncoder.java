@@ -168,8 +168,9 @@ public class ObservationEncoder {
 		boolean explored = level.visited[ cell ];
 		int terrain = level.map[ cell ];
 
-		put( GridChannel.WALL, p, !level.passable[ cell ] );
-		put( GridChannel.OPAQUE, p, level.losBlocking[ cell ] );
+		boolean known = visible || explored || level.mapped[ cell ];
+		put( GridChannel.WALL, p, known && !level.passable[ cell ] );
+		put( GridChannel.OPAQUE, p, known && level.losBlocking[ cell ] );
 		put( GridChannel.VISIBLE, p, visible );
 		put( GridChannel.EXPLORED, p, explored );
 		put( GridChannel.FOGGED, p, explored && !visible );

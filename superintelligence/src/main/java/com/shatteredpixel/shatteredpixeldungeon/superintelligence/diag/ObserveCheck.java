@@ -3,6 +3,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.LeatherArmor;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfFrost;
@@ -30,7 +31,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 public class ObserveCheck {
-	private static final int CHECKS = 11;
+	private static final int CHECKS = 12;
 	private static final List< String > failures = new ArrayList<>();
 	private static int checksFailed = 0;
 	private static void check( Runnable body ){
@@ -64,6 +65,7 @@ public class ObserveCheck {
 		check( ObserveCheck::checkAStandInEmitterSpendsNoGameplayDraw );
 		check( ObserveCheck::checkInventoryShowsOnlyWhatThePlayerSees );
 		check( ObserveCheck::checkHeroFeaturesHideAnUnknownLevel );
+		check( () -> checkAnUnseenFloorEncodesToNothing( encoder ) );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
 		} else {
@@ -180,6 +182,28 @@ public class ObserveCheck {
 		if (!Arrays.equals( before, after )){
 			fail( "an unknown +3 on the equipped weapon and armor changed the hero features: "
 					+ Arrays.toString( before ) + " vs " + Arrays.toString( after ));
+		}
+	}
+
+	private static void checkAnUnseenFloorEncodesToNothing( ObservationEncoder encoder ){
+		Level level = Dungeon.level;
+		boolean[] visited = level.visited.clone();
+		boolean[] mapped = level.mapped.clone();
+		boolean[] fov = level.heroFOV.clone();
+		Arrays.fill( level.visited, false );
+		Arrays.fill( level.mapped, false );
+		Arrays.fill( level.heroFOV, false );
+		encoder.resetExplored();
+		encoder.encode();
+		int lit = 0;
+		for (float v : encoder.grid()) if (v != 0f) lit++;
+		System.arraycopy( visited, 0, level.visited, 0, visited.length );
+		System.arraycopy( mapped, 0, level.mapped, 0, mapped.length );
+		System.arraycopy( fov, 0, level.heroFOV, 0, fov.length );
+		encoder.resetExplored();
+		if (lit != 0){
+			fail( "a floor with nothing seen, visited or mapped still lit " + lit + " grid values,"
+					+ " so the observation draws the layout the player has not uncovered" );
 		}
 	}
 
