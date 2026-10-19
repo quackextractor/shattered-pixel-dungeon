@@ -28,6 +28,7 @@ public final class ConfigDotEnvCheck {
 					+ "SPD_ENV_TURN_LIMIT_PER_FLOOR=321\n"
 					+ "SPD_RL_GAMMA=\"0.5\"\n"
 					+ "NOT_OURS=1\n"
+					+ "SPD_NOT_A_KEY=1\n"
 					+ "malformed line\n" );
 		} catch (IOException e){
 			fail( "could not write the .env fixture: " + e.getMessage() );
@@ -51,19 +52,22 @@ public final class ConfigDotEnvCheck {
 
 		boolean sawForeign = false;
 		boolean sawMalformed = false;
+		boolean sawUnknown = false;
 		for (String warning : loaded.warnings){
 			if (warning.contains( "NOT_OURS" )) sawForeign = true;
 			if (warning.contains( "malformed line" )) sawMalformed = true;
+			if (warning.contains( "SPD_NOT_A_KEY" )) sawUnknown = true;
 		}
 
-		if (!sawForeign || !sawMalformed){
-			fail( "a .env entry that is not SPD_ prefixed, and a line with no '=', should both warn."
-					+ " sawForeign=" + sawForeign + " sawMalformed=" + sawMalformed );
+		if (!sawForeign || !sawMalformed || !sawUnknown){
+			fail( "a .env entry that is not SPD_ prefixed, an unknown SPD_ name, and a line with no '='"
+					+ " should all warn. sawForeign=" + sawForeign + " sawUnknown=" + sawUnknown
+					+ " sawMalformed=" + sawMalformed );
 			return;
 		}
 
-		System.out.println( "  .env is read beside the properties file: quoted values unquoted, foreign"
-				+ " and malformed entries warned about" );
+		System.out.println( "  .env is read beside the properties file: quoted values unquoted, foreign,"
+				+ " unknown and malformed entries warned about" );
 	}
 
 

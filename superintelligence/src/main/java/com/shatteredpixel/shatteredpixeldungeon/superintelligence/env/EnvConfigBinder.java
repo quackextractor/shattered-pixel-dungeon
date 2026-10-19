@@ -183,6 +183,14 @@ public class EnvConfigBinder {
 			}
 		}
 
+		Set<String> knownEnv = new LinkedHashSet<>();
+		for (String key : KEYS) knownEnv.add( environmentName( key ));
+		for (String name : fromDotEnv.stringPropertyNames()){
+			if (!knownEnv.contains( name )){
+				binder.warn( "unknown variable '" + name + "' in " + dotEnv + " - it tunes nothing." );
+			}
+		}
+
 		int applied = 0;
 
 		for (String key : KEYS){
