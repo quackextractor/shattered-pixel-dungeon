@@ -127,32 +127,29 @@ foreach ($hero in @('WARRIOR', 'MAGE')) {
 
 Write-Host "recording $($plan.Count) episodes, $Parallel at a time, into $Dir"
 
+function Report-Recording {
+    param($Finished)
+    if ($Finished.Ok) {
+        Write-Host ("  {0,-22} {1,-10} {2,6} steps  {3}" -f `
+            $Finished.Job.Name, $Finished.Job.Hero, $Finished.Steps, $Finished.Termination)
+    } else {
+        Write-Host ("  {0,-22} {1,-10} FAILED: {2}" -f $Finished.Job.Name, $Finished.Job.Hero, $Finished.Reason) -ForegroundColor Red
+        $script:failed += "$($Finished.Job.Name).replay"
+    }
+}
+
+$failed = @()
 $running = @()
-$results = @()
 foreach ($entry in $plan) {
     while ($running.Count -ge $Parallel) {
-        $finished = Complete-Recording $running[0]
+        Report-Recording (Complete-Recording $running[0])
         $running = @($running | Select-Object -Skip 1)
-        $results += $finished
-        if ($finished.Ok) {
-            Write-Host ("  {0,-22} {1,-10} {2,6} steps  {3}" -f `
-                $finished.Job.Name, $finished.Job.Hero, $finished.Steps, $finished.Termination)
-        } else {
-            Write-Host ("  {0,-22} {1,-10} FAILED: {2}" -f $finished.Job.Name, $finished.Job.Hero, $finished.Reason) -ForegroundColor Red
-        }
     }
     $running += Start-Recording -Name $entry[0] -Hero $entry[1] -Turns $entry[2] -Seed $entry[0]
 }
 while ($running.Count -gt 0) {
-    $finished = Complete-Recording $running[0]
+    Report-Recording (Complete-Recording $running[0])
     $running = @($running | Select-Object -Skip 1)
-    $results += $finished
-    if ($finished.Ok) {
-        Write-Host ("  {0,-22} {1,-10} {2,6} steps  {3}" -f `
-            $finished.Job.Name, $finished.Job.Hero, $finished.Steps, $finished.Termination)
-    } else {
-        Write-Host ("  {0,-22} {1,-10} FAILED: {2}" -f $finished.Job.Name, $finished.Job.Hero, $finished.Reason) -ForegroundColor Red
-    }
 }
 
 Write-Host "probing for a death-terminated run (up to ${DeathProbeSeconds}s)"
@@ -217,6 +214,7 @@ foreach ($fixture in $fixtures) {
         Write-Host ("  {0,-24} rebuilt" -f $fixture.Name)
     } else {
         Write-Host ("  {0,-24} NOT REBUILT - see {1}" -f $fixture.Name, $log) -ForegroundColor Red
+        $failed += $fixture.Name
     }
 }
 
@@ -235,6 +233,7 @@ if (Test-Path $deathBuilt) {
     Write-Host ("  {0,-24} rebuilt" -f 'duelist-death-last.replay')
 } else {
     Write-Host ("  {0,-24} NOT REBUILT - see {1}" -f 'duelist-death-last.replay', $deathLog) -ForegroundColor Red
+    $failed += 'duelist-death-last.replay'
 }
 
 Write-Host "verifying every recording reproduces, $Parallel at a time"
@@ -296,7 +295,7 @@ if ($onDisk -ne $kept) {
 $heroes_covered = @($verified | ForEach-Object { ($_.Name -split '-')[0] } | Sort-Object -Unique)
 
 Write-Host ""
-Write-Host "corpus rebuilt: $kept recordings, all reproduce, in $([Math]::Round($stopwatch.Elapsed.TotalSeconds, 1))s"
+Write-Host "corpus rebuilt: $kept recordings verified, in $([Math]::Round($stopwatch.Elapsed.TotalSeconds, 1))s"
 Write-Host "  heroes covered: $($heroes_covered -join ', ')"
 Write-Host "  slowest recording: $((($verified | Sort-Object Steps -Descending | Select-Object -First 1).Steps)) steps"
 
@@ -304,8 +303,13 @@ if ($stopwatch.Elapsed.TotalSeconds -gt $BudgetSeconds) {
     Write-Host ("  WARNING: over the ${BudgetSeconds}s budget by $([Math]::Round($stopwatch.Elapsed.TotalSeconds - $BudgetSeconds, 1))s") -ForegroundColor Yellow
 }
 
+if ($failed.Count -gt 0) {
+    Write-Host "$($failed.Count) recording(s) not built: $($failed -join ', ')" -ForegroundColor Red
+}
 if ($bad.Count -gt 0) {
     Write-Host "$($bad.Count) recording(s) rejected: $($bad -join ', ')" -ForegroundColor Yellow
+}
+if ($failed.Count + $bad.Count -gt 0) {
     Pop-Location
     exit 1
 }
