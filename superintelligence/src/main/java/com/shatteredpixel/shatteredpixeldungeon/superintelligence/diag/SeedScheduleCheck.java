@@ -154,19 +154,16 @@ public class SeedScheduleCheck {
 					new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network( config,
 							new java.util.Random( 2L ) ), config );
 
-			SeedPool fresh = new SeedPool( 909L ^ 0xBF58476D1CE4E5B9L, 909L ^ 0x94D049BB133111EBL );
-			fresh.fill( POOL );
-			List< String > generationZero = draw( fresh, 32 );
-
 			SeedPool resumed = new SeedPool( meta.seedPoolSeed, meta.seedScheduleSeed );
 			resumed.resume( meta.seedPoolSeed, meta.seedScheduleSeed, meta.seedDraws, meta.seedPoolSize,
 					meta.activeSeeds );
 			List< String > afterResume = draw( resumed, 32 );
+			List< String > uninterrupted = draw( original, 32 );
 
-			if (generationZero.equals( afterResume )){
-				fail( "a run resumed from generation " + meta.generation + " opens with the same "
-						+ generationZero.size() + " seeds a fresh run opens with. The schedule is still"
-						+ " restarting at the checkpoint's own seed rather than continuing." );
+			if (!uninterrupted.equals( afterResume )){
+				fail( "a run resumed from generation " + meta.generation + " draws " + afterResume
+						+ " where the uninterrupted run draws " + uninterrupted + ". The checkpoint does not"
+						+ " carry the schedule exactly." );
 				return;
 			}
 		} catch (java.io.IOException e){
@@ -174,7 +171,7 @@ public class SeedScheduleCheck {
 			return;
 		}
 
-		System.out.println( "  a checkpoint's Meta carries the schedule, so a resumed run does not open"
-				+ " with the seeds generation 0 opened with" );
+		System.out.println( "  a checkpoint's Meta carries the schedule, so a resumed run draws the 32 seeds"
+				+ " the uninterrupted run draws next" );
 	}
 }
