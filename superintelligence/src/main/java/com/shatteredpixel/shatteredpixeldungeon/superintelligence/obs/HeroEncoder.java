@@ -14,6 +14,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfForce;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MeleeWeapon;
 
 
 public class HeroEncoder {
@@ -58,9 +59,10 @@ public class HeroEncoder {
 
 		Armor armor = hero.belongings.armor();
 		if (armor != null){
-			dr += armor.DRMax();
-			if (hero.STR() < armor.STRReq()){
-				dr -= 2 * (armor.STRReq() - hero.STR());
+			dr += armor.levelKnown ? armor.DRMax() : armor.DRMax( 0 );
+			int strReq = armor.levelKnown ? armor.STRReq() : armor.STRReq( 0 );
+			if (hero.STR() < strReq){
+				dr -= 2 * (strReq - hero.STR());
 			}
 		}
 
@@ -68,8 +70,9 @@ public class HeroEncoder {
 				&& !RingOfForce.fightingUnarmed( hero )){
 			Weapon weapon = (Weapon) hero.belongings.weapon();
 			dr += weapon.defenseFactor( hero );
-			if (hero.STR() < weapon.STRReq()){
-				dr -= 2 * (weapon.STRReq() - hero.STR());
+			int strReq = weapon.levelKnown ? weapon.STRReq() : weapon.STRReq( 0 );
+			if (hero.STR() < strReq){
+				dr -= 2 * (strReq - hero.STR());
 			}
 		}
 
@@ -114,14 +117,8 @@ public class HeroEncoder {
 
 		out[ F_ARMOR_TIER ] = hero.belongings.armor() != null
 				? hero.belongings.armor().tier / 6f : 0f;
-		out[ F_WEAPON_TIER ] = hero.belongings.weapon() != null
-				? weaponTier( hero ) / 6f : 0f;
-	}
-
-
-	private static float weaponTier( Hero hero ){
-		if (hero.belongings.weapon() == null) return 0f;
-		return Math.max( 0, hero.belongings.weapon().level() );
+		out[ F_WEAPON_TIER ] = hero.belongings.weapon() instanceof MeleeWeapon
+				? ((MeleeWeapon) hero.belongings.weapon()).tier / 6f : 0f;
 	}
 
 

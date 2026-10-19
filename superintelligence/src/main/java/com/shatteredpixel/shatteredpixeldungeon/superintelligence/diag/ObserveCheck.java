@@ -1,4 +1,6 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.LeatherArmor;
@@ -16,6 +18,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.ObservationEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
@@ -27,7 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 public class ObserveCheck {
-	private static final int CHECKS = 10;
+	private static final int CHECKS = 11;
 	private static final List< String > failures = new ArrayList<>();
 	private static int checksFailed = 0;
 	private static void check( Runnable body ){
@@ -60,6 +63,7 @@ public class ObserveCheck {
 		check( ObserveCheck::checkTheGeneratorLogIsInertWhenOff );
 		check( ObserveCheck::checkAStandInEmitterSpendsNoGameplayDraw );
 		check( ObserveCheck::checkInventoryShowsOnlyWhatThePlayerSees );
+		check( ObserveCheck::checkHeroFeaturesHideAnUnknownLevel );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + CHECKS + " checks passed" );
 		} else {
@@ -149,6 +153,34 @@ public class ObserveCheck {
 		sameEncoding( "two unidentified potions", potions.get( 0 ), potions.get( 1 ));
 		sameEncoding( "two unidentified scrolls", scrolls.get( 0 ), scrolls.get( 1 ));
 		sameEncoding( "armor with an unknown +3 and an unknown curse", plain, hidden );
+	}
+
+	private static void checkHeroFeaturesHideAnUnknownLevel(){
+		Hero hero = Dungeon.hero;
+		Item weapon = hero.belongings.weapon();
+		Item armor = hero.belongings.armor();
+		if (weapon == null || armor == null){
+			fail( "the fixture hero carries no weapon or no armor" );
+			return;
+		}
+		boolean weaponKnown = weapon.levelKnown;
+		boolean armorKnown = armor.levelKnown;
+		weapon.levelKnown = false;
+		armor.levelKnown = false;
+		float[] before = new float[ HeroEncoder.FEATURES ];
+		float[] after = new float[ HeroEncoder.FEATURES ];
+		HeroEncoder.encode( hero, before );
+		weapon.level( weapon.level() + 3 );
+		armor.level( armor.level() + 3 );
+		HeroEncoder.encode( hero, after );
+		weapon.level( weapon.level() - 3 );
+		armor.level( armor.level() - 3 );
+		weapon.levelKnown = weaponKnown;
+		armor.levelKnown = armorKnown;
+		if (!Arrays.equals( before, after )){
+			fail( "an unknown +3 on the equipped weapon and armor changed the hero features: "
+					+ Arrays.toString( before ) + " vs " + Arrays.toString( after ));
+		}
 	}
 
 	private static void sameEncoding( String what, Item a, Item b ){
