@@ -16,7 +16,7 @@ import java.util.List;
 
 public class VerifyCheck {
 
-	private static final int CHECKS = 13;
+	private static final int CHECKS = 14;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -31,6 +31,7 @@ public class VerifyCheck {
 		checkAlteredHealthIsCaught( good );
 		checkAlteredTurnIsCaught( good );
 		checkAlteredInventoryIsCaught( good );
+		checkAlteredModeIsCaught( good );
 		checkARecordingThatCannotResolveItsSlotsIsNotVerified( good );
 		checkAHeroWithNothingBoundIsNotRefused( good );
 		checkAWatchableRecordingIsNotRefused( good );
@@ -113,6 +114,11 @@ public class VerifyCheck {
 	private static void checkAlteredInventoryIsCaught( Replay source ){
 		checkAlterationIsCaught( source, "inventory",
 				step -> { if (!step.inventory.isEmpty()) step.inventory = step.inventory + ",Ghost:1"; } );
+	}
+
+	private static void checkAlteredModeIsCaught( Replay source ){
+		checkAlterationIsCaught( source, "mode",
+				step -> step.mode = "WORLD".equals( step.mode ) ? "MENU" : "WORLD" );
 	}
 
 	private static void checkAnAlteredDrawCountIsCaughtAndNamed( Replay source ){

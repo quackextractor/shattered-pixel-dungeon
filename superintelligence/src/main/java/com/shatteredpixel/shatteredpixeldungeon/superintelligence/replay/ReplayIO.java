@@ -346,6 +346,14 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			Replay.Step step = replay.steps.get( i );
 			Action action = Action.valueOf( step.action );
 
+			if (!env.mode().name().equals( step.mode )){
+				result.diverged = true;
+				result.divergedAt = i;
+				result.divergence = "mode: replayed " + env.mode() + ", recorded " + step.mode
+						+ " before " + step.action + "/" + step.slot;
+				break;
+			}
+
 			String unwatchable = Quickslots.prepare( step, i, wireDroppedFields );
 			if (unwatchable != null){
 				result.unwatchableAt = i;
