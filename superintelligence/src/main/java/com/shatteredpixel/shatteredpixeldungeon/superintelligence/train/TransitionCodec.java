@@ -15,24 +15,6 @@ public final class TransitionCodec {
 
 	private TransitionCodec() {}
 
-	public static long wireBytesPerStep( EnvConfig config ){
-		int grid = com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition.packedGridBytes(
-				config.spatialChannels() * config.gridWidth * config.gridWidth );
-		int inventory = config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
-		int hero = HeroEncoder.FEATURES;
-
-		return grid
-				+ 4L * (inventory + hero + ActionCount.size + config.maxSlots + TargetCount.value)
-				+ 4L * 5
-				+ 4L * 2
-				+ 3L * 4
-				+ 1L;
-	}
-
-	public static long wireBytesPerStep( EnvConfig config, int stateSize ){
-		return wireBytesPerStep( config ) + 4L + 4L * stateSize;
-	}
-
 	public static void write( DataOutputStream out, List<Transition> sampled ) throws IOException {
 		out.writeInt( Protocol.MSG_TRANSITIONS );
 		writeBody( out, sampled );
