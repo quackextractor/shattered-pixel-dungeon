@@ -99,16 +99,15 @@ public class StallBreakdown {
 	}
 
 
-private static int probeGuards( int episodes ){
-		String[] names = { "loose", "position", "freeStep", "actorStep", "tight" };
+	private static int probeGuards( int episodes ){
+		String[] names = { "freeStep", "position", "actorStep", "pipeline" };
 		StallCause[] expected = { StallCause.FREE_STEP, StallCause.POSITION,
-				StallCause.ACTOR_STEP_LIMIT, StallCause.PIPELINE, StallCause.NONE };
+				StallCause.ACTOR_STEP_LIMIT, StallCause.PIPELINE };
 		int[][] settings = {
-				{ -1, -1, -1 },
+				{ 1_000_000, 3, -1 },
 				{ 1, 1_000_000, -1 },
 				{ -1, -1, 0 },
-				{ -1, -1, 1 },
-				{ -1, -1, -1 }
+				{ -1, -1, 1 }
 		};
 
 		int failures = 0;
@@ -118,10 +117,9 @@ private static int probeGuards( int episodes ){
 				"config", "stallLimit", "freeStepBudget", "actorStepLimit", "cause" ));
 		for (int row = 0; row < settings.length; row++){
 			EnvConfig c = new EnvConfig();
-			if (settings[ row ][ 0 ] > 0 || settings[ row ][ 0 ] == 1) c.stallLimit = settings[ row ][ 0 ];
-			if (settings[ row ][ 1 ] == 1_000_000 ) c.freeStepBudget = settings[ row ][ 1 ];
-			if (settings[ row ][ 2 ] >= 0 ) c.actorStepLimit = settings[ row ][ 2 ];
-			if (row == 0) c.subModeProgressOnly = false;
+			if (settings[ row ][ 0 ] >= 0) c.stallLimit = settings[ row ][ 0 ];
+			if (settings[ row ][ 1 ] >= 0) c.freeStepBudget = settings[ row ][ 1 ];
+			if (settings[ row ][ 2 ] >= 0) c.actorStepLimit = settings[ row ][ 2 ];
 
 			Map< StallCause, Integer > seen = new EnumMap<>( StallCause.class );
 			for (int i = 0; i < episodes; i++){
@@ -142,49 +140,32 @@ private static int probeGuards( int episodes ){
 				if (e.getValue() > best){ best = e.getValue(); dominant = e.getKey(); }
 			}
 
-			boolean ok;
-			String want;
-			if (row == 4 || row == 0 ){
-				EnvConfig probe = new EnvConfig();
-				probe.subModeProgressOnly = row != 0;
-				int offered = subModeEntriesOffered( probe, episodes );
-				ok = row == 0 ? offered > 0 : offered == 0;
-				want = (row == 0 ? "expects a sub-mode entry offered, got "
-						: "expects no sub-mode entry offered when nothing is usable, got ") + offered;
-				System.out.println( String.format( "  %-11s %-16d %-16d %-16d  %-22s %s",
-						names[ row ], c.stallLimit, c.freeStepBudget, c.actorStepLimit,
-						"subModeProgressOnly=" + probe.subModeProgressOnly,
-						want + (ok ? "  [OK]" : "  [ERROR]") ));
-				if (!ok) failures++;
-				continue;
-			} else {
-				ok = dominant == expected[ row ];
-				want = "expected " + expected[ row ].name();
-			}
-
-			System.out.println( String.format( "  %-11s %-16d %-16d %-16d  %s (%d/%d)  %s %s",
+			boolean ok = dominant == expected[ row ];
+			System.out.println( String.format( "  %-11s %-16d %-16d %-16d  %s (%d/%d)  expected %s %s",
 					names[ row ], c.stallLimit, c.freeStepBudget, c.actorStepLimit,
-					dominant.name(), best, episodes, want, ok ? "[OK]" : "[ERROR]" ));
+					dominant.name(), best, episodes, expected[ row ].name(), ok ? "[OK]" : "[ERROR]" ));
+			if (!ok) failures++;
+		}
+
+		for (boolean progressOnly : new boolean[]{ false, true }){
+			EnvConfig probe = new EnvConfig();
+			probe.subModeProgressOnly = progressOnly;
+			int offered = subModeEntriesOffered( probe, episodes );
+			boolean ok = progressOnly ? offered == 0 : offered > 0;
+			System.out.println( String.format( "  subModeProgressOnly=%-5s sub-mode entries offered with nothing"
+					+ " usable: %d  %s", progressOnly, offered, ok ? "[OK]" : "[ERROR]" ));
 			if (!ok) failures++;
 		}
 
 		System.out.println();
 		if (failures == 0){
-			System.out.println( "  all four guards reachable, and each reports its own name."
-					+ " The shipped sub-mode mask offers no sub-mode entry when the hero carries"
-					+ " nothing usable, which is what env.sub_mode_progress_only is for. It used to"
-					+ " assert that through which guard ended the episode, which a uniform policy"
-					+ " reached only by luck - and a hero that can pick up what it walks over now"
-					+ " reaches it without any luck at all." );
+			System.out.println( "  all four guards reachable, and each reports its own name. The shipped"
+					+ " sub-mode mask offers no sub-mode entry when the hero carries nothing usable." );
 		} else {
-			System.out.println( "  " + failures + " row(s) named the wrong guard, or none at all." );
-			System.out.println( "  A mislabelled StallCause constant compiles and passes every other gate," );
-			System.out.println( "  because under the default thresholds only FREE_STEP is ever reached." );
+			System.out.println( "  " + failures + " row(s) named the wrong guard or mask." );
 		}
 		return failures;
 	}
-
-	private static boolean isSubModeEntryFree( Action action ){ return false; }
 
 	private static int subModeEntriesOffered( EnvConfig config, int episodes ){
 		int offered = 0;
