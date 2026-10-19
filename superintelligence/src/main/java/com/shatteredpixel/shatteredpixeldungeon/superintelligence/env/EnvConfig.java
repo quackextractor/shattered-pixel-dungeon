@@ -37,7 +37,6 @@ public class EnvConfig {
 
 
 
-	public boolean mimicsVisibleOutOfFog = true;
 
 
 	public boolean allowEquipping = true;
@@ -209,7 +208,6 @@ public class EnvConfig {
 		out.writeFloat( maxHpGainCap );
 		out.writeInt( curriculumFadeStartDepth );
 		out.writeInt( curriculumFadeEndDepth );
-		out.writeBoolean( mimicsVisibleOutOfFog );
 		out.writeBoolean( allowEquipping );
 		out.writeBoolean( allowAlchemy );
 		out.writeBoolean( subModeProgressOnly );
@@ -264,7 +262,6 @@ public class EnvConfig {
 		maxHpGainCap = in.readFloat();
 		curriculumFadeStartDepth = in.readInt();
 		curriculumFadeEndDepth = in.readInt();
-		mimicsVisibleOutOfFog = in.readBoolean();
 		allowEquipping = in.readBoolean();
 		allowAlchemy = in.readBoolean();
 		subModeProgressOnly = in.readBoolean();
@@ -285,7 +282,6 @@ public class EnvConfig {
 		c.actorStepLimit = actorStepLimit;
 		c.stallLimit = stallLimit;
 		c.freeStepBudget = freeStepBudget;
-		c.mimicsVisibleOutOfFog = mimicsVisibleOutOfFog;
 		c.allowEquipping = allowEquipping;
 		c.allowAlchemy = allowAlchemy;
 		c.subModeProgressOnly = subModeProgressOnly;
