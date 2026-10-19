@@ -3,6 +3,9 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.KindOfWeapon;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Greatshield;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.RoundShield;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.LeatherArmor;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
@@ -162,6 +165,18 @@ public class ObserveCheck {
 
 	private static void checkHeroFeaturesHideAnUnknownLevel(){
 		Hero hero = Dungeon.hero;
+		KindOfWeapon worn = hero.belongings.weapon;
+		hideAnUnknownLevel( hero );
+		hero.STR += 10;
+		for (KindOfWeapon weapon : new KindOfWeapon[]{ new Greatshield(), new RoundShield() }){
+			hero.belongings.weapon = weapon;
+			hideAnUnknownLevel( hero );
+		}
+		hero.STR -= 10;
+		hero.belongings.weapon = worn;
+	}
+
+	private static void hideAnUnknownLevel( Hero hero ){
 		Item weapon = hero.belongings.weapon();
 		Item armor = hero.belongings.armor();
 		if (weapon == null || armor == null){
@@ -183,7 +198,7 @@ public class ObserveCheck {
 		weapon.levelKnown = weaponKnown;
 		armor.levelKnown = armorKnown;
 		if (!Arrays.equals( before, after )){
-			fail( "an unknown +3 on the equipped weapon and armor changed the hero features: "
+			fail( "an unknown +3 on the equipped " + weapon.name() + " and armor changed the hero features: "
 					+ Arrays.toString( before ) + " vs " + Arrays.toString( after ));
 		}
 	}

@@ -14,7 +14,9 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfForce;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Greatshield;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MeleeWeapon;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.RoundShield;
 
 
 public class HeroEncoder {
@@ -69,7 +71,7 @@ public class HeroEncoder {
 		if (hero.belongings.weapon() instanceof Weapon
 				&& !RingOfForce.fightingUnarmed( hero )){
 			Weapon weapon = (Weapon) hero.belongings.weapon();
-			dr += weapon.defenseFactor( hero );
+			dr += weaponDefense( weapon, hero );
 			int strReq = weapon.levelKnown ? weapon.STRReq() : weapon.STRReq( 0 );
 			if (hero.STR() < strReq){
 				dr -= 2 * (strReq - hero.STR());
@@ -77,6 +79,13 @@ public class HeroEncoder {
 		}
 
 		return Math.max( 0, dr );
+	}
+
+	private static int weaponDefense( Weapon weapon, Hero hero ){
+		if (weapon.levelKnown) return weapon.defenseFactor( hero );
+		if (weapon instanceof Greatshield) return ((Greatshield) weapon).DRMax( 0 );
+		if (weapon instanceof RoundShield) return ((RoundShield) weapon).DRMax( 0 );
+		return weapon.defenseFactor( hero );
 	}
 
 	public static void encode( Hero hero, float[] out ){
