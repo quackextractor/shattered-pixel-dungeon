@@ -8,7 +8,7 @@ import java.util.List;
 
 public class GraphCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -20,6 +20,7 @@ public class GraphCheck {
 		checkTheProgressBarReportsWhatItMeasured();
 		checkTheWindowStatisticsAreWhatTheyClaim();
 		checkTheDepthRateCountsEpisodesNotGenerations();
+		checkTheEndReasonTrendComparesTheThirds();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     graph honesty: " + CHECKS + " checks passed" );
@@ -28,6 +29,35 @@ public class GraphCheck {
 					+ " checks failed" );
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
+		}
+	}
+
+	private static void checkTheEndReasonTrendComparesTheThirds(){
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.MetricsHistory history =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.MetricsHistory( null );
+		for (int g = 0; g < 6; g++){
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.GenerationReport.Snapshot s =
+					new com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.GenerationReport
+							.Snapshot();
+			s.generation = g;
+			s.episodes = 4;
+			s.endReasons[ g < 3 ? 0 : 3 ] = 4;
+			history.record( s );
+		}
+
+		java.io.PrintStream stdout = System.out;
+		java.io.ByteArrayOutputStream captured = new java.io.ByteArrayOutputStream();
+		System.setOut( new java.io.PrintStream( captured, true ) );
+		try {
+			history.printTrend();
+		} finally {
+			System.setOut( stdout );
+		}
+
+		String text = captured.toString();
+		if (!text.contains( "death 100%->0%" ) || !text.contains( "turn_limit 0%->100%" )){
+			fail( "six generations that all died in the first half and all hit the turn limit in the"
+					+ " second printed an end-reason trend without death 100%->0% and turn_limit 0%->100%" );
 		}
 	}
 

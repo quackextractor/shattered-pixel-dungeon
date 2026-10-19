@@ -268,30 +268,30 @@ public class MetricsHistory {
 		int n = series.size();
 		int third = Math.max( 1, n / 3 );
 
-		int[][] first = new int[ REASON_COLUMNS.length ][ 2 ];
-		int[][] last = new int[ REASON_COLUMNS.length ][ 2 ];
 		RewardModel.TerminateReason[] reasons = RewardModel.TerminateReason.values();
+		int[] early = new int[ reasons.length ];
+		int[] late = new int[ reasons.length ];
+		int earlyTotal = 0;
+		int lateTotal = 0;
 
 		for (int i = 0; i < n; i++){
 			int[] counts = endReasons.get( i );
-			boolean early = i < third;
-			boolean late = i >= n - third;
-			if (!early && !late) continue;
-
-			for (int r = 0; r < reasons.length; r++ ){
-				if (r >= counts.length ) break;
-				int target = early ? 0 : 1;
-				first[ r ][ target ] += counts[ r ];
-				last[ r ][ target ] += counts[ r ];
+			for (int r = 0; r < reasons.length && r < counts.length; r++ ){
+				if (i < third){
+					early[ r ] += counts[ r ];
+					earlyTotal += counts[ r ];
+				}
+				if (i >= n - third){
+					late[ r ] += counts[ r ];
+					lateTotal += counts[ r ];
+				}
 			}
 		}
 
 		StringBuilder sb = new StringBuilder();
 		for (int r = 0; r < reasons.length; r++ ){
-			double f = first[ r ][ 0 ] + first[ r ][ 1 ] <= 0
-					? 0 : first[ r ][ 0 ] * 100.0 / (first[ r ][ 0 ] + first[ r ][ 1 ] );
-			double l = last[ r ][ 0 ] + last[ r ][ 1 ] <= 0
-					? 0 : last[ r ][ 0 ] * 100.0 / (last[ r ][ 0 ] + last[ r ][ 1 ] );
+			double f = earlyTotal <= 0 ? 0 : early[ r ] * 100.0 / earlyTotal;
+			double l = lateTotal <= 0 ? 0 : late[ r ] * 100.0 / lateTotal;
 			if (f < 0.5 && l < 0.5 ) continue;
 
 			if (sb.length() > 0 ) sb.append( "  " );
