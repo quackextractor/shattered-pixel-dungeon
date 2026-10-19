@@ -333,6 +333,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		System.arraycopy( cache.grid, 0, gridSnapshot, 0, gridSnapshot.length );
 
 		conv.loadPreAct( cache.convPreAct );
+		for (int i = 0; i < convOut.cols; i++) convOut.data[ i ] = Math.max( 0f, cache.convPreAct[ i ] );
 		reduce.loadPreAct( cache.reducePreAct );
 		trunk.loadPreAct( cache.trunkPreAct );
 		actionHead.loadPreAct( cache.actionPreAct );

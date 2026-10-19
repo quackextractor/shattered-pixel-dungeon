@@ -117,6 +117,7 @@ public class Conv2D {
 	}
 
 	public void backward( float[] input, Tensor gradOut, float[] gradIn ){
+		im2col( input );
 		java.util.Arrays.fill( gradIn, 0f );
 
 		int planeSize = inSize * inSize;
