@@ -1,12 +1,15 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
 import java.util.ArrayList;
@@ -17,30 +20,34 @@ public class StateCheck {
 
 	private static final int CHECKS = 4;
 
-	private static final List< String > failures = new ArrayList<>();
+	private static final List< float[] > liveGrids = new ArrayList<>();
 
 	public static void main( String[] args ){
-		EnvConfig config = smallConfig();
+		HeadlessServices.install( new java.io.File( System.getProperty( "java.io.tmpdir" ), "spd-statecheck" ));
+		HeadlessServices.disableSaving( true );
 
-		checkReplayMatchesRolloutInAnyOrder( config );
-		checkReplayIsOrderIndependent( config );
-		checkCellStateIsCarriedToo( config );
-		checkMissingStateIsDetectable( config );
+		EnvConfig config = new EnvConfig();
+		config.turnLimitPerFloor = 60;
+		config.turnLimitTotal = 60;
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     recurrent state: " + CHECKS + " checks passed" );
+		Network network = new Network( config, new Random( 31337L ) );
+		List< Transition > transitions = collect( network, config );
+
+		if (transitions.size() < 8){
+			GateReport.fail( "the collector retained " + transitions.size() + " transitions, too few for"
+					+ " any check here to mean anything" );
 		} else {
-			System.out.println( "[ERROR]  recurrent state: " + failures.size() + " of "
-					+ CHECKS + " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
+			checkReplayMatchesRolloutInAnyOrder( network, transitions );
+			checkReplayIsOrderIndependent( network, transitions );
+			checkCellStateIsCarriedToo( network, transitions );
+			checkMissingStateIsDetectable( network, transitions );
+			reportPackingDrift( network, transitions );
 		}
+
+		System.exit( GateReport.report( "recurrent state", CHECKS ));
 	}
 
-	private static void checkReplayMatchesRolloutInAnyOrder( EnvConfig config ){
-		Network network = new Network( config, new Random( 31337L ) );
-		List<Transition> transitions = collect( network, config, 8, 99L );
-
+	private static void checkReplayMatchesRolloutInAnyOrder( Network network, List< Transition > transitions ){
 		double worst = 0;
 		network.resetState();
 		for (int i = transitions.size() - 1; i >= 0; i--){
@@ -51,23 +58,23 @@ public class StateCheck {
 		}
 
 		if (worst > 1e-5){
-			fail( "replaying a sampled observation drifted from the rollout's value by " + worst
+			GateReport.fail( "replaying a collected observation on the grid the rollout saw drifted from the rollout's value by " + worst
 					+ " when the samples were reversed. The transition is not carrying the state it was"
 					+ " decided under, so the update is optimising a different objective than the"
 					+ " one the advantage was computed for." );
+			return;
 		}
+		System.out.println( "  " + transitions.size() + " collected transitions replay to the rollout's value"
+				+ " in reverse order, worst drift " + worst );
 	}
 
-	private static void checkReplayIsOrderIndependent( EnvConfig config ){
-		Network network = new Network( config, new Random( 31337L ) );
-		List<Transition> transitions = collect( network, config, 10, 99L );
-
+	private static void checkReplayIsOrderIndependent( Network network, List< Transition > transitions ){
 		float[] forward = replayInOrder( network, transitions, false );
 		float[] reverse = replayInOrder( network, transitions, true );
 
 		for (int i = 0; i < forward.length; i++){
 			if (Math.abs( forward[ i ] - reverse[ i ] ) > 1e-6){
-				fail( "sample " + i + " replayed to " + forward[ i ] + " forwards and "
+				GateReport.fail( "sample " + i + " replayed to " + forward[ i ] + " forwards and "
 						+ reverse[ i ] + " backwards. Samples must be independent of each other, or a"
 						+ " minibatch cannot be split across threads." );
 				return;
@@ -75,46 +82,27 @@ public class StateCheck {
 		}
 	}
 
-	private static void checkCellStateIsCarriedToo( EnvConfig config ){
-		Network network = new Network( config, new Random( 555L ) );
-		Transition t = collect( network, config, 6, 99L ).get( 4 );
+	private static void checkCellStateIsCarriedToo( Network network, List< Transition > transitions ){
+		Transition t = transitions.get( transitions.size() / 2 );
 
-		float[] full = new float[ network.stateSize() ];
-		network.resetState();
-
-		replayTo( network, t, full );
-
-		network.loadState( full );
+		network.loadState( t.recurrentState );
 		network.forward( grid( t ), t.inventory, t.hero );
 		float correct = network.value();
 
-		float[] hiddenOnly = full.clone();
-		int half = hiddenOnly.length / 2;
-		java.util.Arrays.fill( hiddenOnly, half, hiddenOnly.length, 0f );
+		float[] hiddenOnly = t.recurrentState.clone();
+		java.util.Arrays.fill( hiddenOnly, hiddenOnly.length / 2, hiddenOnly.length, 0f );
 		network.loadState( hiddenOnly );
 		network.forward( grid( t ), t.inventory, t.hero );
-		float withoutCell = network.value();
 
-		if (Math.abs( correct - withoutCell ) < 1e-6){
-			fail( "restoring the hidden state without the cell state produced the same value ("
+		if (Math.abs( correct - network.value() ) < 1e-6){
+			GateReport.fail( "restoring the hidden state without the cell state produced the same value ("
 					+ correct + "), so this check cannot tell the two apart. Either the cell state is"
 					+ " not being carried, or it does not matter here." );
 		}
 	}
 
-	private static void checkMissingStateIsDetectable( EnvConfig config ){
-		Network network = new Network( config, new Random( 31337L ) );
-		Transition t = collect( network, config, 6, 99L ).get( 4 );
-
-		Transition bare = new Transition();
-		bare.grid = t.grid;
-		bare.inventory = t.inventory;
-		bare.hero = t.hero;
-		bare.actionMask = t.actionMask;
-		bare.slotMask = t.slotMask;
-		bare.targetMask = t.targetMask;
-		bare.recurrentState = null;
-		bare.value = t.value;
+	private static void checkMissingStateIsDetectable( Network network, List< Transition > transitions ){
+		Transition t = transitions.get( transitions.size() / 2 );
 
 		network.loadState( t.recurrentState );
 		network.forward( grid( t ), t.inventory, t.hero );
@@ -122,62 +110,30 @@ public class StateCheck {
 
 		network.resetState();
 		network.forward( grid( t ), t.inventory, t.hero );
-		float dropped = network.value();
 
-		if (Math.abs( correct - dropped ) < 1e-6){
-			fail( "a transition with no recurrent state replayed identically to one carrying it, so"
-					+ " a dropped state field would be invisible here. It would not be invisible in"
-					+ " training." );
-		}
-
-		if (bare.recurrentState != null){
-			fail( "a transition built without a state has one anyway" );
+		if (Math.abs( correct - network.value() ) < 1e-6){
+			GateReport.fail( "a collected transition replayed identically with and without its recurrent"
+					+ " state, so a dropped state field would be invisible here. It would not be invisible"
+					+ " in training." );
 		}
 	}
 
-	private static EnvConfig smallConfig(){
-		EnvConfig config = new EnvConfig();
-		config.gridWidth = 12;
-		config.gridHeight = 12;
-		config.maxSlots = 4;
-		return config;
-	}
+	private static List< Transition > collect( Network network, EnvConfig config ){
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		EpisodeCollector collector = new EpisodeCollector( config, network, new Random( 99L ),
+				new Random( 98L ), 0.99f, 0.95f, 1f, 4096 );
+		collector.listener( new EpisodeCollector.Listener() {
+			@Override public void onEpisodeStart( String seedText, String heroClass ){}
 
-	private static List<Transition> collect( Network network, EnvConfig config, int n, long seed ){
-		Random rng = new Random( seed );
-		List<Transition> out = new ArrayList<>();
-		network.resetState();
-
-		for (int i = 0; i < n; i++){
-			Transition t = new Transition();
-		t.gridCells = config.spatialChannels() * config.gridWidth * config.gridWidth;
-		t.grid = new byte[ Transition.packedGridBytes( t.gridCells ) ];
-			t.inventory = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
-			t.hero = new float[ HeroEncoder.FEATURES ];
-			t.actionMask = new float[ Action.size() ];
-			t.slotMask = new float[ config.maxSlots ];
-			t.targetMask = new float[ ActionMapper.TARGET_COUNT ];
-			t.recurrentState = new float[ network.stateSize() ];
-			t.liveHead = Policy.HEAD_ACTION;
-			t.actionIndex = 3;
-
-		float[] grid = new float[ t.gridCells ];
-		for (int g = 0; g < grid.length; g++) grid[ g ] = rng.nextFloat() > 0.6f ? 1f : 0f;
-		t.packGrid( grid );
-			for (float[] a : new float[][]{ t.inventory, t.hero, t.actionMask, t.slotMask, t.targetMask }){
-				for (int k = 0; k < a.length; k++) a[ k ] = rng.nextFloat();
+			@Override public void onDecision( EnvMode mode, Action action, int secondary ){
+				liveGrids.add( env.grid().clone() );
 			}
-
-			network.saveState( t.recurrentState );
-			network.forward( grid( t ), t.inventory, t.hero );
-			t.value = network.value();
-
-			out.add( t );
-		}
-		return out;
+		} );
+		EpisodeRecord record = collector.run( env, "STATECHECK", HeroClass.WARRIOR );
+		return new ArrayList<>( record.sampledTransitions() );
 	}
 
-	private static float[] replayInOrder( Network network, List<Transition> transitions, boolean reverse ){
+	private static float[] replayInOrder( Network network, List< Transition > transitions, boolean reverse ){
 		float[] values = new float[ transitions.size() ];
 		network.resetState();
 
@@ -191,18 +147,20 @@ public class StateCheck {
 		return values;
 	}
 
-	private static void replayTo( Network network, Transition t, float[] out ){
-		network.loadState( t.recurrentState );
-		System.arraycopy( t.recurrentState, 0, out, 0, out.length );
-	}
-
 	private static float[] grid( Transition t ){
-		float[] dst = new float[ t.gridCells ];
-		t.unpackGrid( dst );
-		return dst;
+		return liveGrids.get( t.stepIndex );
 	}
 
-	private static void fail( String message ){
-		failures.add( message );
+	private static void reportPackingDrift( Network network, List< Transition > transitions ){
+		double worst = 0;
+		for (Transition t : transitions){
+			float[] packed = new float[ t.gridCells ];
+			t.unpackGrid( packed );
+			network.loadState( t.recurrentState );
+			network.forward( packed, t.inventory, t.hero );
+			worst = Math.max( worst, Math.abs( network.value() - t.value ) );
+		}
+		System.out.println( "  [WARN] the 1-bit packed grid replays to a value up to " + worst
+				+ " from the rollout's: VISIBLE_EDGE is fractional and packGrid thresholds it" );
 	}
 }

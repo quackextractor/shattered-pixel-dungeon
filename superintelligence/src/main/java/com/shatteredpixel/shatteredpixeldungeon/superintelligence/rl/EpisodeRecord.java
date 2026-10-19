@@ -103,6 +103,7 @@ public class EpisodeRecord {
 			t.actionIndex = actionIndex[ step ];
 			t.slotIndex = slotIndex[ step ];
 			t.oldLogProbability = oldLogProbability[ step ];
+			t.value = values[ step ];
 			t.terminal = terminal[ step ] != 0f;
 		}
 	}

@@ -139,6 +139,7 @@ public class EpisodeCollector {
 		}
 
 		while (env.running()){
+			Transition snapshot = snapshot( env );
 			network.forward( env.grid(), env.inventory(), env.heroFeatures() );
 
 			int liveHead = headFor( env.mode() );
@@ -164,8 +165,6 @@ public class EpisodeCollector {
 			float logProbability = Policy.logProbability( probabilitiesFor( liveHead ), chosen );
 
 			int stepIndex = record.stepCount();
-
-			Transition snapshot = snapshot( env );
 
 			if (wantsByDraw( stepIndex )) record.retain( stepIndex, snapshot );
 
