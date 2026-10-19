@@ -37,9 +37,9 @@ Get-ChildItem $Dir -File -Filter *.replay -ErrorAction SilentlyContinue | Remove
 $rejected = Join-Path $Dir 'rejected'
 if (Test-Path $rejected) { Remove-Item $rejected -Recurse -Force }
 
-$logDir = Join-Path $env:TEMP "spd-corpus-log"
+$logDir = Join-Path $module 'out\evidence\corpus-log'
 if (Test-Path $logDir) { Remove-Item $logDir -Recurse -Force }
-New-Item -ItemType Directory -Path $logDir | Out-Null
+New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 
 $script:spawned = [System.Collections.ArrayList]::new()
 
