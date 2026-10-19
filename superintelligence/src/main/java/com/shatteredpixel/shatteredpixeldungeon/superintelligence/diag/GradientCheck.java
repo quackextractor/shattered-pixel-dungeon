@@ -4,6 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.StepCache;
 
 import java.lang.reflect.Field;
 import java.util.Random;
@@ -25,36 +26,32 @@ public class GradientCheck {
 	private static final float VALUE_W = 4f;
 
 	private final Network network;
-	private final EnvConfig config;
+	private static final int STEPS = 3;
 
-	private final float[] grid;
-	private final float[] inventory;
-	private final float[] hero;
+	private final float[][] grids = new float[ STEPS ][];
+	private final float[][] inventories = new float[ STEPS ][];
+	private final float[][] heroes = new float[ STEPS ][];
+	private final float[] initialState;
 
 	private int checks;
 	private int failures;
 
 	public GradientCheck( EnvConfig config, long seed ){
-		this.config = config;
 		this.network = new Network( config, new Random( seed ) );
 
-		this.grid = new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
-		this.inventory = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
-		this.hero = new float[ HeroEncoder.FEATURES ];
-
 		Random obs = new Random( seed * 31 + 7 );
-		for (int i = 0; i < grid.length; i++){
+		for (int t = 0; t < STEPS; t++){
+			grids[ t ] = new float[ config.spatialChannels() * config.gridWidth * config.gridWidth ];
+			inventories[ t ] = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
+			heroes[ t ] = new float[ HeroEncoder.FEATURES ];
+			for (int i = 0; i < grids[ t ].length; i++) grids[ t ][ i ] = (obs.nextFloat() < 0.2f) ? 1f : 0f;
+			for (int i = 0; i < inventories[ t ].length; i++) inventories[ t ][ i ] = (obs.nextFloat() < 0.4f) ? 0.7f : 0f;
+			for (int i = 0; i < heroes[ t ].length; i++) heroes[ t ][ i ] = obs.nextFloat();
+		}
 
-			grid[ i ] = (obs.nextFloat() < 0.2f) ? 1f : 0f;
-		}
-		for (int i = 0; i < inventory.length; i++){
-			inventory[ i ] = (obs.nextFloat() < 0.4f) ? 0.7f : 0f;
-		}
-		for (int i = 0; i < hero.length; i++){
-			hero[ i ] = obs.nextFloat();
-		}
+		this.initialState = new float[ network.stateSize() ];
+		for (int i = 0; i < initialState.length; i++) initialState[ i ] = obs.nextFloat() - 0.5f;
 	}
-
 
 	private float[] actionGradient(){ return filled( network.actionCount(), ACTION_W ); }
 	private float[] slotGradient(){ return filled( network.slotCount(), SLOT_W ); }
@@ -67,24 +64,34 @@ public class GradientCheck {
 	}
 
 	private double loss(){
-		network.resetState();
-		network.forward( grid, inventory, hero );
+		network.loadState( initialState );
 
 		double sum = 0;
-		for (float v : network.actionLogits()) sum += ACTION_W * v;
-		for (float v : network.slotLogits()) sum += SLOT_W * v;
-		for (float v : network.targetLogits()) sum += TARGET_W * v;
-		sum += VALUE_W * network.value();
+		for (int t = 0; t < STEPS; t++){
+			network.forward( grids[ t ], inventories[ t ], heroes[ t ] );
+			for (float v : network.actionLogits()) sum += ACTION_W * v;
+			for (float v : network.slotLogits()) sum += SLOT_W * v;
+			for (float v : network.targetLogits()) sum += TARGET_W * v;
+			sum += VALUE_W * network.value();
+		}
 
 		return sum;
 	}
 
 
 	public int run( boolean verbose ){
-		loss(); 
+		StepCache[] caches = new StepCache[ STEPS ];
+		network.loadState( initialState );
+		for (int t = 0; t < STEPS; t++){
+			caches[ t ] = network.takeCache();
+			network.forwardCached( grids[ t ], inventories[ t ], heroes[ t ], caches[ t ] );
+		}
 
 		network.zeroGrad();
-		network.backward( actionGradient(), slotGradient(), targetGradient(), VALUE_W );
+		network.beginBackward();
+		for (int t = STEPS - 1; t >= 0; t--){
+			network.backwardStep( actionGradient(), slotGradient(), targetGradient(), VALUE_W, caches[ t ] );
+		}
 
 		String[] layers = { "conv", "reduce", "trunk", "memory", "actionHead", "slotHead", "targetHead", "valueHead" };
 		Random picker = new Random( 0xC0FFEE );
@@ -105,8 +112,15 @@ public class GradientCheck {
 			}
 		}
 
+		LayerAccess memory = LayerAccess.of( network, "memory" );
+		int recurrentFrom = network.memory.inputSize * 4 * network.memory.size;
+		for (int i = 0; i < 8; i++){
+			int index = recurrentFrom + picker.nextInt( memory.weights.length - recurrentFrom );
+			if (compare( memory.weights, memory.weightGrad, index, "memory Wh", verbose ) <= TOLERANCE) exact++;
+		}
+
 		System.out.println();
-		System.out.println( "gradient check: " + checks + " parameters across "
+		System.out.println( "gradient check: " + checks + " parameters over a " + STEPS + "-step chunk across "
 				+ layers.length + " layers, " + exact + " within " + TOLERANCE
 				+ ", " + ( checks - exact - failures ) + " in the noise band" );
 
