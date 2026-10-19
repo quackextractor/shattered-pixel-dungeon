@@ -149,6 +149,7 @@ public class Trainer {
 		this.hyper = hyper;
 		this.ppo = new PPO( config, rng );
 		this.pool = new TrainerWorkers( config, ppo );
+		this.pool.beforeHalt( this::saveBestReplays );
 		WorkerPool.bufferBytes = hyper.pipeBufferBytes;
 		WorkerPool.heapMin = hyper.workerHeapMin;
 		WorkerPool.heapMax = hyper.workerHeapMax;
@@ -314,6 +315,19 @@ Worker.writeWeights( out, ppo.network );
 							+ " of the checkpoint)", Ansi.DIM ) );
 		}
 
+		try {
+			runGenerations( first, generations, startedAt, workerCount );
+		} finally {
+			clearProgressBar();
+			saveBestReplays();
+		}
+
+		if (metrics != null) metrics.printTrend();
+	}
+
+
+	private void runGenerations( int first, int generations, long startedAt, int workerCount )
+			throws IOException {
 		for (int g = first; g < lastGeneration; g++){
 			epoch = g;
 			advanceSchedule();
@@ -388,12 +402,6 @@ Worker.writeWeights( out, ppo.network );
 			clearProgressBar();
 			drawProgressBar( g + 1 - first, generations, startedAt );
 		}
-
-		clearProgressBar();
-
-		saveBestReplays();
-
-		if (metrics != null) metrics.printTrend();
 	}
 
 
@@ -618,7 +626,11 @@ Worker.writeWeights( out, ppo.network );
 		keeper.consider( episode.replay );
 	}
 
-private void saveBestReplays(){
+	private boolean replaysSaved;
+
+	private synchronized void saveBestReplays(){
+		if (replaysSaved) return;
+		replaysSaved = true;
 		clearProgressBar();
 		File dir = replayDir();
 		int saved = 0;

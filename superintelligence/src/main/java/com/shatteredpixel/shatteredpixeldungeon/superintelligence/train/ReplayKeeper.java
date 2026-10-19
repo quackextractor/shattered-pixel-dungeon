@@ -10,25 +10,49 @@ import java.util.Map;
 
 public class ReplayKeeper {
 
+	public static final int DEFAULT_SEEDS = 256;
+
+	private final int maxSeeds;
+
 	private final Map< String, Replay > bestPerSeed = new LinkedHashMap<>();
 
 	private Replay worst;
 
 	private int considered;
 
-	public void consider( Replay replay ){
+	public ReplayKeeper(){
+		this( DEFAULT_SEEDS );
+	}
+
+	public ReplayKeeper( int maxSeeds ){
+		this.maxSeeds = Math.max( 1, maxSeeds );
+	}
+
+	public synchronized void consider( Replay replay ){
 		if (replay == null) return;
 		considered++;
 
-		Replay best = bestPerSeed.get( replay.seedText );
-		if (best == null || replay.score > best.score){
-			bestPerSeed.put( replay.seedText, replay );
-		}
-
 		if (worst == null || replay.score < worst.score) worst = replay;
+
+		Replay best = bestPerSeed.get( replay.seedText );
+		if (best != null && replay.score <= best.score) return;
+		if (best == null && bestPerSeed.size() >= maxSeeds){
+			Replay lowest = lowestBest();
+			if (replay.score <= lowest.score) return;
+			bestPerSeed.remove( lowest.seedText );
+		}
+		bestPerSeed.put( replay.seedText, replay );
 	}
 
-	public List< Replay > keep(){
+	private Replay lowestBest(){
+		Replay lowest = null;
+		for (Replay r : bestPerSeed.values()){
+			if (lowest == null || r.score < lowest.score) lowest = r;
+		}
+		return lowest;
+	}
+
+	public synchronized List< Replay > keep(){
 		List< Replay > kept = new ArrayList<>( bestPerSeed.values() );
 		if (worst != null && !kept.contains( worst )) kept.add( worst );
 		return kept;

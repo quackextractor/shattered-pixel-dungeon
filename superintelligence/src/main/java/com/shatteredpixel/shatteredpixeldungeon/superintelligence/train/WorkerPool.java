@@ -18,6 +18,8 @@ public class WorkerPool {
 
 	private long stallTimeoutMs = 180_000;
 
+	private volatile Runnable beforeHalt = () -> {};
+
 	private final List<WorkerHandle> workers = new ArrayList<>();
 
 	public interface ParamWriter {
@@ -90,6 +92,10 @@ public class WorkerPool {
 		return stallTimeoutMs;
 	}
 
+	public void beforeHalt( Runnable action ){
+		beforeHalt = action;
+	}
+
 	public void startWatchdog(){
 		Thread watchdog = new Thread( () -> {
 			while (true){
@@ -125,6 +131,11 @@ public class WorkerPool {
 			}
 		}
 
+		try {
+			beforeHalt.run();
+		} catch (RuntimeException e){
+			System.err.println( "[ERROR] saving before the halt failed: " + e );
+		}
 		Runtime.getRuntime().halt( 3 );
 	}
 

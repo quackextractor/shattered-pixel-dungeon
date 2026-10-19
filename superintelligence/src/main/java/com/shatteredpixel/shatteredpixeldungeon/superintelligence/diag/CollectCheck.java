@@ -117,6 +117,17 @@ public class CollectCheck {
 			fail( "a run where the worst episode is also a seed's best kept "
 					+ onlyOne.keep().size() + " files, so the worst is written twice." );
 		}
+
+		ReplayKeeper capped = new ReplayKeeper( 2 );
+		capped.consider( fixture( "CAP-A", "WARRIOR", 1, -100.0 ));
+		capped.consider( fixture( "CAP-B", "WARRIOR", 1, -300.0 ));
+		capped.consider( fixture( "CAP-C", "WARRIOR", 1, -200.0 ));
+		capped.consider( fixture( "CAP-D", "WARRIOR", 1, -900.0 ));
+		List< String > cappedSeeds = seedsOf( new java.util.ArrayList<>( capped.bestPerSeed() ));
+		if (!cappedSeeds.equals( java.util.Arrays.asList( "CAP-A@-100", "CAP-C@-200" ))){
+			fail( "a keeper capped at 2 seeds held " + cappedSeeds + " after four seeds, where the two"
+					+ " best, CAP-A and CAP-C, are what a run of unbounded random seeds must keep" );
+		}
 	}
 
 	private static Replay fixture( String seed, String hero, int depth, double score ){

@@ -69,6 +69,10 @@ public class TrainerWorkers {
 		return pool.stallTimeoutMs();
 	}
 
+	public void beforeHalt( Runnable action ){
+		pool.beforeHalt( action );
+	}
+
 	public void startWatchdog(){
 		pool.startWatchdog();
 	}
