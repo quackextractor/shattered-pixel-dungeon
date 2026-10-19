@@ -27,15 +27,10 @@ public class EnvConfigBinder {
 			"env.actor_step_limit",
 			"env.stall_limit",
 	"env.free_step_budget",
-			"env.max_view_distance",
-			"env.honour_vision_buffs",
-			"env.mimics_visible_out_of_fog",
 			"env.allow_equipping",
-			"env.allow_trading",
 			"env.allow_alchemy",
 			"env.sub_mode_progress_only",
 			"env.record_rng_fingerprint",
-			"env.persist_saves",
 			"env.dialog_age_seconds",
 
 			"reward.profile",
@@ -54,7 +49,6 @@ public class EnvConfigBinder {
 			"reward.stall_penalty",
 			"reward.turn_limit_penalty",
 			"reward.victory_reward",
-			"reward.curriculum_progress",
 
 			"reward.identified_reward",
 			"reward.curse_equipped_penalty",
@@ -240,18 +234,12 @@ public class EnvConfigBinder {
 			case "env.actor_step_limit":     config.actorStepLimit = integer( key, value, origin ); break;
 			case "env.stall_limit":          config.stallLimit = integer( key, value, origin ); break;
 			case "env.free_step_budget":     config.freeStepBudget = integer( key, value, origin ); break;
-			case "env.max_view_distance":    config.maxViewDistance = integer( key, value, origin ); break;
-			case "env.honour_vision_buffs":  config.honourVisionBuffs = bool( key, value, origin ); break;
-			case "env.mimics_visible_out_of_fog":
-				config.mimicsVisibleOutOfFog = bool( key, value, origin ); break;
 			case "env.allow_equipping":      config.allowEquipping = bool( key, value, origin ); break;
-			case "env.allow_trading":        config.allowTrading = bool( key, value, origin ); break;
 			case "env.allow_alchemy":        config.allowAlchemy = bool( key, value, origin ); break;
 			case "env.sub_mode_progress_only":
 				config.subModeProgressOnly = bool( key, value, origin ); break;
 			case "env.record_rng_fingerprint":
 				config.recordRngFingerprint = bool( key, value, origin ); break;
-			case "env.persist_saves":        config.persistSaves = bool( key, value, origin ); break;
 			case "env.dialog_age_seconds":   config.dialogAgeSeconds = decimal( key, value, origin ); break;
 
 			case "reward.profile":
@@ -283,8 +271,6 @@ public class EnvConfigBinder {
 			case "reward.turn_limit_penalty":
 				config.turnLimitPenalty = decimal( key, value, origin ); break;
 			case "reward.victory_reward":    config.victoryReward = decimal( key, value, origin ); break;
-			case "reward.curriculum_progress":
-				config.curriculumProgress = decimal( key, value, origin ); break;
 			case "reward.identified_reward":
 				config.identifiedReward = decimal( key, value, origin ); break;
 			case "reward.curse_equipped_penalty":

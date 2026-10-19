@@ -35,10 +35,6 @@ public class EnvConfig {
 	public int freeStepBudget = 250;
 
 
-	public int maxViewDistance = 12;
-
-
-	public boolean honourVisionBuffs = true;
 
 
 	public boolean mimicsVisibleOutOfFog = true;
@@ -46,8 +42,6 @@ public class EnvConfig {
 
 	public boolean allowEquipping = true;
 
-
-	public boolean allowTrading = true;
 
 
 	public boolean allowAlchemy = true;
@@ -64,8 +58,6 @@ public class EnvConfig {
 
 	public float craftMeatPieReward = 100f;
 
-
-	public float curriculumProgress = 0f;
 
 
 	public float identifiedReward = 0.5f;
@@ -170,8 +162,6 @@ public class EnvConfig {
 			= com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile.DEFAULT;
 
 
-	public boolean persistSaves = false;
-
 
 	public float dialogAgeSeconds = 0.2f;
 
@@ -185,8 +175,6 @@ public class EnvConfig {
 		out.writeInt( actorStepLimit );
 		out.writeInt( stallLimit );
 		out.writeInt( freeStepBudget );
-				out.writeInt( maxViewDistance );
-		out.writeFloat( curriculumProgress );
 		out.writeFloat( turnCost );
 		out.writeFloat( depthReward );
 		out.writeFloat( exploreReward );
@@ -221,16 +209,13 @@ public class EnvConfig {
 		out.writeFloat( maxHpGainCap );
 		out.writeInt( curriculumFadeStartDepth );
 		out.writeInt( curriculumFadeEndDepth );
-		out.writeBoolean( honourVisionBuffs );
 		out.writeBoolean( mimicsVisibleOutOfFog );
 		out.writeBoolean( allowEquipping );
-		out.writeBoolean( allowTrading );
 		out.writeBoolean( allowAlchemy );
 		out.writeBoolean( subModeProgressOnly );
 		out.writeBoolean( recordRngFingerprint );
 		out.writeFloat( craftReward );
 		out.writeFloat( craftMeatPieReward );
-		out.writeBoolean( persistSaves );
 
 		out.writeUTF( rewardProfile.key() );
 	}
@@ -245,8 +230,6 @@ public class EnvConfig {
 		actorStepLimit = in.readInt();
 		stallLimit = in.readInt();
 		freeStepBudget = in.readInt();
-		maxViewDistance = in.readInt();
-		curriculumProgress = in.readFloat();
 		turnCost = in.readFloat();
 		depthReward = in.readFloat();
 		exploreReward = in.readFloat();
@@ -281,16 +264,13 @@ public class EnvConfig {
 		maxHpGainCap = in.readFloat();
 		curriculumFadeStartDepth = in.readInt();
 		curriculumFadeEndDepth = in.readInt();
-		honourVisionBuffs = in.readBoolean();
 		mimicsVisibleOutOfFog = in.readBoolean();
 		allowEquipping = in.readBoolean();
-		allowTrading = in.readBoolean();
 		allowAlchemy = in.readBoolean();
 		subModeProgressOnly = in.readBoolean();
 		recordRngFingerprint = in.readBoolean();
 		craftReward = in.readFloat();
 		craftMeatPieReward = in.readFloat();
-		persistSaves = in.readBoolean();
 		rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
 				.parse( in.readUTF() );
 	}
@@ -305,17 +285,13 @@ public class EnvConfig {
 		c.actorStepLimit = actorStepLimit;
 		c.stallLimit = stallLimit;
 		c.freeStepBudget = freeStepBudget;
-		c.maxViewDistance = maxViewDistance;
-		c.honourVisionBuffs = honourVisionBuffs;
 		c.mimicsVisibleOutOfFog = mimicsVisibleOutOfFog;
 		c.allowEquipping = allowEquipping;
-		c.allowTrading = allowTrading;
 		c.allowAlchemy = allowAlchemy;
 		c.subModeProgressOnly = subModeProgressOnly;
 		c.recordRngFingerprint = recordRngFingerprint;
 		c.craftReward = craftReward;
 		c.craftMeatPieReward = craftMeatPieReward;
-		c.curriculumProgress = curriculumProgress;
 		c.turnCost = turnCost;
 		c.depthReward = depthReward;
 		c.exploreReward = exploreReward;
@@ -333,7 +309,6 @@ public class EnvConfig {
 		c.victoryReward = victoryReward;
 		c.dialogAgeSeconds = dialogAgeSeconds;
 		c.rewardProfile = rewardProfile;
-		c.persistSaves = persistSaves;
 		c.identifiedReward = identifiedReward;
 		c.curseEquippedPenalty = curseEquippedPenalty;
 		c.curseRemovedReward = curseRemovedReward;

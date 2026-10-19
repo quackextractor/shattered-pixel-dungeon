@@ -34,17 +34,11 @@ public final class ConfigDefaults {
 			case "env.actor_step_limit":      return String.valueOf( config.actorStepLimit );
 			case "env.stall_limit":           return String.valueOf( config.stallLimit );
 			case "env.free_step_budget":      return String.valueOf( config.freeStepBudget );
-			case "env.max_view_distance":     return String.valueOf( config.maxViewDistance );
 			case "env.dialog_age_seconds":    return String.valueOf( config.dialogAgeSeconds );
-			case "env.honour_vision_buffs":   return String.valueOf( config.honourVisionBuffs );
-			case "env.mimics_visible_out_of_fog":
-				return String.valueOf( config.mimicsVisibleOutOfFog );
 			case "env.allow_equipping":       return String.valueOf( config.allowEquipping );
-			case "env.allow_trading":         return String.valueOf( config.allowTrading );
 			case "env.allow_alchemy":         return String.valueOf( config.allowAlchemy );
 			case "env.sub_mode_progress_only":   return String.valueOf( config.subModeProgressOnly );
 			case "env.record_rng_fingerprint":    return String.valueOf( config.recordRngFingerprint );
-			case "env.persist_saves":         return String.valueOf( config.persistSaves );
 
 			case "reward.profile":            return config.rewardProfile.key();
 			case "reward.turn_cost":          return String.valueOf( config.turnCost );
@@ -63,7 +57,6 @@ public final class ConfigDefaults {
 			case "reward.stall_penalty":      return String.valueOf( config.stallPenalty );
 			case "reward.turn_limit_penalty": return String.valueOf( config.turnLimitPenalty );
 			case "reward.victory_reward":     return String.valueOf( config.victoryReward );
-			case "reward.curriculum_progress": return String.valueOf( config.curriculumProgress );
 			case "reward.stair_potential_weight":
 				return String.valueOf( config.stairPotentialWeight );
 			case "reward.identified_reward":
@@ -158,13 +151,9 @@ public final class ConfigDefaults {
 
 	private static boolean isBooleanKey( String key ){
 		switch ( key ) {
-			case "env.honour_vision_buffs":
-			case "env.mimics_visible_out_of_fog":
 			case "env.allow_equipping":
-			case "env.allow_trading":
 			case "env.allow_alchemy":
 			case "env.sub_mode_progress_only":
-			case "env.persist_saves":
 			case "env.record_rng_fingerprint":
 			case "rl.normalise_values":
 			case "rl.huber_values":
@@ -188,7 +177,6 @@ public final class ConfigDefaults {
 			case "env.actor_step_limit":      return "555";
 			case "env.stall_limit":           return "42";
 			case "env.free_step_budget":      return "77";
-			case "env.max_view_distance":     return "7";
 			case "env.dialog_age_seconds":    return "0.5";
 
 			case "reward.profile":            return "depth_only";
@@ -206,7 +194,6 @@ public final class ConfigDefaults {
 			case "reward.stall_penalty":      return "350.0";
 			case "reward.turn_limit_penalty": return "75.0";
 			case "reward.victory_reward":     return "2000.0";
-			case "reward.curriculum_progress": return "0.5";
 			case "reward.stair_potential_weight": return "0.5";
 			case "reward.identified_reward": return "1.5";
 			case "reward.curse_equipped_penalty": return "-1.5";

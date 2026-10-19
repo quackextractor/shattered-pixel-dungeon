@@ -101,8 +101,7 @@ checkOutputPathsFollowTheWorkingDirectory();
 		EnvConfig probe = new EnvConfig();
 		probe.maxSlots = 3;             probe.gridWidth = 4;           probe.gridHeight = 5;
 		probe.turnLimitPerFloor = 6;    probe.turnLimitTotal = 7;      probe.actorStepLimit = 8;
-		probe.stallLimit = 9;           probe.freeStepBudget = 10;     probe.maxViewDistance = 11;
-		probe.curriculumProgress = 0.25f;
+		probe.stallLimit = 9;           probe.freeStepBudget = 10;
 		probe.turnCost = 1.5f;          probe.depthReward = 2.5f;      probe.exploreReward = 3.5f;
 		probe.maxHpReward = 4.5f;       probe.talentReward = 5.5f;      probe.goldReward = 6.5f;
 		probe.damagePenalty = 7.5f;     probe.killReward = 8.5f;        probe.sneakAttackReward = 9.5f;
@@ -118,14 +117,11 @@ checkOutputPathsFollowTheWorkingDirectory();
 		probe.itemValueEquipLevel = 27.5f; probe.itemValueOther = 28.5f;
 		probe.bossSlainFactor = 29.5f;   probe.maxHpGainCap = 30.5f;
 		probe.curriculumFadeStartDepth = 31; probe.curriculumFadeEndDepth = 32;
-		probe.honourVisionBuffs = false;
 		probe.mimicsVisibleOutOfFog = false;
 		probe.allowEquipping = false;
-		probe.allowTrading = false;
 		probe.allowAlchemy = false;
 		probe.subModeProgressOnly = false;
 		probe.recordRngFingerprint = false;
-		probe.persistSaves = true;
 		probe.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
 				.parse( "depth_only" );
 
@@ -178,12 +174,12 @@ checkOutputPathsFollowTheWorkingDirectory();
 
 	private static final List< String > ENV_FIELDS = java.util.Arrays.asList(
 		"maxSlots", "gridWidth", "gridHeight", "turnLimitPerFloor", "turnLimitTotal", "actorStepLimit",
-		"stallLimit", "freeStepBudget", "maxViewDistance", "curriculumProgress", "turnCost",
+		"stallLimit", "freeStepBudget", "turnCost",
 		"depthReward", "exploreReward", "maxHpReward", "talentReward", "goldReward", "damagePenalty",
 		"killReward", "sneakAttackReward", "freeStepCostFactor", "deathPenalty", "stallPenalty",
-		"turnLimitPenalty", "victoryReward", "honourVisionBuffs", "mimicsVisibleOutOfFog",
-		"allowEquipping", "allowTrading", "allowAlchemy", "subModeProgressOnly", "recordRngFingerprint",
-		"persistSaves", "rewardProfile",
+		"turnLimitPenalty", "victoryReward", "mimicsVisibleOutOfFog",
+		"allowEquipping", "allowAlchemy", "subModeProgressOnly", "recordRngFingerprint",
+		"rewardProfile",
 		"dialogAgeSeconds", "stairPotentialWeight",
 		"identifiedReward", "curseEquippedPenalty", "curseRemovedReward", "equipTooStrongPenalty",
 		"curedDebuffReward", "eatenEarlyPenalty", "menuNoopPenalty", "levelUpReward",
