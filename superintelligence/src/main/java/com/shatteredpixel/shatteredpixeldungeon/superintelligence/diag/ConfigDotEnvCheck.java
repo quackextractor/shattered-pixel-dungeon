@@ -175,13 +175,7 @@ public final class ConfigDotEnvCheck {
 		List< String > mismatched = new ArrayList<>();
 		List< String > unnamed = new ArrayList<>();
 
-		EnvConfigBinder.Loaded defaults;
-		try {
-			defaults = EnvConfigBinder.load( null );
-		} catch (IOException e){
-			fail( "could not load the compiled defaults: " + e.getMessage() );
-			return;
-		}
+		EnvConfigBinder.Loaded defaults = EnvConfigBinder.defaults();
 
 		for (String key : EnvConfigBinder.KEYS){
 			String name = EnvConfigBinder.environmentName( key );

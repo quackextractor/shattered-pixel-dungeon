@@ -87,6 +87,7 @@ tasks.register('configcheck', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ConfigCheck'
     jvmArgs trainerJvmArgs
+    environment = System.getenv().findAll { !it.key.startsWith('SPD_') }
 }
 tasks.register('stripinlines', JavaExec) {
     group = 'maintenance'

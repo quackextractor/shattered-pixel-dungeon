@@ -210,7 +210,7 @@ checkOutputPathsFollowTheWorkingDirectory();
 		Path shipped = shippedFile();
 		Map<String, String> values = read( shipped );
 
-		EnvConfigBinder.Loaded defaults = EnvConfigBinder.load( null );
+		EnvConfigBinder.Loaded defaults = EnvConfigBinder.defaults();
 		EnvConfig config = defaults.config;
 		PpoHyperparameters hyper = defaults.hyper;
 
@@ -263,7 +263,7 @@ checkOutputPathsFollowTheWorkingDirectory();
 
 
 	private static void checkEveryKnownKeyIsReachable() throws IOException {
-		EnvConfigBinder.Loaded base = EnvConfigBinder.load( null );
+		EnvConfigBinder.Loaded base = EnvConfigBinder.defaults();
 
 		List<String> inert = new ArrayList<>();
 		int examined = 0;
