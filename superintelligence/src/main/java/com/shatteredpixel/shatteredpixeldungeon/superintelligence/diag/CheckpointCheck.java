@@ -46,7 +46,7 @@ public class CheckpointCheck {
 		checkAMissingFlagValueIsRefusedNamingItself();
 
 Checkpoint.save( new File( dir, "default.bin" ),
-				new Network( config, new Random( 1L ) ), config, 1, 1L, 11L, 13L, 17L, 4, 4 );
+				new Network( config, new Random( 1L ) ), config, 1, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
 			File defaultFile = new File( dir, "default.bin" );
 			Checkpoint.load( defaultFile, new Network( config, new Random( 2L ) ), config );
 
@@ -68,7 +68,7 @@ Checkpoint.save( new File( dir, "default.bin" ),
 
 	private static void checkRoundTripIsExact( Network original, EnvConfig config, File file,
 			int generation, long seed ) throws IOException {
-		Checkpoint.save( file, original, config, generation, seed, 11L, 13L, 17L, 4, 4 );
+		Checkpoint.save( file, original, config, generation, seed, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
 
 		Network restored = new Network( config, new Random( 999L ) );
 		Checkpoint.load( file, restored, config );
@@ -145,7 +145,7 @@ Checkpoint.save( new File( dir, "default.bin" ),
 
 	private static void checkRefusesTruncatedFile( Network original, EnvConfig config,
 			File file, File truncated ) throws IOException {
-		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4 );
+		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
 		java.nio.file.Files.copy( file.toPath(), truncated.toPath(),
 				java.nio.file.StandardCopyOption.REPLACE_EXISTING );
 
@@ -163,7 +163,7 @@ Checkpoint.save( new File( dir, "default.bin" ),
 
 	private static void checkRefusesTrailingBytes( Network original, EnvConfig config,
 			File file, File trailing ) throws IOException {
-		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4 );
+		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
 		java.nio.file.Files.copy( file.toPath(), trailing.toPath(),
 				java.nio.file.StandardCopyOption.REPLACE_EXISTING );
 
@@ -181,7 +181,7 @@ Checkpoint.save( new File( dir, "default.bin" ),
 
 	private static void checkRefusesDifferentConfig( Network original, EnvConfig config,
 			File file ) throws IOException {
-		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4 );
+		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
 
 		checkMismatchNames( config, file, "maxSlots", 6 );
 		checkMismatchNames( config, file, "gridWidth", 10 );
@@ -227,8 +227,8 @@ Checkpoint.save( new File( dir, "default.bin" ),
 
 	private static void checkLeavesNoTemporaryFiles( Network original, EnvConfig config,
 			File file, File dir ) throws IOException {
-		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4 );
-		Checkpoint.save( file, original, config, 2, 1L, 11L, 13L, 17L, 4, 4 );
+		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
+		Checkpoint.save( file, original, config, 2, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
 
 		File[] strays = dir.listFiles( (d, name) -> name.startsWith( "weights-" ) );
 		if (strays != null && strays.length > 0){
@@ -239,7 +239,7 @@ Checkpoint.save( new File( dir, "default.bin" ),
 
 	private static void checkResumesIntoAnUntrainedNetwork( Network original, EnvConfig config,
 			File file ) throws IOException {
-		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4 );
+		Checkpoint.save( file, original, config, 1, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
 
 		Network target = new Network( config, new Random( 555L ) );
 		Network.Layer[] before = target.layers();
@@ -269,7 +269,8 @@ Checkpoint.save( new File( dir, "default.bin" ),
 
 	private static void checkReportsGenerationAndSteps( Network original, EnvConfig config,
 			File file, int generation, long seed ) throws IOException {
-		Checkpoint.save( file, original, config, generation, seed, 11L, 13L, 17L, 4, 4 );
+		Checkpoint.save( file, original, config, generation, seed, 11L, 13L, 17L, 4, 4,
+				2.5f, 3.25f, true, 99L );
 		Checkpoint.Meta meta = Checkpoint.load( file,
 				new Network( config, new Random( 4L ) ), config );
 
@@ -287,6 +288,14 @@ Checkpoint.save( new File( dir, "default.bin" ),
 					+ meta.seedScheduleSeed + ", draws " + meta.seedDraws + ", active "
 					+ meta.activeSeeds + " against the 11/13/17/4 that was written. A resume that does"
 					+ " not carry them replays the seed sequence from generation 0." );
+			return;
+		}
+		if (!meta.hasTrainerState || meta.valueMean != 2.5f || meta.valueStd != 3.25f
+				|| !meta.valueReady || meta.rngState != 99L){
+			fail( "the trainer state came back as value mean " + meta.valueMean + ", std "
+					+ meta.valueStd + ", ready " + meta.valueReady + ", rng " + meta.rngState
+					+ " against the 2.5/3.25/true/99 that was written. A resume without them resets the"
+					+ " value normaliser and replays the trainer's draws from generation 0." );
 			return;
 		}
 		if (meta.adamSteps != original.adamSteps()){

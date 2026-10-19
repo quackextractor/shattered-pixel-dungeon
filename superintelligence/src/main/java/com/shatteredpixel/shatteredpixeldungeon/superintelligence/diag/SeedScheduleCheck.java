@@ -146,7 +146,7 @@ public class SeedScheduleCheck {
 					new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig(),
 					30, 909L,
 					original.poolSeed(), original.scheduleSeed(), original.draws(),
-					POOL, original.activeSeeds() );
+					POOL, original.activeSeeds(), 0f, 1f, false, 0L );
 
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig config =
 					new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig();

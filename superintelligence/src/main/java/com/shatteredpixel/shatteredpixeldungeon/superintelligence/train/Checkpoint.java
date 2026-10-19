@@ -16,7 +16,8 @@ import java.nio.file.StandardCopyOption;
 public final class Checkpoint {
 
 	private static final int MAGIC = 0x53504431;
-	private static final int FORMAT = 2;
+	private static final int FORMAT = 3;
+	private static final int FORMAT_WITHOUT_TRAINER_STATE = 2;
 
 	private Checkpoint() {}
 
@@ -35,6 +36,12 @@ public static class Meta {
 		public int seedPoolSize;
 		public int activeSeeds;
 
+		public boolean hasTrainerState;
+		public float valueMean;
+		public float valueStd = 1f;
+		public boolean valueReady;
+		public long rngState;
+
 		@Override public String toString(){
 			return "generation " + generation + ", adam step " + adamSteps
 					+ ", train seed " + trainSeed + ", grid " + gridWidth + "x" + gridHeight
@@ -44,7 +51,8 @@ public static class Meta {
 
 	public static void save( File file, Network network, EnvConfig config,
 			int generation, long trainSeed,
-			long seedPoolSeed, long seedScheduleSeed, long seedDraws, int seedPoolSize, int activeSeeds )
+			long seedPoolSeed, long seedScheduleSeed, long seedDraws, int seedPoolSize, int activeSeeds,
+			float valueMean, float valueStd, boolean valueReady, long rngState )
 			throws IOException {
 
 		Path target = file.toPath();
@@ -71,6 +79,11 @@ public static class Meta {
 				out.writeLong( seedDraws );
 				out.writeInt( seedPoolSize );
 				out.writeInt( activeSeeds );
+
+				out.writeFloat( valueMean );
+				out.writeFloat( valueStd );
+				out.writeBoolean( valueReady );
+				out.writeLong( rngState );
 
 				Network.Layer[] layers = network.layers();
 				out.writeInt( layers.length );
@@ -112,7 +125,7 @@ public static class Meta {
 			}
 
 			int format = in.readInt();
-			if (format != FORMAT){
+			if (format != FORMAT && format != FORMAT_WITHOUT_TRAINER_STATE){
 				throw new IOException( file + " is checkpoint format " + format
 						+ " and this build reads format " + FORMAT + ". Refusing rather than"
 						+ " misreading it." );
@@ -125,11 +138,19 @@ public static class Meta {
 			meta.maxSlots = in.readInt();
 			meta.gridWidth = in.readInt();
 			meta.gridHeight = in.readInt();
-				meta.seedPoolSeed = in.readLong();
-				meta.seedScheduleSeed = in.readLong();
-				meta.seedDraws = in.readLong();
-				meta.seedPoolSize = in.readInt();
-				meta.activeSeeds = in.readInt();
+			meta.seedPoolSeed = in.readLong();
+			meta.seedScheduleSeed = in.readLong();
+			meta.seedDraws = in.readLong();
+			meta.seedPoolSize = in.readInt();
+			meta.activeSeeds = in.readInt();
+
+			meta.hasTrainerState = format == FORMAT;
+			if (meta.hasTrainerState){
+				meta.valueMean = in.readFloat();
+				meta.valueStd = in.readFloat();
+				meta.valueReady = in.readBoolean();
+				meta.rngState = in.readLong();
+			}
 
 			checkConfig( file, meta, config );
 

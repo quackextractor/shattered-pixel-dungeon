@@ -244,6 +244,11 @@ public class Trainer {
 		seeds.resume( meta.seedPoolSeed, meta.seedScheduleSeed, meta.seedDraws, meta.seedPoolSize,
 				meta.activeSeeds );
 
+		if (meta.hasTrainerState){
+			ppo.valueNorm.restore( meta.valueMean, meta.valueStd, meta.valueReady );
+			rng.setSeed( meta.rngState );
+		}
+
 		System.out.println( Ansi.wrap( "resume", Ansi.DIM ) + "   loaded " + file
 				+ "  " + Ansi.wrap( "(" + meta + ")", Ansi.DIM ) );
 		return meta;
@@ -437,10 +442,13 @@ Worker.writeWeights( out, ppo.network );
 	void writeCheckpoint( int generation ){
 		if (saveFile == null) return;
 
+		long rngState = rng.nextLong();
+		rng.setSeed( rngState );
 		try {
 			Checkpoint.save( saveFile, ppo.network, config, generation, rngSeed,
 					seeds.poolSeed(), seeds.scheduleSeed(), seeds.draws(), seeds.poolSize(),
-					seeds.activeSeeds() );
+					seeds.activeSeeds(), ppo.valueNorm.mean(), ppo.valueNorm.std(), ppo.valueNorm.ready(),
+					rngState );
 			lastSavedGeneration = generation;
 			System.out.println( Ansi.wrap( "saved", Ansi.DIM ) + "   " + describe( saveFile )
 					+ "  " + Ansi.wrap( "(generation " + generation + ", adam step "

@@ -47,6 +47,12 @@ public class ValueNormalizer {
 		return (returnValue - mean) / std;
 	}
 
+	public void restore( float mean, float std, boolean ready ){
+		this.mean = mean;
+		this.std = std;
+		this.ready = ready;
+	}
+
 	public void disable(){
 		ready = false;
 		mean = 0f;
