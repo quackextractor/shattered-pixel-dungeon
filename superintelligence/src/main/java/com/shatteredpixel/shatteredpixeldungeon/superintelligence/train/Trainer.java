@@ -315,18 +315,20 @@ Worker.writeWeights( out, ppo.network );
 			ChunkReservoir reservoir = new ChunkReservoir(
 					Math.max( 1, maxSamplesPerGeneration / Math.max( 1, ppo.chunkLength )),
 					ppo.chunkLength, rngSeed * 31 + epoch );
-			pool.reservoir( reservoir );
-			droppedThisGeneration = 0;
 
 			ResourceStats.Interval gen = ResourceStats.start();
 			List<Episode> episodes = pool.dispatch( jobs );
 			gen.stop();
 			lastWorkerSeconds = sumWorkerCpuSeconds( episodes );
 
+			for (Episode e : episodes){
+				if (e.transitions == null) continue;
+				reservoir.offer( e.transitions );
+				e.transitions = null;
+			}
 			List<com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition> retained
 					= reservoir.retained();
-			droppedThisGeneration = pool.reservoirOverflow();
-			pool.reservoir( null );
+			droppedThisGeneration = (int) Math.min( Integer.MAX_VALUE, reservoir.dropped() );
 
 			ppo.clearBuffer();
 			ppo.addAll( retained );
