@@ -162,7 +162,6 @@ public class EpisodeCollector {
 					break;
 			}
 			float logProbability = Policy.logProbability( probabilitiesFor( liveHead ), chosen );
-			boolean isTerminal = env.endedNaturally();
 
 			int stepIndex = record.stepCount();
 
@@ -191,7 +190,7 @@ public class EpisodeCollector {
 
 			if (listener != null) listener.onStep( heroPosition, reward, env.lastStepActed() );
 
-			record.add( reward, network.value(), isTerminal, liveHead, actionIndex, slotIndex,
+			record.add( reward, network.value(), env.endedNaturally(), liveHead, actionIndex, slotIndex,
 					logProbability );
 
 			if (!env.running()){

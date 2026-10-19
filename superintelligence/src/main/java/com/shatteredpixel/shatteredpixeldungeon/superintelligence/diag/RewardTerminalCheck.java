@@ -9,6 +9,14 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.StallCause
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardFixtures.Outcome;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+
+import java.util.Random;
 
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardFixtures.fail;
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardFixtures.fmt;
@@ -251,8 +259,43 @@ public final class RewardTerminalCheck {
 			return;
 		}
 
-		System.out.println( "  the hero can die: DEATH recorded, natural ending, scored "
+		Transition last = collectADeath( config );
+		if (last == null){
+			fail( "the collector's episode did not end in DEATH, so its terminal flag was never measured" );
+			return;
+		}
+		if (!last.terminal ){
+			fail( "the collector recorded the step the hero died on as non-terminal, so GAE bootstraps"
+					+ " through death on every episode that ends in one." );
+			return;
+		}
+
+		System.out.println( "  the hero can die: DEATH recorded, natural ending, terminal transition, scored "
 				+ fmt( o.score ) );
+	}
+
+
+	private static Transition collectADeath( EnvConfig config ){
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		EpisodeCollector collector = new EpisodeCollector( config, new Network( config, new Random( 7L ) ),
+				new Random( 8L ), new Random( 9L ), 0.99f, 0.95f, 0f );
+		collector.listener( new EpisodeCollector.Listener() {
+			@Override public void onEpisodeStart( String seedText, String heroClass ){}
+
+			@Override public void onDecision( EnvMode mode, Action action, int secondary ){
+				if (Dungeon.hero != null && Dungeon.hero.isAlive()){
+					Dungeon.hero.damage( Dungeon.hero.HP + 1, Dungeon.hero );
+				}
+			}
+		} );
+		EpisodeRecord record = collector.run( env, "DEATHCHECK", HeroClass.WARRIOR );
+		if (env.endReason() != RewardModel.TerminateReason.DEATH) return null;
+
+		Transition last = null;
+		for (Transition t : record.sampledTransitions()){
+			if (last == null || t.stepIndex > last.stepIndex) last = t;
+		}
+		return last != null && last.stepIndex == record.stepCount() - 1 ? last : null;
 	}
 
 
