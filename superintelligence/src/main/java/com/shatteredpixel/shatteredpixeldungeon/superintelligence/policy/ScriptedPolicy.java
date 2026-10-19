@@ -288,48 +288,35 @@ Action fallback = null;
 		if (heaps.isEmpty()) return null;
 
 		int hero = Dungeon.hero.pos;
+		PathFinder.buildDistanceMap( hero, Dungeon.level.passable );
+		int[] distance = PathFinder.distance;
 
-		Action best = null;
-		int bestDistance = Integer.MAX_VALUE;
-
+		int target = -1;
 		for (Heap heap : heaps){
-			if (heap.pos == hero) continue;
+			if (heap.pos == hero || distance[ heap.pos ] == Integer.MAX_VALUE) continue;
+			if (target < 0 || distance[ heap.pos ] < distance[ target ]) target = heap.pos;
+		}
+		if (target < 0) return null;
 
-			boolean[] passable = Dungeon.level.passable;
-			PathFinder.buildDistanceMap( heap.pos, passable );
-
-			int[] distance = PathFinder.distance;
-			if (distance[ hero ] <= 0) continue;
-
-			for (Action move : moves){
-				int cell = hero + move.dx + move.dy * Dungeon.level.width();
-				if (cell < 0 || cell >= distance.length) continue;
-
-				if (distance[ cell ] <= 0 || distance[ cell ] >= distance[ hero ]) continue;
-
-				if (distance[ cell ] < bestDistance){
-					bestDistance = distance[ cell ];
-					best = move;
+		int cell = target;
+		while (distance[ cell ] > 1){
+			int next = -1;
+			for (int step : PathFinder.NEIGHBOURS8){
+				int n = cell + step;
+				if (n >= 0 && n < distance.length && distance[ n ] == distance[ cell ] - 1){
+					next = n;
+					break;
 				}
 			}
-
-			if (best != null) break;
-
-			for (Action move : moves){
-				int cell = hero + move.dx + move.dy * Dungeon.level.width();
-				if (cell < 0 || cell >= distance.length) continue;
-				if (distance[ cell ] <= 0 || distance[ cell ] > distance[ hero ]) continue;
-
-				if (distance[ cell ] < bestDistance){
-					bestDistance = distance[ cell ];
-					best = move;
-				}
-			}
-
-			if (best != null) break;
+			if (next < 0) return null;
+			cell = next;
 		}
 
-		return best;
+		int width = Dungeon.level.width();
+		for (Action move : moves){
+			if (hero + move.dx + move.dy * width == cell) return move;
+		}
+		return null;
 	}
 
 

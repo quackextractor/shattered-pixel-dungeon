@@ -7,6 +7,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.RunState;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
@@ -62,6 +63,7 @@ public class RestartCheck {
 
 	private static void restart( LevelPipeline pipeline ){
 		Dungeon.hero = null;
+		RunState.clearRemains();
 		Dungeon.init();
 
 		pipeline.attachSprites();
