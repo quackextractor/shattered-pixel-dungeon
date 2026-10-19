@@ -249,7 +249,7 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 			if (!level.heroFOV[ n2 ]) continue;
 			if (level.passable[ n2 ]) n++;
 		}
-		return n / 8f;
+		return GridChannel.quantise( n / 8f );
 	}
 
 	private void applyEdges(){

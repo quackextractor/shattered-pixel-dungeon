@@ -1,24 +1,62 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.GridChannel;
 import java.util.ArrayDeque;
 public class Transition {
 	public byte[] grid;
 	public int gridCells;
+	private static final boolean[] FRACTIONAL = GridChannel.fractionalPlanes();
 	public void packGrid( float[] src ){
 		java.util.Arrays.fill( grid, (byte) 0 );
 		int n = Math.min( src.length, gridCells );
-		for (int i = 0; i < n; i++){
-			if (src[ i ] <= 0.5f ) continue;
-			grid[ i >>> 3 ] |= (byte) (1 << ( i & 7 ));
+		int area = planeArea( gridCells );
+		int levels = bitBytes( gridCells );
+		for (int plane = 0; plane < FRACTIONAL.length; plane++){
+			int start = plane * area;
+			int end = Math.min( n, start + area );
+			if (FRACTIONAL[ plane ]){
+				for (int i = start; i < end; i++) grid[ levels + i - start ] = (byte) GridChannel.level( src[ i ] );
+				levels += area;
+				continue;
+			}
+			for (int i = start; i < end; i++){
+				if (src[ i ] <= 0.5f ) continue;
+				grid[ i >>> 3 ] |= (byte) (1 << ( i & 7 ));
+			}
 		}
 	}
 	public void unpackGrid( float[] dst ){
 		int n = Math.min( dst.length, gridCells );
-		for (int i = 0; i < n; i++){
-			dst[ i ] = ( ( grid[ i >>> 3 ] >>> ( i & 7 ) ) & 1 ) != 0 ? 1f : 0f;
+		int area = planeArea( gridCells );
+		int levels = bitBytes( gridCells );
+		for (int plane = 0; plane < FRACTIONAL.length; plane++){
+			int start = plane * area;
+			int end = Math.min( n, start + area );
+			if (FRACTIONAL[ plane ]){
+				for (int i = start; i < end; i++){
+					dst[ i ] = ( grid[ levels + i - start ] & 0xFF ) / (float) GridChannel.LEVELS;
+				}
+				levels += area;
+				continue;
+			}
+			for (int i = start; i < end; i++){
+				dst[ i ] = ( ( grid[ i >>> 3 ] >>> ( i & 7 ) ) & 1 ) != 0 ? 1f : 0f;
+			}
 		}
 	}
 	public static int packedGridBytes( int cells ){
+		int fractional = 0;
+		for (boolean f : FRACTIONAL) if (f) fractional++;
+		return bitBytes( cells ) + fractional * planeArea( cells );
+	}
+	private static int bitBytes( int cells ){
 		return ( cells + 7 ) >>> 3;
+	}
+	private static int planeArea( int cells ){
+		if (cells % FRACTIONAL.length != 0){
+			throw new IllegalArgumentException( cells + " grid cells do not split into "
+					+ FRACTIONAL.length + " spatial planes" );
+		}
+		return cells / FRACTIONAL.length;
 	}
 	public float[] inventory;
 	public float[] hero;

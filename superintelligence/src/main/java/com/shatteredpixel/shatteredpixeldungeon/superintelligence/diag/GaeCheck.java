@@ -2,6 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.GridChannel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord;
@@ -33,7 +34,7 @@ checkTerminalZerosTheTail();
 		checkAdvantagesAreIndependentOfSampling();
 		checkTransitionCodecRoundTrip();
 		checkThePackedGridSurvivesARoundTrip();
-		checkThePackedGridIsEightTimesSmaller();
+		checkThePackedGridIsCompact();
 		checkAFrameOfManyTransitionsRoundTrips();
 		checkClipFractionIsNotAdvantageMagnitude();
 		PolicyUpdateCheck.run( GaeCheck::fail );
@@ -53,26 +54,36 @@ checkTerminalZerosTheTail();
 		t.grid = new byte[ Transition.packedGridBytes( cells ) ];
 		java.util.Random rng = new java.util.Random( 987654321L );
 		float[] src = new float[ cells ];
-		for (int i = 0; i < cells; i++) src[ i ] = rng.nextBoolean() ? 1f : 0f;
+		randomGrid( rng, src );
 		t.packGrid( src );
 		float[] back = new float[ cells ];
 		t.unpackGrid( back );
 		for (int i = 0; i < cells; i++){
 			if (back[ i ] == src[ i ] ) continue;
 			fail( "the packed grid lost cell " + i + ": packed " + src[ i ] + ", unpacked "
-					+ back[ i ] + ". Every spatial plane is 0 or 1, so the packing has to be lossless or"
+					+ back[ i ] + ". The packing has to be lossless for every value the encoder emits or"
 					+ " the update trains on an observation the agent never saw." );
 			return;
 		}
-		System.out.println( "  the bit-packed grid round-trips exactly (" + cells + " cells)" );
+		System.out.println( "  the packed grid round-trips exactly, fractional planes included ("
+				+ cells + " cells)" );
 	}
-	private static void checkThePackedGridIsEightTimesSmaller(){
+	private static void randomGrid( java.util.Random rng, float[] grid ){
+		boolean[] fractional = GridChannel.fractionalPlanes();
+		int area = grid.length / fractional.length;
+		for (int i = 0; i < grid.length; i++){
+			grid[ i ] = fractional[ i / area ]
+					? GridChannel.quantise( rng.nextInt( 9 ) / 8f )
+					: rng.nextBoolean() ? 1f : 0f;
+		}
+	}
+	private static void checkThePackedGridIsCompact(){
 		EnvConfig config = new EnvConfig();
 		int cells = config.spatialChannels() * config.gridWidth * config.gridWidth;
 		int packed = Transition.packedGridBytes( cells );
-		if (packed * 7 >= cells){
+		if (packed * 4 >= cells){
 			fail( "the packed grid is " + packed + " bytes for " + cells + " cells, which is not the"
-					+ " eight-fold reduction the packing exists for." );
+					+ " bit-per-binary-cell reduction the packing exists for." );
 			return;
 		}
 		System.out.println( "  the grid travels as " + packed + " bytes for " + cells
@@ -104,7 +115,7 @@ checkTerminalZerosTheTail();
 				for (int k = 0; k < a.length; k++) a[ k ] = rng.nextFloat();
 			}
 			float[] grid = new float[ cells ];
-			for (int k = 0; k < cells; k++) grid[ k ] = rng.nextBoolean() ? 1f : 0f;
+			randomGrid( rng, grid );
 			t.packGrid( grid );
 			t.liveHead = i % 3;
 			t.episodeId = 7;
@@ -336,7 +347,7 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 		sent.targetMask = new float[ ActionMapper.TARGET_COUNT ];
 		float[] grid = new float[ sent.gridCells ];
 		java.util.Random rng = new java.util.Random( 20261016L );
-		for (int i = 0; i < grid.length; i++) grid[ i ] = rng.nextBoolean() ? 1f : 0f;
+		randomGrid( rng, grid );
 		sent.packGrid( grid );
 		for (float[] a : new float[][]{ sent.inventory, sent.hero, sent.actionMask,
 				sent.slotMask, sent.targetMask }){

@@ -19,7 +19,7 @@ import java.util.Random;
 
 public class StateCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 6;
 
 	private static final List< float[] > liveGrids = new ArrayList<>();
 
@@ -42,7 +42,7 @@ public class StateCheck {
 			checkReplayIsOrderIndependent( network, transitions );
 			checkCellStateIsCarriedToo( network, transitions );
 			checkMissingStateIsDetectable( network, transitions );
-			reportPackingDrift( network, transitions );
+			checkPackedGridIsTheRolloutGrid( network, transitions );
 		}
 		checkEveryHeadTrainsTheIndexItSampled();
 
@@ -200,16 +200,26 @@ public class StateCheck {
 		return liveGrids.get( t.stepIndex );
 	}
 
-	private static void reportPackingDrift( Network network, List< Transition > transitions ){
-		double worst = 0;
+	private static void checkPackedGridIsTheRolloutGrid( Network network, List< Transition > transitions ){
 		for (Transition t : transitions){
 			float[] packed = new float[ t.gridCells ];
 			t.unpackGrid( packed );
+			float[] live = liveGrids.get( t.stepIndex );
+			for (int i = 0; i < packed.length; i++){
+				if (packed[ i ] == live[ i ]) continue;
+				GateReport.fail( "step " + t.stepIndex + " stored grid cell " + i + " as " + packed[ i ]
+						+ " but the rollout saw " + live[ i ] + ", so the update trains on an observation"
+						+ " the policy never acted on" );
+				return;
+			}
 			network.loadState( t.recurrentState );
 			network.forward( packed, t.inventory, t.hero );
-			worst = Math.max( worst, Math.abs( network.value() - t.value ) );
+			if (network.value() != t.value){
+				GateReport.fail( "step " + t.stepIndex + " replays its stored grid to value "
+						+ network.value() + " but the rollout saw " + t.value );
+				return;
+			}
 		}
-		System.out.println( "  [WARN] the 1-bit packed grid replays to a value up to " + worst
-				+ " from the rollout's: VISIBLE_EDGE is fractional and packGrid thresholds it" );
+		System.out.println( "  " + transitions.size() + " stored grids unpack to exactly the rollout's" );
 	}
 }
