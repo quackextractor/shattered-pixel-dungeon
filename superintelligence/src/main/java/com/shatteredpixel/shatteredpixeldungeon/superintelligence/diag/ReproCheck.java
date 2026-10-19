@@ -72,13 +72,6 @@ public class ReproCheck {
 		System.out.println( (baseline ? "baseline" : "poisoned")
 				+ ": verifying " + replay.length() + " steps, score " + replay.score );
 
-		if (recorded != null){
-			File out = new File( new File( "." ).getAbsoluteFile(), SAVED );
-			if (out.getParentFile() != null ) out.getParentFile().mkdirs();
-			ReplayIO.write( recorded, out );
-			System.out.println( "wrote the control recording to " + out.getAbsolutePath() );
-		}
-
 		verify( config, replay, baseline ? "baseline" : "first" );
 		verify( config, replay, baseline ? "baseline-again" : "second" );
 	}

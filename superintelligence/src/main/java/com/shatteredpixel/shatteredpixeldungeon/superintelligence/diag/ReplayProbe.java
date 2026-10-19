@@ -76,7 +76,7 @@ public class ReplayProbe {
 			worstStale = Math.max( worstStale, d );
 		}
 
-		System.out.println( "samples      " + n + ", value head output width " + valueRange( network ) );
+		System.out.println( "samples      " + n );
 		System.out.println();
 		System.out.println( "replayed in collection order (state carries from the true predecessor):" );
 		System.out.println( "  mean |replayed - rollout| " + fmt( correctDrift / n ) );
@@ -94,11 +94,6 @@ public class ReplayProbe {
 	private static float[] scratchFrom( Transition t, float[] dst ){
 		t.unpackGrid( dst );
 		return dst;
-	}
-
-	private static String valueRange( Network network ){
-		network.resetState();
-		return "1";
 	}
 
 	private static String fmt( double v ){

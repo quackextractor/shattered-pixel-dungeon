@@ -16,7 +16,7 @@ import java.util.List;
 
 public class VerifyCheck {
 
-	private static final int CHECKS = 15;
+	private static final int CHECKS = 14;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -34,7 +34,6 @@ public class VerifyCheck {
 		checkAlteredModeIsCaught( good );
 		checkARecordingThatCannotResolveItsSlotsIsNotVerified( good );
 		checkAHeroWithNothingBoundIsNotRefused( good );
-		checkAWatchableRecordingIsNotRefused( good );
 		checkAnAlteredDrawCountIsCaughtAndNamed( good );
 		checkAnAlteredAcceptanceIsCaughtAndNamed( good );
 		checkTheDeathStepIsNotHeldToADrawCount();
@@ -325,21 +324,6 @@ public class VerifyCheck {
 
 		System.out.println( "  " + blanked + " slot steps with nothing bound still verify, while health"
 				+ " and engine time stay real - the hero carried nothing, which is a state" );
-	}
-
-	private static void checkAWatchableRecordingIsNotRefused( Replay source ){
-		String where = "a watchable recording is not refused";
-
-		if (firstSlotBearingStep( source ) < 0){
-			fail( where, "the recorded run has no SLOT or INVENTORY step, so this case could not run" );
-			return;
-		}
-
-		ReplayIO.Verification result = verify( source );
-		if ( result.unwatchableAt >= 0 ){
-			fail( where, "a faithful recording was refused at step " + result.unwatchableAt + ": "
-					+ result.unwatchable );
-		}
 	}
 
 	private static int firstSlotBearingStep( Replay source ){

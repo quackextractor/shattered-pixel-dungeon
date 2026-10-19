@@ -7,7 +7,6 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
 
 import java.util.List;
 
