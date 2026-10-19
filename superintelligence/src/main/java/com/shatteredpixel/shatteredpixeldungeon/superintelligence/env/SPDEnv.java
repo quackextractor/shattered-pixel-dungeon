@@ -116,6 +116,7 @@ if (mode == EnvMode.WORLD){
 			} else if (action == Action.USE || action == Action.DROP ){
 				mode = EnvMode.SLOT;
 				if (WindowBridge.open()) mode = EnvMode.MENU;
+				acted = true;
 			}
 		} else if (mode == EnvMode.MENU){
 			acted = mapper.applySecondary( mode, action, slot );

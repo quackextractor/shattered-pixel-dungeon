@@ -78,7 +78,7 @@ public final class RewardTerminalCheck {
 	}
 
 
-	public static void checkAnItemActionInWorldIsARefusal( EnvConfig config ){
+	public static void checkAnItemActionInWorldIsNotARefusal( EnvConfig config ){
 		for (Action action : new Action[]{ Action.USE, Action.DROP }){
 			Outcome o = playInWorld( config, action, 20 );
 
@@ -89,16 +89,16 @@ public final class RewardTerminalCheck {
 				return;
 			}
 
-			if (o.refusals == 0 ){
-				fail( action + " in WORLD was never reported as INVALID_ACTION over " + o.worldTurns
-						+ " turns, so it is being reported as an action the environment performed."
-						+ " It performed none: the item is chosen on the next step, in SLOT or INVENTORY." );
+			if (o.refusals != 0 ){
+				fail( action + " in WORLD was reported as INVALID_ACTION " + o.refusals + " time(s) over "
+						+ o.worldTurns + " turns. It opens the item choice exactly as OPEN_INVENTORY opens"
+						+ " the inventory, and that one is accepted." );
 				return;
 			}
 		}
 
-		System.out.println( "  USE and DROP in WORLD are refusals - nothing was chosen, and the item"
-				+ " comes on the next step" );
+		System.out.println( "  USE and DROP in WORLD open the item choice and are never noted"
+				+ " INVALID_ACTION" );
 	}
 
 

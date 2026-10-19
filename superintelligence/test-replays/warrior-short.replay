@@ -4,7 +4,7 @@ seed=warrior-short
 hero=WARRIOR
 challenges=0
 generation=0
-score=-1893.8600007593632
+score=-1884.1000014841557
 depth=1
 turns=25
 turn_limit=25
@@ -14,29 +14,29 @@ termination=TURN_LIMIT
 reward_profile=default
 group=
 steps=26
-USE 0 WORLD 1100 -1.0  20 0.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 0 0 0
+USE 0 WORLD 1100 -1.0  20 0.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 0 SLOT 1100 0.0 ThrowingStone:0,Waterskin:1 20 0.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 0 TARGETING 1100 -1.0  20 1.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 2 0 1
 OPEN_INVENTORY 0 WORLD 1100 -0.5  20 1.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 2 0 1
 USE 0 INVENTORY 1100 0.0 ThrowingStone:0,Waterskin:1 20 1.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 2 0 1
 USE 0 TARGETING 1100 -1.0  20 2.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 4 954376093097923 1
-MOVE_W 0 WORLD 1099 -2.9800000190734863  20 3.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 5 -991909662124029727 1
-INTERACT 0 WORLD 1100 0.0  20 5.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 6 9163034720265484875 1
-MOVE_W 0 WORLD 1099 -2.9800000190734863  20 6.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 7 -2874720141191082858 1
-INTERACT 0 WORLD 1100 1.0  20 7.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 8 -3647037263984154530 1
-MOVE_W 0 WORLD 1099 -2.9800000190734863  20 8.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 9 -7634193988283370974 1
-MOVE_W 0 WORLD 1098 -2.9600000381469727  20 9.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 10 5269074675096107194 1
-MOVE_SW 0 WORLD 1132 -1.4900000095367432  20 10.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 11 5385720007694094491 1
-MOVE_W 0 WORLD 1131 -2.4200000762939453  20 11.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 12 -6408271390068561257 1
-MOVE_W 0 WORLD 1130 -2.8999996185302734  20 12.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 13 -8180689897203727083 1
-MOVE_W 0 WORLD 1129 -2.880000114440918  20 13.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 14 -6464186906567244742 1
-MOVE_W 0 WORLD 1128 -2.8600006103515625  20 14.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 15 5892252005887056140 1
-MOVE_W 0 WORLD 1127 -0.9400001764297485  20 15.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 17 4802620804783438307 1
-MOVE_W 0 WORLD 1126 -2.369999647140503  20 16.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 18 -5947038997343942397 1
+MOVE_W 0 WORLD 1099 -0.5999984741210938  20 3.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 5 -991909662124029727 1
+INTERACT 0 WORLD 1100 -1.5999984741210938  20 5.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 6 9163034720265484875 1
+MOVE_W 0 WORLD 1099 -0.5999984741210938  20 6.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 7 -2874720141191082858 1
+INTERACT 0 WORLD 1100 -0.5999984741210938  20 7.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 8 -3647037263984154530 1
+MOVE_W 0 WORLD 1099 -0.5999984741210938  20 8.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 9 -7634193988283370974 1
+MOVE_W 0 WORLD 1098 -0.5999984741210938  20 9.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 10 5269074675096107194 1
+MOVE_SW 0 WORLD 1132 -1.1300017833709717  20 10.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 11 5385720007694094491 1
+MOVE_W 0 WORLD 1131 -2.0600013732910156  20 11.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 12 -6408271390068561257 1
+MOVE_W 0 WORLD 1130 -2.5400009155273438  20 12.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 13 -8180689897203727083 1
+MOVE_W 0 WORLD 1129 -2.520000457763672  20 13.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 14 -6464186906567244742 1
+MOVE_W 0 WORLD 1128 -2.5  20 14.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 15 5892252005887056140 1
+MOVE_W 0 WORLD 1127 -0.579999566078186  20 15.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 17 4802620804783438307 1
+MOVE_W 0 WORLD 1126 -2.0099990367889404  20 16.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 18 -5947038997343942397 1
 INTERACT 0 WORLD 1126 -1.0  20 17.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 30 -962987242529940324 1
 INTERACT 0 WORLD 1126 -1.0  20 18.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 34 8715533557662003848 1
 INTERACT 0 WORLD 1126 149.0  20 19.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 45 -3941497673483819786 1
-INTERACT 0 WORLD 1090 -2.799999237060547  20 21.0 Food:1,RingOfAccuracy:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 46 11535467418399206 1
-MOVE_W 0 WORLD 1089 -2.780000686645508  20 22.0 Food:1,RingOfAccuracy:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 47 7551361719625182384 1
-INTERACT 0 WORLD 1088 -2.760000228881836  20 24.0 Food:1,RingOfAccuracy:1,StoneOfIntuition:1,ThrowingStone:1,VelvetPouch(StoneOfIntuition):1,Waterskin:1 48 385890802782270074 1
-INTERACT 0 WORLD 1053 -1.260000228881836  20 26.0 Food:1,PotionOfMindVision:1,RingOfAccuracy:1,StoneOfIntuition:1,ThrowingStone:1,VelvetPouch(StoneOfIntuition):1,Waterskin:1 49 -5631267258316207351 1
+INTERACT 0 WORLD 1090 -2.44000244140625  20 21.0 Food:1,RingOfAccuracy:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 46 11535467418399206 1
+MOVE_W 0 WORLD 1089 -2.420001983642578  20 22.0 Food:1,RingOfAccuracy:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 47 7551361719625182384 1
+INTERACT 0 WORLD 1088 -2.9000015258789062  20 24.0 Food:1,RingOfAccuracy:1,StoneOfIntuition:1,ThrowingStone:1,VelvetPouch(StoneOfIntuition):1,Waterskin:1 48 385890802782270074 1
+INTERACT 0 WORLD 1053 -0.9000015258789062  20 26.0 Food:1,PotionOfMindVision:1,RingOfAccuracy:1,StoneOfIntuition:1,ThrowingStone:1,VelvetPouch(StoneOfIntuition):1,Waterskin:1 49 -5631267258316207351 1

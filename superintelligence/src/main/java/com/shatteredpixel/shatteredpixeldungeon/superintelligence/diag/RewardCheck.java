@@ -11,7 +11,7 @@ public class RewardCheck {
 
 		RewardTerminalCheck.checkStallingIsNotCheaperThanDying( config );
 		RewardTerminalCheck.checkNoOpActionsAreNotRefusals( config );
-		RewardTerminalCheck.checkAnItemActionInWorldIsARefusal( config );
+		RewardTerminalCheck.checkAnItemActionInWorldIsNotARefusal( config );
 		RewardTerminalCheck.checkStallIsNotANaturalEnding( config );
 		RewardTerminalCheck.checkStallCostsMoreThanDying( config );
 		RewardTerminalCheck.checkTerminalsAreOrdered( config );

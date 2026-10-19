@@ -14,7 +14,7 @@ termination=DEATH
 reward_profile=default
 group=
 steps=101
-USE 0 WORLD 153 -1.0  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 0
+USE 0 WORLD 153 -1.0  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 1 SLOT 153 0.0 ThrowingSpike:1,Waterskin:2 20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 0 TARGETING 153 -1.0  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 2 955475604726134 1
 OPEN_INVENTORY 0 WORLD 153 -0.5  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 2 955475604726134 1
@@ -95,19 +95,19 @@ INTERACT 0 WORLD 552 -121.0  17 79.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1
 INTERACT 0 WORLD 552 -41.0  16 80.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 261 -8071697131396038435 1
 INTERACT 0 WORLD 552 -1.0  16 81.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 277 2423124207403601802 1
 INTERACT 0 WORLD 552 -81.0  14 82.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 302 347484517921213650 1
-USE 0 WORLD 552 -0.5  14 82.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 302 347484517921213650 0
+USE 0 WORLD 552 -0.5  14 82.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 302 347484517921213650 1
 USE 1 SLOT 552 0.0 ThrowingSpike:1,Waterskin:2 14 82.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 302 347484517921213650 1
 USE 5 TARGETING 552 -1.0  14 83.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 320 7104776704897631908 1
-USE 0 WORLD 552 -0.5  14 83.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 320 7104776704897631908 0
+USE 0 WORLD 552 -0.5  14 83.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 320 7104776704897631908 1
 USE 1 SLOT 552 0.0 ThrowingSpike:1,Waterskin:2 14 83.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 320 7104776704897631908 1
 USE 5 TARGETING 552 -82.5  12 84.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 346 -247778640993101247 1
-USE 0 WORLD 552 -0.5  12 84.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 346 -247778640993101247 0
+USE 0 WORLD 552 -0.5  12 84.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 346 -247778640993101247 1
 USE 0 SLOT 552 -123.0 Waterskin:2 9 87.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 386 -4413325108440431727 1
-USE 0 WORLD 552 -0.5  9 87.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 386 -4413325108440431727 0
+USE 0 WORLD 552 -0.5  9 87.0 Food:1,PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 386 -4413325108440431727 1
 USE 0 SLOT 552 -44.0 Waterskin:2 8 90.0 PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 447 -235035306180548122 1
-USE 0 WORLD 552 -0.5  8 90.0 PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 447 -235035306180548122 0
+USE 0 WORLD 552 -0.5  8 90.0 PotionOfHaste:1,ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 447 -235035306180548122 1
 USE 0 SLOT 552 -41.5 Waterskin:2 7 91.0 ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 461 5696593325072383411 1
-USE 0 WORLD 552 -0.5  7 91.0 ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 461 5696593325072383411 0
+USE 0 WORLD 552 -0.5  7 91.0 ScrollOfRecharging:1,VelvetPouch():1,Waterskin:1 461 5696593325072383411 1
 USE 0 SLOT 552 -41.5 Waterskin:2 6 92.0 VelvetPouch():1,Waterskin:1 485 1103803734880684552 1
 INTERACT 0 WORLD 552 -1.0  6 93.0 VelvetPouch():1,Waterskin:1 511 -2658209034283156403 1
 INTERACT 0 WORLD 552 -41.0  5 94.0 VelvetPouch():1,Waterskin:1 536 -4478020632812576674 1
