@@ -226,8 +226,6 @@ public class TrainOptions {
 	}
 
 
-	/** A path given on the command line, resolved from the repository root rather than from wherever
-	 *  the process was started. CliOptions.resolve is the same rule for the rollout command. */
 	static File resolve( String path ){
 		return com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.CliOptions
 				.resolve( new File( path ));
