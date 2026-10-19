@@ -89,7 +89,6 @@ public class SPDEnv {
 		mapper.refreshSlots();
 		settle();
 		ledger.beginFloor( Dungeon.depth, Dungeon.branch );
-		reward.resetSnapshot();
 		encoder.encode();
 		refreshMasks();
 		return previous;

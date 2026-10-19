@@ -4,7 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 
 public class RewardCheck {
 
-	private static final int CHECKS = 40;
+	private static final int CHECKS = 41;
 
 	public static void main( String[] args ){
 		EnvConfig config = new EnvConfig();
@@ -51,6 +51,7 @@ RewardShapingCheck.checkPickingUpAnItemPays();
 		RewardSurvivalCheck.checkEatingBeforeHungerIsPaidFor( config );
 		RewardSurvivalCheck.checkALevelUpPaysItsHealthOnce( config );
 		RewardSurvivalCheck.checkOnlyIdentifyingSomethingCarriedPays( config );
+		RewardSurvivalCheck.checkTheFirstStepIsScored( config );
 
 	RewardTypeCheck.checkEveryTermHasATypeAndTheSubtotalsSum();
 	RewardTypeCheck.checkTheReportRendersColourCodedTypeTotals();

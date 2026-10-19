@@ -153,6 +153,31 @@ public final class RewardSurvivalCheck {
 	}
 
 
+	public static void checkTheFirstStepIsScored( EnvConfig config ){
+		Outcome o = play( config, 3, "FIRSTSTEP", turn -> {
+			if (turn.step == 0){
+				com.shatteredpixel.shatteredpixeldungeon.Dungeon.level.drop(
+						new com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing(),
+						com.shatteredpixel.shatteredpixeldungeon.Dungeon.hero.pos );
+				turn.env.step( Action.INTERACT, 0 );
+				return;
+			}
+			turn.env.step( Action.WAIT, 0 );
+		} );
+
+		if (o.notes( RewardTerm.ITEM_PICKUP ) != 1){
+			fail( "a potion picked up on the episode's first step noted ITEM_PICKUP "
+					+ o.notes( RewardTerm.ITEM_PICKUP ) + " time(s). SPDEnv.reset invalidated the reward"
+					+ " snapshot after settling, so the first step only re-took it and every diff on it"
+					+ " was lost." );
+			return;
+		}
+
+		System.out.println( "  the first step of an episode is scored: a pickup on it pays "
+				+ fmt( o.termTotal( RewardTerm.ITEM_PICKUP ) ) );
+	}
+
+
 	static int slotOf( SPDEnv env, Class< ? extends Item > type ){
 		List< Item > slots = env.mapper().slots();
 		for (int i = 0; i < slots.size(); i++){
