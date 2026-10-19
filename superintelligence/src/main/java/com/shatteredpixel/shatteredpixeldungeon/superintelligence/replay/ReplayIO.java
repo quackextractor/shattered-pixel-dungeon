@@ -20,12 +20,19 @@ public class ReplayIO {
 
 	public static void write( Replay replay, File file ) throws IOException {
 		File parent = file.getAbsoluteFile().getParentFile();
-		if (parent != null){
-
-			parent.mkdirs();
+		parent.mkdirs();
+		java.nio.file.Path temp = Files.createTempFile( parent.toPath(), file.getName() + ".part", ".tmp" );
+		try {
+			writeTo( replay, temp );
+			Files.move( temp, file.toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+					java.nio.file.StandardCopyOption.REPLACE_EXISTING );
+		} finally {
+			Files.deleteIfExists( temp );
 		}
+	}
 
-		try (BufferedWriter out = Files.newBufferedWriter( file.toPath(), StandardCharsets.UTF_8 )){
+	private static void writeTo( Replay replay, java.nio.file.Path path ) throws IOException {
+		try (BufferedWriter out = Files.newBufferedWriter( path, StandardCharsets.UTF_8 )){
 			out.write( Replay.MAGIC );
 			out.newLine();
 			out.write( "version=" + Replay.VERSION );
