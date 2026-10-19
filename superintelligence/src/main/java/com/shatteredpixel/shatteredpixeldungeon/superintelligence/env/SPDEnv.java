@@ -199,7 +199,7 @@ if (++guard > config.actorStepLimit){
 				accumulated += onFloorTransition();
 				turnsThisFloor++;
 				turnsTotal++;
-				settleLanding();
+				accumulated += settleLanding();
 				if (!running) break;
 				accumulated += reward.step( encoder.encode(), true, menuNoop() );
 				checkFloorLimits();
@@ -232,15 +232,16 @@ if (++guard > config.actorStepLimit){
 		}
 		return accumulated;
 	}
-	private void settleLanding(){
+	private double settleLanding(){
 		LevelPipeline.Outcome landed = pipeline.runToHeroReady( config.actorStepLimit );
 		if (landed == LevelPipeline.Outcome.HERO_DEAD){
-			terminate( RewardModel.TerminateReason.DEATH );
-		} else if (landed == LevelPipeline.Outcome.STALLED
-				|| landed == LevelPipeline.Outcome.STEP_LIMIT){
-			stallCause = StallCause.PIPELINE;
-			terminate( RewardModel.TerminateReason.STALLED );
+			return terminate( RewardModel.TerminateReason.DEATH );
 		}
+		if (landed == LevelPipeline.Outcome.STALLED || landed == LevelPipeline.Outcome.STEP_LIMIT){
+			stallCause = StallCause.PIPELINE;
+			return terminate( RewardModel.TerminateReason.STALLED );
+		}
+		return 0;
 	}
 	private double onFloorTransition(){
 		LevelPipeline.Transition transition = pipeline.handleTransition();

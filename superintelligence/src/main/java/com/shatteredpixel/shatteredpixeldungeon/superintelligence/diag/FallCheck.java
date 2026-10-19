@@ -23,7 +23,7 @@ import java.util.List;
 
 public class FallCheck {
 
-	private static final int CHECKS = 6;
+	private static final int CHECKS = 7;
 
 
 	static final String[] SEEDS = {
@@ -39,6 +39,7 @@ public class FallCheck {
 
 		checkAFallIsServiced();
 		checkTheFallHurts();
+		checkDyingOnLandingIsPaidForInTheStep();
 		checkAnEpisodeDoesNotInheritTheLastEpisodesFall();
 		checkWalkingIntoAChasmDoesNotTakeTheProcessDown();
 		checkTheSameFallTwiceIsTheSameFall();
@@ -78,9 +79,14 @@ public class FallCheck {
 
 
 	private static boolean drop( SPDEnv env ){
+		return dropScored( env ) != null;
+	}
+
+
+	private static Double dropScored( SPDEnv env ){
 		int[] beside = new int[1];
 		int pit = pitBeside( beside );
-		if (pit < 0) return false;
+		if (pit < 0) return null;
 
 		Dungeon.hero.pos = pit;
 		Dungeon.hero.flying = false;
@@ -88,8 +94,36 @@ public class FallCheck {
 		Dungeon.hero.ready = false;
 
 		Dungeon.level.occupyCell( Dungeon.hero );
-		env.step( Action.WAIT, 0 );
-		return true;
+		return env.step( Action.WAIT, 0 );
+	}
+
+
+	private static void checkDyingOnLandingIsPaidForInTheStep(){
+		SPDEnv env = env();
+
+		for (String seed : SEEDS){
+			env.reset( seed, HeroClass.WARRIOR );
+			if (pitBeside( new int[1] ) < 0) continue;
+
+			Dungeon.hero.HP = 1;
+			Double paid = dropScored( env );
+			if (paid == null || env.endReason() != com.shatteredpixel.shatteredpixeldungeon.superintelligence
+					.reward.RewardModel.TerminateReason.DEATH) continue;
+
+			double penalty = env.config().deathPenalty;
+			if (paid > -penalty){
+				fail( seed + ": the hero fell on 1 health and died on landing, the ledger recorded DEATH,"
+						+ " and the step that killed him returned " + paid + " against a death penalty of -"
+						+ penalty + ". SPDEnv.settleLanding discarded terminate()'s value after the"
+						+ " ledger had flushed it, so the policy never saw the penalty." );
+				return;
+			}
+
+			System.out.println( "  dying on landing is paid in the step: " + seed + " returned " + paid );
+			return;
+		}
+
+		fail( "no seed produced a fall that killed a 1-health hero, so this case measured nothing." );
 	}
 
 
