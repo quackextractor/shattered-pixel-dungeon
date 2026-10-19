@@ -9,8 +9,6 @@ public class Curriculum {
 	private float shapingScale = 1f;
 	private int deepestSeen = 1;
 
-	private int[] lastObserved = new int[ 0 ];
-
 	public Curriculum() {}
 
 	public Curriculum( float fadeStartDepth, float fadeEndDepth ){
@@ -49,10 +47,6 @@ public class Curriculum {
 		shapingScale = 1f;
 	}
 
-	public int[] lastObserved(){
-		return lastObserved.clone();
-	}
-
 	public float fadeStartDepth(){ return fadeStartDepth; }
 
 	public float fadeEndDepth(){ return fadeEndDepth; }
@@ -66,12 +60,11 @@ public class Curriculum {
 		return 1f - s;
 	}
 
-	public static float meanScale( int[] deepestDepths ){
+	public float meanScale( int[] deepestDepths ){
 		if (deepestDepths == null || deepestDepths.length == 0) return 1f;
 
-		Curriculum curriculum = new Curriculum();
 		float total = 0f;
-		for (int depth : deepestDepths) total += curriculum.scaleForDepth( depth );
+		for (int depth : deepestDepths) total += scaleForDepth( depth );
 		return total / deepestDepths.length;
 	}
 }

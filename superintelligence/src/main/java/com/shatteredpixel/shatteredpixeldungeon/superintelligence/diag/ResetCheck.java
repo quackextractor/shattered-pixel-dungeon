@@ -195,19 +195,18 @@ public class ResetCheck {
 
 
 	private static void checkTrajectoriesDoNotDependOnOrder( SPDEnv env, EnvConfig config ){
-		for (String seed : SEEDS){
-			String first = trace( env, config, seed );
+		String[] first = new String[ SEEDS.length ];
+		for (int i = 0; i < SEEDS.length; i++) first[ i ] = trace( env, config, SEEDS[ i ] );
 
-			for (String other : SEEDS){
-				if (!other.equals( seed )) trace( env, config, other );
-			}
+		for (int i = 0; i < SEEDS.length; i++){
+			String seed = SEEDS[ i ];
 			String second = trace( env, config, seed );
 
-			if (!first.equals( second )){
+			if (!first[ i ].equals( second )){
 				fail( "seed " + seed + " produced a different trajectory the second time in the same"
 						+ " process. The environment is not a function of its reset arguments, so any"
 						+ " recording made here is unreproducible and every locked-seed comparison built"
-						+ " on it is meaningless." + firstDifference( first, second ) );
+						+ " on it is meaningless." + firstDifference( first[ i ], second ) );
 				return;
 			}
 		}
@@ -218,19 +217,18 @@ public class ResetCheck {
 
 
 	private static void checkSpecialRoomPoolsDoNotDependOnOrder( SPDEnv env, EnvConfig config ){
-		for (String seed : SEEDS){
-			String first = pools( env, config, seed );
+		String[] first = new String[ SEEDS.length ];
+		for (int i = 0; i < SEEDS.length; i++) first[ i ] = pools( env, config, SEEDS[ i ] );
 
-			for (String other : SEEDS){
-				if (!other.equals( seed )) pools( env, config, other );
-			}
+		for (int i = 0; i < SEEDS.length; i++){
+			String seed = SEEDS[ i ];
 			String second = pools( env, config, seed );
 
-			if (!first.equals( second )){
+			if (!first[ i ].equals( second )){
 				fail( "seed " + seed + " produced a different special-room order the second time in the"
 						+ " same process. The pools decide which room every floor gets, so floor 2 of one"
 						+ " run is not floor 2 of another - and a recording made here replays into a"
-						+ " different dungeon. First difference: \"" + first + "\" vs \"" + second + "\"" );
+						+ " different dungeon. First difference: \"" + first[ i ] + "\" vs \"" + second + "\"" );
 				return;
 			}
 		}

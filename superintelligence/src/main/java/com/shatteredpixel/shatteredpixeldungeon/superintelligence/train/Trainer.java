@@ -413,7 +413,7 @@ Worker.writeWeights( out, ppo.network );
 	private float curriculumScale(){
 		int[] deepest = new int[ lastEpisodes.size() ];
 		for (int i = 0; i < deepest.length; i++) deepest[ i ] = lastEpisodes.get( i ).depth;
-		return Curriculum.meanScale( deepest );
+		return new Curriculum( config ).meanScale( deepest );
 	}
 
 private boolean replaysSaved;

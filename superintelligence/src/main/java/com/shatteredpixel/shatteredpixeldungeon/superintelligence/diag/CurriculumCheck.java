@@ -90,14 +90,14 @@ public class CurriculumCheck {
 
 
 	private static void checkTheAggregationIsTheMeanOfThePerEpisodeScale(){
-		Curriculum curriculum = new Curriculum();
+		Curriculum curriculum = new Curriculum( 2f, 6f );
 
 		int[] depths = { 1, 2, 3, 7, 12 };
 		float expected = 0f;
 		for (int depth : depths) expected += curriculum.scaleForDepth( depth );
 		expected /= depths.length;
 
-		float actual = Curriculum.meanScale( depths );
+		float actual = curriculum.meanScale( depths );
 
 		if (Math.abs( actual - expected ) > 1e-6f ){
 			fail( "a generation's shaping reports " + actual + " where the mean of its episodes'"
@@ -106,12 +106,12 @@ public class CurriculumCheck {
 			return;
 		}
 
-		if (Curriculum.meanScale( new int[ 0 ]) != 1f){
+		if (curriculum.meanScale( new int[ 0 ]) != 1f){
 			fail( "a generation with no episodes reports a shaping scale other than 1" );
 			return;
 		}
 
-		if (Curriculum.meanScale( new int[]{ 1, 1 }) != 1f){
+		if (curriculum.meanScale( new int[]{ 1, 1 }) != 1f){
 			fail( "two episodes that never left floor 1 report a shaping scale other than 1" );
 			return;
 		}

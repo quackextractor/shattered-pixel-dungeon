@@ -5,7 +5,6 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
-import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
@@ -18,6 +17,9 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardT
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardFixtures.ascend;
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardFixtures.descend;
 
 
 public class TransitionCheck {
@@ -56,30 +58,6 @@ public class TransitionCheck {
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}
-	}
-
-
-	private static boolean descend( SPDEnv env ){
-		LevelTransition exit = Dungeon.level.getTransition( LevelTransition.Type.REGULAR_EXIT );
-		if (exit == null) return false;
-
-		Hero hero = Dungeon.hero;
-		hero.pos = exit.cell();
-		boolean accepted = Dungeon.level.activateTransition( hero, exit );
-		hero.ready = false;
-		return accepted;
-	}
-
-
-	private static boolean ascend( SPDEnv env ){
-		LevelTransition entrance = Dungeon.level.getTransition( LevelTransition.Type.REGULAR_ENTRANCE );
-		if (entrance == null) return false;
-
-		Hero hero = Dungeon.hero;
-		hero.pos = entrance.cell();
-		boolean accepted = Dungeon.level.activateTransition( hero, entrance );
-		hero.ready = false;
-		return accepted;
 	}
 
 

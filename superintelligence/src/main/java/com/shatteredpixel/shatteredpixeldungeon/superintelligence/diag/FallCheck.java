@@ -4,7 +4,6 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Levitation;
-import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
@@ -209,24 +208,14 @@ public class FallCheck {
 			return;
 		}
 
-		LevelTransition exit = Dungeon.level.getTransition( LevelTransition.Type.REGULAR_EXIT );
-		if (exit == null ){
-			fail( "floor 1 of " + SEEDS[1] + " has no REGULAR_EXIT, so the descent this case is about was"
-					+ " never attempted. Every standard floor generates one." );
+		if (!RewardFixtures.descend( env )){
+			fail( "floor 1 of " + SEEDS[1] + " has no REGULAR_EXIT, or the level refused it, so the descent"
+					+ " this case is about never started." );
 			return;
 		}
-
-		Dungeon.hero.pos = exit.cell();
-		boolean accepted = Dungeon.level.activateTransition( Dungeon.hero, exit );
 
 		int destType = InterlevelScene.curTransition.destType.ordinal();
-		Dungeon.hero.ready = false;
 		env.step( Action.WAIT, 0 );
-
-		if (!accepted){
-			fail( "the level refused the transition, so the descent this case is about never started." );
-			return;
-		}
 
 		if (Dungeon.depth != 2){
 			fail( "after a fall, a new run descended and is on depth " + Dungeon.depth + " rather than 2."
@@ -438,22 +427,6 @@ public class FallCheck {
 		}
 
 		fail( "no seed let a hero fly onto a chasm and keep flying, so this case measured nothing." );
-	}
-
-
-	private static void burnTurnOnPit( SPDEnv env, int pit ){
-		Action mv = null;
-		for (Action a : Action.values()){
-			if (a.directional() && env.actionMask()[ a.index ] != 0f ){ mv = a; break; }
-		}
-		env.step( mv == null ? Action.WAIT : mv, 0 );
-
-		if (!env.running() || Dungeon.hero == null || !Dungeon.hero.isAlive()) return;
-		if (Dungeon.depth != 1 || !Dungeon.hero.flying) return;
-		if (Dungeon.hero.pos == pit) return;
-		if (Actor.findChar( pit ) != null) return;
-
-		Dungeon.hero.move( pit, false );
 	}
 
 
