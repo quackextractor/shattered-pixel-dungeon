@@ -29,6 +29,7 @@ public class RewardModel {
 	private int prevSneaks;
 	private int prevTalentsSpent;
 	private float prevHunger;
+	private int prevMeals;
 	private float prevEngineTime;
 	private boolean snapshotValid = false;
 	private int deepestPaid = 0;
@@ -148,9 +149,9 @@ public class RewardModel {
 		if (menuNoop ){
 			ledger.add( RewardTerm.MENU_NOOP, config.menuNoopPenalty, false );
 		}
-		float hunger = hungerLevel( hero );
-		if (hunger > prevHunger + 20f && !hero.isStarving()){
-			ledger.add( RewardTerm.EATEN_EARLY, config.eatenEarlyPenalty, false );
+		int meals = Statistics.foodEaten;
+		if (meals > prevMeals && prevHunger < Hunger.HUNGRY){
+			ledger.add( RewardTerm.EATEN_EARLY, config.eatenEarlyPenalty * (meals - prevMeals), false );
 		}
 		if (newlyExplored > 0){
 			ledger.add( RewardTerm.EXPLORE, config.exploreReward * newlyExplored, false );
@@ -233,6 +234,7 @@ public class RewardModel {
 		prevEquippedOverStrength = countEquippedOverStrength();
 		prevDebuffCount = countDebuffs();
 		prevHunger = hungerLevel( hero );
+		prevMeals = Statistics.foodEaten;
 		prevKills = kills();
 		prevCrafted = Statistics.itemsCrafted;
 		prevHeroPos = hero.pos;
