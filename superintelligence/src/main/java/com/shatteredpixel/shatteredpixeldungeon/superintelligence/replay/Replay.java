@@ -54,7 +54,7 @@ public class Replay {
 
 		public String mode;
 
-		public int heroPos;
+		public int heroPos = -1;
 
 		public double reward;
 
