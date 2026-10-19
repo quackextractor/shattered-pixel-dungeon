@@ -4,8 +4,10 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Shaman;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.MirrorImage;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfMirrorImage;
+import com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -20,7 +22,7 @@ import java.util.List;
 
 public class MobSpriteCheck {
 
-	private static final int CHECKS = 3;
+	private static final int CHECKS = 4;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -28,6 +30,7 @@ public class MobSpriteCheck {
 		checkMirrorImageIsUsable();
 		checkTheImagesTakePart();
 		checkARenderedGameNeverReachesTheBranch();
+		checkARangedZapCompletesItsTurn();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     item-created mobs: " + CHECKS + " checks passed" );
@@ -140,6 +143,39 @@ public class MobSpriteCheck {
 
 		System.out.println( "  with the headless flag off, GameScene.add(mob) never consults the stand-in"
 				+ " factory" );
+	}
+
+	private static void checkARangedZapCompletesItsTurn(){
+		SPDEnv env = freshRun( "MOBSPROUT-D" );
+		int hero = Dungeon.hero.pos;
+		int cell = -1;
+		for (int c = 0; c < Dungeon.level.length() && cell < 0; c++){
+			if (Dungeon.level.passable[ c ] && Dungeon.level.heroFOV[ c ] && Actor.findChar( c ) == null
+					&& !Dungeon.level.adjacent( c, hero ) && Dungeon.level.distance( c, hero ) <= 4
+					&& new Ballistica( c, hero, Ballistica.MAGIC_BOLT ).collisionPos == hero) cell = c;
+		}
+		if (cell < 0){
+			fail( "no cell within 4 of the hero has a clear bolt line, so the ranged zap was never reached." );
+			return;
+		}
+
+		Shaman shaman = new Shaman.RedShaman();
+		shaman.pos = cell;
+		GameScene.add( shaman );
+		shaman.aggro( Dungeon.hero );
+		shaman.state = shaman.HUNTING;
+		Dungeon.hero.HP = Dungeon.hero.HT = 1000;
+
+		env.step( Action.WAIT, 0 );
+
+		if (!env.running() || shaman.pos != cell){
+			fail( "a Shaman zapping the hero from range did not finish its turn: running " + env.running()
+					+ ", stall cause " + env.stallCause() + ", shaman moved " + (shaman.pos != cell)
+					+ ". HeadlessSprite.zap must do what the sprite's animation would: call onZapComplete." );
+			return;
+		}
+
+		System.out.println( "  a Shaman zapping from range completes its turn headlessly" );
 	}
 
 	private static Throwable lastThrown;

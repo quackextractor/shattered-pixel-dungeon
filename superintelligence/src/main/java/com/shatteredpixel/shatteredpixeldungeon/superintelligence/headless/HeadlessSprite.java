@@ -1,6 +1,9 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM100;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Eye;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Spinner;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.watabou.noosa.MovieClip;
 import com.watabou.utils.Callback;
@@ -66,6 +69,22 @@ public class HeadlessSprite extends CharSprite {
 	@Override
 	public void zap( int cell ){
 		zap( cell, null );
+		if (ch instanceof Spinner) ((Spinner) ch).shootWeb();
+		else if (ch instanceof Eye){ ((Eye) ch).deathGaze(); ch.next(); }
+		else if (ch instanceof DM100) ch.next();
+		else if (ch != null) completeZap( ch );
+	}
+
+	private static void completeZap( Char ch ){
+		try {
+			java.lang.reflect.Method complete = ch.getClass().getMethod( "onZapComplete" );
+			complete.setAccessible( true );
+			complete.invoke( ch );
+		} catch (NoSuchMethodException e){
+			return;
+		} catch (ReflectiveOperationException e){
+			throw new IllegalStateException( "onZapComplete failed on " + ch.getClass().getName(), e );
+		}
 	}
 
 	@Override
