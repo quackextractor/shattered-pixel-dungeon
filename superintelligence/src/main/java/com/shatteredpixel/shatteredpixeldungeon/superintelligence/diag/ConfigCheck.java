@@ -99,31 +99,21 @@ checkOutputPathsFollowTheWorkingDirectory();
 
 	private static void checkEveryConfigFieldTravelsToAWorker() throws IOException {
 		EnvConfig probe = new EnvConfig();
-		probe.maxSlots = 3;             probe.gridWidth = 4;           probe.gridHeight = 5;
-		probe.turnLimitPerFloor = 6;    probe.turnLimitTotal = 7;      probe.actorStepLimit = 8;
-		probe.stallLimit = 9;           probe.freeStepBudget = 10;
-		probe.turnCost = 1.5f;          probe.depthReward = 2.5f;      probe.exploreReward = 3.5f;
-		probe.maxHpReward = 4.5f;       probe.talentReward = 5.5f;      probe.goldReward = 6.5f;
-		probe.damagePenalty = 7.5f;     probe.killReward = 8.5f;        probe.sneakAttackReward = 9.5f;
-		probe.freeStepCostFactor = 10.5f;
-		probe.deathPenalty = 11.5f;     probe.stallPenalty = 12.5f;     probe.turnLimitPenalty = 13.5f;
-		probe.victoryReward = 14.5f;
-		probe.identifiedReward = 15.5f;  probe.curseEquippedPenalty = 16.5f;
-		probe.curseRemovedReward = 17.5f; probe.equipTooStrongPenalty = 18.5f;
-		probe.curedDebuffReward = 19.5f; probe.eatenEarlyPenalty = 20.5f;
-		probe.menuNoopPenalty = 21.5f;   probe.levelUpReward = 22.5f;
-		probe.strengthGainReward = 23.5f; probe.goldLostFactor = 24.5f;
-		probe.itemValueBag = 25.5f;     probe.itemValueEquipBase = 26.5f;
-		probe.itemValueEquipLevel = 27.5f; probe.itemValueOther = 28.5f;
-		probe.bossSlainFactor = 29.5f;   probe.maxHpGainCap = 30.5f;
-		probe.curriculumFadeStartDepth = 31; probe.curriculumFadeEndDepth = 32;
-		probe.mimicsVisibleOutOfFog = false;
-		probe.allowEquipping = false;
-		probe.allowAlchemy = false;
-		probe.subModeProgressOnly = false;
-		probe.recordRngFingerprint = false;
-		probe.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
-				.parse( "depth_only" );
+		List< java.lang.reflect.Field > fields = new ArrayList<>();
+		for (java.lang.reflect.Field f : EnvConfig.class.getFields()){
+			if (java.lang.reflect.Modifier.isStatic( f.getModifiers() )) continue;
+			try {
+				if (!perturb( probe, f, fields.size() )){
+					fail( "EnvConfig." + f.getName() + " has type " + f.getType().getSimpleName()
+							+ ", which this check cannot set to a non-default value" );
+					return;
+				}
+			} catch (ReflectiveOperationException e){
+				fail( "could not set EnvConfig." + f.getName() + ": " + e );
+				return;
+			}
+			fields.add( f );
+		}
 
 		java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
 		probe.writeTo( new java.io.DataOutputStream( bytes ) );
@@ -139,18 +129,18 @@ checkOutputPathsFollowTheWorkingDirectory();
 
 		EnvConfig copied = probe.copy();
 		List< String > lost = new ArrayList<>();
-		for (String field : ENV_FIELDS){
-			Object want = fieldValue( copied, field );
-			Object have = fieldValue( got, field );
-			if (want == null || have == null){
-				lost.add( field + " (no such field)" );
-			} else if (!want.equals( have )){
-				lost.add( field + " " + have + " != " + want );
+		for (java.lang.reflect.Field f : fields){
+			try {
+				Object want = f.get( probe );
+				if (!want.equals( f.get( got ))) lost.add( f.getName() + " over the wire" );
+				if (!want.equals( f.get( copied ))) lost.add( f.getName() + " in copy()" );
+			} catch (IllegalAccessException e){
+				lost.add( f.getName() + " (unreadable)" );
 			}
 		}
 		if (!lost.isEmpty()){
-			fail( lost.size() + " of " + ENV_FIELDS.size() + " EnvConfig fields did not survive the trip to a"
-					+ " worker: " + String.join( ", ", lost ));
+			fail( lost.size() + " EnvConfig field transfer(s) of " + fields.size() + " fields lost the value"
+					+ " set on the probe: " + String.join( ", ", lost ));
 			return;
 		}
 
@@ -169,31 +159,30 @@ checkOutputPathsFollowTheWorkingDirectory();
 			fail( "readFrom consumed " + sized.size() + " bytes without wanting a "
 					+ (sized.size() + 1) + "th, so writeTo and readFrom do not read the same number of"
 					+ " values. A worker would desync mid-stream." );
+			return;
 		}
+
+		System.out.println( "  all " + fields.size() + " EnvConfig fields survive writeTo/readFrom and copy()" );
 	}
 
-	private static final List< String > ENV_FIELDS = java.util.Arrays.asList(
-		"maxSlots", "gridWidth", "gridHeight", "turnLimitPerFloor", "turnLimitTotal", "actorStepLimit",
-		"stallLimit", "freeStepBudget", "turnCost",
-		"depthReward", "exploreReward", "maxHpReward", "talentReward", "goldReward", "damagePenalty",
-		"killReward", "sneakAttackReward", "freeStepCostFactor", "deathPenalty", "stallPenalty",
-		"turnLimitPenalty", "victoryReward", "mimicsVisibleOutOfFog",
-		"allowEquipping", "allowAlchemy", "subModeProgressOnly", "recordRngFingerprint",
-		"rewardProfile",
-		"dialogAgeSeconds", "stairPotentialWeight",
-		"identifiedReward", "curseEquippedPenalty", "curseRemovedReward", "equipTooStrongPenalty",
-		"curedDebuffReward", "eatenEarlyPenalty", "menuNoopPenalty", "levelUpReward",
-		"strengthGainReward", "goldLostFactor", "itemValueBag", "itemValueEquipBase",
-		"itemValueEquipLevel", "itemValueOther", "bossSlainFactor", "maxHpGainCap",
-		"curriculumFadeStartDepth", "curriculumFadeEndDepth" );
-
-	private static Object fieldValue( EnvConfig c, String name ){
-		try {
-			java.lang.reflect.Field f = EnvConfig.class.getField( name );
-			return f.get( c );
-		} catch (ReflectiveOperationException e){
-			return null;
+	private static boolean perturb( EnvConfig c, java.lang.reflect.Field f, int index )
+			throws ReflectiveOperationException {
+		Class< ? > type = f.getType();
+		if (type == int.class){
+			f.setInt( c, f.getInt( c ) + 100 + index );
+		} else if (type == float.class){
+			f.setFloat( c, f.getFloat( c ) + 0.5f + index );
+		} else if (type == boolean.class){
+			f.setBoolean( c, !f.getBoolean( c ));
+		} else if (type == com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile.class){
+			Object other = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
+					.parse( "depth_only" );
+			if (other.equals( f.get( c ))) return false;
+			f.set( c, other );
+		} else {
+			return false;
 		}
+		return true;
 	}
 
 
