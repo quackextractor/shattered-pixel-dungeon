@@ -101,8 +101,8 @@ public final class CollectTrace {
 	static void replay( SPDEnv env, EnvConfig config, Trace trace ){
 		env.reset( trace.seedText.isEmpty() ? SEED : trace.seedText, HeroClass.WARRIOR );
 
-		for (int i = 0; i < trace.steps.size(); i++){
-			if (!env.running()) break;
+		int i = 0;
+		for (; i < trace.steps.size() && env.running(); i++){
 
 			Step recorded = trace.steps.get( i );
 			env.step( Action.valueOf( recorded.action ), recorded.slot );
@@ -115,6 +115,10 @@ public final class CollectTrace {
 						+ "this, and still plays back as a plausible run." );
 				return;
 			}
+		}
+		if (i < trace.steps.size()){
+			fail( "the replay ended (" + env.endReason() + ") after " + i + " of " + trace.steps.size()
+					+ " recorded steps, so the rest of the recording was never compared" );
 		}
 	}
 

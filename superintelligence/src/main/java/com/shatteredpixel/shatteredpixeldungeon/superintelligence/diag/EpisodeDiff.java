@@ -49,11 +49,14 @@ public class EpisodeDiff {
 		for (int i = 0; i < n; i++){
 			if (!first.get( i ).equals( second.get( i ))){ at = i; break; }
 		}
-		if (at < 0){
-			System.out.println( seed + ": identical for " + n + " steps"
-					+ (first.size() == second.size() ? ""
-					: " (lengths " + first.size() + " vs " + second.size() + ")" ) );
+		if (at < 0 && first.size() == second.size()){
+			System.out.println( seed + ": identical for " + n + " steps" );
 			return false;
+		}
+		if (at < 0){
+			System.out.println( seed + ": identical for " + n + " steps, then one run ended: lengths "
+					+ first.size() + " vs " + second.size() );
+			return true;
 		}
 		System.out.println( seed + ": first divergence at step " + at );
 		System.out.println( "  run 1: " + first.get( at ) );
