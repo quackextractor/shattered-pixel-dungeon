@@ -16,7 +16,7 @@ import java.util.List;
 
 public class VerifyCheck {
 
-	private static final int CHECKS = 11;
+	private static final int CHECKS = 13;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -37,6 +37,8 @@ public class VerifyCheck {
 		checkAnAlteredDrawCountIsCaughtAndNamed( good );
 		checkAnAlteredAcceptanceIsCaughtAndNamed( good );
 		checkTheDeathStepIsNotHeldToADrawCount();
+		checkAPrefixDoesNotVerify( good );
+		checkTheHeaderCarriesTheRunLimits( good );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     verification detects divergence: " + CHECKS + " checks passed" );
@@ -365,6 +367,46 @@ public class VerifyCheck {
 		}
 		if (!result.divergence.startsWith( field )){
 			fail( where, "reported \"" + result.divergence + "\", which does not name " + field );
+		}
+	}
+
+	private static void checkAPrefixDoesNotVerify( Replay source ){
+		String where = "a run that ends before its recording does is not verified";
+
+		Replay copy = copyOf( source );
+		copy.turnLimitPerFloor = 5;
+		ReplayIO.Verification result = verify( copy );
+		if (result.passed()){
+			fail( where, "the replay stopped after " + result.stepsVerified + " of " + copy.steps.size()
+					+ " steps and verified clean. Only a prefix was checked." );
+			return;
+		}
+		System.out.println( "  a prefix is reported: " + result.divergence );
+	}
+
+	private static void checkTheHeaderCarriesTheRunLimits( Replay source ){
+		String where = "the header carries every limit that can end a run";
+
+		Replay copy = copyOf( source );
+		copy.turnLimitTotal = 11;
+		copy.stallLimit = 12;
+		copy.freeStepBudget = 13;
+		copy.actorStepLimit = 14;
+		EnvConfig read;
+		try {
+			File file = File.createTempFile( "spd-verifycheck", ".replay" );
+			file.deleteOnExit();
+			ReplayIO.write( copy, file );
+			read = ReplayIO.configFor( ReplayIO.read( file ));
+		} catch (java.io.IOException e){
+			fail( where, "round trip failed: " + e.getMessage() );
+			return;
+		}
+		if (read.turnLimitTotal != 11 || read.stallLimit != 12 || read.freeStepBudget != 13
+				|| read.actorStepLimit != 14){
+			fail( where, "wrote 11/12/13/14, read back " + read.turnLimitTotal + "/" + read.stallLimit + "/"
+					+ read.freeStepBudget + "/" + read.actorStepLimit
+					+ ", so verify replays under limits the run never had" );
 		}
 	}
 

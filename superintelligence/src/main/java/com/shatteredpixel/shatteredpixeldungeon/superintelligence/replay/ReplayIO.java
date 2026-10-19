@@ -52,6 +52,14 @@ public class ReplayIO {
 			out.newLine();
 			out.write( "allow_equipping=" + replay.allowEquipping );
 			out.newLine();
+			out.write( "turn_limit_total=" + replay.turnLimitTotal );
+			out.newLine();
+			out.write( "stall_limit=" + replay.stallLimit );
+			out.newLine();
+			out.write( "free_step_budget=" + replay.freeStepBudget );
+			out.newLine();
+			out.write( "actor_step_limit=" + replay.actorStepLimit );
+			out.newLine();
 out.write( "termination=" + replay.termination );
   			out.newLine();
 out.write( "reward_profile=" + replay.rewardProfile.key() );
@@ -216,6 +224,10 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 
 				case "max_slots": replay.maxSlots = Integer.parseInt( value ); break;
 				case "allow_equipping": replay.allowEquipping = Boolean.parseBoolean( value ); break;
+				case "turn_limit_total": replay.turnLimitTotal = Integer.parseInt( value ); break;
+				case "stall_limit": replay.stallLimit = Integer.parseInt( value ); break;
+				case "free_step_budget": replay.freeStepBudget = Integer.parseInt( value ); break;
+				case "actor_step_limit": replay.actorStepLimit = Integer.parseInt( value ); break;
 
 				case "termination": replay.termination = value; break;
 				case "reward_profile":
@@ -239,6 +251,10 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		config.turnLimitPerFloor = replay.turnLimitPerFloor;
 		config.maxSlots = replay.maxSlots;
 		config.allowEquipping = replay.allowEquipping;
+		config.turnLimitTotal = replay.turnLimitTotal;
+		config.stallLimit = replay.stallLimit;
+		config.freeStepBudget = replay.freeStepBudget;
+		config.actorStepLimit = replay.actorStepLimit;
 		config.rewardProfile = replay.rewardProfile;
 		return config;
 	}
@@ -295,6 +311,10 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		env.config().turnLimitPerFloor = replayed.turnLimitPerFloor;
 		env.config().maxSlots = replayed.maxSlots;
 		env.config().allowEquipping = replayed.allowEquipping;
+		env.config().turnLimitTotal = replayed.turnLimitTotal;
+		env.config().stallLimit = replayed.stallLimit;
+		env.config().freeStepBudget = replayed.freeStepBudget;
+		env.config().actorStepLimit = replayed.actorStepLimit;
 		env.reset( replay.seedText, heroClass );
 		if (observer != null) observer.onReset();
 
@@ -318,7 +338,6 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			if (unwatchable != null){
 				result.unwatchableAt = i;
 				result.unwatchable = unwatchable;
-				result.stepsVerified++;
 				break;
 			}
 
@@ -380,6 +399,13 @@ boolean heroAlive = Dungeon.hero.isAlive();
 			}
 
 			if (observer != null) observer.onStep( i, step, true );
+		}
+
+		if (!result.diverged && result.unwatchableAt < 0 && result.stepsVerified < replay.steps.size()){
+			result.diverged = true;
+			result.divergedAt = result.stepsVerified;
+			result.divergence = "the replay ended (" + env.endReason() + ") after " + result.stepsVerified
+					+ " of " + replay.steps.size() + " recorded steps";
 		}
 
 		result.score = env.ledger().total();

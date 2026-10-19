@@ -8,6 +8,9 @@ public class Replay {
 
 	public static final int VERSION = 5;
 
+	private static final com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig DEFAULTS =
+			new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig();
+
 	public String seedText = "";
 	public String heroClass = "WARRIOR";
 	public int challenges = 0;
@@ -25,6 +28,14 @@ public class Replay {
 	public int maxSlots = 32;
 
 	public boolean allowEquipping = true;
+
+	public int turnLimitTotal = DEFAULTS.turnLimitTotal;
+
+	public int stallLimit = DEFAULTS.stallLimit;
+
+	public int freeStepBudget = DEFAULTS.freeStepBudget;
+
+	public int actorStepLimit = DEFAULTS.actorStepLimit;
 
 	public com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile rewardProfile
 			= com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile.DEFAULT;

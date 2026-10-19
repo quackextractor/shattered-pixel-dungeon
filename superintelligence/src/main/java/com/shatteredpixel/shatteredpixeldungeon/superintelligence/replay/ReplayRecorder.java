@@ -36,6 +36,10 @@ private final Replay replay = new Replay();
 		if (config != null){
 			replay.maxSlots = config.maxSlots;
 			replay.allowEquipping = config.allowEquipping;
+			replay.turnLimitTotal = config.turnLimitTotal;
+			replay.stallLimit = config.stallLimit;
+			replay.freeStepBudget = config.freeStepBudget;
+			replay.actorStepLimit = config.actorStepLimit;
 			replay.rewardProfile = config.rewardProfile;
 			rngFingerprint = config.recordRngFingerprint;
 		} else {
