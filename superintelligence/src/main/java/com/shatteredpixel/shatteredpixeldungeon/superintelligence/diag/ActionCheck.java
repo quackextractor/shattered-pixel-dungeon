@@ -19,12 +19,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
 
 public class ActionCheck {
 
 	private static final int CHECKS = 4;
-
-	private static final List< String > failures = new ArrayList<>();
 
 
 	private static final String[] SEEDS = {
@@ -40,14 +39,7 @@ public class ActionCheck {
 		checkTheActionSpaceIsStillComplete();
 		checkAQuantityRecipeBrewsFromOneStack();
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     action semantics: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  action semantics: " + failures.size() + " of " + CHECKS
-					+ " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "action semantics", CHECKS ));
 	}
 
 
@@ -65,7 +57,7 @@ public class ActionCheck {
 			if (recipes.get( i ) instanceof TelekineticGrab.Recipe) index = i;
 		}
 		if (index < 0){
-			failures.add( "twelve liquid metal did not offer the telekinetic grab recipe" );
+			fail( "twelve liquid metal did not offer the telekinetic grab recipe" );
 			return;
 		}
 
@@ -74,7 +66,7 @@ public class ActionCheck {
 		Item metal = hero.belongings.getItem( LiquidMetal.class );
 		if (!brewed || grab == null || grab.quantity() != 8 || metal == null || metal.quantity() != 2
 				|| Dungeon.energy != 0){
-			failures.add( "brewing telekinetic grab from 12 liquid metal: brewed=" + brewed + ", grab="
+			fail( "brewing telekinetic grab from 12 liquid metal: brewed=" + brewed + ", grab="
 					+ (grab == null ? 0 : grab.quantity()) + ", metal left="
 					+ (metal == null ? 0 : metal.quantity()) + ", energy=" + Dungeon.energy
 					+ ". The alchemy scene loads the whole stack and gives 8 grabs, leaving 2 metal." );
@@ -113,7 +105,7 @@ public class ActionCheck {
 				String got = observedDirection( dx, dy );
 
 				if (!got.equals( expected )) {
-					failures.add( move + " is named " + expected + " but moved " + got
+					fail( move + " is named " + expected + " but moved " + got
 							+ " on seed " + seed + " (row " + by + " -> " + ay + ", column " + bx
 							+ " -> " + ax + "). The game's own convention is"
 							+ " Level.pointToCell = x + y*width with CellSelector giving north"
@@ -125,7 +117,7 @@ public class ActionCheck {
 			}
 
 			if (!sawAnyMove ){
-				failures.add( move + " never moved on any of the " + SEEDS.length + " seeds, so its"
+				fail( move + " never moved on any of the " + SEEDS.length + " seeds, so its"
 						+ " direction cannot be checked. Widen the seed list rather than accepting"
 						+ " an unverified direction." );
 				return;
@@ -143,7 +135,7 @@ public class ActionCheck {
 
 		List< Action > moves = directionalMoves();
 		if (moves.size() != 8 ){
-			failures.add( "expected 8 directional moves, found " + moves.size() );
+			fail( "expected 8 directional moves, found " + moves.size() );
 			return;
 		}
 
@@ -151,7 +143,7 @@ public class ActionCheck {
 			Action move = moves.get( i );
 			if (!move.name().equals( "MOVE_" + names[ i ] )) continue;
 			if (move.dx != dx[ i ] || move.dy != dy[ i ] ){
-				failures.add( move + " carries offset (" + move.dx + "," + move.dy + ") where the game"
+				fail( move + " carries offset (" + move.dx + "," + move.dy + ") where the game"
 						+ " gives " + names[ i ] + " (" + dx[ i ] + "," + dy[ i ] + ")." );
 				return;
 			}
@@ -170,7 +162,7 @@ public class ActionCheck {
 
 		for (int i = 0; i < moves.length; i++ ){
 			if (moves[ i ].dx != -opposite[ i ].dx || moves[ i ].dy != -opposite[ i ].dy ){
-				failures.add( moves[ i ] + " and " + opposite[ i ] + " are not opposite directions." );
+				fail( moves[ i ] + " and " + opposite[ i ] + " are not opposite directions." );
 				return;
 			}
 		}
@@ -178,7 +170,7 @@ public class ActionCheck {
 		for (int i = 0; i < moves.length; i++ ){
 			String expected = "MOVE_" + ( new String[]{ "N", "NE", "E", "SE", "S", "SW", "W", "NW" }[ i ] );
 			if (!moves[ i ].name().equals( expected )){
-				failures.add( "directional moves are declared out of order: position " + i + " is "
+				fail( "directional moves are declared out of order: position " + i + " is "
 						+ moves[ i ] + " where " + expected + " was expected. The checks pair by"
 						+ " position, so reordering the enum silently invalidates them." );
 				return;

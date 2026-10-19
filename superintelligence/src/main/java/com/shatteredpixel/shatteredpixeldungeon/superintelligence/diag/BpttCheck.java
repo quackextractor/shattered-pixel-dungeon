@@ -17,13 +17,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
+
 public class BpttCheck {
 
 	private static final int CHECKS = 5;
 
 	private static final int LSTM_GRADIENT = 4;
-
-	private static final List<String> failures = new ArrayList<>();
 
 	public static void main( String[] args ){
 		EnvConfig config = new EnvConfig();
@@ -34,14 +34,7 @@ public class BpttCheck {
 		checkValueTargetsAreNormalised( config );
 		checkNormalisationIsOffWhenAsked( config );
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     recurrent gradient: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  recurrent gradient: " + failures.size() + " of " + CHECKS
-					+ " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "recurrent gradient", CHECKS ));
 	}
 
 	private static void checkTheChunkIsNotTheSumOfItsSteps( EnvConfig config ){
@@ -66,7 +59,7 @@ public class BpttCheck {
 		double difference = relativeDifference( throughTime, sum );
 
 		if (difference < 1e-6){
-			failures.add( "a two-step chunk gives the LSTM weights exactly the sum of its two steps'"
+			fail( "a two-step chunk gives the LSTM weights exactly the sum of its two steps'"
 					+ " own gradients (relative difference " + fmt( difference ) + ", L2 "
 					+ fmt( norm( throughTime )) + " against " + fmt( norm( sum )) + "), so no gradient"
 					+ " crossed the timestep boundary. That is a length-one truncation, and it is the"
@@ -91,14 +84,14 @@ public class BpttCheck {
 		List< List< Transition > > chunks = chunks( ppo );
 
 		if (chunks.size() != 3){
-			failures.add( "five steps - three contiguous, then one nine steps later, then one from another"
+			fail( "five steps - three contiguous, then one nine steps later, then one from another"
 					+ " episode - chunked into " + chunks.size() + " run(s) rather than 3, so a gap is"
 					+ " being chained across." );
 			return;
 		}
 
 		if (chunks.get( 0 ).size() != 3){
-			failures.add( "the run shapes are " + shapes( chunks ) + " rather than [3, 1, 1]: a gap or a"
+			fail( "the run shapes are " + shapes( chunks ) + " rather than [3, 1, 1]: a gap or a"
 					+ " change of episode has to start a new run." );
 			return;
 		}
@@ -117,7 +110,7 @@ public class BpttCheck {
 		List< List< Transition > > chunks = chunks( ppo );
 
 		if (chunks.size() != 3){
-			failures.add( "three synthetic transitions chunked into " + chunks.size() + " run(s); they"
+			fail( "three synthetic transitions chunked into " + chunks.size() + " run(s); they"
 					+ " carry no episode, so each must stand alone." );
 			return;
 		}
@@ -140,7 +133,7 @@ public class BpttCheck {
 		for (Transition t : batch) worst = Math.max( worst, Math.abs( ppo.valueTarget( t )));
 
 		if (worst < 0.25 || worst > 2f){
-			failures.add( "a batch whose returns are -3000 and +1800 normalises to at most " + worst
+			fail( "a batch whose returns are -3000 and +1800 normalises to at most " + worst
 					+ ", outside [0.25, 2]. The critic's target has to be of order one." );
 			return;
 		}
@@ -158,7 +151,7 @@ public class BpttCheck {
 		ppo.valueNorm.update( batch );
 
 		if (Math.abs( ppo.valueTarget( batch.get( 0 )) + 3000f ) > 1f){
-			failures.add( "with normaliseValues=false the target is " + ppo.valueTarget( batch.get( 0 ))
+			fail( "with normaliseValues=false the target is " + ppo.valueTarget( batch.get( 0 ))
 					+ ", so the switch is not reachable and the normalisation case proves nothing about"
 					+ " which path an update takes." );
 			return;

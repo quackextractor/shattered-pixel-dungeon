@@ -15,14 +15,12 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayI
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
 
 public class SlotCheck {
 
 	private static final int CHECKS = 7;
-
-	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
 		HeadlessServices.install( Scratch.dir( "slotcheck" ));
@@ -41,14 +39,7 @@ public class SlotCheck {
 		restoreBindsTheCapturedItemNotTheFirstOfItsClass();
 		bindingsSurviveARoundTripThroughTheFileFormat();
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     slot resolution: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  slot resolution: " + failures.size() + " of " + CHECKS
-					+ " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "slot resolution", CHECKS ));
 	}
 
 	private static void capturedBindingsResolveTheSameSlotsAfterRestore(){
@@ -250,10 +241,6 @@ public class SlotCheck {
 		return mapper.slots().stream()
 				.map( i -> i == null ? "-" : i.getClass().getSimpleName() )
 				.toArray( String[]::new );
-	}
-
-	private static void fail( String where, String what ){
-		failures.add( where + ": " + what );
 	}
 
 }

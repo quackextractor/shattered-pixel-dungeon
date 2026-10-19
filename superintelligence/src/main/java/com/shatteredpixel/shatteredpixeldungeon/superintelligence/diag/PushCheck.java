@@ -10,14 +10,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
+
 public class PushCheck {
 
 	private static final int CHECKS = 6;
 
-	private static final List<String> failures = new ArrayList<>();
-
-	public static void main( String[] args ){
-		int chunk = TrainerWorkers.pushChunkBytes;
+	public static void main( String[] args ){		int chunk = TrainerWorkers.pushChunkBytes;
 		byte[] payload = payload( 3, chunk );
 
 		checkNoWriteExceedsTheChunk( chunk, payload );
@@ -27,14 +26,7 @@ public class PushCheck {
 		checkAFailureIsNotRetried( chunk );
 		checkAFailureIsRefusedByName( chunk );
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     policy push: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  policy push: " + failures.size() + " of " + CHECKS
-					+ " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "policy push", CHECKS ));
 	}
 
 	private static void checkNoWriteExceedsTheChunk( int chunk, byte[] payload ){
@@ -43,18 +35,18 @@ public class PushCheck {
 		try {
 			TrainerWorkers.writeFully( new DataOutputStream( recording ), "policy", payload );
 		} catch (IOException e){
-			failures.add( "a " + payload.length + " byte payload was refused: " + e.getMessage() );
+			fail( "a " + payload.length + " byte payload was refused: " + e.getMessage() );
 			return;
 		}
 
 		if (recording.sizes.isEmpty()){
-			failures.add( "a " + payload.length + " byte payload wrote nothing at all" );
+			fail( "a " + payload.length + " byte payload wrote nothing at all" );
 			return;
 		}
 
 		for (int size : recording.sizes){
 			if (size <= chunk) continue;
-			failures.add( "one write carried " + size + " bytes against a chunk size of " + chunk
+			fail( "one write carried " + size + " bytes against a chunk size of " + chunk
 					+ ", so the push was not chunked. A Windows anonymous pipe has a 4KB system"
 					+ " buffer, and one unchunked write of a whole policy blob is what killed runs"
 					+ " at generation ~22 with 'Insufficient system resources exist to complete the"
@@ -63,7 +55,7 @@ public class PushCheck {
 		}
 
 		if (recording.sizes.size() < 2){
-			failures.add( "a payload of " + recording.sizes.get( 0 ) + " bytes against a chunk size of "
+			fail( "a payload of " + recording.sizes.get( 0 ) + " bytes against a chunk size of "
 					+ chunk + " was written whole, so the chunk size is not reaching the push" );
 		}
 	}
@@ -74,12 +66,12 @@ public class PushCheck {
 		try {
 			TrainerWorkers.writeFully( new DataOutputStream( sink ), "policy", payload );
 		} catch (IOException e){
-			failures.add( "a " + payload.length + " byte payload was refused: " + e.getMessage() );
+			fail( "a " + payload.length + " byte payload was refused: " + e.getMessage() );
 			return;
 		}
 
 		if (!Arrays.equals( payload, sink.toByteArray() )){
-			failures.add( "the bytes a worker would read differ from the ones the trainer sent: "
+			fail( "the bytes a worker would read differ from the ones the trainer sent: "
 					+ sink.size() + " arrived against " + payload.length + " sent" );
 		}
 	}
@@ -90,12 +82,12 @@ public class PushCheck {
 		try {
 			TrainerWorkers.writeFully( new DataOutputStream( recording ), "policy", payload( 1, chunk ));
 		} catch (IOException e){
-			failures.add( "a payload of exactly one chunk was refused: " + e.getMessage() );
+			fail( "a payload of exactly one chunk was refused: " + e.getMessage() );
 			return;
 		}
 
 		if (recording.sizes.size() != 1 || recording.sizes.get( 0 ) != chunk){
-			failures.add( "a payload of exactly one chunk took " + recording.sizes.size()
+			fail( "a payload of exactly one chunk took " + recording.sizes.size()
 					+ " writes of " + recording.sizes + ", where one write of " + chunk
 					+ " is what the loop is written to do" );
 		}
@@ -107,12 +99,12 @@ public class PushCheck {
 		try {
 			TrainerWorkers.writeFully( new DataOutputStream( recording ), "policy", new byte[ 0 ] );
 		} catch (IOException e){
-			failures.add( "an empty payload was refused: " + e.getMessage() );
+			fail( "an empty payload was refused: " + e.getMessage() );
 			return;
 		}
 
 		if (!recording.sizes.isEmpty()){
-			failures.add( "an empty payload wrote " + recording.sizes.size() + " times" );
+			fail( "an empty payload wrote " + recording.sizes.size() + " times" );
 		}
 	}
 
@@ -123,12 +115,12 @@ public class PushCheck {
 
 		try {
 			TrainerWorkers.writeFully( new DataOutputStream( recording ), "policy", payload );
-			failures.add( "a push whose first write failed still reported success after "
+			fail( "a push whose first write failed still reported success after "
 					+ recording.attempts + " attempts. A buffered stream may already hold part of the"
 					+ " failed write, so a retry duplicates bytes and desynchronises the protocol." );
 		} catch (IOException e){
 			if (recording.attempts != 1){
-				failures.add( "a failed write was followed by " + (recording.attempts - 1)
+				fail( "a failed write was followed by " + (recording.attempts - 1)
 						+ " more, so the push retried instead of failing fast" );
 			}
 		}
@@ -141,14 +133,14 @@ public class PushCheck {
 
 		try {
 			TrainerWorkers.writeFully( new DataOutputStream( recording ), "weights-for-worker-3", payload );
-			failures.add( "a stream that never accepted a byte still reported a successful push" );
+			fail( "a stream that never accepted a byte still reported a successful push" );
 		} catch (IOException e){
 			String message = e.getMessage() == null ? "" : e.getMessage();
 			if (!message.contains( "weights-for-worker-3" )){
-				failures.add( "a failed push was refused without naming what failed:"
+				fail( "a failed push was refused without naming what failed:"
 						+ " \"" + message + "\"" );
 			} else if (!message.contains( "bytes" )){
-				failures.add( "a failed push was refused without saying how much it"
+				fail( "a failed push was refused without saying how much it"
 						+ " refused: \"" + message + "\"" );
 			}
 		}

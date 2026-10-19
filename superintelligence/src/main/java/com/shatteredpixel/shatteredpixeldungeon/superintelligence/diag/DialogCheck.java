@@ -14,8 +14,8 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.watabou.utils.PathFinder;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
+
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
 
 public class DialogCheck {
 
@@ -25,8 +25,6 @@ public class DialogCheck {
 			"DIALOGCHECK-A", "DIALOGCHECK-B", "DIALOGCHECK-C", "DIALOGCHECK-D", "DIALOGCHECK-E"
 	};
 
-	private static final List< String > failures = new ArrayList<>();
-
 	public static void main( String[] args ){
 		HeadlessServices.install( Scratch.dir( "dialogcheck" ));
 		HeadlessServices.disableSaving( true );
@@ -34,14 +32,7 @@ public class DialogCheck {
 		checkTheGamesOwnDialogIsAgedAndAnswered();
 		checkADialogClosesWhenTheGameClosesIt();
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     dialog answers: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  dialog answers: " + failures.size() + " of " + CHECKS
-					+ " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "dialog answers", CHECKS ));
 	}
 
 	private static void checkTheGamesOwnDialogIsAgedAndAnswered(){
@@ -207,9 +198,5 @@ public class DialogCheck {
 
 	private static SPDEnv env(){
 		return new SPDEnv( new EnvConfig(), HeadlessGame.install() );
-	}
-
-	private static void fail( String message ){
-		failures.add( message );
 	}
 }

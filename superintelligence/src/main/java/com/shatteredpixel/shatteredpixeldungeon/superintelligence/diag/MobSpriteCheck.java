@@ -20,11 +20,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
+
 public class MobSpriteCheck {
 
 	private static final int CHECKS = 4;
-
-	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
 		checkMirrorImageIsUsable();
@@ -32,14 +32,7 @@ public class MobSpriteCheck {
 		checkARenderedGameNeverReachesTheBranch();
 		checkARangedZapCompletesItsTurn();
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     item-created mobs: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  item-created mobs: " + failures.size() + " of " + CHECKS
-					+ " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "item-created mobs", CHECKS ));
 	}
 
 	private static void checkMirrorImageIsUsable(){
@@ -226,10 +219,6 @@ public class MobSpriteCheck {
 			else env.step( Action.CANCEL, 0 );
 		}
 		return env;
-	}
-
-	private static void fail( String message ){
-		failures.add( message );
 	}
 
 	private static String topFrame( Throwable t ){

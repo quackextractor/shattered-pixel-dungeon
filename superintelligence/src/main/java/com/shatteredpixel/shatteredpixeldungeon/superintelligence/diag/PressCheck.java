@@ -11,9 +11,8 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
 
 public class PressCheck {
 
@@ -23,8 +22,6 @@ public class PressCheck {
 			"PRESSCHECK-A", "PRESSCHECK-B", "PRESSCHECK-C", "PRESSCHECK-D", "PRESSCHECK-E"
 	};
 
-	private static final List< String > failures = new ArrayList<>();
-
 	public static void main( String[] args ){
 		HeadlessServices.install( Scratch.dir( "presscheck" ));
 		HeadlessServices.disableSaving( true );
@@ -33,14 +30,7 @@ public class PressCheck {
 		checkDroppingAnItemTramplesGrass();
 		checkGenerationDoesNotPressCells();
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     cell presses: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  cell presses: " + failures.size() + " of " + CHECKS
-					+ " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "cell presses", CHECKS ));
 	}
 
 
@@ -153,9 +143,5 @@ public class PressCheck {
 			if (t.active && Dungeon.level.map[ t.pos ] == Terrain.TRAP) return t;
 		}
 		return null;
-	}
-
-	private static void fail( String message ){
-		failures.add( message );
 	}
 }

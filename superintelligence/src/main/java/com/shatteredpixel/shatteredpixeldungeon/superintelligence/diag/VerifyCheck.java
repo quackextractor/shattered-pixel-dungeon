@@ -11,14 +11,12 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayI
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
+
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
 
 public class VerifyCheck {
 
 	private static final int CHECKS = 15;
-
-	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
 		HeadlessServices.install( Scratch.dir( "verifycheck" ));
@@ -42,14 +40,7 @@ public class VerifyCheck {
 		checkVerifyLeavesACallersTraceOn( good );
 		checkAnUnknownHeroIsRefused( good );
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     verification detects divergence: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  verification detects divergence: " + failures.size()
-					+ " of " + CHECKS + " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "verification detects divergence", CHECKS ));
 	}
 
 	private static Replay recordAShortRun(){
@@ -76,7 +67,7 @@ public class VerifyCheck {
 		}
 
 		if (replay.length() < 20){
-			failures.add( "recorded only " + replay.length()
+			fail( "recorded only " + replay.length()
 					+ " steps; the checks need a run long enough to alter fields in" );
 		}
 		return replay;
@@ -454,10 +445,6 @@ s.inventory = step.inventory;
 		EnvConfig config = new EnvConfig();
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		return ReplayIO.verify( replay, env );
-	}
-
-	private static void fail( String where, String what ){
-		failures.add( where + ": " + what );
 	}
 
 

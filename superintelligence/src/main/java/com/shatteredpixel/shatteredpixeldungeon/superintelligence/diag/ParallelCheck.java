@@ -4,12 +4,13 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
 
 public class ParallelCheck {
 
@@ -21,8 +22,6 @@ public class ParallelCheck {
 
 	private static final String[] METRICS = { "policy loss", "value loss", "entropy", "KL", "clip fraction" };
 
-	private static final List< String > failures = new ArrayList<>();
-
 	public static void main( String[] args ){
 		EnvConfig config = smallConfig();
 
@@ -31,14 +30,7 @@ public class ParallelCheck {
 		checkShardsOwnTheirOwnNetwork( config );
 		checkAFailingShardFailsTheUpdate( config );
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     parallel update: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  parallel update: " + failures.size() + " of "
-					+ CHECKS + " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "parallel update", CHECKS ));
 	}
 
 	private static void checkThreadCountDoesNotChangeTheUpdate( EnvConfig config, int threads ){
@@ -210,9 +202,5 @@ public class ParallelCheck {
 		config.gridHeight = 10;
 		config.maxSlots = 4;
 		return config;
-	}
-
-	private static void fail( String message ){
-		failures.add( message );
 	}
 }

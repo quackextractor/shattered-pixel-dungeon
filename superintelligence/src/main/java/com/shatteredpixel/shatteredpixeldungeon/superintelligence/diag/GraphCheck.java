@@ -3,14 +3,12 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.ProgressBar;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WindowStatistics;
 
-import java.util.ArrayList;
-import java.util.List;
+
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
 
 public class GraphCheck {
 
 	private static final int CHECKS = 8;
-
-	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
 		checkFlatSeriesReportsItselfAsFlat();
@@ -22,14 +20,7 @@ public class GraphCheck {
 		checkTheDepthRateCountsEpisodesNotGenerations();
 		checkTheEndReasonTrendComparesTheThirds();
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     graph honesty: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  graph honesty: " + failures.size() + " of " + CHECKS
-					+ " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "graph honesty", CHECKS ));
 	}
 
 	private static void checkTheEndReasonTrendComparesTheThirds(){
@@ -270,9 +261,5 @@ public class GraphCheck {
 		int n = 0;
 		for (char c : cells( bar ).toCharArray()) if (c == '#') n++;
 		return n;
-	}
-
-	private static void fail( String message ){
-		failures.add( message );
 	}
 }

@@ -47,13 +47,6 @@ public class ReplayCatalogCheck {
 			ReplayCatalogFixture.deleteTree( ReplayCatalogFixture.workDir );
 		}
 
-		if (ReplayCatalogFixture.failures.isEmpty()){
-			System.out.println( "[OK]     replay catalog: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  replay catalog: " + ReplayCatalogFixture.failures.size() + " of "
-					+ CHECKS + " checks failed" );
-			for (String f : ReplayCatalogFixture.failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "replay catalog", CHECKS ));
 	}
 }

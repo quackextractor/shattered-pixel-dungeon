@@ -26,7 +26,6 @@ import java.util.Random;
 
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectTrace.SEED;
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectTrace.fail;
-import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectTrace.failures;
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectTrace.replay;
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectTrace.record;
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CollectTrace.traceFrom;
@@ -53,13 +52,7 @@ public class CollectCheck {
 		checkTheCollectorAnnouncesADecisionBeforeItIsApplied( config );
 		checkTheKeeperKeepsTheEpisodesWorthWatching( config );
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     collection: 10 checks passed" );
-		} else {
-			System.out.println( "[ERROR]  collection: " + failures.size() + " of 10 checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "collection", 10 ));
 	}
 
 
@@ -454,7 +447,7 @@ public class CollectCheck {
 			SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 			return ReplayIO.verify( read, env );
 		} catch (java.io.IOException e){
-			failures.add( "a DROP fixture could not be written: " + e.getMessage() );
+			fail( "a DROP fixture could not be written: " + e.getMessage() );
 			return new ReplayIO.Verification();
 		}
 	}

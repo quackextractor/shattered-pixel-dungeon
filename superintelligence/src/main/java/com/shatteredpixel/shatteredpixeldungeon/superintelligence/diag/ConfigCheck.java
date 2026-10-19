@@ -26,8 +26,7 @@ public class ConfigCheck {
 
 	private static final int CHECKS = 17;
 
-	public static void main( String[] args ) throws IOException {
-		if (args.length > 0 && (args[ 0 ].equals( "--verbose" ) || args[ 0 ].equals( "-v" ) )){
+	public static void main( String[] args ) throws IOException {		if (args.length > 0 && (args[ 0 ].equals( "--verbose" ) || args[ 0 ].equals( "-v" ) )){
 			ConfigDefaults.verbose = true;
 		}
 
@@ -53,14 +52,7 @@ checkOutputPathsFollowTheWorkingDirectory();
 		ConfigPathCheck.checkARelativePathResolvesAgainstTheRepository();
 		ConfigPathCheck.checkTheTrainerResolvesItsOwnPathsToo();
 
-		if (ConfigDefaults.failures.isEmpty()){
-			System.out.println( "[OK]     configuration binding: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  configuration binding: " + ConfigDefaults.failures.size()
-					+ " of " + CHECKS + " checks failed" );
-			for (String f : ConfigDefaults.failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "configuration binding", CHECKS ));
 	}
 
 	private static void checkTheBinderActuallyBinds() throws IOException {

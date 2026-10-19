@@ -8,15 +8,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 public final class ConfigDefaults {
-
-	static final List<String> failures = new ArrayList<>();
 
 	static File scratch;
 
@@ -297,7 +293,7 @@ public final class ConfigDefaults {
 	}
 
 	static void fail( String message ){
-		failures.add( message );
+		GateReport.fail( message );
 		if (verbose) System.out.println( "        [case] " + message );
 	}
 }

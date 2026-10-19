@@ -15,8 +15,6 @@ import java.util.Map;
 
 public final class ReplayCatalogFixture {
 
-	static final List< String > failures = new ArrayList<>();
-
 	static File workDir;
 
 	private ReplayCatalogFixture(){}
@@ -142,6 +140,6 @@ public final class ReplayCatalogFixture {
 	}
 
 	static void fail( String message ){
-		failures.add( message );
+		GateReport.fail( message );
 	}
 }

@@ -17,14 +17,13 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
+
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
 
 public class FreeActionCheck {
 
 	private static final int CHECKS = 8;
-
-	private static final List<String> failures = new ArrayList<>();
 
 	private static final String[] SEEDS = {
 		"FREEACTION-A", "FREEACTION-B", "FREEACTION-C", "FREEACTION-D"
@@ -47,14 +46,7 @@ public class FreeActionCheck {
 		checkTalentPointCanBeSpentAndPays( config );
 
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     free actions: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  free actions: " + failures.size() + " of " + CHECKS
-					+ " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "free actions", CHECKS ));
 	}
 
 	private static void checkRestAdvancesTheEngineClock( EnvConfig config ){
@@ -74,7 +66,7 @@ public class FreeActionCheck {
 		}
 
 		if (advanced < rested){
-			failures.add( "REST advanced the engine clock on " + advanced + " of " + rested
+			fail( "REST advanced the engine clock on " + advanced + " of " + rested
 					+ " rests. Resting costs TIME_TO_REST turns in the game, so a rest that spends"
 					+ " nothing is a free step that also leaves the hero resting, and it is charged"
 					+ " against env.freeStepBudget as well." );
@@ -93,7 +85,7 @@ public class FreeActionCheck {
 			env.step( action, 0 );
 			float spent = Actor.now() - before;
 			if (spent != Actor.TICK){
-				failures.add( action + " under Slow took " + spent + " turns. Hero.rest spends one"
+				fail( action + " under Slow took " + spent + " turns. Hero.rest spends one"
 						+ " turn as a constant, which Slow does not stretch." );
 				return;
 			}
@@ -106,7 +98,7 @@ public class FreeActionCheck {
 		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
 
 		if (env.mode() != EnvMode.WORLD){
-			failures.add( "the episode did not start in WORLD mode, so no menu could be opened." );
+			fail( "the episode did not start in WORLD mode, so no menu could be opened." );
 			return;
 		}
 
@@ -114,13 +106,13 @@ public class FreeActionCheck {
 		env.step( Action.OPEN_INVENTORY, 0 );
 
 		if (env.mode() != EnvMode.INVENTORY){
-			failures.add( "OPEN_INVENTORY did not enter INVENTORY; it left the environment in "
+			fail( "OPEN_INVENTORY did not enter INVENTORY; it left the environment in "
 					+ env.describeMode() + "." );
 			return;
 		}
 
 		if (Actor.now() != before){
-			failures.add( "OPEN_INVENTORY advanced the engine clock. Opening the backpack is free in"
+			fail( "OPEN_INVENTORY advanced the engine clock. Opening the backpack is free in"
 					+ " the game as well, so a mask that hides the loop must not make it cost a turn." );
 			return;
 		}
@@ -136,7 +128,7 @@ public class FreeActionCheck {
 		env.step( Action.CANCEL, 0 );
 
 		if (env.mode() != EnvMode.WORLD){
-			failures.add( "CANCEL did not return to WORLD; the environment is in "
+			fail( "CANCEL did not return to WORLD; the environment is in "
 					+ env.describeMode() + " so the loop cannot be tested." );
 			return;
 		}
@@ -145,7 +137,7 @@ public class FreeActionCheck {
 
 		for (Action a : new Action[]{ Action.OPEN_INVENTORY, Action.USE, Action.DROP }){
 			if (mask[ a.index ] != 0f ){
-				failures.add( a + " is still offered immediately after a menu was opened and cancelled"
+				fail( a + " is still offered immediately after a menu was opened and cancelled"
 						+ " at no cost to engine time. That pair is the loop: both halves are free, so"
 						+ " the agent can spend the whole free-step budget on it and never reach the"
 						+ " stairs." );
@@ -172,7 +164,7 @@ public class FreeActionCheck {
 		}
 
 		if (Actor.now() == clock){
-			failures.add( "no move on seed " + SEEDS[ 1 ] + " advanced the engine clock in 12 attempts,"
+			fail( "no move on seed " + SEEDS[ 1 ] + " advanced the engine clock in 12 attempts,"
 					+ " so the refusal could not be shown to lift. Widen the seed list rather than"
 					+ " accepting an unchecked case." );
 			return;
@@ -182,7 +174,7 @@ public class FreeActionCheck {
 		boolean wasMasked = baseline[ Action.OPEN_INVENTORY.index ] == 0f;
 
 		if (masked != wasMasked ){
-			failures.add( "OPEN_INVENTORY is masked " + (masked ? "after" : "before")
+			fail( "OPEN_INVENTORY is masked " + (masked ? "after" : "before")
 					+ " a step that spent engine time, so the refusal does not last exactly one step:"
 					+ " it lasts until the inventory changes." );
 			return;
@@ -234,14 +226,14 @@ public class FreeActionCheck {
 		}
 
 		if (advanced == 0){
-			failures.add( "none of " + taken + " steps of an OPEN_INVENTORY/CANCEL loop advanced engine"
+			fail( "none of " + taken + " steps of an OPEN_INVENTORY/CANCEL loop advanced engine"
 					+ " time, so the loop still runs entirely on free steps and still ends every episode"
 					+ " through env.free_step_budget." );
 			return;
 		}
 
 		if (worstRun > MAX_CONSECUTIVE_FREE){
-			failures.add( "an OPEN_INVENTORY/CANCEL loop produced a run of " + worstRun
+			fail( "an OPEN_INVENTORY/CANCEL loop produced a run of " + worstRun
 					+ " consecutive free steps; it must not exceed " + MAX_CONSECUTIVE_FREE
 					+ ", or the agent can still spend a whole floor's turn budget without the world"
 					+ " moving." );
@@ -259,13 +251,13 @@ public class FreeActionCheck {
 		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
 
 		if (env.actionMask()[ Action.TALENT.index ] != 0f ){
-			failures.add( "TALENT is offered to a hero with no points to spend, at hero level "
+			fail( "TALENT is offered to a hero with no points to spend, at hero level "
 					+ Dungeon.hero.lvl + "." );
 			return;
 		}
 
 		if (TalentPicker.spendableCount( Dungeon.hero ) != 0 ){
-			failures.add( "TALENT is masked but TalentPicker reports " + TalentPicker.spendableCount( Dungeon.hero )
+			fail( "TALENT is masked but TalentPicker reports " + TalentPicker.spendableCount( Dungeon.hero )
 					+ " spendable point(s), so the mask and the picker disagree." );
 			return;
 		}
@@ -275,7 +267,7 @@ public class FreeActionCheck {
 		int before = TalentPicker.spendableCount( hero );
 
 		if (before <= 0){
-			failures.add( "a level 3 hero still has no talent point available, so the level-up path the"
+			fail( "a level 3 hero still has no talent point available, so the level-up path the"
 					+ " reward depends on cannot be reached in this build." );
 			return;
 		}
@@ -285,7 +277,7 @@ public class FreeActionCheck {
 			return;
 		}
 
-		failures.add( "a level 3 hero has " + before + " point(s) to spend but TalentPicker offers no"
+		fail( "a level 3 hero has " + before + " point(s) to spend but TalentPicker offers no"
 				+ " talent to spend them on." );
 	}
 
@@ -312,14 +304,14 @@ public class FreeActionCheck {
 			env.step( Action.TALENT, 0 );
 
 			if (env.mode() != EnvMode.TALENT){
-				failures.add( "TALENT was offered but stepping it left the environment in "
+				fail( "TALENT was offered but stepping it left the environment in "
 						+ env.describeMode() + " rather than the talent pane." );
 				return;
 			}
 
 			float[] mask = env.slotMask();
 			if (mask[ 0 ] == 0f || mask[ Math.min( 1, mask.length - 1 ) ] == 0f ){
-				failures.add( "the talent pane offers " + env.talentChoices().size()
+				fail( "the talent pane offers " + env.talentChoices().size()
 						+ " talent(s) but its head mask does not admit the first two indices." );
 				return;
 			}
@@ -328,14 +320,14 @@ public class FreeActionCheck {
 			env.step( Action.MENU_SELECT, 0 );
 
 			if (env.mode() != EnvMode.WORLD){
-				failures.add( "spending a talent left the environment in " + env.describeMode()
+				fail( "spending a talent left the environment in " + env.describeMode()
 						+ " rather than returning to WORLD." );
 				return;
 			}
 
 			if (env.talentChoices().size() >= options.size()
 					&& Dungeon.hero.pointsInTalent( options.get( 0 ) ) == 0 ){
-				failures.add( "MENU_SELECT on talent 0 did not spend the point: "
+				fail( "MENU_SELECT on talent 0 did not spend the point: "
 						+ options.get( 0 ) + " still has none and the pane offers the same choices." );
 				return;
 			}
@@ -345,7 +337,7 @@ public class FreeActionCheck {
 			paid = RewardTerm.TALENT_UPGRADE;
 
 			if (env.ledger().termTotal( paid ) <= 0 ){
-				failures.add( "a talent point was spent but TALENT_UPGRADE paid nothing, so the largest"
+				fail( "a talent point was spent but TALENT_UPGRADE paid nothing, so the largest"
 						+ " single non-descent payout in the reward function cannot fire in a real run." );
 				return;
 			}
@@ -353,7 +345,7 @@ public class FreeActionCheck {
 		}
 
 		if (spent == 0 ){
-			failures.add( "no seed produced a spendable talent point through the real environment, so"
+			fail( "no seed produced a spendable talent point through the real environment, so"
 					+ " the path was never reached and the check proved nothing." );
 			return;
 		}
@@ -368,9 +360,5 @@ public class FreeActionCheck {
 			if (a.directional() && mask[ a.index ] > 0.5f ) return a;
 		}
 		return Action.WAIT;
-	}
-
-	private static void fail( String message ){
-		failures.add( message );
 	}
 }

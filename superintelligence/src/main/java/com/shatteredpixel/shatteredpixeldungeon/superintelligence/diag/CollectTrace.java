@@ -17,8 +17,6 @@ public final class CollectTrace {
 
 	static final String SEED = "COLLECT-CHECK";
 
-	static final List< String > failures = new ArrayList<>();
-
 	private CollectTrace(){}
 
 	static class Step {
@@ -123,10 +121,10 @@ public final class CollectTrace {
 	}
 
 	static void fail( String message ){
-		failures.add( message );
+		GateReport.fail( message );
 	}
 
 	static void fail( String where, String what ){
-		failures.add( where + ": " + what );
+		GateReport.fail( where + ": " + what );
 	}
 }

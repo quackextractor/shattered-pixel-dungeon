@@ -8,15 +8,13 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TrainOpt
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
+
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
 
 public class CheckpointCheck {
 
 	private static final int CHECKS = 9;
-
-	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
 		File dir = Scratch.dir( "checkpointcheck" );
@@ -54,14 +52,7 @@ Checkpoint.save( new File( dir, "default.bin" ),
 			fail( "the check threw: " + e.getMessage() );
 		}
 
-		if (failures.isEmpty()){
-			System.out.println( "[OK]     checkpoints: " + CHECKS + " checks passed" );
-		} else {
-			System.out.println( "[ERROR]  checkpoints: " + failures.size() + " of "
-					+ CHECKS + " checks failed" );
-			for (String f : failures) System.out.println( "        " + f );
-			System.exit( 1 );
-		}
+		System.exit( GateReport.report( "checkpoints", CHECKS ));
 	}
 
 	private static void checkRoundTripIsExact( Network original, EnvConfig config, File file,
@@ -353,9 +344,5 @@ Checkpoint.save( new File( dir, "default.bin" ),
 			for (int i = 0; i < m.vb.length; i++) m.vb[ i ] = (i % 13) * 1e-8f;
 		}
 		net.adamSteps( 137 );
-	}
-
-	private static void fail( String message ){
-		failures.add( message );
 	}
 }
