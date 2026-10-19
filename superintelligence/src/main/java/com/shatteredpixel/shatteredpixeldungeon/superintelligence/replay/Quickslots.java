@@ -9,15 +9,20 @@ public class Quickslots {
 
 	private static final char PAIR = ',';
 	private static final char LINK = ':';
+	private static final char INDEX = '@';
 
 	public static String capture(){
 		if (Dungeon.hero == null) return "";
 		StringBuilder sb = new StringBuilder();
+		int index = 0;
 		for (Item item : Dungeon.hero.belongings.backpack){
 			int slot = Dungeon.quickslot.getSlot( item );
-			if (slot < 0) continue;
-			if (sb.length() > 0) sb.append( PAIR );
-			sb.append( item.getClass().getSimpleName() ).append( LINK ).append( slot );
+			if (slot >= 0){
+				if (sb.length() > 0) sb.append( PAIR );
+				sb.append( item.getClass().getSimpleName() ).append( LINK ).append( slot )
+						.append( INDEX ).append( index );
+			}
+			index++;
 		}
 		return sb.toString();
 	}
@@ -33,23 +38,10 @@ public class Quickslots {
 		if (encoded == null || encoded.isEmpty()) return;
 
 		for (String pair : encoded.split( String.valueOf( PAIR ))){
-			int link = pair.lastIndexOf( LINK );
-			if (link <= 0 || link == pair.length() - 1) continue;
-
-			String className = pair.substring( 0, link );
-			int slot;
-			try {
-				slot = Integer.parseInt( pair.substring( link + 1 ));
-			} catch (NumberFormatException e){
-				continue;
-			}
-
-			for (Item item : Dungeon.hero.belongings.backpack){
-				if (item.getClass().getSimpleName().equals( className )){
-					Dungeon.quickslot.setSlot( slot, item );
-					break;
-				}
-			}
+			Binding binding = Binding.parse( pair );
+			if (binding == null) continue;
+			Item item = binding.resolve();
+			if (item != null) Dungeon.quickslot.setSlot( binding.slot, item );
 		}
 	}
 
@@ -92,16 +84,46 @@ public class Quickslots {
 		if (encoded == null || encoded.isEmpty()) return true;
 
 		for (String pair : encoded.split( String.valueOf( PAIR ) )){
-			int link = pair.lastIndexOf( LINK );
-			if (link <= 0 || link == pair.length() - 1) return false;
-			String className = pair.substring( 0, link );
-
-			boolean found = false;
-			for (Item item : Dungeon.hero.belongings.backpack){
-				if (item.getClass().getSimpleName().equals( className )){ found = true; break; }
-			}
-			if (!found) return false;
+			Binding binding = Binding.parse( pair );
+			if (binding == null || binding.resolve() == null) return false;
 		}
 		return true;
+	}
+
+	private static final class Binding {
+		final String className;
+		final int slot;
+		final int index;
+
+		private Binding( String className, int slot, int index ){
+			this.className = className;
+			this.slot = slot;
+			this.index = index;
+		}
+
+		static Binding parse( String pair ){
+			int at = pair.indexOf( INDEX );
+			String head = at < 0 ? pair : pair.substring( 0, at );
+			int link = head.lastIndexOf( LINK );
+			if (link <= 0 || link == head.length() - 1) return null;
+			try {
+				int index = at < 0 ? -1 : Integer.parseInt( pair.substring( at + 1 ));
+				int slot = Integer.parseInt( head.substring( link + 1 ));
+				return new Binding( head.substring( 0, link ), slot, index );
+			} catch (NumberFormatException e){
+				return null;
+			}
+		}
+
+		Item resolve(){
+			int position = 0;
+			for (Item item : Dungeon.hero.belongings.backpack){
+				if ((index < 0 || position == index) && item.getClass().getSimpleName().equals( className )){
+					return item;
+				}
+				position++;
+			}
+			return null;
+		}
 	}
 }

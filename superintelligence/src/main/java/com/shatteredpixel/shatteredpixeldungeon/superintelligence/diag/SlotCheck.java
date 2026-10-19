@@ -20,7 +20,7 @@ import java.util.List;
 
 public class SlotCheck {
 
-	private static final int CHECKS = 6;
+	private static final int CHECKS = 7;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -38,6 +38,7 @@ public class SlotCheck {
 		restoreClearsBindingsTheRecordingDidNotMention();
 		captureIsStableWhileNothingChanges();
 		restoreAppliesBindingsThatDifferFromTheLiveOnes();
+		restoreBindsTheCapturedItemNotTheFirstOfItsClass();
 		bindingsSurviveARoundTripThroughTheFileFormat();
 
 		if (failures.isEmpty()){
@@ -117,6 +118,7 @@ public class SlotCheck {
 		}
 
 		Dungeon.quickslot.reset();
+		Dungeon.quickslot.setSlot( 1, bound );
 		String captured = Quickslots.capture();
 
 		Dungeon.quickslot.setSlot( 4, bound );
@@ -127,17 +129,35 @@ public class SlotCheck {
 
 		Quickslots.restore( captured );
 		int slot = Dungeon.quickslot.getSlot( bound );
-
-		if (captured.isEmpty()){
-			if (slot == -1) return;
-			fail( where, "restoring an empty capture left " + bound.getClass().getSimpleName()
-					+ " bound to " + slot );
-			return;
-		}
-
-		if (slot == -1){
+		if (slot != 1){
 			fail( where, "restoring \"" + captured + "\" left " + bound.getClass().getSimpleName()
-					+ " unbound, though the capture names it" );
+					+ " in quickslot " + slot + " instead of 1" );
+		}
+	}
+
+	private static void restoreBindsTheCapturedItemNotTheFirstOfItsClass(){
+		String where = "restore binds the captured item, not the first of its class";
+
+		Item first = new com.shatteredpixel.shatteredpixeldungeon.items.food.Food();
+		Item second = new com.shatteredpixel.shatteredpixeldungeon.items.food.Food();
+		Dungeon.hero.belongings.backpack.items.add( first );
+		Dungeon.hero.belongings.backpack.items.add( second );
+
+		Dungeon.quickslot.reset();
+		Dungeon.quickslot.setSlot( 2, second );
+		String captured = Quickslots.capture();
+		Dungeon.quickslot.reset();
+		Quickslots.restore( captured );
+
+		int slotOfSecond = Dungeon.quickslot.getSlot( second );
+		int slotOfFirst = Dungeon.quickslot.getSlot( first );
+		Dungeon.hero.belongings.backpack.items.remove( first );
+		Dungeon.hero.belongings.backpack.items.remove( second );
+		Dungeon.quickslot.reset();
+
+		if (slotOfSecond != 2 || slotOfFirst != -1){
+			fail( where, "captured \"" + captured + "\" with the second Food in quickslot 2; after restore"
+					+ " the first is in " + slotOfFirst + " and the second in " + slotOfSecond );
 		}
 	}
 
