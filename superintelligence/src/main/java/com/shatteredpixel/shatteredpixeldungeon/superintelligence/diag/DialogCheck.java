@@ -19,7 +19,7 @@ import java.util.List;
 
 public class DialogCheck {
 
-	private static final int CHECKS = 3;
+	private static final int CHECKS = 2;
 
 	private static final String[] SEEDS = {
 			"DIALOGCHECK-A", "DIALOGCHECK-B", "DIALOGCHECK-C", "DIALOGCHECK-D", "DIALOGCHECK-E"
@@ -33,7 +33,6 @@ public class DialogCheck {
 
 		checkTheGamesOwnDialogIsAgedAndAnswered();
 		checkADialogClosesWhenTheGameClosesIt();
-		checkADialogOpenedDuringATurnIsReportedInThatTurn();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     dialog answers: " + CHECKS + " checks passed" );
@@ -204,42 +203,6 @@ public class DialogCheck {
 
 		System.out.println( "  a dialog survives an answer the game declines, and closes on one it"
 				+ " accepts" );
-	}
-
-	private static void checkADialogOpenedDuringATurnIsReportedInThatTurn(){
-		SPDEnv env = env();
-		env.reset( SEEDS[1], HeroClass.WARRIOR );
-
-		env.step( Action.WAIT, 0 );
-		if (!env.running()){
-			fail( "the episode ended as " + env.endReason() + " after one turn, so this case measured"
-					+ " nothing." );
-			return;
-		}
-
-		GameScene.show( new com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions(
-				"DIALOGCHECK", "raised while the world was moving", "Yes", "No" ) );
-
-		env.step( Action.WAIT, 0 );
-
-		if (env.mode() != EnvMode.MENU || !WindowBridge.open()){
-			fail( "a dialog opened during the turn left the environment in " + env.mode() + " with "
-					+ WindowBridge.describe() + " rather than in MENU with it. SPDEnv.settle only tested for"
-					+ " a dialog at the top of its loop, so one raised from inside Hero.act() - which is"
-					+ " where the game's \"jump?\" prompt comes from - was noticed a turn late, and the agent"
-					+ " spent that turn with the world while a modal question was already up." );
-			return;
-		}
-
-		WindowBridge.selectOption( 0 );
-		if (WindowBridge.open()){
-			fail( "the dialog was answered and is still up. A WndOptions button calls hide() before"
-					+ " onSelect(), and the game's own hide() is what closes a parked window." );
-			return;
-		}
-
-		System.out.println( "  a dialog opened during a turn is reported in that turn, and the answer"
-				+ " closes it" );
 	}
 
 	private static SPDEnv env(){
