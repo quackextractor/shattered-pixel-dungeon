@@ -17,14 +17,11 @@ Push-Location $repo
 
 $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-Write-Host "building classes..."
-& ./gradlew :superintelligence:classes -q
+Write-Host "building jars and classpath..."
+& ./gradlew :desktop:replaycp -q
 if ($LASTEXITCODE -ne 0) { Pop-Location; throw "build failed" }
 
 $cp = (Get-Content (Join-Path $repo 'desktop\build\replay-classpath.txt') -Raw).Trim()
-$classes = Join-Path $module 'build\classes\java\main'
-$resources = Join-Path $module 'build\resources\main'
-$cp = "$classes;$resources;$cp"
 $main = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.Main'
 
 if ($Parallel -le 0) {
