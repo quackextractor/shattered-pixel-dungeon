@@ -162,16 +162,16 @@ public class TrainerWorkers {
 
 
 	public void pushWeights() throws IOException {
-		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-		DataOutputStream tmp = new DataOutputStream( buffer );
-		paramWriter.write( tmp );
-		tmp.flush();
-		final byte[] payload = buffer.toByteArray();
-
 		List<Thread> threads = new ArrayList<>();
 		List<IOException> failures = Collections.synchronizedList( new ArrayList<>() );
 
 		for (final WorkerHandle worker : pool.workers()){
+			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+			DataOutputStream tmp = new DataOutputStream( buffer );
+			paramWriter.write( tmp );
+			tmp.flush();
+			final byte[] payload = buffer.toByteArray();
+
 			Thread thread = new Thread( () -> {
 				try {
 					writeFully( worker.dataOut, worker.name, payload );

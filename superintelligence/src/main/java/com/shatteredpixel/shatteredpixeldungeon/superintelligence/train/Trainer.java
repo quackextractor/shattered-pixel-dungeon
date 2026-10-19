@@ -275,6 +275,8 @@ public class Trainer {
 Worker.writeWeights( out, ppo.network );
 	}
 
+	private int nextEpisodeId;
+
 	private int droppedThisGeneration;
 	private long sampledBytes;
 	private long gridBytes;
@@ -323,6 +325,10 @@ Worker.writeWeights( out, ppo.network );
 
 			for (Episode e : episodes){
 				if (e.transitions == null) continue;
+				int id = nextEpisodeId++;
+				for (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition t : e.transitions){
+					if (t.episodeId >= 0) t.episodeId = id;
+				}
 				reservoir.offer( e.transitions );
 				e.transitions = null;
 			}
