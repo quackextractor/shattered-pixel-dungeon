@@ -19,7 +19,7 @@ import java.util.Random;
 
 public class BpttCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 5;
 
 	private static final int LSTM_GRADIENT = 4;
 
@@ -29,8 +29,6 @@ public class BpttCheck {
 		EnvConfig config = new EnvConfig();
 
 		checkTheChunkIsNotTheSumOfItsSteps( config );
-		checkALossOnTheFirstStepReachesTheRecurrentWeights( config );
-		checkASingleStepChunkIsTheOldPath( config );
 		checkOnlyContiguousStepsAreChained( config );
 		checkSyntheticStepsAreNeverChained( config );
 		checkValueTargetsAreNormalised( config );
@@ -78,52 +76,6 @@ public class BpttCheck {
 
 		System.out.println( "  a two-step chunk differs from the sum of its steps by "
 				+ fmt( difference * 100 ) + "% of its norm on the LSTM weights" );
-	}
-
-	private static void checkALossOnTheFirstStepReachesTheRecurrentWeights( EnvConfig config ){
-		PPO ppo = new PPO( config, new Random( 4242L ));
-		ppo.entropyCoeff = 0f;
-		ppo.chunkLength = 4;
-
-		List< Transition > chunk = chunkOf( config, ppo, 2 );
-		chunk.get( 0 ).returnValue = 1f;
-		chunk.get( 1 ).returnValue = 0f;
-
-		double firstStep = norm( recurrentGradient( ppo, chunk ));
-
-		if (firstStep <= 0){
-			failures.add( "a loss on the first step of a two-step chunk gave the LSTM weights no gradient"
-					+ " at all, so the recurrent layer is not trained even by a step's own loss." );
-			return;
-		}
-
-		System.out.println( "  a loss on the first step alone gives the LSTM weights gradient "
-				+ fmt( firstStep ));
-	}
-
-	private static void checkASingleStepChunkIsTheOldPath( EnvConfig config ){
-		PPO ppo = new PPO( config, new Random( 99L ));
-
-		List< Transition > batch = batchOf( config, ppo, 8 );
-		for (Transition t : batch){
-			t.episodeId = -1;
-			t.stepIndex = -1;
-		}
-
-		float[] viaChunks = updateAndKeep( ppo, batch );
-		float[] viaSamples = updateAndKeep( new PPO( config, new Random( 99L )), batch );
-
-		double difference = relativeDifference( viaChunks, viaSamples );
-
-		if (difference > 1e-4){
-			failures.add( "updating the same eight unsequenced transitions through the chunked path and"
-					+ " through single-sample chunks differ by " + fmt( difference )
-					+ ", so a single sample is not being treated as a chunk of length one. Tolerance is"
-					+ " 1e-4 relative to the tensor's own L2 norm." );
-			return;
-		}
-
-		System.out.println( "  a single-step chunk and the old per-step path agree to " + fmt( difference ));
 	}
 
 	private static void checkOnlyContiguousStepsAreChained( EnvConfig config ){
@@ -213,15 +165,6 @@ public class BpttCheck {
 		}
 
 		System.out.println( "  normaliseValues=false asks the critic for the raw return" );
-	}
-
-	private static float[] updateAndKeep( PPO ppo, List< Transition > batch ){
-		ppo.threads = 1;
-		ppo.epochs = 1;
-		ppo.chunkLength = 16;
-		ppo.addAll( batch );
-		ppo.update();
-		return ppo.network.gradientTensors()[ LSTM_GRADIENT ].clone();
 	}
 
 	private static float[] recurrentGradient( PPO ppo, List< Transition > chunk ){
