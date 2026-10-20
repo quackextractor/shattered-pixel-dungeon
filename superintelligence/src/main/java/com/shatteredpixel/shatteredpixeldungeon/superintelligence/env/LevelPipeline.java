@@ -100,6 +100,11 @@ public class LevelPipeline {
 			for (com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob mob : Dungeon.level.mobs){
 				spriteFor( mob );
 			}
+			for (com.shatteredpixel.shatteredpixeldungeon.items.Heap heap : Dungeon.level.heaps.valueList()){
+				if (heap.sprite == null){
+					( heap.sprite = new com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite( heap )).link( heap );
+				}
+			}
 		}
 	}
 

@@ -307,6 +307,17 @@ public class TransitionCheck {
 			return;
 		}
 
+		int bare = 0;
+		for (com.shatteredpixel.shatteredpixeldungeon.items.Heap heap : Dungeon.level.heaps.valueList()){
+			if (heap.sprite == null) bare++;
+		}
+		if (bare > 0){
+			fail( bare + " of " + Dungeon.level.heaps.valueList().size() + " heaps on the floor climbed back"
+					+ " to have no sprite. GameScene.create gives every loaded heap one, and Hero.actPickUp"
+					+ " calls heap.sprite.drop() when the backpack is full." );
+			return;
+		}
+
 		System.out.println( "  a floor climbed back to is the floor that was left: " + after );
 	}
 

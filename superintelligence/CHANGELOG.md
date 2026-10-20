@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A full backpack on a revisited floor crashed the worker.** A floor loaded from its save has heaps
+  with no sprite; `GameScene.create` gives each one a sprite in the real game, and the headless
+  pipeline did not. `Hero.actPickUp` calls `heap.sprite.drop()` when the pickup fails, so
+  `retrain-0.11.0-60` died at generation 48 with a NullPointerException. `attachSprites` now gives
+  every heap a sprite, the same way `Level.drop` does without a scene. `transitioncheck` requires it on
+  the floor it climbs back to; that check failed on all 10 heaps before the fix.
 - **`--checkpoint-every` and `--record-every` were ignored.** The parser stored the value but never
   the marker `TrainerMain` consulted, so the properties file's 25 and 1 applied whatever the flag said.
   Found when a 60-generation run asked to checkpoint every 10 was killed at 16 with no `weights.bin`.
