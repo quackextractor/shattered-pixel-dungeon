@@ -2,11 +2,11 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
+import com.shatteredpixel.shatteredpixeldungeon.ui.GameLog;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.RunState;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.ScriptedPolicy;
@@ -43,7 +43,7 @@ public class RestartCheck {
 			played++;
 		}
 
-		restart( env.pipeline() );
+		restart();
 		String second = signature();
 
 		if (first.equals( second )){
@@ -61,13 +61,12 @@ public class RestartCheck {
 	}
 
 
-	private static void restart( LevelPipeline pipeline ){
-		Dungeon.hero = null;
+	private static void restart(){
 		RunState.clearRemains();
+		Dungeon.hero = null;
+		Mob.clearHeldAllies();
 		Dungeon.init();
-
-		pipeline.attachSprites();
-
+		GameLog.wipe();
 		Level level = Dungeon.newLevel();
 		Dungeon.switchLevel( level, -1 );
 	}
