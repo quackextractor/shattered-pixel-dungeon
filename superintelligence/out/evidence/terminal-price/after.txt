@@ -1,3 +1,0 @@
-  the turn limit's price reaches the learner: the last step paid -2000.52 over 5 step(s), and the score and the learner agree to -1.00
-  the stall's price reaches the learner: the last step paid -4500.52 over 5 step(s), and the score and the learner agree to -1.00
-[OK]     reward signals: 44 checks passed

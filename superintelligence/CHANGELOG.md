@@ -11,6 +11,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The run reported a loss and an entropy that were chunk sums, and the entropy was
+  arithmetically impossible.** `PPO.accumulate` divided the per-step losses by the number of
+  **chunks** in the minibatch, and each chunk contributes up to `rl.chunk_length` = 16 steps, so
+  every reported figure was **16 times the per-step mean** and grew with the chunk length. The
+  entropy of the 19-action head cannot exceed ln(19) = 2.94, and the runs in this repository's
+  evidence report **27.5 to 30.6**; the slot head's 96 slots cannot exceed 4.56. A reader cannot
+  tell from 30.6 whether the policy is at 1.9 - nearly uniform over its choices - or at 0.19, and
+  `CHANGELOG.md` quotes "entropy climbs" as evidence that the update is moving.
+
+  The reported `policyLoss`, `valueLoss`, `entropy` and `klDivergence` are per-step means now, and
+  the shard path counts its steps the same way. `graphcheck` carries the case, and the property it
+  asserts is a bound rather than a constant: **no masked head can hold more entropy than the
+  logarithm of its size**, so a reported entropy above 4.564 is impossible whatever the policy
+  does. Measured on a 32-step batch: **40.44 before, 2.53 after**, against the ceiling of 4.564.
+  9 cases.
+
+  **The historical figures in this file are 16 times the current scale** and are left as they were
+  measured: `valueLoss` "0.14 to 0.90" was 2.24 to 14.4 per step, and the "entropy climbs" was
+  the per-step entropy climbing from 1.72 to 1.91.
+
+  **The evidence for this and for the two fixes above is not tracked.** `out/evidence/` holds a
+  session's measurements and the directory is gitignored apart from its `.gitkeep`; a handful of
+  files under it were added to the repository by earlier cycles and the practice is not worth
+  continuing. The numbers are in this changelog, and the gates that produced them are in
+  `gates`.
+
 - **The exit beacon stopped carrying the exit the moment the exit left the window.**
   `obs.GridChannel.EXIT_BEACON` is the memory of where the stairs are, and the encoder wrote it at the
   exit's own grid cell - so it was written **only while the stairs were inside the 48x48 window**,

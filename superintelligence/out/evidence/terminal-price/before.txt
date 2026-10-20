@@ -1,3 +1,0 @@
-[ERROR]  reward signals: 2 of 44 checks failed
-        the last step the learner was given paid -0.52, and the turn limit's price is -2000.00. The price never reached the policy: SPDEnv.checkFloorLimits() ended the episode and dropped terminate()'s value, so the reward the learner was given did not carry the price the ledger charged. The gate above asserts the price; this one asserts that the policy is told it.
-        the last step the learner was given paid -0.52, and the stall's price is -4500.00. The price never reached the policy. A stall is priced above a late death, so the signal has to carry it: standing still is only expensive if the policy is told so.

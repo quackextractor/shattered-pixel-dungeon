@@ -79,6 +79,7 @@ final class ShardedUpdate {
 		float[] entropy = new float[ n ];
 		float[] kl = new float[ n ];
 		float[] clipped = new float[ n ];
+		int[] steps = new int[ n ];
 
 		CountDownLatch ready = new CountDownLatch( n );
 		AtomicReference< Throwable > failure = new AtomicReference<>();
@@ -94,6 +95,7 @@ final class ShardedUpdate {
 					w.network.clearGradients();
 
 					float p = 0, v = 0, e = 0, k = 0, c = 0;
+					int n2 = 0;
 					for (int i = lo; i < hi; i++){
 						PPO.Stats s2 = ppo.oneChunk( w.network, chunks.get( i ), w.grid,
 								w.slotProbs, w.targetProbs, w.actionProbs, w.caches, w.maxChunk );
@@ -101,6 +103,7 @@ final class ShardedUpdate {
 						v += s2.valueLoss;
 						e += s2.entropy;
 						k += s2.kl;
+						n2 += s2.steps;
 						if (s2.clipBinding) c++;
 					}
 
@@ -109,6 +112,7 @@ final class ShardedUpdate {
 					entropy[ shard ] = e;
 					kl[ shard ] = k;
 					clipped[ shard ] = c;
+					steps[ shard ] = n2;
 				} catch (Throwable t){
 					failure.compareAndSet( null, t );
 				} finally {
@@ -130,6 +134,7 @@ final class ShardedUpdate {
 			result.entropy += entropy[ s ];
 			result.kl += kl[ s ];
 			result.clipped += clipped[ s ];
+			result.steps += steps[ s ];
 		}
 
 		ppo.network.scaleGradients( 1f / count );

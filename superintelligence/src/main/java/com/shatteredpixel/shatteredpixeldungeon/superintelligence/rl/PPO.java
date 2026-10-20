@@ -240,10 +240,11 @@ public float lastClipFraction;
 	}
 
 	private void accumulate( Minibatch m, int count ){
-		lastPolicyLoss += m.policyLoss / count;
-		lastValueLoss += m.valueLoss / count;
-		lastEntropy += m.entropy / count;
-		lastKLDivergence += m.kl / count;
+		int steps = Math.max( 1, m.steps );
+		lastPolicyLoss += m.policyLoss / steps;
+		lastValueLoss += m.valueLoss / steps;
+		lastEntropy += m.entropy / steps;
+		lastKLDivergence += m.kl / steps;
 		lastClipFraction += m.clipped / count;
 		lastGradNorm += m.gradNorm;
 		lastGradClipped += m.gradClipped;
@@ -258,6 +259,7 @@ public float lastClipFraction;
 		float clipped;
 		float gradNorm;
 		int gradClipped;
+		int steps;
 	}
 
 
@@ -320,6 +322,7 @@ Stats oneSample( Network net, Transition t, float[] grid,
 		Stats s = new Stats();
 		int steps = Math.min( chunk.size(), maxSteps );
 		if (steps <= 0) return s;
+		s.steps = steps;
 
 		net.beginBackward();
 
@@ -411,6 +414,7 @@ Stats oneSample( Network net, Transition t, float[] grid,
 		float entropy;
 		float kl;
 		boolean clipBinding;
+		int steps;
 	}
 
 	private Minibatch processMinibatch( List< List< Transition > > chunks, int from, int to ){
@@ -434,6 +438,7 @@ Stats oneSample( Network net, Transition t, float[] grid,
 			entropy += s.entropy;
 			kl += s.kl;
 			clipped += s.clipBinding ? 1 : 0;
+			result.steps += s.steps;
 		}
 
 		network.scaleGradients( 1f / count );

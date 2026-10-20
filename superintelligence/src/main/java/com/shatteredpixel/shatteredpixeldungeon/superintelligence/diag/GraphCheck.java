@@ -8,7 +8,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class GraphCheck {
 
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 9;
 
 	public static void main( String[] args ){
 		checkFlatSeriesReportsItselfAsFlat();
@@ -19,6 +19,7 @@ public class GraphCheck {
 		checkTheWindowStatisticsAreWhatTheyClaim();
 		checkTheDepthRateCountsEpisodesNotGenerations();
 		checkTheEndReasonTrendComparesTheThirds();
+		checkTheReportedLossesArePerStepMeans();
 
 		System.exit( GateReport.report( "graph honesty", CHECKS ));
 	}
@@ -238,6 +239,45 @@ public class GraphCheck {
 		System.out.println( "  progress bar: 0% -> " + pct( start ) + ", 50% -> " + pct( half )
 				+ ", 100% -> " + pct( end ) + ", " + countCells( end ) + " fixed cells, estimate blank"
 				+ " until a generation finishes" );
+	}
+
+	private static void checkTheReportedLossesArePerStepMeans(){
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig config =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig();
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO ppo =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO( config,
+						new java.util.Random( 31L ) );
+
+		java.util.List< com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition > batch =
+				ParallelFixtures.batch( ppo.network, config, 32, 4242L );
+		for (int i = 0; i < batch.size(); i++){
+			batch.get( i ).episodeId = 7;
+			batch.get( i ).stepIndex = i;
+		}
+		ppo.addAll( batch );
+		ppo.update();
+
+		double ceiling = Math.log( Math.max( config.maxSlots,
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action.size() ) );
+
+		if (ppo.lastEntropy > ceiling){
+			fail( "the run reported an entropy of " + ppo.lastEntropy + ", and no masked head can hold"
+					+ " more than " + ceiling + " - the action head has "
+					+ com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action.size()
+					+ " actions and the slot head " + config.maxSlots + ". The reported figure is the"
+					+ " entropy summed over a chunk and divided by the chunk count, so it grows with"
+					+ " rl.chunk_length: the number the run reports is not the number it claims." );
+			return;
+		}
+
+		if (ppo.lastEntropy <= 0f){
+			fail( "the run reported an entropy of " + ppo.lastEntropy + ", and a policy with a"
+					+ " non-empty mask always has some" );
+			return;
+		}
+
+		System.out.println( "  the reported entropy is a per-step mean: " + ppo.lastEntropy
+				+ " against a ceiling of " + ceiling );
 	}
 
 	private static String pct( String bar ){
