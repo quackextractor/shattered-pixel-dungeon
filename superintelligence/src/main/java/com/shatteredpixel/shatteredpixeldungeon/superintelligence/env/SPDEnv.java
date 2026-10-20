@@ -37,6 +37,7 @@ public class SPDEnv {
 	private float stepClock;
 	private boolean running;
 	private boolean terminated;
+	private int forfeited;
 	private boolean truncated;
 	private RewardModel.TerminateReason endReason = RewardModel.TerminateReason.OTHER;
 	private String seedText = "";
@@ -81,6 +82,7 @@ public class SPDEnv {
 		lastStallPos = -1;
 		lastStallHp = Dungeon.hero.HP;
 		terminated = false;
+		forfeited = 0;
 		truncated = false;
 		endReason = RewardModel.TerminateReason.OTHER;
 		running = true;
@@ -182,9 +184,9 @@ if (mode == EnvMode.WORLD){
 		double accumulated = 0;
 		int guard = 0;
 		while (running){
-if (++guard > config.actorStepLimit){
+			if (++guard > config.actorStepLimit){
 				stallCause = StallCause.ACTOR_STEP_LIMIT;
-				terminate( RewardModel.TerminateReason.STALLED );
+				accumulated += terminate( RewardModel.TerminateReason.STALLED );
 				break;
 			}
 			if (WindowBridge.open()){
@@ -307,7 +309,7 @@ if (++guard > config.actorStepLimit){
 			lastStallPos = hero.pos;
 			lastStallHp = hero.HP;
 		}
-if (!reward.lastStepAdvancedClock()){
+		if (!reward.lastStepAdvancedClock()){
 			freeStepsThisFloor++;
 			if (freeStepsThisFloor >= config.freeStepBudget){
 				stallCause = StallCause.FREE_STEP;
@@ -322,6 +324,10 @@ if (!reward.lastStepAdvancedClock()){
 		terminated = true;
 		truncated = SPDEnv.isTruncation( reason );
 		running = false;
+		if (reason == RewardModel.TerminateReason.DEATH || reason == RewardModel.TerminateReason.STALLED){
+			forfeited = Math.max( 0, Math.min( config.turnLimitPerFloor - turnsThisFloor, config.turnLimitTotal - turnsTotal ) );
+			reward.forfeit( forfeited );
+		}
 		return reward.terminate( reason );
 	}
 	public static boolean isTruncation( RewardModel.TerminateReason reason ){
@@ -376,6 +382,7 @@ public float[] actionMask(){ return actionMask; }
 	public EnvConfig config(){ return config; }
 	public String seedText(){ return seedText; }
 	public int turnsTotal(){ return turnsTotal; }
+	public int turnsForfeited(){ return forfeited; }
 	public int depth(){ return Dungeon.depth; }
 	public int deepestDepth(){ return com.shatteredpixel.shatteredpixeldungeon.Statistics.deepestFloor; }
 	public int heroPosition(){ return Dungeon.hero.pos; }

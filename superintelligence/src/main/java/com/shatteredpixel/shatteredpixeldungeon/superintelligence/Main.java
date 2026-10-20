@@ -20,6 +20,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GraphChec
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ModeCoverageCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.MobSpriteCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ObserveCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RenderDrawCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ParallelCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.PressCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.PushCheck;
@@ -67,6 +68,7 @@ public class Main {
 		case "gaecheck": GaeCheck.main( rest ); break;
 		case "collectcheck": CollectCheck.main( rest ); break;
 		case "observecheck": ObserveCheck.main( rest ); break;
+		case "renderdrawcheck": RenderDrawCheck.main( rest ); break;
 		case "replayprobe": ReplayProbe.main( rest ); break;
 		case "episodediff": EpisodeDiff.main( rest ); break;
 		case "checkpointcheck": CheckpointCheck.main( rest ); break;

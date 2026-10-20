@@ -33,6 +33,7 @@ import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.Emitter.Factory;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.PointF;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -195,7 +196,7 @@ public class GooSprite extends MobSprite {
 			left = lifespan;
 
 			size = 4;
-			speed.polar( -Random.Float( PointF.PI ), Random.Float( 32, 48 ) );
+			speed.polar( -PRandom.Float( PointF.PI ), PRandom.Float( 32, 48 ) );
 		}
 
 		@Override

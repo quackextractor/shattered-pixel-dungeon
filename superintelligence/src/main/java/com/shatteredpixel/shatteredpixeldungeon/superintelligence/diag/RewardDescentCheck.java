@@ -321,7 +321,7 @@ public final class RewardDescentCheck {
 		}
 
 		double turnCost = stall.termTotal( RewardTerm.TURN_COST );
-		double expectedTurnCost = -config.turnCost * (stall.turns - stall.notes( RewardTerm.NO_PROGRESS ) );
+		double expectedTurnCost = -config.turnCost * (stall.turns - stall.notes( RewardTerm.NO_PROGRESS ) + stall.forfeited );
 		if (Math.abs( turnCost - expectedTurnCost ) > 1e-5 ){
 			fail( "a stalled run under depth_only charged " + turnCost + " in turn cost where "
 					+ expectedTurnCost + " was expected: " + stall.turns + " turns, "

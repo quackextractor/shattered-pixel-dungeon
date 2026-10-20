@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.sprites;
 
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
 import com.watabou.noosa.TextureFilm;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class SheepSprite extends MobSprite {
@@ -44,6 +45,6 @@ public class SheepSprite extends MobSprite {
 		die.frames( frames, 0 );
 		
 		play( idle );
-		curFrame = Random.Int( curAnim.frames.length );
+		curFrame = PRandom.Int( curAnim.frames.length );
 	}
 }

@@ -51,6 +51,7 @@ import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.Callback;
 import com.watabou.utils.PathFinder;
 import com.watabou.utils.PointF;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class WandOfBlastWave extends DamageWand {
@@ -230,7 +231,7 @@ public class WandOfBlastWave extends DamageWand {
 	public void staffFx(MagesStaff.StaffParticle particle) {
 		particle.color( 0x664422 ); particle.am = 0.6f;
 		particle.setLifespan(3f);
-		particle.speed.polar(Random.Float(PointF.PI2), 0.3f);
+		particle.speed.polar(PRandom.Float(PointF.PI2), 0.3f);
 		particle.setSize( 1f, 2f);
 		particle.radiateXY(2.5f);
 	}

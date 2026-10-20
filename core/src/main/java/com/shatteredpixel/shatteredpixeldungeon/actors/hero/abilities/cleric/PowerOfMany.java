@@ -57,6 +57,7 @@ import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 import com.watabou.noosa.TextureFilm;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.Bundle;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class PowerOfMany extends ArmorAbility {
@@ -357,7 +358,7 @@ public class PowerOfMany extends ArmorAbility {
 		public LightAllySprite() {
 			super();
 
-			setup(HeroClass.values()[Random.Int(5)]);
+			setup(HeroClass.values()[PRandom.Int(5)]);
 		}
 
 		public void setup(HeroClass cls){

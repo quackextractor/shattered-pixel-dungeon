@@ -59,6 +59,7 @@ import com.watabou.utils.BArray;
 import com.watabou.utils.DeviceCompat;
 import com.watabou.utils.GameMath;
 import com.watabou.utils.PlatformSupport;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 import com.watabou.utils.RectF;
 import com.watabou.utils.Signal;
@@ -606,10 +607,8 @@ public class InterlevelScene extends PixelScene {
 		if (mode == Mode.FALL) {
 			loadingText.setPos(
 					//the randomization is effectively -2 to +2
-					// we don't use the generator stack as levelgen may be occurring
-					// and we don't want to accidentally use a seeded generator
-					(w + insets.left - loadingText.width() - 4) + 4*(Random.Float(false)-0.5f),
-					(h + insets.top - loadingText.height() - 6) + 4*(Random.Float(false)-0.5f)
+					(w + insets.left - loadingText.width() - 4) + 4*(PRandom.Float()-0.5f),
+					(h + insets.top - loadingText.height() - 6) + 4*(PRandom.Float()-0.5f)
 			);
 			align(loadingText);
 		}

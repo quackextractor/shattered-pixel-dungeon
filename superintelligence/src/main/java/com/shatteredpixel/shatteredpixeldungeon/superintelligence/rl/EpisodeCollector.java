@@ -202,7 +202,7 @@ public class EpisodeCollector {
 
 			if (listener != null) listener.onStep( heroPosition, reward, env.lastStepActed() );
 
-			record.add( reward, baseline(), env.endedNaturally(), liveHead, actionIndex, secondary,
+			record.add( reward, baseline(), !env.running(), liveHead, actionIndex, secondary,
 					logProbability );
 
 			if (!env.running()){

@@ -10,7 +10,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Twenty-six render-only draws spent the gameplay RNG, the same trap as the camera shake.**
+  `InterlevelScene.update` drew `Random.Float(false)` - the base generator - twice per frame for
+  the whole of a chasm fall, so any recording with a fall parted from the viewer at a frame-rate
+  dependent step. The same shape in `CavesLevel.Vein` and `HallsLevel.Stream` (per frame, every
+  caves and halls floor), `CityLevel.SmokeParticle`, `CavesBossLevel.PylonEnergy`'s sparks,
+  `GooSprite`'s particles, `MagesStaff.StaffParticle.shuffleXY` and every `staffFx` override
+  (`Wand.staffFx` was moved in 0.9 and its eight overrides were not), `MobSprite.fall`,
+  `MonkSprite`/`SeniorSprite.attack`, `RipperSprite`, `SheepSprite`, `VaultBossElementalSprite`
+  and `PowerOfMany.LightAllySprite`. All draw from `PRandom` now; the trainer never ran any of them,
+  so no recording changes.
+- **A death or a stall forfeits the turns it did not live.** `reward.turn_cost` charges every turn
+  alive, so a run that could not descend scored best by dying at once - which is what `depth_only`
+  learned. The episode's remaining floor budget is now charged at `turn_cost` on `DEATH` and
+  `STALLED`, so an early death costs what a late one does (`-4635.26` after 8 turns against
+  `-4598.12` after 103 on the gate's fixture; `-3143.26` against `-3201.12` without it).
+- **A priced ending is terminal to the learner.** `EpisodeCollector` marked only `DEATH` and
+  `VICTORY` terminal, so GAE added the critic's guess at a future on top of the -4500 stall and
+  the -2000 turn limit - with a value baseline near -3000 that made both cost far more than a
+  death, the same "dying is the cheap way out" from the other side. `endedNaturally` still
+  reports the mix; the learner sees every ending as an end.
+- `SPDEnv.settle`'s actor-step guard dropped `terminate()`'s price, the third sibling of the fault
+  fixed twice already. The guard is unreachable today (every loop path breaks), so this is hygiene.
+
+### Added
+- **`renderdrawcheck`**, gate 34: reads the compiled classes of `core` and `SPD-classes` and fails on
+  any presentation method (`Gizmo`, `Emitter.Factory`, `staffFx`) that calls a gameplay `Random`
+  draw outside a pushed generator. Found 23 sites by source scan and 3 more (anonymous classes) by
+  bytecode; 13 remaining are allow-listed with a reason, and a stale entry fails the gate.
+  Mutation-tested on `InterlevelScene` and `WandOfWarding`.
+- `rewardcheck` 46 cases: an early death is not cheaper than a late one; a priced ending is terminal.
+
 ### Changed
+- **`./train.ps1` runs the short cycle by default** (3 generations, 4 workers, 1 episode); `-Long`
+  is the 30-generation run. The summary prints the previous run of the same name beside this one,
+  so a change is judged against its own baseline in one command. Measured at 16 workers: 32s a
+  generation against 14s at 4 - the longest episode and the bigger update, not the pool, set the
+  wall - so the default stays at 4.
+
+### Measured
+- `ZRD-CVK-QYT` (`issues.md` 21) still diverges at step 638, and the cause is now one step earlier
+  than recorded: the RNG streams part at step 627, where the viewer's passive `Hero.search` rolls
+  for the secret door at cell 1088 and the trainer's does not. The viewer discovers the door, the
+  dew roll at step 630 reads a different value, and the Dewdrop the trainer drops on 910 never
+  exists in the viewer - which is the heap `INTERACT` walks to at 638. Evidence
+  `out/evidence/issue-21/`.
+- Short cycle with the forfeit, 16 workers x 3 generations: endings death 12 / stalled 4,
+  then 15 / 1, then 7 / 9 (all `free_step`); depth 1 throughout. Evidence
+  `out/evidence/forfeit-quick.{csv,log}`.
+
 - **The viewer gate plays the corpus flat out and re-plays only what diverged, on its own.** The
   gate ran eight children at a time and reported whatever diverged, and playback is timing
   sensitive, so a loaded machine produced failures that had nothing to do with the recording: the

@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.sprites;
 
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
 import com.watabou.noosa.TextureFilm;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class SeniorSprite extends MobSprite {
@@ -57,7 +58,7 @@ public class SeniorSprite extends MobSprite {
 	@Override
 	public void attack( int cell ) {
 		super.attack( cell );
-		if (Random.Float() < 0.3f) {
+		if (PRandom.Float() < 0.3f) {
 			play( kick );
 		}
 	}

@@ -185,6 +185,9 @@ public class RewardModel {
 		float spent = Actor.now() - prevEngineTime;
 		return spent > 0f ? spent : 0f;
 	}
+	public void forfeit( int turns ){
+		if (turns > 0) ledger.add( RewardTerm.TURN_COST, -config.turnCost * turns, false );
+	}
 	public double terminate( TerminateReason reason ){
 		Hero hero = Dungeon.hero;
 		switch (reason) {

@@ -64,6 +64,7 @@ import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.Callback;
 import com.watabou.utils.PointF;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -346,7 +347,7 @@ public class CityLevel extends RegularLevel {
 			super();
 			
 			color( 0x000000 );
-			speed.set( Random.Float( -2, 4 ), -Random.Float( 3, 6 ) );
+			speed.set( PRandom.Float( -2, 4 ), -PRandom.Float( 3, 6 ) );
 		}
 		
 		public void reset( float x, float y ) {

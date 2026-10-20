@@ -123,6 +123,8 @@ which is what that one cause looks like from the outside.
 
 `gradle :desktop:viewcheck`: **14 of 17 diverged → 0 of 17.**
 
+Twenty-six more of the same kind - `InterlevelScene.update` during a fall, the caves and halls level visuals, `CityLevel` smoke, `CavesBossLevel` sparks, every `staffFx` override and `MagesStaff.StaffParticle.shuffleXY`, and seven sprites - moved to `PRandom` in the same shape; `renderdrawcheck` reads the bytecode so the next one fails a gate. See `CHANGELOG.md` Unreleased.
+
 ### Left alone deliberately
 
 - **`DungeonTileSheet.setupVariance`** draws 962 times during generation, and the viewer makes it while

@@ -65,6 +65,7 @@ import com.watabou.utils.Callback;
 import com.watabou.utils.GameMath;
 import com.watabou.utils.PathFinder;
 import com.watabou.utils.Point;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 import com.watabou.utils.Rect;
 
@@ -959,7 +960,7 @@ public class CavesBossLevel extends Level {
 				float dist = (float)Math.max( Math.abs(energySourceSprite.x - x), Math.abs(energySourceSprite.y - y) );
 				dist = GameMath.gate(0, dist-40, 320);
 				//more sparks closer up
-				if (Random.Float(360) > dist) {
+				if (PRandom.Float(360) > dist) {
 
 					SparkParticle s = ((SparkParticle) emitter.recycle(SparkParticle.class));
 					s.resetAttracting(x, y, energySourceSprite);

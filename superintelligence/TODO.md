@@ -100,6 +100,12 @@ actually rules out.
       **how often the policy's episodes end nearer the stairs than they started**, against a random
       walk over the same floors, now that the signal and the beacon are both honest.
 
+- [x] **An early death is cheaper than a stall.** Death and stall now forfeit the floor budget they
+      did not live, and every priced ending is terminal to GAE (`CHANGELOG.md` Unreleased). The
+      next run's ending mix is the measurement; `./train.ps1` is the cycle to take it with.
+- [ ] **Short cycle shows `free_step` stalls at 56% in a generation.** Read the stalled recordings
+      in `trainer-replays/forfeit-quick/` before tuning `env.free_step_budget`.
+
 ## 2. Reward signals
 
 - [x] ~~**Coverage of the terms that fire.**~~ **Closed by measurement.** `KILL`, `GOLD_GAIN` and
@@ -134,6 +140,11 @@ still open:
       `HeroSprite`, and the headless subclasses cannot cover it: `HeroSprite` needs its texture film
       (`HeroSprite.tiers()`), which does not exist without graphics. The 17 mob sprite casts are covered
       and gated by `mobspritecheck`.
+- [ ] **`issues.md` 21: passive search parts the streams at step 627 of `ZRD-CVK-QYT`.** Probe
+      `hero.fieldOfView` vs `level.heroFOV` at `Hero.search` in both environments.
+- [ ] **Strix** (`~/.strix/bin/strix.exe`, free OpenRouter model) ran on a source copy in
+      `out/strix/` and produced no finding before it was stopped; `renderdrawcheck` covers the
+      determinism traps it was pointed at.
 - [ ] **The viewer still plays an unknown hero class as a Warrior.** `ReplayLauncher` and
       `ReplayPlayback.heroClass()` fall back to `HeroClass.WARRIOR`; headless `verify` refuses it since
       0.11.0. Refuse it in `:desktop` too.

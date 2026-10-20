@@ -55,6 +55,7 @@ import com.watabou.noosa.Group;
 import com.watabou.noosa.audio.Music;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.PointF;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -212,7 +213,7 @@ public class HallsLevel extends RegularLevel {
 			
 			this.pos = pos;
 			
-			delay = Random.Float( 2 );
+			delay = PRandom.Float( 2 );
 		}
 		
 		@Override
@@ -229,12 +230,12 @@ public class HallsLevel extends RegularLevel {
 				
 				if ((delay -= Game.elapsed) <= 0) {
 					
-					delay = Random.Float( 2 );
+					delay = PRandom.Float( 2 );
 					
 					PointF p = DungeonTilemap.tileToWorld( pos );
 					((FireParticle)recycle( FireParticle.class )).reset(
-						p.x + Random.Float( DungeonTilemap.SIZE ),
-						p.y + Random.Float( DungeonTilemap.SIZE ) );
+						p.x + PRandom.Float( DungeonTilemap.SIZE ),
+						p.y + PRandom.Float( DungeonTilemap.SIZE ) );
 				}
 			}
 		}

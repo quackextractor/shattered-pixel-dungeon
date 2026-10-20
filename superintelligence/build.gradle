@@ -231,12 +231,13 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
   cliTask('rolloutcheck', 'Fails if a recorded episode does not carry a usable seed, or does not verify.')
   cliTask('episodediff', 'Reports where and why two runs of one seed disagree after other seeds ran between them.')
   cliTask('observecheck', 'Fails if reading the world draws from the gameplay RNG.')
+  cliTask('renderdrawcheck', 'Fails if code only a rendered game runs draws from the gameplay RNG.')
   cliTask('checkpointcheck', 'Fails if a policy does not survive a trip through disk, or if a bad checkpoint is accepted.')
   cliTask('weightsdiff', 'Reports how far a checkpoint is from a freshly initialised policy.')
 tasks.register('gates') {
     dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck', 'transitioncheck', 'fallcheck', 'dialogcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
-		'observecheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck', 'freeactioncheck', 'bpttcheck', 'pushcheck', 'curriculumcheck', 'samplercheck', 'seedcheck', 'doccheck', 'javaclint'
+		'observecheck', 'renderdrawcheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck', 'freeactioncheck', 'bpttcheck', 'pushcheck', 'curriculumcheck', 'samplercheck', 'seedcheck', 'doccheck', 'javaclint'
     group = 'verification'
     description = 'Runs every correctness gate in one invocation.'
     doLast { println "all gates passed" }

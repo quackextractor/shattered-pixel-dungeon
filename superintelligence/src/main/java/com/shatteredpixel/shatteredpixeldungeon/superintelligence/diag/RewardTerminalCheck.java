@@ -106,8 +106,8 @@ public final class RewardTerminalCheck {
 		Outcome stall = playWaits( config, config.stallLimit + 8 );
 
 		if (stall.endReason == RewardModel.TerminateReason.STALLED && stall.endedNaturally ){
-			fail( "a stalled episode reports endedNaturally, so GAE treats it as a final state and"
-					+ " refuses to bootstrap through it." );
+			fail( "a stalled episode reports endedNaturally, so the run's ending mix calls a harness"
+					+ " cut-off a game outcome." );
 			return;
 		}
 
@@ -119,13 +119,12 @@ public final class RewardTerminalCheck {
 			if (isNatural != shouldBeNatural ){
 				fail( reason + " is classified as " + ( isNatural ? "a natural ending" : "a truncation" )
 						+ ", which is wrong. Only DEATH and VICTORY are outcomes where the game ended"
-						+ " the episode; a stall or a turn limit is the harness cutting it short, and GAE"
-						+ " must bootstrap through those." );
+						+ " the episode; a stall or a turn limit is the harness cutting it short." );
 				return;
 			}
 		}
 
-		System.out.println( "  STALLED bootstraps (truncated); only DEATH and VICTORY are natural endings" );
+		System.out.println( "  STALLED is reported as truncated; only DEATH and VICTORY are natural endings" );
 	}
 
 
@@ -153,13 +152,13 @@ public final class RewardTerminalCheck {
 		}
 
 		double turnCost = stall.termTotal( RewardTerm.TURN_COST );
-		double expectedTurnCost = -config.turnCost * (stall.turns - freeSteps( stall ) );
+		double expectedTurnCost = -config.turnCost * (stall.turns - freeSteps( stall ) + stall.forfeited );
 
 		if (Math.abs( turnCost - expectedTurnCost ) > 1e-5 ){
 			fail( "a stalled episode charged " + turnCost + " in turn cost where " + expectedTurnCost
 					+ " was expected: " + stall.turns + " turns, " + freeSteps( stall ) + " of them free"
-					+ " and therefore priced separately. Stall and idling are separate prices and both"
-					+ " are charged." );
+					+ " and therefore priced separately, and " + stall.forfeited + " forfeited. Stall and"
+					+ " idling are separate prices and both are charged." );
 			return;
 		}
 

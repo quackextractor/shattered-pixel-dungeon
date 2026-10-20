@@ -197,6 +197,7 @@ public class DocCheck {
 			case "thirty-one": return 31;
 			case "thirty-two": return 32;
 			case "thirty-three": return 33;
+			case "thirty-four": return 34;
 			default:
 				try {
 					return Integer.parseInt( word );

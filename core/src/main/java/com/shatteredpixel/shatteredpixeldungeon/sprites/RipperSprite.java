@@ -24,6 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.sprites;
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
 import com.watabou.noosa.TextureFilm;
 import com.watabou.utils.Callback;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class RipperSprite extends MobSprite {
@@ -32,7 +33,7 @@ public class RipperSprite extends MobSprite {
 	private Animation prep;
 	private Animation leap;
 
-	private boolean alt = Random.Int(2) == 0;
+	private boolean alt = PRandom.Int(2) == 0;
 
 	public RipperSprite() {
 		super();

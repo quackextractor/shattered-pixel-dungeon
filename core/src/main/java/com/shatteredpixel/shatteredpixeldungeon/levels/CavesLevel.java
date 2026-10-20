@@ -61,6 +61,7 @@ import com.watabou.noosa.audio.Music;
 import com.watabou.noosa.particles.PixelParticle;
 import com.watabou.utils.Callback;
 import com.watabou.utils.PointF;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -266,7 +267,7 @@ public class CavesLevel extends RegularLevel {
 			this.pos = pos;
 			this.includeOverhang = includeOverhang;
 			
-			delay = Random.Float( 2 );
+			delay = PRandom.Float( 2 );
 		}
 		
 		@Override
@@ -284,7 +285,7 @@ public class CavesLevel extends RegularLevel {
 						return;
 					}
 					
-					delay = Random.Float();
+					delay = PRandom.Float();
 
 					PointF p = DungeonTilemap.tileToWorld( pos );
 					if (includeOverhang && !DungeonTileSheet.wallStitcheable(Dungeon.level.map[pos-Dungeon.level.width()])){
@@ -292,12 +293,12 @@ public class CavesLevel extends RegularLevel {
 						delay *= 0.67f;
 						p.y -= DungeonTilemap.SIZE/2f;
 						((Sparkle)recycle( Sparkle.class )).reset(
-								p.x + Random.Float( DungeonTilemap.SIZE ),
-								p.y + Random.Float( DungeonTilemap.SIZE*1.5f ) );
+								p.x + PRandom.Float( DungeonTilemap.SIZE ),
+								p.y + PRandom.Float( DungeonTilemap.SIZE*1.5f ) );
 					} else {
 						((Sparkle)recycle( Sparkle.class )).reset(
-								p.x + Random.Float( DungeonTilemap.SIZE ),
-								p.y + Random.Float( DungeonTilemap.SIZE ) );
+								p.x + PRandom.Float( DungeonTilemap.SIZE ),
+								p.y + PRandom.Float( DungeonTilemap.SIZE ) );
 					}
 				}
 			}

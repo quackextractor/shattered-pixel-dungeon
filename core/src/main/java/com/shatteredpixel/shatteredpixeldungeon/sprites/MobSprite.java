@@ -27,6 +27,7 @@ import com.watabou.noosa.Game;
 import com.watabou.noosa.tweeners.AlphaTweener;
 import com.watabou.noosa.tweeners.ScaleTweener;
 import com.watabou.utils.PointF;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class MobSprite extends CharSprite {
@@ -58,7 +59,7 @@ public class MobSprite extends CharSprite {
 	public void fall() {
 		
 		origin.set( width / 2, height - DungeonTilemap.SIZE / 2 );
-		angularSpeed = Random.Int( 2 ) == 0 ? -720 : 720;
+		angularSpeed = PRandom.Int( 2 ) == 0 ? -720 : 720;
 		am = 1;
 
 		hideEmo();

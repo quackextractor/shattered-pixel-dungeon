@@ -34,6 +34,16 @@ run: **steps 213, 235, 477, 519 and 552** in five runs of the same recording. Th
 `PRandom` now, the ordered draw log agrees for **537 draws** instead of 144, and the divergence is
 one step rather than a race. `observecheck` holds it.
 
+**2026-10-21: the cause is earlier than this entry says.** The ordered RNG traces part at **step
+627**, not at a transition: after `MOVE_E` to 1129 on revisited floor 2 the viewer's passive
+`Hero.search` draws once for the secret door at 1088 (which it then discovers) and the trainer's
+draws nothing, although `heroFOV[1088]` is 1 in both world snapshots at step 626. The dew roll at
+step 630 then reads a different value, so the trainer drops a Dewdrop on 910 and the viewer does
+not, and step 638's `INTERACT` picks that heap in one environment and the stairs underfoot in the
+other. Next measurement: `hero.fieldOfView` at that `search` call in each environment -
+`Hero.handle` allocates a private array when its length does not match the level, and a revisited
+floor is exactly that case. Evidence `out/evidence/issue-21/`.
+
 **What is left, and it is a level transition.** The divergence is now at **step 638**, and it is
 this: the recording's `INTERACT` leaves the hero on cell 910 of floor 1 and the viewer's leaves it
 on cell 1170 of floor 2.

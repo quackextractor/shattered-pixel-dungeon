@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.sprites;
 
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
 import com.watabou.noosa.TextureFilm;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class MonkSprite extends MobSprite {
@@ -57,7 +58,7 @@ public class MonkSprite extends MobSprite {
 	@Override
 	public void attack( int cell ) {
 		super.attack( cell );
-		if (Random.Float() < 0.5f) {
+		if (PRandom.Float() < 0.5f) {
 			play( kick );
 		}
 	}

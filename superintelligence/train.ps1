@@ -13,22 +13,21 @@
 
 .EXAMPLE
     ./train.ps1
+    The short, aggressive cycle, and the default: three generations, four workers, one episode each,
+    a verdict in under a minute, and the previous run of the same name beside it.
+
+.EXAMPLE
+    ./train.ps1 -Long
     30 generations, the shipped reward function, pool sized to the machine.
 
 .EXAMPLE
-    ./train.ps1 -Profile depth_only -Generations 60 -Name depth-only-60
+    ./train.ps1 -Long -Profile depth_only -Generations 60 -Name depth-only-60
     The experiment: only a new floor or a win pays.
     Writes out/evidence/depth-only-60.csv and .log.
 
 .EXAMPLE
-    ./train.ps1 -Resume
+    ./train.ps1 -Long -Resume
     Continue the last run for another 30 generations from out/run/weights.bin.
-
-.EXAMPLE
-    ./train.ps1 -Quick
-    The short, aggressive cycle: three generations, four workers, one episode each, and a verdict in
-    under a minute. It answers what the policy is doing right now - how it ends and how deep it gets
-    - and not whether the policy is learning.
 #>
 [CmdletBinding()]
 param(
@@ -60,9 +59,11 @@ param(
     # Continue the run in out/run/weights.bin instead of starting fresh.
     [switch] $Resume,
 
-    # A short, aggressive cycle: three generations, a small pool, and a verdict in under a minute.
-    # Anything named on the command line wins, so -Quick -Generations 10 is ten quick generations.
-    [switch] $Quick
+    # The short cycle, which is the default; kept so the spelling the documents use still works.
+    [switch] $Quick,
+
+    # The long run: 30 generations, the pool sized to the machine. Anything named on the command line wins.
+    [switch] $Long
 )
 
 $ErrorActionPreference = 'Stop'
@@ -113,6 +114,17 @@ function Show-Summary {
             (Avg $entry.set 'meanScore'), (Avg $entry.set 'meanDepth'))
     }
     Write-Host ''
+    if (Test-Path -LiteralPath "$Csv.prev") {
+        $prev = @(Import-Csv -LiteralPath "$Csv.prev")
+        if ($prev.Count -gt 0) {
+            Write-Host '  AGAINST THE PREVIOUS RUN OF THIS NAME' -ForegroundColor Cyan
+            Write-Host ("    score        {0:N0} -> {1:N0}" -f (Avg $prev 'meanScore'), (Avg $rows 'meanScore'))
+            Write-Host ("    depth        {0:N2} -> {1:N2}" -f (Avg $prev 'meanDepth'), (Avg $rows 'meanDepth'))
+            Write-Host ("    turns        {0:N0} -> {1:N0}" -f (Avg $prev 'meanTurns'), (Avg $rows 'meanTurns'))
+            Write-Host ("    endings      {0}  ->  {1}" -f (Endings $prev[-1]), (Endings $last))
+            Write-Host ''
+        }
+    }
     Write-Host "  log     $Log" -ForegroundColor DarkGray
     Write-Host ''
 }
@@ -158,11 +170,7 @@ try {
         if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
     }
 
-    if ($Quick) {
-        # The short cycle answers one question: what is the policy doing right now - how it ends and
-        # how deep it gets - and it answers it in under a minute. It is not a learning measurement:
-        # the noise floor is about 100 points over 15 generations, so three generations cannot see a
-        # trend. Anything named on the command line wins.
+    if (-not $Long) {
         if (-not $PSBoundParameters.ContainsKey('Generations'))    { $Generations = 3 }
         if (-not $PSBoundParameters.ContainsKey('Episodes'))       { $Episodes = 1 }
         if (-not $PSBoundParameters.ContainsKey('UpdateThreads'))  { $UpdateThreads = 4 }

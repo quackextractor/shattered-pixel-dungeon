@@ -53,6 +53,7 @@ import com.watabou.utils.Callback;
 import com.watabou.utils.ColorMath;
 import com.watabou.utils.GameMath;
 import com.watabou.utils.PathFinder;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -315,7 +316,7 @@ public class WandOfRegrowth extends Wand {
 		particle.setLifespan(1f);
 		particle.setSize( 1f, 1.5f);
 		particle.shuffleXY(0.5f);
-		float dst = Random.Float(11f);
+		float dst = PRandom.Float(11f);
 		particle.x -= dst;
 		particle.y += dst;
 	}

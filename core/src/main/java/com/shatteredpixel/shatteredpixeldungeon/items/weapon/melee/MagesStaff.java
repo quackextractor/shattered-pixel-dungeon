@@ -543,8 +543,8 @@ public class MagesStaff extends MeleeWeapon {
 		}
 
 		public void shuffleXY(float amt){
-			x += Random.Float(-amt, amt);
-			y += Random.Float(-amt, amt);
+			x += PRandom.Float(-amt, amt);
+			y += PRandom.Float(-amt, amt);
 		}
 
 		public void radiateXY(float amt){

@@ -159,11 +159,11 @@ public class WandOfFrost extends DamageWand {
 		particle.color(0x88CCFF);
 		particle.am = 0.6f;
 		particle.setLifespan(2f);
-		float angle = Random.Float(PointF.PI2);
+		float angle = PRandom.Float(PointF.PI2);
 		particle.speed.polar( angle, 2f);
 		particle.acc.set( 0f, 1f);
 		particle.setSize( 0f, 1.5f);
-		particle.radiateXY(Random.Float(1f));
+		particle.radiateXY(PRandom.Float(1f));
 	}
 
 }

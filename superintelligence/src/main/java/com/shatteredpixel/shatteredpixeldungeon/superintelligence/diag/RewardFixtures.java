@@ -30,6 +30,7 @@ public final class RewardFixtures {
 	static class Outcome {
 		double score;
 		int turns;
+		int forfeited;
 		int deepest;
 		RewardModel.TerminateReason endReason = RewardModel.TerminateReason.OTHER;
 		boolean endedNaturally;
@@ -90,6 +91,7 @@ public final class RewardFixtures {
 
 		outcome.score = env.ledger().total();
 		outcome.turns = env.turnsTotal();
+		outcome.forfeited = env.turnsForfeited();
 		outcome.deepest = env.deepestDepth();
 		outcome.endReason = env.endReason();
 		outcome.endedNaturally = env.endedNaturally();
