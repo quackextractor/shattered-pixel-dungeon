@@ -96,4 +96,4 @@ still open:
       `ReplayController.restart` lives in `:desktop` and needs a live scene, so the gate replays its
       engine calls in order. A change to the real sequence will not fail the gate.
 - [ ] **Files over 500 lines:** `rl/Network.java` (563), `diag/RewardShapingCheck.java` (546),
-      `diag/VerifyCheck.java` (504); `diag/TransitionCheck.java` is 597, at the 600 test ceiling.
+      `diag/VerifyCheck.java` (504).
