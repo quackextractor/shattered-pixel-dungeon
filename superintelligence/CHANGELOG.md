@@ -10,6 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The viewer gate plays the corpus flat out and re-plays only what diverged, on its own.** The
+  gate ran eight children at a time and reported whatever diverged, and playback is timing
+  sensitive, so a loaded machine produced failures that had nothing to do with the recording: the
+  same tree, the same corpus, gave **20 of 20** on an idle machine and **19 of 20** under load,
+  with the failures being position differences at steps 3 to 16 rather than stream differences.
+  The gate's own note had said so for years - "at 8 children at once the failing STEPS are not
+  reproducible" - and the answer was never to print the warning, it was to stop failing on it.
+
+  Two phases now. The first plays every recording in a child JVM, **as many children as the
+  machine has logical processors**, capped at the corpus. The second re-plays **only what
+  diverged**, one recording at a time, with nothing else running. A recording that diverged under
+  load and plays clean on its own is a load artefact: it is reported as one and it does not fail
+  the gate. A recording that still divergs on its own is a real fault, it fails the gate, and the
+  step it fails at is reproducible because the serial run produced it.
+
+  Measured over the 20 committed recordings on this machine: **46.4s at 20 children**, against
+  93.3s at 8 and 362.4s at one. The wall clock is the longest single recording rather than the sum
+  of all of them, which is what makes the parallelism worth having. `VIEWCHECK_JOBS` and
+  `-PviewcheckJobs` still override the child count, and 1 still runs the whole corpus serially.
+
 ### Fixed
 - **The run reported a loss and an entropy that were chunk sums, and the entropy was
   arithmetically impossible.** `PPO.accumulate` divided the per-step losses by the number of

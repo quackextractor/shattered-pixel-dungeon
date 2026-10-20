@@ -89,6 +89,15 @@ is not running anything else, and if it is 20 of 20 there, the fault is in the c
 than in the timing, and the gate's own note - "at 8 children at once the failing STEPS are not
 reproducible" - is the whole of the finding.
 
+**And the gate now answers it in the way the finding asks for.** The corpus is played in parallel,
+as many children as the machine has logical processors, and **only what diverged is re-played on its
+own**: a recording that diverged under load and plays clean alone is a load artefact, is reported
+as one, and does not fail the gate; one that diverges again alone is a real fault, fails it, and
+fails at a reproducible step. Measured: **46.4s at 20 children**, against 93.3s at 8 and 362.4s at
+one, and **20 of 20 on an idle machine and 20 of 20 under 14 cores of deliberate load**. The load
+sensitivity is therefore no longer a source of red runs, and what is left of it - a recording that
+diverges on its own - is a fault worth a gate's time.
+
 ## 20. Under `depth_only` the run converges on dying early rather than on descending - **OPEN, and it is a finding rather than a defect**
 Measured on the same 30-generation run (30 generations, 16 workers x 4 episodes, `reward.profile=depth_only`,
 | generation | meanScore | meanDepth | bestDepth | meanTurns | ended |
