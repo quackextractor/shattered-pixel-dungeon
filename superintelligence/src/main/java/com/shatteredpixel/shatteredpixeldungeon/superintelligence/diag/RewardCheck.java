@@ -40,9 +40,9 @@ public class RewardCheck {
 		RewardShapingCheck.checkFreeStepsCostSomething( config );
 		RewardShapingCheck.checkAMultiTurnActionPaysForEveryTurn( config );
 		RewardShapingCheck.checkSearchingIsNotCheaperThanActing( config );
-		RewardShapingCheck.checkClosingTheGapToTheStairsPays( config );
-		RewardShapingCheck.checkStairShapingCannotBeFarmed( config );
-RewardShapingCheck.checkStairShapingIsOffAtZero( config );
+		RewardStairCheck.checkClosingTheGapToTheStairsPays( config );
+		RewardStairCheck.checkStairShapingCannotBeFarmed( config );
+RewardStairCheck.checkStairShapingIsOffAtZero( config );
 		StairPotentialCheck.checkTheFieldIsBuiltOncePerTerrain();
 RewardShapingCheck.checkPickingUpAnItemPays();
     	RewardShapingCheck.checkPickingUpGoldPays();
