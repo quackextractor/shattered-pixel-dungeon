@@ -22,9 +22,9 @@
 package com.watabou.noosa;
 
 import com.watabou.glwrap.Matrix;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Point;
 import com.watabou.utils.PointF;
-import com.watabou.utils.Random;
 
 import java.util.ArrayList;
 
@@ -215,8 +215,8 @@ public class Camera extends Gizmo {
 		
 		if ((shakeTime -= Game.elapsed) > 0) {
 			float damping = shakeTime / shakeDuration;
-			shakeX = Random.Float( -shakeMagX, +shakeMagX ) * damping;
-			shakeY = Random.Float( -shakeMagY, +shakeMagY ) * damping;
+			shakeX = PRandom.Float( -shakeMagX, +shakeMagX ) * damping;
+			shakeY = PRandom.Float( -shakeMagY, +shakeMagY ) * damping;
 		} else {
 			shakeX = 0;
 			shakeY = 0;

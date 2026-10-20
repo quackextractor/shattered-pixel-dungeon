@@ -47,6 +47,7 @@ public class ObserveCheck {
 		check( () -> checkTheOrderedLogNamesEveryDraw( env ) );
 		check( ObserveCheck::checkTheGeneratorLogIsInertWhenOff );
 		check( ObserveCheck::checkAStandInEmitterSpendsNoGameplayDraw );
+		check( ObserveCheck::checkTheCameraShakeSpendsNoGameplayDraw );
 		check( ObserveLeakCheck::checkInventoryShowsOnlyWhatThePlayerSees );
 		check( ObserveLeakCheck::checkHeroFeaturesHideAnUnknownLevel );
 		check( () -> ObserveLeakCheck.checkAnUnseenFloorEncodesToNothing( encoder ) );
@@ -165,6 +166,27 @@ public class ObserveCheck {
 			fail( "the headless stand-in emitter did not consume exactly one presentation value where"
 					+ " the real Emitter consumes one. The two environments have to spend the same"
 					+ " number of values on the same stream or nothing downstream of them agrees." );
+		}
+	}
+
+	private static void checkTheCameraShakeSpendsNoGameplayDraw(){
+		com.watabou.noosa.Camera camera = new com.watabou.noosa.Camera( 0, 0, 32, 32, 1f );
+		camera.shake( 1f, 1f );
+
+		RandomTrace.enable();
+		RandomTrace.reset();
+		long before = RandomTrace.draws();
+		camera.update();
+		long after = RandomTrace.draws();
+		RandomTrace.reset();
+		RandomTrace.disable();
+
+		if (after != before){
+			fail( "the camera's screen shake spent " + (after - before)
+					+ " value(s) from the gameplay RNG. Only a rendered game has a camera, so the trainer"
+					+ " never spends them and the viewer does - and how many it spends depends on how long"
+					+ " the shake lasts, which depends on the frame rate. The two streams then part at a"
+					+ " different step on every run." );
 		}
 	}
 
