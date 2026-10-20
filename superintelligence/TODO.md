@@ -14,9 +14,23 @@ gradient descending the wrong sign, tanh-squashed logits, a clip that stopped bo
 observation is the thing" are conclusions about that trainer, not this one. The observation window is now
 centred on the hero, which was one of the two levers named below.
 
+**And every measurement in this section also predates the terminal-price fix, and is void for a
+second reason.** The stall price and the turn limit's price were in the ledger and not in the
+signal, so the policy this section describes was optimised against a reward with no terminal
+prices in it at all - and the ending mix it was measured by is the ending mix of a policy that had
+never been told what ending cost. The two changes below are the ones that make the next
+measurement worth taking.
+
 - [ ] **Re-measure on 0.11.0 before anything else.** One 30-generation run of the shipped
       configuration from a fresh network, same method as `CHANGELOG.md` 0.10.0's, evidence under
       `out/evidence/`. No pre-0.11.0 checkpoint is comparable.
+- [ ] **Run the short cycle first, every time.** `./train.ps1 -Quick` is three generations, four
+      workers, one episode each, and **57.1s end to end** including the gradle startup. It does not
+      answer whether the policy is learning - the noise floor is about 100 points over 15
+      generations - and it answers everything else in under a minute: how the policy ends, how deep
+      it gets, and whether the change under test moved either. **A change that is only worth
+      judging after 30 generations is a change nobody judges**, which is the shape of the last
+      three months of this file. Evidence `out/evidence/short-cycle/`.
 - [ ] **Depth 2's entrance room is behind a hidden door** on all 4 depth-2 floors sampled, so the
       stair potential is unreachable from the entrance until the door is found (`Phi` is 0 on an
       unreachable cell). Measure how often that holds across seeds before reading a depth-2 shaping

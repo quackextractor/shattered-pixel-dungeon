@@ -22,7 +22,6 @@ names every one of them. Measurements, mutations and the worker wiring are in `C
 `out/evidence/issue-26/ordered-log-named.txt` and `out/evidence/issue-37/named.txt`.
 
 ## 21. The viewer and the trainer service a level transition in the same step but not the same place - **OPEN**
-
 `superintelligence/trainer-replays/retrain-0.11.0-60/ZRD-CVK-QYT.dat` verifies headlessly in 888
 steps with the score identical to the last decimal, and diverges in the real viewer. It is a
 generation-48 recording of a WARRIOR that ping-pongs between floors 1 and 2 through the stairs.
@@ -63,6 +62,32 @@ those two is observation-only and would settle it.
 
 Evidence: `out/evidence/viewer-divergence-zrd/` - the headless and viewer ordered draw logs, the
 world snapshots, and the per-step traces.
+
+**The corpus gate is load-sensitive, and it was measured rather than guessed.** The same tree, on
+the same corpus, gives **20 of 20** on an idle machine and **19 of 20** when the machine is busy -
+and the failures are position differences at steps 3 to 16, not stream differences, so they are
+not the divergence 8f56cbb2f's camera change removed. The corpus itself is sound: `playbackcheck`
+plays all twenty headlessly, **26 of 26**, and the headless verification of every recording
+reproduces.
+
+| | idle | under load |
+| --- | --- | --- |
+| `:desktop:viewcheck`, 8 children | **20 of 20** | 12 of 20, 15 of 20, 19 of 20 |
+| `:desktop:viewcheck`, 1 child | - | 19 of 20 |
+| `:desktop:playbackcheck` | 26 of 26 | 26 of 26 |
+
+**What it costs.** A gate that is green on an idle machine and red on a busy one is a gate whose
+verdict is a claim about the machine as well as about the code, and the project's own rule is that
+a green is a claim about what was checked. **The next measurement is the frame delta**: the viewer
+pins `Game.fixedFrameDelta` through `FrameDelta.apply()`, and the pin is what makes the number of
+frames a step consumes independent of the frame rate. If the pin is not reaching the children - or
+if the number of frames a step consumes still depends on the wall clock - then a busy machine
+changes the game's timing and the recording no longer describes what the viewer does.
+
+**A cheaper answer exists and is worth taking first**: run the gate at one child on a machine that
+is not running anything else, and if it is 20 of 20 there, the fault is in the concurrency rather
+than in the timing, and the gate's own note - "at 8 children at once the failing STEPS are not
+reproducible" - is the whole of the finding.
 
 ## 20. Under `depth_only` the run converges on dying early rather than on descending - **OPEN, and it is a finding rather than a defect**
 Measured on the same 30-generation run (30 generations, 16 workers x 4 episodes, `reward.profile=depth_only`,
