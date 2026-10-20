@@ -11,6 +11,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The terminal price reached the score and not the policy.** `SPDEnv`'s three floor guards - the
+  per-floor turn limit, the total turn limit, the position stall and the free-step stall - ended
+  the episode through `terminate()` and **dropped its return value**. The ledger charged the run
+  -4500 for a stall and -2000 for a turn limit, and the run's *score* said so, but the reward the
+  policy was given carried neither: **a stall ended an episode for the price of a turn, and a turn
+  limit cost nothing at all**, while dying cost 2500 and did reach the policy. The advantage is
+  computed from the per-step reward, so the number the gradient is built from never contained the
+  terminal prices the price table says they contain.
+
+  This is the fault `issues.md` 20 names and the `CHANGELOG`'s stall-penalty entry could not see:
+  the stall price was raised from 3000 to 4500 in the same commit that reported the 48-generation run
+  learning to stop, and **raising it changed nothing the policy could perceive**. The same
+  divergence was already found and fixed once in this codebase - `FallCheck` records that
+  "`SPDEnv.settleLanding` discarded `terminate()`'s value" - and the sibling three lines away was
+  left standing.
+
+  `checkFloorLimits()` returns the price now and `settle()` accumulates it, so the step reward
+  carries the terminal outcome. `rewardcheck` carries two cases: the last step the learner is given
+  must carry the terminal price, and the score and the learner's total must agree to within the turn
+  the episode's settling cost. Reinstating the drop fails them, naming the price that went missing.
+  `rewardcheck` is 44 cases.
+
+  **The corpus is unaffected.** The recorded reward is written and read but never compared, and the
+  viewer does not read it; `duelist-mid.replay` and the other turn-limit recordings carry a
+  last-step reward from before the change, which is a number nothing verifies.
+
 - **The camera's screen shake no longer spends the gameplay RNG.** `Camera.update` drew the shake's two
   offsets from `Random`, the gameplay stream, and only a rendered game has a camera to shake - so the
   trainer never spent those values and the viewer did. How many it spent depended on how long the shake
@@ -45,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to zero. `rewardcheck` carries the property - a stall costs more than a late death - and reinstating
   3000 fails it. The cost is stated rather than discovered later: an early death is unchanged and is
   still cheaper than a stall, which was already true and is `issues.md` 20's entry.
-- **`rewardcheck` is 42 cases**, from 41.
+- **`rewardcheck` is 44 cases**, from 41.
 
 ### Measured
 - **The best and the worst recording of `retrain-0.11.0-60`, read in full.** The best is

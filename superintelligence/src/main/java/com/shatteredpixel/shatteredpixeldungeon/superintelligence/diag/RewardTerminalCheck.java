@@ -317,6 +317,114 @@ public final class RewardTerminalCheck {
 	}
 
 
+	public static void checkTheTerminalPriceReachesTheLearner( EnvConfig config ){
+		EnvConfig local = config.copy();
+		local.turnLimitPerFloor = 6;
+		local.turnLimitTotal = 40;
+		local.stallLimit = 1000;
+		local.freeStepBudget = 1000;
+
+		Learned learned = learnUntil( local, Action.WAIT, 40 );
+		if (learned == null ) return;
+
+		if (learned.endReason != RewardModel.TerminateReason.TURN_LIMIT){
+			fail( "waiting " + learned.steps + " times ended the episode " + learned.endReason
+					+ " rather than on the turn limit, so the terminal price was never exercised." );
+			return;
+		}
+
+		if (learned.last > -local.turnLimitPenalty){
+			fail( "the last step the learner was given paid " + fmt( learned.last ) + ", and the turn"
+					+ " limit's price is " + fmt( -local.turnLimitPenalty ) + ". The price never reached"
+					+ " the policy: SPDEnv.checkFloorLimits() ended the episode and dropped"
+					+ " terminate()'s value, so the reward the learner was given did not carry the"
+					+ " price the ledger charged. The gate above asserts the price; this one asserts"
+					+ " that the policy is told it." );
+			return;
+		}
+
+		double gap = learned.scored - learned.learned;
+		if (gap < -local.turnCost - 1e-6){
+			fail( "the score says " + fmt( learned.scored ) + " and the learner was told "
+					+ fmt( learned.learned ) + ", so " + fmt( gap ) + " of the run's price never"
+					+ " reached the policy. The only difference a correct run may carry is the turn"
+					+ " the episode's settling cost, " + fmt( local.turnCost ) + "." );
+			return;
+		}
+
+		System.out.println( "  the turn limit's price reaches the learner: the last step paid "
+				+ fmt( learned.last ) + " over " + learned.steps + " step(s), and the score and the"
+				+ " learner agree to " + fmt( gap ) );
+	}
+
+
+	public static void checkTheStallPriceReachesTheLearner( EnvConfig config ){
+		EnvConfig local = config.copy();
+		local.turnLimitPerFloor = 1500;
+		local.turnLimitTotal = 40000;
+		local.stallLimit = 5;
+		local.freeStepBudget = 1000;
+
+		Learned learned = learnUntil( local, Action.WAIT, 40 );
+		if (learned == null ) return;
+
+		if (learned.endReason != RewardModel.TerminateReason.STALLED){
+			fail( "waiting " + learned.steps + " times ended the episode " + learned.endReason
+					+ " rather than on the stall guard, so the stall's price was never exercised." );
+			return;
+		}
+
+		if (learned.last > -local.stallPenalty){
+			fail( "the last step the learner was given paid " + fmt( learned.last ) + ", and the"
+					+ " stall's price is " + fmt( -local.stallPenalty ) + ". The price never reached"
+					+ " the policy. A stall is priced above a late death, so the signal has to carry"
+					+ " it: standing still is only expensive if the policy is told so." );
+			return;
+		}
+
+		double gap = learned.scored - learned.learned;
+		if (gap < -local.turnCost - 1e-6){
+			fail( "the score says " + fmt( learned.scored ) + " and the learner was told "
+					+ fmt( learned.learned ) + ", so " + fmt( gap ) + " of the run's price never"
+					+ " reached the policy. The only difference a correct run may carry is the turn"
+					+ " the episode's settling cost, " + fmt( local.turnCost ) + "." );
+			return;
+		}
+
+		System.out.println( "  the stall's price reaches the learner: the last step paid "
+				+ fmt( learned.last ) + " over " + learned.steps + " step(s), and the score and the"
+				+ " learner agree to " + fmt( gap ) );
+	}
+
+
+	private static class Learned {
+		double learned;
+		double scored;
+		double last;
+		int steps;
+		RewardModel.TerminateReason endReason = RewardModel.TerminateReason.OTHER;
+	}
+
+
+	private static Learned learnUntil( EnvConfig config, Action action, int maxSteps ){
+		RewardFixtures.prepare();
+
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		env.reset( "TERMINALPRICE", HeroClass.WARRIOR );
+
+		Learned out = new Learned();
+		while (env.running() && out.steps < maxSteps){
+			out.last = env.step( action, 0 );
+			out.learned += out.last;
+			out.steps++;
+		}
+
+		out.scored = env.ledger().total();
+		out.endReason = env.endReason();
+		return out;
+	}
+
+
 	public static void checkStallPathRecordsOnce( EnvConfig config ){
 		Outcome stall = playWaits( config, config.stallLimit + 8 );
 		if (stall.endReason != RewardModel.TerminateReason.STALLED) return;

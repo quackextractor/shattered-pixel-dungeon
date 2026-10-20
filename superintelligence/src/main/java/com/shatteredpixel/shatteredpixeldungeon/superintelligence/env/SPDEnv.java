@@ -204,7 +204,7 @@ if (++guard > config.actorStepLimit){
 				accumulated += settleLanding();
 				if (!running) break;
 				accumulated += reward.step( encoder.encode(), true, menuNoop() );
-				checkFloorLimits();
+				accumulated += checkFloorLimits();
 				mapper.refreshSlots();
 				refreshMasksAfterDrain();
 				break;
@@ -222,7 +222,7 @@ if (++guard > config.actorStepLimit){
 			turnsTotal++;
 			int newlyExplored = encoder.encode();
 			accumulated += reward.step( newlyExplored, true, menuNoop() );
-			checkFloorLimits();
+			accumulated += checkFloorLimits();
 			if (!running) break;
 			mapper.refreshSlots();
 			refreshMasksAfterDrain();
@@ -288,22 +288,19 @@ if (++guard > config.actorStepLimit){
 		mapper.refreshSlots();
 		encoder.encode();
 	}
-	private void checkFloorLimits(){
+	private double checkFloorLimits(){
 		if (turnsThisFloor >= config.turnLimitPerFloor){
-			terminate( RewardModel.TerminateReason.TURN_LIMIT );
-			return;
+			return terminate( RewardModel.TerminateReason.TURN_LIMIT );
 		}
 		if (turnsTotal >= config.turnLimitTotal){
-			terminate( RewardModel.TerminateReason.TURN_LIMIT );
-			return;
+			return terminate( RewardModel.TerminateReason.TURN_LIMIT );
 		}
 		Hero hero = Dungeon.hero;
 		if (hero.pos == lastStallPos && hero.HP == lastStallHp){
 			stallCount++;
 			if (stallCount >= config.stallLimit){
 				stallCause = StallCause.POSITION;
-				terminate( RewardModel.TerminateReason.STALLED );
-				return;
+				return terminate( RewardModel.TerminateReason.STALLED );
 			}
 		} else {
 			stallCount = 0;
@@ -314,9 +311,10 @@ if (!reward.lastStepAdvancedClock()){
 			freeStepsThisFloor++;
 			if (freeStepsThisFloor >= config.freeStepBudget){
 				stallCause = StallCause.FREE_STEP;
-				terminate( RewardModel.TerminateReason.STALLED );
+				return terminate( RewardModel.TerminateReason.STALLED );
 			}
 		}
+		return 0;
 	}
 	private double terminate( RewardModel.TerminateReason reason ){
 		if (terminated) return 0;

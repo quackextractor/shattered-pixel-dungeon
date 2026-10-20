@@ -61,10 +61,18 @@ public final class RewardFixtures {
 
 	private static File scratch;
 
-	static Outcome play( EnvConfig config, int maxTurns, String seed, Driver driver ){
+	private static boolean prepared;
+
+	static void prepare(){
+		if (prepared) return;
+		prepared = true;
 		if (scratch == null) scratch = Scratch.dir( "rewardcheck" );
 		HeadlessServices.install( scratch );
 		HeadlessServices.disableSaving( true );
+	}
+
+	static Outcome play( EnvConfig config, int maxTurns, String seed, Driver driver ){
+		prepare();
 
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		env.reset( seed, HeroClass.WARRIOR );

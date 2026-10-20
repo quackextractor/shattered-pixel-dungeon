@@ -82,6 +82,16 @@ worse**. So the depth-only arithmetic is not the whole story and the reward is n
 term pays for progress towards stairs the observation does not carry. CHANGELOG.md and
 REJECTED.md, evidence out/evidence/descend-30-ab.txt.
 
+**One of the prices this entry reasons about was never in the signal, and it is now.** "An early
+death is still cheaper than a stall" is the *ledger's* arithmetic: death -2500 against a stall
+-4500. The *policy's* arithmetic had neither: `SPDEnv`'s floor guards ended the episode and dropped
+`terminate()`'s return value, so a stall reached the advantage as the price of a turn and a turn
+limit reached it as nothing at all, while dying - which does reach it - cost 2500. **Standing still
+was therefore still the cheap way out of a run going badly**, and the entry's own claim that it was
+not was a claim about the score rather than about the gradient. Fixed, with the two cases
+`rewardcheck` now carries. **Every measurement of this entry therefore predates the fix and is
+void**: the run it describes was learned against a signal with no terminal prices in it.
+
 **Why, and it is arithmetic rather than a mystery.** With nothing but the objective paying, the only
 **So `depth_only` is a diagnostic profile and not a training default.** It answers the question the
 **The next measurement is a curriculum rather than a switch**, and the machinery for it already exists and
