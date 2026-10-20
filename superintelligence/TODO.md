@@ -83,9 +83,10 @@ still open:
 - Not a fault: the observation drawing invisible mobs is faithful - `CharSprite` shows `INVISIBLE` at
   alpha 0.4 and `Hero.checkVisibleMobs` does not skip them (review finding 12, last bullet).
 
-- [ ] **Headless sprite casts on Eye, DM300, Goo and Ghoul.** Their logic casts `sprite` to a concrete
-      sprite class that the headless stand-in is not. Being fixed separately; `mobspritecheck` should
-      gain a case per mob when it lands.
+- [ ] **`HeroDisguise` still crashes headlessly.** A cursed wand's disguise casts the hero's sprite to
+      `HeroSprite`, and the headless subclasses cannot cover it: `HeroSprite` needs its texture film
+      (`HeroSprite.tiers()`), which does not exist without graphics. The 17 mob sprite casts are covered
+      and gated by `mobspritecheck`.
 - [ ] **The viewer still plays an unknown hero class as a Warrior.** `ReplayLauncher` and
       `ReplayPlayback.heroClass()` fall back to `HeroClass.WARRIOR`; headless `verify` refuses it since
       0.11.0. Refuse it in `:desktop` too.
