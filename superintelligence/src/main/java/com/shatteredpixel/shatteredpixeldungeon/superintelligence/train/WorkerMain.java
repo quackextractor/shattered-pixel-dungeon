@@ -1,5 +1,6 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Scratch;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 
 import java.io.BufferedInputStream;
@@ -30,7 +31,7 @@ public class WorkerMain {
 	private static void serve( File workDir ){
 
 		if (workDir == null){
-			workDir = new File( System.getProperty( "java.io.tmpdir" ), "spd-worker" );
+			workDir = Scratch.dir( "worker" );
 		}
 		if (!workDir.isDirectory() && !workDir.mkdirs()){
 			System.err.println( "[ERROR] worker: could not create " + workDir );

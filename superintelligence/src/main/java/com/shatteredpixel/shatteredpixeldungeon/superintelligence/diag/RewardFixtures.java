@@ -59,8 +59,11 @@ public final class RewardFixtures {
 		void act( Turn turn );
 	}
 
+	private static File scratch;
+
 	static Outcome play( EnvConfig config, int maxTurns, String seed, Driver driver ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-rewardcheck" ));
+		if (scratch == null) scratch = Scratch.dir( "rewardcheck" );
+		HeadlessServices.install( scratch );
 		HeadlessServices.disableSaving( true );
 
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );

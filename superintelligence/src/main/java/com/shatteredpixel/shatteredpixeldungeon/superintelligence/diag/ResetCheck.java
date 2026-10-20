@@ -16,7 +16,6 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -39,7 +38,7 @@ public class ResetCheck {
 	private static final String DYING_SEED = "PARITY-ALPHA";
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-resetcheck" ));
+		HeadlessServices.install( Scratch.dir( "resetcheck" ));
 		HeadlessServices.disableSaving( true );
 
 		EnvConfig config = new EnvConfig();

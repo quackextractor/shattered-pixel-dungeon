@@ -16,7 +16,6 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.watabou.utils.PathFinder;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,7 +33,7 @@ public class FallCheck {
 	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-fallcheck" ));
+		HeadlessServices.install( Scratch.dir( "fallcheck" ));
 		HeadlessServices.disableSaving( true );
 
 		checkAFallIsServiced();

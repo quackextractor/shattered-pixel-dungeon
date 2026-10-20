@@ -15,7 +15,6 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardM
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.StairPotential;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,7 +37,7 @@ public class TransitionCheck {
 	private static final List< String > failures = new ArrayList<>();
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-transitioncheck" ));
+		HeadlessServices.install( Scratch.dir( "transitioncheck" ));
 		HeadlessServices.disableSaving( true );
 
 		checkDescentIsServiced();

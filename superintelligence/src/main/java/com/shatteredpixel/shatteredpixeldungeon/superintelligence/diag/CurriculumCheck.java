@@ -10,8 +10,6 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.Curriculum;
 
-import java.io.File;
-
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardFixtures.descend;
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardFixtures.play;
 
@@ -20,7 +18,7 @@ public class CurriculumCheck {
 	private static final int CHECKS = 5;
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-curriculumcheck" ));
+		HeadlessServices.install( Scratch.dir( "curriculumcheck" ));
 		HeadlessServices.disableSaving( true );
 
 		checkTheScaleIsOneBelowTheFadeAndZeroAboveIt();
