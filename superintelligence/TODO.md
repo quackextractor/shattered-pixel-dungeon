@@ -93,5 +93,5 @@ still open:
 - [ ] **`restartcheck` copies the viewer's restart sequence rather than calling it.**
       `ReplayController.restart` lives in `:desktop` and needs a live scene, so the gate replays its
       engine calls in order. A change to the real sequence will not fail the gate.
-- [ ] **Files over 500 lines:** `rl/Network.java` (563), `diag/RewardShapingCheck.java` (546),
+- [ ] **Files over 500 lines:** `diag/RewardShapingCheck.java` (546),
       `diag/VerifyCheck.java` (504).

@@ -145,7 +145,7 @@ kept half rather than copying it - one implementation of the objective, one impl
 | `obs` | `ObservationEncoder`, spatial channel definitions, fixed inventory vector, hero scalars |
 | `reward` | `RewardModel` (state diffing), `RewardTerm`/`RewardLedger` (per-term, per-floor breakdown), `Curriculum` |
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and fixtures |
-| `rl` | `Network` (CNN + LSTM + heads), `PPO` (the learner), `ShardedUpdate` (the parallel minibatch and its gradient reduction), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector`, `EpisodeRecord` |
+| `rl` | `Network` (CNN + LSTM + heads, forward and backward), `NetworkWeights` (its parameters, Adam, gradients, checkpoint layers and moments), `PPO` (the learner), `ShardedUpdate` (the parallel minibatch and its gradient reduction), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector`, `EpisodeRecord` |
 | `train` | `Trainer` (generation loop), `TrainerWorkers` (everything crossing a worker pipe), `WorkerPool`, `Protocol`, `TransitionCodec`, `TrainOptions`, `PpoHyperparameters`, `Checkpoint`, `MetricsHistory`, `SeedPool` |
 | `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `Quickslots` (the one place a
            recorded slot index is resolved against its bindings), `DropFixture`, `PressFixture`, `ReplayCatalog`, `RngTrace` |

@@ -260,9 +260,15 @@ private static double differenceFloor( double center, double eps ){
 		}
 
 		private static Object field( Object target, String name ) throws ReflectiveOperationException {
-			Field f = target.getClass().getDeclaredField( name );
-			f.setAccessible( true );
-			return f.get( target );
+			for (Class< ? > c = target.getClass(); c != null; c = c.getSuperclass()){
+				try {
+					Field f = c.getDeclaredField( name );
+					f.setAccessible( true );
+					return f.get( target );
+				} catch (NoSuchFieldException notHere){
+				}
+			}
+			throw new NoSuchFieldException( name );
 		}
 
 
