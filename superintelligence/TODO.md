@@ -72,6 +72,20 @@ actually rules out.
       policy is already better than random at closing the gap, the reward is being read and the
       problem is elsewhere; if it is not, the observation is the thing.
 
+      **Two of the three suspects are now closed, and the third is the one left.** The beacon was
+      **not** surviving the window edge - `REJECTED.md` recorded that half of the problem as done and
+      the encoder dropped the beacon the moment the exit left the 48x48 window, so on the 419 of
+      1,040 measured floors that overflow it the stairs were forgotten as soon as the hero walked
+      away from them. It survives now, on the window's edge, and `observecheck` holds it. The
+      terminal prices are in the signal as well, so the shaping is not competing against a stall
+      that cost nothing. **What is left is the one this entry names first: the beacon lights only
+      once the hero has SEEN the stairs, and the shaping pays for progress towards them from the
+      first step.** That is a deliberate choice - painting the exit from generation would hand over
+      the objective - and it is the reason the term pays for something the observation does not
+      carry for most of an episode. The measurement this entry asks for is still the one to take:
+      **how often the policy's episodes end nearer the stairs than they started**, against a random
+      walk over the same floors, now that the signal and the beacon are both honest.
+
 ## 2. Reward signals
 
 - [x] ~~**Coverage of the terms that fire.**~~ **Closed by measurement.** `KILL`, `GOLD_GAIN` and

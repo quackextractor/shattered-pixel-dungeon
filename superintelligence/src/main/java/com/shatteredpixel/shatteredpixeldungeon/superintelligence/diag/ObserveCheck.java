@@ -52,6 +52,7 @@ public class ObserveCheck {
 		check( ObserveLeakCheck::checkHeroFeaturesHideAnUnknownLevel );
 		check( () -> ObserveLeakCheck.checkAnUnseenFloorEncodesToNothing( encoder ) );
 		check( () -> ObserveLeakCheck.checkTheWindowIsCentredOnTheHero( encoder ) );
+		check( ObserveCheck::checkTheExitBeaconSurvivesTheWindowEdge );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + checksRun + " checks passed" );
 		} else {
@@ -289,6 +290,88 @@ public class ObserveCheck {
 					+ "how an instrument points at Random rather than at the fault." );
 		}
 	}
+	private static void checkTheExitBeaconSurvivesTheWindowEdge(){
+		EnvConfig config = new EnvConfig();
+		config.gridWidth = 8;
+		config.gridHeight = 8;
+
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		env.reset( "BEACONCHECK", com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass.WARRIOR );
+
+		com.shatteredpixel.shatteredpixeldungeon.levels.Level level = com.shatteredpixel.shatteredpixeldungeon.Dungeon.level;
+		int exit = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.StairPotential
+				.exitCell( level );
+		if (exit < 0){
+			fail( "the floor has no downstairs, so the beacon had nothing to carry" );
+			return;
+		}
+
+		int far = farthestCellFrom( level, exit );
+		if (far < 0){
+			fail( "no cell on the floor is far enough from the exit to push it out of an 8x8 window,"
+					+ " so the case measured nothing" );
+			return;
+		}
+
+		com.shatteredpixel.shatteredpixeldungeon.Dungeon.hero.pos = far;
+		level.visited[ exit ] = true;
+		level.mapped[ exit ] = true;
+
+		ObservationEncoder beacon = new ObservationEncoder( config, env.mapper() );
+		beacon.encode();
+
+		int plane = beaconPlane();
+		int area = config.gridWidth * config.gridHeight;
+		int lit = 0;
+		for (int i = 0; i < area; i++){
+			if (beacon.grid()[ plane * area + i ] > 0.5f ) lit++;
+		}
+
+		if (lit == 0){
+			fail( "the exit is " + ( Math.abs( far % level.width() - exit % level.width() )
+					+ Math.abs( far / level.width() - exit / level.width() ) )
+					+ " tiles from the hero and outside the window, and the observation carried no"
+					+ " EXIT_BEACON at all. The beacon is the memory of where the stairs are, and"
+					+ " dropping it the moment the stairs leave the window is what makes the stair"
+					+ " shaping unlearnable: the term pays for progress towards a position the"
+					+ " observation stops carrying." );
+			return;
+		}
+
+		System.out.println( "  the exit beacon survives the window edge: " + lit
+				+ " lit cell(s) on an 8x8 window with the exit outside it" );
+	}
+
+	private static int beaconPlane(){
+		int plane = 0;
+		for (com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.GridChannel c
+				: com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.GridChannel.values()){
+			if (c.kind == com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.GridChannel.Kind.SCALAR) continue;
+			if (c == com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.GridChannel.EXIT_BEACON) break;
+			plane++;
+		}
+		return plane;
+	}
+
+	private static int farthestCellFrom( com.shatteredpixel.shatteredpixeldungeon.levels.Level level,
+			int exit ){
+		int width = level.width();
+		int ex = exit % width;
+		int ey = exit / width;
+		int best = -1;
+		int bestDistance = 0;
+		for (int cell = 0; cell < level.length(); cell++){
+			if (!level.insideMap( cell )) continue;
+			if (!level.passable[ cell ]) continue;
+			int distance = Math.abs( cell % width - ex ) + Math.abs( cell / width - ey );
+			if (distance > bestDistance){
+				bestDistance = distance;
+				best = cell;
+			}
+		}
+		return best;
+	}
+
 	private static void checkEveryDrawPathIsCounted(){
 		Object[][] paths = {
 			{ "Float()",                    (Runnable) Random::Float },

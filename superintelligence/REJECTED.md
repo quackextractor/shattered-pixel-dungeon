@@ -141,6 +141,18 @@ The half of the problem that is cheap is already done: `obs.GridChannel.EXIT_BEA
 stair's location forward across the window boundary, so a hero that walked past and away still has a
 channel carrying the objective.
 
+**That was recorded as done and it was not.** The encoder wrote the beacon at the exit's own grid
+cell, so it was written only while the exit was inside the window, and a hero that walked past the
+stairs and away carried nothing. The claim is true now: the beacon is written on the window's
+edge, on the ray from the hero to the exit, when the exit is outside the window, and `observecheck`
+carries the case. **The claim being false is why two 30-generation runs were spent on the reward** -
+`CHANGELOG.md` explains the stair potential's failure by saying the observation does not carry the
+objective, and the answer to that was a line of code rather than a curriculum.
+
+**What it still does not do** is make the stairs findable before the hero has seen them: the beacon
+lights only after the exit has been in view, which is a deliberate choice recorded in `CHANGELOG.md`
+0.11.0. `TODO.md` §1 carries that as the open question.
+
 **Revisit with** the next measurement, not in the middle of one. It belongs with a run whose numbers
 are going to be read, because it invalidates every weight file there is.
 

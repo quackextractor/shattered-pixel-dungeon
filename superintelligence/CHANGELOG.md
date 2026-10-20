@@ -11,6 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The exit beacon stopped carrying the exit the moment the exit left the window.**
+  `obs.GridChannel.EXIT_BEACON` is the memory of where the stairs are, and the encoder wrote it at the
+  exit's own grid cell - so it was written **only while the stairs were inside the 48x48 window**,
+  and a hero that walked past the stairs and away carried nothing at all. `REJECTED.md`'s
+  ego-centring entry records that half of the problem as "already done", and `TODO.md` §1 names
+  "a beacon that survives the window edge" as one of the two levers the measurement pointed at.
+  **The code did not do it**, and the divergence between the two is the whole reason the project
+  spent two 30-generation runs on the reward: `REJECTED.md` and `CHANGELOG.md` both explain the
+  stair potential's failure to move the policy by saying the observation does not carry the
+  objective, and the answer to that was a line of code rather than a curriculum.
+
+  The beacon is now written on the window's edge, on the ray from the hero to the exit, when the
+  exit is outside the window - so the direction survives and the agent always has a channel
+  carrying the objective. `observecheck` carries the case: an 8x8 window with the exit 42 tiles
+  away must still carry a lit beacon, and dropping the edge case fails it. 16 checks.
+
+  **The floor-1 case is unchanged, and the claim is worth stating rather than hiding.** Floor 1 is
+  smaller than the 52-tile window, so the exit was always inside it there and the beacon always
+  lit. The change is for the floors that overflow the window - 419 of 1,040 measured floors exceed
+  48 tiles on at least one axis - and it is the difference between the stairs being remembered and
+  being forgotten on those floors. **What the fix does not do is make the stairs findable before
+  the hero has seen them**: the beacon still lights only after the exit has been in view, which is
+  a deliberate choice recorded in `CHANGELOG.md` 0.11.0, and the shaping term pays for progress
+  towards a position the agent has not found yet. `TODO.md` §1 carries that as the open question.
+
 - **The terminal price reached the score and not the policy.** `SPDEnv`'s three floor guards - the
   per-floor turn limit, the total turn limit, the position stall and the free-step stall - ended
   the episode through `terminate()` and **dropped its return value**. The ledger charged the run

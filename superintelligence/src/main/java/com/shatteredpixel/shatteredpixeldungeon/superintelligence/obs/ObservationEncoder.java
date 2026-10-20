@@ -134,7 +134,40 @@ public class ObservationEncoder {
 		if (!level.visited[ cell ]) return;
 
 		int p = gridIndex( level, hero, cell );
+		if (p < 0) p = edgeIndex( level, hero, cell );
 		if (p >= 0) put( GridChannel.EXIT_BEACON, p, 1f );
+	}
+
+
+	private int edgeIndex( Level level, Hero hero, int cell ){
+		int width = level.width();
+		int hx = hero.pos % width;
+		int hy = hero.pos / width;
+		int cx = cell % width;
+		int cy = cell / width;
+
+		int dx = cx - hx;
+		int dy = cy - hy;
+		if (dx == 0 && dy == 0) return -1;
+
+		double reachX = spanX / 2.0 - 1;
+		double reachY = spanY / 2.0 - 1;
+
+		double t = Double.MAX_VALUE;
+		if (dx != 0) t = Math.min( t, reachX / Math.abs( dx ) );
+		if (dy != 0) t = Math.min( t, reachY / Math.abs( dy ) );
+		if (t > 1 ) t = 1;
+		if (t == Double.MAX_VALUE) return -1;
+
+		int tx = (int) Math.round( hx + dx * t );
+		int ty = (int) Math.round( hy + dy * t );
+
+		int gx = Math.round( (tx - ( hx - spanX / 2 )) / stepX );
+		int gy = Math.round( (ty - ( hy - spanY / 2 )) / stepY );
+
+		gx = Math.max( 0, Math.min( gridWidth - 1, gx ));
+		gy = Math.max( 0, Math.min( gridHeight - 1, gy ));
+		return gx + gy * gridWidth;
 	}
 
 
