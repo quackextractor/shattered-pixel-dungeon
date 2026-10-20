@@ -1,7 +1,6 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
-import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
@@ -11,9 +10,6 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
-import com.watabou.utils.PathFinder;
-
-import java.io.File;
 
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GateReport.fail;
 
@@ -41,31 +37,15 @@ public class DialogCheck {
 		for (String seed : SEEDS){
 			env.reset( seed, HeroClass.WARRIOR );
 
-			int pit = -1, beside = -1;
-			for (int c = 0; c < Dungeon.level.length(); c++){
-				if (!Dungeon.level.pit[c] || Dungeon.level.solid[c]) continue;
-				for (int d : PathFinder.NEIGHBOURS8){
-					int n = c + d;
-					if (n < 0 || n >= Dungeon.level.length()) continue;
-					if (Dungeon.level.insideMap(n) && Dungeon.level.passable[n]
-							&& !Dungeon.level.pit[n] && !Dungeon.level.solid[n]
-							&& Actor.findChar(n) == null){
-						pit = c; beside = n; break;
-					}
-				}
-				if (pit >= 0) break;
-			}
+			int[] beside = new int[1];
+			int pit = Chasms.pitBeside( beside );
 			if (pit < 0) continue;
 
-			Dungeon.hero.pos = beside;
+			Dungeon.hero.pos = beside[0];
 			Dungeon.hero.curAction = null;
 			Dungeon.hero.ready = false;
 
-			Action into = null;
-			for (Action a : Action.values()){
-				if (!a.directional()) continue;
-				if (beside + a.dx + a.dy * Dungeon.level.width() == pit){ into = a; break; }
-			}
+			Action into = Chasms.toward( beside[0], pit );
 			if (into == null ) continue;
 
 			env.step( into, 0 );

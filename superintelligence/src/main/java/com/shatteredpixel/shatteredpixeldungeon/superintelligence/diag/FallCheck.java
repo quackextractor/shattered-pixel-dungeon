@@ -14,10 +14,12 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
-import com.watabou.utils.PathFinder;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Chasms.pitBeside;
+import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Chasms.toward;
 
 
 public class FallCheck {
@@ -57,23 +59,6 @@ public class FallCheck {
 	private static SPDEnv env(){
 		EnvConfig config = new EnvConfig();
 		return new SPDEnv( config, HeadlessGame.install() );
-	}
-
-
-	private static int pitBeside( int[] beside ){
-		for (int c = 0; c < Dungeon.level.length(); c++){
-			if (!Dungeon.level.pit[c] || Dungeon.level.solid[c]) continue;
-			for (int d : PathFinder.NEIGHBOURS8){
-				int n = c + d;
-				if (n < 0 || n >= Dungeon.level.length()) continue;
-				if (!Dungeon.level.insideMap(n)) continue;
-				if (!Dungeon.level.passable[n] || Dungeon.level.pit[n] || Dungeon.level.solid[n]) continue;
-				if (Actor.findChar(n) != null) continue;
-				beside[0] = n;
-				return c;
-			}
-		}
-		return -1;
 	}
 
 
@@ -291,11 +276,7 @@ public class FallCheck {
 			Dungeon.hero.curAction = null;
 			Dungeon.hero.ready = false;
 
-			Action into = null;
-			for (Action a : Action.values()){
-				if (!a.directional()) continue;
-				if (beside[0] + a.dx + a.dy * Dungeon.level.width() == pit){ into = a; break; }
-			}
+			Action into = toward( beside[0], pit );
 			if (into == null ) continue;
 
 			int depth = Dungeon.depth;
@@ -460,14 +441,6 @@ public class FallCheck {
 		}
 
 		fail( "no seed let a hero fly onto a chasm and keep flying, so this case measured nothing." );
-	}
-
-
-	private static Action toward( int from, int to ){
-		for (Action a : Action.values()){
-			if (a.directional() && from + a.dx + a.dy * Dungeon.level.width() == to) return a;
-		}
-		return null;
 	}
 
 
