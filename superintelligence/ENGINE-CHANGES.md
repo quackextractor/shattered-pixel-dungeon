@@ -342,7 +342,7 @@ PROBE mobs 8 -> 10, mirror images=2 with sprite=2 in Actor.chars=2
 ```
 
 **It is committed and gated.** On the owner's word, with `gradle :superintelligence:mobspritecheck` as the
-gate: 3 cases, **in `gates`**, mutation-tested by reverting each half, and the third case is the one that
+gate: 3 cases then, 9 now, **in `gates`**, mutation-tested by reverting each half, and the third case is the one that
 makes the rest safe to ship - with `headlessGameplay` off, `GameScene.add( mob )` never consults the
 stand-in factory, asserted rather than argued. `verifyall` green and `:desktop:viewcheck` green at 20 of 20,
 which is the one that matters here because this file is `GameScene` and the viewer loads it.

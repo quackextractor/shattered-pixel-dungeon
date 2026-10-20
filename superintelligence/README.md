@@ -252,7 +252,7 @@ Measured: 120 free steps ended the loop as `STALLED` at **-4622.00 against dying
 **An item that creates a mob now leaves it usable with no renderer.** A Scroll of Mirror Image killed two
 workers in a training run - `GameScene.add( Mob, float )` gives a mob a sprite and a place in `Actor.chars`
 only when a scene exists, and `Char.move` dereferences the sprite unconditionally. `mobspritecheck` is the
-gate: 4 cases, in `gates`, and the third asserts that with `headlessGameplay` off the stand-in factory is
+gate: 9 cases, in `gates`, and the third asserts that with `headlessGameplay` off the stand-in factory is
 never consulted, so a game with a renderer cannot reach the branch.
 
 `rewardcheck` grew from 9 cases to 13, and the new ones assert **properties**  -  that the four terminal
