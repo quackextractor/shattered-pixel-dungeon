@@ -80,9 +80,8 @@ once.
 review batch closed every must-fix and most of the rest of `out/evidence/ponytail-review-2026-10-19.md`;
 still open:
 
-- [ ] **The observation draws invisible mobs.** `ObservationEncoder` writes `ENEMY`/`ALLY`/`NEUTRAL`
-      for any char on a visible cell, `invisible > 0` included; only `THREATENING` checks it. The game
-      hides that sprite. Review finding 12, last bullet.
+- Not a fault: the observation drawing invisible mobs is faithful - `CharSprite` shows `INVISIBLE` at
+  alpha 0.4 and `Hero.checkVisibleMobs` does not skip them (review finding 12, last bullet).
 
 - [ ] **Headless sprite casts on Eye, DM300, Goo and Ghoul.** Their logic casts `sprite` to a concrete
       sprite class that the headless stand-in is not. Being fixed separately; `mobspritecheck` should
