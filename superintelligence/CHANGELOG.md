@@ -99,6 +99,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`rewardcheck` is 44 cases**, from 41.
 
 ### Measured
+- **The terminal price, before and after, on the gate's own episodes.** With the fix reverted the
+  last step the learner was given paid **-0.52** and the turn limit's price is -2000.00; with the
+  fix in place the last step pays **-2000.52** and the stall's is **-4500.52**, and the score and
+  the learner agree to **-1.00** - the turn the episode's settling cost, which is the whole of what
+  the two sides are still allowed to disagree about. Evidence
+  `out/evidence/terminal-price/{before,after}.txt`.
 - **The best and the worst recording of `retrain-0.11.0-60`, read in full.** The best is
   `PFW-ZSB-FXL` (-1676.16, DUELIST, depth 2, 599 turns, DEATH) and the worst is `DQZ-XJW-KFG-r2`
   (-4869.24, CLERIC, depth 1, 1380 turns, DEATH). Both rest and wait for a third of their steps: 138
@@ -108,6 +114,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Evidence `out/evidence/retrain-0.11.0-60/best-worst-replays.txt`.
 
 ### Added
+- **`train.ps1 -Quick`: a short, aggressive cycle.** Three generations, four workers, one episode
+  each, four update threads, and everything else the shipped configuration. Measured: **57.1s end to
+  end** including the gradle startup, and **14s a generation**, against the 21s-64s a generation the
+  30-generation runs in this repository's evidence carry. It answers one question - what is the
+  policy doing right now: how it ends and how deep it gets - and it does not answer whether the
+  policy is learning, because the noise floor is about 100 points over 15 generations. Anything
+  named on the command line wins, so `-Quick -Generations 10` is ten quick generations.
+
+  **The short cycle is a diagnostic, and the reason it is short is a measurement rather than a
+  setting.** A generation's cost is the turns it collects, and an untrained episode runs hundreds of
+  turns, so the cycle is short because the pool is small and the episode count is one - not because
+  the episode was truncated. A truncated episode would end on the turn limit every time, and the
+  turn limit's price would then be most of the score. Evidence
+  `out/evidence/terminal-price/note.txt`.
 - **`transitioncheck` walks onto the exit through `env.step`** (12 -> 13). The hero starts beside the
   exit on a floor with its mobs removed, the agent sends the move, and that one step must land on depth 2
   with `DEPTH_ADVANCE` in its reward. Every other case calls `activateTransition` directly. Fails when

@@ -443,6 +443,14 @@ something.
 -Generations 60 -Name depth-only-60`, `./train.ps1 -Resume`. It names the artefacts, prints the gradle
 command it is about to run, and passes `-Name` as the run's replay group.
 
+**`./train.ps1 -Quick` is the short, aggressive cycle**: three generations, four workers, one episode
+each, and everything else the shipped configuration. Measured at **57.1s end to end** including the
+gradle startup, against the 21s-64s a generation the 30-generation runs in this repository's
+evidence carry. It answers one question - *what is the policy doing right now: how it ends and how
+deep it gets* - and it does not answer whether the policy is learning, because the noise floor is
+about 100 points over 15 generations. Anything named on the command line wins, so
+`-Quick -Generations 10` is ten quick generations.
+
 **Thirty-three gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one

@@ -23,6 +23,12 @@
 .EXAMPLE
     ./train.ps1 -Resume
     Continue the last run for another 30 generations from out/run/weights.bin.
+
+.EXAMPLE
+    ./train.ps1 -Quick
+    The short, aggressive cycle: three generations, four workers, one episode each, and a verdict in
+    under a minute. It answers what the policy is doing right now - how it ends and how deep it gets
+    - and not whether the policy is learning.
 #>
 [CmdletBinding()]
 param(
@@ -52,7 +58,11 @@ param(
     [string] $Name,
 
     # Continue the run in out/run/weights.bin instead of starting fresh.
-    [switch] $Resume
+    [switch] $Resume,
+
+    # A short, aggressive cycle: three generations, a small pool, and a verdict in under a minute.
+    # Anything named on the command line wins, so -Quick -Generations 10 is ten quick generations.
+    [switch] $Quick
 )
 
 $ErrorActionPreference = 'Stop'
@@ -146,6 +156,19 @@ try {
     $runDir   = Join-Path $module 'out/run'
     foreach ($dir in @($evidence, $runDir)) {
         if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    }
+
+    if ($Quick) {
+        # The short cycle answers one question: what is the policy doing right now - how it ends and
+        # how deep it gets - and it answers it in under a minute. It is not a learning measurement:
+        # the noise floor is about 100 points over 15 generations, so three generations cannot see a
+        # trend. Anything named on the command line wins.
+        if (-not $PSBoundParameters.ContainsKey('Generations'))    { $Generations = 3 }
+        if (-not $PSBoundParameters.ContainsKey('Episodes'))       { $Episodes = 1 }
+        if (-not $PSBoundParameters.ContainsKey('UpdateThreads'))  { $UpdateThreads = 4 }
+        if (-not $PSBoundParameters.ContainsKey('CheckpointEvery')){ $CheckpointEvery = 3 }
+        if (-not $PSBoundParameters.ContainsKey('Workers'))        { $Workers = 4 }
+        if (-not $PSBoundParameters.ContainsKey('Name'))           { $Name = "$Profile-quick" }
     }
 
     if (-not $Name) { $Name = "$Profile-$Generations" }

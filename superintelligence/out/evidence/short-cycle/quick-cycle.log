@@ -1,0 +1,95 @@
+> Task :superintelligence:headlessSprites UP-TO-DATE
+> Task :core:processResources NO-SOURCE
+> Task :superintelligence:processResources UP-TO-DATE
+> Task :services:compileJava UP-TO-DATE
+> Task :services:processResources NO-SOURCE
+> Task :services:classes UP-TO-DATE
+> Task :services:jar UP-TO-DATE
+> Task :SPD-classes:compileJava UP-TO-DATE
+> Task :SPD-classes:processResources NO-SOURCE
+> Task :SPD-classes:classes UP-TO-DATE
+> Task :SPD-classes:jar UP-TO-DATE
+> Task :core:compileJava UP-TO-DATE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :superintelligence:compileJava UP-TO-DATE
+> Task :superintelligence:classes UP-TO-DATE
+
+> Task :superintelligence:train
+config file C:\Users\Soul\Documents\GitHub\shattered-pixel-dungeon\superintelligence\superintelligence.properties, 80 key(s) applied, environment overrides []
+reward   profile default (--reward-profile)
+[OK]   started 4 worker processes
+machine   20 logical processors, pool of 4 workers, stall timeout 180s
+
+generation 0  episodes=4  seeds=1/100  shaping=1.00
+  score   mean=-3591.10  best=-3301.00  worst=-3952.00  objective=-3358.38
+  depth   mean=1.0  best=1
+  events  kills=2  gold=0  pickups=107  talents=0  crafted=0
+  stalls  none
+  types   exploration +535.40  combat -765.00  progression +1.13  items -3.50  survival -0.75  costs -858.38  terminal -2500.00  (mean per episode)
+  turns   mean=811  total=3,243
+  ended   death 4 (100%)
+  ppo     policy=-0.1429  value=5.7084  entropy=26.717  clip=0.03  kl=0.0156
+
+  speed   255 turns/s  0.3 episodes/s  12.70s wall  (ppo update 3.17s)  barrier 27%
+  data    208 sampled steps of 3,243 collected  advantage mean=-639.317 sd=814.150
+  buffer  2.9 MB resident, 59.2% of it the packed grid
+  usage   25% of machine (5.0 of 20 logical cores)  pool 4 x 1 episodes  workers 0.0 cores, trainer 0.06
+
+[########----------------]  33%  gen 1/3  0:16  eta 0:32  score -3,591  bestDepth 1
+
+generation 1  episodes=4  seeds=1/100  shaping=1.00
+  score   mean=-4207.44  best=-3358.00  worst=-6097.00  objective=-3963.50
+  depth   mean=1.0  best=1
+  events  kills=1  gold=0  pickups=145  talents=0  crafted=0
+  stalls  free_step 1 (25%) of 1 stalled episodes
+  types   exploration +650.44  combat -892.50  progression +2.75  items -3.63  survival -1.00  costs -963.50  terminal -3000.00  (mean per episode)
+  turns   mean=923  total=3,691
+  ended   death 3 (75%)  stalled 1 (25%)
+  ppo     policy=-0.0279  value=7.6963  entropy=26.332  clip=0.00  kl=0.0024
+
+  speed   250 turns/s  0.3 episodes/s  14.78s wall  (ppo update 2.95s)  barrier 22%
+  data    176 sampled steps of 3,691 collected  advantage mean=-676.191 sd=983.447
+  buffer  2.5 MB resident, 59.2% of it the packed grid
+  usage   19% of machine (3.8 of 20 logical cores)  pool 4 x 1 episodes  workers 3.2 cores, trainer 0.01
+
+[################--------]  67%  gen 2/3  0:34  eta 0:17  score -4,207  bestDepth 1
+
+generation 2  episodes=4  seeds=1/100  shaping=1.00
+  score   mean=-3580.89  best=-3280.00  worst=-4057.00  objective=-3060.63
+  depth   mean=1.0  best=1
+  events  kills=1  gold=0  pickups=48  talents=0  crafted=0
+  stalls  none
+  types   exploration +324.48  combat -842.50  progression +1.63  items -2.88  survival -1.00  costs -560.63  terminal -2500.00  (mean per episode)
+  turns   mean=531  total=2,123
+  ended   death 4 (100%)
+  ppo     policy=-0.0443  value=5.4419  entropy=25.568  clip=0.00  kl=0.0031
+
+  speed   156 turns/s  0.3 episodes/s  13.65s wall  (ppo update 2.47s)  barrier 20%
+  data    144 sampled steps of 2,123 collected  advantage mean=-604.143 sd=646.299
+  buffer  2.0 MB resident, 59.2% of it the packed grid
+  usage   12% of machine (2.4 of 20 logical cores)  pool 4 x 1 episodes  workers 1.8 cores, trainer 0.01
+saved   C:\Users\Soul\Documents\GitHub\shattered-pixel-dungeon\superintelligence\out\run\weights.bin  (generation 3, adam step 6)
+
+[########################] 100%  gen 3/3  0:51  eta -  score -3,581  bestDepth 1
+
+[OK]   wrote 3 replays from 12 episodes (best per seed, plus the run's worst) to C:\Users\Soul\Documents\GitHub\shattered-pixel-dungeon\superintelligence\trainer-replays\default-quick  (group default-quick)
+
+trend   3 generations, C:\Users\Soul\Documents\GitHub\shattered-pixel-dungeon\superintelligence\out\evidence\default-quick.csv
+  score     ??????     ?????  -4207.4..-3580.9
+  depth     ????????????????  1.0 (flat)
+  turns     ???????????       530.8..922.8
+  polcl           ??????????  -0.1..-0.0
+  valcl           ?????       5.4..7.7
+
+[Incubating] Problems report is available at: file:///C:/Users/Soul/Documents/GitHub/shattered-pixel-dungeon/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.5.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 56s
+10 actionable tasks: 1 executed, 9 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.5.0/userguide/configuration_cache_enabling.html
