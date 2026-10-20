@@ -7,6 +7,12 @@ Closed entries live in `CHANGELOG.md` with their measurements. Rejected and defe
 | --- | --- |
 | 20 | under `depth_only` the run converges on dying early rather than on descending |
 
+**20's numbers predate 0.11.0 and must be re-measured before they are read.** Every run below trained
+with the policy gradient's sign inverted, tanh-bounded logits, a clip that stopped both sides, no
+terminal flag on death, and a stair potential pointing at the upstairs, so "the policy learned to die
+cheaply" is a statement about a learner that moved away from whatever it was paid for. `CHANGELOG.md`
+0.11.0 has the list; `TODO.md` section 1 carries the re-measurement.
+
 **26 and 37 are closed.** 26: the headless stand-in for a particle emitter was compensating on the
 **wrong stream**, so the trainer ran one value ahead of the rendered game from the first scroll read
 and one snake attack rolled differently; `:desktop:viewcheck` is **20 of 20**. 37: a hero's death

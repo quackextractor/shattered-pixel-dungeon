@@ -172,17 +172,19 @@ the output would tie the network's width to the hero's carrying capacity.
 
 ## Configuration
 
-Settings come from four places. Lowest priority first:
+Settings come from five places. Lowest priority first:
 
 | Source | How |
 | --- | --- |
 | Compiled defaults | `EnvConfig` and `PpoHyperparameters` |
-| Properties file | `--config <path>`, e.g. `superintelligence/superintelligence.properties` |
+| Properties file | `--config <path>`; the `train` task passes `superintelligence/superintelligence.properties` when none is named |
+| `.env` | `superintelligence/.env`, the same `SPD_*` names |
 | Environment | `SPD_*` - `rl.learning_rate` is `SPD_RL_LEARNING_RATE` |
 | Command-line flags | `--max-turns`, `--workers`, ... - these win over everything |
 
-A run with no `--config` and no `SPD_*` variables behaves exactly as it did before the file existed,
-which is what makes adding one a non-event.
+The shipped file's values are the compiled defaults, so reading it by default changes nothing until it
+is edited. The trainer JVM's own heap (`worker.heap_min`, `worker.heap_max`, `worker.gc_pause_ms`)
+resolves through the same tiers in `build.gradle`.
 
 Two rules the layer holds to, both of which exist because the alternative is silent:
 
@@ -190,7 +192,8 @@ Two rules the layer holds to, both of which exist because the alternative is sil
   for is worse than declining to load, in a system whose whole value is that its settings are the ones
   it reports.
 - **An unknown key warns, naming itself and its file.** A misspelled key tunes nothing, and an operator
-  who mistyped one has no other way to find out.
+  who mistyped one has no other way to find out. That includes an unknown `SPD_` name in `.env`, and a
+  refused `.env` value names its `.env` entry rather than the properties file.
 
 `superintelligence.properties` ships with every key documented against its reason, and `configcheck`
 asserts it agrees with the compiled defaults in both directions - so a key cannot drift away from the
@@ -288,11 +291,11 @@ thirty-three gates, one invocation:
 | Gate | What it refuses to let happen |
 | --- | --- |
 | `gradcheck` | An analytic gradient that disagrees with a central difference |
-| `gaecheck` | Two advantage implementations that disagree |
+| `gaecheck` | GAE that disagrees with the brute-force discounted sum, **or** one update that moves p(chosen) the wrong way for the advantage's sign, **or** a PPO clip that stops the side its ratio has not passed |
 | `collectcheck` | A recording the collector cannot replay, **or** a rebinding step recorded against the world the step produced |
 | `checkpointcheck` | A policy that does not survive disk, or a bad checkpoint that loads |
-| `statecheck` | A sampled observation that does not replay to its rollout's value |
-| `parallelcheck` | A parallel update that differs from the serial one, **or** a shard that does not own its own `Network` |
+| `statecheck` | A transition from a real collected episode that does not replay to its rollout's value under the recurrent state it was decided under, **or** a target-head step that records an index other than the one sent |
+| `parallelcheck` | A real `PPO.update` at 2 or 4 threads that differs from 1 thread in parameters or metrics, **or** a shard that does not own its own `Network`, **or** a throwing shard that hangs the update |
 | `rewardcheck` | Ending an episode being cheaper than dying, **or** an action that consumes several engine turns being charged for one, **or** `depth_only` paying anything outside the objective while `default` stops paying a term, **or** a reward term with no type, or type subtotals that do not reconstruct the score |
 | `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
 | `fallcheck` | A chasm fall the environment drops, a free landing, or a fall that leaves a hand-off behind for the next episode |
@@ -302,7 +305,7 @@ thirty-three gates, one invocation:
 | `replaycheck` | A catalog that misgroups, misranks or misresolves, **or** mislabels what it did |
 | `rolloutcheck` | A recording with no usable seed |
 | `modecheck` | An action mode the environment cannot reach |
-| `restartcheck` | A restart that does not rebuild the same first floor |
+| `restartcheck` | A restart that does not rebuild the same first floor, through a copy of the viewer's restart sequence |
 | `resetcheck` | A reset that does not isolate an episode from whatever ran before it |
 | `graphcheck` | A chart reporting a range it did not observe |
 | `actioncheck` | A movement action that does not move the way it is named |
@@ -318,7 +321,7 @@ thirty-three gates, one invocation:
 | `seedcheck` | A resumed run that replays generation 0's seed sequence from the top |
 | `doccheck` | Documentation that is unreadable as text, a gate that is not reachable, a gate count that disagrees with the list, **or** a Java path in a document that names a file which is not there |
 | `stallcausecheck` | A stall guard that is unreachable or that reports the wrong guard |
-| `pushcheck` | A policy push written in one call rather than chunked, retried, and refused by name |
+| `pushcheck` | A policy push written in one call rather than chunked, a failed write retried, or one not refused by name |
 | `javaclint` | Any compiler warning at all, under `-Xlint:all -Werror` |
 
 Plus `playbackcheck` in `:desktop`, which drives the rendered viewer with no window and no scene, and
@@ -442,6 +445,13 @@ headless code only proves the engine is deterministic - both sides share every h
 That is not hypothetical: a run whose hunger clock was frozen by the `intro` setting replayed perfectly,
 identical position at all 1500 steps, while the hero was starving in the real game.
 
+Verify also diverges when a step is replayed in a different mode from the one recorded, and when the run
+ends before the recording does - a clean prefix is not a pass. The header carries the four limits that
+decide where a run ends (`turn_limit_total`, `stall_limit`, `free_step_budget`, `actor_step_limit`),
+read as the `EnvConfig` defaults when absent. An unknown hero class is refused, not played as a Warrior;
+a malformed file is an `IOException` naming it; a recording is written to a temp file and moved into
+place.
+
 Divergence is a hard error, not a warning. The moment a replay stops reproducing, every locked-seed
 comparison in the trainer becomes meaningless, and a run that looks fine is worth less than one that
 stops loudly.
@@ -451,7 +461,9 @@ stops loudly.
 A slot index only means something alongside the quickslot bindings in force when it was chosen.
 `ActionMapper.refreshSlots` places bound items into their bound slots *first*, then fills the gaps from
 the backpack in order, so index 1 names one item under one set of bindings and a different one under
-another. Every step that names a slot therefore carries them, captured **before** the step — an equip or
+another. A binding is written `Class:slot@index`, the item's backpack position, so two items of one class do not
+swap; the older `Class:slot` form still reads as first-of-class. Every step that names a slot therefore
+carries them, captured **before** the step — an equip or
 unequip in the step itself rebinds a slot, so afterwards describes a different world.
 
 `DROP` is the step where that matters, because it is the one action that unbinds its own item: the item
@@ -480,8 +492,8 @@ Two consequences that are easy to get backwards:
 
 ### Watching a recording
 
-`superintelligence/replay-viewer.bat` plays a recording in the real game with a HUD over it. The keys
-are:
+`superintelligence/replay-viewer.bat` plays a recording in the real game with a HUD over it; `--record`
+writes into `trainer-replays/`. The keys are:
 
 | Key | Does |
 | --- | --- |
@@ -531,7 +543,8 @@ appears to.
 
 With no argument, `superintelligence/replay-viewer.bat` prints every recording it can find and asks
 for a number. The
-listing has three kinds of section: `TEST CORPUS` is the checked-in reference set, `TRAINER OUTPUT` is
+listing has three kinds of section: `TEST CORPUS` is the checked-in reference set (the corpus directory, not
+whichever directory was scanned first), `TRAINER OUTPUT` is
 everything a run wrote that carried no group, and one `GROUP <ID>` per `--replay-group`. Every section is
 ranked by score within its hero class and numbered in one sequence, so the number beside a row is the
 number typed back.

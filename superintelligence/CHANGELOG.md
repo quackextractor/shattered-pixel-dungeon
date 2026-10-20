@@ -9,6 +9,136 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.11.0] - 2026-10-20
+The review batch (`out/evidence/ponytail-review-2026-10-19.md`, 111 commits). Gradients, observations,
+rewards, the replay header, the checkpoint format (3), `Protocol.VERSION` (8) and the replay wire codec
+(6) all changed. **Every checkpoint written before 0.11.0 learned under a policy gradient of the wrong
+sign and under different observation meanings: retrain, do not resume.** Format 2 files still load, so
+nothing refuses one. Everything from the first `### Measured` below down to 0.10.0 was unreleased
+before this batch, and every learning measurement in it predates these fixes.
+
+### Fixed - learning core
+- **The policy gradient had the wrong sign.** `Policy.accumulatePolicyGradient` wrote `+A*r*(1-p)` into
+  a buffer Adam descends, so a positive advantage lowered p(chosen). It now writes
+  `-A*r*(onehot_i - p_i)`. One update at A=+1: 0.0534 -> 0.0312 before, -> 0.0890 after.
+- **The three logit heads were tanh-squashed** to [-1,1], capping one action at about 0.28 of 20. Linear
+  now, like the value head; shapes unchanged.
+- **The PPO clip stopped both sides.** The gradient is now zeroed only when A>0 and r>1+eps or A<0 and
+  r<1-eps.
+- **BPTT dropped the hidden-state path.** `backwardStep` never added the gradient from step t+1 into
+  step t's `dh`, and `LSTM.backward` accumulated `dHPrev` instead of overwriting it, so only the cell
+  state crossed a step.
+- **Every chunk step's conv gradient used the last step's input.** `Conv2D.backward` rebuilds im2col from
+  its own input, and `restore` rebuilds `convOut`.
+- **The recurrent state was stored one step late**, so every chunk replayed from the state after its
+  first step. The snapshot is taken before the forward pass.
+- **No transition was terminal.** `EpisodeCollector` read `endedNaturally()` before `env.step`, so GAE
+  bootstrapped through death.
+- **The value baseline was in normalised units beside raw rewards.** The trainer sends the normaliser's
+  mean and std in the params frame; the collector stores `mean + std * v`.
+- **The target head trained the slot head's index.** The record stores the index actually sent.
+- Fractional grid planes (`VISIBLE_EDGE`) are stored at byte precision, so the update sees the
+  rollout's grid; the grid is `width x height` everywhere and convolved as a rectangle.
+- Single-thread metrics were divided twice; the policy-loss metric is the clipped surrogate, not
+  `-advantage`. A shard that throws fails the update instead of hanging it.
+
+### Fixed - environment faithfulness
+- **A floor the hero returns to is loaded, not rebuilt.** `LevelPipeline` follows `InterlevelScene`:
+  hold allies, `saveAll`, `loadLevel` when generated. `HeadlessGame` and the viewer use
+  `v4_0_0` as version code. **Approved `:desktop` change:** `ReplayPlayer` no longer clears
+  `generatedLevels` on a scene switch, so playback keeps floors as the game does. `duelist-mid` and
+  `warrior-mid` regenerated.
+- `WAIT` and `REST` go through `Hero.rest`, so `Slow`/`Chill`, `HOLD_FAST` and `PATIENT_STRIKE` apply.
+- Alchemy brews from the matched stacks and consumes only what the recipe uses.
+- Headless ranged zaps complete: `HeadlessSprite.zap(cell)` runs what the sprite's animation would
+  (`onZapComplete`, Spinner's web, Eye's gaze, DM100), so Shaman, Warlock, DM200, Golem, Necromancer,
+  Elementals and bosses no longer stall the episode.
+- `USE` and `DROP` in `WORLD` are accepted actions, not refusals; the corpus is regenerated for it.
+- Returning to a floor resumes its turn budget instead of refilling it.
+
+### Fixed - observation leaks
+- The inventory encodes only what an item slot shows: no icon for an unknown potion or scroll, base class
+  while the kind is unknown, `visiblyUpgraded()` and `visiblyCursed()`.
+- Hero features read no unknown equipment level: weapon tier is `MeleeWeapon.tier`, an unknown item
+  contributes `DRMax(0)`/`STRReq(0)`, and Greatshield/RoundShield no longer leak through `defenseFactor`.
+- `WALL` and `OPAQUE` cover only cells the player has uncovered.
+- The window is centred on the hero (it sat at grid (2,2)); cells off the level stay zero.
+- The item type feature is a fixed function of the class name, not a per-JVM registration order.
+
+### Fixed - rewards
+- **The stair potential and `EXIT_BEACON` targeted the upstairs** (`getTransition(null)` is the
+  entrance). Both take `REGULAR_EXIT`, and -1 when there is none.
+- Stair shaping is exactly `gamma*Phi(s') - Phi(s)` at `rl.gamma` (was a literal 0.99, and 0 on a
+  standing step), pays nothing on the step that changes floor, and builds the distance field once per
+  floor and terrain.
+- A death or stall on landing is paid in the step that caused it.
+- `BOSS_SLAIN` pays on leaving a boss floor, once; `VICTORY` fires on picking up the Amulet or
+  climbing out with it (depth > 26 never happened).
+- `EATEN_EARLY` counts meals taken before hunger, not time passing; a level-up's health is paid once, as
+  maximum health; `IDENTIFIED` pays for identifying a carried item, not for carrying more.
+- The ledger's curriculum scale resets with the episode; the first step of an episode is scored.
+
+### Fixed - trainer
+- Chunks reach the reservoir after the dispatch join, in worker order: a generation's sample is a
+  function of its seed.
+- Each worker gets its own policy seed; the trainer stamps monotonic episode ids.
+- **Checkpoint format 3** carries the value normaliser and the trainer rng; format 2 still loads.
+- A policy push fails on its first write error. **`trainer.push_retries` is removed.**
+- The replay keeper holds at most 256 seeds and writes its replays from a `finally` and before a
+  watchdog halt. The exit save stamps the last completed generation, and is reached after an
+  `IOException`.
+- Seed text is sanitised before it names a replay file. `Trainer` is split into `RunCheckpoints`,
+  `ReplayKeeper`, `GenerationReport.tally`, `ProgressBar` and `TrainerWorkers` (710 -> 481 lines).
+
+### Fixed - replay
+- The header records `turn_limit_total`, `stall_limit`, `free_step_budget` and `actor_step_limit`
+  (absent keys read as defaults); verify fails a run that ends before its recording and diverges on a
+  mode mismatch.
+- `WorldDiff` reports rows that differ outside its `key=value` fields; a malformed file is an
+  `IOException`; verify refuses an unknown hero class; a step without a position records -1, not cell 0;
+  verify never turns off a caller's RNG trace.
+- Quickslot bindings are `Class:slot@index`; the old form still reads.
+- A recording is written to a temp file and moved into place.
+- The catalog's corpus section is the corpus directory; `replaycheck`'s index lives in its own scratch.
+
+### Fixed - config, scripts, hooks
+- `gradlew :superintelligence:train` passes `superintelligence.properties` unless `--config` is given.
+- `.env`: unknown `SPD_` names warn, a refused value names its `.env` entry, a lone quote no longer
+  crashes the load.
+- Removed keys nothing read: `env.max_view_distance`, `env.honour_vision_buffs`, `env.allow_trading`,
+  `reward.curriculum_progress`, `env.persist_saves`, `env.mimics_visible_out_of_fog` (80 keys).
+- The trainer heap follows `.env` and the properties file (`worker.heap_*`, `worker.gc_pause_ms`).
+- `regenerate-corpus.ps1` rebuilds `duelist-death-last` through `ReproCheck`, exits 1 on a missing
+  recording, honours `-Parallel` and logs to `out/evidence/corpus-log`; both replay scripts build with
+  `:desktop:replaycp`; `replay-batch.ps1` exits 1 on failure and kills only its own viewers;
+  `train.ps1` survives stderr on PowerShell 5.1 and sanitises names; `replay-viewer.bat --record` writes
+  to `trainer-replays/`.
+- `hooks/pre-commit` gates the staged tree, not the working tree.
+- CLI options with a missing or malformed value print `[ERROR]` and exit 1.
+
+### Fixed - gates
+- **Could not fail, now can:** `checkpointcheck` (untrained resume), `mobspritecheck` (factory
+  installed too early), `bpttcheck` (two self-comparisons deleted, 7 -> 5), `gradcheck` (3-step chunk
+  from a non-zero state), `gaecheck` (brute-force discounted sum, policy-update direction and clip
+  sides, 18 -> 15), `parallelcheck` (real `PPO.update` at 1 against 2 and 4 threads), `samplercheck`
+  (decile bias, real chunk lengths), `slotcheck`, `statecheck` (real collected episodes), `seedcheck`,
+  `graphcheck`, `dialogcheck`, `stallcausecheck`, `configcheck` (reflection over every field, exact
+  paths, no dependence on the user's `.env`), `collectcheck`/`EpisodeDiff` (early end is not a match),
+  `rolloutcheck`, `restartcheck` (the viewer's restart sequence), reward tolerances tightened to 1e-3
+  and 1e-4.
+- `javaclint` fails on a Javadoc block; `stripinlines` handles Windows paths.
+- Every gate takes its own `Scratch.dir` (`spd-<gate>-<random>`), deleted on exit; sixteen report
+  through `GateReport`.
+- Counts: `transitioncheck` 12, `fallcheck` 7, `rewardcheck` 41, `collectcheck` 10, `observecheck` 14,
+  `verifycheck` 15, `replaycheck` 22, `configcheck` 17, `freeactioncheck` 8, `graphcheck` 8,
+  `slotcheck` 7, `statecheck` 6, `mobspritecheck` 4, `parallelcheck` 4, `dialogcheck` 2.
+
+### Not done
+- Headless sprite casts on Eye, DM300, Goo and Ghoul; the viewer's Warrior fallback; the observation
+  drawing invisible mobs; `restartcheck` copying the restart sequence; files over 500 lines. `TODO.md`
+  section 4.
+
 ### Measured
 - **`TODO.md` §2 closed: the item and combat shaping is reachable without training.** Two
   generations, 8 workers x 4 episodes, 4 update threads, seed 20261016, `--record-every 1`, and

@@ -7,6 +7,21 @@ findings are in `issues.md`; proposals that were declined or deferred are in `RE
 
 ## 1. Teach it to descend
 
+**Every measurement in this section predates 0.11.0 and is void.** It was taken with the policy
+gradient descending the wrong sign, tanh-squashed logits, a clip that stopped both sides, BPTT through
+`h` cut at one step, no terminal flag on death, the critic's baseline in the wrong units, and
+`StairPotential` and `EXIT_BEACON` pointing at the **upstairs**. "The reward is not the lever" and "the
+observation is the thing" are conclusions about that trainer, not this one. The observation window is now
+centred on the hero, which was one of the two levers named below.
+
+- [ ] **Re-measure on 0.11.0 before anything else.** One 30-generation run of the shipped
+      configuration from a fresh network, same method as `CHANGELOG.md` 0.10.0's, evidence under
+      `out/evidence/`. No pre-0.11.0 checkpoint is comparable.
+- [ ] **Depth 2's entrance room is behind a hidden door** on all 4 depth-2 floors sampled, so the
+      stair potential is unreachable from the entrance until the door is found (`Phi` is 0 on an
+      unreachable cell). Measure how often that holds across seeds before reading a depth-2 shaping
+      curve.
+
 `meanScore` moved **-182.32 +/- 56.4** over the 30-generation re-measurement — about 3 sigma in the
 **wrong** direction — and `depth>=2` is **0 of 960 episodes** again. `meanTurns` rose 542.79 →
 **758.65** with deaths flat, so the policy is learning to live longer rather than to descend. The
@@ -61,6 +76,24 @@ once.
 
 ## 4. Open engine and harness faults
 
-None. `issues.md` 26 was the last, and it closed on the ordered draw log: the headless stand-in for
-a particle emitter was compensating on the wrong stream, so the trainer ran one value ahead of the
-rendered game from the first scroll read. `:desktop:viewcheck` is **20 of 20**.
+`issues.md` 26 closed on the ordered draw log, and `:desktop:viewcheck` is **20 of 20**. The 0.11.0
+review batch closed every must-fix and most of the rest of `out/evidence/ponytail-review-2026-10-19.md`;
+still open:
+
+- [ ] **The observation draws invisible mobs.** `ObservationEncoder` writes `ENEMY`/`ALLY`/`NEUTRAL`
+      for any char on a visible cell, `invisible > 0` included; only `THREATENING` checks it. The game
+      hides that sprite. Review finding 12, last bullet.
+- [ ] **`transitioncheck` and `RewardFixtures` teleport the hero onto the exit** rather than walking
+      there through `env.step`. Review finding 54.
+
+- [ ] **Headless sprite casts on Eye, DM300, Goo and Ghoul.** Their logic casts `sprite` to a concrete
+      sprite class that the headless stand-in is not. Being fixed separately; `mobspritecheck` should
+      gain a case per mob when it lands.
+- [ ] **The viewer still plays an unknown hero class as a Warrior.** `ReplayLauncher` and
+      `ReplayPlayback.heroClass()` fall back to `HeroClass.WARRIOR`; headless `verify` refuses it since
+      0.11.0. Refuse it in `:desktop` too.
+- [ ] **`restartcheck` copies the viewer's restart sequence rather than calling it.**
+      `ReplayController.restart` lives in `:desktop` and needs a live scene, so the gate replays its
+      engine calls in order. A change to the real sequence will not fail the gate.
+- [ ] **Files over 500 lines:** `rl/Network.java` (563), `diag/RewardShapingCheck.java` (546),
+      `diag/VerifyCheck.java` (504); `diag/TransitionCheck.java` is 597, at the 600 test ceiling.

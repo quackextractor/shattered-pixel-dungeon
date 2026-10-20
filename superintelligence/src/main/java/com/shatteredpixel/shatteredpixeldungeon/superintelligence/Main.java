@@ -111,7 +111,7 @@ public class Main {
 		System.out.println( "  modecheck                fail if an action mode cannot be reached" );
 		System.out.println( "  restartcheck             fail if a restart does not rebuild the same first floor" );
 		System.out.println( "  updatecost               measure what a PPO update costs, and project it" );
-		System.out.println( "  gaecheck                 fail if the advantage implementations disagree" );
+		System.out.println( "  gaecheck                 fail if GAE disagrees with the discounted sum, or an update moves the wrong way" );
 		System.out.println( "  collectcheck             fail if a collector recording will not replay" );
 		System.out.println( "  checkpointcheck           fail if a policy does not survive disk, or a bad one loads" );
 		System.out.println( "  weightsdiff <file>        report how far a checkpoint is from a fresh policy" );
@@ -120,7 +120,7 @@ public class Main {
 		System.out.println( "  rewardcheck               fail if ending an episode can be cheaper than dying" );
 		System.out.println( "  freeactioncheck           fail if a free action can be repeated forever, or a talent point cannot be spent" );
 		System.out.println( "  bpttcheck                  fail if the recurrent gradient does not cross a timestep" );
-		System.out.println( "  pushcheck                fail if the policy push is not chunked and retried" );
+		System.out.println( "  pushcheck                fail if the policy push is not chunked, or retries a failed write" );
 		System.out.println( "  curriculumcheck          fail if the shaping fade is wired to nothing" );
 		System.out.println( "  samplercheck             fail if sampling shatters the recurrent chunk" );
 		System.out.println( "  seedcheck                 fail if a resumed run replays generation 0's seeds" );
