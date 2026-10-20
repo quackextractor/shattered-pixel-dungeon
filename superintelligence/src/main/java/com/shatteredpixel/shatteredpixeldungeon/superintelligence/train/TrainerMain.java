@@ -37,7 +37,7 @@ public final class TrainerMain {
 
 Trainer trainer = new Trainer( config, options.hyper, options.seed, options.workDir,
 				options.replayDir, options.traceWorld, options.replayGroup,
-				options.recordEverySet ? options.recordEvery : options.hyper.recordEvery,
+				options.recordEvery,
 				options.rngTraceDir == null ? null : options.rngTraceDir.getAbsolutePath() );
 
 		int exitCode = 0;
@@ -49,8 +49,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,
 					options.maxSamplesPerGeneration );
 			trainer.history( new MetricsHistory( options.metricsCsv ));
-			trainer.checkpointing( options.save,
-					options.checkpointEverySet ? options.checkpointEvery : options.hyper.checkpointEvery );
+			trainer.checkpointing( options.save, options.checkpointEvery );
 
 			trainer.resume( options.resume );
 

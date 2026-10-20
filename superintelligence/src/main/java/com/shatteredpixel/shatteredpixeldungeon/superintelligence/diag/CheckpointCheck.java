@@ -14,7 +14,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class CheckpointCheck {
 
-	private static final int CHECKS = 9;
+	private static final int CHECKS = 10;
 
 	public static void main( String[] args ){
 		File dir = Scratch.dir( "checkpointcheck" );
@@ -41,9 +41,10 @@ public class CheckpointCheck {
 			checkLeavesNoTemporaryFiles( original, small, file, dir );
 			checkResumesIntoAnUntrainedNetwork( original, small, file );
 			checkReportsGenerationAndSteps( original, small, file, 7, 4242L );
-		checkAMissingFlagValueIsRefusedNamingItself();
+			checkAMissingFlagValueIsRefusedNamingItself();
+			checkCheckpointEveryComesFromTheFileUnlessTheFlagSaysOtherwise( dir );
 
-Checkpoint.save( new File( dir, "default.bin" ),
+			Checkpoint.save( new File( dir, "default.bin" ),
 				new Network( config, new Random( 1L ) ), config, 1, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
 			File defaultFile = new File( dir, "default.bin" );
 			Checkpoint.load( defaultFile, new Network( config, new Random( 2L ) ), config );
@@ -324,6 +325,29 @@ Checkpoint.save( new File( dir, "default.bin" ),
 					+ ". A refusal here would move the failure rather than catch it." );
 		} catch (IOException e){
 			fail( "parsing an unknown option threw: " + e.getMessage() );
+		}
+	}
+
+	private static void checkCheckpointEveryComesFromTheFileUnlessTheFlagSaysOtherwise( File dir )
+			throws IOException {
+		File config = new File( dir, "every.properties" );
+		java.nio.file.Files.write( config.toPath(),
+				java.util.Arrays.asList( "train.checkpoint_every=7", "train.record_every=5" ));
+
+		TrainOptions fromFile = TrainOptions.parse( new String[]{ "--config", config.getPath() });
+		if (fromFile.checkpointEvery != 7 || fromFile.recordEvery != 5){
+			fail( "a config file saying checkpoint_every=7 and record_every=5 parsed as "
+					+ fromFile.checkpointEvery + " and " + fromFile.recordEvery + ". The trainer reads the"
+					+ " options, so a value the options do not carry never applies." );
+			return;
+		}
+
+		TrainOptions flagged = TrainOptions.parse( new String[]{ "--config", config.getPath(),
+				"--checkpoint-every", "10", "--record-every", "3" });
+		if (flagged.checkpointEvery != 10 || flagged.recordEvery != 3){
+			fail( "--checkpoint-every 10 --record-every 3 over that file parsed as "
+					+ flagged.checkpointEvery + " and " + flagged.recordEvery
+					+ ". A run asked to checkpoint every 10 generations and killed at 16 saves nothing." );
 		}
 	}
 

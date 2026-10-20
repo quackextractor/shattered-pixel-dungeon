@@ -52,12 +52,6 @@ public class TrainOptions {
 	public int recordEvery = 1;
 
 
-	public boolean recordEverySet = false;
-
-
-	public boolean checkpointEverySet = false;
-
-
 	public static boolean validGroup( String group ){
 		if (group == null || group.isEmpty()) return true;
 		if (group.length() > 64) return false;
@@ -129,6 +123,8 @@ public class TrainOptions {
 		o.maxSampledPerEpisode = hyper.maxSampledPerEpisode;
 		o.maxSamplesPerGeneration = hyper.maxSamplesPerGeneration;
 		o.stallSeconds = hyper.stallSeconds;
+		o.checkpointEvery = hyper.checkpointEvery;
+		o.recordEvery = hyper.recordEvery;
 
 		for (int i = 0; i < args.length; i++){
 

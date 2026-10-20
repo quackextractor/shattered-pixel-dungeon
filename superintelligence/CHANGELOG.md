@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`--checkpoint-every` and `--record-every` were ignored.** The parser stored the value but never
+  the marker `TrainerMain` consulted, so the properties file's 25 and 1 applied whatever the flag said.
+  Found when a 60-generation run asked to checkpoint every 10 was killed at 16 with no `weights.bin`.
+  Options now start from the file's value like every other setting and the flag overwrites it;
+  `checkpointcheck` parses a file saying 7/5 with and without the flags (9 -> 10 checks).
+
 ### Added
 - **`transitioncheck` walks onto the exit through `env.step`** (12 -> 13). The hero starts beside the
   exit on a floor with its mobs removed, the agent sends the move, and that one step must land on depth 2
