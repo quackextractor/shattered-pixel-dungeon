@@ -315,8 +315,22 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		return speed;
 	}
 
+	/**
+	 * Sets the playback speed.
+	 *
+	 * <p>No upper bound worth the name: one step is applied per frame however fast the multiplier is, so
+	 * the only thing a large speed changes is how many frames a step takes. The cap that used to be here
+	 * was 16x, and it silently clamped the gate's own speed of 40 - so the gate ran at 16x while
+	 * believing it ran at 40x, and the number of frames a step consumed was not the number the gate's
+	 * timeout had been sized for.
+	 *
+	 * <p>The ceiling that remains keeps the value finite: a speed of infinity would make
+	 * {@code BASE_STEP_SECONDS / speed} zero, which is the same as a very large speed, and a NaN would
+	 * make the comparison false and step on every frame.
+	 */
 	public void speed( float multiplier ){
-		this.speed = Math.max( 0.1f, Math.min( 16f, multiplier ) );
+		if (Float.isNaN( multiplier )) return;
+		this.speed = Math.max( 0.1f, Math.min( 100000f, multiplier ) );
 	}
 
 	public boolean playing(){

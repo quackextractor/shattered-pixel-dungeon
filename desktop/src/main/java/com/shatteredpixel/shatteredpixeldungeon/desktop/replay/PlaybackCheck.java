@@ -63,7 +63,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 25;
+	private static final int CHECKS = 26;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -126,6 +126,7 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		check( () -> checkPlaybackLeavesNoRemainsBehind() );
 		check( () -> checkASoftStallRecordingCompletesWithoutAViewerStall() );
 		check( PlaybackCheck::checkTheFrameDeltaPinReachesTheEngine );
+		check( PlaybackCheck::checkPlaybackSpeedIsNotCapped );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
@@ -134,6 +135,34 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 					+ " of " + CHECKS + " checks failed, " + failures.size() + " assertions" );
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
+		}
+	}
+
+	/**
+	 * The speed a recording plays at is the speed it was asked for.
+	 *
+	 * <p>The cap that used to be here was 16x, and it clamped the viewer gate's own speed of 40 without
+	 * saying so: the gate measured itself running at 16x while its timeout had been sized for 40x. A
+	 * speed nobody asked for is a speed the gate cannot reason about.
+	 */
+	private static void checkPlaybackSpeedIsNotCapped(){
+		Replay replay = recordAShortRun();
+		ReplayPlayer player = new ReplayPlayer( replay, ReplayIOConfig( replay ) );
+
+		player.speed( 40f );
+		if ( player.speed() != 40f ){
+			fail( "the playback speed was clamped to " + player.speed() + " when 40 was asked for" );
+		}
+
+		player.speed( 1000f );
+		if ( player.speed() != 1000f ){
+			fail( "the playback speed was clamped to " + player.speed() + " when 1000 was asked for" );
+		}
+
+		player.speed( 0.01f );
+		if ( player.speed() != 0.1f ){
+			fail( "the playback speed floor was not applied: asked for 0.01, read "
+					+ player.speed() );
 		}
 	}
 
