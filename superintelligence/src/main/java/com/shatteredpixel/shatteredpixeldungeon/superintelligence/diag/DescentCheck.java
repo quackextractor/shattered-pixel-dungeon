@@ -3,6 +3,8 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
+import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
@@ -244,6 +246,53 @@ final class DescentCheck {
 
 		System.out.println( "  the engine clock restarts with the floor: " + before + " -> "
 				+ Actor.now() + " on depth " + Dungeon.depth );
+	}
+
+
+	static void checkWalkingOntoTheExitDescends(){
+		SPDEnv env = freshRun();
+		for (Mob mob : Dungeon.level.mobs.toArray( new Mob[ 0 ] )) mob.destroy();
+		Action step = besideExit( env );
+		if (step == null){
+			fail( "no free cell beside the exit that the mask lets the hero step from, so this case"
+					+ " measured nothing." );
+			return;
+		}
+
+		int start = Dungeon.depth;
+		double paidBefore = env.ledger().termTotal( RewardTerm.DEPTH_ADVANCE );
+		double reward = env.step( step, 0 );
+		double paid = env.ledger().termTotal( RewardTerm.DEPTH_ADVANCE ) - paidBefore;
+
+		if (Dungeon.depth != start + 1 || paid < env.config().depthReward - 1e-3 || reward < paid - 1e-3){
+			fail( "the hero stood beside the exit on a floor with no mobs and the agent sent " + step
+					+ " through env.step: depth " + start + " -> " + Dungeon.depth + ", DEPTH_ADVANCE paid "
+					+ paid + ", step reward " + reward + ". Every other case puts the hero on the stairs and"
+					+ " calls activateTransition, so this is the only one that walks the agent's path down." );
+			return;
+		}
+
+		System.out.println( "  walking onto the exit with " + step + " descends: depth " + start + " -> "
+				+ Dungeon.depth + ", step reward " + reward );
+	}
+
+
+	private static Action besideExit( SPDEnv env ){
+		LevelTransition exit = Dungeon.level.getTransition( LevelTransition.Type.REGULAR_EXIT );
+		if (exit == null) return null;
+		int cell = exit.cell();
+		int w = Dungeon.level.width();
+		for (Action a : Action.values()){
+			if (!a.directional()) continue;
+			int from = cell - a.dx - a.dy * w;
+			if (from < 0 || from >= Dungeon.level.length() || !Dungeon.level.insideMap( from )) continue;
+			if (Math.abs( from % w - cell % w ) > 1) continue;
+			if (!Dungeon.level.passable[ from ] || Actor.findChar( from ) != null) continue;
+			Dungeon.hero.pos = from;
+			env.step( Action.WAIT, 0 );
+			if (env.running() && Dungeon.hero.pos == from && env.actionMask()[ a.index ] != 0f) return a;
+		}
+		return null;
 	}
 
 

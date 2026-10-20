@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`transitioncheck` walks onto the exit through `env.step`** (12 -> 13). The hero starts beside the
+  exit on a floor with its mobs removed, the agent sends the move, and that one step must land on depth 2
+  with `DEPTH_ADVANCE` in its reward. Every other case calls `activateTransition` directly. Fails when
+  `ActionMapper` refuses the move. Review finding 54.
+
 ## [0.11.0] - 2026-10-20
 The review batch (`out/evidence/ponytail-review-2026-10-19.md`, 111 commits). Gradients, observations,
 rewards, the replay header, the checkpoint format (3), `Protocol.VERSION` (8) and the replay wire codec

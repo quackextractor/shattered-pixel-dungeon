@@ -23,7 +23,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Re
 
 public class TransitionCheck {
 
-	private static final int CHECKS = 12;
+	private static final int CHECKS = 13;
 
 	static final String SEED = "TRANSITION";
 
@@ -46,6 +46,7 @@ public class TransitionCheck {
 		DescentCheck.checkTheFloorLeftBehindIsTheOneMarkedCleared();
 		DescentCheck.checkTheNewFloorIsPlayable();
 		DescentCheck.checkTheEngineClockRestartsWithTheFloor();
+		DescentCheck.checkWalkingOntoTheExitDescends();
 		checkTheHeroActsOnArrivalBeforeTheAgentDoes();
 		checkAscendingAfterDescendingIsServiced();
 		checkTheStairsAreNotShapedAcrossAFloorChange();
