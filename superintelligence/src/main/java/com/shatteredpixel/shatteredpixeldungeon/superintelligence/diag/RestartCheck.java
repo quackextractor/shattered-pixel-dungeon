@@ -13,15 +13,13 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.Scripte
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 
-import java.io.File;
-
 
 public class RestartCheck {
 
 	private static final String SEED = "RESTART-CHECK";
 
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-restartcheck" ) );
+		HeadlessServices.install( Scratch.dir( "restartcheck" ) );
 		HeadlessServices.disableSaving( true );
 
 		EnvConfig config = new EnvConfig();

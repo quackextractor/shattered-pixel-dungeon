@@ -14,8 +14,10 @@ import java.util.List;
 public class RolloutCheck {
 	private static final int CHECKS = 7;
 	private static final List< String > failures = new ArrayList<>();
+	private static File scratch;
 	public static void main( String[] args ){
-		HeadlessServices.install( new File( System.getProperty( "java.io.tmpdir" ), "spd-rolloutcheck" ));
+		scratch = Scratch.dir( "rolloutcheck" );
+		HeadlessServices.install( scratch );
 		HeadlessServices.disableSaving( true );
 		HeadlessGame.install();
 		EnvConfig config = new EnvConfig();
@@ -57,7 +59,7 @@ public class RolloutCheck {
 	}
 	private static void checkRandomSeedRecordingVerifies( EnvConfig config ){
 		ScriptedEpisode.Result episode = randomEpisode( config );
-		File file = new File( System.getProperty( "java.io.tmpdir" ), "rolloutcheck-random.replay" );
+		File file = new File( scratch, "rolloutcheck-random.replay" );
 		try {
 			ReplayIO.write( episode.replay, file );
 		} catch (java.io.IOException e){
@@ -134,7 +136,7 @@ public class RolloutCheck {
 		}
 	}
 	private static void checkTheCommandSavesWhatItRecorded( EnvConfig config ){
-		File file = new File( System.getProperty( "java.io.tmpdir" ), "rolloutcheck-command.replay" );
+		File file = new File( scratch, "rolloutcheck-command.replay" );
 		if ( file.exists() && !file.delete()){
 			fail( "could not clear " + file + " before writing the fixture" );
 			return;
