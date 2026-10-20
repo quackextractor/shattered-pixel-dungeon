@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The camera's screen shake no longer spends the gameplay RNG.** `Camera.update` drew the shake's two
+  offsets from `Random`, the gameplay stream, and only a rendered game has a camera to shake - so the
+  trainer never spent those values and the viewer did. How many it spent depended on how long the shake
+  lasted, which depends on the frame rate, so the two streams parted at a different step on every run.
+  Measured on `ZRD-CVK-QYT`: the divergence was at steps 213, 235, 477, 519 and 552 in five runs of the
+  same recording, and the ordered draw log agreed for 144 draws. The shake draws from `PRandom` now, the
+  log agrees for **537** draws, and the divergence is one step rather than a race. `observecheck` holds
+  it; reinstating `Random.Float` fails it with "the camera's screen shake spent 2 value(s) from the
+  gameplay RNG".
+- **The replay speed is not capped at 16x.** The cap clamped the viewer gate's own speed of 40 without
+  saying so, so the gate measured itself running at 16x while its 300s child timeout had been sized for
+  40x. One step is applied per frame however fast the multiplier is, so a large speed changes nothing
+  but how many frames a step takes. `playbackcheck` reads 40x and 1000x back as asked for.
 - **A full backpack on a revisited floor crashed the worker.** A floor loaded from its save has heaps
   with no sprite; `GameScene.create` gives each one a sprite in the real game, and the headless
   pipeline did not. `Hero.actPickUp` calls `heap.sprite.drop()` when the pickup fails, so
@@ -22,6 +35,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Found when a 60-generation run asked to checkpoint every 10 was killed at 16 with no `weights.bin`.
   Options now start from the file's value like every other setting and the flag overwrites it;
   `checkpointcheck` parses a file saying 7/5 with and without the flags (9 -> 10 checks).
+
+### Changed
+- **`reward.stall_penalty` is 4500, from 3000** - the death's price and the turn limit's, added. A
+  stall is a death the run did not die of, plus a floor spent without descending. 3000 was 500 above
+  dying and less than the 800 of damage a dying run would have taken, so a run that stopped was cheaper
+  than a run that died at the end of a floor, and the 48-generation run learned to stop: stalls went
+  from 37 episodes of 960 to 376, deaths from 573 to 176, and the episodes reaching floor 2 went back
+  to zero. `rewardcheck` carries the property - a stall costs more than a late death - and reinstating
+  3000 fails it. The cost is stated rather than discovered later: an early death is unchanged and is
+  still cheaper than a stall, which was already true and is `issues.md` 20's entry.
+- **`rewardcheck` is 42 cases**, from 41.
+
+### Measured
+- **The best and the worst recording of `retrain-0.11.0-60`, read in full.** The best is
+  `PFW-ZSB-FXL` (-1676.16, DUELIST, depth 2, 599 turns, DEATH) and the worst is `DQZ-XJW-KFG-r2`
+  (-4869.24, CLERIC, depth 1, 1380 turns, DEATH). Both rest and wait for a third of their steps: 138
+  rests and 44 waits in the best, 163 and 131 in the worst. The worst never left floor 1 and its health
+  trace is a staircase down one point at a time - hunger, not a fight. The agent learned to keep an
+  episode alive rather than to descend, which is the stall the run's ending counts record.
+  Evidence `out/evidence/retrain-0.11.0-60/best-worst-replays.txt`.
 
 ### Added
 - **`transitioncheck` walks onto the exit through `env.step`** (12 -> 13). The hero starts beside the

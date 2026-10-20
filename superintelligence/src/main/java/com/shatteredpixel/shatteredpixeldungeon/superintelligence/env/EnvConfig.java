@@ -150,7 +150,7 @@ public class EnvConfig {
 	public float deathPenalty = 2500f;
 
 
-	public float stallPenalty = 3000f;
+	public float stallPenalty = 4500f;
 
 
 	public float turnLimitPenalty = 2000f;

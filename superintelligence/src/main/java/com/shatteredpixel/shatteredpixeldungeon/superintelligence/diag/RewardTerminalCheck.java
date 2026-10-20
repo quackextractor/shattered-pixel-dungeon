@@ -169,6 +169,24 @@ public final class RewardTerminalCheck {
 	}
 
 
+	public static void checkStallCostsMoreThanALateDeath( EnvConfig config ){
+		double lateDeath = config.deathPenalty + config.turnLimitPenalty;
+
+		if (config.stallPenalty < lateDeath){
+			fail( "a stall costs " + config.stallPenalty + " and a death that comes at the end of a floor"
+					+ " costs " + config.deathPenalty + " plus the " + config.turnLimitPenalty
+					+ " of a floor spent without descending, which is " + lateDeath + ". Below that,"
+					+ " standing still is cheaper than dying at the end of a run, and the run learns to"
+					+ " stop: 48 generations moved from 37 stalled episodes of 960 to 376 while the"
+					+ " episodes reaching floor 2 went back to zero." );
+			return;
+		}
+
+		System.out.println( "  a stall costs " + fmt( config.stallPenalty ) + ", more than a late death's "
+				+ fmt( lateDeath ) + " (death " + fmt( config.deathPenalty ) + " plus a floor spent"
+				+ " without descending " + fmt( config.turnLimitPenalty ) + ")" );
+	}
+
 	public static void checkTerminalsAreOrdered( EnvConfig config ){
 		double stall = -config.stallPenalty;
 		double death = -config.deathPenalty;

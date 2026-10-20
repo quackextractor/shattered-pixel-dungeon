@@ -21,6 +21,14 @@ centred on the hero, which was one of the two levers named below.
       stair potential is unreachable from the entrance until the door is found (`Phi` is 0 on an
       unreachable cell). Measure how often that holds across seeds before reading a depth-2 shaping
       curve.
+- [ ] **Re-measure the stall price, then the run.** The 48-generation run of `retrain-0.11.0-60`
+      moved the policy from dying to stalling and the score got **worse** with it: stalls 37 → 376
+      episodes of 960, deaths 573 → 176, episodes reaching floor 2 0 → 5 → **0**. The best and the
+      worst recording of that run say the same thing - the agent rests and waits for a third of every
+      episode, and the worst one never left floor 1 and starved at 1380 turns. `reward.stall_penalty`
+      is now 4500 (the death's price and the turn limit's, added), so a stall costs more than dying
+      late; the next run has to say whether that moved the episodes reaching floor 2. Evidence
+      `out/evidence/retrain-0.11.0-60/best-worst-replays.txt`; the numbers are in `CHANGELOG.md`.
 
 `meanScore` moved **-182.32 +/- 56.4** over the 30-generation re-measurement — about 3 sigma in the
 **wrong** direction — and `depth>=2` is **0 of 960 episodes** again. `meanTurns` rose 542.79 →

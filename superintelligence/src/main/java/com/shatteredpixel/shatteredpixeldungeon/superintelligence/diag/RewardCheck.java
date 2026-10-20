@@ -4,7 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 
 public class RewardCheck {
 
-	private static final int CHECKS = 41;
+	private static final int CHECKS = 42;
 
 	public static void main( String[] args ){
 		EnvConfig config = new EnvConfig();
@@ -14,6 +14,7 @@ public class RewardCheck {
 		RewardTerminalCheck.checkAnItemActionInWorldIsNotARefusal( config );
 		RewardTerminalCheck.checkStallIsNotANaturalEnding( config );
 		RewardTerminalCheck.checkStallCostsMoreThanDying( config );
+		RewardTerminalCheck.checkStallCostsMoreThanALateDeath( config );
 		RewardTerminalCheck.checkTerminalsAreOrdered( config );
 		RewardTerminalCheck.checkDepthBeatsAPerFloorTurnLimit( config );
 		RewardTerminalCheck.checkExplorationCannotOutbuyADescent( config );
