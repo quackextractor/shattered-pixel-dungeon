@@ -8,7 +8,7 @@ import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.watabou.noosa.MovieClip;
 import com.watabou.utils.Callback;
 
-public class HeadlessSprite extends CharSprite {
+public class HeadlessSprite extends CharSprite implements HeadlessStandIn {
 
 	public HeadlessSprite(){
 		super();
@@ -120,7 +120,7 @@ public class HeadlessSprite extends CharSprite {
 
 	@Override
 	public void play( MovieClip.Animation anim ){
-
+		if (anim != null && !anim.looped && ch != null) onComplete( anim );
 	}
 
 	@Override

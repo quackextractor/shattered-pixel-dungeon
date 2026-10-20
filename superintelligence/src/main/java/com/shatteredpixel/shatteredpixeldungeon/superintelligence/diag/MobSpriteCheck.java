@@ -24,13 +24,14 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class MobSpriteCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 4 + SpriteCastCases.CHECKS;
 
 	public static void main( String[] args ){
 		checkMirrorImageIsUsable();
 		checkTheImagesTakePart();
 		checkARenderedGameNeverReachesTheBranch();
 		checkARangedZapCompletesItsTurn();
+		SpriteCastCases.run();
 
 		System.exit( GateReport.report( "item-created mobs", CHECKS ));
 	}
@@ -207,7 +208,7 @@ public class MobSpriteCheck {
 		return images;
 	}
 
-	private static SPDEnv freshRun( String seed ){
+	static SPDEnv freshRun( String seed ){
 		HeadlessServices.install( Scratch.dir( "mobspritecheck" ));
 		HeadlessServices.disableSaving( true );
 
@@ -221,7 +222,7 @@ public class MobSpriteCheck {
 		return env;
 	}
 
-	private static String topFrame( Throwable t ){
+	static String topFrame( Throwable t ){
 		for (StackTraceElement frame : t.getStackTrace()){
 			if (frame.getClassName().startsWith( "com.shatteredpixel." )){
 				return frame.getClassName().substring( frame.getClassName().lastIndexOf( '.' ) + 1 )

@@ -7,7 +7,45 @@ dependencies {
     implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
     runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
 }
-ext.appMainClass = 'com.shatteredpixel.shatteredpixeldungeon.superintelligence.Main'
+def headlessSpriteTemplate = file('src/main/java/com/shatteredpixel/shatteredpixeldungeon/superintelligence/headless/HeadlessSprite.java')
+def headlessSpriteDir = layout.buildDirectory.dir('generated/sources/headlessSprites/java')
+def headlessSpriteBases = [
+        'EyeSprite', 'DM300Sprite', 'GooSprite', 'GhoulSprite',
+        'CrystalGuardianSprite$Blue', 'CrystalGuardianSprite$Green', 'CrystalGuardianSprite$Red',
+        'CrystalSpireSprite$Blue', 'CrystalSpireSprite$Green', 'CrystalSpireSprite$Red',
+        'GnollGeomancerSprite', 'GnollGuardSprite', 'GolemSprite', 'NecromancerSprite',
+        'SpectralNecromancerSprite=superintelligence.headless.HeadlessSpectralNecromancerBase',
+        'PrismaticSprite', 'RatKingSprite', 'PylonSprite',
+        'VaultBossElementalSprite', 'RipperSprite', 'WardSprite'
+]
+tasks.register('headlessSprites') {
+    group = 'superintelligence'
+    description = 'Generates a headless subclass of every sprite class the game casts a mob sprite to.'
+    inputs.file headlessSpriteTemplate
+    inputs.property 'bases', headlessSpriteBases
+    outputs.dir headlessSpriteDir
+    doLast {
+        def template = headlessSpriteTemplate.getText('UTF-8')
+        def header = 'public class HeadlessSprite extends CharSprite implements HeadlessStandIn {'
+        if (!template.contains(header) || !template.contains('public HeadlessSprite(){')) {
+            throw new GradleException("HeadlessSprite.java no longer declares '${header}' and its no-argument constructor")
+        }
+        def out = new File(headlessSpriteDir.get().asFile, 'com/shatteredpixel/shatteredpixeldungeon/superintelligence/headless')
+        project.delete(out)
+        out.mkdirs()
+        headlessSpriteBases.each { String entry ->
+            def base = entry.tokenize('=')[0]
+            def name = 'Headless' + base.replace('$', '')
+            def parent = 'com.shatteredpixel.shatteredpixeldungeon.' + (entry.contains('=')
+                    ? entry.tokenize('=')[1] : 'sprites.' + base.replace('$', '.'))
+            new File(out, name + '.java').setText(template
+                    .replace(header, "public class ${name} extends ${parent} implements HeadlessStandIn {")
+                    .replace('public HeadlessSprite(){', "public ${name}(){"), 'UTF-8')
+        }
+    }
+}
+sourceSets.main.java.srcDir(files(headlessSpriteDir).builtBy('headlessSprites'))
+ext.appMainClass ='com.shatteredpixel.shatteredpixeldungeon.superintelligence.Main'
 application.mainClass = appMainClass
 processResources {
     from new File(project(':core').projectDir, '/src/main/assets')

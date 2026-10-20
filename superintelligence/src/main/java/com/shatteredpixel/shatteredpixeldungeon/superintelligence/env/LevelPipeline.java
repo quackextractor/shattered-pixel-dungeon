@@ -9,8 +9,9 @@ import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessSprite;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessSprites;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessStandIn;
 import com.shatteredpixel.shatteredpixeldungeon.utils.DungeonSeed;
 import com.watabou.utils.PathFinder;
 
@@ -114,9 +115,8 @@ public class LevelPipeline {
 
 	public static void spriteFor( com.shatteredpixel.shatteredpixeldungeon.actors.Char ch ){
 		if (ch == null) return;
-		if (ch.sprite instanceof HeadlessSprite) return;
-		HeadlessSprite sprite = new HeadlessSprite();
-		sprite.link( ch );
+		if (ch.sprite instanceof HeadlessStandIn) return;
+		HeadlessSprites.create( ch ).link( ch );
 	}
 
 
@@ -181,7 +181,7 @@ public class LevelPipeline {
 	private void attachLateSprites(){
 		if (Dungeon.level == null) return;
 		for (com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob mob : Dungeon.level.mobs){
-			if (!(mob.sprite instanceof HeadlessSprite)){
+			if (!(mob.sprite instanceof HeadlessStandIn)){
 				spriteFor( mob );
 			}
 		}
