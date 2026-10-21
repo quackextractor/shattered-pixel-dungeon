@@ -68,6 +68,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Short cycle with the forfeit, 16 workers x 3 generations: endings death 12 / stalled 4,
   then 15 / 1, then 7 / 9 (all `free_step`); depth 1 throughout. Evidence
   `out/evidence/forfeit-quick.{csv,log}`.
+- `long-1021`, 30 generations, 16 workers x 4 episodes, after the grass fix: 85.2 min, 135s a
+  generation. `meanScore` +191.89 +/- 54.6, objective +104.88 +/- 69.7, best -2251 at gen 18.
+  Endings first third to last: death 85% -> 87%, stalled 15% -> 11%, turn_limit 1% -> 2%;
+  depth>=2 0.2% -> 0.1%. Score gain is fewer stalls, not descent. Evidence
+  `out/evidence/long-1021.{csv,log}`.
+- Docs: completed entries removed from `TODO.md` and `issues.md`; `PLAN-data-flow.md`,
+  `PLAN-reward-signals.md` and `WORKER-DATA-FLOW.md` deleted (done); declined items in `REJECTED.md`.
 
 - **The viewer gate plays the corpus flat out and re-plays only what diverged, on its own.** The
   gate ran eight children at a time and reported whatever diverged, and playback is timing

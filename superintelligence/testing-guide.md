@@ -395,7 +395,7 @@ more than one update thread.**
 `parallelcheck` passed throughout, because all four of its cases build their own `Network[]` and call
 `oneSample` on each in a serial loop. It proves the *reduction* - N independent networks accumulate the
 same gradient as one - and it never asks `ShardedUpdate` where its shards' networks come from. The
-requirement it was supposed to cover was recorded in `PLAN-data-flow.md` §8 as **"Parallel update
+requirement it was supposed to cover was recorded in the data-flow plan as **"Parallel update
 silently races on shared state | high ... Needs its own equivalence check"**: the right requirement,
 pointed at a gate that could not carry it.
 

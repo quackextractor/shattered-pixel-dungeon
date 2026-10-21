@@ -108,7 +108,7 @@ And the five things:
   action in the game  -  `WAIT`, which moves nothing  -  walked straight into the guard that triggers it.
   A 20-generation run converged `meanScore` on exactly -5.0 with turns collapsing 62 -> 8. `STALLED` is
   now zero and priced by turn cost alone. Measured after: `meanScore` +3.29, `meanTurns` 56,
-  `valueLoss` 0.44. See [`PLAN-reward-signals.md`](PLAN-reward-signals.md).
+  `valueLoss` 0.44. See `CHANGELOG.md`.
 - **`REST` was a one-way door, and that was the real cause of a 100% stall rate.** The agent was not
   choosing to idle - it was being trapped. `ActionMapper` set `hero.resting = true` without setting a
   `curAction`, so `Hero.act` took the rest branch forever and never called `ready()`; and
@@ -127,7 +127,7 @@ And the five things:
   which touches a statically-initialised film - killed worker processes. And `HeadlessSprite.die`
   invoked the death callback to fake an animation, recursing `Hero.die` -> `Char.die` -> `sprite.die`
   until the stack gave out, which means `DEATH`, the ending the whole reward function is built around,
-  was unreachable. See [`PLAN-reward-signals.md`](PLAN-reward-signals.md) sections 7-8.
+  was unreachable. See `CHANGELOG.md`.
 - **`OPEN_INVENTORY` also acted on the world.** It was missing from `ActionMapper.apply`'s switch, so it
   fell through to `pickInteractCell()` + `handleCell()` - the path `INTERACT` takes. Opening the
   inventory therefore also moved the hero, attacked a mob, picked up a heap or took a transition. It was
@@ -216,7 +216,7 @@ And the five things:
 
 The update is 3.29x faster at `--update-threads 4`, so a 100-generation run is now a matter of
 hours rather than most of a day. **What is left is to run one and find out whether it learns**
-(`TODO.md` Section 1). See [`PLAN-data-flow.md`](PLAN-data-flow.md), whose steps are all resolved.
+(`TODO.md` Section 1). Data-flow plan done; declined steps in `REJECTED.md`.
 
 **The reward now prices the objective, and the price of giving up is above the price of dying.** Three
 things were wrong with it, and each was a property rather than a size:
