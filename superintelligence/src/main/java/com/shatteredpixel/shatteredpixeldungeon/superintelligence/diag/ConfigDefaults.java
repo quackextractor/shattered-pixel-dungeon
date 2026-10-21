@@ -128,6 +128,7 @@ public final class ConfigDefaults {
 			case "train.checkpoint_every":    return String.valueOf( hyper.checkpointEvery );
 			case "train.record_every":        return String.valueOf( hyper.recordEvery );
 			case "train.random_seed_rate":    return String.valueOf( hyper.randomSeedRate );
+			case "train.min_active_seeds":    return String.valueOf( hyper.minActiveSeeds );
 
 			case "ipc.pipe_buffer_bytes":     return String.valueOf( hyper.pipeBufferBytes );
 			case "ipc.push_chunk_bytes":      return String.valueOf( hyper.pushChunkBytes );
@@ -245,6 +246,7 @@ public final class ConfigDefaults {
 			case "train.checkpoint_every":    return "3";
 			case "train.record_every":        return "3";
 			case "train.random_seed_rate":    return "0.5";
+			case "train.min_active_seeds":    return "10";
 
 			case "ipc.pipe_buffer_bytes":     return "65536";
 			case "ipc.push_chunk_bytes":      return "8192";

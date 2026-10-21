@@ -9,7 +9,7 @@ import java.util.List;
 
 public class SeedScheduleCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 6;
 
 	private static final int POOL = 100;
 
@@ -19,6 +19,7 @@ public class SeedScheduleCheck {
 		checkADifferentSeedDrawsADifferentSequence();
 		checkAResumedPoolContinuesTheInterruptedSequence();
 		checkAResumedPoolDoesNotRepeatGenerationZero();
+		checkTheFloorOnActiveSeedsHolds();
 
 		System.exit( GateReport.report( "seed schedule", CHECKS ));
 	}
@@ -41,6 +42,26 @@ public class SeedScheduleCheck {
 		return out;
 	}
 
+
+	private static void checkTheFloorOnActiveSeedsHolds(){
+		SeedPool pool = pool( 20261021L, 0 );
+		pool.randomFraction = 0f;
+		pool.minActive = 10;
+		pool.activeSeeds( 1 );
+		java.util.Set< String > seen = new java.util.HashSet<>( draw( pool, 400 ));
+		int floored = pool.activeSeeds();
+		pool.minActive = 500;
+		pool.activeSeeds( 1 );
+		int capped = pool.activeSeeds();
+
+		if (floored != 10 || seen.size() != 10 || capped != POOL){
+			fail( "train.min_active_seeds 10 left " + floored + " active and " + seen.size() + " distinct in 400 draws"
+					+ " after the schedule asked for 1; 500 left " + capped + " of a " + POOL + "-seed pool."
+					+ " Wanted 10, 10 and " + POOL + "." );
+			return;
+		}
+		System.out.println( "  train.min_active_seeds 10 holds 10 seeds against a schedule asking for 1, and caps at the pool" );
+	}
 
 	private static void checkDrawsAreAPlainFunctionOfTheirIndex(){
 		SeedPool forward = pool( 20261016L, 0 );

@@ -19,7 +19,8 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
         explore before stairs (1.97, stalls 8 -> 21), read scrolls / drink potions (2.23; an unknown
         potion at 8 HP was toxic gas), wait for an approaching mob (2.17). Policy already beats it (2.6-2.9).
   - [ ] `USE` loop on non-consumables (Waterskin, VelvetPouch) stalls episodes.
-  - [ ] Seed schedule: 1 locked seed until depth > 5 trains on one dungeon.
+  - [ ] Seed schedule: 1 locked seed until depth > 5 trains on one dungeon (`teach-demo-51`: depth 4 only
+        there, random seeds mean 2.0). `train.min_active_seeds` added; run with 100 next.
 - [ ] **Walks to stairs?** Measure how often episodes end nearer stairs than they started, against a
       random walk on same floors. `EXIT_BEACON` lights only after stairs seen; `StairPotential` pays
       from step 1.

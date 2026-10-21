@@ -101,6 +101,7 @@ public class EnvConfigBinder {
 			"rl.adam_eps",
 
 			"train.random_seed_rate",
+			"train.min_active_seeds",
 			"train.checkpoint_every",
 			"train.record_every",
 
@@ -348,6 +349,7 @@ public class EnvConfigBinder {
 			case "rl.adam_eps":               hyper.adamEps = decimal( key, value, origin ); break;
 
 			case "train.random_seed_rate":    hyper.randomSeedRate = decimal( key, value, origin ); break;
+			case "train.min_active_seeds":    hyper.minActiveSeeds = integer( key, value, origin ); break;
 			case "train.checkpoint_every":    hyper.checkpointEvery = integer( key, value, origin ); break;
 			case "train.record_every":        hyper.recordEvery = integer( key, value, origin ); break;
 

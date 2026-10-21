@@ -69,6 +69,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed twice already. The guard is unreachable today (every loop path breaks), so this is hygiene.
 
 ### Added
+- `train.min_active_seeds` (`SPD_TRAIN_MIN_ACTIVE_SEEDS`, default 1): fewest locked seeds the schedule
+  trains on. The schedule held 1 seed until a floor past 5, so `teach-demo-51` spent 90% of 800
+  episodes in one dungeon. `seedcheck` case 6, mutation-tested.
 - **Go-Explore demonstrations.** `goexplore <out-dir> <iterations> <seed...>` keeps an archive of
   (depth, cell/3) states with the shortest action prefix reaching each, returns to one by replaying
   its prefix from the seed, explores 60 steps with `DescentBot` plus 25% random moves, and writes each
@@ -153,6 +156,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on 1 locked seed (`seeds=1/100` until best depth > 5). clip 0.57-0.83, kl 0.04-0.66. Evidence
   `out/evidence/teach-demo-{30,22}.{csv,log,console.txt}`, gen-20 weights
   `out/evidence/teach-demo-30-gen20.weights.bin`.
+- `teach-demo-51`, gen 31-50 resumed, 10 workers x 4: mean depth 2.53 -> 2.35, best 4 in 18 of 20
+  generations, entropy 0.65 -> 0.96, deaths 30-40 of 40. Teacher weight at gen 50 is 0.03; no break out
+  of the plateau. 81 recordings (`out/evidence/teach-demo-51-replays.txt`), all clean in the viewer
+  (363s): the locked seed `VKG-DWR-EIN` reaches depth 4 (+3623); the 79 random seeds 20 / 41 / 19 / 0 on
+  depths 1 / 2 / 3 / 4, mean 2.0. Mage worst (1.54). The plateau is one memorised dungeon.
 - `train.ps1` said `-Generations` after `-Resume` was the total; it is the number added. The
   resume meant as 2 generations ran 22. Comment fixed, example added.
 

@@ -58,6 +58,8 @@ public class PpoHyperparameters {
 
 	public double randomSeedRate = 0.10;
 
+	public int minActiveSeeds = 1;
+
 	public int checkpointEvery = 25;
 
 	public int recordEvery = 1;
@@ -108,6 +110,7 @@ public class PpoHyperparameters {
 		require( adamEps > 0f, "rl.adam_eps must be positive, was " + adamEps );
 		require( randomSeedRate >= 0.0 && randomSeedRate <= 1.0,
 				"train.random_seed_rate must be in [0, 1], was " + randomSeedRate );
+		require( minActiveSeeds >= 1, "train.min_active_seeds must be at least 1, was " + minActiveSeeds );
 		require( checkpointEvery >= 1, "train.checkpoint_every must be at least 1, was " + checkpointEvery );
 		require( recordEvery >= 1, "train.record_every must be at least 1, was " + recordEvery );
 		require( pipeBufferBytes > 0, "ipc.pipe_buffer_bytes must be positive, was " + pipeBufferBytes );
@@ -151,6 +154,7 @@ public class PpoHyperparameters {
 		p.adamBeta2 = adamBeta2;
 		p.adamEps = adamEps;
 		p.randomSeedRate = randomSeedRate;
+		p.minActiveSeeds = minActiveSeeds;
 		p.checkpointEvery = checkpointEvery;
 		p.recordEvery = recordEvery;
 		p.pipeBufferBytes = pipeBufferBytes;

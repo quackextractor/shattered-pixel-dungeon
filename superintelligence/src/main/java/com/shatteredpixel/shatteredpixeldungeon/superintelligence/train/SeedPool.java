@@ -44,8 +44,15 @@ public class SeedPool {
 		activeSeeds = Math.min( 1, locked.size() );
 	}
 
+	public int minActive = 1;
+
+	public void configure( PpoHyperparameters hyper ){
+		randomFraction = (float) hyper.randomSeedRate;
+		minActive = hyper.minActiveSeeds;
+	}
+
 	public void activeSeeds( int count ){
-		activeSeeds = Math.max( 1, Math.min( count, locked.size() ) );
+		activeSeeds = Math.max( 1, Math.min( Math.max( count, minActive ), locked.size() ) );
 	}
 
 	public int activeSeeds(){
