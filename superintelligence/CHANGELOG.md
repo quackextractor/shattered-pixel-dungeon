@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A quickslot target from the floor left behind crashed the trainer.** `QuickSlotButton.lastTarget`
+  is UI state the rendered game drops on its next toolbar refresh, once the target is no longer an
+  actor. Headless has no toolbar, so after an ascent from depth 4 to 3 `Hero.checkVisibleMobs` read
+  `fieldOfView[1527]` on a 1292-cell floor. `LevelPipeline` now drops it after every switch, by the
+  same test. Found by goexplore on DEMO-3 at step 273; reproduces from a fresh start and is gone after
+  the fix. `transitioncheck` 14, red without it. Evidence `out/evidence/goexplore-crash.txt`.
 - **Twenty-six render-only draws spent the gameplay RNG, the same trap as the camera shake.**
   `InterlevelScene.update` drew `Random.Float(false)` - the base generator - twice per frame for
   the whole of a chasm fall, so any recording with a fall parted from the viewer at a frame-rate

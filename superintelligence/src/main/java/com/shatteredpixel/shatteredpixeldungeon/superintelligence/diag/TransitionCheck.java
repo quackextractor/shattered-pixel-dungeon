@@ -23,7 +23,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Re
 
 public class TransitionCheck {
 
-	private static final int CHECKS = 13;
+	private static final int CHECKS = 14;
 
 	static final String SEED = "TRANSITION";
 
@@ -52,6 +52,7 @@ public class TransitionCheck {
 		checkTheStairsAreNotShapedAcrossAFloorChange();
 		checkClimbingBackDoesNotRefillTheFloorsTurns();
 		checkAVisitedFloorIsTheSameFloor();
+		checkAStaleTargetDoesNotCrossAFloor();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     floor transitions: " + CHECKS + " checks passed" );
@@ -61,6 +62,26 @@ public class TransitionCheck {
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}
+	}
+
+
+	private static void checkAStaleTargetDoesNotCrossAFloor(){
+		SPDEnv env = freshRun();
+		Mob mob = Dungeon.level.mobs.isEmpty() ? null : Dungeon.level.mobs.iterator().next();
+		if (mob == null){
+			fail( "the first floor of " + SEED + " has no mob to target, so this case measured nothing" );
+			return;
+		}
+		com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton.lastTarget = mob;
+		boolean down = descend( env );
+		if (down && env.running()) env.step( Action.WAIT, 0 );
+		if (!down || Dungeon.depth != 2 || com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton.lastTarget == mob){
+			fail( "the quickslot target " + mob.getClass().getSimpleName() + " at " + mob.pos + " outlived its floor."
+					+ " The toolbar drops a target that is no longer an actor; headless there is no toolbar, and"
+					+ " Hero.checkVisibleMobs indexed the new floor's field of view with the old cell (goexplore DEMO-3)" );
+			return;
+		}
+		System.out.println( "  a quickslot target from the floor left behind is dropped on arrival" );
 	}
 
 

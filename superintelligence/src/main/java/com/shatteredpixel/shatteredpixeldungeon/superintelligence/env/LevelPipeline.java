@@ -235,6 +235,7 @@ public class LevelPipeline {
 		Dungeon.switchLevel( level, pos );
 
 		attachSprites();
+		dropStaleTarget();
 		PathFinder.setMapSize( level.width(), level.height() );
 
 		clearSwitchRequest();
@@ -257,11 +258,19 @@ public class LevelPipeline {
 				com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.fallIntoPit ));
 
 		attachSprites();
+		dropStaleTarget();
 		PathFinder.setMapSize( level.width(), level.height() );
 
 		clearSwitchRequest();
 	}
 
+
+	static void dropStaleTarget(){
+		com.shatteredpixel.shatteredpixeldungeon.actors.Char target = com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton.lastTarget;
+		if (target != null && !com.shatteredpixel.shatteredpixeldungeon.actors.Actor.chars().contains( target )){
+			com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton.lastTarget = null;
+		}
+	}
 
 	private static void saveAll(){
 		try {
