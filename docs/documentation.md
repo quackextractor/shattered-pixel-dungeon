@@ -325,7 +325,7 @@ thirty-three gates, one invocation:
 | `seedcheck` | A resumed run that replays generation 0's seed sequence from the top |
 | `doccheck` | Documentation that is unreadable as text, a gate that is not reachable, a gate count that disagrees with the list, **or** a Java path in a document that names a file which is not there |
 | `stallcausecheck` | A stall guard that is unreachable or that reports the wrong guard |
-| `pushcheck` | A policy push written in one call rather than chunked, a failed write retried, or one not refused by name |
+| `pushcheck` | A policy push written in one call rather than chunked, a failed write retried, or one not refused by name, **or** the stall watchdog firing during the trainer's own update |
 | `javaclint` | Any compiler warning at all, under `-Xlint:all -Werror` |
 
 Plus `playbackcheck` in `:desktop`, which drives the rendered viewer with no window and no scene, and

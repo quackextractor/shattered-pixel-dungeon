@@ -14,7 +14,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class PushCheck {
 
-	private static final int CHECKS = 6;
+	private static final int CHECKS = 7;
 
 	public static void main( String[] args ){		int chunk = TrainerWorkers.pushChunkBytes;
 		byte[] payload = payload( 3, chunk );
@@ -25,8 +25,39 @@ public class PushCheck {
 		checkAnEmptyPayloadWritesNothing( chunk );
 		checkAFailureIsNotRetried( chunk );
 		checkAFailureIsRefusedByName( chunk );
+		checkTheWatchdogWaitsOutTheTrainersOwnUpdate();
 
 		System.exit( GateReport.report( "policy push", CHECKS ));
+	}
+
+	private static void checkTheWatchdogWaitsOutTheTrainersOwnUpdate(){
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerPool pool =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerPool();
+		pool.stallTimeoutMs( 5 );
+		pause( 30 );
+		boolean idleStalls = pool.stalled();
+		pool.trainerBusy( true );
+		pause( 30 );
+		boolean busyStalls = pool.stalled();
+		pool.trainerBusy( false );
+		boolean resumedStalls = pool.stalled();
+
+		if (!idleStalls || busyStalls || resumedStalls){
+			fail( "the stall watchdog with workers silent past its timeout reported " + idleStalls + ", during the"
+					+ " trainer's own update " + busyStalls + ", the moment the update ended " + resumedStalls
+					+ "; wanted true, false, false. A PPO update over the timeout killed teach-demo-51 as a"
+					+ " worker stall with every worker idle on stdin." );
+			return;
+		}
+		System.out.println( "  the stall watchdog fires on silent workers, not during the trainer's own update" );
+	}
+
+	private static void pause( long ms ){
+		try {
+			Thread.sleep( ms );
+		} catch (InterruptedException e){
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	private static void checkNoWriteExceedsTheChunk( int chunk, byte[] payload ){

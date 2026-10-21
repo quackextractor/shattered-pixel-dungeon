@@ -79,6 +79,15 @@ public class TrainerWorkers {
 		pool.startWatchdog();
 	}
 
+	public void whileBusy( Runnable work ){
+		pool.trainerBusy( true );
+		try {
+			work.run();
+		} finally {
+			pool.trainerBusy( false );
+		}
+	}
+
 	public Job job( WorkerHandle worker, String seed, HeroClass heroClass, boolean wantReplay ){
 		return new Job( worker, seed, heroClass, wantReplay );
 	}

@@ -319,8 +319,10 @@ Worker.writeWeights( out, ppo.network );
 			if (!episodes.isEmpty()){
 				ResourceStats.Interval update = ResourceStats.start();
 				ppo.teacherWeight = (float) (teacherWeight * Math.pow( 0.5, epoch / teacherHalfLife ));
-				if (demos != null) ppo.demonstrations.addAll( demos.transitions( ppo.network ));
-				ppo.update();
+				pool.whileBusy( () -> {
+					if (demos != null) ppo.demonstrations.addAll( demos.transitions( ppo.network ));
+					ppo.update();
+				} );
 				update.stop();
 				lastUpdate = update;
 

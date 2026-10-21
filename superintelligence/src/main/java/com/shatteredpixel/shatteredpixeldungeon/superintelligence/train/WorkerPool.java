@@ -84,6 +84,17 @@ public class WorkerPool {
 		lastProgressNanos = System.nanoTime();
 }
 
+	private volatile boolean trainerBusy;
+
+	public void trainerBusy( boolean busy ){
+		trainerBusy = busy;
+		progress();
+	}
+
+	public boolean stalled(){
+		return !trainerBusy && (System.nanoTime() - lastProgressNanos) / 1_000_000 > stallTimeoutMs;
+	}
+
 	public void stallTimeoutMs( long ms ){
 		stallTimeoutMs = ms;
 	}
@@ -105,8 +116,7 @@ public class WorkerPool {
 					return;
 				}
 
-				long quietMs = (System.nanoTime() - lastProgressNanos) / 1_000_000;
-				if (quietMs > stallTimeoutMs) onStall( quietMs );
+				if (stalled()) onStall( (System.nanoTime() - lastProgressNanos) / 1_000_000 );
 			}
 		}, "watchdog" );
 		watchdog.setDaemon( true );

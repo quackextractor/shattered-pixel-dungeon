@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A PPO update longer than the stall timeout killed the run as a worker stall.** The watchdog counted
+  the trainer's own update as worker silence. Demonstrations add ~50s per update (79.5s against 30.2s
+  on 1,113 samples); at 6-12 workers the update passed 180s and `teach-demo-51` exited 3 three times
+  before generation 32, every worker idle on stdin and the trainer in `PPO.oneChunk` (jstack,
+  `out/evidence/hang-repro3.jstack.*`). `TrainerWorkers.whileBusy` pauses the watchdog for the update.
+  `pushcheck` case 7, mutation-tested.
 - **A thrown item cost what the trainer charged, not what the game charges.** `Item.throwAt` (trainer
   and viewer, via `SlotAction.castAt`) read `castDelay` after `onThrow`; `Item.cast` reads it before. A
   first Shuriken cost 1.2 turns instead of 0, and a MissileWeapon that killed its target was charged
