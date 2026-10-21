@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the -2000 turn limit - with a value baseline near -3000 that made both cost far more than a
   death, the same "dying is the cheap way out" from the other side. `endedNaturally` still
   reports the mix; the learner sees every ending as an end.
+- **Trampling high grass in view re-observes in the trainer too** (`issues.md` 21).
+  `HighGrass.trample` called `Dungeon.observe()` only inside `scene() instanceof GameScene`, so the
+  trainer's next passive search used the field of view from before the step and skipped rolls for
+  secret cells the viewer rolled for. `ZRD-CVK-QYT` parted there at step 627, one draw apart.
+  `Levitation.detach` gated its `occupyCell` the same way. Both now also run under
+  `GameScene.headlessGameplay()`, as `Level.drop` does. Recordings made before this can diverge
+  headlessly wherever the hero trampled grass in view.
 - `SPDEnv.settle`'s actor-step guard dropped `terminate()`'s price, the third sibling of the fault
   fixed twice already. The guard is unreachable today (every loop path breaks), so this is hygiene.
 
@@ -41,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bytecode; 13 remaining are allow-listed with a reason, and a stale entry fails the gate.
   Mutation-tested on `InterlevelScene` and `WandOfWarding`.
 - `rewardcheck` 46 cases: an early death is not cheaper than a late one; a priced ending is terminal.
+- `observecheck` 18 cases: trampling grass in view refreshes the field of view, and landing from
+  levitation presses the cell. Both fail with the engine change reverted.
 
 ### Changed
 - **`./train.ps1` runs the short cycle by default** (3 generations, 4 workers, 1 episode); `-Long`

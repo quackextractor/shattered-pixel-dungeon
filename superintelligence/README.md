@@ -705,8 +705,9 @@ rather than behaviour-changing when a renderer is present:
   bypassed. `Level.drop`'s press is guarded on a `GameScene` being the current scene, so a headless
   process never pressed the cell a thrown or dropped item landed on and every throw was inert. The flag
   is set by `HeadlessGame.install()` and by nothing else, so a game with a renderer never reads it and
-  the guard's answer there is unchanged. It is the one entry below that widens a condition rather than
-  tolerating a null.
+  the guard's answer there is unchanged. `Levitation.detach`'s press and `HighGrass.trample`'s
+  `Dungeon.observe()` read it the same way (`issues.md` 21). These are the entries that widen a
+  condition rather than tolerate a null.
 
 The last one is not cosmetic bookkeeping. **Four presentation draws on the gameplay stream cost the
 viewer 16 generator values per run that a headless run never spent**, which is why a recording could

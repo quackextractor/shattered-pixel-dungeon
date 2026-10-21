@@ -21,7 +21,7 @@ episode and not for a custom-seed replay of the same episode - and the worker-si
 names every one of them. Measurements, mutations and the worker wiring are in `CHANGELOG.md`,
 `out/evidence/issue-26/ordered-log-named.txt` and `out/evidence/issue-37/named.txt`.
 
-## 21. The viewer and the trainer service a level transition in the same step but not the same place - **OPEN**
+## 21. The viewer and the trainer service a level transition in the same step but not the same place - **FIXED**
 `superintelligence/trainer-replays/retrain-0.11.0-60/ZRD-CVK-QYT.dat` verifies headlessly in 888
 steps with the score identical to the last decimal, and diverges in the real viewer. It is a
 generation-48 recording of a WARRIOR that ping-pongs between floors 1 and 2 through the stairs.
@@ -40,11 +40,21 @@ one step rather than a race. `observecheck` holds it.
 draws nothing, although `heroFOV[1088]` is 1 in both world snapshots at step 626. The dew roll at
 step 630 then reads a different value, so the trainer drops a Dewdrop on 910 and the viewer does
 not, and step 638's `INTERACT` picks that heap in one environment and the stairs underfoot in the
-other. Next measurement: `hero.fieldOfView` at that `search` call in each environment -
-`Hero.handle` allocates a private array when its length does not match the level, and a revisited
-floor is exactly that case. Evidence `out/evidence/issue-21/`.
+other.
 
-**What is left, and it is a level transition.** The divergence is now at **step 638**, and it is
+**2026-10-21, fixed: the trainer skipped a gameplay `Dungeon.observe()` behind a scene check.**
+The hero's move to 1129 tramples high grass, and `HighGrass.trample` re-observes only
+`if (scene() instanceof GameScene)`. The viewer's field of view therefore already holds 1088 when
+`search(false)` runs; the trainer's is still the one computed from 1128. `HighGrass` now
+re-observes when `GameScene.headlessGameplay()` too, the form `Level.drop` already uses, and
+`Levitation.detach`'s `occupyCell` - the same gate around gameplay - got the same change. Headless
+`rngtrace` now matches the viewer's trace step for step to 627 and spends **592** draws there as
+the viewer does (591 before). The recording itself was made with the fault, so it still diverges,
+now headlessly as well. `observecheck` holds both (18 cases), and each fails with its half of the
+fix reverted. Evidence `out/evidence/issue-21/headless-observe.txt`, `viewer-observe.txt` and
+`headless-rng-fixed.txt`.
+
+**What was left, and it was a level transition (explained by the above).** The divergence is now at **step 638**, and it is
 this: the recording's `INTERACT` leaves the hero on cell 910 of floor 1 and the viewer's leaves it
 on cell 1170 of floor 2.
 

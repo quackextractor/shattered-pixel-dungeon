@@ -169,7 +169,10 @@ public class HighGrass {
 			GameScene.updateMap(pos);
 			
 			CellEmitter.get(pos).burst(LeafParticle.LEVEL_SPECIFIC, 4);
-			if (Dungeon.level.heroFOV[pos]) Dungeon.observe();
+		}
+		if ((ShatteredPixelDungeon.scene() instanceof GameScene || GameScene.headlessGameplay())
+				&& Dungeon.level.heroFOV[pos]) {
+			Dungeon.observe();
 		}
 	}
 }

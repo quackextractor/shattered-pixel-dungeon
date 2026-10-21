@@ -17,8 +17,9 @@ proposal record, and it is ordered by what each change is rather than by when it
 The last category is the one that looks like a behaviour change and is not, and it is also the one that
 did real damage: see §4 for the twelve values it cost and the fourteen recordings it broke.
 
-**One entry is a fourth thing**, and it is called out where it lives: `Level.drop` widens a guard so a
-renderer-bypassed process presses the cell a thrown item lands on (§7). In a game with a renderer the
+**Three entries are a fourth thing**, and they are called out where they live: `Level.drop`,
+`Levitation.detach` and `HighGrass.trample` widen a scene guard so a renderer-bypassed process does
+the gameplay half of what the guard covers (§7). In a game with a renderer the
 guard's answer is bit-for-bit what it was, because the new term is only ever set by a process that has
 no scene — but it does change what a *headless* run does, and that is the whole point of it.
 
@@ -241,9 +242,15 @@ entry per draw with none unnamed, and an empty log while counting is off.
   and `Level.drop` only calls `pressCell` under a scene test too (`Level.java:1068`). A gameplay guard
   keyed on a scene — the same shape as the animation clock above.
 
-  The levitation half is covered from the supervisor. `LevelPipeline.runToHeroReady` makes the
-  decision the guard was suppressing and calls the game's own `Chasm.heroFall`, so the outcome matches
-  without `:core` changing. The guard itself is still in the game.
+  The levitation half was covered from the supervisor for chasms only: `LevelPipeline.runToHeroReady`
+  calls the game's own `Chasm.heroFall` when the hero stands on a pit unflying. A trap, a plate or
+  high grass under the landing cell stayed unpressed. **2026-10-21: the guard takes the same
+  `|| GameScene.headlessGameplay()` as `Level.drop`**, and so does `HighGrass.trample`'s
+  `Dungeon.observe()`, which was the fault behind `issues.md` 21: the trainer's next passive search
+  read the field of view from before the step and skipped a roll the viewer made. A landing on a pit
+  now requests the switch from inside the engine, and `runToHeroReady` sees `switchRequested()`
+  before its own pit test, so the fall happens once. `observecheck` holds both, `fallcheck` stays 7
+  of 7, `:desktop:viewcheck` 20 of 20.
 
   **`Level.drop`'s half is now closed too, and it is the only change here that widens a condition rather
   than tolerating a null.** One line in `:core`:

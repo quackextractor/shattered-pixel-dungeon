@@ -140,8 +140,12 @@ still open:
       `HeroSprite`, and the headless subclasses cannot cover it: `HeroSprite` needs its texture film
       (`HeroSprite.tiers()`), which does not exist without graphics. The 17 mob sprite casts are covered
       and gated by `mobspritecheck`.
-- [ ] **`issues.md` 21: passive search parts the streams at step 627 of `ZRD-CVK-QYT`.** Probe
-      `hero.fieldOfView` vs `level.heroFOV` at `Hero.search` in both environments.
+- [x] **`issues.md` 21: passive search parts the streams at step 627 of `ZRD-CVK-QYT`.**
+      `HighGrass.trample` observed only under `GameScene`; fixed with `Levitation.detach`.
+- [ ] **Grep the rest of `core` for gameplay behind `scene() instanceof GameScene`.** Two found and
+      fixed. Of the rest, `ImpShopRoom.onLevelLoad` is gameplay (`GameScene.add` also `Actor.add`s
+      the shopkeeper; the headless branch only lists it) but depth 20 is out of reach; the others
+      read as UI-only. `GameScene.scene != null` guards were not audited. Nothing gates the pattern.
 - [ ] **Strix** (`~/.strix/bin/strix.exe`, free OpenRouter model) ran on a source copy in
       `out/strix/` and produced no finding before it was stopped; `renderdrawcheck` covers the
       determinism traps it was pointed at.

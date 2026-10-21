@@ -53,6 +53,8 @@ public class ObserveCheck {
 		check( () -> ObserveLeakCheck.checkAnUnseenFloorEncodesToNothing( encoder ) );
 		check( () -> ObserveLeakCheck.checkTheWindowIsCentredOnTheHero( encoder ) );
 		check( ObserveCheck::checkTheExitBeaconSurvivesTheWindowEdge );
+		check( SceneGateCheck::checkTramplingInViewRefreshesTheFieldOfView );
+		check( SceneGateCheck::checkLandingFromLevitationPressesTheCell );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + checksRun + " checks passed" );
 		} else {

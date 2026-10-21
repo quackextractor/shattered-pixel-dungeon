@@ -622,3 +622,5 @@ them are a no-op when a renderer is present, and each is listed with its reason 
   `HeadlessGame.install()` and by nothing else, so **a game with a renderer never reads it and the
   guard's answer there is unchanged** - which is what distinguishes it from the version that deleted the
   scene test, which altered alchemy and resurrection in a game that is not this module's.
+  `Levitation.detach` (press the landing cell) and `HighGrass.trample` (re-observe after trampling in
+  view) take the same term; the second was the cause of `ZRD-CVK-QYT`'s divergence at step 627.
