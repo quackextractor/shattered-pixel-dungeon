@@ -317,10 +317,14 @@ Two changes, both uncommitted, both no-ops in a game with a renderer:
 // GameScene.java - the scene-less branch, mirroring add( Heap )
 } else if (headlessGameplay && headlessMobSprite != null ) {
     if (mob.sprite == null ) headlessMobSprite.accept( mob );
-    Actor.add( mob );
+    Actor.addDelayed( mob, delay );
     mob.spendToWhole();
 }
 ```
+
+`Actor.addDelayed( mob, delay )`, not `Actor.add( mob )`: the first version dropped `delay`, so headlessly a
+Swarm clone (`SPLIT_DELAY`) acted in the turn it split and the rendered game's did not. Found by
+`teach-demo-31` recording `WMB-PGL-MXP`, which the viewer played to step 127 and no further.
 
 ```java
 // MirrorImage.java - the identical guard SentryRoom.act already carries, seventeen lines above

@@ -27,7 +27,8 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
 - [ ] **`HeroDisguise` crashes headlessly.** Cursed wand casts sprite to `HeroSprite`, which needs
       texture film.
 - [ ] **Audit `core` for gameplay behind `scene() instanceof GameScene` / `GameScene.scene != null`.**
-      `ImpShopRoom.onLevelLoad` is gameplay (depth 20). No gate.
+      `ImpShopRoom.onLevelLoad` is gameplay (depth 20). No gate. Found so far: `GameScene.add( Mob, float )`
+      headless branch dropped `delay` (fixed). Check every other scene-less branch for dropped arguments.
 - [ ] **Viewer plays unknown hero class as Warrior.** `ReplayLauncher`, `ReplayPlayback.heroClass()`.
 - [ ] **`restartcheck` copies `ReplayController.restart` sequence** instead of calling it.
 - [ ] **`RewardTerminalCheck` 607 lines**, over 600 limit.

@@ -305,7 +305,7 @@ thirty-three gates, one invocation:
 | `fallcheck` | A chasm fall the environment drops, a free landing, or a fall that leaves a hand-off behind for the next episode |
 | dialogcheck | An answer that cannot reach a dialog the game opened, a dialog taken away when the game declined it, or one reported a turn late |
 | `presscheck` | A dropped item that does not fire the trap or flatten the grass it landed on, **or** level generation pressing a cell it is still building |
-| `mobspritecheck` | An item that creates a mob leaving it with no sprite, or outside `Actor.chars`, **or** the stand-in factory being reachable with the headless flag off, **or** a mob that casts its sprite getting a stand-in it cannot be cast to |
+| `mobspritecheck` | An item that creates a mob leaving it with no sprite, or outside `Actor.chars`, **or** the stand-in factory being reachable with the headless flag off, **or** a mob that casts its sprite getting a stand-in it cannot be cast to, **or** a mob added with a delay acting before it |
 | `replaycheck` | A catalog that misgroups, misranks or misresolves, **or** mislabels what it did |
 | `rolloutcheck` | A recording with no usable seed |
 | `modecheck` | An action mode the environment cannot reach |

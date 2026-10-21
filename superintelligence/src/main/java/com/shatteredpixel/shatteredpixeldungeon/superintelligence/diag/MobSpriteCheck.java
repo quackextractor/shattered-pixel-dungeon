@@ -24,13 +24,14 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class MobSpriteCheck {
 
-	private static final int CHECKS = 4 + SpriteCastCases.CHECKS;
+	private static final int CHECKS = 5 + SpriteCastCases.CHECKS;
 
 	public static void main( String[] args ){
 		checkMirrorImageIsUsable();
 		checkTheImagesTakePart();
 		checkARenderedGameNeverReachesTheBranch();
 		checkARangedZapCompletesItsTurn();
+		checkADelayedMobWaitsItsDelay();
 		SpriteCastCases.run();
 
 		System.exit( GateReport.report( "item-created mobs", CHECKS ));
@@ -167,6 +168,31 @@ public class MobSpriteCheck {
 		}
 
 		System.out.println( "  a Shaman zapping from range completes its turn headlessly" );
+	}
+
+	private static void checkADelayedMobWaitsItsDelay(){
+		freshRun( "MOBSPROUT-E" );
+		Mob mob = Dungeon.level.createMob();
+		int cell = -1;
+		for (int c = 0; c < Dungeon.level.length() && cell < 0; c++){
+			if (Dungeon.level.passable[ c ] && Actor.findChar( c ) == null) cell = c;
+		}
+		if (mob == null || cell < 0){
+			fail( "the level produced no mob or no free cell, so the delay was never checked." );
+			return;
+		}
+		mob.pos = cell;
+		float expected = (float) Math.ceil( Actor.now() + 1f ) - Actor.now();
+		GameScene.add( mob, 1f );
+
+		if (Math.abs( mob.cooldown() - expected ) > 1e-4f){
+			fail( "GameScene.add(mob, 1) headlessly left the mob " + mob.cooldown() + " turns from acting, the"
+					+ " rendered game leaves it " + expected + ". A Swarm clone then attacks a turn early and"
+					+ " the viewer diverges from the recording." );
+			return;
+		}
+
+		System.out.println( "  a mob added with a delay waits " + mob.cooldown() + " turns, as in the rendered game" );
 	}
 
 	private static Throwable lastThrown;

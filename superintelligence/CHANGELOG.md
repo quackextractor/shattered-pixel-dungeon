@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A mob added with a delay acted a turn early in the trainer.** `GameScene.add( Mob, float )`'s
+  scene-less branch called `Actor.add( mob )` and dropped `delay`; the rendered game calls
+  `Actor.addDelayed`. A Swarm clone (`SPLIT_DELAY`) therefore moved and attacked in the turn it split.
+  `teach-demo-31/WMB-PGL-MXP` (Duelist, depth 3) diverged in the viewer at step 127, hp 16 against 14:
+  both sides placed the clone on 326, headless moved it to 288 at t=16, viewer acted it at t=17.
+  RNG draw counts matched through step 125 and parted at 126 (747 vs 734). Now `Actor.addDelayed`;
+  headless draws 734 there, as the viewer does. Recordings made before this with a delayed spawn
+  (Swarm, DemonSpawner, Wraith, traps, WandOfLivingEarth, ...) no longer verify. `mobspritecheck`
+  case 5, mutation-tested; corpus viewcheck 20 of 20.
 - **A quickslot target from the floor left behind crashed the trainer.** `QuickSlotButton.lastTarget`
   is UI state the rendered game drops on its next toolbar refresh, once the target is no longer an
   actor. Headless has no toolbar, so after an ascent from depth 4 to 3 `Hero.checkVisibleMobs` read

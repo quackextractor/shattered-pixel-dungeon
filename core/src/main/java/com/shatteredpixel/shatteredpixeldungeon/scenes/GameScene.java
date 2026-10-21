@@ -1248,7 +1248,7 @@ public synchronized void update() {
 			mob.spendToWhole();
 		} else if (headlessGameplay && headlessMobSprite != null ) {
 			if (mob.sprite == null ) headlessMobSprite.accept( mob );
-			Actor.add( mob );
+			Actor.addDelayed( mob, delay );
 			mob.spendToWhole();
 		}
 	}
