@@ -14,7 +14,10 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
   - [x] `goexplore` demonstrations, `./train.ps1 -Demos`, `rl.demo_weight`.
   - [x] Long run with teacher + demos: depth>=2 in ~90% of episodes, plateau depth 2.5-2.9, best 4.
   - [ ] Death must cost more than a dive pays: a depth-4 death scores +2543 (`issues.md` 20).
-  - [ ] Teacher retreats/drinks below ~40% HP; policy imitates current no-retreat bot.
+  - [ ] Teacher is the ceiling: `DescentBot` 100 episodes (20 seeds x 5 classes, `out/analysis/BotStats.java`)
+        mean depth 2.21, level 1.67, 92 deaths; 55 of 93 fatal fights start at >=75% HP. Tried, no gain:
+        explore before stairs (1.97, stalls 8 -> 21), read scrolls / drink potions (2.23; an unknown
+        potion at 8 HP was toxic gas), wait for an approaching mob (2.17). Policy already beats it (2.6-2.9).
   - [ ] `USE` loop on non-consumables (Waterskin, VelvetPouch) stalls episodes.
   - [ ] Seed schedule: 1 locked seed until depth > 5 trains on one dungeon.
 - [ ] **Walks to stairs?** Measure how often episodes end nearer stairs than they started, against a
@@ -32,7 +35,8 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
       texture film.
 - [ ] **Audit `core` for gameplay behind `scene() instanceof GameScene` / `GameScene.scene != null`.**
       `ImpShopRoom.onLevelLoad` is gameplay (depth 20). No gate. Found so far: `GameScene.add( Mob, float )`
-      headless branch dropped `delay` (fixed). Check every other scene-less branch for dropped arguments.
+      headless branch dropped `delay` (fixed); `Item.throwAt` order (fixed). Other `scene()` guards are
+      presentation. Left: `GameScene.add( Heap )` sets `autoExplored` only with a scene (score stat only).
 - [ ] **Viewer plays unknown hero class as Warrior.** `ReplayLauncher`, `ReplayPlayback.heroClass()`.
 - [ ] **`restartcheck` copies `ReplayController.restart` sequence** instead of calling it.
 - [ ] **`RewardTerminalCheck` 607 lines**, over 600 limit.

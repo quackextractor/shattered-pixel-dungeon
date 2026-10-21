@@ -710,10 +710,30 @@ public class Item implements Bundlable {
 	public void throwAt( Hero user, int dst ){
 		final int cell = throwPos( user, dst );
 		user.busy();
+		Char enemy = Actor.findChar( cell );
+		final float delay = castDelay( user, cell );
+		curUser = user;
 		Item detached = detach( user.belongings.backpack );
+		if (enemy == null){
+			user.spend( delay );
+			if (detached != null) detached.onThrow( cell );
+			user.next();
+			return;
+		}
 		if (detached != null) detached.onThrow( cell );
-		user.spend( castDelay( user, cell ) );
-		user.next();
+		if (curUser.hasTalent(Talent.IMPROVISED_PROJECTILES)
+				&& !(this instanceof MissileWeapon)
+				&& curUser.buff(Talent.ImprovisedProjectileCooldown.class) == null
+				&& enemy.alignment != curUser.alignment){
+			Buff.affect(enemy, Blindness.class, 1f + curUser.pointsInTalent(Talent.IMPROVISED_PROJECTILES));
+			Buff.affect(curUser, Talent.ImprovisedProjectileCooldown.class, 50f);
+		}
+		if (user.buff(Talent.LethalMomentumTracker.class) != null){
+			user.buff(Talent.LethalMomentumTracker.class).detach();
+			user.next();
+		} else {
+			user.spendAndNext(delay);
+		}
 	}
 
 	public float pickupDelay(){

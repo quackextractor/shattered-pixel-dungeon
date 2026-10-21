@@ -59,7 +59,7 @@ survive that. Each of these is a guard, not a stub: with a renderer present ever
 | `Button.press()`, `WndOptions.optionCount/optionSelectable/selectOption` | let a caller drive a dialog with no UI |
 | `Image` | the five-argument constructor and `frame(int,int,int,int)` tolerate a null texture. `frame(RectF)` had carried the guard since the bypass landed and the two callers that derive the frame rectangle *from* the texture had not, which is how one hero stepping at a chasm killed a worker: `Chasm.heroJump` builds its "jump?" prompt out of `new Image(Dungeon.level.tilesTex(), ...)` and there is no renderer to load that texture |
 | `CharSprite.sprint/updateArmor/read/fall` | presentation hooks moved up from `HeroSprite` and `MobSprite`, so game logic stops depending on the concrete sprite type |
-| `Item.throwAt()` | the sprite-free half of `Item.cast` |
+| `Item.throwAt()` | the sprite-free half of `Item.cast`, same order: `castDelay` before `onThrow`, talents included |
 | `Chrome.get()`, `ShadowBox`, `NinePatch`, `TextureCache`, `PlatformSupport` | tolerate a null GL context |
 | `ItemSpriteSheet.Icons.film()` | the icon film is built on first use, so an item constructor no longer forces a texture decode. The icon *indices* are game data and are still pure arithmetic |
 | `TargetHealthIndicator`, `AttackIndicator`, `QuickSlotButton` | null guards for headless operation |

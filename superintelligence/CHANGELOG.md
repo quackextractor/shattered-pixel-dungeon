@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A thrown item cost what the trainer charged, not what the game charges.** `Item.throwAt` (trainer
+  and viewer, via `SlotAction.castAt`) read `castDelay` after `onThrow`; `Item.cast` reads it before. A
+  first Shuriken cost 1.2 turns instead of 0, and a MissileWeapon that killed its target was charged
+  the no-target delay. It also skipped Improvised Projectiles' blind, Lethal Momentum's free turn,
+  `curUser`, and the empty-cell order (spend before `onThrow`). Now mirrors `cast` minus sprite and
+  sound. `actioncheck` case 5, mutation-tested; corpus viewcheck 20 of 20.
 - **A mob added with a delay acted a turn early in the trainer.** `GameScene.add( Mob, float )`'s
   scene-less branch called `Actor.add( mob )` and dropped `delay`; the rendered game calls
   `Actor.addDelayed`. A Swarm clone (`SPLIT_DELAY`) therefore moved and attacked in the turn it split.

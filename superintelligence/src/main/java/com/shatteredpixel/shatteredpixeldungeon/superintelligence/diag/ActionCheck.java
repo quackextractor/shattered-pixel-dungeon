@@ -23,7 +23,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class ActionCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 5;
 
 
 	private static final String[] SEEDS = {
@@ -38,10 +38,43 @@ public class ActionCheck {
 		checkDirectionOffsetsMatchTheGamesConvention();
 		checkTheActionSpaceIsStillComplete();
 		checkAQuantityRecipeBrewsFromOneStack();
+		checkAThrowCostsWhatTheGameCharges();
 
 		System.exit( GateReport.report( "action semantics", CHECKS ));
 	}
 
+
+	private static void checkAThrowCostsWhatTheGameCharges(){
+		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );
+		env.reset( "ACTIONCHECK-THROW", HeroClass.WARRIOR );
+		Hero hero = Dungeon.hero;
+		int cell = -1;
+		for (int d : com.watabou.utils.PathFinder.NEIGHBOURS8){
+			int c = hero.pos + d;
+			if (cell < 0 && Dungeon.level.passable[ c ] && com.shatteredpixel.shatteredpixeldungeon.actors.Actor.findChar( c ) == null) cell = c;
+		}
+		if (cell < 0){
+			fail( "no free cell beside the hero, so the throw was never made" );
+			return;
+		}
+		com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat rat = new com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat();
+		rat.pos = cell;
+		rat.HP = rat.HT = 1000;
+		com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.add( rat );
+		com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.Shuriken shuriken =
+				new com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.Shuriken();
+		shuriken.quantity( 2 ).collect();
+		shuriken.setCurrent( hero );
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SlotAction.castAt( hero, shuriken, cell );
+
+		if (hero.cooldown() != 0f){
+			fail( "a first Shuriken thrown at an adjacent rat cost the hero " + hero.cooldown() + " turns; the game"
+					+ " charges 0. Item.throwAt read castDelay after onThrow had started the instant-throw tracker,"
+					+ " where Item.cast reads it before." );
+			return;
+		}
+		System.out.println( "  a first Shuriken throw is instant, as Item.cast charges it" );
+	}
 
 	private static void checkAQuantityRecipeBrewsFromOneStack(){
 		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );

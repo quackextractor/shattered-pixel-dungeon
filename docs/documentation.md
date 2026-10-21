@@ -312,7 +312,7 @@ thirty-three gates, one invocation:
 | `restartcheck` | A restart that does not rebuild the same first floor, through a copy of the viewer's restart sequence |
 | `resetcheck` | A reset that does not isolate an episode from whatever ran before it |
 | `graphcheck` | A chart reporting a range it did not observe |
-| `actioncheck` | A movement action that does not move the way it is named |
+| `actioncheck` | A movement action that does not move the way it is named, **or** a throw charged differently from `Item.cast` |
 | `slotcheck` | A recorded slot index resolving to a different item, or a restore wiping a binding no index can name |
 | `verifycheck` | Verification that cannot detect an altered recording, **or** verification that certifies one that cannot be played |
 | `observecheck` | Reading the world drawing from the gameplay RNG, **or** a draw path the RNG trace cannot see, **or** a public static `Random` method the audit has never seen |
