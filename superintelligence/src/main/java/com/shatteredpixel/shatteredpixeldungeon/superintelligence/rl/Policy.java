@@ -111,6 +111,14 @@ public class Policy {
 	}
 
 
+	public static void accumulateImitationGradient( float[] probabilities, float[] mask, int teacher, float weight,
+			float[] outGradient ){
+		if (weight <= 0f || teacher < 0 || teacher >= mask.length || mask[ teacher ] <= 0.5f) return;
+		for (int k = 0; k < probabilities.length; k++){
+			if (mask[ k ] > 0.5f) outGradient[ k ] += weight * (probabilities[ k ] - (k == teacher ? 1f : 0f));
+		}
+	}
+
 	public static float logProbability( float[] probabilities, int index ){
 		return (float) Math.log( Math.max( probabilities[ index ], 1e-8f ) );
 	}

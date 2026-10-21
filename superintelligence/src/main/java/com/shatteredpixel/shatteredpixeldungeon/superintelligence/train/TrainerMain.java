@@ -52,6 +52,9 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 			trainer.checkpointing( options.save, options.checkpointEvery );
 
 			trainer.resume( options.resume );
+			if (options.demoDir != null){
+				trainer.demonstrations( new DemoSource( options.demoDir, new java.io.File( options.workDir, "demo-scratch" ), config ));
+			}
 
 			trainer.pool.launch( options.workers, options.javaHome, options.classpath,
 					out -> trainer.writeParams( out ) );

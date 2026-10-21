@@ -9,6 +9,8 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -229,6 +231,30 @@ public class EpisodeCollector {
 		flushTrace( env.seedText() );
 
 		return record;
+	}
+
+
+	public List< Transition > demonstrate( SPDEnv env, Replay replay, HeroClass heroClass, int episodeId ){
+		List< Transition > out = new ArrayList<>();
+		env.reset( replay.seedText, heroClass );
+		network.resetState();
+		for (int i = 0; i < replay.steps.size() && env.running(); i++){
+			Replay.Step step = replay.steps.get( i );
+			Action action = Action.valueOf( step.action );
+			Transition t = snapshot( env );
+			network.forward( env.grid(), env.inventory(), env.heroFeatures() );
+			t.liveHead = headFor( env.mode() );
+			t.actionIndex = action.index;
+			t.slotIndex = step.slot;
+			t.teacherIndex = t.liveHead == Policy.HEAD_ACTION ? action.index : step.slot;
+			t.demonstration = true;
+			t.episodeId = episodeId;
+			t.stepIndex = i;
+			out.add( t );
+			env.step( action, step.slot );
+		}
+		network.resetState();
+		return out;
 	}
 
 

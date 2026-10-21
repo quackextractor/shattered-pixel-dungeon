@@ -16,6 +16,8 @@ public class PpoHyperparameters {
 
 	public float teacherHalfLife = 10f;
 
+	public float demoWeight = 1f;
+
 	public float learningRate = 3e-4f;
 
 	public int minibatchSize = 8;
@@ -79,6 +81,7 @@ public class PpoHyperparameters {
 		require( entropyCoeff >= 0f, "rl.entropy_coefficient must be non-negative, was " + entropyCoeff );
 		require( teacherWeight >= 0f, "rl.teacher_weight must be non-negative, was " + teacherWeight );
 		require( teacherHalfLife > 0f, "rl.teacher_half_life must be positive, was " + teacherHalfLife );
+		require( demoWeight >= 0f, "rl.demo_weight must be non-negative, was " + demoWeight );
 		require( minibatchSize >= 1, "rl.minibatch_size must be at least 1, was " + minibatchSize );
 		require( epochs >= 1, "rl.epochs must be at least 1, was " + epochs );
 		require( updateThreads >= 0, "rl.update_threads must be zero or more, was " + updateThreads );
@@ -127,6 +130,7 @@ public class PpoHyperparameters {
 		p.entropyCoeff = entropyCoeff;
 		p.teacherWeight = teacherWeight;
 		p.teacherHalfLife = teacherHalfLife;
+		p.demoWeight = demoWeight;
 		p.learningRate = learningRate;
 		p.minibatchSize = minibatchSize;
 		p.epochs = epochs;

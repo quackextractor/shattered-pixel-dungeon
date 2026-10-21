@@ -70,6 +70,7 @@ public class Transition {
 	public int actionIndex;
 	public int slotIndex;
 	public int teacherIndex = -1;
+	public boolean demonstration;
 	public float oldLogProbability;
 	public float value;
 	public float reward;
@@ -107,6 +108,7 @@ public class Transition {
 		t.actionIndex = 0;
 		t.slotIndex = 0;
 		t.teacherIndex = -1;
+		t.demonstration = false;
 		t.pooled = false;
 		return t;
 	}

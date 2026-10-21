@@ -63,7 +63,10 @@ param(
     [switch] $Quick,
 
     # The long run: 30 generations, the pool sized to the machine. Anything named on the command line wins.
-    [switch] $Long
+    [switch] $Long,
+
+    # Directory of demonstration recordings (goexplore output) imitated every generation.
+    [string] $Demos
 )
 
 $ErrorActionPreference = 'Stop'
@@ -208,6 +211,7 @@ try {
     # answered ArrayIndexOutOfBoundsException, naming neither the flag nor what was missing) and
     # would have pointed at a different run's policy if it had parsed.
     if ($Resume)        { $trainArgs += @('--resume', $bin) }
+    if ($Demos)         { $trainArgs += @('--demos', $Demos) }
 
     $argLine = ($trainArgs -join ' ')
     Write-Host ''

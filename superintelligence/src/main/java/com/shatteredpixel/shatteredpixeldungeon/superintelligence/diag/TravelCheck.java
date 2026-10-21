@@ -7,6 +7,8 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Travel;
+import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.StairPotential;
@@ -16,7 +18,7 @@ import java.util.List;
 
 public class TravelCheck {
 
-	private static final int CHECKS = 3;
+	private static final int CHECKS = 4;
 
 	private static final String[] SEEDS = { "TRAVEL-A", "TRAVEL-B", "TRAVEL-C", "TRAVEL-D", "TRAVEL-E", "TRAVEL-F" };
 
@@ -29,6 +31,7 @@ public class TravelCheck {
 		checkUnseenStairsAreNotATarget();
 		checkTravelOnlyStepsOntoKnownCells();
 		checkTravellingAloneDescends();
+		checkTravelNeverCrossesTheUpstairs();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     travel actions: " + CHECKS + " checks passed" );
@@ -115,6 +118,29 @@ public class TravelCheck {
 			if (mob.isAlive() && Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return true;
 		}
 		return false;
+	}
+
+	private static void checkTravelNeverCrossesTheUpstairs(){
+		SPDEnv env = fresh( SEEDS[ 0 ] );
+		if (!RewardFixtures.descend( env ) || !env.running()){
+			fail( "could not reach depth 2 on " + SEEDS[ 0 ] + ", so this case measured nothing" );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+		LevelTransition up = Dungeon.level.getTransition( LevelTransition.Type.REGULAR_ENTRANCE );
+		for (int i = 0; i < 10 && env.running() && up != null && Dungeon.hero.pos == up.cell(); i++){
+			env.step( env.mode() == EnvMode.WORLD ? RewardFixtures.legalMove( env ) : Action.CANCEL, 0 );
+		}
+		if (Dungeon.depth != 2 || up == null || Dungeon.hero.pos == up.cell()){
+			fail( "the hero did not stand on depth 2 off its upstairs (depth " + Dungeon.depth + ", hero " + Dungeon.hero.pos + ", upstairs " + (up == null ? -1 : up.cell()) + "), so this case measured nothing" );
+			return;
+		}
+		if (Travel.walkable( Dungeon.level )[ up.cell() ]){
+			fail( "travel paths may cross the upstairs at " + up.cell() + ", so TRAVEL_EXPLORE climbs a floor"
+					+ " (goexplore DEMO-3 did, depth 4 -> 3)" );
+			return;
+		}
+		System.out.println( "  travel paths avoid the upstairs at " + up.cell() + " on depth 2" );
 	}
 
 	private static SPDEnv fresh( String seed ){

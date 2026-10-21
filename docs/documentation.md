@@ -215,6 +215,7 @@ objective:
 | `reward.visit_reward` | `1.5` | First time the hero stands on a cell, per floor (episodic count bonus) |
 | `rl.teacher_weight` | `1.0` | Imitation of `policy.DescentBot` on the student's own states; 0 turns it off |
 | `rl.teacher_half_life` | `10.0` | Generations over which the imitation weight halves |
+| `rl.demo_weight` | `1.0` | Imitation weight on `--demos` recordings (written by `goexplore`) |
 | `reward.turn_cost` | `1.0` | What an engine turn costs |
 | `reward.stall_penalty` | `3000.0` | What giving up costs. **Worse than dying** |
 | `reward.death_penalty` | `2500.0` | What dying costs |

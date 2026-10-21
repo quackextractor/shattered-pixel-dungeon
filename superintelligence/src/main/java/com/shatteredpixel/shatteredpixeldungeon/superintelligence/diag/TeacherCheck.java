@@ -11,6 +11,9 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.Headl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.DescentBot;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
@@ -21,7 +24,7 @@ import java.util.Random;
 
 public class TeacherCheck {
 
-	private static final int CHECKS = 2;
+	private static final int CHECKS = 3;
 
 	private static final String[] SEEDS = { "TEACHER-A", "TEACHER-B", "TEACHER-C", "TEACHER-D", "TEACHER-E", "TEACHER-F" };
 
@@ -33,6 +36,7 @@ public class TeacherCheck {
 
 		checkTheTeacherDescends();
 		checkAnUpdateMovesThePolicyTowardTheTeacher();
+		checkADemonstrationIsImitated();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     teacher: " + CHECKS + " checks passed" );
@@ -81,6 +85,68 @@ public class TeacherCheck {
 		}
 		System.out.println( "  one update moves p(teacher) " + taught[ 0 ] + " -> " + taught[ 1 ]
 				+ " with weight 1, " + untaught[ 0 ] + " -> " + untaught[ 1 ] + " with 0" );
+	}
+
+	private static void checkADemonstrationIsImitated(){
+		EnvConfig config = new EnvConfig();
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		env.reset( "TEACHER-DEMO", HeroClass.WARRIOR );
+		ReplayRecorder recorder = new ReplayRecorder();
+		recorder.begin( env.seedText(), HeroClass.WARRIOR.name(), 0, config.turnLimitPerFloor, config );
+		DescentBot bot = new DescentBot();
+		int[] secondary = new int[ 1 ];
+		for (int i = 0; i < 40 && env.running(); i++){
+			Action action = bot.act( env, secondary );
+			recorder.record( action, secondary[ 0 ], env.mode() );
+			float reward = (float) env.step( action, secondary[ 0 ] );
+			recorder.afterStep( env.heroPosition(), reward, env.lastStepActed() ? 1 : 0 );
+		}
+		recorder.end( 0, 1, env.turnsTotal(), 0, "DEMONSTRATION" );
+		Replay replay = recorder.replay();
+		float[] taught = demoProbabilityAcrossAnUpdate( config, replay, 1f );
+		float[] untaught = demoProbabilityAcrossAnUpdate( config, replay, 0f );
+		if (taught == null){
+			fail( "a " + replay.steps.size() + "-step demonstration did not come back as one flagged transition per"
+					+ " step, each labelled with the recorded action" );
+			return;
+		}
+		float gain = taught[ 1 ] - taught[ 0 ];
+		if (!(gain > 0.002f) || !(gain > 5f * Math.abs( untaught[ 1 ] - untaught[ 0 ] ))){
+			fail( "an update over a demonstration moved p(recorded action) " + taught[ 0 ] + " -> " + taught[ 1 ]
+					+ " with rl.demo_weight 1 and " + untaught[ 0 ] + " -> " + untaught[ 1 ] + " with 0" );
+			return;
+		}
+		System.out.println( "  a " + replay.steps.size() + "-step demonstration moves p(recorded) " + taught[ 0 ] + " -> "
+				+ taught[ 1 ] + " with weight 1, " + untaught[ 0 ] + " -> " + untaught[ 1 ] + " with 0" );
+	}
+
+	private static float[] demoProbabilityAcrossAnUpdate( EnvConfig config, Replay replay, float weight ){
+		PPO ppo = new PPO( config, new Random( 43L ));
+		ppo.demoWeight = weight;
+		ppo.entropyCoeff = 0f;
+		ppo.epochs = 1;
+		ppo.normaliseValues = false;
+		EpisodeCollector collector = new EpisodeCollector( config, ppo.network, new Random( 1 ), new Random( 2 ), 0.99f, 0.95f, 1f );
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		List< Transition > demo = collector.demonstrate( env, replay, HeroClass.WARRIOR, 1_000_000_000 );
+		if (demo.size() != replay.steps.size()) return null;
+		for (int i = 0; i < demo.size(); i++){
+			Transition t = demo.get( i );
+			boolean labelled = t.liveHead != Policy.HEAD_ACTION || t.teacherIndex == Action.valueOf( replay.steps.get( i ).action ).index;
+			if (!t.demonstration || !labelled) return null;
+		}
+		Transition first = demo.get( 0 );
+		float[] grid = new float[ ppo.network.gridLength() ];
+		first.unpackGrid( grid );
+		float before = probability( ppo, grid, first, first.teacherIndex );
+		Transition anchor = copy( first, config, ppo );
+		anchor.episodeId = 0;
+		anchor.stepIndex = 0;
+		anchor.oldLogProbability = (float) Math.log( Math.max( before, 1e-8f ));
+		ppo.addAll( java.util.Collections.singletonList( anchor ));
+		ppo.demonstrations.addAll( demo );
+		ppo.update();
+		return new float[]{ before, probability( ppo, grid, first, first.teacherIndex ) };
 	}
 
 	private static float[] teacherProbabilityAcrossAnUpdate( float weight ){

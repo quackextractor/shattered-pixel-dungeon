@@ -14,6 +14,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.ParalyticGas;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.StenchGas;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.ToxicGas;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
+import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.StairPotential;
 import com.watabou.utils.PathFinder;
 
@@ -83,6 +84,9 @@ public final class Travel {
 		boolean[] walk = new boolean[ level.length() ];
 		for (int c = 0; c < walk.length; c++){
 			walk[ c ] = level.passable[ c ] && known( level, c ) && !level.avoid[ c ];
+		}
+		for (LevelTransition t : level.transitions){
+			if (t.type != LevelTransition.Type.REGULAR_EXIT) walk[ t.cell() ] = false;
 		}
 		for (int c = 0; c < walk.length; c++){
 			if (!harmful( level, c ) && !remembered( level, c )) continue;

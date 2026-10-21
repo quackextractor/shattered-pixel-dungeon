@@ -48,6 +48,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed twice already. The guard is unreachable today (every loop path breaks), so this is hygiene.
 
 ### Added
+- **Go-Explore demonstrations.** `goexplore <out-dir> <iterations> <seed...>` keeps an archive of
+  (depth, cell/3) states with the shortest action prefix reaching each, returns to one by replaying
+  its prefix from the seed, explores 60 steps with `DescentBot` plus 25% random moves, and writes each
+  seed's deepest trajectory as a recording. 6 of 6 seeds reach depth 3-5 at 200 iterations in 48s;
+  all six verify headlessly and play clean in the real viewer. `./train.ps1 -Demos <dir>` replays them
+  every generation into flagged transitions that carry only the imitation term (`rl.demo_weight`, 1.0),
+  no PPO or value loss. `teachercheck` 3: a 40-step demonstration comes back one labelled transition
+  per step and moves p(recorded) 0.0600 -> 0.0662 against 0.0606 at weight 0 (red with the term
+  removed). Short cycle with 6 demos runs; entropy falls to 0.17 and depth stays 1 in 3 generations.
+- Travel paths no longer cross any transition but the downstairs: goexplore's DEMO-3 explored over the
+  upstairs on depth 4 and climbed. `travelcheck` 4, red without it. Recordings that use TRAVEL actions
+  replay under the current travel rules, so a change to them voids older ones; the corpus has none.
 - **Scripted teacher and imitation loss (kickstarting).** `policy.DescentBot` attacks what is
   adjacent, leaves harmful gas, eats when hungry, rests below 75% HP, takes seen stairs, explores,
   and searches walls that border unseen cells. Workers label each step with its choice on the live

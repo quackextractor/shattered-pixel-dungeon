@@ -11,8 +11,8 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
   - [x] `TRAVEL_STAIRS`, `TRAVEL_EXPLORE` actions.
   - [x] `DescentBot` teacher, imitation loss `rl.teacher_weight`, half-life 10 generations.
   - [ ] Bot dies in fights at depth 2-4 (9 floors / 6 seeds): no equipment, no potions, no retreat.
-  - [ ] Go-Explore on fixed seeds: archive (depth, cell), return by action replay, keep floor-reaching
-        trajectories as BC data.
+  - [x] `goexplore` demonstrations, `./train.ps1 -Demos`, `rl.demo_weight`.
+  - [ ] Long run with teacher + demos. Short cycle: entropy 0.17 by generation 2, depth 1.
 - [ ] **Walks to stairs?** Measure how often episodes end nearer stairs than they started, against a
       random walk on same floors. `EXIT_BEACON` lights only after stairs seen; `StairPotential` pays
       from step 1.

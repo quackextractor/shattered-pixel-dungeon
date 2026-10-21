@@ -49,6 +49,9 @@ public class TrainOptions {
 	public String replayGroup = "";
 
 
+	public File demoDir;
+
+
 	public int recordEvery = 1;
 
 
@@ -143,6 +146,7 @@ public class TrainOptions {
 				case "--out":         o.workDir = resolve( value( args, at )); i++; break;
 				case "--replay-dir":   o.replayDir = resolve( value( args, at )); i++; break;
 				case "--replay-group": o.replayGroup = value( args, at ); i++; break;
+				case "--demos":       o.demoDir = resolve( value( args, at )); i++; break;
 				case "--record-every": o.recordEvery = Integer.parseInt( value( args, at )); i++; break;
 				case "--stall-seconds":
 
