@@ -7,8 +7,7 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
 - [ ] **Agent dies on floor 1.** `issues.md` 20. Policy still near uniform after 608 Adam steps.
       In order, cheapest first:
   - [x] More gradient steps: 0.25 sample, 4 epochs, minibatch 8 (~9x).
-  - [ ] Exploration net positive: `reward.explore_reward` 0.05/cell vs `turn_cost` 1.0/turn. Episodic
-        cell-count bonus (E3B, NovelD).
+  - [x] Episodic visit bonus `reward.visit_reward` 1.5.
   - [ ] Macro action "travel to cell" (hero pathing, same as human click): seen stairs, nearest unexplored.
   - [ ] Scripted bot (explore, fight, eat, descend), behaviour-clone network, PPO fine-tune with BC/KL
         loss against forgetting. NetHack evidence: BC from AutoAscend + APPO beats pure RL.

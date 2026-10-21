@@ -34,6 +34,7 @@ public class RewardModel {
 	private boolean snapshotValid = false;
 	private int deepestPaid = 0;
 	private boolean lastStepAdvancedClock = true;
+	private final java.util.Map<Integer, java.util.BitSet> stoodOn = new java.util.HashMap<>();
 	public RewardModel( EnvConfig config, RewardLedger ledger, Curriculum curriculum ){
 		this.config = config;
 		this.ledger = ledger;
@@ -42,6 +43,7 @@ public class RewardModel {
 	public void resetSnapshot(){
 		snapshotValid = false;
 		deepestPaid = 0;
+		stoodOn.clear();
 		stairPotential.reset();
 	}
 	public StairPotential stairPotential(){
@@ -157,6 +159,11 @@ public class RewardModel {
 		int meals = Statistics.foodEaten;
 		if (meals > prevMeals && prevHunger < Hunger.HUNGRY){
 			ledger.add( RewardTerm.EATEN_EARLY, config.eatenEarlyPenalty * (meals - prevMeals), false );
+		}
+		java.util.BitSet floor = stoodOn.computeIfAbsent( depth * 64 + Dungeon.branch, k -> new java.util.BitSet() );
+		if (!floor.get( hero.pos )){
+			floor.set( hero.pos );
+			ledger.add( RewardTerm.VISIT, config.visitReward, false );
 		}
 		if (newlyExplored > 0){
 			ledger.add( RewardTerm.EXPLORE, config.exploreReward * newlyExplored, false );

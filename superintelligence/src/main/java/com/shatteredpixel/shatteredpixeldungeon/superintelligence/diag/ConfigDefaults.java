@@ -40,6 +40,7 @@ public final class ConfigDefaults {
 			case "reward.turn_cost":          return String.valueOf( config.turnCost );
 			case "reward.depth_reward":       return String.valueOf( config.depthReward );
 			case "reward.explore_reward":     return String.valueOf( config.exploreReward );
+			case "reward.visit_reward":       return String.valueOf( config.visitReward );
 			case "reward.max_hp_reward":      return String.valueOf( config.maxHpReward );
 			case "reward.talent_reward":      return String.valueOf( config.talentReward );
 			case "reward.gold_reward":        return String.valueOf( config.goldReward );
@@ -179,6 +180,7 @@ public final class ConfigDefaults {
 			case "reward.turn_cost":          return "0.5";
 			case "reward.depth_reward":       return "77.5";
 			case "reward.explore_reward":     return "0.5";
+			case "reward.visit_reward":       return "2.5";
 			case "reward.max_hp_reward":      return "1.5";
 			case "reward.talent_reward":      return "7.5";
 			case "reward.gold_reward":        return "0.5";

@@ -14,6 +14,9 @@ public enum RewardTerm {
 	EXPLORE( Type.EXPLORATION ),
 
 
+	VISIT( Type.EXPLORATION ),
+
+
 	STAIR_POTENTIAL( Type.EXPLORATION ),
 
 
@@ -120,6 +123,7 @@ public enum RewardTerm {
 			case STAIR_POTENTIAL:
 
 		case EXPLORE:
+			case VISIT:
 			case MAX_HP_GAIN:
 			case GOLD_GAIN:
 			case ITEM_PICKUP:

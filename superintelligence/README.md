@@ -225,7 +225,8 @@ things were wrong with it, and each was a property rather than a size:
   across 1040 floors, the largest is 81 tall and 419 exceed 48 on one side  -  so at the old 0.05 a hero
   that mapped a floor without ever touching the stairs earned *more* than descending did. That is the
   objective restated as a ratio, and it is why `bestDepth` had been 1 in every generation of every run.
-  Now `reward.depth_reward=1800.0` against `reward.explore_reward=0.05`.
+  Now `reward.depth_reward=1800.0` against `reward.explore_reward=0.05` and `reward.visit_reward=1.5`
+  per cell first stood on.
 - **Killing paid nothing and being hit cost something.** `KILL` was declared, `RewardLedger.countKill()`
   was written and never called, and `prevKills` was snapshotted and never compared. Walking past
   everything was optimal, which is the shape every recorded death has: the hero does not lose a fight,

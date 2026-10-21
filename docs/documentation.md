@@ -212,6 +212,7 @@ objective:
 | `reward.profile` | `default` | `default` pays every term. `depth_only` pays **only a descent, a win, and the four prices for stopping** - see below |
 | `reward.depth_reward` | `1800.0` | What one floor deeper is worth |
 | `reward.explore_reward` | `0.05` | What a newly-seen tile is worth |
+| `reward.visit_reward` | `1.5` | First time the hero stands on a cell, per floor (episodic count bonus) |
 | `reward.turn_cost` | `1.0` | What an engine turn costs |
 | `reward.stall_penalty` | `3000.0` | What giving up costs. **Worse than dying** |
 | `reward.death_penalty` | `2500.0` | What dying costs |

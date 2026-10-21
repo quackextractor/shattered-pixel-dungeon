@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed twice already. The guard is unreachable today (every loop path breaks), so this is hygiene.
 
 ### Added
+- **`VISIT` reward: 1.5 per cell the hero first stands on, per floor** (`reward.visit_reward`). Episodic
+  count bonus, after E3B and NovelD; seeing a tile paid 0.05, so walking somewhere new paid nothing
+  next to the 1.0 a turn costs. `rewardcheck` 48: waiting pays once, pacing two cells pays twice
+  (red when every step pays), and 600 cells (900) stay under a descent (1800).
 - **`renderdrawcheck`**, gate 34: reads the compiled classes of `core` and `SPD-classes` and fails on
   any presentation method (`Gizmo`, `Emitter.Factory`, `staffFx`) that calls a gameplay `Random`
   draw outside a pushed generator. Found 23 sites by source scan and 3 more (anonymous classes) by
