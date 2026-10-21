@@ -12,7 +12,11 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
   - [x] `DescentBot` teacher, imitation loss `rl.teacher_weight`, half-life 10 generations.
   - [ ] Bot dies in fights at depth 2-4 (9 floors / 6 seeds): no equipment, no potions, no retreat.
   - [x] `goexplore` demonstrations, `./train.ps1 -Demos`, `rl.demo_weight`.
-  - [ ] Long run with teacher + demos. Short cycle: entropy 0.17 by generation 2, depth 1.
+  - [x] Long run with teacher + demos: depth>=2 in ~90% of episodes, plateau depth 2.5-2.9, best 4.
+  - [ ] Death must cost more than a dive pays: a depth-4 death scores +2543 (`issues.md` 20).
+  - [ ] Teacher retreats/drinks below ~40% HP; policy imitates current no-retreat bot.
+  - [ ] `USE` loop on non-consumables (Waterskin, VelvetPouch) stalls episodes.
+  - [ ] Seed schedule: 1 locked seed until depth > 5 trains on one dungeon.
 - [ ] **Walks to stairs?** Measure how often episodes end nearer stairs than they started, against a
       random walk on same floors. `EXIT_BEACON` lights only after stairs seen; `StairPotential` pays
       from step 1.
