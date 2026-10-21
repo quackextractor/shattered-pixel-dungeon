@@ -62,7 +62,7 @@ public class Trainer {
 
 	private int episodesPerWorker;
 
-	public double sampleRate = 0.05;
+	public double sampleRate = 0.25;
 
 	double sampleRate(){
 		return Math.min( 1.0, Math.max( 0.0, sampleRate ) );

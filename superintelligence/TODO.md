@@ -6,7 +6,7 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
 
 - [ ] **Agent dies on floor 1.** `issues.md` 20. Policy still near uniform after 608 Adam steps.
       In order, cheapest first:
-  - [ ] More gradient steps: `rl.sample_rate` 0.05 -> 1.0, `rl.epochs` 2 -> 4 (~40x steps). Config only.
+  - [x] More gradient steps: 0.25 sample, 4 epochs, minibatch 8 (~9x).
   - [ ] Exploration net positive: `reward.explore_reward` 0.05/cell vs `turn_cost` 1.0/turn. Episodic
         cell-count bonus (E3B, NovelD).
   - [ ] Macro action "travel to cell" (hero pathing, same as human click): seen stairs, nearest unexplored.

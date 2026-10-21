@@ -14,13 +14,13 @@ public class PpoHyperparameters {
 
 	public float learningRate = 3e-4f;
 
-	public int minibatchSize = 32;
+	public int minibatchSize = 8;
 
-	public int epochs = 2;
+	public int epochs = 4;
 
 	public int updateThreads = 1;
 
-	public double sampleRate = 0.05;
+	public double sampleRate = 0.25;
 
 	public int maxSampledPerEpisode = 2048;
 
