@@ -28,10 +28,14 @@
 .EXAMPLE
     ./train.ps1 -Long -Resume
     Continue the last run for another 30 generations from out/run/weights.bin.
+
+.EXAMPLE
+    ./train.ps1 -Long -Resume -Generations 2
+    Two more generations, not "up to generation 2". -Generations is always added to the checkpoint's.
 #>
 [CmdletBinding()]
 param(
-    # Generations to run. After a resume this is the total the run will have done, not the number to add.
+    # Generations to run. Always the number to ADD: -Resume from generation 20 with -Generations 2 stops at 22.
     [int]    $Generations = 30,
 
     # Worker processes. 0 lets the trainer size the pool to the machine and its memory.

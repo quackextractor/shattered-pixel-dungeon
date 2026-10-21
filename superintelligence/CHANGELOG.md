@@ -125,6 +125,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `out/evidence/long-1021.{csv,log}`.
 - Docs: completed entries removed from `TODO.md` and `issues.md`; `PLAN-data-flow.md`,
   `PLAN-reward-signals.md` and `WORKER-DATA-FLOW.md` deleted (done); declined items in `REJECTED.md`.
+- `teach-demo-30` (teacher + 6 Go-Explore demos, 16 workers x 4) to gen 19, resumed as
+  `teach-demo-22` (10 workers x 4) to gen 31; both killed, so no recordings. depth>=2 0/64 at gen 0,
+  46/64 at gen 8, 56-62/64 from gen 11; meanScore -4314 -> about -700..-1000; mean depth plateaus
+  at 2.5-2.9 from gen 11, best 4 every generation. Deaths 90-100% throughout. Every generation ran
+  on 1 locked seed (`seeds=1/100` until best depth > 5). clip 0.57-0.83, kl 0.04-0.66. Evidence
+  `out/evidence/teach-demo-{30,22}.{csv,log,console.txt}`, gen-20 weights
+  `out/evidence/teach-demo-30-gen20.weights.bin`.
+- `train.ps1` said `-Generations` after `-Resume` was the total; it is the number added. The
+  resume meant as 2 generations ran 22. Comment fixed, example added.
 
 - **The viewer gate plays the corpus flat out and re-plays only what diverged, on its own.** The
   gate ran eight children at a time and reported whatever diverged, and playback is timing
