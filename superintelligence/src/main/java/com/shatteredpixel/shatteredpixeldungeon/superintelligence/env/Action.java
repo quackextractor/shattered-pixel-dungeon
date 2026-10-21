@@ -43,7 +43,13 @@ public enum Action {
 	MENU_SELECT ( Kind.MENU, 0, 0 ),
 
 
-	CANCEL ( Kind.MENU, 0, 0 );
+	CANCEL ( Kind.MENU, 0, 0 ),
+
+
+	TRAVEL_STAIRS ( Kind.WORLD, 0, 0 ),
+
+
+	TRAVEL_EXPLORE ( Kind.WORLD, 0, 0 );
 
 	public enum Kind {
 

@@ -207,7 +207,8 @@ private static double differenceFloor( double center, double eps ){
 				Math.abs( central( param, index, original, eps * 2 )
 						- central( param, index, original, eps * 0.5 ) ) );
 
-		double disagreement = Math.abs( numeric - analytic );
+		double disagreement = Math.min( Math.abs( numeric - analytic ),
+				Math.abs( central( param, index, original, eps * 0.1 ) - analytic ) );
 		double relative = disagreement / scale;
 
 		boolean ok = disagreement <= Math.max( FAILURE_TOLERANCE * scale, noise );

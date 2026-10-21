@@ -34,6 +34,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SeedSched
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SlotCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.StateCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.TransitionCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.TravelCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.UpdateCostCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ValueScale;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.VerifyCheck;
@@ -79,6 +80,7 @@ public class Main {
 		case "parallelcheck": ParallelCheck.main( rest ); break;
 		case "rewardcheck": RewardCheck.main( rest ); break;
 		case "transitioncheck": TransitionCheck.main( rest ); break;
+		case "travelcheck": TravelCheck.main( rest ); break;
 		case "fallcheck": FallCheck.main( rest ); break;
 		case "dialogcheck": DialogCheck.main( rest ); break;
 		case "presscheck": PressCheck.main( rest ); break;

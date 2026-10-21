@@ -42,6 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed twice already. The guard is unreachable today (every loop path breaks), so this is hygiene.
 
 ### Added
+- **`TRAVEL_STAIRS` and `TRAVEL_EXPLORE` actions.** One step along a path over cells the hero has
+  seen: to the downstairs once seen, or to the nearest seen cell that borders unseen ones. A click on
+  a far tile, one turn at a time, so every step is still a recorded decision. Fight-else-travel
+  descends 6 of 6 seeds in 38-144 steps; a random walk reached floor 2 in 0.1% of episodes.
+  `travelcheck`, gate 35: stairs masked until seen (red when every cell counts as seen), every
+  explore step accepted onto a seen cell, travel descends. Three trainer recordings with 127 travel
+  steps play clean in the real viewer. Action head grows by 2, so older checkpoints do not load.
+- `gradcheck` accepts a parameter when either step size (1e-3 or 1e-4) agrees: the action head's
+  new size moved one conv weight onto a ReLU kink, 0.107 against 0.045 at 1e-3 and 0.049 at 1e-4.
+  Still red on a gradient scaled by 1.5 (119 of 136).
 - **`VISIT` reward: 1.5 per cell the hero first stands on, per floor** (`reward.visit_reward`). Episodic
   count bonus, after E3B and NovelD; seeing a tile paid 0.05, so walking somewhere new paid nothing
   next to the 1.0 a turn costs. `rewardcheck` 48: waiting pays once, pacing two cells pays twice

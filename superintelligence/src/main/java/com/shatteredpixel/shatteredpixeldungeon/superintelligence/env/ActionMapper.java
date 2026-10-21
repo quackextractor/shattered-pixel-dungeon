@@ -178,6 +178,10 @@ public class ActionMapper {
 				case MOVE_S:  case MOVE_SW: case MOVE_W:  case MOVE_NW:
 					mask[a.index] = Surroundings.moveLegal( a ) ? 1f : 0f;
 					break;
+				case TRAVEL_STAIRS:
+				case TRAVEL_EXPLORE:
+					mask[a.index] = Travel.step( a ) >= 0 ? 1f : 0f;
+					break;
 				default:
 
 					break;
@@ -286,6 +290,11 @@ public class ActionMapper {
 
 			case INTERACT:
 				return interact( slotOrTarget );
+
+			case TRAVEL_STAIRS:
+			case TRAVEL_EXPLORE:
+				int step = Travel.step( action );
+				return step >= 0 && handleCell( step );
 
 			default:
 				break;
