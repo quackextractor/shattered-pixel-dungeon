@@ -4,7 +4,16 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
 
 ## 1. Teach it to descend
 
-- [ ] **Agent dies on floor 1.** `issues.md` 20. Read `trainer-replays/long-1021/`, best and worst first.
+- [ ] **Agent dies on floor 1.** `issues.md` 20. Policy still near uniform after 608 Adam steps.
+      In order, cheapest first:
+  - [ ] More gradient steps: `rl.sample_rate` 0.05 -> 1.0, `rl.epochs` 2 -> 4 (~40x steps). Config only.
+  - [ ] Exploration net positive: `reward.explore_reward` 0.05/cell vs `turn_cost` 1.0/turn. Episodic
+        cell-count bonus (E3B, NovelD).
+  - [ ] Macro action "travel to cell" (hero pathing, same as human click): seen stairs, nearest unexplored.
+  - [ ] Scripted bot (explore, fight, eat, descend), behaviour-clone network, PPO fine-tune with BC/KL
+        loss against forgetting. NetHack evidence: BC from AutoAscend + APPO beats pure RL.
+  - [ ] Go-Explore on fixed seeds: archive (depth, cell), return by action replay, keep floor-reaching
+        trajectories as BC data.
 - [ ] **Walks to stairs?** Measure how often episodes end nearer stairs than they started, against a
       random walk on same floors. `EXIT_BEACON` lights only after stairs seen; `StairPotential` pays
       from step 1.
