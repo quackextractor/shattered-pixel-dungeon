@@ -597,6 +597,10 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 	/** Ceiling on scheduler steps spent waiting for one hero turn, mirroring the headless pipeline. */
 	private static final int MAX_ACTOR_STEPS = 400;
 
+	private static final int MAX_PARKED_FRAMES = 600;
+
+	private int parkedFrames;
+
 	/**
 	 * Advances turns until the hero can be given input, or reports why it cannot.
 	 *
@@ -722,6 +726,12 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			//the blocked counter below measures, not which step of the recording this is.
 
 			Actor before = Actor.currentActor();
+			if (before != null && parkedFrames < MAX_PARKED_FRAMES && !Actor.all().contains( before )){
+				parkedFrames++;
+				pendingFrames++;
+				return Drain.PENDING;
+			}
+			parkedFrames = 0;
 			countSchedulerCall( before );
 			boolean wantsMore = Actor.headlessStep();
 

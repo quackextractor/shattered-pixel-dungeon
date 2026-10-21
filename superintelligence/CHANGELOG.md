@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The viewer played on while a dart was still in the air.** An actor that removes itself and returns
+  `false` (`WornDartTrap`'s, `Pushing`) holds `Actor.current` until its animation callback calls
+  `next()`; `Actor.process` waits for that, `Actor.headlessStep` re-selects the next actor at once.
+  Headless the callback fires synchronously, so only the rendered viewer differed: `seeds100-60`
+  recording `CIQ-FBS-DKV` diverged at step 151, hp 15 against 11, the dart's 4 damage landing a step
+  late. `ReplayPlayer`'s drain now yields frames while such an actor holds the scheduler (capped at 600
+  frames). New corpus fixture `duelist-dart-trap.replay` (its first 160 steps, ending `DEMONSTRATION`);
+  viewcheck 21 of 21 in 47.8s, and with the yield disabled the fixture diverges at step 151.
 - **A PPO update longer than the stall timeout killed the run as a worker stall.** The watchdog counted
   the trainer's own update as worker silence. Demonstrations add ~50s per update (79.5s against 30.2s
   on 1,113 samples); at 6-12 workers the update passed 180s and `teach-demo-51` exited 3 three times
@@ -156,6 +164,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on 1 locked seed (`seeds=1/100` until best depth > 5). clip 0.57-0.83, kl 0.04-0.66. Evidence
   `out/evidence/teach-demo-{30,22}.{csv,log,console.txt}`, gen-20 weights
   `out/evidence/teach-demo-30-gen20.weights.bin`.
+- `seeds100-60`, gen 51-60 resumed from `teach-demo-51` with `SPD_TRAIN_MIN_ACTIVE_SEEDS=100`, 10 x 4:
+  mean depth 1.75 -> 1.87 (first to last third), best 4 at gens 55, 58, 60, score -2721 -> -2506.
+  173 recordings over 172 seeds: depths 1 / 2 / 3 / 4 = 36 / 84 / 49 / 4; Mage 1.61, Rogue 1.72,
+  Duelist 2.36, Warrior 2.35. Floor 4 on 4 unseen dungeons, against 0 of 79 random seeds in
+  `teach-demo-51`. Top 12 and bottom 8 in the viewer: `CIQ-FBS-DKV` (fixed above) and `HPY-QJL-DPP`
+  (open, `issues.md` 22) diverge; all 20 verify headlessly.
 - `teach-demo-51`, gen 31-50 resumed, 10 workers x 4: mean depth 2.53 -> 2.35, best 4 in 18 of 20
   generations, entropy 0.65 -> 0.96, deaths 30-40 of 40. Teacher weight at gen 50 is 0.03; no break out
   of the plateau. 81 recordings (`out/evidence/teach-demo-51-replays.txt`), all clean in the viewer

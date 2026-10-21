@@ -19,8 +19,8 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
         explore before stairs (1.97, stalls 8 -> 21), read scrolls / drink potions (2.23; an unknown
         potion at 8 HP was toxic gas), wait for an approaching mob (2.17). Policy already beats it (2.6-2.9).
   - [ ] `USE` loop on non-consumables (Waterskin, VelvetPouch) stalls episodes.
-  - [ ] Seed schedule: 1 locked seed until depth > 5 trains on one dungeon (`teach-demo-51`: depth 4 only
-        there, random seeds mean 2.0). `train.min_active_seeds` added; run with 100 next.
+  - [x] Seed schedule: `train.min_active_seeds` 100 (`seeds100-60`): floor 4 on 4 unseen dungeons
+        (0 before); mean depth ~1.9 on 100 seeds. Keep 100 for further runs.
 - [ ] **Walks to stairs?** Measure how often episodes end nearer stairs than they started, against a
       random walk on same floors. `EXIT_BEACON` lights only after stairs seen; `StairPotential` pays
       from step 1.
@@ -31,6 +31,8 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
 - [ ] **Shaping fade untested.** Starts at depth 3; no run passed floor 2.
 
 ## 2. Engine and harness
+
+- [ ] **Viewer/trainer burn order around a trap** (`issues.md` 22).
 
 - [ ] **`HeroDisguise` crashes headlessly.** Cursed wand casts sprite to `HeroSprite`, which needs
       texture film.

@@ -2,6 +2,16 @@
 
 Closed: `CHANGELOG.md`. Declined: `REJECTED.md`.
 
+## 22. Viewer burns a Swarm to death a turn before the trainer does - OPEN
+
+`seeds100-60/HPY-QJL-DPP` (Warrior, depth 4) diverges in the viewer at step 836, hp 7 against 2. RNG
+draw counts and fingerprints match through step 834. Step 835: Swarm 60 dies on 824, its loot drop
+presses a hidden fire trap (3x3 `Fire`, `HazardAssistTracker` on Swarm 65). Headless: Swarm 65 alive at
+2/50 and burning, hits the hero 10 -> 2. Viewer: Swarm 65 already dead, hero 7. Same order-of-actors
+class as the dart (an animation-gated callback vs a synchronous one), not yet located. Evidence
+`out/evidence/hpy-world` (headless), `hpy-world2.viewer.txt` (viewer, continue-on-divergence),
+`hpy-rng.*`.
+
 ## 20. Agent dies on floor 1 instead of descending - OPEN
 
 Now: descends, then dies on 2-4. `teach-demo-30/22/31` (teacher + 6 demos): depth>=2 in 56-62 of 64
