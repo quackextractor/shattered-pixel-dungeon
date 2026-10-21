@@ -18,6 +18,9 @@ public class PPO {
 	public float lambda = 0.95f;
 	public float clipEpsilon = 0.2f;
 	public float entropyCoeff = 0.01f;
+
+
+	public float teacherWeight = 0f;
 	public float learningRate = 3e-4f;
 
 	public int minibatchSize = 32;
@@ -371,6 +374,11 @@ Stats oneSample( Network net, Transition t, float[] grid,
 
 			s.clipBinding |= Policy.accumulatePolicyGradient( probabilities, mask, chosen,
 					t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
+			if (teacherWeight > 0f && t.teacherIndex >= 0 && t.teacherIndex < mask.length && mask[ t.teacherIndex ] > 0.5f){
+				for (int k = 0; k < probabilities.length; k++){
+					if (mask[ k ] > 0.5f) gradient[ k ] += teacherWeight * (probabilities[ k ] - (k == t.teacherIndex ? 1f : 0f));
+				}
+			}
 
 			float target = valueTarget( t );
 			cache.valueGrad = Policy.valueGradient( net.value(), target, valueGradientClip )

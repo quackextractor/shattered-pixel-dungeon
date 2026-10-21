@@ -180,7 +180,7 @@ public class ActionMapper {
 					break;
 				case TRAVEL_STAIRS:
 				case TRAVEL_EXPLORE:
-					mask[a.index] = Travel.step( a ) >= 0 ? 1f : 0f;
+					mask[a.index] = Travel.step( a, false ) >= 0 ? 1f : 0f;
 					break;
 				default:
 
@@ -254,6 +254,7 @@ public class ActionMapper {
 	public boolean apply( Action action, int slotOrTarget ){
 		if (action == null) return false;
 		Hero hero = hero();
+		Travel.remember();
 
 		if (hero.resting && action != Action.REST){
 			hero.resting = false;
@@ -293,7 +294,7 @@ public class ActionMapper {
 
 			case TRAVEL_STAIRS:
 			case TRAVEL_EXPLORE:
-				int step = Travel.step( action );
+				int step = Travel.step( action, true );
 				return step >= 0 && handleCell( step );
 
 			default:

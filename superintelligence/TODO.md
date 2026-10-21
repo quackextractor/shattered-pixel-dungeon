@@ -9,8 +9,8 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
   - [x] More gradient steps: 0.25 sample, 4 epochs, minibatch 8 (~9x).
   - [x] Episodic visit bonus `reward.visit_reward` 1.5.
   - [x] `TRAVEL_STAIRS`, `TRAVEL_EXPLORE` actions.
-  - [ ] Scripted bot (explore, fight, eat, descend), behaviour-clone network, PPO fine-tune with BC/KL
-        loss against forgetting. NetHack evidence: BC from AutoAscend + APPO beats pure RL.
+  - [x] `DescentBot` teacher, imitation loss `rl.teacher_weight`, half-life 10 generations.
+  - [ ] Bot dies in fights at depth 2-4 (9 floors / 6 seeds): no equipment, no potions, no retreat.
   - [ ] Go-Explore on fixed seeds: archive (depth, cell), return by action replay, keep floor-reaching
         trajectories as BC data.
 - [ ] **Walks to stairs?** Measure how often episodes end nearer stairs than they started, against a

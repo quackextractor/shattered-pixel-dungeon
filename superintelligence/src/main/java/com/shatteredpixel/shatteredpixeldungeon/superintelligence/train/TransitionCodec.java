@@ -36,6 +36,7 @@ public final class TransitionCodec {
 			out.writeInt( t.stepIndex );
 			out.writeInt( t.actionIndex );
 			out.writeInt( t.slotIndex );
+			out.writeInt( t.teacherIndex );
 
 			out.writeFloat( t.oldLogProbability );
 			out.writeFloat( t.advantage );
@@ -110,6 +111,7 @@ public final class TransitionCodec {
 			t.stepIndex = in.readInt();
 			t.actionIndex = in.readInt();
 			t.slotIndex = in.readInt();
+			t.teacherIndex = in.readInt();
 
 			t.oldLogProbability = in.readFloat();
 			t.advantage = in.readFloat();

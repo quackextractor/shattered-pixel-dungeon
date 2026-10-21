@@ -104,6 +104,12 @@ public class EpisodeCollector {
 
 	private final ContiguousChunkSampler sampler = new ContiguousChunkSampler();
 
+	private com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.DescentBot teacher;
+
+	public void teacher( com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.DescentBot teacher ){
+		this.teacher = teacher;
+	}
+
 	public EpisodeCollector( EnvConfig config, Network network, Random rng, Random samplingRng,
 			float gamma, float lambda, float sampleRate ){
 		this( config, network, rng, samplingRng, gamma, lambda, sampleRate, DEFAULT_MAX_SAMPLED );
@@ -156,6 +162,7 @@ public class EpisodeCollector {
 			network.forward( env.grid(), env.inventory(), env.heroFeatures() );
 
 			int liveHead = headFor( env.mode() );
+			if (teacher != null) snapshot.teacherIndex = teacher.label( env, liveHead );
 			int actionIndex = Policy.sample( network.actionLogits(), env.actionMask(), rng );
 			int slotIndex = Policy.sample( network.slotLogits(), env.slotMask(), rng );
 			int targetIndex = Policy.sample( network.targetLogits(), env.targetMask(), rng );

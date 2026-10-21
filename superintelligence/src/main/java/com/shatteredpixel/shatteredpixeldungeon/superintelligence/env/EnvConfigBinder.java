@@ -91,6 +91,8 @@ public class EnvConfigBinder {
 			"rl.value_norm_momentum",
 			"rl.value_loss_coefficient",
 			"rl.value_gradient_clip",
+			"rl.teacher_weight",
+			"rl.teacher_half_life",
 			"rl.huber_values",
 			"rl.max_grad_norm",
 			"rl.adam_beta1",
@@ -335,6 +337,8 @@ public class EnvConfigBinder {
 			case "rl.value_norm_momentum":    hyper.valueNormMomentum = decimal( key, value, origin ); break;
 			case "rl.value_loss_coefficient": hyper.valueLossCoefficient = decimal( key, value, origin ); break;
 			case "rl.value_gradient_clip":    hyper.valueGradientClip = decimal( key, value, origin ); break;
+			case "rl.teacher_weight":         hyper.teacherWeight = decimal( key, value, origin ); break;
+			case "rl.teacher_half_life":      hyper.teacherHalfLife = decimal( key, value, origin ); break;
 			case "rl.huber_values":           hyper.huberValues = bool( key, value, origin ); break;
 			case "rl.max_grad_norm":          hyper.maxGradNorm = decimal( key, value, origin ); break;
 			case "rl.adam_beta1":             hyper.adamBeta1 = decimal( key, value, origin ); break;

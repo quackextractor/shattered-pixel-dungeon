@@ -350,6 +350,7 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 		sent.liveHead = Policy.HEAD_SLOT;
 		sent.actionIndex = 11;
 		sent.slotIndex = 4;
+		sent.teacherIndex = 5;
 		sent.oldLogProbability = -1.25f;
 		sent.advantage = 0.5f;
 		sent.returnValue = -2.5f;
@@ -380,7 +381,8 @@ for (int i = 0; i < n; i++) record.add( rewards[ i ], values[ i ], false,
 				return;
 			}
 			if (t.liveHead != sent.liveHead || t.actionIndex != sent.actionIndex
-					|| t.slotIndex != sent.slotIndex || t.terminal != sent.terminal){
+					|| t.slotIndex != sent.slotIndex || t.terminal != sent.terminal
+					|| t.teacherIndex != sent.teacherIndex){
 				fail( "the decision fields did not survive the round trip" );
 				return;
 			}

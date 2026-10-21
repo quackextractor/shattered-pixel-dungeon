@@ -44,6 +44,10 @@ public class Trainer {
 
 	private int epoch = 0;
 
+	private float teacherWeight;
+
+	private float teacherHalfLife = 10f;
+
 	private final List<Episode> lastEpisodes = new ArrayList<>();
 
 	MetricsHistory metrics;
@@ -133,6 +137,8 @@ public class Trainer {
 		ppo.lambda = hyper.lambda;
 		ppo.clipEpsilon = hyper.clipEpsilon;
 		ppo.entropyCoeff = hyper.entropyCoeff;
+		teacherWeight = hyper.teacherWeight;
+		teacherHalfLife = hyper.teacherHalfLife;
 		ppo.learningRate = hyper.learningRate;
 		ppo.network.learningRate = hyper.learningRate;
 
@@ -305,6 +311,7 @@ Worker.writeWeights( out, ppo.network );
 
 			if (!episodes.isEmpty()){
 				ResourceStats.Interval update = ResourceStats.start();
+				ppo.teacherWeight = (float) (teacherWeight * Math.pow( 0.5, epoch / teacherHalfLife ));
 				ppo.update();
 				update.stop();
 				lastUpdate = update;

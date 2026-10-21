@@ -116,6 +116,8 @@ public final class ConfigDefaults {
 			case "rl.value_norm_momentum":    return String.valueOf( hyper.valueNormMomentum );
 			case "rl.value_loss_coefficient":  return String.valueOf( hyper.valueLossCoefficient );
 			case "rl.value_gradient_clip":    return String.valueOf( hyper.valueGradientClip );
+			case "rl.teacher_weight":         return String.valueOf( hyper.teacherWeight );
+			case "rl.teacher_half_life":      return String.valueOf( hyper.teacherHalfLife );
 			case "rl.huber_values":           return String.valueOf( hyper.huberValues );
 			case "rl.max_grad_norm":          return String.valueOf( hyper.maxGradNorm );
 			case "rl.adam_beta1":             return String.valueOf( hyper.adamBeta1 );
@@ -231,6 +233,8 @@ public final class ConfigDefaults {
 			case "rl.value_norm_momentum":    return "0.5";
 			case "rl.value_loss_coefficient":  return "0.75";
 			case "rl.value_gradient_clip":    return "3.5";
+			case "rl.teacher_weight":         return "0.25";
+			case "rl.teacher_half_life":      return "4.0";
 			case "rl.max_grad_norm":          return "0.75";
 			case "rl.adam_beta1":             return "0.5";
 			case "rl.adam_beta2":             return "0.5";

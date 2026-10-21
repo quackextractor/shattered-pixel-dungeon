@@ -42,6 +42,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed twice already. The guard is unreachable today (every loop path breaks), so this is hygiene.
 
 ### Added
+- **Scripted teacher and imitation loss (kickstarting).** `policy.DescentBot` attacks what is
+  adjacent, leaves harmful gas, eats when hungry, rests below 75% HP, takes seen stairs, explores,
+  and searches walls that border unseen cells. Workers label each step with its choice on the live
+  head (`Transition.teacherIndex`, carried on the wire); `PPO` adds
+  `rl.teacher_weight * (p - onehot(teacher))`, halved every `rl.teacher_half_life` (10) generations,
+  so the student imitates on its own states and the imitation fades without vanishing (Wolczyk et al.
+  2024: BC retention against forgetting). Measured: the bot alone descends 9 floors over 6 seeds,
+  deepest 4. `teachercheck`, gate 36: bot descends, and one zero-advantage update moves p(teacher)
+  0.049 -> 0.082 against 0.049 -> 0.043 at weight 0 (red with the gradient deleted). Six trainer
+  recordings with 420 travel steps play clean in the real viewer.
+- Travel avoids visible harmful gas plus one cell around it, remembers gas it saw for 30 turns, and
+  keeps its explore target until reached. All three were found by the bot dying in a toxic gas room
+  and pacing between two frontier cells; memory and commitment change only in `ActionMapper.apply`,
+  so the mask and the viewer see the same state.
 - **`TRAVEL_STAIRS` and `TRAVEL_EXPLORE` actions.** One step along a path over cells the hero has
   seen: to the downstairs once seen, or to the nearest seen cell that borders unseen ones. A click on
   a far tile, one turn at a time, so every step is still a recorded decision. Fight-else-travel

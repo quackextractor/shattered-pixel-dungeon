@@ -98,6 +98,7 @@ private EnvConfig config;
 		collector = new EpisodeCollector( config, network, policyRng, new Random( policyRng.nextLong() ),
 				gamma, lambda, sampleRate, maxSampledPerEpisode, chunkLength );
 		collector.tailSteps( tailSteps );
+		collector.teacher( new com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.DescentBot() );
 		collector.valueScale( valueMean, valueStd );
 		if (traceWorld != null && !traceWorld.isEmpty()) collector.trace( traceWorld );
 		readWeights( in, network );
