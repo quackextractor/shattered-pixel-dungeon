@@ -24,7 +24,7 @@ import java.util.Random;
 
 public class TeacherCheck {
 
-	private static final int CHECKS = 3;
+	private static final int CHECKS = 4;
 
 	private static final String[] SEEDS = { "TEACHER-A", "TEACHER-B", "TEACHER-C", "TEACHER-D", "TEACHER-E", "TEACHER-F" };
 
@@ -37,6 +37,7 @@ public class TeacherCheck {
 		checkTheTeacherDescends();
 		checkAnUpdateMovesThePolicyTowardTheTeacher();
 		checkADemonstrationIsImitated();
+		checkEachEpisodeGetsAFreshTeacher();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     teacher: " + CHECKS + " checks passed" );
@@ -118,6 +119,35 @@ public class TeacherCheck {
 		}
 		System.out.println( "  a " + replay.steps.size() + "-step demonstration moves p(recorded) " + taught[ 0 ] + " -> "
 				+ taught[ 1 ] + " with weight 1, " + untaught[ 0 ] + " -> " + untaught[ 1 ] + " with 0" );
+	}
+
+	private static void checkEachEpisodeGetsAFreshTeacher(){
+		EnvConfig config = new EnvConfig();
+		config.turnLimitTotal = 30;
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		env.reset( "TEACHER-A", HeroClass.WARRIOR );
+		DescentBot bot = new DescentBot();
+		int[] secondary = new int[ 1 ];
+		for (int i = 0; i < 20 && env.running(); i++) env.step( bot.act( env, secondary ), secondary[ 0 ] );
+		boolean dirty = !bot.fresh();
+
+		EpisodeCollector collector = new EpisodeCollector( config, new PPO( config, new Random( 44L )).network,
+				new Random( 1 ), new Random( 2 ), 0.99f, 0.95f, 1f );
+		collector.teacher( bot );
+		boolean[] freshAtStart = new boolean[ 1 ];
+		collector.listener( new EpisodeCollector.Listener() {
+			@Override public void onEpisodeStart( String seedText, String hero ){ freshAtStart[ 0 ] = bot.fresh(); }
+			@Override public void onDecision( com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode mode,
+					Action action, int secondary ){}
+		} );
+		collector.run( env, "TEACHER-B", HeroClass.WARRIOR ).release();
+
+		if (!dirty || !freshAtStart[ 0 ]){
+			fail( "a teacher that labelled one episode started the next with " + (dirty ? "its old search map and hp"
+					: "no state to clear, so the check proved nothing") + "; labels leak across seeds" );
+			return;
+		}
+		System.out.println( "  a teacher reused by the collector starts each episode fresh" );
 	}
 
 	private static float[] demoProbabilityAcrossAnUpdate( EnvConfig config, Replay replay, float weight ){

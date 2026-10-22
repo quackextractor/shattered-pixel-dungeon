@@ -19,6 +19,15 @@ public final class DescentBot {
 
 	private final java.util.Map< Integer, java.util.BitSet > searched = new java.util.HashMap<>();
 
+	public void reset(){
+		lastHp = -1;
+		searched.clear();
+	}
+
+	public boolean fresh(){
+		return lastHp < 0 && searched.isEmpty();
+	}
+
 	public Action act( SPDEnv env, int[] secondary ){
 		secondary[ 0 ] = 0;
 		float[] mask = env.actionMask();

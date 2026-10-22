@@ -153,6 +153,7 @@ public class EpisodeCollector {
 
 		env.reset( seed, heroClass );
 		network.resetState();
+		if (teacher != null) teacher.reset();
 		record.episode( ++episodes );
 
 		if (listener != null){

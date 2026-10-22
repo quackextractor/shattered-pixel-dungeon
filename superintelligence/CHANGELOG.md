@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The teacher carried one episode's search map and HP into the next.** A worker reuses one
+  `DescentBot` for every episode of a generation, and its `searched` cells (keyed by depth only) and
+  `lastHp` were never cleared, so episode B's labels on depth 1 skipped walls searched on another
+  seed's map. `EpisodeCollector.run` now calls `DescentBot.reset()` after `env.reset`.
+  `teachercheck` case 4, mutation-tested.
 - **The viewer played on while a dart was still in the air.** An actor that removes itself and returns
   `false` (`WornDartTrap`'s, `Pushing`) holds `Actor.current` until its animation callback calls
   `next()`; `Actor.process` waits for that, `Actor.headlessStep` re-selects the next actor at once.
