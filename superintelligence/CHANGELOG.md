@@ -183,6 +183,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wall - so the default stays at 4.
 
 ### Measured
+- `fresh-1022`, fresh 30 generations, 8 workers x 5 episodes, 6 demos, `train.min_active_seeds` 100,
+  after the throughput work: **278 s wall** (~9 s a generation; collection 76 s, update 262 s in total).
+  `seeds100-60` (10 x 4, same 40 episodes, before it) took 33:38 for 10 generations, ~200 s each.
+  Mean depth 1.10 -> 1.75 (first third to last), depth>=2 17% -> 56% (first half to last), deepest 4,
+  best score +2,671 at generation 28; 96% of late episodes end in death. `viewcheck`: 246 of 257
+  recordings clean, 11 viewer-only failures (`issues.md` 23). Evidence `out/evidence/fresh-1022.*`.
 - `ZRD-CVK-QYT` (`issues.md` 21) still diverges at step 638, and the cause is now one step earlier
   than recorded: the RNG streams part at step 627, where the viewer's passive `Hero.search` rolls
   for the secret door at cell 1088 and the trainer's does not. The viewer discovers the door, the

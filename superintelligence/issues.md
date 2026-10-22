@@ -2,6 +2,17 @@
 
 Closed: `CHANGELOG.md`. Declined: `REJECTED.md`.
 
+## 23. Viewer parts from 11 of 257 `fresh-1022` recordings that verify headlessly - OPEN
+
+`viewcheck` on `trainer-replays/fresh-1022` (copied to `.replay`; the gate reads only that extension,
+the trainer writes `.dat`): 246 clean, 11 fail again when re-run serially, all 11 `verify` headlessly
+to the recorded score. Eight diverge: `DSD-FKG-MLX` 335, `SSW-ZVA-GRB` 171 (position); `FUE-XLT-OVJ`
+247, `JUZ-UAQ-GCH` 233, `LFJ-HPG-RFV` 355, `PTJ-VRT-KHR` 130, `RXN-FXT-XRB` 262 (viewer hp higher);
+`GFQ-ZBM-CRL` hero dead before the recording ends. Five of eight are on `TRAVEL_EXPLORE`. Three never
+finish within 300s: `SZZ-PPW-YGF` (542 steps), `MSR-XCX-JWZ` (787), `PBC-UFZ-RLA` (1659), so not
+length alone. Likely the order-of-actors class of 22. Evidence `out/evidence/fresh-1022.viewcheck.txt`,
+`fresh-1022.verify.txt`, `fresh-1022-replays/`.
+
 ## 22. Viewer burns a Swarm to death a turn before the trainer does - OPEN
 
 `seeds100-60/HPY-QJL-DPP` (Warrior, depth 4) diverges in the viewer at step 836, hp 7 against 2. RNG
