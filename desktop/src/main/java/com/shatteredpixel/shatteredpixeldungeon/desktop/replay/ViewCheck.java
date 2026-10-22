@@ -73,7 +73,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <pre>
  *   gradle :desktop:viewcheck
- *   gradle :desktop:viewcheck -Pspd.replayDir=some\other\corpus
+ *   gradle :desktop:viewcheck -PspdReplayDir=some\other\corpus
  * </pre>
  *
  * <p>Each recording plays in its own JVM, because a diverged run leaves a live GL context and a
@@ -91,6 +91,8 @@ public class ViewCheck {
 	private static final float GATE_SPEED = 40f;
 
 	private static final int ALTERED_STEP = 10;
+
+	private static final File COMMITTED_CORPUS = new File( "superintelligence/test-replays" );
 
 	/**
 	 * Ceiling on a single playback, so a stuck viewer fails instead of hanging the gate.
@@ -175,8 +177,12 @@ public class ViewCheck {
 	 * is a real fault and fails it, and the step it fails at is reproducible because the serial run
 	 * produced it.
 	 */
+	private static File[] recordings( File dir ){
+		return dir.listFiles( ( d, name ) -> name.endsWith( ".replay" ) || name.endsWith( ".dat" ) );
+	}
+
 	private static void supervise( File corpus ) throws IOException, InterruptedException {
-		File[] files = corpus.listFiles( ( dir, name ) -> name.endsWith( ".replay" ) );
+		File[] files = recordings( corpus );
 		if (files == null || files.length == 0){
 			System.err.println( "[ERROR] no recordings in " + corpus.getAbsolutePath() );
 			System.exit( 1 );
@@ -341,8 +347,9 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 	private static void checkContinueOnDivergeKeepsPlaying( File corpus, List< String > problems )
 			throws IOException, InterruptedException {
 		File source = null;
-		File[] files = corpus.listFiles( ( dir, name ) -> name.endsWith( ".replay" ) );
-		if (files != null){
+		for (File dir : new File[]{ corpus, COMMITTED_CORPUS }){
+			File[] files = recordings( dir );
+			if (files == null || source != null) continue;
 			for (File file : files){
 				if (file.getName().contains( "death-last" )) source = file;
 			}

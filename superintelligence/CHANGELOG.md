@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A run that failed before its first generation overwrote the checkpoint with untrained weights.**
+  `RunCheckpoints.lastSaved` started at -1, so `saveOnExit` wrote generation 0 over `--save` even when
+  nothing trained; a bad `-Demos` path replaced `seeds100-60`'s generation-61 weights that way. It
+  starts at 0 now. `checkpointcheck` case 11, red at -1.
+- **`train.ps1 -Demos` resolved a relative path against the repository root**, not where it was
+  typed, because the script changes directory first. It is resolved before, and a missing path
+  stops the script before anything starts.
+- **`viewcheck` saw no trainer recordings.** It listed only `*.replay`; the trainer writes `*.dat`. It
+  reads both, and its continue-on-divergence diagnostic falls back to the committed
+  `test-replays/*death-last*` fixture when `-PspdReplayDir` points elsewhere, instead of failing.
 - **The teacher carried one episode's search map and HP into the next.** A worker reuses one
   `DescentBot` for every episode of a generation, and its `searched` cells (keyed by depth only) and
   `lastHp` were never cleared, so episode B's labels on depth 1 skipped walls searched on another
