@@ -169,6 +169,9 @@ function Bar {
 $module = Split-Path -Parent $MyInvocation.MyCommand.Path      # .../superintelligence
 $repo   = Split-Path -Parent $module                          # the repository root
 
+# relative to where the caller stands, not to $repo
+if ($Demos) { $Demos = (Resolve-Path -LiteralPath $Demos -ErrorAction Stop).Path }
+
 Push-Location $repo
 try {
     $evidence = Join-Path $module 'out/evidence'
