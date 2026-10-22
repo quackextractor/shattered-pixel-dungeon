@@ -429,6 +429,12 @@ something.
 # throw did not press anything.
 ./gradlew :superintelligence:pressfixture --args="pressfixture --save test-replays/duelist-throw.replay"
 
+# browse recordings: at the replay-viewer prompt type a number to play, or a view command
+# (h lists them; the view is kept in out/catalog-view.txt). --list takes the same commands as flags.
+./replay-viewer.bat
+./replay-viewer.bat --list --only fresh-1022 --sort depth --top 10
+./replay-viewer.bat --list --collapse all --order best
+
 # train
 
 ./gradlew :superintelligence:train --args="--workers 8 --generations 200"
@@ -580,7 +586,7 @@ survives disk exactly, Adam moments included, and that bad checkpoints are refus
 | `policy` | `ScriptedPolicy`, the network-free heuristic used for smoke tests and worker bootstrap |
 | `rl` | `Network` (two convolutions + LSTM + heads, forward and backward), `NetworkWeights` (its parameters, Adam, gradients, checkpoint layers and moments), `PPO` (the learner), `ShardedUpdate` (the parallel minibatch and its gradient reduction), `Policy` (masking, losses, GAE), `Transition`, `EpisodeCollector` (plays an episode, computes its advantages), `ContiguousChunkSampler` (retains whole chunks rather than independent steps), `EpisodeRecord` (one episode's scalars + sampled observations) |
 | `train` | `Trainer` (generation loop), `TrainerWorkers` (everything crossing a worker pipe), `WorkerPool` (processes, pipes, stall watchdog), `Protocol` (wire format), `TransitionCodec`, `TrainOptions`, `PpoHyperparameters`, `Checkpoint` (save/resume), `MetricsHistory` (per-generation CSV + end-of-run trend), `Episode`, `Worker` (worker side), `SeedPool` (generalisation schedule) |
-| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `Quickslots` (the one place a recorded slot index is resolved against its bindings), `DropFixture` and `PressFixture` (the DROP-in-SLOT and throw-that-presses recordings the viewer gates play), `ReplayCatalog`, `RngTrace`, `WorldSnapshot`, `WorldDiff` |
+| `replay` | `Replay`, `ReplayRecorder`, `ReplayIO` (write, read, verify), `Quickslots` (the one place a recorded slot index is resolved against its bindings), `DropFixture` and `PressFixture` (the DROP-in-SLOT and throw-that-presses recordings the viewer gates play), `ReplayCatalog`, `CatalogView` and `CatalogLayout` (the catalogue's sort, filter and collapse view), `RngTrace`, `WorldSnapshot`, `WorldDiff` |
 | `diag` | `RunReport`, `Graph`, `Ansi`, and the checks: `GradientCheck`, `ModeCoverageCheck`, `RestartCheck`, `GaeCheck`, `UpdateCostCheck`, `ConfigCheck`, `ParityCheck` |
 
 ## Configuration

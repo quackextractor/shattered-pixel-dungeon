@@ -140,6 +140,8 @@ public class Main {
 		System.out.println( "  replayprobe               report how far a shuffled replay drifts" );
 		System.out.println( "  valuescale                report the critic's targets against what it can reach" );
 		System.out.println( "  replays [--dir d]...     list recordings, grouped by hero class and ranked" );
+		System.out.println( "    [--sort k] [--only g]  view flags: sort, only, hide, collapse, expand, hero, depth, score," );
+		System.out.println( "                            gen, since, find, watchable, broken, dupes, flat, top, order" );
 		System.out.println( "  replaycheck               fail if the replay catalog misgroups or misranks" );
 		System.out.println( "  dropfixture --save <f>    record the DROP-in-SLOT fixture the viewer gates play" );
 		System.out.println( "  pressfixture --save <f>   record the throw-that-presses fixture the viewer gates play" );

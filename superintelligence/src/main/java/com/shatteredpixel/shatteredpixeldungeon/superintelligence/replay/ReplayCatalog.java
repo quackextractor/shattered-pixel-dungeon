@@ -424,4 +424,8 @@ File canonical = canonical( dir );
 		return ReplayListing.render( this, plain );
 	}
 
+	public String render( boolean plain, CatalogView view ){
+		return ReplayListing.render( this, plain, view );
+	}
+
 }

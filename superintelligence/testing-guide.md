@@ -132,6 +132,12 @@
     check builds three files sharing one seed under different names, asserts the bare seed is still
     refused, asserts each file name resolves to itself, and asserts the instruction does not ask for a
       path.
+* **A view numbers what it shows** (`replaycheck`, `ReplayCatalogViewCheck`, 6 cases). Rows under a
+  sort or filter are numbered in printed order and `--select` resolves the same list; `only floor-1`
+  lists that group and not `floor-10` or `pre-floor-1`, while `only floor` takes both floors by prefix;
+  a collapsed group is one summary line with no numbers; hero, depth, score, find and top narrow rows; a
+  saved view reloads unchanged; a mistyped command is refused by name. Seen red: substring group
+  matching (`'only floor' listed ... PRE-ONE`) and a flipped sort direction (`top 1` picked `F1-DEEP`).
 * **The section header and its own rows must not contradict each other** (`replaycheck`). The trainer
     section's blurb read *"every one of them is watchable in the viewer"* over a section carrying nine
     lines marked `not watchable` - same screen, opposite claims. Written when the claim was true, never

@@ -6,7 +6,7 @@ import java.nio.file.Files;
 
 public class ReplayCatalogCheck {
 
-	private static final int CHECKS = 22;
+	private static final int CHECKS = 28;
 
 	public static void main( String[] args ){
 		try {
@@ -43,6 +43,13 @@ public class ReplayCatalogCheck {
 			ReplayCatalogGroupingCheck.checkASharedSeedResolvesByFileName();
 			ReplayCatalogGroupingCheck.checkAGroupIsItsOwnSection();
 			ReplayCatalogGroupingCheck.checkSubdirectoriesAreScannedAndRejectedIsNot();
+
+			ReplayCatalogViewCheck.checkNumbersFollowTheView();
+			ReplayCatalogViewCheck.checkOnlySelectsOneGroupExactlyOrByPrefix();
+			ReplayCatalogViewCheck.checkACollapsedGroupIsOneLineAndUnnumbered();
+			ReplayCatalogViewCheck.checkFiltersNarrowRows();
+			ReplayCatalogViewCheck.checkAViewSurvivesBeingSaved();
+			ReplayCatalogViewCheck.checkABadCommandIsRefusedByName();
 		} finally {
 			ReplayCatalogFixture.deleteTree( ReplayCatalogFixture.workDir );
 		}

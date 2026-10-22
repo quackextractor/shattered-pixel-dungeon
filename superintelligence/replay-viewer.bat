@@ -11,7 +11,7 @@ rem wherever the script was launched from.
 rem
 rem   replay-viewer                    list the recordings and play one by number
 rem   replay-viewer <file>             play a specific recording
-rem   replay-viewer --list             list the available recordings and stop
+rem   replay-viewer --list [view]      list the available recordings and stop; view is eg --only floor --sort depth
 rem   replay-viewer --record <seed>    record a new episode into trainer-replays\
 rem   replay-viewer --verify <file>    check a recording still reproduces, headless
 rem
@@ -78,6 +78,7 @@ rem trainer-replays is scanned recursively, so a run given --replay-group appear
 rem GROUP heading without this file knowing the group's name. One directory, and the catalogue
 rem finds what a run wrote.
 set "CATDIRS=--dir "%TESTREPLAYDIR%" --dir "%TRAINERREPLAYDIR%""
+set "VIEWFILE=%MODULE%\out\catalog-view.txt"
 set "GRADLE=%ROOT%\gradlew.bat"
 
 rem Options for unattended playback.
@@ -163,8 +164,17 @@ goto :play
 
 rem --- list ------------------------------------------------------------------
 
+rem Anything after --list is a view: replay-viewer --list --only fresh-1022 --sort depth --top 10
 :list
-call :catalog || exit /b 1
+shift
+set "LISTARGS="
+:listargs
+if "%~1"=="" goto :listrun
+set "LISTARGS=%LISTARGS% %1"
+shift
+goto :listargs
+:listrun
+call :supervisor "replays %CATDIRS% %LISTARGS%" || exit /b 1
 echo.
 echo Play one with:  %MODULE_NAME% ^<file^>
 exit /b 0
@@ -176,9 +186,10 @@ rem the label the catalog is printed from has to sit above the code that leaves
 rem it rather than below.
 :menu
 call :catalog || exit /b 1
+:prompt
 echo.
 set "CHOICE="
-set /p "CHOICE=Play which? Enter its number, r to refresh the list, or q to quit: "
+set /p "CHOICE=Play which? Number to play, or sort/only/collapse/... (h lists them), r refresh, q quit: "
 
 rem No test for end of input here. set /p returns errorlevel 1 for a blank line *and*
 rem for exhausted input, so an errorlevel check cannot tell Enter from EOF, and
@@ -188,7 +199,7 @@ rem next answer in an interactive session. So blank reprints and EOF reprints to
 rem feeding this a redirected stream with nothing in it is not a thing anyone does.
 rem
 rem q before the digit test, because the digit test rejects it. Only q and quit,
-rem so a mistyped number is still refused rather than read as a request to leave.
+rem so a mistyped command is refused by :menuview rather than read as a request to leave.
 if /i "%CHOICE%"=="q"    goto :menuquit
 if /i "%CHOICE%"=="quit" goto :menuquit
 
@@ -212,13 +223,10 @@ if "%CHOICE%"=="" (
 
 rem The test is inverted from what it looks like: with the digits as delimiters, an
 rem all-digit string has no token left, so the loop body never runs. A token
-rem appearing therefore means the input contained a non-digit.
+rem appearing therefore means the input contained a non-digit, which makes it a view command.
 set "ISNONNUM="
 for /f "delims=0123456789" %%a in ("%CHOICE%") do set "ISNONNUM=yes"
-if defined ISNONNUM (
-    echo "%CHOICE%" is not one of the numbers listed above.
-    goto :menu
-)
+if defined ISNONNUM goto :menuview
 
 rem A number outside the range is not fatal either. :bynumber has already said
 rem which numbers exist; reprinting the list is what makes the next attempt read
@@ -233,6 +241,13 @@ goto :play
 
 :menuquit
 exit /b 0
+
+rem Sort, filter and collapse commands, kept in %VIEWFILE% so the next session opens on the same view.
+rem The java side exits 1 for help or a refused command, which re-prompts without scrolling it away.
+:menuview
+call :supervisor "replays --view-file "%VIEWFILE%" %CATDIRS% --apply %CHOICE%"
+if errorlevel 1 goto :prompt
+goto :menu
 
 rem --- refresh ---------------------------------------------------------------
 
@@ -263,7 +278,7 @@ rem Through a file rather than a `for /f` backtick loop. Inside one of those the
 rem quotes around --args="..." do not survive and gradle is handed a broken
 rem argument list, which fails with a bare "FAILURE" and no explanation. The path
 rem is read back with set /p, which takes the first line and nothing else.
-call :supervisor "replays --select %TARGET% %CATDIRS%" > "%SELECTFILE%" 2>nul
+call :supervisor "replays --select %TARGET% --view-file "%VIEWFILE%" %CATDIRS%" > "%SELECTFILE%" 2>nul
 if errorlevel 1 (
     echo No recording numbered %TARGET%.
     del "%SELECTFILE%" >nul 2>&1
@@ -394,7 +409,7 @@ rem coming back from a playback look like a hang: the window had closed, and not
 rem happened for several seconds. Paying for a daemon once and reusing it is what makes
 rem the menu worth returning to.
 :catargs
-call :supervisor "replays %CATDIRS%"
+call :supervisor "replays --view-file "%VIEWFILE%" %CATDIRS%"
 exit /b %errorlevel%
 
 rem Runs the :superintelligence module without gradle, by handing its classes to the launcher

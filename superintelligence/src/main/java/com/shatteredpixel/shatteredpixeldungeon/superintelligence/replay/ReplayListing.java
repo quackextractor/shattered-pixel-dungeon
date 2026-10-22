@@ -4,7 +4,9 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ansi;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayCatalog.Entry;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -14,30 +16,44 @@ public final class ReplayListing {
 	private ReplayListing(){}
 
 	static String render( ReplayCatalog catalog, boolean plain ){
-		Map<String, Map<String, List<Entry>>> sections = catalog.sections();
+		return render( catalog, plain, new CatalogView() );
+	}
+
+	static String render( ReplayCatalog catalog, boolean plain, CatalogView view ){
+		List<CatalogLayout.Section> sections = CatalogLayout.sections( catalog, view );
 		StringBuilder out = new StringBuilder();
 
-		int shown = 0;
-		for (Map.Entry<String, Map<String, List<Entry>>> section : sections.entrySet()){
-			int inSection = sectionCount( section.getValue() );
-			if (inSection == 0) continue;
+		int shown = 0, matched = 0, folded = 0;
+		List<Entry> visible = new ArrayList<>();
+		boolean previousCollapsed = false;
+		for (CatalogLayout.Section section : sections){
+			matched += section.matched.size();
 
-			String blurb = "  " + sectionBlurb( section.getKey(), section.getValue() );
-			if (!plain) blurb = Ansi.wrap( blurb, Ansi.DIM );
+			if (section.collapsed){
+				folded++;
+				out.append( previousCollapsed ? "  " : "\n  " ).append( section.title ).append( "  " )
+						.append( dim( "[+] " + summary( section ), plain )).append( "\n" );
+				previousCollapsed = true;
+				continue;
+			}
+			previousCollapsed = false;
 
-			out.append( "\n  " ).append( section.getKey() ).append( " " ).append( blurb ).append( "\n" );
+			out.append( "\n  " ).append( section.title ).append( " " )
+					.append( dim( "  " + sectionBlurb( section.title, section.all ), plain )).append( "\n" );
+			out.append( "  " ).append( dim( "[-] " + summary( section ), plain )).append( "\n" );
 			out.append( "  " ).append( dashed() ).append( "\n" );
 			out.append( "  " ).append( columnHeadings() ).append( "\n" );
 
-			for (Map.Entry<String, List<Entry>> group : section.getValue().entrySet()){
-				if (group.getValue().isEmpty()) continue;
+			for (Map.Entry<String, List<Entry>> list : section.lists.entrySet()){
+				if (!list.getKey().isEmpty()) out.append( "\n    " ).append( list.getKey() ).append( "\n" );
+				else out.append( "\n" );
 
-				out.append( "\n    " ).append( group.getKey() ).append( "\n" );
-
-				for (Entry entry : group.getValue()){
+				for (Entry entry : list.getValue()){
 					shown++;
+					visible.add( entry );
 
 					String note = note( entry );
+					if (list.getKey().isEmpty()) note = ( entry.heroClass == null ? "?" : entry.heroClass.toLowerCase( Locale.ROOT )) + ( note.isEmpty() ? "" : "  " + note );
 					if (!note.isEmpty() && !plain) note = Ansi.wrap( note, Ansi.DIM );
 
 					out.append( String.format( Locale.US,
@@ -53,14 +69,31 @@ public final class ReplayListing {
 			}
 		}
 
-		if (shown == 0) return "  no recordings found\n";
+		if (catalog.isEmpty()) return "  no recordings found\n";
+		if (sections.isEmpty()){
+			return "  no recordings match the view: " + view + "\n  reset clears it, h lists the commands\n";
+		}
 
-		out.append( "\n" ).append( shown ).append( " recording" ).append( shown == 1 ? "" : "s" )
-				.append( ", ranked by score within each section"
-				).append( ", numbered 1 to " ).append( shown ).append( "\n" );
+		int total = catalog.entries().size();
+		out.append( "\n" );
+		if (view.isDefault()){
+			out.append( shown ).append( " recording" ).append( shown == 1 ? "" : "s" )
+					.append( ", ranked by score within each section" );
+		} else {
+			out.append( shown ).append( " of " ).append( total ).append( " recordings shown" )
+					.append( matched > shown ? " (" + matched + " match)" : "" )
+					.append( ", sorted by " ).append( view.describeSort() );
+		}
+		if (shown > 0) out.append( ", numbered 1 to " ).append( shown );
+		out.append( "\n" );
+		if (!view.isDefault()) out.append( "  view: " ).append( view ).append( "\n" );
+		if (folded > 0){
+			out.append( "  " ).append( folded ).append( folded == 1 ? " group is" : " groups are" )
+					.append( " collapsed: expand <group> or expand all lists their recordings\n" );
+		}
 
 		List<Entry> shared = new ArrayList<>();
-		for (Entry entry : catalog.entries()){
+		for (Entry entry : visible){
 			if (entry.copies > 1) shared.add( entry );
 		}
 		if (!shared.isEmpty()){
@@ -85,6 +118,25 @@ public final class ReplayListing {
 		return out.toString();
 	}
 
+	private static String dim( String text, boolean plain ){
+		return plain ? text : Ansi.wrap( text, Ansi.DIM );
+	}
+
+	private static String summary( CatalogLayout.Section section ){
+		int matched = section.matched.size();
+		StringBuilder line = new StringBuilder();
+		line.append( matched ).append( matched == section.all.size() ? "" : " of " + section.all.size() )
+				.append( matched == 1 ? " recording" : " recordings" );
+		double best = CatalogLayout.best( section );
+		if (best > Double.NEGATIVE_INFINITY) line.append( ", best " ).append( String.format( Locale.US, "%,.1f", best ));
+		line.append( ", deepest d" ).append( CatalogLayout.deepest( section ));
+		long newest = CatalogLayout.newest( section );
+		if (newest > 0) line.append( ", newest " ).append( formatInstant( newest ));
+		int shown = section.shown();
+		if (!section.collapsed && shown < matched) line.append( ", top " ).append( shown ).append( " shown" );
+		line.append( "  [" ).append( section.id ).append( "]" );
+		return line.toString();
+	}
 
 	private static String parentName( Entry entry ){
 		File parent = entry.file.getParentFile();
@@ -92,15 +144,13 @@ public final class ReplayListing {
 	}
 
 
-	private static String sectionBlurb( String section, Map<String, List<Entry>> groups ){
+	private static String sectionBlurb( String section, List<Entry> entries ){
 		if (ReplayCatalog.SECTION_CORPUS.equals( section )){
 			return "recorded through ReplayRecorder directly - these reproduce";
 		}
 
 		int unwatchable = 0;
-		for (List<Entry> hero : groups.values()){
-			for (Entry entry : hero) if (!entry.watchable) unwatchable++;
-		}
+		for (Entry entry : entries) if (!entry.watchable) unwatchable++;
 
 		String origin = section.startsWith( ReplayCatalog.GROUP_PREFIX )
 				? "written by training run group " + section.substring( ReplayCatalog.GROUP_PREFIX.length() ).toLowerCase( Locale.ROOT ) + " - these reproduce"
@@ -111,15 +161,9 @@ public final class ReplayListing {
 		}
 
 		return origin + " too. " + unwatchable
-				+ " of " + sectionCount( groups ) + ", marked 'not watchable', were written before the"
+				+ " of " + entries.size() + ", marked 'not watchable', were written before the"
 				+ " replay wire carried all nine step fields and nothing can recover that"
 				+ " (issues.md 15)";
-	}
-
-	private static int sectionCount( Map<String, List<Entry>> groups ){
-		int n = 0;
-		for (List<Entry> list : groups.values()) n += list.size();
-		return n;
 	}
 
 	private static String note( Entry entry ){
@@ -171,8 +215,10 @@ public final class ReplayListing {
 	private static String formatRecordedAt( Entry entry ){
 		if (entry.error != null) return "-";
 		long modified = entry.file.lastModified();
-		if (modified <= 0) return "-";
+		return modified <= 0 ? "-" : formatInstant( modified );
+	}
 
+	private static String formatInstant( long modified ){
 		java.time.LocalDateTime at = java.time.LocalDateTime.ofInstant(
 				java.time.Instant.ofEpochMilli( modified ),
 				java.time.ZoneId.systemDefault() );
@@ -189,6 +235,9 @@ public final class ReplayListing {
 		boolean plain = false;
 		String select = null;
 		String resolve = null;
+		File viewFile = null;
+		List<String> viewTokens = new ArrayList<>();
+		List<String> apply = null;
 
 		for (int i = 0; i < args.length; i++ ){
 			if ("--plain".equals( args[ i ] )){
@@ -199,7 +248,27 @@ public final class ReplayListing {
 				select = args[ ++i ];
 			} else if ("--resolve".equals( args[ i ] ) && i + 1 < args.length){
 				resolve = args[ ++i ];
+			} else if ("--view-file".equals( args[ i ] ) && i + 1 < args.length){
+				viewFile = new File( args[ ++i ] );
+			} else if ("--apply".equals( args[ i ] )){
+				apply = new ArrayList<>( Arrays.asList( args ).subList( i + 1, args.length ));
+				break;
+			} else {
+				viewTokens.add( args[ i ] );
 			}
+		}
+
+		CatalogView view = CatalogView.load( viewFile );
+		String bad = view.apply( viewTokens );
+		if (bad != null){
+			System.err.println( "[ERROR] " + bad );
+			System.exit( 1 );
+			return;
+		}
+
+		if (apply != null){
+			System.exit( applyAndSave( view, apply, viewFile ));
+			return;
 		}
 
 		if (directories.isEmpty()){
@@ -218,10 +287,11 @@ public final class ReplayListing {
 				return;
 			}
 
-			Entry entry = catalog.byNumber( number );
+			List<Entry> numbered = CatalogLayout.numbered( catalog, view );
+			Entry entry = number < 1 || number > numbered.size() ? null : numbered.get( number - 1 );
 			if (entry == null){
 				System.err.println( "no recording numbered " + number
-						+ " (" + catalog.inListingOrder().size() + " available)" );
+						+ " (" + numbered.size() + " available)" );
 				System.exit( 1 );
 				return;
 			}
@@ -267,8 +337,33 @@ public final class ReplayListing {
 			return;
 		}
 
-		System.out.print( render( catalog, plain ));
+		System.out.print( render( catalog, plain, view ));
 
 		if (catalog.isEmpty()) System.exit( 1 );
+	}
+
+	private static int applyAndSave( CatalogView view, List<String> command, File viewFile ){
+		String line = String.join( " ", command ).trim().toLowerCase( Locale.ROOT );
+		if (line.isEmpty() || line.equals( "h" ) || line.equals( "help" ) || line.equals( "?" )){
+			System.out.println( CatalogView.HELP );
+			return 1;
+		}
+
+		String error = view.apply( command );
+		if (error != null){
+			System.out.println( "[ERROR] " + error );
+			return 1;
+		}
+
+		if (viewFile != null){
+			try {
+				view.save( viewFile );
+			} catch (IOException e){
+				System.out.println( "[ERROR] could not save the view to " + viewFile + ": " + e.getMessage() );
+				return 1;
+			}
+		}
+		System.out.println( "[OK]     view: " + ( view.isDefault() ? "default" : view.toString() ));
+		return 0;
 	}
 }

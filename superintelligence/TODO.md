@@ -32,6 +32,14 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
 
 ## 2. Engine and harness
 
+- [ ] **Concurrent `verify` processes diverge each other.** 16 parallel `verify` sharing the default
+      `--out` failed 707 of 1374 trainer recordings; with a separate `--out` per process 256 of those
+      reproduced, and sampled ones reproduce alone. Find the shared file, or give `verify` a private
+      work directory. Evidence `out/evidence/outdated-scan/`.
+- [ ] **Six recent recordings diverge headless** (rng `baseDraws` drift): `fresh-1022` DSD-FKG-MLX
+      step 181, SSW-ZVA-GRB 158; `seeds100-60` FJD-MIG-GHV 325, FLR-YOG-DQQ 492; `retrain-0.11.0-60`
+      SRZ-CFG-BPN 1083, ZRD-CVK-QYT 627. Possibly the chasm-item or `Burning` fixes that landed after
+      they were written. Copies in `out/evidence/outdated-scan/recent-divergent/`.
 - [ ] **Gnoll Trickster triple hit in the viewer** (`issues.md` 23, `GFQ-ZBM-CRL`).
 
 - [ ] **`HeroDisguise` crashes headlessly.** Cursed wand casts sprite to `HeroSprite`, which needs

@@ -117,6 +117,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed twice already. The guard is unreachable today (every loop path breaks), so this is hygiene.
 
 ### Added
+- **Catalogue views.** `replays` and the `replay-viewer.bat` prompt take sort, filter and collapse
+  commands (`CatalogView`, `CatalogLayout`): `sort <score|depth|turns|steps|recorded|gen|name|hero>
+  [asc|desc]`, `only <group>` (exact id, else prefix: `only floor` is floor-1, floor-2...),
+  `hide`/`show`, `collapse`/`expand <group|all>`, `hero`, `depth n-m`, `score min..max`, `gen`,
+  `since`, `find`, `watchable`/`broken`/`dupes`, `flat`, `top n`, `order <name|newest|best|size>`,
+  `reset`. Every section header carries a summary (count, best, deepest, newest, id); a collapsed one
+  is that line alone and takes no numbers. The prompt keeps its view in `out/catalog-view.txt`, so
+  `--select` numbers what was printed and the next session opens on the same view. `--list` takes the
+  same commands as flags. `replaycheck` 28 cases, two of them seen red against a substring group match
+  and a flipped sort.
 - `train.min_active_seeds` (`SPD_TRAIN_MIN_ACTIVE_SEEDS`, default 1): fewest locked seeds the schedule
   trains on. The schedule held 1 seed until a floor past 5, so `teach-demo-51` spent 90% of 800
   episodes in one dungeon. `seedcheck` case 6, mutation-tested.
