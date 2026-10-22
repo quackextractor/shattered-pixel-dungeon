@@ -24,7 +24,7 @@ public class PpoHyperparameters {
 
 	public int epochs = 4;
 
-	public int updateThreads = 1;
+	public int updateThreads = 8;
 
 	public double sampleRate = 0.25;
 

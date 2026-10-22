@@ -6,8 +6,10 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
@@ -23,8 +25,10 @@ public class UpdateCostCheck {
 
 	public static void main( String[] args ){
 		int samples = DEFAULT_SAMPLES;
+		String threads = "";
 		for (int i = 0; i < args.length - 1; i++){
 			if (args[ i ].equals( "--samples" )) samples = Integer.parseInt( args[ ++i ] );
+			else if (args[ i ].equals( "--threads" )) threads = args[ ++i ];
 		}
 
 		EnvConfig config = new EnvConfig();
@@ -45,6 +49,36 @@ public class UpdateCostCheck {
 		Report clipped = time( network, batch, grid, headGrad, true, true );
 
 		print( forward, full, clipped, network.parameterCount() );
+
+		for (String t : threads.split( "," )){
+			if (!t.trim().isEmpty()) timeUpdate( config, Integer.parseInt( t.trim() ), samples );
+		}
+	}
+
+	private static void timeUpdate( EnvConfig config, int threads, int samples ){
+		PPO ppo = new PPO( config, new Random( 12345L ) );
+		ppo.threads = threads;
+		ppo.epochs = 1;
+		ppo.minibatchSize = 8;
+		ppo.chunkLength = 16;
+		try {
+			double best = Double.MAX_VALUE;
+			for (int r = 0; r < 3; r++){
+				List< Transition > batch = ParallelFixtures.batch( ppo.network, config, samples, 4242L );
+				for (int i = 0; i < batch.size(); i++){
+					batch.get( i ).episodeId = i / ppo.chunkLength;
+					batch.get( i ).stepIndex = i % ppo.chunkLength;
+				}
+				ppo.addAll( batch );
+				long start = System.nanoTime();
+				ppo.update();
+				best = Math.min( best, (System.nanoTime() - start) / 1e6 );
+			}
+			System.out.println( "  ppo.update, " + samples + " samples, 1 epoch, minibatch 8 chunks, "
+					+ ppo.threadCount() + " threads: " + ms( best / samples ) + " ms/sample" );
+		} finally {
+			ppo.close();
+		}
 	}
 
 	private static void oneStep( Network network, Transition t, float[] grid, float[] headGrad,

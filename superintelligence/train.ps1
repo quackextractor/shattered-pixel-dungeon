@@ -52,7 +52,7 @@ param(
     [string] $Profile = 'default',
 
     # Threads for the PPO update, which is the run's critical path.
-    [int]    $UpdateThreads = 6,
+    [int]    $UpdateThreads = 8,
 
     # Generations between checkpoints. The last one always checkpoints.
     [int]    $CheckpointEvery = 10,
@@ -180,7 +180,7 @@ try {
     if (-not $Long) {
         if (-not $PSBoundParameters.ContainsKey('Generations'))    { $Generations = 3 }
         if (-not $PSBoundParameters.ContainsKey('Episodes'))       { $Episodes = 1 }
-        if (-not $PSBoundParameters.ContainsKey('UpdateThreads'))  { $UpdateThreads = 4 }
+        if (-not $PSBoundParameters.ContainsKey('UpdateThreads'))  { $UpdateThreads = 8 }
         if (-not $PSBoundParameters.ContainsKey('CheckpointEvery')){ $CheckpointEvery = 3 }
         if (-not $PSBoundParameters.ContainsKey('Workers'))        { $Workers = 4 }
         if (-not $PSBoundParameters.ContainsKey('Name'))           { $Name = "$Profile-quick" }

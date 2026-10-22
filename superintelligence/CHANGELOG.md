@@ -144,6 +144,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   read; `Network.gridGradient()` is gone. The `reduce` layer's input gradient now sums each kernel
   cell over output channels in one contiguous pass. `updatecost` forward+backward 9.55 -> 4.63
   ms/sample. `gradcheck` fails on the `conv` weights with that sum halved.
+- **`rl.update_threads` defaults to 8** (was 1; `train.ps1` 6 long, 4 short, now 8 both). Workers are
+  idle during the update, so it competes with nothing; shards cap at `rl.minibatch_size` chunks.
+  `updatecost --threads 1,4,8` (new flag, times a whole `ppo.update`): 4.42, 1.22, 0.87 ms/sample.
 - **`EpisodeRecord.isRetained` is a flag on the transition**, not a scan of up to 2048 retained
   steps on every tail eviction. `gaecheck`'s double-retain case fails without the flag.
 - **About 9x more optimiser steps per generation.** `rl.sample_rate` 0.05 -> 0.25, `rl.epochs` 2 -> 4,

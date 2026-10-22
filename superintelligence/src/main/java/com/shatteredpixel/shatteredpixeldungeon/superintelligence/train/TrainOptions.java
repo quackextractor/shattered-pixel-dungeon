@@ -24,7 +24,7 @@ public class TrainOptions {
 	public int minibatchSize = 8;
 
 
-	public int updateThreads = 1;
+	public int updateThreads = 8;
 
 
 	public double sampleRate = 0.25;
