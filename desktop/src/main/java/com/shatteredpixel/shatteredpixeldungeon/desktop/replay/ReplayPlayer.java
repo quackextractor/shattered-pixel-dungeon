@@ -601,6 +601,16 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 	private int parkedFrames;
 
+	private int inFlightFrames;
+
+	private boolean mobAnimationInFlight(){
+		if (Dungeon.level == null) return false;
+		for (Mob mob : Dungeon.level.mobs){
+			if (mob.sprite != null && mob.sprite.animationInFlight()) return true;
+		}
+		return false;
+	}
+
 	/**
 	 * Advances turns until the hero can be given input, or reports why it cannot.
 	 *
@@ -736,6 +746,12 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			boolean wantsMore = Actor.headlessStep();
 
 			if (Dungeon.hero.curAction == null && Dungeon.hero.ready && Dungeon.hero.paralysed == 0){
+				if (inFlightFrames < MAX_PARKED_FRAMES && mobAnimationInFlight()){
+					inFlightFrames++;
+					pendingFrames++;
+					return Drain.PENDING;
+				}
+				inFlightFrames = 0;
 				return Drain.READY;
 			}
 

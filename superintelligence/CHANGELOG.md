@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The viewer settled a step while a mob's attack was still animating.** A disguised Mimic's surprise
+  attack (`Mimic.interact`) lands in its attack-animation callback, which also spends the hero's turn;
+  the hero's shorter operate animation finishes first, so the drain saw a ready hero and moved on. The
+  trainer's stand-ins fire both callbacks inside the step. `fresh-1022` `PTJ-VRT-KHR`, `JUZ-UAQ-GCH`,
+  `FUE-XLT-OVJ` and `LFJ-HPG-RFV` diverged on it (hero hp 5 higher than recorded the step a Mimic was
+  revealed). The drain now holds a ready hero while any mob has a non-looping animation in flight
+  (`MovieClip.animationInFlight`), up to 600 frames; all four play to the end. Corpus viewcheck 21 of 21.
+- **`viewcheck` failed slow recordings as stuck.** The child budget was a fixed 300 s, which
+  `SZZ-PPW-YGF` (542 steps, 11,854 frames, 187 s alone), `MSR-XCX-JWZ` and `PBC-UFZ-RLA` passed at 20
+  children. Children now print `spd.heartbeat`, and the gate kills one only after
+  `-PviewcheckStallSeconds` (120) without a new step. Forced to 2 s it kills the child, as it should.
 - **Items that fell down a chasm vanished in the trainer.** `Level.drop` on a chasm cell and
   `PitfallTrap` queue items in `Dungeon.droppedItems` for the depth below; `GameScene.create` places
   them on arrival (`randomRespawnCell`, then drop, shatter, plant or burst). The headless pipeline has
