@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Items that fell down a chasm vanished in the trainer.** `Level.drop` on a chasm cell and
+  `PitfallTrap` queue items in `Dungeon.droppedItems` for the depth below; `GameScene.create` places
+  them on arrival (`randomRespawnCell`, then drop, shatter, plant or burst). The headless pipeline has
+  no `GameScene`, so the trainer's floor lacked them and the viewer spent the placement draws the
+  trainer never did: `fresh-1022` `SSW-ZVA-GRB` (+32 base draws at step 158) and `DSD-FKG-MLX` (+15 at
+  181). `LevelPipeline.placeDroppedItems` runs the same block after every transition and fall; headless
+  now draws 467 and 518 there, as the viewer does. `transitioncheck` case 15, red without the call.
+  Recordings made before this with a chasm drop no longer verify.
 - **A run that failed before its first generation overwrote the checkpoint with untrained weights.**
   `RunCheckpoints.lastSaved` started at -1, so `saveOnExit` wrote generation 0 over `--save` even when
   nothing trained; a bad `-Demos` path replaced `seeds100-60`'s generation-61 weights that way. It

@@ -235,6 +235,7 @@ public class LevelPipeline {
 		Dungeon.switchLevel( level, pos );
 
 		attachSprites();
+		placeDroppedItems();
 		dropStaleTarget();
 		PathFinder.setMapSize( level.width(), level.height() );
 
@@ -258,12 +259,33 @@ public class LevelPipeline {
 				com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.fallIntoPit ));
 
 		attachSprites();
+		placeDroppedItems();
 		dropStaleTarget();
 		PathFinder.setMapSize( level.width(), level.height() );
 
 		clearSwitchRequest();
 	}
 
+
+	static void placeDroppedItems(){
+		java.util.ArrayList< com.shatteredpixel.shatteredpixeldungeon.items.Item > dropped = Dungeon.droppedItems.get( Dungeon.depth );
+		if (dropped == null) return;
+		for (com.shatteredpixel.shatteredpixeldungeon.items.Item item : dropped){
+			int pos = Dungeon.level.randomRespawnCell( null );
+			if (pos == -1) pos = Dungeon.level.entrance();
+			if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion){
+				((com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion) item).shatter( pos );
+			} else if (item instanceof com.shatteredpixel.shatteredpixeldungeon.plants.Plant.Seed
+					&& !Dungeon.isChallenged( com.shatteredpixel.shatteredpixeldungeon.Challenges.NO_HERBALISM )){
+				Dungeon.level.plant( (com.shatteredpixel.shatteredpixeldungeon.plants.Plant.Seed) item, pos );
+			} else if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.Honeypot){
+				Dungeon.level.drop( ((com.shatteredpixel.shatteredpixeldungeon.items.Honeypot) item).shatter( null, pos ), pos );
+			} else {
+				Dungeon.level.drop( item, pos );
+			}
+		}
+		Dungeon.droppedItems.remove( Dungeon.depth );
+	}
 
 	static void dropStaleTarget(){
 		com.shatteredpixel.shatteredpixeldungeon.actors.Char target = com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton.lastTarget;

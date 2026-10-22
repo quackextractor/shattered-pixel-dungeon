@@ -23,7 +23,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Re
 
 public class TransitionCheck {
 
-	private static final int CHECKS = 14;
+	private static final int CHECKS = 15;
 
 	static final String SEED = "TRANSITION";
 
@@ -53,6 +53,7 @@ public class TransitionCheck {
 		checkClimbingBackDoesNotRefillTheFloorsTurns();
 		checkAVisitedFloorIsTheSameFloor();
 		checkAStaleTargetDoesNotCrossAFloor();
+		checkAnItemThatFellDownAChasmIsWaitingBelow();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     floor transitions: " + CHECKS + " checks passed" );
@@ -84,6 +85,27 @@ public class TransitionCheck {
 		System.out.println( "  a quickslot target from the floor left behind is dropped on arrival" );
 	}
 
+
+	private static void checkAnItemThatFellDownAChasmIsWaitingBelow(){
+		SPDEnv env = freshRun();
+		com.shatteredpixel.shatteredpixeldungeon.items.Item stone =
+				new com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.ThrowingStone();
+		Dungeon.dropToChasm( stone );
+		boolean down = descend( env );
+		if (down && env.running()) env.step( Action.WAIT, 0 );
+		boolean found = false;
+		for (com.shatteredpixel.shatteredpixeldungeon.items.Heap heap : Dungeon.level.heaps.valueList()){
+			found |= heap.items.contains( stone );
+		}
+		if (!down || Dungeon.depth != 2 || !found || Dungeon.droppedItems.get( 2 ) != null){
+			fail( "an item that fell down a chasm from floor 1 is not lying on floor 2 after descending."
+					+ " GameScene.create places Dungeon.droppedItems on arrival; headless skipped it, so the"
+					+ " trainer's floor 2 lost the item and the viewer's spent the randomRespawnCell draws"
+					+ " (fresh-1022 SSW-ZVA-GRB, DSD-FKG-MLX)" );
+			return;
+		}
+		System.out.println( "  an item that fell down a chasm is lying on the floor below on arrival" );
+	}
 
 	static SPDEnv freshRun(){
 		return freshRun( SEED );
