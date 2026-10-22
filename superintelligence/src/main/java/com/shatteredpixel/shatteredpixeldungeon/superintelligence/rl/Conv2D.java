@@ -72,23 +72,22 @@ public class Conv2D {
 	public void forward( float[] input, Tensor out ){
 		im2col( input );
 
-		java.util.Arrays.fill( out.data, 0f );
+		int positions = outWidth * outHeight;
+		float[] o = preAct, w = W.data, c = col.data;
+		for (int p = 0; p < positions; p++) System.arraycopy( b.data, 0, o, p * outChannels, outChannels );
 
-		for (int p = 0; p < outWidth * outHeight; p++){
-			int cOff = p * outChannels;
-			for (int q = 0; q < outChannels; q++){
-				float sum = b.data[ q ];
-				for (int k = 0; k < W.rows; k++){
-					sum += col.data[ k * col.cols + p ] * W.data[ k * outChannels + q ];
-				}
-				out.data[ cOff + q ] = sum;
-				preAct[ cOff + q ] = sum;
+		for (int k = 0; k < W.rows; k++){
+			int colOff = k * col.cols;
+			int wOff = k * outChannels;
+			for (int p = 0; p < positions; p++){
+				float x = c[ colOff + p ];
+				if (x == 0f) continue;
+				int oOff = p * outChannels;
+				for (int q = 0; q < outChannels; q++) o[ oOff + q ] += x * w[ wOff + q ];
 			}
 		}
 
-		for (int i = 0; i < out.data.length; i++){
-			if (out.data[ i ] < 0f ) out.data[ i ] = 0f; 
-		}
+		for (int i = 0; i < o.length; i++) out.data[ i ] = Math.max( 0f, o[ i ] );
 	}
 
 	private void im2col( float[] input ){
@@ -131,7 +130,20 @@ public class Conv2D {
 			if (preAct[ i ] <= 0f ) gradOut.data[ i ] = 0f;
 		}
 
-		for (int p = 0; p < outWidth * outHeight; p++){
+		int positions = outWidth * outHeight;
+		float[] gw = gW.data, c = col.data, go = gradOut.data;
+		for (int k = 0; k < W.rows; k++){
+			int colOff = k * col.cols;
+			int wOff = k * outChannels;
+			for (int p = 0; p < positions; p++){
+				float x = c[ colOff + p ];
+				if (x == 0f) continue;
+				int gOff = p * outChannels;
+				for (int q = 0; q < outChannels; q++) gw[ wOff + q ] += x * go[ gOff + q ];
+			}
+		}
+
+		for (int p = 0; p < positions; p++){
 			int cOff = p * outChannels;
 
 			for (int ch = 0; ch < inChannels; ch++){
@@ -139,13 +151,11 @@ public class Conv2D {
 				for (int ky = 0; ky < kernel; ky++){
 					for (int kx = 0; kx < kernel; kx++){
 						int row = (ch * kernel + ky) * kernel + kx;
-						int rowOff = row * col.cols;
 
 						for (int q = 0; q < outChannels; q++){
 							float g = gradOut.data[ cOff + q ];
 							if (g == 0f) continue;
 							int wOff = row * outChannels + q;
-							gW.data[ wOff ] += col.data[ rowOff + p ] * g;
 
 							int iy = (p / outWidth) * stride + ky;
 							int ix = (p % outWidth) * stride + kx;

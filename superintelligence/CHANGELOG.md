@@ -135,6 +135,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   levitation presses the cell. Both fail with the engine change reverted.
 
 ### Changed
+- **`Conv2D` forward and weight gradient walk the kernel row outermost** and skip zero inputs, so the
+  inner loop reads one contiguous weight row instead of strides of 529 and 24 floats. Same additions
+  in the same order, so outputs are unchanged. `updatecost`: forward 5.02 -> 1.97 ms/sample,
+  forward+backward 11.44 -> 9.55 (synthetic half-dense grid; real grids are sparser).
+  Evidence `out/evidence/perf-1022.txt`.
 - **`EpisodeRecord.isRetained` is a flag on the transition**, not a scan of up to 2048 retained
   steps on every tail eviction. `gaecheck`'s double-retain case fails without the flag.
 - **About 9x more optimiser steps per generation.** `rl.sample_rate` 0.05 -> 0.25, `rl.epochs` 2 -> 4,
