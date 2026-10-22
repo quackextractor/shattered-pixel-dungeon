@@ -94,20 +94,10 @@ public class ViewCheck {
 
 	private static final File COMMITTED_CORPUS = new File( "superintelligence/test-replays" );
 
-	/**
-	 * Ceiling on a single playback, so a stuck viewer fails instead of hanging the gate.
-	 *
-	 * <p>Five minutes, up from 120s. A full-length trainer recording is ~1500 steps and the gate plays at
-	 * speed 40, which measures at ~5150 frames for 1508 steps — over four minutes on a loaded machine.
-	 * At 120s the budget expired and the gate reported <em>"the viewer never stopped"</em> for a run that
-	 * had stopped, having applied every step: a false failure whose message names the opposite of what
-	 * happened.
-	 *
-	 * <p>Cost is bounded rather than proportional to the corpus, because children run in parallel: what
-	 * this buys is that the gate waits for the slowest single recording rather than reporting it wrong.
-	 * A genuinely stuck viewer still fails, just later.
-	 */
 	private static final long CHILD_TIMEOUT_MS = 300_000;
+
+	// a child is stuck when its heartbeat stops naming a new step, not when it is slow
+	private static final long STALL_MS = 1000L * Long.getLong( "viewcheckStallSeconds", 120L );
 
 	public static void main( String[] args ) throws Exception {
 		List< String > parsed = new ArrayList<>( Arrays.asList( args ));
@@ -588,6 +578,13 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 	 * because its failures are re-run serially and the serial run is the one whose step number is
 	 * reproducible - so printing the parallel failures would print numbers that cannot be acted on.
 	 */
+	private static final java.util.regex.Pattern HEARTBEAT_STEP = java.util.regex.Pattern.compile( "heartbeat frame \\d+ step (\\d+) " );
+
+	private static int heartbeatStep( String line ){
+		java.util.regex.Matcher m = HEARTBEAT_STEP.matcher( line );
+		return m.find() ? Integer.parseInt( m.group( 1 ) ) : -1;
+	}
+
 	private static int runChild( File file, Map< String, String > overrides, StringBuilder sink,
 			boolean quiet ) throws IOException, InterruptedException {
 		String javaBin = System.getProperty( "java.home" )
@@ -598,6 +595,7 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 		flags.put( "spd.windowed", "1" );
 		flags.put( "spd.hidden", "1" );
 		flags.put( "spd.autoClose", "1" );
+		flags.put( "spd.heartbeat", "1" );
 		flags.put( "spd.fast", String.valueOf( (int) GATE_SPEED ) );
 		String fixedDelta = System.getProperty( "spd.fixedDelta" );
 		if (fixedDelta != null && !fixedDelta.trim().isEmpty()) flags.put( "spd.fixedDelta", fixedDelta.trim() );
@@ -636,12 +634,19 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 		Process child = builder.start();
 
 		StringBuilder captured = new StringBuilder();
+		java.util.concurrent.atomic.AtomicLong progressed = new java.util.concurrent.atomic.AtomicLong( System.nanoTime() );
+		java.util.concurrent.atomic.AtomicInteger lastStep = new java.util.concurrent.atomic.AtomicInteger( -1 );
 		Thread reader = new Thread( () -> {
 			try (java.io.BufferedReader in = new java.io.BufferedReader(
 					new java.io.InputStreamReader( child.getInputStream() ))){
 				String line;
 				while ((line = in.readLine()) != null){
-					synchronized (captured){ captured.append( line ).append( '\n' ); }
+					int step = heartbeatStep( line );
+					if (step < 0){
+						synchronized (captured){ captured.append( line ).append( '\n' ); }
+					} else if (step != lastStep.getAndSet( step )){
+						progressed.set( System.nanoTime() );
+					}
 				}
 			} catch (IOException ignored){
 			}
@@ -649,11 +654,13 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 		reader.setDaemon( true );
 		reader.start();
 
-		if (!child.waitFor( CHILD_TIMEOUT_MS, TimeUnit.MILLISECONDS )){
-			child.destroyForcibly();
-			System.err.println( "[ERROR]  " + file.getName() + " did not finish within "
-					+ ( CHILD_TIMEOUT_MS / 1000 ) + "s; the viewer never stopped" );
-			return 1;
+		while (!child.waitFor( 1, TimeUnit.SECONDS )){
+			if (System.nanoTime() - progressed.get() > STALL_MS * 1_000_000L){
+				child.destroyForcibly();
+				System.err.println( "[ERROR]  " + file.getName() + " applied no step for " + ( STALL_MS / 1000 )
+						+ "s after step " + lastStep.get() + "; the viewer stalled" );
+				return 1;
+			}
 		}
 		reader.join( 1000 );
 

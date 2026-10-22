@@ -85,6 +85,7 @@ tasks.register('viewcheck', JavaExec) {
     if (project.hasProperty('spdFixedDelta')) { systemProperty 'spd.fixedDelta', project.property('spdFixedDelta') }
 
     if (project.hasProperty('viewcheckJobs')) { systemProperty 'viewcheckJobs', project.property('viewcheckJobs') }
+    if (project.hasProperty('viewcheckStallSeconds')) { systemProperty 'viewcheckStallSeconds', project.property('viewcheckStallSeconds') }
 }
 
 tasks.register('debug', JavaExec) {

@@ -58,9 +58,12 @@
   **And its child budget must exceed a full-length recording.** It was 120 s, against a 1508-step trainer
   recording that takes ~4 minutes at gate speed, so the gate reported *"the viewer never stopped"* for
   runs that had stopped having applied every step - 1508 of 1508, 1100 of 1100. A false failure whose
-  message names the opposite of what happened, now 300 s. Found only because `trainer-replays` gained a
+  message names the opposite of what happened. Found only because `trainer-replays` gained a
   full-length run the corpus did not contain; **the gate had been green because nothing in it was long
-  enough to trip over.**
+  enough to trip over.** A fixed 300 s failed the same way at 20 children: `fresh-1022` `SZZ-PPW-YGF`
+  needs 11,854 frames for 542 steps and plays clean in 187 s alone. The budget is now progress, not
+  time: each child runs with `spd.heartbeat`, and is killed only after `viewcheckStallSeconds` (120)
+  without a new step.
 
 ---
 
