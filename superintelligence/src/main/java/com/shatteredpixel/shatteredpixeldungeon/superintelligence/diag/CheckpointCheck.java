@@ -14,7 +14,27 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class CheckpointCheck {
 
-	private static final int CHECKS = 10;
+	private static final int CHECKS = 11;
+
+	private static void checkARunThatTrainedNothingLeavesTheCheckpointAlone( Network trained, EnvConfig config,
+			File dir ) throws IOException {
+		File file = new File( dir, "kept.bin" );
+		Checkpoint.save( file, trained, config, 61, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );
+		long before = file.length();
+		long modified = file.lastModified();
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer trainer =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Trainer( config, 1L, dir );
+		trainer.checkpointing( file, 1 );
+		trainer.saveOnExit();
+		trainer.closeUpdate();
+		int generation = Checkpoint.load( file, new Network( config, new Random( 3L )), config ).generation;
+		if (generation != 61 || file.length() != before || file.lastModified() != modified){
+			fail( "a run that failed before its first generation overwrote a generation-61 checkpoint with"
+					+ " generation " + generation + "; the fresh-1022 restart lost seeds100-60 that way" );
+			return;
+		}
+		System.out.println( "  a run that trained nothing leaves the checkpoint it was told to save to alone" );
+	}
 
 	public static void main( String[] args ){
 		File dir = Scratch.dir( "checkpointcheck" );
@@ -43,6 +63,7 @@ public class CheckpointCheck {
 			checkReportsGenerationAndSteps( original, small, file, 7, 4242L );
 			checkAMissingFlagValueIsRefusedNamingItself();
 			checkCheckpointEveryComesFromTheFileUnlessTheFlagSaysOtherwise( dir );
+			checkARunThatTrainedNothingLeavesTheCheckpointAlone( original, small, dir );
 
 			Checkpoint.save( new File( dir, "default.bin" ),
 				new Network( config, new Random( 1L ) ), config, 1, 1L, 11L, 13L, 17L, 4, 4, 0f, 1f, false, 0L );

@@ -19,7 +19,7 @@ final class RunCheckpoints {
 
 	private File saveFile;
 	private int every = 25;
-	private int lastSaved = -1;
+	private int lastSaved = 0;
 	private int completed;
 
 	RunCheckpoints( EnvConfig config, PPO ppo, SeedPool seeds, Random rng, long rngSeed ){
