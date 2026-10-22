@@ -441,7 +441,7 @@ sets. **Reverting it leaves the viewer untouched by construction**, and the gate
 | Gate | After reverting the fix |
 | --- | --- |
 | `presscheck` | **red**, 2 of 3 cases |
-| `viewcheck` (real viewer, 21 recordings) | **green** — correctly, and not a hole |
+| `viewcheck` (real viewer, 22 recordings) | **green** — correctly, and not a hole |
 | `verify test-replays/duelist-throw.replay` | **red**: `diverged at step 27 of 60 - hp: replayed 17, recorded 19` |
 | `playbackcheck` | **red**: `duelist-throw.replay diverged at step 27: DIVERGED at step 28 - INTERACT/0 in WORLD` |
 

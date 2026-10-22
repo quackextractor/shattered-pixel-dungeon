@@ -1,0 +1,154 @@
+SPD-REPLAY
+version=5
+seed=PTJ-VRT-KHR
+hero=ROGUE
+challenges=0
+generation=29
+score=-1887.630009919405
+depth=2
+turns=134
+turn_limit=1500
+max_slots=96
+allow_equipping=true
+turn_limit_total=40000
+stall_limit=120
+free_step_budget=250
+actor_step_limit=20000
+termination=DEATH
+reward_profile=default
+group=fresh-1022
+steps=134
+TRAVEL_EXPLORE 1 WORLD 644 2.9199981689453125  20 1.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 1 6662119535993823662 1
+TRAVEL_EXPLORE 1 WORLD 608 2.9000015258789062  20 2.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 2 -4405414554969519894 1
+TRAVEL_EXPLORE 0 WORLD 573 4.330000877380371  20 3.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 4 2222081062364018994 1
+TRAVEL_EXPLORE 0 WORLD 539 3.6600005626678467  20 4.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 6 6661681105089530111 1
+TRAVEL_EXPLORE 0 WORLD 505 2.8400001525878906  20 5.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 8 -2683830079100713191 1
+TRAVEL_EXPLORE 0 WORLD 471 2.8199996948242188  20 6.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 10 -3474763927426408863 1
+MOVE_NW 0 WORLD 471 -80.68000030517578  18 7.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 31 8802818018470640304 1
+MOVE_NW 0 WORLD 471 -120.68000030517578  15 8.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 52 -7815025052714303588 1
+MOVE_NW 2 WORLD 471 149.32000732421875  15 9.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 63 6097726604628379131 1
+TRAVEL_EXPLORE 0 WORLD 437 2.299999237060547  15 11.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 64 -2862316723290909959 1
+TRAVEL_EXPLORE 1 WORLD 438 2.779998779296875  15 12.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 65 787685179600973320 1
+TRAVEL_EXPLORE 0 WORLD 404 3.810000419616699  15 13.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 66 6120138408104937552 1
+TRAVEL_EXPLORE 0 WORLD 370 3.18999981880188  15 14.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 67 8299983153866006287 1
+REST 0 WORLD 370 -0.7600002288818359  15 15.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 67 8299983153866006287 1
+TRAVEL_EXPLORE 1 WORLD 371 0.839999794960022  15 16.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 68 -7315090181528635232 1
+TRAVEL_EXPLORE 0 WORLD 407 0.8600002527236938  16 17.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 71 -7484915925871399812 1
+REST 0 WORLD 407 -0.7399997711181641  16 18.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 73 1307448948437042345 1
+REST 0 WORLD 407 -0.7399997711181641  16 19.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 75 5609190859767481914 1
+TRAVEL_EXPLORE 0 WORLD 443 -0.970001220703125  16 20.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 78 1424805194497774694 1
+REST 0 WORLD 443 -0.720001220703125  16 21.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 80 -3344866572698043033 1
+REST 0 WORLD 443 -0.720001220703125  16 22.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 82 -1734650116239930738 1
+TRAVEL_EXPLORE 0 WORLD 407 1.260000228881836  16 23.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 85 -2626730714298430146 1
+TRAVEL_EXPLORE 0 WORLD 371 1.239999771118164  16 24.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 86 -2033691094477315866 1
+TRAVEL_EXPLORE 1 WORLD 335 2.719999313354492  16 25.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 87 -2240450853664902603 1
+TRAVEL_EXPLORE 0 WORLD 299 2.700000762939453  16 26.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 88 -672034564293680073 1
+TRAVEL_EXPLORE 0 WORLD 263 3.330000400543213  17 27.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 89 -8441754262130022095 1
+REST 0 WORLD 263 -0.8199996948242188  17 28.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 89 -8441754262130022095 1
+TRAVEL_EXPLORE 0 WORLD 227 2.7099997997283936  17 29.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 90 -3426515841788717781 1
+REST 0 WORLD 227 -0.8400001525878906  17 30.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 90 -3426515841788717781 1
+TRAVEL_EXPLORE 0 WORLD 226 4.739999771118164  17 31.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 93 -1341634145638550919 1
+TRAVEL_STAIRS 0 WORLD 225 3.369999885559082  17 32.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 94 -7123641115397342285 1
+MOVE_W 0 WORLD 225 149.1199951171875  17 33.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 103 -7749996623056227383 1
+MOVE_E 0 WORLD 225 219.1199951171875  15 34.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 136 6707260669963493268 1
+MOVE_E 1 WORLD 225 149.1199951171875  15 35.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 149 -6958134970797862371 1
+MOVE_NW 0 WORLD 225 -0.880000114440918  15 36.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 161 -7823583734253280719 1
+MOVE_E 0 WORLD 225 -40.880001068115234  14 37.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 184 2616641211605299824 1
+MOVE_W 2 WORLD 224 2.8500003814697266  14 38.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 188 2479449669833989327 1
+MOVE_E 0 WORLD 224 69.0999984741211  12 39.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 211 -2889734624991096514 1
+MOVE_NW 0 WORLD 188 3.2799999713897705  12 40.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 225 2985243829847631732 1
+MOVE_NE 0 WORLD 154 -1.2999995946884155  12 41.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 228 5614164541645654105 1
+MOVE_S 0 WORLD 154 -80.9000015258789  10 42.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 249 2589048298243502476 1
+MOVE_S 0 WORLD 154 149.10000610351562  10 43.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 260 4181615216747079647 1
+REST 0 WORLD 154 -0.8999996185302734  10 44.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 260 4181615216747079647 1
+REST 0 WORLD 154 -0.8999996185302734  10 45.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 260 4181615216747079647 1
+REST 0 WORLD 154 -0.8999996185302734  10 46.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 260 4181615216747079647 1
+REST 0 WORLD 154 -0.39999961853027344  11 47.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 260 4181615216747079647 1
+MOVE_W 0 WORLD 154 -40.900001525878906  10 48.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 273 2481496075151532933 1
+MOVE_W 0 WORLD 154 149.10000610351562  10 49.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 282 -211439672026681677 1
+REST 0 WORLD 154 -0.8999996185302734  10 50.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 282 -211439672026681677 1
+REST 0 WORLD 154 -0.8999996185302734  10 51.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 282 -211439672026681677 1
+REST 0 WORLD 154 -0.8999996185302734  10 52.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 282 -211439672026681677 1
+REST 0 WORLD 154 -0.8999996185302734  10 53.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 282 -211439672026681677 1
+REST 0 WORLD 154 -0.8999996185302734  10 54.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 282 -211439672026681677 1
+REST 0 WORLD 154 -0.8999996185302734  10 55.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 282 -211439672026681677 1
+TRAVEL_STAIRS 0 WORLD 153 2.7799999713897705  10 56.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 283 -4756506577139959209 1
+TRAVEL_STAIRS 0 WORLD 152 3.559999942779541  11 57.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 284 6379517282724245033 1
+TRAVEL_STAIRS 1 WORLD 151 2.690000057220459  11 58.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 285 7453190493682379659 1
+TRAVEL_STAIRS 0 WORLD 150 2.569999933242798  11 59.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 286 -8470031456278694009 1
+TRAVEL_STAIRS 0 WORLD 169 1800.949951171875  11 0.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 287 4372001678910968141 1
+REST 0 WORLD 169 -1.0  11 1.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 289 5718427863230806570 1
+REST 0 WORLD 169 -1.0  11 2.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 289 5718427863230806570 1
+REST 0 WORLD 169 -1.0  11 3.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 289 5718427863230806570 1
+REST 0 WORLD 169 -1.0  11 4.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 289 5718427863230806570 1
+TRAVEL_EXPLORE 0 WORLD 131 1.0499999523162842  11 5.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 292 -2667782911067077212 1
+REST 0 WORLD 131 -1.0  11 6.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 292 -2667782911067077212 1
+REST 1 WORLD 131 -0.5  12 7.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 292 -2667782911067077212 1
+TRAVEL_EXPLORE 4 WORLD 93 0.8500000238418579  12 8.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+REST 1 WORLD 93 -1.0  12 9.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+USE 0 WORLD 93 -0.5  12 9.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+CANCEL 2 SLOT 93 -0.5 ThrowingKnife:1@0,Waterskin:2@2 12 9.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+REST 0 WORLD 93 -1.0  12 10.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+REST 1 WORLD 93 -1.0  12 11.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+REST 1 WORLD 93 -1.0  12 12.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+REST 1 WORLD 93 -1.0  12 13.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+REST 0 WORLD 93 -1.0  12 14.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+REST 0 WORLD 93 -1.0  12 15.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+REST 1 WORLD 93 -1.0  12 16.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 297 -6493343575599795663 1
+MOVE_SE 1 WORLD 131 -0.5  13 17.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 298 -6775597035877336813 1
+REST 0 WORLD 131 -1.0  13 18.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 298 -6775597035877336813 1
+TRAVEL_EXPLORE 0 WORLD 167 0.9500000476837158  13 19.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 301 3796089306102969980 1
+REST 0 WORLD 167 -1.0  13 20.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 301 3796089306102969980 1
+REST 1 WORLD 167 -1.0  13 21.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 301 3796089306102969980 1
+TRAVEL_EXPLORE 0 WORLD 205 0.699999988079071  13 22.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 304 -4273272412915471638 1
+TRAVEL_EXPLORE 0 WORLD 241 0.8999999761581421  13 23.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 308 8988040286744606620 1
+TRAVEL_EXPLORE 0 WORLD 277 0.699999988079071  13 24.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 311 -8634255417646877712 1
+REST 0 WORLD 277 -1.0  13 25.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 311 -8634255417646877712 1
+TRAVEL_EXPLORE 0 WORLD 278 0.5  13 26.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 312 -436727054627967164 1
+TRAVEL_EXPLORE 0 WORLD 279 1.0  14 27.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 315 -7775602508643674632 1
+TRAVEL_EXPLORE 0 WORLD 280 0.550000011920929  14 28.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 318 886468798514934358 1
+TRAVEL_EXPLORE 0 WORLD 244 1.0  14 29.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 322 8106584472144805040 1
+REST 0 WORLD 244 -1.0  14 30.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 322 8106584472144805040 1
+TRAVEL_EXPLORE 0 WORLD 207 0.6000000238418579  14 31.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 331 3843055098736514736 1
+TRAVEL_EXPLORE 0 WORLD 170 0.6000000238418579  14 32.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 336 858706335904745086 1
+TRAVEL_EXPLORE 0 WORLD 207 -0.8999999761581421  14 33.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 341 -6438751458949294102 1
+TRAVEL_EXPLORE 1 WORLD 244 -1.0  14 34.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 347 -6123732955129561658 1
+TRAVEL_EXPLORE 1 WORLD 281 0.5  14 35.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 354 3575736073776312962 1
+TRAVEL_EXPLORE 1 WORLD 317 0.550000011920929  14 36.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 361 -2253827976484978967 1
+MOVE_E 0 WORLD 318 1.0499999523162842  15 37.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 366 953903809753780444 1
+REST 0 WORLD 318 -1.0  15 38.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 370 8539053739485497225 1
+REST 0 WORLD 318 -1.0  15 39.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 392 -2381441819383081870 1
+REST 0 WORLD 318 -1.0  15 40.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 394 6386853181529112102 1
+REST 2 WORLD 318 -1.0  15 41.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 400 6142080999766401634 1
+TRAVEL_EXPLORE 0 WORLD 319 2.9100005626678467  15 42.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 408 8444521712343076157 1
+TRAVEL_EXPLORE 0 WORLD 320 3.4900002479553223  15 43.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 415 -2545227378275953341 1
+REST 0 WORLD 320 -0.6599998474121094  15 44.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 417 2208991992606443661 1
+REST 0 WORLD 320 -0.6599998474121094  15 45.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 419 7445000537778971090 1
+MOVE_E 0 WORLD 321 2.919999599456787  15 46.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 422 2639136414196018145 1
+TRAVEL_EXPLORE 1 WORLD 359 3.4499993324279785  16 47.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 425 6380823804455017671 1
+TRAVEL_EXPLORE 0 WORLD 360 2.779998779296875  16 48.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 430 6642936732203004685 1
+REST 0 WORLD 360 -0.720001220703125  16 49.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 434 5226044121261529811 1
+REST 0 WORLD 360 -0.720001220703125  16 50.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 438 9002606225487175866 1
+REST 0 WORLD 360 -0.720001220703125  16 51.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 439 3271449447287856577 1
+TRAVEL_EXPLORE 0 WORLD 398 4.560000419616699  16 52.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 441 -8638924558484871028 1
+REST 0 WORLD 398 -0.7399997711181641  16 53.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 441 -8638924558484871028 1
+REST 0 WORLD 398 -0.7399997711181641  16 54.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 441 -8638924558484871028 1
+TRAVEL_EXPLORE 1 WORLD 436 -156.11000061035156  12 55.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 453 -1444271535647520529 1
+MOVE_S 0 WORLD 436 -0.7600002288818359  12 56.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 475 3664826207317752345 1
+MOVE_S 1 WORLD 436 149.74000549316406  13 57.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 486 -3468692560722272814 1
+TRAVEL_EXPLORE 0 WORLD 437 0.839999794960022  13 58.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 487 1044402600413769494 1
+REST 0 WORLD 437 -0.7600002288818359  13 59.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 487 1044402600413769494 1
+REST 0 WORLD 437 -0.7600002288818359  13 60.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 487 1044402600413769494 1
+REST 0 WORLD 437 -0.7600002288818359  13 61.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 495 -7045033094208917325 1
+TRAVEL_EXPLORE 0 WORLD 438 0.8899997472763062  13 62.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 500 -7924946339645441349 1
+REST 1 WORLD 438 -0.7600002288818359  13 63.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 500 -7924946339645441349 1
+REST 0 WORLD 438 -0.7600002288818359  13 64.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 500 -7924946339645441349 1
+REST 0 WORLD 438 -0.7600002288818359  13 65.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 504 -162026342433824317 1
+REST 0 WORLD 438 -0.7600002288818359  13 66.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 504 -162026342433824317 1
+REST 0 WORLD 438 -0.26000022888183594  14 67.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 504 -162026342433824317 1
+TRAVEL_EXPLORE 0 WORLD 476 2.719999313354492  14 68.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 505 -3084253903994094309 1
+TRAVEL_EXPLORE 0 WORLD 476 -200.77999877929688  9 69.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 514 201040706194661106 1
+MOVE_SE 0 WORLD 476 -160.77999877929688  5 70.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 535 25521178965841931 1
+MOVE_E 0 WORLD 477 1.2699992656707764  5 71.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 538 8913420677627680483 1
+MOVE_S 0 WORLD 477 -120.77999877929688  2 72.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 559 8488751193180487914 1
+MOVE_S 0 WORLD 477 -3925.0  0 0.0 Food:1,PotionOfLiquidFlame:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 -1 0 1
