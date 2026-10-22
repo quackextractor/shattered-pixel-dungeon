@@ -88,7 +88,13 @@ public class TrainOptions {
 	public PpoHyperparameters hyper;
 
 
-	private boolean metricsGiven, saveGiven;
+	private boolean metricsGiven, saveGiven, workersGiven, episodesGiven, updateThreadsGiven;
+
+
+	public boolean auto;
+
+
+	public double hours;
 
 
 	private String rewardProfile;
@@ -137,9 +143,11 @@ public class TrainOptions {
 				case "--config":     i++; break;
 				case "--reward-profile":
 					o.rewardProfile = value( args, at ); i++; break;
-				case "--workers":     o.workers = Integer.parseInt( value( args, at )); i++; break;
+				case "--workers":     o.workers = Integer.parseInt( value( args, at )); o.workersGiven = true; i++; break;
+				case "--auto":        o.auto = true; break;
+				case "--hours":       o.hours = Double.parseDouble( value( args, at )); i++; break;
 				case "--generations": o.generations = Integer.parseInt( value( args, at )); i++; break;
-				case "--episodes":   o.episodes = Integer.parseInt( value( args, at )); i++; break;
+				case "--episodes":   o.episodes = Integer.parseInt( value( args, at )); o.episodesGiven = true; i++; break;
 				case "--seed":        o.seed = Long.parseLong( value( args, at )); i++; break;
 				case "--java-home":   o.javaHome = value( args, at ); i++; break;
 				case "--classpath":   o.classpath = value( args, at ); i++; break;
@@ -153,7 +161,7 @@ public class TrainOptions {
 					o.stallSeconds = Long.parseLong( value( args, at )); i++; break;
 				case "--epochs":      o.epochs = Integer.parseInt( value( args, at )); i++; break;
 				case "--minibatch":   o.minibatchSize = Integer.parseInt( value( args, at )); i++; break;
-				case "--update-threads": o.updateThreads = Integer.parseInt( value( args, at )); i++; break;
+				case "--update-threads": o.updateThreads = Integer.parseInt( value( args, at )); o.updateThreadsGiven = true; i++; break;
 
 				case "--sample-rate": o.sampleRate = Double.parseDouble( value( args, at )); i++; break;
 				case "--max-sampled-per-episode":
@@ -203,6 +211,13 @@ public class TrainOptions {
 	}
 
 
+	public void apply( AutoTune tune ){
+		if (!workersGiven) workers = tune.workers;
+		if (!episodesGiven) episodes = workers;
+		if (!updateThreadsGiven) updateThreads = tune.updateThreads;
+	}
+
+
 	private void deriveOutputsUnder( File dir ){
 		if (!metricsGiven) metricsCsv = new File( dir, "metrics.csv" );
 		if (!saveGiven) save = new File( dir, "weights.bin" );
@@ -221,7 +236,7 @@ public class TrainOptions {
 		int cores = ResourceStats.availableProcessors();
 		long budget = System.getProperty( "os.name" ) == null
 				? Long.MAX_VALUE
-				: availableMemoryBytes() / (1200L * 1024 * 1024);
+				: AutoTune.availableMemoryBytes() / (1200L * 1024 * 1024);
 		return (int) Math.max( 1, Math.min( cores, budget ) );
 	}
 
@@ -236,7 +251,8 @@ public class TrainOptions {
 		try {
 			java.lang.management.OperatingSystemMXBean os =
 					java.lang.management.ManagementFactory.getOperatingSystemMXBean();
-			java.lang.reflect.Method m = os.getClass().getMethod( "getFreeMemorySize" );
+			java.lang.reflect.Method m = Class.forName( "com.sun.management.OperatingSystemMXBean" )
+					.getMethod( "getFreeMemorySize" );
 			Object v = m.invoke( os );
 			if (v instanceof Number) return ((Number) v).longValue();
 		} catch (ReflectiveOperationException | RuntimeException ignored){

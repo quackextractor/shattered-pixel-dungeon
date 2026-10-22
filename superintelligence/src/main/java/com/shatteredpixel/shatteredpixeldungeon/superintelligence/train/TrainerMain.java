@@ -28,6 +28,12 @@ public final class TrainerMain {
 			return;
 		}
 
+		if (options.auto){
+			AutoTune tune = AutoTune.measure( config, options.hyper.workerHeapMax );
+			System.out.println( tune.report );
+			options.apply( tune );
+		}
+
 		if (options.rewardProfile() != null){
 			config.rewardProfile = com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward
 					.RewardProfile.parse( options.rewardProfile() );
@@ -46,6 +52,7 @@ Trainer trainer = new Trainer( config, options.hyper, options.seed, options.work
 
 			trainer.batch( options.epochs, options.minibatchSize );
 			trainer.updateThreads( options.updateThreads );
+			if (options.hours > 0) trainer.deadline( System.currentTimeMillis() + (long) (options.hours * 3_600_000L) );
 			trainer.sampling( options.sampleRate, options.maxSampledPerEpisode,
 					options.maxSamplesPerGeneration );
 			trainer.history( new MetricsHistory( options.metricsCsv ));

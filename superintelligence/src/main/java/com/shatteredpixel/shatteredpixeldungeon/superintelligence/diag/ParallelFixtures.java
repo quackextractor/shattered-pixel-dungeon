@@ -12,11 +12,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-final class ParallelFixtures {
+public final class ParallelFixtures {
 
 	private ParallelFixtures() {}
 
-	static List< Transition > batch( Network net, EnvConfig config, int n, long seed ){
+	public static List< Transition > batch( Network net, EnvConfig config, int n, long seed ){
 		Random rng = new Random( seed );
 		List< Transition > out = new ArrayList<>( n );
 		net.resetState();

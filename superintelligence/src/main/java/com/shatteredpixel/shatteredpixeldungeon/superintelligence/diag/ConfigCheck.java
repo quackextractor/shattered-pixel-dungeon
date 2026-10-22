@@ -24,7 +24,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Co
 
 public class ConfigCheck {
 
-	private static final int CHECKS = 17;
+	private static final int CHECKS = 21;
 
 	public static void main( String[] args ) throws IOException {		if (args.length > 0 && (args[ 0 ].equals( "--verbose" ) || args[ 0 ].equals( "-v" ) )){
 			ConfigDefaults.verbose = true;
@@ -51,6 +51,10 @@ checkOutputPathsFollowTheWorkingDirectory();
 		ConfigPathCheck.checkEveryPathIsReportedAbsolute();
 		ConfigPathCheck.checkARelativePathResolvesAgainstTheRepository();
 		ConfigPathCheck.checkTheTrainerResolvesItsOwnPathsToo();
+		ConfigAutoTuneCheck.checkMemoryIsWhatLinuxCanReclaim();
+		ConfigAutoTuneCheck.checkThePoolFitsCoresAndMemory();
+		ConfigAutoTuneCheck.checkTheFewestThreadsNearTheBestWin();
+		ConfigAutoTuneCheck.checkAnExplicitFlagBeatsTheProbe();
 
 		System.exit( GateReport.report( "configuration binding", CHECKS ));
 	}

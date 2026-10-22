@@ -62,6 +62,7 @@ public class Trainer {
 	private Checkpoint.Meta resumedFrom;
 
 	private int lastGeneration;
+	private long deadlineMillis;
 
 	private long rngSeed;
 
@@ -132,6 +133,8 @@ public class Trainer {
 		ppo.epochs = epochs;
 		ppo.minibatchSize = minibatchSize;
 	}
+
+	public void deadline( long epochMillis ){ deadlineMillis = epochMillis; }
 
 	public void updateThreads( int threads ){
 		ppo.threads = threads;
@@ -278,6 +281,7 @@ Worker.writeWeights( out, ppo.network );
 			List<Episode> episodes = next.await();
 			ResourceStats.Interval gen = next.wall;
 			next = null;
+			if (deadlineMillis > 0 && System.currentTimeMillis() >= deadlineMillis) lastGeneration = g + 1;
 			if (hyper.overlapCollection && g + 1 < lastGeneration){
 				lastEpisodes.clear();
 				lastEpisodes.addAll( episodes );
@@ -452,12 +456,7 @@ private boolean replaysSaved;
 	}
 
 	public static String describe( File file ){
-		if (file == null) return "no file";
-		try {
-			return file.getCanonicalPath();
-		} catch (java.io.IOException e){
-			return file.getAbsolutePath();
-		}
+		return file == null ? "no file" : tidy( file ).getPath();
 	}
 
 	public static File replayDirDefault(){

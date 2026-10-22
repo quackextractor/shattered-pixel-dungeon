@@ -103,6 +103,8 @@ public class Main {
 		case "pressfixture": FixtureCommand.pressfixture( rest ); break;
 		case "train":    com.shatteredpixel.shatteredpixeldungeon.superintelligence.train
 				.TrainerMain.main( rest ); break;
+		case "autotune": com.shatteredpixel.shatteredpixeldungeon.superintelligence.train
+				.AutoTune.main( rest ); break;
 		case "help":     usage();          break;
 		default:
 			System.err.println( "[ERROR] unknown command: " + command );
@@ -146,6 +148,9 @@ public class Main {
 		System.out.println( "  dropfixture --save <f>    record the DROP-in-SLOT fixture the viewer gates play" );
 		System.out.println( "  pressfixture --save <f>   record the throw-that-presses fixture the viewer gates play" );
 		System.out.println( "  train [options]          run the PPO trainer across worker JVMs" );
+		System.out.println( "    --auto                 size --workers and --update-threads by a RAM and CPU probe" );
+		System.out.println( "    --hours <h>            stop after the generation that crosses h hours, and checkpoint" );
+		System.out.println( "  autotune                 print what --auto would choose on this machine" );
 		System.out.println();
 		System.out.println( "options:" );
 		System.out.println( "  --seed <text>       seed to lock the run to (default: random)" );

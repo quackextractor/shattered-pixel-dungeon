@@ -116,6 +116,7 @@ def cliTask = { String taskName, String taskDescription ->
 cliTask('rollout', 'Runs a single headless episode on a locked seed with the scripted policy.')
 cliTask('gradcheck', 'Finite-difference check of the network gradients against the analytic ones.')
 cliTask('verify', 'Re-executes a recorded run headlessly and confirms it still reproduces.')
+cliTask('autotune', 'Probes RAM and CPU and prints the --workers and --update-threads that --auto would use.')
 cliTask('modecheck', 'Fails if the environment cannot reach one of its own action modes.')
   cliTask('restartcheck', 'Fails if restarting a run does not rebuild the same first floor.')
 cliTask('resetcheck', 'Fails if a reset does not isolate an episode from whatever ran before it.')

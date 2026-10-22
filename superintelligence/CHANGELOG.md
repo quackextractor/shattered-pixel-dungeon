@@ -10,7 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`train --auto` and `autotune`.** Probe RAM (`/proc/meminfo` MemAvailable, else the OS bean) and CPU
+  (timed PPO update at 1, 2, 4 .. cores threads), then set `--workers` and `--update-threads` unless given.
+  This machine: 20 cores, 16.4 GB free -> 7 workers, 4 update threads (1.28 ms/sample at 4, 1.26 at 8).
+  `configcheck` cases 18-21.
+- **`train --hours <h>`.** Stops after the generation that crosses the budget and checkpoints it.
+  Smoke: `--generations 50 --hours 0.01` stopped and saved at 47.
+- **`train.sh`**, the Linux launcher: finds a JDK, always `--auto`, logs to `out/evidence/<name>.log`.
+
 ### Fixed
+- **Free memory read as unlimited on JDK 17+ and as MemFree on Linux.** `getFreeMemorySize` was looked
+  up on the bean's internal class, which reflection may not call, so the pool sizing saw `Long.MAX_VALUE`;
+  on Linux MemFree omits page cache (0.2 of 14.2 GB on the training server).
 - **Concurrent `verify` processes overwrote each other's level files.** With saving off, every process
   on one `--out` shared `<out>/.nosave/game0/depth*.dat`. The sink is now a private scratch directory
   per process (`Scratch.dir( "nosave" )`). 64 recordings that diverged only under 16 parallel verifies
