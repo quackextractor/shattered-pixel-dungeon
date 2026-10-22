@@ -2,26 +2,31 @@
 
 Closed: `CHANGELOG.md`. Declined: `REJECTED.md`.
 
-## 23. Viewer parts from 11 of 257 `fresh-1022` recordings that verify headlessly - OPEN
+## 23. Viewer parts from `fresh-1022` recordings that verify headlessly - 1 OPEN
 
-`viewcheck` on `trainer-replays/fresh-1022` (copied to `.replay`; the gate reads only that extension,
-the trainer writes `.dat`): 246 clean, 11 fail again when re-run serially, all 11 `verify` headlessly
-to the recorded score. Eight diverge: `DSD-FKG-MLX` 335, `SSW-ZVA-GRB` 171 (position); `FUE-XLT-OVJ`
-247, `JUZ-UAQ-GCH` 233, `LFJ-HPG-RFV` 355, `PTJ-VRT-KHR` 130, `RXN-FXT-XRB` 262 (viewer hp higher);
-`GFQ-ZBM-CRL` hero dead before the recording ends. Five of eight are on `TRAVEL_EXPLORE`. Three never
-finish within 300s: `SZZ-PPW-YGF` (542 steps), `MSR-XCX-JWZ` (787), `PBC-UFZ-RLA` (1659), so not
-length alone. Likely the order-of-actors class of 22. Evidence `out/evidence/fresh-1022.viewcheck.txt`,
-`fresh-1022.verify.txt`, `fresh-1022-replays/`.
+246 of 257 played clean; the 11 failures are four faults, three fixed:
 
-## 22. Viewer burns a Swarm to death a turn before the trainer does - OPEN
+| recordings | cause | status |
+| --- | --- | --- |
+| `SSW-ZVA-GRB`, `DSD-FKG-MLX` | items fallen down a chasm never placed headlessly (`Dungeon.droppedItems`) | fixed in `LevelPipeline`; these two were recorded without the items and stay unplayable |
+| `PTJ-VRT-KHR`, `JUZ-UAQ-GCH`, `FUE-XLT-OVJ`, `LFJ-HPG-RFV` | viewer settled a step before a disguised Mimic's attack animation landed | fixed in `ReplayPlayer`; fixture `rogue-mimic.replay` |
+| `SZZ-PPW-YGF`, `MSR-XCX-JWZ`, `PBC-UFZ-RLA` | 300 s gate budget, not a fault: 187 s and 206 s alone | budget is now progress-based |
+| `RXN-FXT-XRB` | `Burning.totalIncomingDMG` draws `nextHit` from the gameplay RNG when a UI health bar asks | engine patch proposed, see 22 |
+| `GFQ-ZBM-CRL` | open: viewer's Gnoll Trickster hits three times inside hero turn 128 (steps 459-460, all REST) and kills the hero; headless it hits once, at step 460. RNG and world agree through step 458. Neither the in-flight wait, nor waiting on live `MissileSprite`s, nor the `Burning` patch changes it | open |
 
-`seeds100-60/HPY-QJL-DPP` (Warrior, depth 4) diverges in the viewer at step 836, hp 7 against 2. RNG
-draw counts and fingerprints match through step 834. Step 835: Swarm 60 dies on 824, its loot drop
-presses a hidden fire trap (3x3 `Fire`, `HazardAssistTracker` on Swarm 65). Headless: Swarm 65 alive at
-2/50 and burning, hits the hero 10 -> 2. Viewer: Swarm 65 already dead, hero 7. Same order-of-actors
-class as the dart (an animation-gated callback vs a synchronous one), not yet located. Evidence
-`out/evidence/hpy-world` (headless), `hpy-world2.viewer.830-840.txt` (viewer, continue-on-divergence),
-`hpy-rng.*`.
+With all fixes, `viewcheck` on the 257: 254 clean (`out/evidence/issue-23/fresh-1022.viewcheck2.txt`).
+Evidence `out/evidence/issue-23/`.
+
+## 22. Viewer burns a Swarm to death a turn before the trainer does - CAUSE FOUND, needs an engine change
+
+`seeds100-60/HPY-QJL-DPP` diverges in the viewer at step 836, hp 7 against 2. Cause: `Burning.totalIncomingDMG`
+draws `nextHit` from the gameplay `Random` when it is 0, and only the rendered game calls it - `StatusPane`,
+`HealthBar`, `CharHealthIndicator` and `BossHealthBar` via `Char.incomingDOT()`. The viewer draws a burning
+char's first hit at frame time, the trainer in `Burning.act`, so every roll after it reads another value.
+`out/evidence/issue-23/burning-ui-draw.patch` (estimate the first hit instead of drawing it, so the rendered
+game draws where the trainer does) makes `HPY-QJL-DPP` and `fresh-1022/RXN-FXT-XRB` play to the end; without
+it `HPY-QJL-DPP` still diverges at 836. It is a `core` logic change, so it is uncommitted pending approval;
+trainer recordings are unaffected because headless never calls the UI path.
 
 ## 20. Agent dies on floor 1 instead of descending - OPEN
 
