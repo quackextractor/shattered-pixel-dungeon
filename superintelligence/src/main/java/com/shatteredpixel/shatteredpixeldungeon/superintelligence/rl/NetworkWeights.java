@@ -79,6 +79,12 @@ public abstract class NetworkWeights {
 	}
 
 
+	public float[][] gradientArrays(){
+		float[][] out = new float[ gradients.length ][];
+		for (int i = 0; i < out.length; i++) out[ i ] = gradients[ i ].data;
+		return out;
+	}
+
 	public float gradientNorm(){
 		double sum = 0;
 		for (Tensor g : gradients) sum += g.sumOfSquares();

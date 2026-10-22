@@ -97,7 +97,7 @@ final class ShardedUpdate {
 					float p = 0, v = 0, e = 0, k = 0, c = 0;
 					int n2 = 0;
 					for (int i = lo; i < hi; i++){
-						PPO.Stats s2 = ppo.oneChunk( w.network, chunks.get( i ), w.grid,
+						PPO.Stats s2 = ppo.oneChunk( w.network, chunks.get( i ),
 								w.slotProbs, w.targetProbs, w.actionProbs, w.caches, w.maxChunk );
 						p += s2.policyLoss;
 						v += s2.valueLoss;
@@ -156,7 +156,6 @@ final class ShardedUpdate {
 
 	private static class Shard {
 		final Network network;
-		final float[] grid;
 		final float[] slotProbs;
 		final float[] targetProbs;
 		final float[] actionProbs;
@@ -165,7 +164,6 @@ final class ShardedUpdate {
 
 		Shard( EnvConfig config, Random rng, int maxChunk ){
 			this.network = new Network( config, rng );
-			this.grid = new float[ network.gridLength() ];
 			this.slotProbs = new float[ network.slotCount() ];
 			this.targetProbs = new float[ network.targetCount() ];
 			this.actionProbs = new float[ network.actionCount() ];

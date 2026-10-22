@@ -83,6 +83,58 @@ public class Dense {
 		}
 	}
 
+	public void forwardSteps( float[][] x, float[][] y, float[][] pre, int steps ){
+		float[] w = W.data;
+		for (int t = 0; t < steps; t++) java.util.Arrays.fill( y[ t ], 0, out, 0f );
+		for (int m = 0; m < in; m++){
+			int row = m * out;
+			for (int t = 0; t < steps; t++){
+				float xv = x[ t ][ m ];
+				if (xv == 0f) continue;
+				float[] o = y[ t ];
+				for (int n = 0; n < out; n++) o[ n ] += xv * w[ row + n ];
+			}
+		}
+		for (int t = 0; t < steps; t++){
+			float[] o = y[ t ];
+			for (int n = 0; n < out; n++){
+				o[ n ] += b.data[ n ];
+				pre[ t ][ n ] = o[ n ];
+				if (tanh) o[ n ] = (float) Math.tanh( o[ n ] );
+			}
+		}
+	}
+
+	public void backwardSteps( float[][] x, float[][] pre, float[][] dy, float[][] dx, int steps ){
+		float[] w = W.data, gw = gW.data;
+		if (tanh){
+			for (int t = 0; t < steps; t++){
+				for (int n = 0; n < out; n++){
+					float th = (float) Math.tanh( pre[ t ][ n ] );
+					dy[ t ][ n ] *= (1f - th * th);
+				}
+			}
+		}
+		for (int m = 0; m < in; m++){
+			int row = m * out;
+			for (int t = steps - 1; t >= 0; t--){
+				float xv = x[ t ][ m ];
+				if (xv == 0f) continue;
+				float[] d = dy[ t ];
+				for (int n = 0; n < out; n++) gw[ row + n ] += xv * d[ n ];
+			}
+			for (int t = 0; t < steps; t++){
+				float[] d = dy[ t ];
+				float sum = 0;
+				for (int n = 0; n < out; n++) sum += d[ n ] * w[ row + n ];
+				dx[ t ][ m ] = sum;
+			}
+		}
+		for (int t = steps - 1; t >= 0; t--){
+			for (int n = 0; n < out; n++) gb.data[ n ] += dy[ t ][ n ];
+		}
+	}
+
 	public void savePreAct( float[] into ){
 		System.arraycopy( preAct.data, 0, into, 0, preAct.cols );
 	}

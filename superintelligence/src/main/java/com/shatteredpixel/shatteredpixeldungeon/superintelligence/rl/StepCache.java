@@ -24,6 +24,13 @@ public class StepCache {
 	final float[] lstm;
 	final int lstmStride;
 
+	final float[] dHidden;
+	final float[] dConcat;
+
+	public float[] grid(){
+		return grid;
+	}
+
 	StepCache( Network net ){
 		this.grid = new float[ net.gridLength() ];
 		this.concat = new float[ net.concatLength() ];
@@ -41,5 +48,7 @@ public class StepCache {
 		this.memoryOut = new float[ net.memoryOut() ];
 		this.lstmStride = net.lstmCacheLength();
 		this.lstm = new float[ net.lstmCacheLength() ];
+		this.dHidden = new float[ net.trunkOut() ];
+		this.dConcat = new float[ net.concatLength() ];
 	}
 }

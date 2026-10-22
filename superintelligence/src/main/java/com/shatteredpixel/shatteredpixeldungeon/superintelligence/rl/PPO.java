@@ -78,13 +78,9 @@ public class PPO {
 	private final float[] slotProbs;
 	private final float[] targetProbs;
 
-	private final float[] scratchGrid;
 
 	private StepCache[] chunkCaches;
 
-	private final int gridSize;
-	private final int inventorySize;
-	private final int heroSize;
 
 
 	public void addAll( List<Transition> transitions ){
@@ -112,17 +108,11 @@ public float lastClipFraction;
 		this.network = new Network( config, rng );
 		this.network.learningRate = learningRate;
 
-		this.gridSize = config.spatialChannels() * config.gridWidth * config.gridHeight;
-		this.inventorySize = config.maxSlots
-				* com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder.FEATURES_PER_SLOT;
-		this.heroSize = com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder.FEATURES;
-
 		this.actionProbs = new float[ Action.size() ];
 		this.slotProbs = new float[ config.maxSlots ];
 		this.targetProbs = new float[
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.TARGET_COUNT ];
 
-		this.scratchGrid = new float[ gridSize ];
 
 		resizeCaches();
 	}
@@ -316,16 +306,16 @@ public float lastClipFraction;
 	}
 
 
-Stats oneSample( Network net, Transition t, float[] grid,
+Stats oneSample( Network net, Transition t,
 			float[] slotProbs, float[] targetProbs, float[] actionProbs ){
 
 		StepCache[] caches = new StepCache[]{ net.takeCache() };
 
-		return oneChunk( net, java.util.Collections.singletonList( t ), grid,
+		return oneChunk( net, java.util.Collections.singletonList( t ),
 				slotProbs, targetProbs, actionProbs, caches, 1 );
 	}
 
-	Stats oneChunk( Network net, List< Transition > chunk, float[] grid,
+	Stats oneChunk( Network net, List< Transition > chunk,
 			float[] slotProbs, float[] targetProbs, float[] actionProbs,
 			StepCache[] caches, int maxSteps ){
 
@@ -338,12 +328,18 @@ Stats oneSample( Network net, Transition t, float[] grid,
 
 		for (int i = 0; i < steps; i++){
 			Transition t = chunk.get( i );
+			t.unpackGrid( caches[ i ].grid );
+			net.encodeStep( t.inventory, t.hero, caches[ i ] );
+		}
+		net.trunkSteps( caches, steps );
+
+		for (int i = 0; i < steps; i++){
+			Transition t = chunk.get( i );
 			StepCache cache = caches[ i ];
 
 			if (i == 0 && t.recurrentState != null) net.loadState( t.recurrentState );
 
-			t.unpackGrid( grid );
-			net.forwardCached( grid, t.inventory, t.hero, cache );
+			net.recurrentStep( cache );
 
 			float[] probabilities;
 			float[] mask;
@@ -403,11 +399,13 @@ Stats oneSample( Network net, Transition t, float[] grid,
 			Transition t = chunk.get( i );
 			StepCache cache = caches[ i ];
 
-			net.backwardStep( t.liveHead == Policy.HEAD_ACTION ? cache.actionGrad : null,
+			net.recurrentBackwardStep( t.liveHead == Policy.HEAD_ACTION ? cache.actionGrad : null,
 					t.liveHead == Policy.HEAD_SLOT ? cache.slotGrad : null,
 					t.liveHead == Policy.HEAD_TARGET ? cache.targetGrad : null,
 					cache.valueGrad, cache );
 		}
+		net.trunkBackwardSteps( caches, steps );
+		for (int i = steps - 1; i >= 0; i--) net.encoderBackwardStep( caches[ i ] );
 
 		return s;
 	}
@@ -447,7 +445,7 @@ Stats oneSample( Network net, Transition t, float[] grid,
 
 		for (int i = from; i < to; i++){
 			List< Transition > chunk = chunks.get( i );
-			Stats s = oneChunk( network, chunk, scratchGrid, slotProbs, targetProbs, actionProbs,
+			Stats s = oneChunk( network, chunk, slotProbs, targetProbs, actionProbs,
 					chunkCaches, chunkLength );
 
 			policyLoss += s.policyLoss;

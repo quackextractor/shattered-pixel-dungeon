@@ -151,6 +151,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   big-endian wire format. Per worker, 5.6 MB: write 20.4 -> 2.2 ms (serial on the trainer, so ~0.4 s
   a generation at 20 workers), read 19.3 -> 1.5 ms. `pushcheck` case 8 round-trips every layer bit
   for bit.
+- **The update runs the trunk once per chunk instead of once per step.** `PPO.oneChunk` encodes
+  every step, runs the 4567x256 trunk for all of them with each weight row read once, then runs the
+  LSTM and heads step by step; backward mirrors it. Every addition keeps its order, so gradients are
+  bit-identical to the per-step path (`bpttcheck` case 6, red with the step order flipped).
+  `updatecost --threads 1,8`: 4.42 -> 4.36 and 0.87 -> 0.81 ms/sample. Small because `Conv2D` is
+  ~72% of the update (JFR, `out/evidence/update-profile-1022.jfr`).
 - **Workers collect the next generation while the trainer updates** (`rl.overlap_collection`,
   default true; `false` restores the barrier). Each update therefore trains on data one update
   older. 8 workers x 8 episodes, 6 generations, 600-turn cap: 345 -> 415 samples/s; the update

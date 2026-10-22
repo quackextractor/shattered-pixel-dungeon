@@ -158,7 +158,12 @@ public class Network extends NetworkWeights {
 	private void runForward( float[] grid, float[] inventory, float[] heroFeatures ){
 		System.arraycopy( grid, 0, gridSnapshot, 0,
 				Math.min( grid.length, gridSnapshot.length ) );
+		encode( grid, inventory, heroFeatures );
+		trunk.forward( concat, hidden );
+		recur();
+	}
 
+	private void encode( float[] grid, float[] inventory, float[] heroFeatures ){
 		conv.forward( grid, convOut );
 		reduce.forward( convOut.data, reduceOut );
 
@@ -167,9 +172,9 @@ public class Network extends NetworkWeights {
 		System.arraycopy( inventory, 0, concat.data, off, inventory.length );
 		off += config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT;
 		System.arraycopy( heroFeatures, 0, concat.data, off, heroFeatures.length );
+	}
 
-		trunk.forward( concat, hidden );
-
+	private void recur(){
 		memory.forward( hidden, memoryOut );
 
 		actionHead.forward( memoryOut, actionLogits );
@@ -201,7 +206,14 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 			float dCritic, StepCache cache ){
 
 		if (cache != null) restore( cache );
+		backHeadsAndMemory( dActionLogits, dSlotLogits, dTargetLogits, dCritic );
+		dTrunkIn.fill( 0f );
+		trunk.backward( concat, dLstmIn, dTrunkIn );
+		backEncoder( gridSnapshot, dTrunkIn.data );
+	}
 
+	private void backHeadsAndMemory( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
+			float dCritic ){
 		if (dActionLogits != null) copyInto( dActionLogits, dAction );
 		else dAction.fill( 0f );
 		if (dSlotLogits != null) copyInto( dSlotLogits, dSlot );
@@ -225,16 +237,73 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		dLstmIn.fill( 0f );
 		System.arraycopy( memory.inputGrad(), 0, dLstmIn.data, 0,
 				Math.min( memory.inputGradLen(), dLstmIn.cols ) );
+	}
 
+	private void backEncoder( float[] grid, float[] dConcat ){
 		dReduce.fill( 0f );
-		dTrunkIn.fill( 0f );
-		trunk.backward( concat, dLstmIn, dTrunkIn );
-		System.arraycopy( dTrunkIn.data, 0, dReduce.data, 0, dReduce.cols );
-
+		System.arraycopy( dConcat, 0, dReduce.data, 0, dReduce.cols );
 		dConv.fill( 0f );
 		reduce.backward( convOut.data, dReduce, dConv.data );
+		conv.backward( grid, dConv, null );
+	}
 
-		conv.backward( gridSnapshot, dConv, null );
+	public void encodeStep( float[] inventory, float[] heroFeatures, StepCache cache ){
+		encode( cache.grid, inventory, heroFeatures );
+		System.arraycopy( concat.data, 0, cache.concat, 0, concat.cols );
+		conv.savePreAct( cache.convPreAct );
+		reduce.savePreAct( cache.reducePreAct );
+	}
+
+	public void trunkSteps( StepCache[] caches, int steps ){
+		float[][] x = new float[ steps ][], y = new float[ steps ][], pre = new float[ steps ][];
+		for (int t = 0; t < steps; t++){
+			x[ t ] = caches[ t ].concat;
+			y[ t ] = caches[ t ].hidden;
+			pre[ t ] = caches[ t ].trunkPreAct;
+		}
+		trunk.forwardSteps( x, y, pre, steps );
+	}
+
+	public void recurrentStep( StepCache cache ){
+		System.arraycopy( cache.hidden, 0, hidden.data, 0, hidden.cols );
+		recur();
+		System.arraycopy( memoryOut.data, 0, cache.memoryOut, 0, memoryOut.cols );
+		actionHead.savePreAct( cache.actionPreAct );
+		slotHead.savePreAct( cache.slotPreAct );
+		targetHead.savePreAct( cache.targetPreAct );
+		valueHead.savePreAct( cache.valuePreAct );
+		memory.saveCache( cache.lstm );
+	}
+
+	public void recurrentBackwardStep( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
+			float dCritic, StepCache cache ){
+		System.arraycopy( cache.hidden, 0, hidden.data, 0, hidden.cols );
+		System.arraycopy( cache.memoryOut, 0, memoryOut.data, 0, memoryOut.cols );
+		actionHead.loadPreAct( cache.actionPreAct );
+		slotHead.loadPreAct( cache.slotPreAct );
+		targetHead.loadPreAct( cache.targetPreAct );
+		valueHead.loadPreAct( cache.valuePreAct );
+		memory.loadCache( cache.lstm );
+		backHeadsAndMemory( dActionLogits, dSlotLogits, dTargetLogits, dCritic );
+		System.arraycopy( dLstmIn.data, 0, cache.dHidden, 0, cache.dHidden.length );
+	}
+
+	public void trunkBackwardSteps( StepCache[] caches, int steps ){
+		float[][] x = new float[ steps ][], pre = new float[ steps ][], dy = new float[ steps ][], dx = new float[ steps ][];
+		for (int t = 0; t < steps; t++){
+			x[ t ] = caches[ t ].concat;
+			pre[ t ] = caches[ t ].trunkPreAct;
+			dy[ t ] = caches[ t ].dHidden;
+			dx[ t ] = caches[ t ].dConcat;
+		}
+		trunk.backwardSteps( x, pre, dy, dx, steps );
+	}
+
+	public void encoderBackwardStep( StepCache cache ){
+		conv.loadPreAct( cache.convPreAct );
+		for (int i = 0; i < convOut.cols; i++) convOut.data[ i ] = Math.max( 0f, cache.convPreAct[ i ] );
+		reduce.loadPreAct( cache.reducePreAct );
+		backEncoder( cache.grid, cache.dConcat );
 	}
 
 

@@ -6,7 +6,7 @@ Proposals not done, with reason and trigger. Measurements: `CHANGELOG.md`.
 | --- | --- | --- | --- |
 | `reward.stair_potential_weight` 2.0 -> 10.0 | declined | 0 of 960 reach floor 2; objective 5 sigma worse. Term telescopes; pays for stairs observation does not carry. `out/evidence/descend-30-ab.txt` | observation carries unseen stairs |
 | Ego-centred observation grid | deferred | rewrites every plane, voids every checkpoint. Exit beacon already survives window edge | next measured run that may break weights |
-| Native / ONNX learner | declined | learner not the wall (30 gen in 12m41s); adds platform matrix | profile shows learner is wall |
+| Native / ONNX / GPU learner | declined | after the conv fixes `Conv2D` is ~72% of an update and per-sample; batching the trunk across a chunk gained 7% at 8 threads (`out/evidence/perf-1022.txt`). A GPU needs batched convolution and adds a platform matrix | conv is batched and still the wall |
 | `jdk.incubator.vector` in `Dense.matvec` | declined | `Dense` 17% of forward, 7.6% of update; 62% is `Conv2D` with strided im2col | same as above |
 | Worker reuses its `Network` across pushes | declined | `new Network` 22 ms per worker per generation, in parallel; its init draws `policyRng`, so skipping it moves every later action sample | worker setup shows in a profile |
 | Skip `DescentBot.label` on unsampled steps or once `rl.teacher_weight` decays | declined | teacher off entirely: 0.678 against 0.680 ms/step on 714 steps, noise. Tail steps are kept at episode end, so every step needs its label anyway | teacher grows past a distance map per step |

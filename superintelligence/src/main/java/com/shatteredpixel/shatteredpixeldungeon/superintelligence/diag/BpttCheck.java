@@ -21,7 +21,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class BpttCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 6;
 
 	private static final int LSTM_GRADIENT = 4;
 
@@ -33,8 +33,95 @@ public class BpttCheck {
 		checkSyntheticStepsAreNeverChained( config );
 		checkValueTargetsAreNormalised( config );
 		checkNormalisationIsOffWhenAsked( config );
+		checkTheChunkedTrunkMatchesTheStepPathBitForBit( config );
 
 		System.exit( GateReport.report( "recurrent gradient", CHECKS ));
+	}
+
+	private static void checkTheChunkedTrunkMatchesTheStepPathBitForBit( EnvConfig config ){
+		Network stepwise = new Network( config, new Random( 77L ));
+		Network chunked = new Network( config, new Random( 77L ));
+		List< Transition > chunk = ParallelFixtures.batch( new Network( config, new Random( 78L )), config, 16, 99L );
+		int steps = chunk.size();
+		Random g = new Random( 5L );
+		float[][][] heads = new float[ steps ][ 3 ][];
+		float[] critic = new float[ steps ];
+		for (int t = 0; t < steps; t++){
+			heads[ t ][ 0 ] = noise( g, stepwise.actionCount() );
+			heads[ t ][ 1 ] = noise( g, stepwise.slotCount() );
+			heads[ t ][ 2 ] = noise( g, stepwise.targetCount() );
+			critic[ t ] = g.nextFloat() - 0.5f;
+		}
+		StepCache[] a = new StepCache[ steps ], b = new StepCache[ steps ];
+		for (int t = 0; t < steps; t++){
+			a[ t ] = stepwise.takeCache();
+			b[ t ] = chunked.takeCache();
+		}
+		stepwise.loadState( chunk.get( 0 ).recurrentState );
+		chunked.loadState( chunk.get( 0 ).recurrentState );
+
+		float[][] logits = new float[ steps ][];
+		float[] grid = new float[ stepwise.gridLength() ];
+		for (int t = 0; t < steps; t++){
+			chunk.get( t ).unpackGrid( grid );
+			stepwise.forwardCached( grid, chunk.get( t ).inventory, chunk.get( t ).hero, a[ t ] );
+			logits[ t ] = outputs( stepwise );
+		}
+		for (int t = 0; t < steps; t++){
+			chunk.get( t ).unpackGrid( b[ t ].grid() );
+			chunked.encodeStep( chunk.get( t ).inventory, chunk.get( t ).hero, b[ t ] );
+		}
+		chunked.trunkSteps( b, steps );
+		for (int t = 0; t < steps; t++){
+			chunked.recurrentStep( b[ t ] );
+			if (!Arrays.equals( bits( logits[ t ] ), bits( outputs( chunked )))){
+				fail( "the chunked forward pass gave different outputs from the per-step pass at step " + t );
+				return;
+			}
+		}
+
+		stepwise.zeroGrad();
+		chunked.zeroGrad();
+		stepwise.beginBackward();
+		chunked.beginBackward();
+		for (int t = steps - 1; t >= 0; t--){
+			stepwise.backwardStep( heads[ t ][ 0 ], heads[ t ][ 1 ], heads[ t ][ 2 ], critic[ t ], a[ t ] );
+			chunked.recurrentBackwardStep( heads[ t ][ 0 ], heads[ t ][ 1 ], heads[ t ][ 2 ], critic[ t ], b[ t ] );
+		}
+		chunked.trunkBackwardSteps( b, steps );
+		for (int t = steps - 1; t >= 0; t--) chunked.encoderBackwardStep( b[ t ] );
+
+		float[][] ga = stepwise.gradientArrays(), gb = chunked.gradientArrays();
+		for (int i = 0; i < ga.length; i++){
+			if (!Arrays.equals( bits( ga[ i ] ), bits( gb[ i ] ))){
+				fail( "gradient tensor " + i + " differs between the chunked and per-step backward pass;"
+						+ " batching the trunk must change the order of no addition" );
+				return;
+			}
+		}
+		System.out.println( "  a " + steps + "-step chunk through the batched trunk matches the per-step pass bit for bit" );
+	}
+
+	private static float[] noise( Random g, int n ){
+		float[] out = new float[ n ];
+		for (int i = 0; i < n; i++) out[ i ] = g.nextFloat() - 0.5f;
+		return out;
+	}
+
+	private static float[] outputs( Network net ){
+		float[] a = net.actionLogits(), s = net.slotLogits(), t = net.targetLogits();
+		float[] out = new float[ a.length + s.length + t.length + 1 ];
+		System.arraycopy( a, 0, out, 0, a.length );
+		System.arraycopy( s, 0, out, a.length, s.length );
+		System.arraycopy( t, 0, out, a.length + s.length, t.length );
+		out[ out.length - 1 ] = net.value();
+		return out;
+	}
+
+	private static int[] bits( float[] values ){
+		int[] out = new int[ values.length ];
+		for (int i = 0; i < values.length; i++) out[ i ] = Float.floatToRawIntBits( values[ i ] );
+		return out;
 	}
 
 	private static void checkTheChunkIsNotTheSumOfItsSteps( EnvConfig config ){
@@ -238,19 +325,19 @@ Transition t = transition( config, ppo, 3, i );
 	}
 
 	private static void oneChunk( PPO ppo, Network net, List< Transition > chunk, StepCache[] caches ){
-		Method m = method( "oneChunk", Network.class, List.class, float[].class, float[].class,
+		Method m = method( "oneChunk", Network.class, List.class, float[].class,
 				float[].class, float[].class, StepCache[].class, int.class );
 
-		invoke( m, "oneChunk", ppo, new Object[] { net, chunk, new float[ net.gridLength() ],
+		invoke( m, "oneChunk", ppo, new Object[] { net, chunk,
 				new float[ net.slotCount() ], new float[ net.targetCount() ],
 				new float[ net.actionCount() ], caches, caches.length } );
 	}
 
 	private static void oneSample( PPO ppo, Network net, Transition t ){
-		Method m = method( "oneSample", Network.class, Transition.class, float[].class, float[].class,
+		Method m = method( "oneSample", Network.class, Transition.class, float[].class,
 				float[].class, float[].class );
 
-		invoke( m, "oneSample", ppo, new Object[] { net, t, new float[ net.gridLength() ],
+		invoke( m, "oneSample", ppo, new Object[] { net, t,
 				new float[ net.slotCount() ], new float[ net.targetCount() ],
 				new float[ net.actionCount() ] } );
 	}
