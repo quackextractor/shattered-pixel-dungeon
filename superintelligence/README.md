@@ -383,7 +383,7 @@ something.
 | CNN + LSTM network, PPO agent | **1,403,316 parameters**, down from 3,583,827: a second strided convolution takes the trunk's grid input from 12,696 features to 3,200, so the single 12,696x256 matrix that held 3.25M of the network is 1.17M. `updatecost`: forward 4.95 ms, forward+backward 11.07 ms per sample. **PPO runs on real worker data** |
 | Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included, **checkpoint format 3 adds the value normaliser and the trainer rng**, **and the seed schedule**: the pool seed, the schedule seed, the pool size and the number of draws made all travel in `Checkpoint.Meta`, so a resumed run continues the sequence instead of replaying generation 0's. `checkpointcheck` is a gate, 10 cases - one asserts that a flag with no value after it is **refused naming itself**, because every flag reads `args[i + 1]` and `train.ps1 -Resume` used to append a bare `--resume`; another that `--checkpoint-every` and `--record-every` override the properties file rather than being ignored, which they were. `seedcheck` is a gate, 6 cases |
 | Bad checkpoint handling | Done - foreign, truncated, trailing-byte and wrong-config files all refused, the last naming the field |
-| Parallel minibatch update | Done - `--update-threads N`, measured 3.29x at 4 threads, 3.47x at 8. `parallelcheck` is a gate |
+| Parallel minibatch update | Done - `--update-threads N`, default 8, 5.4x at 8 threads; collection overlaps the update (`rl.overlap_collection`). `parallelcheck` is a gate |
 | Cross-sample gradient leak | Fixed - `dCell` was not cleared, so every gradient depended on the previous sample |
 | Value head range | Fixed - was tanh-bounded to [-1,+1] against a death penalty of 100 |
 | LSTM state with each transition | Fixed - the replay ran under an unrelated sample's state |
@@ -528,17 +528,18 @@ the comparison that uses it - a tally has no order, so two runs that part at the
 still report identical totals for every site afterwards. `issues.md` 38 was found by it, and it was
 **not** the fault that entry predicted.
 
-**The update is parallelisable and now is.** 11.3 ms per sample single-threaded, almost all of it
-forward and backward rather than Adam. `--update-threads N` splits a minibatch across N threads, each
-with its own scratch and its own gradient accumulators, reduced before the Adam step:
+**The update is parallelisable and now is.** 4.36 ms per sample single-threaded (11.4 before the
+`Conv2D` loop order and the dropped grid gradient), ~72% of it `Conv2D`. `--update-threads N`
+(default 8) splits a minibatch across N threads, each with its own scratch and its own gradient
+accumulators, reduced before the Adam step; the trunk runs once per chunk rather than once per step:
 
 ```sh
-./gradlew :superintelligence:train --args="--workers 8 --update-threads 4 --generations 200"
+./gradlew :superintelligence:train --args="--workers 8 --generations 200"
 ```
 
-Measured 8.98 -> 5.09 -> 2.73 -> 2.59 ms/sample at 1, 2, 4 and 8 threads. The curve flattens past 4
-because the reduction is 14.3 MB per thread per minibatch, which costs about what the extra compute
-saves. `parallelcheck` asserts the sharded gradient equals the serial one.
+`updatecost --threads 1,8` measures 4.36 and 0.81 ms/sample. Workers collect the next
+generation while the update runs (`rl.overlap_collection`), so the update no longer idles them.
+`parallelcheck` asserts the sharded gradient equals the serial one.
 
 The default is **2 epochs**, which also corrects a misconfiguration: 4 epochs is 300 Adam steps over a
 2,400-sample batch. Transport is 0.12 s against ~7 s of collection  -  never the bottleneck.
