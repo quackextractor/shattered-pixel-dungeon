@@ -127,6 +127,7 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		check( () -> checkASoftStallRecordingCompletesWithoutAViewerStall() );
 		check( PlaybackCheck::checkTheFrameDeltaPinReachesTheEngine );
 		check( PlaybackCheck::checkPlaybackSpeedIsNotCapped );
+		check( PlaybackCheck::checkAnUnknownHeroClassIsRefused );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
@@ -145,6 +146,15 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 	 * saying so: the gate measured itself running at 16x while its timeout had been sized for 40x. A
 	 * speed nobody asked for is a speed the gate cannot reason about.
 	 */
+	private static void checkAnUnknownHeroClassIsRefused(){
+		Replay replay = recordAShortRun();
+		replay.heroClass = "BARBARIAN";
+		if ( ReplayLauncher.startRun( replay ) ){
+			fail( "the viewer started a recording of hero BARBARIAN; it must refuse rather than play"
+					+ " another class's run against this one's actions" );
+		}
+	}
+
 	private static void checkPlaybackSpeedIsNotCapped(){
 		Replay replay = recordAShortRun();
 		ReplayPlayer player = new ReplayPlayer( replay, ReplayIOConfig( replay ) );
@@ -898,8 +908,7 @@ private static Replay corpusRecordingEndingIn( String termination ){
 			return;
 		}
 
-		File remains = new File( new File( new File( System.getProperty( "java.io.tmpdir" ),
-				"spd-playbackcheck" ), ".nosave" ), "bones.dat" );
+		File remains = new File( HeadlessServices.saveDirectory(), "bones.dat" );
 
 		if ( remains.exists() && !remains.delete() ){
 			fail( "stale remains at " + remains.getAbsolutePath() + " could not be removed before the run,"

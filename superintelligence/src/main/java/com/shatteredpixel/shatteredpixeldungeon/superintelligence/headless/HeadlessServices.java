@@ -69,6 +69,10 @@ public class HeadlessServices {
 		return files != null && files.savingEnabled;
 	}
 
+	public static File saveDirectory(){
+		return files.savingEnabled ? files.root : files.sink;
+	}
+
 	public static class App implements Application {
 
 		public final ApplicationLogger logger = new ApplicationLogger() {
@@ -123,9 +127,7 @@ public class HeadlessServices {
 			this.root = root.getAbsoluteFile();
 
 			this.root.mkdirs();
-			this.sink = new File( root.getAbsoluteFile(), ".nosave" );
-
-			this.sink.mkdirs();
+			this.sink = com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Scratch.dir( "nosave" );
 		}
 
 		@Override public FileHandle getFileHandle(String path, FileType type) {

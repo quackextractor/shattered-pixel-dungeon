@@ -529,9 +529,10 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 	 * unreadable, and CI output that is a wall of repeated frames helps nobody.
 	 */
 	private static Thread progressPrinter( AtomicInteger done, int total, long started ){
-		boolean interactive = System.console() != null;
+		boolean interactive = stderrIsTerminal();
 
 		Thread t = new Thread( () -> {
+			int printed = 0;
 			while (!Thread.currentThread().isInterrupted()){
 				int n = done.get();
 				double seconds = (System.nanoTime() - started) / 1e9;
@@ -545,7 +546,8 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 						+ n + "/" + total + "  " + String.format( Locale.ROOT, "%.0fs", seconds );
 
 				if (interactive) System.err.print( "\r" + line );
-				else if (n > 0) System.err.println( line );
+				else if (n > printed) System.err.println( line );
+				printed = n;
 
 				if (n >= total) break;
 
@@ -557,6 +559,17 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 		t.setDaemon( true );
 		t.start();
 		return t;
+	}
+
+	private static boolean stderrIsTerminal(){
+		java.io.Console console = System.console();
+		if (console == null) return false;
+		// JDK 22+ returns a Console even when redirected; isTerminal() is how it says so
+		try {
+			return (Boolean) java.io.Console.class.getMethod( "isTerminal" ).invoke( console );
+		} catch (ReflectiveOperationException e){
+			return true;
+		}
 	}
 
 	/** Forks one playback and waits for it, killing it if it overruns. */

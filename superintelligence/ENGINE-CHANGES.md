@@ -277,6 +277,13 @@ entry per draw with none unnamed, and an empty log while counting is off.
   `presscheck` is the gate, is **in `gates`**, and is green on three cases. `duelist-throw.replay` is
   the recording that makes a *recorded* press reproducible in both environments — see `CHANGELOG.md`.
 
+- **`GameScene.add( Heap )` set `autoExplored` only with a scene.** Headless, set when
+  `headlessGameplay` and the heap is on `Dungeon.level`, so level generation (old or no `Dungeon.level`)
+  stays unmarked. Feeds `levelExplorePercent`, observation `F_FLOOR_EXPLORED`. `observecheck`.
+- **`HeroDisguise.fx` rolled its class only for a `HeroSprite`.** The roll now runs for any hero; the
+  sprite half keeps its test. A rendered hero always has a `HeroSprite`, so the game is unchanged.
+  `observecheck`.
+
 
 ## 8. An item that creates a mob leaves it with no sprite - **COMMITTED, GATED**
 

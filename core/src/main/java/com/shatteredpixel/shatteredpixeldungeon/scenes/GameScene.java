@@ -1218,9 +1218,14 @@ public synchronized void update() {
 			//heaps that aren't added as part of levelgen don't count for exploration bonus
 			heap.autoExplored = true;
 			scene.addHeapSprite( heap );
-		} else if (heap.sprite == null) {
-			ItemSprite sprite = heap.sprite = new ItemSprite( heap );
-			sprite.link( heap );
+		} else {
+			if (headlessGameplay && Dungeon.level != null && Dungeon.level.heaps.get( heap.pos ) == heap) {
+				heap.autoExplored = true;
+			}
+			if (heap.sprite == null) {
+				ItemSprite sprite = heap.sprite = new ItemSprite( heap );
+				sprite.link( heap );
+			}
 		}
 	}
 	

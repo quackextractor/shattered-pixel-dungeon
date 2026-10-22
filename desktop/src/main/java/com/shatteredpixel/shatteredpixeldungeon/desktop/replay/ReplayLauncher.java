@@ -163,8 +163,11 @@ private static void describe( Replay replay ){
 		HeroClass heroClass;
 		try {
 			heroClass = HeroClass.valueOf( replay.heroClass );
-		} catch (IllegalArgumentException e){
-			heroClass = HeroClass.WARRIOR;
+		} catch (IllegalArgumentException | NullPointerException e){
+			System.err.println( "[ERROR] this recording's hero class \"" + replay.heroClass
+					+ "\" is not one this game has." );
+			System.err.println( "        Refusing to play it as another class." );
+			return false;
 		}
 
 		SPDSettings.customSeed( seed );

@@ -22,9 +22,9 @@ public class RewardCheck {
 		RewardTerminalCheck.checkTheTerminalPriceReachesTheLearner( config );
 		RewardTerminalCheck.checkTheStallPriceReachesTheLearner( config );
 		RewardTerminalCheck.checkTheHeroCanDie( config );
-		RewardTerminalCheck.checkWaitingIsNotAFreeStep( config );
-		RewardTerminalCheck.checkRestIsNotAOneWayDoor( config );
-		RewardTerminalCheck.checkFreeStepLoopIsBounded( config );
+		RewardFreeStepCheck.checkWaitingIsNotAFreeStep( config );
+		RewardFreeStepCheck.checkRestIsNotAOneWayDoor( config );
+		RewardFreeStepCheck.checkFreeStepLoopIsBounded( config );
 		RewardForfeitCheck.checkAnEarlyDeathIsNotCheaperThanALateOne( config );
 		RewardForfeitCheck.checkAPricedEndingIsTerminalToTheLearner( config );
 		RewardVisitCheck.checkOnlyANewCellIsPaidFor( config );

@@ -21,7 +21,6 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 
-import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 
 /**
@@ -316,15 +315,6 @@ public class ReplayPlayback {
 	/** Where the hero actually was when playback diverged, or -1. */
 	public int actualPos(){
 		return actualAt;
-	}
-
-	/** Hero class from the recording, falling back rather than throwing on an unknown name. */
-	public HeroClass heroClass(){
-		try {
-			return HeroClass.valueOf( replay.heroClass );
-		} catch (IllegalArgumentException e){
-			return HeroClass.WARRIOR;
-		}
 	}
 
 	/**

@@ -11,6 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Concurrent `verify` processes overwrote each other's level files.** With saving off, every process
+  on one `--out` shared `<out>/.nosave/game0/depth*.dat`. The sink is now a private scratch directory
+  per process (`Scratch.dir( "nosave" )`). 64 recordings that diverged only under 16 parallel verifies
+  on the default `--out` now all reproduce that way. `out/evidence/outdated-scan/concurrent-after.csv`.
+- **A cursed wand's disguise crashed the trainer.** `HeroDisguise.fx` rolled its class only for a
+  `HeroSprite`, so headless it stayed null (`Hero.name()` threw) and the trainer spent one gameplay draw
+  fewer than the viewer. The roll no longer depends on the sprite. `observecheck` case 20.
+- **Heaps dropped in play counted as unexplored headlessly.** `GameScene.add( Heap )` set
+  `autoExplored` only with a scene, so `levelExplorePercent` (observation `F_FLOOR_EXPLORED`) differed
+  from the viewer. Set headlessly for a heap on the live floor. `observecheck` case 21.
+- **`USE` was offered for items whose action does nothing.** `SlotAction.resolveAction` returned the
+  default action even when `Item.actions` lacked it: an empty Waterskin, a bag. Rogue episodes looped
+  `USE` 291 times. Unavailable defaults now fall through, and the mask follows. `slotcheck` case 8.
+- **The viewer played an unknown hero class as a Warrior.** `ReplayLauncher.startRun` refuses it;
+  unused `ReplayPlayback.heroClass()` removed. `playbackcheck` case.
+- **`viewcheck` wrote a `\r` progress frame every 200 ms into redirected logs.** JDK 22+ returns a
+  `Console` even when not a terminal; the gate now asks `Console.isTerminal()`, and a redirected log
+  gets one line per finished recording.
+- Six recent recordings that diverged headlessly predate fixes: four verify on `7fad7d5e4^` (chasm
+  items), two predate the `HighGrass.trample` fix. `out/evidence/outdated-scan/prechasm-verdicts.txt`.
+- `RewardTerminalCheck` (607 lines) split; free-step cases in `RewardFreeStepCheck`.
 - **The viewer rolled a burning char's first fire hit early.** `Burning.totalIncomingDMG` drew
   `nextHit` from the gameplay `Random` when it was 0, and only the rendered game asks for it
   (`StatusPane`, `HealthBar`, `CharHealthIndicator`, `BossHealthBar` via `Char.incomingDOT()`), so the

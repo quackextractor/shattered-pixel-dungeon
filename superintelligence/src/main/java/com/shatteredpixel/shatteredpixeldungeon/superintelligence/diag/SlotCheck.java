@@ -3,6 +3,10 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.Waterskin;
+import com.shatteredpixel.shatteredpixeldungeon.items.bags.VelvetPouch;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.Food;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
@@ -20,7 +24,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class SlotCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 
 	public static void main( String[] args ){
 		HeadlessServices.install( Scratch.dir( "slotcheck" ));
@@ -38,6 +42,7 @@ public class SlotCheck {
 		restoreAppliesBindingsThatDifferFromTheLiveOnes();
 		restoreBindsTheCapturedItemNotTheFirstOfItsClass();
 		bindingsSurviveARoundTripThroughTheFileFormat();
+		aUseThatDoesNothingIsNotOffered();
 
 		System.exit( GateReport.report( "slot resolution", CHECKS ));
 	}
@@ -214,6 +219,37 @@ public class SlotCheck {
 
 		if (captured.equals( read )) return;
 		fail( where, "wrote \"" + captured + "\" and read back \"" + read + "\"" );
+	}
+
+	private static void aUseThatDoesNothingIsNotOffered(){
+		String where = "a use that does nothing is not offered";
+
+		java.util.ArrayList< Item > carried = new java.util.ArrayList<>( Dungeon.hero.belongings.backpack.items );
+		Dungeon.hero.belongings.backpack.items.clear();
+		Dungeon.hero.belongings.backpack.items.add( new Waterskin() );
+		Dungeon.hero.belongings.backpack.items.add( new VelvetPouch() );
+
+		ActionMapper mapper = new ActionMapper( new EnvConfig() );
+		mapper.refreshSlots();
+		float[] mask = new float[ Action.values().length ];
+		mapper.actionMask( EnvMode.WORLD, mask );
+		boolean offeredForNothing = mask[ Action.USE.index ] > 0.5f;
+
+		Dungeon.hero.belongings.backpack.items.add( new Food() );
+		mapper.refreshSlots();
+		mapper.actionMask( EnvMode.WORLD, mask );
+		boolean offeredForFood = mask[ Action.USE.index ] > 0.5f;
+
+		Dungeon.hero.belongings.backpack.items.clear();
+		Dungeon.hero.belongings.backpack.items.addAll( carried );
+
+		if (offeredForNothing){
+			fail( where, "USE was unmasked with only an empty Waterskin and a VelvetPouch carried. Neither"
+					+ " has its default action available, so the agent looped USE on them for 291 steps" );
+		}
+		if (!offeredForFood){
+			fail( where, "USE stayed masked with Food carried, so the case proves nothing" );
+		}
 	}
 
 	private static Replay roundTrip( String captured ) throws IOException {

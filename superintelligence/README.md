@@ -379,7 +379,7 @@ something.
 | **Scripted teacher** | `policy.DescentBot` labels every collected step; `PPO` adds an imitation term `rl.teacher_weight` (1.0), halved every `rl.teacher_half_life` (10) generations. `teachercheck` holds it |
 | **Go-Explore demonstrations** | `goexplore <out-dir> <iterations> <seed...>` writes each seed's deepest trajectory as a recording; `./train.ps1 -Demos <dir>` imitates them every generation at `rl.demo_weight`. `teachercheck` holds the loss |
 | **Every setting is a setting** | configcheck is 17 cases and 80 keys, and its last case reads `.env.example`: every documented key must appear as an SPD_ variable and every value in it must match the compiled default. That case found `SPD_RL_UPDATE_THREADS=4` against a compiled default of 1 and seven missing keys - the "example describes a run the module does not run" fault the changelog already records once. Sixty-nine values that were Java literals are now documented settings |
-- **A sub-mode entry is not always offered.** `env.sub_mode_progress_only` masks `USE` when every carried item is a bare equip toggle and `OPEN_INVENTORY` when there is nothing to use at all. Measured on 40 uniform-policy episodes at fixed seeds: `STALLED` **14 of 40 -> 2 of 40**, `deepestDepth` 1 -> 2. `stallcausecheck` proves both halves.
+- **A sub-mode entry is not always offered.** `env.sub_mode_progress_only` masks `USE` when every carried item is a bare equip toggle or has no available action (empty Waterskin, a bag) and `OPEN_INVENTORY` when there is nothing to use at all. Measured on 40 uniform-policy episodes at fixed seeds: `STALLED` **14 of 40 -> 2 of 40**, `deepestDepth` 1 -> 2. `stallcausecheck` proves both halves.
 | CNN + LSTM network, PPO agent | **1,403,316 parameters**, down from 3,583,827: a second strided convolution takes the trunk's grid input from 12,696 features to 3,200, so the single 12,696x256 matrix that held 3.25M of the network is 1.17M. `updatecost`: forward 4.95 ms, forward+backward 11.07 ms per sample. **PPO runs on real worker data** |
 | Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included, **checkpoint format 3 adds the value normaliser and the trainer rng**, **and the seed schedule**: the pool seed, the schedule seed, the pool size and the number of draws made all travel in `Checkpoint.Meta`, so a resumed run continues the sequence instead of replaying generation 0's. `checkpointcheck` is a gate, 10 cases - one asserts that a flag with no value after it is **refused naming itself**, because every flag reads `args[i + 1]` and `train.ps1 -Resume` used to append a bare `--resume`; another that `--checkpoint-every` and `--record-every` override the properties file rather than being ignored, which they were. `seedcheck` is a gate, 6 cases |
 | Bad checkpoint handling | Done - foreign, truncated, trailing-byte and wrong-config files all refused, the last naming the field |
@@ -717,8 +717,10 @@ rather than behaviour-changing when a renderer is present:
   process never pressed the cell a thrown or dropped item landed on and every throw was inert. The flag
   is set by `HeadlessGame.install()` and by nothing else, so a game with a renderer never reads it and
   the guard's answer there is unchanged. `Levitation.detach`'s press and `HighGrass.trample`'s
-  `Dungeon.observe()` read it the same way (`issues.md` 21). These are the entries that widen a
-  condition rather than tolerate a null.
+  `Dungeon.observe()` read it the same way (`issues.md` 21), and so does `GameScene.add( Heap )`'s
+  `autoExplored`. These are the entries that widen a condition rather than tolerate a null.
+- `HeroDisguise.fx` rolls its class for any hero, not only one with a `HeroSprite`; the rendered game
+  always has one, so only the headless roll is new.
 
 The last one is not cosmetic bookkeeping. **Four presentation draws on the gameplay stream cost the
 viewer 16 generator values per run that a headless run never spent**, which is why a recording could

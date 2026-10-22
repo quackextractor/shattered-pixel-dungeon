@@ -113,15 +113,16 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 	}
 
 
-	private static String resolveAction( Hero hero, Item item ){
+	static String resolveAction( Hero hero, Item item ){
 		String def = item.defaultAction();
 
 		if (def != null && def.equals( Potion.AC_CHOOSE )){
 			def = Potion.AC_DRINK;
 		}
-		if (def != null && !def.equals( Item.AC_DROP )) return def;
+		java.util.ArrayList< String > actions = item.actions( hero );
+		if (def != null && !def.equals( Item.AC_DROP ) && actions.contains( def )) return def;
 
-		for (String candidate : item.actions( hero )){
+		for (String candidate : actions){
 			if (!candidate.equals( Item.AC_DROP ) && !candidate.equals( Item.AC_THROW )){
 				return candidate;
 			}

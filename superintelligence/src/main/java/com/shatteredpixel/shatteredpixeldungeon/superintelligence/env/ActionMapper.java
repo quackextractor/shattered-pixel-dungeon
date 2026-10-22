@@ -4,7 +4,6 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
-import com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.CellSelector;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 
@@ -396,14 +395,16 @@ public class ActionMapper {
 
 	private boolean hasUsableItem(){
 		for (Item item : slots){
-			if (item == null) continue;
-			if (item instanceof Wand) return true;
-			String action = item.defaultAction();
-			if (action != null
-					&& !action.equals( Item.AC_DROP )
-					&& !action.equals( Item.AC_THROW )) return true;
+			if (usable( item )) return true;
 		}
 		return false;
+	}
+
+
+	private boolean usable( Item item ){
+		if (item == null) return false;
+		String action = SlotAction.resolveAction( hero(), item );
+		return action != null && !action.equals( Item.AC_THROW );
 	}
 
 
@@ -412,13 +413,8 @@ public class ActionMapper {
 
 		Hero hero = hero();
 		for (Item item : slots){
-			if (item == null) continue;
 			if (SlotAction.isBareEquipToggle( hero, item, config.allowEquipping )) continue;
-			if (item instanceof Wand) return true;
-			String action = item.defaultAction();
-			if (action != null
-					&& !action.equals( Item.AC_DROP )
-					&& !action.equals( Item.AC_THROW )) return true;
+			if (usable( item )) return true;
 		}
 		return false;
 	}

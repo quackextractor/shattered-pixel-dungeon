@@ -313,9 +313,9 @@ thirty-three gates, one invocation:
 | `resetcheck` | A reset that does not isolate an episode from whatever ran before it |
 | `graphcheck` | A chart reporting a range it did not observe |
 | `actioncheck` | A movement action that does not move the way it is named, **or** a throw charged differently from `Item.cast` |
-| `slotcheck` | A recorded slot index resolving to a different item, or a restore wiping a binding no index can name |
+| `slotcheck` | A recorded slot index resolving to a different item, or a restore wiping a binding no index can name, **or** `USE` offered for an item whose action does nothing |
 | `verifycheck` | Verification that cannot detect an altered recording, **or** verification that certifies one that cannot be played |
-| `observecheck` | Reading the world drawing from the gameplay RNG, **or** a draw path the RNG trace cannot see, **or** a public static `Random` method the audit has never seen |
+| `observecheck` | Reading the world drawing from the gameplay RNG, **or** a draw path the RNG trace cannot see, **or** a public static `Random` method the audit has never seen, **or** a scene-gated gameplay effect (disguise roll, heap `autoExplored`) skipped headlessly |
 | `configcheck` | A configuration binder that ignores its input, **or** an example file that names a different value from the compiled default |
 | `paritycheck` | A recording that will not replay exactly, across seeds in one process |
 | `freeactioncheck` | A rest that spends no engine time, or a menu loop that can be repeated with the world standing still |
