@@ -260,10 +260,7 @@ public class Burning extends Buff implements Hero.Doom, Buff.DOTbuff {
 
 	@Override
 	public int totalIncomingDMG() {
-		if (nextHit == 0){
-			nextHit = Random.NormalIntRange( 1, 3 + Dungeon.scalingDepth()/4 );
-		}
 		float avgDmg = 2 + Dungeon.scalingDepth()/8f;
-		return (int)Math.round(nextHit + Math.ceil(left-1)*avgDmg);
+		return (int)Math.round((nextHit == 0 ? avgDmg : nextHit) + Math.ceil(left-1)*avgDmg);
 	}
 }

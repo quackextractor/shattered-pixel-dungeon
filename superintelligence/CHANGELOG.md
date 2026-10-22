@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The viewer rolled a burning char's first fire hit early.** `Burning.totalIncomingDMG` drew
+  `nextHit` from the gameplay `Random` when it was 0, and only the rendered game asks for it
+  (`StatusPane`, `HealthBar`, `CharHealthIndicator`, `BossHealthBar` via `Char.incomingDOT()`), so the
+  viewer drew at frame time and the trainer in `Burning.act`. `seeds100-60/HPY-QJL-DPP` (issue 22,
+  step 836) and `fresh-1022/RXN-FXT-XRB` diverged on it. The estimate uses the average hit until
+  `act` has drawn one; both play to the end. Fixture `cleric-burning.replay`, corpus viewcheck 23 of 23.
 - **The viewer settled a step while a mob's attack was still animating.** A disguised Mimic's surprise
   attack (`Mimic.interact`) lands in its attack-animation callback, which also spends the hero's turn;
   the hero's shorter operate animation finishes first, so the drain saw a ready hero and moved on. The

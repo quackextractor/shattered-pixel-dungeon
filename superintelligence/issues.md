@@ -11,22 +11,11 @@ Closed: `CHANGELOG.md`. Declined: `REJECTED.md`.
 | `SSW-ZVA-GRB`, `DSD-FKG-MLX` | items fallen down a chasm never placed headlessly (`Dungeon.droppedItems`) | fixed in `LevelPipeline`; these two were recorded without the items and stay unplayable |
 | `PTJ-VRT-KHR`, `JUZ-UAQ-GCH`, `FUE-XLT-OVJ`, `LFJ-HPG-RFV` | viewer settled a step before a disguised Mimic's attack animation landed | fixed in `ReplayPlayer`; fixture `rogue-mimic.replay` |
 | `SZZ-PPW-YGF`, `MSR-XCX-JWZ`, `PBC-UFZ-RLA` | 300 s gate budget, not a fault: 187 s and 206 s alone | budget is now progress-based |
-| `RXN-FXT-XRB` | `Burning.totalIncomingDMG` draws `nextHit` from the gameplay RNG when a UI health bar asks | engine patch proposed, see 22 |
+| `RXN-FXT-XRB` | `Burning.totalIncomingDMG` draws `nextHit` from the gameplay RNG when a UI health bar asks | fixed in `Burning`; fixture `cleric-burning.replay` |
 | `GFQ-ZBM-CRL` | open: viewer's Gnoll Trickster hits three times inside hero turn 128 (steps 459-460, all REST) and kills the hero; headless it hits once, at step 460. RNG and world agree through step 458. Neither the in-flight wait, nor waiting on live `MissileSprite`s, nor the `Burning` patch changes it | open |
 
 With all fixes, `viewcheck` on the 257: 254 clean (`out/evidence/issue-23/fresh-1022.viewcheck2.txt`).
 Evidence `out/evidence/issue-23/`.
-
-## 22. Viewer burns a Swarm to death a turn before the trainer does - CAUSE FOUND, needs an engine change
-
-`seeds100-60/HPY-QJL-DPP` diverges in the viewer at step 836, hp 7 against 2. Cause: `Burning.totalIncomingDMG`
-draws `nextHit` from the gameplay `Random` when it is 0, and only the rendered game calls it - `StatusPane`,
-`HealthBar`, `CharHealthIndicator` and `BossHealthBar` via `Char.incomingDOT()`. The viewer draws a burning
-char's first hit at frame time, the trainer in `Burning.act`, so every roll after it reads another value.
-`out/evidence/issue-23/burning-ui-draw.patch` (estimate the first hit instead of drawing it, so the rendered
-game draws where the trainer does) makes `HPY-QJL-DPP` and `fresh-1022/RXN-FXT-XRB` play to the end; without
-it `HPY-QJL-DPP` still diverges at 836. It is a `core` logic change, so it is uncommitted pending approval;
-trainer recordings are unaffected because headless never calls the UI path.
 
 ## 20. Agent dies on floor 1 instead of descending - OPEN
 

@@ -32,7 +32,6 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined: `REJECTED
 
 ## 2. Engine and harness
 
-- [ ] **`Burning` UI draw on the gameplay RNG** (`issues.md` 22): patch ready, needs approval to change `core`.
 - [ ] **Gnoll Trickster triple hit in the viewer** (`issues.md` 23, `GFQ-ZBM-CRL`).
 
 - [ ] **`HeroDisguise` crashes headlessly.** Cursed wand casts sprite to `HeroSprite`, which needs
