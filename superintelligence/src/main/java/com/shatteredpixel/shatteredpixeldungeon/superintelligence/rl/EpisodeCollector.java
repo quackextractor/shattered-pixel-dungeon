@@ -146,6 +146,12 @@ public class EpisodeCollector {
 	}
 
 
+	public EpisodeRecord run( SPDEnv env, String seed, HeroClass heroClass, long policySeed ){
+		rng.setSeed( policySeed );
+		samplingRng.setSeed( ~policySeed );
+		return run( env, seed, heroClass );
+	}
+
 	public EpisodeRecord run( SPDEnv env, String seed, HeroClass heroClass ){
 		record.release();
 		tail.clear();

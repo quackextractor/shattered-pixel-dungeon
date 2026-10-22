@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerPool.WorkerHandle;
 
 public class Trainer {
 
@@ -344,13 +343,13 @@ Worker.writeWeights( out, ppo.network );
 	private List<TrainerWorkers.Job> planGeneration( int workerCount ){
 		List<TrainerWorkers.Job> jobs = new ArrayList<>();
 
-		for (WorkerHandle worker : pool.workers()){
+		for (int w = 0; w < pool.size(); w++){
 			for (int i = 0; i < workerCount; i++){
 
 				boolean wantReplay = (i % recordEvery) == 0;
 				String seed = seeds.next();
 				HeroClass heroClass = HeroClass.values()[ rng.nextInt( HeroClass.values().length ) ];
-				jobs.add( pool.job( worker, seed, heroClass, wantReplay ));
+				jobs.add( pool.job( seed, heroClass, wantReplay, rng.nextLong() ));
 			}
 		}
 

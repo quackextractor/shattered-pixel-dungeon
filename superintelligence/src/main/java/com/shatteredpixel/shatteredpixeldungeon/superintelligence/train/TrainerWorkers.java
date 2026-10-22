@@ -12,9 +12,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TrainerWorkers {
 
@@ -32,16 +32,16 @@ public class TrainerWorkers {
 	}
 
 	public static class Job {
-		final WorkerHandle worker;
 		final String seed;
 		final HeroClass heroClass;
 		final boolean wantReplay;
+		final long policySeed;
 
-		Job( WorkerHandle worker, String seed, HeroClass heroClass, boolean wantReplay ){
-			this.worker = worker;
+		Job( String seed, HeroClass heroClass, boolean wantReplay, long policySeed ){
 			this.seed = seed;
 			this.heroClass = heroClass;
 			this.wantReplay = wantReplay;
+			this.policySeed = policySeed;
 		}
 	}
 
@@ -88,35 +88,29 @@ public class TrainerWorkers {
 		}
 	}
 
-	public Job job( WorkerHandle worker, String seed, HeroClass heroClass, boolean wantReplay ){
-		return new Job( worker, seed, heroClass, wantReplay );
+	public Job job( String seed, HeroClass heroClass, boolean wantReplay, long policySeed ){
+		return new Job( seed, heroClass, wantReplay, policySeed );
 	}
 
 	public List<Episode> dispatch( List<Job> jobs ) throws IOException {
-		Map<WorkerHandle, List<Job>> byWorker = new LinkedHashMap<>();
-		for (Job job : jobs){
-			byWorker.computeIfAbsent( job.worker, k -> new ArrayList<>() ).add( job );
-		}
+		Episode[] results = new Episode[ jobs.size() ];
+		AtomicInteger next = new AtomicInteger();
 
 		List<Thread> threads = new ArrayList<>();
-		List<List<Episode>> results = new ArrayList<>();
 		List<IOException> failures = Collections.synchronizedList( new ArrayList<>() );
 
-		for (Map.Entry<WorkerHandle, List<Job>> entry : byWorker.entrySet()){
-			final WorkerHandle worker = entry.getKey();
-			final List<Job> mine = entry.getValue();
-			final List<Episode> collected = new ArrayList<>();
-
+		for (final WorkerHandle worker : pool.workers()){
 			Thread thread = new Thread( () -> {
 				try {
-					collected.addAll( runOn( worker, mine ) );
+					for (int i = next.getAndIncrement(); i < results.length && failures.isEmpty(); i = next.getAndIncrement()){
+						results[ i ] = runOne( worker, jobs.get( i ) );
+					}
 				} catch (IOException e){
 					failures.add( e );
 				}
 			}, "dispatch-" + worker.name );
 
 			threads.add( thread );
-			results.add( collected );
 			thread.start();
 		}
 
@@ -132,47 +126,40 @@ public class TrainerWorkers {
 
 		if (!failures.isEmpty()) throw failures.get( 0 );
 
-		List<Episode> episodes = new ArrayList<>();
-		for (List<Episode> collected : results) episodes.addAll( collected );
-		return episodes;
+		return new ArrayList<>( java.util.Arrays.asList( results ));
 	}
 
-	private List<Episode> runOn( WorkerHandle worker, List<Job> jobs ) throws IOException {
-		List<Episode> episodes = new ArrayList<>();
-
+	private Episode runOne( WorkerHandle worker, Job job ) throws IOException {
 		DataOutputStream out = worker.dataOut;
 		DataInputStream in = worker.dataIn;
 
-		for (Job job : jobs){
-			out.writeInt( Protocol.MSG_EPISODE );
-			out.writeUTF( job.seed );
-			out.writeUTF( job.heroClass.name() );
-			out.writeBoolean( job.wantReplay );
-			out.flush();
+		out.writeInt( Protocol.MSG_EPISODE );
+		out.writeUTF( job.seed );
+		out.writeUTF( job.heroClass.name() );
+		out.writeBoolean( job.wantReplay );
+		out.writeLong( job.policySeed );
+		out.flush();
 
-			int reply = in.readInt();
-			if (reply != Protocol.MSG_EPISODE){
-				throw new IOException( worker.name + " replied to an episode request with message "
-						+ reply );
-			}
-
-			Episode episode = Episode.read( in );
-			episode.seed = job.seed;
-			episode.heroClass = job.heroClass.name();
-			episode.workerName = worker.name;
-
-			int steps = in.readInt();
-
-			if (job.wantReplay) episode.replay = ReplayCodec.read( in, steps );
-
-			episode.transitions = Episode.readTransitions( in, config, ppo.network.stateSize() );
-
-			pool.progress();
-
-			episodes.add( episode );
+		int reply = in.readInt();
+		if (reply != Protocol.MSG_EPISODE){
+			throw new IOException( worker.name + " replied to an episode request with message "
+					+ reply );
 		}
 
-		return episodes;
+		Episode episode = Episode.read( in );
+		episode.seed = job.seed;
+		episode.heroClass = job.heroClass.name();
+		episode.workerName = worker.name;
+
+		int steps = in.readInt();
+
+		if (job.wantReplay) episode.replay = ReplayCodec.read( in, steps );
+
+		episode.transitions = Episode.readTransitions( in, config, ppo.network.stateSize() );
+
+		pool.progress();
+
+		return episode;
 	}
 
 

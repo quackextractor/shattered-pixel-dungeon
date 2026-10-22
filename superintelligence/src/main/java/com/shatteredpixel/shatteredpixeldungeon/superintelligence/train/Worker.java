@@ -61,7 +61,7 @@ private EnvConfig config;
 					readParams();
 					break;
 				case Protocol.MSG_EPISODE:
-					runEpisode( in.readUTF(), HeroClass.valueOf( in.readUTF() ), in.readBoolean() );
+					runEpisode( in.readUTF(), HeroClass.valueOf( in.readUTF() ), in.readBoolean(), in.readLong() );
 					break;
 				default:
 					throw new IOException( "worker: unexpected message " + message );
@@ -108,7 +108,7 @@ private EnvConfig config;
 	}
 
 
-	private void runEpisode( String seed, HeroClass heroClass, boolean wantReplay ) throws IOException {
+	private void runEpisode( String seed, HeroClass heroClass, boolean wantReplay, long policySeed ) throws IOException {
 
 		ResourceStats.Interval work = ResourceStats.start();
 
@@ -143,7 +143,7 @@ private EnvConfig config;
 			}
 		} );
 
-		EpisodeRecord record = collector.run( env, seed, heroClass );
+		EpisodeRecord record = collector.run( env, seed, heroClass, policySeed );
 
 		if (tracing) writeOrderedLogs( env.seedText() );
 

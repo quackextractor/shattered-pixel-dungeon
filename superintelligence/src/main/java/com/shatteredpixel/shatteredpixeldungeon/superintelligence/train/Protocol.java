@@ -2,7 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 
 public final class Protocol {
 
-	public static final int VERSION = 8;
+	public static final int VERSION = 9;
 
 	public static final int MSG_HELLO = 1;
 	public static final int MSG_PARAMS = 2;

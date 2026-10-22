@@ -151,6 +151,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   big-endian wire format. Per worker, 5.6 MB: write 20.4 -> 2.2 ms (serial on the trainer, so ~0.4 s
   a generation at 20 workers), read 19.3 -> 1.5 ms. `pushcheck` case 8 round-trips every layer bit
   for bit.
+- **Workers draw episodes from one shared queue** instead of fixed per-worker lists, so a worker that
+  drew short episodes takes more instead of idling behind one that drew a long one. Each job carries
+  its own policy seed (`EpisodeCollector.run( ..., policySeed )` reseeds both sampling generators)
+  and results come back in job order, so a run is still reproducible whichever worker takes which
+  job. Protocol version 9. 8 workers x 8 episodes, 3 generations, 600-turn cap: collection 4354 ->
+  4662 turns/s. `collectcheck` case 11: one job before and after another on one collector collects
+  the same episode; red without the reseed. Evidence `out/evidence/job-queue-8x8.{csv,log}`.
 - **`EpisodeRecord.isRetained` is a flag on the transition**, not a scan of up to 2048 retained
   steps on every tail eviction. `gaecheck`'s double-retain case fails without the flag.
 - **About 9x more optimiser steps per generation.** `rl.sample_rate` 0.05 -> 0.25, `rl.epochs` 2 -> 4,

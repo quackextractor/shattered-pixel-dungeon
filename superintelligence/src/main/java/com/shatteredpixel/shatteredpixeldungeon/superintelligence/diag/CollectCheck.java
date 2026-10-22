@@ -51,8 +51,35 @@ public class CollectCheck {
 		checkDropRecordsTheBindingsItsSlotIndexWasChosenAgainst( config );
 		checkTheCollectorAnnouncesADecisionBeforeItIsApplied( config );
 		checkTheKeeperKeepsTheEpisodesWorthWatching( config );
+		checkAnEpisodeDependsOnItsJobNotOnWhatTheWorkerRanBefore( config );
 
-		System.exit( GateReport.report( "collection", 10 ));
+		System.exit( GateReport.report( "collection", 11 ));
+	}
+
+	private static void checkAnEpisodeDependsOnItsJobNotOnWhatTheWorkerRanBefore( EnvConfig config ){
+		EpisodeCollector collector = new EpisodeCollector( config, new Network( config, new Random( 9L )),
+				new Random( 1 ), new Random( 2 ), 0.99f, 0.95f, 0.25f );
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		String first = fingerprint( collector.run( env, "JOB-A", HeroClass.WARRIOR, 11L ));
+		collector.run( env, "JOB-B", HeroClass.MAGE, 22L );
+		String again = fingerprint( collector.run( env, "JOB-A", HeroClass.WARRIOR, 11L ));
+		if (!first.equals( again )){
+			fail( "one job run before and after another on the same worker collected " + first + " then " + again
+					+ "; a shared job queue would make a run depend on which worker took which job" );
+			return;
+		}
+		System.out.println( "  a job collects the same episode whatever its worker ran before (" + first + ")" );
+	}
+
+	private static String fingerprint( com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeRecord record ){
+		StringBuilder sb = new StringBuilder().append( record.stepCount() ).append( " steps, " )
+				.append( record.sampledCount() ).append( " sampled" );
+		int hash = 0;
+		for (int i = 0; i < record.sampledCount(); i++){
+			hash = hash * 31 + record.sampledStepAt( i );
+			hash = hash * 31 + record.sampledTransitions().get( i ).actionIndex;
+		}
+		return sb.append( ", hash " ).append( Integer.toHexString( hash )).toString();
 	}
 
 
