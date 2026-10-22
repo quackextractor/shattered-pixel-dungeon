@@ -14,7 +14,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class PushCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 
 	public static void main( String[] args ){		int chunk = TrainerWorkers.pushChunkBytes;
 		byte[] payload = payload( 3, chunk );
@@ -26,6 +26,7 @@ public class PushCheck {
 		checkAFailureIsNotRetried( chunk );
 		checkAFailureIsRefusedByName( chunk );
 		checkTheWatchdogWaitsOutTheTrainersOwnUpdate();
+		checkTheWeightsArriveBitForBit();
 
 		System.exit( GateReport.report( "policy push", CHECKS ));
 	}
@@ -50,6 +51,42 @@ public class PushCheck {
 			return;
 		}
 		System.out.println( "  the stall watchdog fires on silent workers, not during the trainer's own update" );
+	}
+
+	private static void checkTheWeightsArriveBitForBit(){
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig config =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig();
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network sent =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network( config, new java.util.Random( 1L ));
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network received =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network( config, new java.util.Random( 2L ));
+		sent.layers()[ 0 ].weights[ 0 ] = Float.intBitsToFloat( 0x7fc00123 );
+		sent.layers()[ 0 ].bias[ 0 ] = -0f;
+		try {
+			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Worker.writeWeights( new DataOutputStream( buffer ), sent );
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.Worker.readWeights(
+					new java.io.DataInputStream( new java.io.ByteArrayInputStream( buffer.toByteArray() )), received );
+		} catch (IOException e){
+			fail( "a policy push did not round-trip: " + e.getMessage() );
+			return;
+		}
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network.Layer[] a = sent.layers(), b = received.layers();
+		for (int i = 0; i < a.length; i++){
+			boolean same = Arrays.equals( bits( a[ i ].weights ), bits( b[ i ].weights ))
+					&& Arrays.equals( bits( a[ i ].bias ), bits( b[ i ].bias ));
+			if (!same){
+				fail( "layer " + a[ i ].name + " arrived with different bits after a policy push" );
+				return;
+			}
+		}
+		System.out.println( "  a policy push delivers every layer bit for bit, NaN payload and -0 included" );
+	}
+
+	private static int[] bits( float[] values ){
+		int[] out = new int[ values.length ];
+		for (int i = 0; i < values.length; i++) out[ i ] = Float.floatToRawIntBits( values[ i ] );
+		return out;
 	}
 
 	private static void pause( long ms ){

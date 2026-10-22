@@ -226,10 +226,8 @@ private EnvConfig config;
 			out.writeUTF( layer.name );
 			out.writeInt( layer.in );
 			out.writeInt( layer.out );
-			out.writeInt( layer.weights.length );
-			for (float v : layer.weights) out.writeFloat( v );
-			out.writeInt( layer.bias.length );
-			for (float v : layer.bias) out.writeFloat( v );
+			writeFloats( out, layer.weights );
+			writeFloats( out, layer.bias );
 		}
 	}
 
@@ -241,15 +239,25 @@ private EnvConfig config;
 			int rows = in.readInt();
 			int cols = in.readInt();
 
-			int weightCount = in.readInt();
-			float[] weights = new float[ weightCount ];
-			for (int w = 0; w < weightCount; w++) weights[ w ] = in.readFloat();
-
-			int biasCount = in.readInt();
-			float[] bias = new float[ biasCount ];
-			for (int b = 0; b < biasCount; b++) bias[ b ] = in.readFloat();
+			float[] weights = readFloats( in );
+			float[] bias = readFloats( in );
 
 			net.loadLayer( new Network.Layer( name, rows, cols, weights, bias ) );
 		}
+	}
+
+	private static void writeFloats( DataOutputStream out, float[] values ) throws IOException {
+		out.writeInt( values.length );
+		byte[] bytes = new byte[ 4 * values.length ];
+		java.nio.ByteBuffer.wrap( bytes ).asFloatBuffer().put( values );
+		out.write( bytes );
+	}
+
+	private static float[] readFloats( DataInputStream in ) throws IOException {
+		float[] values = new float[ in.readInt() ];
+		byte[] bytes = new byte[ 4 * values.length ];
+		in.readFully( bytes );
+		java.nio.ByteBuffer.wrap( bytes ).asFloatBuffer().get( values );
+		return values;
 	}
 }

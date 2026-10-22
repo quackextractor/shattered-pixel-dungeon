@@ -8,6 +8,7 @@ Proposals not done, with reason and trigger. Measurements: `CHANGELOG.md`.
 | Ego-centred observation grid | deferred | rewrites every plane, voids every checkpoint. Exit beacon already survives window edge | next measured run that may break weights |
 | Native / ONNX learner | declined | learner not the wall (30 gen in 12m41s); adds platform matrix | profile shows learner is wall |
 | `jdk.incubator.vector` in `Dense.matvec` | declined | `Dense` 17% of forward, 7.6% of update; 62% is `Conv2D` with strided im2col | same as above |
+| Worker reuses its `Network` across pushes | declined | `new Network` 22 ms per worker per generation, in parallel; its init draws `policyRng`, so skipping it moves every later action sample | worker setup shows in a profile |
 | fp16 weight push | declined | 286 -> 143 MB/gen; barrier small share of wall | transport in profile |
 | IMPALA / async learner (V-trace) | declined | worker-side GAE + on-policy PPO solves barrier; off-policy needs extra tuning | barrier is wall again |
 | Workers update locally, send weights | declined | no pooled gradient; N policies drift | - |
