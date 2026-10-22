@@ -31,7 +31,6 @@ public class Network extends NetworkWeights {
 	private final Tensor dTrunkIn;
 	private final Tensor dReduce;
 	private final Tensor dConv;
-	private final float[] dGrid;
 
 
 	private final float[] gridSnapshot;
@@ -65,8 +64,7 @@ public class Network extends NetworkWeights {
 		this.dReduce = new Tensor( 1, convFeatures );
 		this.dConv = new Tensor( 1, conv.outputSize() );
 
-		this.dGrid = new float[ config.spatialChannels() * config.gridWidth * config.gridHeight ];
-		this.gridSnapshot = new float[ dGrid.length ];
+		this.gridSnapshot = new float[ config.spatialChannels() * config.gridWidth * config.gridHeight ];
 	}
 
 
@@ -76,7 +74,7 @@ public class Network extends NetworkWeights {
 
 
 	public int gridLength(){
-		return dGrid.length;
+		return gridSnapshot.length;
 	}
 
 
@@ -236,8 +234,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		dConv.fill( 0f );
 		reduce.backward( convOut.data, dReduce, dConv.data );
 
-		java.util.Arrays.fill( dGrid, 0f );
-		conv.backward( gridSnapshot, dConv, dGrid );
+		conv.backward( gridSnapshot, dConv, null );
 	}
 
 
@@ -263,10 +260,6 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		return dPrev.data;
 	}
 
-
-	public float[] gridGradient(){
-		return dGrid;
-	}
 
 	private static void copyInto( float[] src, Tensor into ){
 		into.fill( 0f );

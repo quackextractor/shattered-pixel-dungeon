@@ -121,9 +121,6 @@ public class Conv2D {
 
 	public void backward( float[] input, Tensor gradOut, float[] gradIn ){
 		im2col( input );
-		java.util.Arrays.fill( gradIn, 0f );
-
-		int planeSize = inWidth * inHeight;
 
 		int outLen = outputSize();
 		for (int i = 0; i < outLen; i++){
@@ -143,30 +140,7 @@ public class Conv2D {
 			}
 		}
 
-		for (int p = 0; p < positions; p++){
-			int cOff = p * outChannels;
-
-			for (int ch = 0; ch < inChannels; ch++){
-				int inOff = ch * planeSize;
-				for (int ky = 0; ky < kernel; ky++){
-					for (int kx = 0; kx < kernel; kx++){
-						int row = (ch * kernel + ky) * kernel + kx;
-
-						for (int q = 0; q < outChannels; q++){
-							float g = gradOut.data[ cOff + q ];
-							if (g == 0f) continue;
-							int wOff = row * outChannels + q;
-
-							int iy = (p / outWidth) * stride + ky;
-							int ix = (p % outWidth) * stride + kx;
-							if (iy < inHeight && ix < inWidth){
-								gradIn[ inOff + iy * inWidth + ix ] += g * W.data[ wOff ];
-							}
-						}
-					}
-				}
-			}
-		}
+		if (gradIn != null) inputGradient( go, gradIn );
 
 		for (int q = 0; q < outChannels; q++){
 			float sum = 0;
@@ -174,6 +148,31 @@ public class Conv2D {
 				sum += gradOut.data[ p * outChannels + q ];
 			}
 			gb.data[ q ] += sum;
+		}
+	}
+
+	private void inputGradient( float[] go, float[] gradIn ){
+		java.util.Arrays.fill( gradIn, 0f );
+		int planeSize = inWidth * inHeight;
+		float[] w = W.data;
+		for (int p = 0; p < outWidth * outHeight; p++){
+			int gOff = p * outChannels;
+			int oy = (p / outWidth) * stride;
+			int ox = (p % outWidth) * stride;
+			for (int ch = 0; ch < inChannels; ch++){
+				for (int ky = 0; ky < kernel; ky++){
+					int iy = oy + ky;
+					if (iy >= inHeight) continue;
+					for (int kx = 0; kx < kernel; kx++){
+						int ix = ox + kx;
+						if (ix >= inWidth) continue;
+						int wOff = ((ch * kernel + ky) * kernel + kx) * outChannels;
+						float sum = 0f;
+						for (int q = 0; q < outChannels; q++) sum += go[ gOff + q ] * w[ wOff + q ];
+						gradIn[ ch * planeSize + iy * inWidth + ix ] += sum;
+					}
+				}
+			}
 		}
 	}
 
