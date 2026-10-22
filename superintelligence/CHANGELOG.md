@@ -135,6 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   levitation presses the cell. Both fail with the engine change reverted.
 
 ### Changed
+- **`EpisodeRecord.isRetained` is a flag on the transition**, not a scan of up to 2048 retained
+  steps on every tail eviction. `gaecheck`'s double-retain case fails without the flag.
 - **About 9x more optimiser steps per generation.** `rl.sample_rate` 0.05 -> 0.25, `rl.epochs` 2 -> 4,
   `rl.minibatch_size` 32 -> 8 chunks. long-1021 made 608 Adam steps in 30 generations; measured 176 a
   generation now (16 workers x 2 episodes, 6 update threads, `ppoSeconds` 50 after warm-up).

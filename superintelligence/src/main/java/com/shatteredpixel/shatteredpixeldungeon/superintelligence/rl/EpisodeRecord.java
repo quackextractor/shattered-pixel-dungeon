@@ -75,16 +75,14 @@ public class EpisodeRecord {
 		if (isRetained( t )) return;
 
 		sampled.add( t );
+		t.retained = true;
 
 		if (sampledSteps.length < sampled.size()) sampledSteps = grow( sampledSteps, sampled.size() );
 		sampledSteps[ sampled.size() - 1 ] = index;
 	}
 
 	public boolean isRetained( Transition t ){
-		for (int i = 0; i < sampled.size(); i++){
-			if (sampled.get( i ) == t ) return true;
-		}
-		return false;
+		return t.retained;
 	}
 
 	public void computeAdvantages( float gamma, float lambda ){

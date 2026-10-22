@@ -81,6 +81,7 @@ public class Transition {
 	private static final ArrayDeque<Transition> POOL = new ArrayDeque<>();
 	private static final int MAX_POOLED = 8192;
 	private boolean pooled = false;
+	boolean retained;
 	public static Transition take( int gridSize, int inventorySize, int heroSize,
 			int actionCount, int slotCount, int targetCount, int recurrentStateSize ){
 		Transition t = POOL.poll();
@@ -110,6 +111,7 @@ public class Transition {
 		t.teacherIndex = -1;
 		t.demonstration = false;
 		t.pooled = false;
+		t.retained = false;
 		return t;
 	}
 	public static Transition take( int gridSize, int inventorySize, int heroSize,
