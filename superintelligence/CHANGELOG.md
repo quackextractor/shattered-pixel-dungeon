@@ -151,6 +151,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   big-endian wire format. Per worker, 5.6 MB: write 20.4 -> 2.2 ms (serial on the trainer, so ~0.4 s
   a generation at 20 workers), read 19.3 -> 1.5 ms. `pushcheck` case 8 round-trips every layer bit
   for bit.
+- **Workers collect the next generation while the trainer updates** (`rl.overlap_collection`,
+  default true; `false` restores the barrier). Each update therefore trains on data one update
+  older. 8 workers x 8 episodes, 6 generations, 600-turn cap: 345 -> 415 samples/s; the update
+  slows 1.95 -> 2.10 ms/sample sharing cores with workers; approximate KL to the behaviour policy
+  rises from ~0.2 to ~0.7 in generations 3-5. Learning effect not yet measured on a long run.
+  Evidence `out/evidence/overlap-{base6,over6}.{csv,log}`.
 - **Workers draw episodes from one shared queue** instead of fixed per-worker lists, so a worker that
   drew short episodes takes more instead of idling behind one that drew a long one. Each job carries
   its own policy seed (`EpisodeCollector.run( ..., policySeed )` reseeds both sampling generators)

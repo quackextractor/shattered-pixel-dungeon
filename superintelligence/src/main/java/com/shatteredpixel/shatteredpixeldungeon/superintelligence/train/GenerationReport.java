@@ -195,6 +195,20 @@ public static class Snapshot {
 		return total <= 0 ? 0 : used / total * 100;
 	}
 
+	static long gridBytes( java.util.List< com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition > retained ){
+		long bytes = 0;
+		for (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition t : retained) bytes += t.grid.length;
+		return bytes;
+	}
+
+	static long sampledBytes( java.util.List< com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition > retained ){
+		long bytes = gridBytes( retained );
+		for (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition t : retained){
+			bytes += 4L * (t.inventory.length + t.hero.length + t.actionMask.length + t.slotMask.length + t.targetMask.length);
+		}
+		return bytes;
+	}
+
 	static void tally( Snapshot s, java.util.List<Episode> episodes ){
 		long totalTurns = 0;
 		int best = Integer.MIN_VALUE, worst = Integer.MAX_VALUE;

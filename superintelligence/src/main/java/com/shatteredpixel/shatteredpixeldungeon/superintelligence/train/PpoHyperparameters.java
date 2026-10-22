@@ -26,6 +26,8 @@ public class PpoHyperparameters {
 
 	public int updateThreads = 8;
 
+	public boolean overlapCollection = true;
+
 	public double sampleRate = 0.25;
 
 	public int maxSampledPerEpisode = 2048;
@@ -138,6 +140,7 @@ public class PpoHyperparameters {
 		p.minibatchSize = minibatchSize;
 		p.epochs = epochs;
 		p.updateThreads = updateThreads;
+		p.overlapCollection = overlapCollection;
 		p.sampleRate = sampleRate;
 		p.maxSampledPerEpisode = maxSampledPerEpisode;
 		p.maxSamplesPerGeneration = maxSamplesPerGeneration;

@@ -12,7 +12,7 @@ Proposals not done, with reason and trigger. Measurements: `CHANGELOG.md`.
 | Skip `DescentBot.label` on unsampled steps or once `rl.teacher_weight` decays | declined | teacher off entirely: 0.678 against 0.680 ms/step on 714 steps, noise. Tail steps are kept at episode end, so every step needs its label anyway | teacher grows past a distance map per step |
 | `--episodes` default 4 instead of worker count (N^2 jobs) | declined | 8 workers, 600-turn cap: 4 per worker kept 285 samples/s against 358 at 8; nothing dropped at either. Waste exists only when the reservoir drops, which the trainer warns about. `out/evidence/episodes-default-{4,8}.csv` | a run drops most of its samples |
 | fp16 weight push | declined | 286 -> 143 MB/gen; barrier small share of wall | transport in profile |
-| IMPALA / async learner (V-trace) | declined | worker-side GAE + on-policy PPO solves barrier; off-policy needs extra tuning | barrier is wall again |
+| IMPALA / async learner (V-trace) beyond one update of lag | declined | `rl.overlap_collection` already hides collection behind the update at one update of lag; more lag needs V-trace | learning stalls on stale data |
 | Workers update locally, send weights | declined | no pooled gradient; N policies drift | - |
 | Threads instead of worker processes | impossible | static game state, one env per process | - |
 | Frame-differencing observations | impossible | PPO shuffles minibatches; delta needs sequential access | - |

@@ -105,6 +105,7 @@ public final class ConfigDefaults {
 			case "rl.epochs":                 return String.valueOf( hyper.epochs );
 			case "rl.minibatch_size":         return String.valueOf( hyper.minibatchSize );
 			case "rl.update_threads":         return String.valueOf( hyper.updateThreads );
+			case "rl.overlap_collection":     return String.valueOf( hyper.overlapCollection );
 			case "rl.sample_rate":            return String.valueOf( hyper.sampleRate );
 			case "rl.max_sampled_per_episode": return String.valueOf( hyper.maxSampledPerEpisode );
 			case "rl.max_samples_per_generation":
@@ -157,6 +158,7 @@ public final class ConfigDefaults {
 			case "env.sub_mode_progress_only":
 			case "env.record_rng_fingerprint":
 			case "rl.normalise_values":
+			case "rl.overlap_collection":
 			case "rl.huber_values":
 				return true;
 			default:

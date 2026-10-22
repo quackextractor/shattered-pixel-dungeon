@@ -262,20 +262,28 @@ Worker.writeWeights( out, ppo.network );
 
 	private void runGenerations( int first, int generations, long startedAt, int workerCount )
 			throws IOException {
+		episodesPerWorker = workerCount;
+		PendingGeneration next = null;
 		for (int g = first; g < lastGeneration; g++){
 			epoch = g;
-			advanceSchedule();
-
-			episodesPerWorker = workerCount;
-			List<TrainerWorkers.Job> jobs = planGeneration( workerCount );
+			if (next == null){
+				advanceSchedule();
+				next = new PendingGeneration( pool, planGeneration( workerCount ));
+			}
 
 			ChunkReservoir reservoir = new ChunkReservoir(
 					Math.max( 1, maxSamplesPerGeneration / Math.max( 1, ppo.chunkLength )),
 					ppo.chunkLength, rngSeed * 31 + epoch );
 
-			ResourceStats.Interval gen = ResourceStats.start();
-			List<Episode> episodes = pool.dispatch( jobs );
-			gen.stop();
+			List<Episode> episodes = next.await();
+			ResourceStats.Interval gen = next.wall;
+			next = null;
+			if (hyper.overlapCollection && g + 1 < lastGeneration){
+				lastEpisodes.clear();
+				lastEpisodes.addAll( episodes );
+				advanceSchedule();
+				next = new PendingGeneration( pool, planGeneration( workerCount ));
+			}
 			lastWorkerSeconds = pool.cpuSecondsSinceLast( episodes );
 
 			for (Episode e : episodes){
@@ -294,20 +302,12 @@ Worker.writeWeights( out, ppo.network );
 			ppo.clearBuffer();
 			ppo.addAll( retained );
 
-			sampledBytes = 0;
-			gridBytes = 0;
-			for (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition t : retained){
-				gridBytes += t.grid.length;
-				sampledBytes += t.grid.length
-						+ 4L * (t.inventory.length + t.hero.length + t.actionMask.length
-						+ t.slotMask.length + t.targetMask.length);
-			}
+			gridBytes = GenerationReport.gridBytes( retained );
+			sampledBytes = GenerationReport.sampledBytes( retained );
 
 			if (droppedThisGeneration > 0){
-				System.err.println( "[WARN] generation " + epoch + ": " + droppedThisGeneration
-						+ " transitions over the " + maxSamplesPerGeneration + " cap were dropped."
-						+ " Whole chunks were resampled rather than the oldest steps discarded, so every"
-						+ " episode had the same chance of contributing and no retained chunk was cut."
+				System.err.println( "[WARN] generation " + epoch + ": " + droppedThisGeneration + " transitions over the "
+						+ maxSamplesPerGeneration + " cap were dropped, as whole chunks drawn evenly across episodes."
 						+ " Raise --max-samples or lower --sample-rate to see the rest." );
 			}
 
@@ -324,6 +324,7 @@ Worker.writeWeights( out, ppo.network );
 				} );
 				update.stop();
 				lastUpdate = update;
+				if (next != null) next.await();
 
 				ResourceStats.Interval push = ResourceStats.start();
 				pool.pushWeights();
