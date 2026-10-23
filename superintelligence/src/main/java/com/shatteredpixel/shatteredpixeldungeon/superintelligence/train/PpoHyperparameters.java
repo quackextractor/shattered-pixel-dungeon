@@ -1,5 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
+
 public class PpoHyperparameters {
 
 	public float gamma = 0.99f;
@@ -166,5 +168,27 @@ public class PpoHyperparameters {
 		p.workerHeapMax = workerHeapMax;
 		p.workerGcPauseMs = workerGcPauseMs;
 		return p;
+	}
+
+	public void applyTo( PPO ppo ){
+		ppo.gamma = gamma;
+		ppo.lambda = lambda;
+		ppo.clipEpsilon = clipEpsilon;
+		ppo.entropyCoeff = entropyCoeff;
+		ppo.demoWeight = demoWeight;
+		ppo.learningRate = learningRate;
+		ppo.network.learningRate = learningRate;
+
+		ppo.chunkLength = chunkLength;
+		ppo.normaliseValues = normaliseValues;
+		ppo.valueNorm.momentum = valueNormMomentum;
+		ppo.valueLossCoefficient = valueLossCoefficient;
+		ppo.valueGradientClip = valueGradientClip;
+		ppo.huberValues = huberValues;
+
+		ppo.network.gradClip = maxGradNorm;
+		ppo.network.beta1 = adamBeta1;
+		ppo.network.beta2 = adamBeta2;
+		ppo.network.adamEps = adamEps;
 	}
 }

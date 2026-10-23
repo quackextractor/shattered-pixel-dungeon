@@ -141,27 +141,9 @@ public class Trainer {
 	}
 
 	private void learning( PpoHyperparameters hyper ){
-		ppo.gamma = hyper.gamma;
-		ppo.lambda = hyper.lambda;
-		ppo.clipEpsilon = hyper.clipEpsilon;
-		ppo.entropyCoeff = hyper.entropyCoeff;
+		hyper.applyTo( ppo );
 		teacherWeight = hyper.teacherWeight;
 		teacherHalfLife = hyper.teacherHalfLife;
-		ppo.demoWeight = hyper.demoWeight;
-		ppo.learningRate = hyper.learningRate;
-		ppo.network.learningRate = hyper.learningRate;
-
-		ppo.chunkLength = hyper.chunkLength;
-		ppo.normaliseValues = hyper.normaliseValues;
-		ppo.valueNorm.momentum = hyper.valueNormMomentum;
-		ppo.valueLossCoefficient = hyper.valueLossCoefficient;
-		ppo.valueGradientClip = hyper.valueGradientClip;
-		ppo.huberValues = hyper.huberValues;
-
-		ppo.network.gradClip = hyper.maxGradNorm;
-		ppo.network.beta1 = hyper.adamBeta1;
-		ppo.network.beta2 = hyper.adamBeta2;
-		ppo.network.adamEps = hyper.adamEps;
 	}
 
 	public MetricsHistory metrics(){ return metrics; }

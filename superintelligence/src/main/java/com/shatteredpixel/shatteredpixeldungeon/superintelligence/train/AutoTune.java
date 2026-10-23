@@ -46,7 +46,7 @@ public final class AutoTune {
 		List< Transition > samples = probeBatch( config, minibatchSize, hyper.chunkLength );
 		double[] msPerSample = new double[ counts.size() ];
 		for (int i = 0; i < counts.size(); i++){
-			msPerSample[ i ] = timeUpdate( config, counts.get( i ), minibatchSize, hyper.chunkLength, samples );
+			msPerSample[ i ] = timeUpdate( config, counts.get( i ), hyper, samples );
 		}
 		int threads = counts.get( pickThreads( msPerSample ) );
 
@@ -108,6 +108,7 @@ public final class AutoTune {
 	private static List< Transition > probeBatch( EnvConfig config, int minibatchSize, int chunkLength ){
 		List< Transition > samples = ParallelFixtures.batch( new Network( config, new Random( 12345L ) ), config,
 				probeSamples( minibatchSize, chunkLength ), 4242L );
+		for (Transition t : samples) t.teacherIndex = t.actionIndex;
 		cutProbeChunks( samples, chunkLength );
 		return samples;
 	}
@@ -157,13 +158,14 @@ public final class AutoTune {
 		return -1;
 	}
 
-	private static double timeUpdate( EnvConfig config, int threads, int minibatchSize, int chunkLength,
+	private static double timeUpdate( EnvConfig config, int threads, PpoHyperparameters hyper,
 			List< Transition > samples ){
 		PPO ppo = new PPO( config, new Random( 12345L ) );
+		hyper.applyTo( ppo );
+		ppo.teacherWeight = hyper.teacherWeight;
 		ppo.threads = threads;
 		ppo.epochs = 1;
-		ppo.minibatchSize = minibatchSize;
-		ppo.chunkLength = chunkLength;
+		ppo.minibatchSize = hyper.minibatchSize;
 		try {
 			double best = Double.MAX_VALUE;
 			for (int r = 0; r < 2; r++){
