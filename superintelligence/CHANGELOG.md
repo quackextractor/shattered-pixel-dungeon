@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`train.sh`**, the Linux launcher: finds a JDK, always `--auto`, logs to `out/evidence/<name>.log`.
 
 ### Fixed
+- **`--auto` held a 20-core machine at 4 update threads.** The probe timed 64 samples, 4 chunks, and an
+  update shards one minibatch's chunks across threads, so 4 and 16 threads timed alike. It now times 4
+  minibatches at the run's `minibatch_size` and `chunk_length` and tries thread counts up to the minibatch
+  size, past which no shard gets work. `updatecost --samples 1024`: 1.14 ms/sample at 4, 0.81 at 8, 0.84
+  at 16. This machine now picks 8 (0.87 against 1.16 at 4); the 4-core server still picks 4.
+  `configcheck` case 22.
 - **Free memory read as unlimited on JDK 17+ and as MemFree on Linux.** `getFreeMemorySize` was looked
   up on the bean's internal class, which reflection may not call, so the pool sizing saw `Long.MAX_VALUE`;
   on Linux MemFree omits page cache (0.2 of 14.2 GB on the training server).

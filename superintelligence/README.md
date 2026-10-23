@@ -457,7 +457,7 @@ command it is about to run, and passes `-Name` as the run's replay group.
 hours and checkpoints, `-r` resumes, `-k` prints what the probe would choose. It finds a JDK (`JAVA_HOME`,
 `java` on `PATH`, else `~/.local/jdk21`) and always passes `--auto`: workers are the logical cores capped
 by `/proc/meminfo` MemAvailable over `worker.heap_max` + 300 MB, and update threads the fewest within 5%
-of the fastest timed PPO update. Flags after `--` win. `--hours` stops after the generation that crosses
+of the fastest timed PPO update, tried up to `rl.minibatch_size` (an update cannot use more). Flags after `--` win. `--hours` stops after the generation that crosses
 the budget and checkpoints, so a long run needs no generation estimate.
 
 **`./train.ps1` is the short, aggressive cycle, and the default** (`-Long` is the 30-generation run): three generations, four workers, one episode

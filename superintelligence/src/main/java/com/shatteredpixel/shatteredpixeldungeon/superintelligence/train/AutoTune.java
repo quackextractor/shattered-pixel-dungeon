@@ -19,7 +19,7 @@ public final class AutoTune {
 	static final long JVM_OVERHEAD_MB = 300;
 	static final long OS_RESERVE_MB = 1024;
 	static final double THREAD_TOLERANCE = 1.05;
-	private static final int PROBE_SAMPLES = 64;
+	static final int PROBE_MINIBATCHES = 4;
 
 	public final int workers;
 	public final int updateThreads;
@@ -31,17 +31,17 @@ public final class AutoTune {
 		this.report = report;
 	}
 
-	public static AutoTune measure( EnvConfig config, String workerHeapMax ){
+	public static AutoTune measure( EnvConfig config, PpoHyperparameters hyper, int minibatchSize ){
 		int cores = ResourceStats.availableProcessors();
 		long availableMb = availableMemoryBytes() / (1024L * 1024);
 		long trainerMb = Runtime.getRuntime().maxMemory() / (1024L * 1024) + JVM_OVERHEAD_MB;
-		long workerMb = megabytes( workerHeapMax ) + JVM_OVERHEAD_MB;
+		long workerMb = megabytes( hyper.workerHeapMax ) + JVM_OVERHEAD_MB;
 		int workers = workersFor( cores, availableMb, trainerMb, workerMb );
 
-		List< Integer > counts = threadCounts( cores );
+		List< Integer > counts = threadCounts( Math.min( cores, minibatchSize ) );
 		double[] msPerSample = new double[ counts.size() ];
 		for (int i = 0; i < counts.size(); i++){
-			msPerSample[ i ] = timeUpdate( config, counts.get( i ) );
+			msPerSample[ i ] = timeUpdate( config, counts.get( i ), minibatchSize, hyper.chunkLength );
 		}
 		int threads = counts.get( pickThreads( msPerSample ) );
 
@@ -66,7 +66,7 @@ public final class AutoTune {
 		try {
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder.Loaded loaded =
 					com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder.load( null );
-			System.out.println( measure( loaded.config, loaded.hyper.workerHeapMax ).report );
+			System.out.println( measure( loaded.config, loaded.hyper, loaded.hyper.minibatchSize ).report );
 		} catch (IOException e){
 			System.err.println( "[ERROR] cannot read the configuration: " + e.getMessage() );
 			System.exit( 1 );
@@ -87,11 +87,15 @@ public final class AutoTune {
 		return msPerSample.length - 1;
 	}
 
-	static List< Integer > threadCounts( int cores ){
+	public static List< Integer > threadCounts( int limit ){
 		List< Integer > out = new ArrayList<>();
-		for (int t = 1; t < cores; t *= 2) out.add( t );
-		out.add( cores );
+		for (int t = 1; t < limit; t *= 2) out.add( t );
+		out.add( Math.max( 1, limit ) );
 		return out;
+	}
+
+	public static int probeSamples( int minibatchSize, int chunkLength ){
+		return PROBE_MINIBATCHES * minibatchSize * chunkLength;
 	}
 
 	public static long megabytes( String heap ){
@@ -124,15 +128,17 @@ public final class AutoTune {
 		return -1;
 	}
 
-	private static double timeUpdate( EnvConfig config, int threads ){
+	private static double timeUpdate( EnvConfig config, int threads, int minibatchSize, int chunkLength ){
 		PPO ppo = new PPO( config, new Random( 12345L ) );
 		ppo.threads = threads;
 		ppo.epochs = 1;
-		ppo.minibatchSize = 8;
+		ppo.minibatchSize = minibatchSize;
+		ppo.chunkLength = chunkLength;
 		try {
 			double best = Double.MAX_VALUE;
 			for (int r = 0; r < 2; r++){
-				List< Transition > samples = ParallelFixtures.batch( ppo.network, config, PROBE_SAMPLES, 4242L );
+				List< Transition > samples = ParallelFixtures.batch( ppo.network, config,
+						probeSamples( minibatchSize, chunkLength ), 4242L );
 				for (int i = 0; i < samples.size(); i++){
 					samples.get( i ).episodeId = i / ppo.chunkLength;
 					samples.get( i ).stepIndex = i % ppo.chunkLength;
