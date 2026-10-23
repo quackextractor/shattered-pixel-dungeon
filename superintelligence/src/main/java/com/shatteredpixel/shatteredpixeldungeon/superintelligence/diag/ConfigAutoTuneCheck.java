@@ -1,9 +1,11 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.AutoTune;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.TrainOptions;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ConfigDefaults.fail;
@@ -57,6 +59,27 @@ public final class ConfigAutoTuneCheck {
 					+ " once four pass the sample cap. An update shards"
 					+ " one minibatch's chunks across threads, so a 4-chunk probe timed 4 and 16 threads alike"
 					+ " and left a 20-core machine at 4 where 8 is 29% faster" );
+		}
+	}
+
+	public static void checkTheProbeCutsRaggedChunks(){
+		List< Transition > samples = new ArrayList<>();
+		for (int i = 0; i < 512; i++) samples.add( new Transition() );
+		AutoTune.cutProbeChunks( samples, 16 );
+		int chunks = 0, shortChunks = 0, longest = 0, run = 0;
+		for (int i = 0; i < samples.size(); i++){
+			Transition t = samples.get( i );
+			boolean last = i + 1 == samples.size() || samples.get( i + 1 ).episodeId != t.episodeId;
+			run = t.stepIndex == 0 ? 1 : run + 1;
+			if (!last) continue;
+			chunks++;
+			if (run < 16) shortChunks++;
+			longest = Math.max( longest, run );
+		}
+		if (longest > 16 || shortChunks * 10 < chunks || shortChunks * 10 > chunks * 4){
+			fail( "autotune cut 512 probe samples into " + chunks + " chunks, " + shortChunks + " short, longest "
+					+ longest + "; expected none past 16 and 10-40% short. Real chunks end at episode tails, so a"
+					+ " probe of full chunks overstates how evenly an update shards" );
 		}
 	}
 

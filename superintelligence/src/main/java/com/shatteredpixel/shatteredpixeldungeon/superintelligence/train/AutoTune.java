@@ -22,6 +22,7 @@ public final class AutoTune {
 	static final double THREAD_TOLERANCE = 1.05;
 	static final int PROBE_MINIBATCHES = 4;
 	static final int PROBE_SAMPLE_CAP = 4096;
+	static final int PROBE_SHORT_CHUNK_ONE_IN = 4;
 
 	public final int workers;
 	public final int updateThreads;
@@ -106,11 +107,23 @@ public final class AutoTune {
 	private static List< Transition > probeBatch( EnvConfig config, int minibatchSize, int chunkLength ){
 		List< Transition > samples = ParallelFixtures.batch( new Network( config, new Random( 12345L ) ), config,
 				probeSamples( minibatchSize, chunkLength ), 4242L );
-		for (int i = 0; i < samples.size(); i++){
-			samples.get( i ).episodeId = i / chunkLength;
-			samples.get( i ).stepIndex = i % chunkLength;
-		}
+		cutProbeChunks( samples, chunkLength );
 		return samples;
+	}
+
+	public static void cutProbeChunks( List< Transition > samples, int chunkLength ){
+		Random lengths = new Random( 4242L );
+		int episode = 0, step = 0, length = chunkLength;
+		for (Transition t : samples){
+			if (step == length){
+				episode++;
+				step = 0;
+				length = lengths.nextInt( PROBE_SHORT_CHUNK_ONE_IN ) == 0
+						? 1 + lengths.nextInt( chunkLength ) : chunkLength;
+			}
+			t.episodeId = episode;
+			t.stepIndex = step++;
+		}
 	}
 
 	public static long megabytes( String heap ){
