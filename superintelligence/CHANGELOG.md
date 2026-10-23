@@ -55,6 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   probe, and a probe stops at two minibatches once four would pass 4096 samples. `autotune` wall time
   21.7 s -> 14.1 s at the defaults, 91 s -> 46 s at minibatch 16, chunk 32; same picks.
   `out/evidence/autotune-{0,2}-*.txt`.
+- **`--update-threads` past `rl.minibatch_size` built threads that never ran.** Only the `--auto` probe
+  stopped at the minibatch size; `PPO.threadCount` now does, for every path. `updatecost --samples 1024`
+  at minibatch 8: 0.79-0.82 ms/sample at 16 requested threads, 0.80-0.82 before. `parallelcheck` case 5.
 - **Free memory read as unlimited on JDK 17+ and as MemFree on Linux.** `getFreeMemorySize` was looked
   up on the bean's internal class, which reflection may not call, so the pool sizing saw `Long.MAX_VALUE`;
   on Linux MemFree omits page cache (0.2 of 14.2 GB on the training server).

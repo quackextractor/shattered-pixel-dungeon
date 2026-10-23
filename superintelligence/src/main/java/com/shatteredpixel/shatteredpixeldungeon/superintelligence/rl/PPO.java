@@ -56,7 +56,7 @@ public class PPO {
 
 
 	public int threadCount(){
-		return sharded.resolveThreads( threads );
+		return sharded.resolveThreads( Math.min( threads, minibatchSize ) );
 	}
 
 

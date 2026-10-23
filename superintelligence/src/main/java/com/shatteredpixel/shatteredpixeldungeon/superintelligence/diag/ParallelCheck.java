@@ -14,7 +14,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class ParallelCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 5;
 
 	private static final float TOLERANCE = 1e-3f;
 
@@ -29,6 +29,7 @@ public class ParallelCheck {
 		checkThreadCountDoesNotChangeTheUpdate( config, 4 );
 		checkShardsOwnTheirOwnNetwork( config );
 		checkAFailingShardFailsTheUpdate( config );
+		checkThePoolStopsAtTheMinibatch( config );
 
 		System.exit( GateReport.report( "parallel update", CHECKS ));
 	}
@@ -191,6 +192,23 @@ public class ParallelCheck {
 			fail( "interrupted while waiting for the failing update" );
 		} finally {
 			runner.shutdownNow();
+			ppo.close();
+		}
+	}
+
+	private static void checkThePoolStopsAtTheMinibatch( EnvConfig config ){
+		PPO ppo = new PPO( config, new Random( SEED ) );
+		ppo.threads = 16;
+		ppo.minibatchSize = 2;
+		try {
+			int pool = ppo.threadCount();
+			if (pool != 2){
+				fail( "--update-threads 16 at minibatch 2 sized the update pool to " + pool + " threads, expected 2:"
+						+ " an update shards one minibatch's chunks, so threads past the minibatch size never run" );
+				return;
+			}
+			System.out.println( "  --update-threads 16 at minibatch 2 sizes the pool to 2" );
+		} finally {
 			ppo.close();
 		}
 	}

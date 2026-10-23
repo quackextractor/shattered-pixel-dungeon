@@ -299,7 +299,7 @@ thirty-three gates, one invocation:
 | `collectcheck` | A recording the collector cannot replay, **or** a rebinding step recorded against the world the step produced |
 | `checkpointcheck` | A policy that does not survive disk, or a bad checkpoint that loads |
 | `statecheck` | A transition from a real collected episode that does not replay to its rollout's value under the recurrent state it was decided under, **or** a target-head step that records an index other than the one sent |
-| `parallelcheck` | A real `PPO.update` at 2 or 4 threads that differs from 1 thread in parameters or metrics, **or** a shard that does not own its own `Network`, **or** a throwing shard that hangs the update |
+| `parallelcheck` | A real `PPO.update` at 2 or 4 threads that differs from 1 thread in parameters or metrics, **or** a shard that does not own its own `Network`, **or** a throwing shard that hangs the update, **or** an update pool sized past the minibatch |
 | `rewardcheck` | Ending an episode being cheaper than dying, **or** an action that consumes several engine turns being charged for one, **or** `depth_only` paying anything outside the objective while `default` stops paying a term, **or** a reward term with no type, or type subtotals that do not reconstruct the score |
 | `transitioncheck` | A floor change the environment does not service, or an agent's first action on the new floor being swallowed |
 | `fallcheck` | A chasm fall the environment drops, a free landing, or a fall that leaves a hand-off behind for the next episode |
