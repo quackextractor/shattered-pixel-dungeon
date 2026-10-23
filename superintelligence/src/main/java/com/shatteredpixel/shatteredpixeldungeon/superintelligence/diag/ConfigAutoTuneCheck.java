@@ -45,8 +45,8 @@ public final class ConfigAutoTuneCheck {
 	}
 
 	public static void checkTheProbeGivesEveryThreadAShard(){
-		List< Integer > wide = AutoTune.threadCounts( Math.min( 20, 8 ) );
-		List< Integer > narrow = AutoTune.threadCounts( Math.min( 4, 8 ) );
+		List< Integer > wide = AutoTune.threadCounts( 20, 8 );
+		List< Integer > narrow = AutoTune.threadCounts( 4, 8 );
 		int chunks = AutoTune.probeSamples( 8, 16 ) / 16;
 		if (!wide.equals( List.of( 1, 2, 4, 8 ) ) || !narrow.equals( List.of( 1, 2, 4 ) ) || chunks < 8 * 2){
 			fail( "autotune probed threads " + wide + " and " + narrow + " over " + chunks + " chunks, expected"

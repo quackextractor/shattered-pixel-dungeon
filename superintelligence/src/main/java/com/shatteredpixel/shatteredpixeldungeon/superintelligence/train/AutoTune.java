@@ -38,7 +38,7 @@ public final class AutoTune {
 		long workerMb = megabytes( hyper.workerHeapMax ) + JVM_OVERHEAD_MB;
 		int workers = workersFor( cores, availableMb, trainerMb, workerMb );
 
-		List< Integer > counts = threadCounts( Math.min( cores, minibatchSize ) );
+		List< Integer > counts = threadCounts( cores, minibatchSize );
 		double[] msPerSample = new double[ counts.size() ];
 		for (int i = 0; i < counts.size(); i++){
 			msPerSample[ i ] = timeUpdate( config, counts.get( i ), minibatchSize, hyper.chunkLength );
@@ -87,7 +87,8 @@ public final class AutoTune {
 		return msPerSample.length - 1;
 	}
 
-	public static List< Integer > threadCounts( int limit ){
+	public static List< Integer > threadCounts( int cores, int minibatchSize ){
+		int limit = Math.min( cores, minibatchSize );
 		List< Integer > out = new ArrayList<>();
 		for (int t = 1; t < limit; t *= 2) out.add( t );
 		out.add( Math.max( 1, limit ) );
