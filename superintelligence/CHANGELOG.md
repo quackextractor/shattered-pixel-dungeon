@@ -64,6 +64,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   against 14.1 s. `configcheck` case 22.
 - **`--minibatch` reached the `--auto` probe only through a separate argument.** It now writes
   `hyper.minibatchSize` too, and `AutoTune.measure` reads every setting from `hyper`. `configcheck` case 23.
+- **`--auto` timed a default PPO, not the run's.** `PpoHyperparameters.applyTo` now sets the PPO for both
+  the trainer and the probe, and probe steps carry a teacher label at `rl.teacher_weight`. Demonstrations
+  are not added: their steps skip the policy and value terms, and ragged chunks already cover their
+  boundaries. Same load, interleaved: 1 thread 8.26 against 7.48 ms/sample, 8 threads 1.50 against 1.71;
+  pick 8 both. `out/evidence/autotune-7-*.txt`.
 - **Free memory read as unlimited on JDK 17+ and as MemFree on Linux.** `getFreeMemorySize` was looked
   up on the bean's internal class, which reflection may not call, so the pool sizing saw `Long.MAX_VALUE`;
   on Linux MemFree omits page cache (0.2 of 14.2 GB on the training server).
