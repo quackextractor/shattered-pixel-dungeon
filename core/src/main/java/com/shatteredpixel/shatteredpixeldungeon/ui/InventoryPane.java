@@ -397,6 +397,12 @@ public class InventoryPane extends Component {
 		return selector;
 	}
 
+	public void clearSelector(){
+		if (selector == null) return;
+		selector = null;
+		updateInventory();
+	}
+
 	public boolean isSelecting(){
 		return selector != null;
 	}

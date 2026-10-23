@@ -24,6 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 import com.badlogic.gdx.Input;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
@@ -271,7 +272,7 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 		Window wnd = GameScene.topWindow();
 		if (wnd == null) return;
 
-		if (wnd instanceof WndOptions) return;
+		if (wnd instanceof WndOptions || WindowBridge.open() || GameScene.answerableSelector() != null) return;
 
 		if (dismissed != wnd){
 			dismissed = wnd;

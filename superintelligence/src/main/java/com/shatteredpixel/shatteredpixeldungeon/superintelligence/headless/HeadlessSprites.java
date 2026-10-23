@@ -48,7 +48,7 @@ public final class HeadlessSprites {
 		}
 	}
 
-	private static void sizeTextures( String asset ){
+	static void sizeTextures( String asset ){
 		if (TextureCache.contains( asset )) return;
 		Pixmap sheet = new Pixmap( Gdx.files.internal( asset ) );
 		TextureCache.create( asset, sheet.getWidth(), sheet.getHeight() );

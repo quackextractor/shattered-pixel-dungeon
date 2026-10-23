@@ -1881,7 +1881,25 @@ public static boolean showingWindow(){
 			}
 		}
 
+		if (headlessGameplay) headlessSelector = listener;
 		return null;
+	}
+
+	private static WndBag.ItemSelector headlessSelector = null;
+
+	public static WndBag.ItemSelector answerableSelector(){
+		if (scene == null) return headlessSelector;
+		if (scene.inventory != null && scene.inventory.getSelector() != null) return scene.inventory.getSelector();
+		Window top = topWindow();
+		return top instanceof WndBag ? ((WndBag) top).getSelector() : null;
+	}
+
+	public static void clearSelector(){
+		headlessSelector = null;
+		if (scene == null) return;
+		if (scene.inventory != null) scene.inventory.clearSelector();
+		Window top = topWindow();
+		if (top instanceof WndBag) top.hide();
 	}
 
 	//logic for preserving inventory selection windows on scene reset (e.g. via auto-rotate)

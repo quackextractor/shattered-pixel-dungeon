@@ -582,7 +582,8 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		Replay.Step next = playback.peekNext();
 		if (next == null) return false;
 		EnvMode mode = modeOf( next.mode );
-		return mode == EnvMode.TARGETING || mode == EnvMode.MENU;
+		if (mode == EnvMode.MENU) return Dungeon.hero.ready;
+		return mode == EnvMode.TARGETING || (mode == EnvMode.INVENTORY && GameScene.answerableSelector() != null);
 	}
 
 	/** True when the hero can be given input now. Tests only; advances nothing. */

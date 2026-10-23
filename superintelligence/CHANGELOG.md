@@ -26,12 +26,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with no food, which only starved it. `BotStats`, 200 episodes over five classes: mean depth 2.18 -> 2.38,
   deaths 178 -> 167, starving deaths ~50 -> 14, floor 4 reached 1 -> 6. Rest-to-full alone measured 2.14;
   with the rest 2.38 against 2.27 without it. `out/evidence/botstats-200-*.txt`.
+- **`DescentBot` uses what it finds.** Reads unknown scrolls and Upgrade scrolls (upgrading worn armour,
+  else the weapon), drinks a known Strength potion, equips armour of a higher tier it has the strength for,
+  and explores a floor before descending unless hungry. With the travel and picker fixes below, `BotStats`
+  200 episodes: mean depth 2.38 -> 2.56, floor 4+ reached 6 -> 27, stalls 33 -> 3. Upgrades alone 2.44;
+  stairs-first with the fixes 2.55 (floor 4+ 17). The committed bot on the fixed env: 2.38, unchanged.
+  `out/evidence/botstats-200-*.txt`.
 - **`teachercheck`'s demonstration case reads the mean p(recorded action) over the demonstration**, not
   the first step's alone. The fixture is 40 live `DescentBot` steps, so the first-step reading moved with
   the bot: resting to full made 24 of the 40 steps REST and the first-step gain fell under 5x the drift.
   Mean: 0.092 -> 0.103 against 0.092 -> 0.093 at weight 0; fails with the taught weight set to 0.
 
 ### Fixed
+- **Item pickers did nothing headless.** `GameScene.selectItem` returns without a selector when there is
+  no scene, so every Upgrade, Identify, Remove Curse, Enchantment or other "choose an item" read was a no-op,
+  and an unknown one was spent for nothing. The selector is now parked headless (`GameScene.answerableSelector()`
+  finds it in both environments: parked, inventory pane or `WndBag`); the env enters `INVENTORY` with the
+  worn items listed ahead of the backpack and the slot mask set to what the selector accepts, `USE` answers
+  it and `CANCEL` answers null. `WndUpgrade` is answerable through `WindowBridge` (upgrade, back), and the
+  headless game sizes the icons texture it needs. Engine side: `GameScene`, `InventoryPane.clearSelector`,
+  `WndUpgrade.selectOption`. `dialogcheck` case 4. `mage-alt`, `mage-mid` and `warrior-mid` read such a
+  scroll and recorded the no-op; re-recorded from their own actions, originals in
+  `out/evidence/picker-rerecord/`.
+- **An open dialog was offered the world's actions.** `settle()` switched to `MENU` (or `TARGETING`)
+  without recomputing the masks, so `MENU_SELECT` was masked whenever the game raised a dialog: the policy
+  could never legally answer one, and `DescentBot` cancelled every one. `dialogcheck` case 3.
+- **Actors stopped under any open dialog.** The game's actor thread keeps running while a window is up;
+  `settle()` now only hands over to `MENU` once the hero is ready, so a second `WndUpgrade` - offered at
+  once and enabled when the hero finishes reading - can be answered. `ReplayPlayer` drains the same way.
+- **Travel stalled on locked chests and NPCs.** A `TRAVEL_*` step onto a locked or crystal chest is an
+  "open chest" without a key, and onto a visible NPC (the Ghost on the exit stairs) a free conversation;
+  neither moves the hero or the clock, and the run ended `STALLED` 120 steps later. Travel and the
+  frontier route around both; a hostile mob on the route is still attacked. Explore-first stalls 53 -> 3.
+- **The viewer dismissed answerable windows.** `ReplayController` closed anything that was not a
+  `WndOptions`, which includes `WndUpgrade` and the item bag.
 - **Viewer/trainer divergences still open after the `WornDartTrap`, `HighGrass` and chasm-items fixes.**
   Same four shapes, ported where they were missing. Scene-less crashes: `PoisonDartTrap` in view now hits
   directly like `WornDartTrap`, `DisintegrationTrap` skips its death ray without a scene (both threw

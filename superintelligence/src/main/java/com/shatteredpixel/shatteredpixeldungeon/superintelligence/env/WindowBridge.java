@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.env;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndUpgrade;
 
 
 public class WindowBridge {
@@ -16,7 +17,8 @@ public class WindowBridge {
 
 
 	public static boolean open(){
-		return window() instanceof WndOptions;
+		Window w = window();
+		return w instanceof WndOptions || w instanceof WndUpgrade;
 	}
 
 
@@ -33,20 +35,21 @@ public class WindowBridge {
 
 	public static int optionCount(){
 		Window w = window();
+		if (w instanceof WndUpgrade) return 2;
 		return (w instanceof WndOptions) ? ((WndOptions) w).optionCount() : 0;
 	}
 
 	public static boolean optionSelectable( int index ){
 		Window w = window();
+		if (w instanceof WndUpgrade) return ((WndUpgrade) w).optionSelectable( index );
 		return (w instanceof WndOptions) && ((WndOptions) w).optionSelectable( index );
 	}
 
 public static boolean selectOption( int index ){
 		Window w = window();
+		if (w instanceof WndUpgrade) return ((WndUpgrade) w).selectOption( index );
 		if (!(w instanceof WndOptions)) return false;
-		boolean fired = ((WndOptions) w).selectOption( index );
-
-		return fired;
+		return ((WndOptions) w).selectOption( index );
 	}
 
 

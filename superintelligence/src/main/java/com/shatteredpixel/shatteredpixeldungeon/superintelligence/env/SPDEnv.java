@@ -153,6 +153,9 @@ if (mode == EnvMode.WORLD){
 				acted = mapper.applySecondary( mode, action, slot );
 			}
 			mode = EnvMode.WORLD;
+		} else if (mode == EnvMode.INVENTORY && GameScene.answerableSelector() != null){
+			acted = mapper.applySecondary( mode, action, slot );
+			mode = EnvMode.WORLD;
 		} else if (mode == EnvMode.INVENTORY){
 			boolean needsTarget = false;
 			if (action == Action.USE){
@@ -189,13 +192,21 @@ if (mode == EnvMode.WORLD){
 				accumulated += terminate( RewardModel.TerminateReason.STALLED );
 				break;
 			}
-			if (WindowBridge.open()){
+			if (WindowBridge.open() && Dungeon.hero.ready){
 				WindowBridge.age( config );
 				mode = EnvMode.MENU;
+				refreshMasks();
 				break;
 			}
 			if (GameScene.pendingCellListener() != null){
 				mode = EnvMode.TARGETING;
+				refreshMasks();
+				break;
+			}
+			if (GameScene.answerableSelector() != null){
+				mode = EnvMode.INVENTORY;
+				mapper.refreshSlots();
+				refreshMasks();
 				break;
 			}
 			LevelPipeline.Outcome outcome = pipeline.runToHeroReady( config.actorStepLimit );
@@ -231,6 +242,7 @@ if (mode == EnvMode.WORLD){
 			if (WindowBridge.open()){
 				WindowBridge.age( config );
 				mode = EnvMode.MENU;
+				refreshMasks();
 			}
 			break;
 		}

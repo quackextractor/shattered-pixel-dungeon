@@ -15,7 +15,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class DialogCheck {
 
-	private static final int CHECKS = 2;
+	private static final int CHECKS = 4;
 
 	private static final String[] SEEDS = {
 			"DIALOGCHECK-A", "DIALOGCHECK-B", "DIALOGCHECK-C", "DIALOGCHECK-D", "DIALOGCHECK-E"
@@ -27,6 +27,8 @@ public class DialogCheck {
 
 		checkTheGamesOwnDialogIsAgedAndAnswered();
 		checkADialogClosesWhenTheGameClosesIt();
+		checkAnOpenDialogCanBeAnswered();
+		checkUpgradeScrollsUpgradeThePickedArmour();
 
 		System.exit( GateReport.report( "dialog answers", CHECKS ));
 	}
@@ -174,6 +176,68 @@ public class DialogCheck {
 
 		System.out.println( "  a dialog survives an answer the game declines, and closes on one it"
 				+ " accepts" );
+	}
+
+	private static void checkAnOpenDialogCanBeAnswered(){
+		SPDEnv env = env();
+		env.reset( SEEDS[0], HeroClass.WARRIOR );
+		GameScene.show( new com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions(
+				"DIALOGCHECK", "a dialog to answer", "Yes", "No" ) );
+		env.step( Action.WAIT, 0 );
+
+		if (env.mode() != EnvMode.MENU || env.actionMask()[ Action.MENU_SELECT.index ] < 0.5f){
+			fail( "an open dialog left the environment in " + env.mode() + " with MENU_SELECT "
+					+ ( env.actionMask()[ Action.MENU_SELECT.index ] > 0.5f ? "legal" : "masked" ) + ". settle()"
+					+ " switched to MENU without recomputing the masks, so the policy was offered the world's"
+					+ " actions and could never legally answer the game." );
+			return;
+		}
+		System.out.println( "  an open dialog offers MENU_SELECT" );
+	}
+
+	private static void checkUpgradeScrollsUpgradeThePickedArmour(){
+		SPDEnv env = env();
+		env.reset( SEEDS[0], HeroClass.WARRIOR );
+		new com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade().quantity( 2 ).collect();
+		com.shatteredpixel.shatteredpixeldungeon.items.Item armour = Dungeon.hero.belongings.armor;
+		int before = armour.trueLevel();
+		float clock = com.shatteredpixel.shatteredpixeldungeon.actors.Actor.now();
+
+		env.step( Action.USE, 0 );
+		env.step( Action.USE, slotOf( env, com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade.class ) );
+		if (env.mode() != EnvMode.INVENTORY || GameScene.answerableSelector() == null){
+			fail( "reading an Upgrade scroll left the environment in " + env.mode() + " with no item to pick."
+					+ " GameScene.selectItem returns without a selector when there is no scene, so headlessly"
+					+ " the scroll was spent, or kept, and nothing was upgraded." );
+			return;
+		}
+		int pick = slotOf( env, com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor.class );
+		if (pick < 0 || env.slotMask()[ pick ] < 0.5f){
+			fail( "the worn armour is not offered to the Upgrade scroll's picker (slot " + pick + "). The game's"
+					+ " bag lists equipped items, and they are what the scroll is read for." );
+			return;
+		}
+		env.step( Action.USE, pick );
+		for (int i = 0; i < 4 && env.mode() == EnvMode.MENU; i++) env.step( Action.MENU_SELECT, 0 );
+
+		float spent = com.shatteredpixel.shatteredpixeldungeon.actors.Actor.now() - clock;
+		if (armour.trueLevel() != before + 2 || env.mode() != EnvMode.WORLD
+				|| Dungeon.hero.belongings.getItem( com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade.class ) != null){
+			fail( "two Upgrade scrolls took the armour from +" + before + " to +" + armour.trueLevel() + ", ending in "
+					+ env.mode() + " after " + spent + " turns. WndUpgrade offers the next scroll at once, and"
+					+ " enables it only when the hero is ready; the game keeps its actors running under the"
+					+ " window, so settle() must too." );
+			return;
+		}
+		System.out.println( "  two Upgrade scrolls read through SPDEnv.step: armour +" + before + " -> +"
+				+ armour.trueLevel() + " in " + spent + " turns" );
+	}
+
+	private static int slotOf( SPDEnv env, Class< ? > type ){
+		for (int i = 0; i < env.mapper().slots().size(); i++){
+			if (type.isInstance( env.mapper().slot( i ) )) return i;
+		}
+		return -1;
 	}
 
 	private static SPDEnv env(){

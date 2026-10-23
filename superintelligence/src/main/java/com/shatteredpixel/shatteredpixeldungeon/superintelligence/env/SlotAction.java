@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndBag;
 
 
 public class SlotAction {
@@ -87,6 +88,15 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 		item.throwAt( hero, cell );
 		hero.sprite.zap( item.throwPos( hero, cell ) );
 		clearPendingUseItem();
+	}
+
+	public static boolean pick( Item item ){
+		WndBag.ItemSelector selector = GameScene.answerableSelector();
+		if (selector == null) return false;
+		if (item != null && !selector.itemSelectable( item )) return false;
+		GameScene.clearSelector();
+		selector.onSelect( item );
+		return true;
 	}
 
 	public static boolean drop( Hero hero, Item item ){

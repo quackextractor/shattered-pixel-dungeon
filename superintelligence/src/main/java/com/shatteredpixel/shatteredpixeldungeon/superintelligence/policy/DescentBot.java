@@ -6,9 +6,14 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.Waterskin;
+import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.food.Food;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade;
+import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Travel;
@@ -24,10 +29,13 @@ public final class DescentBot {
 
 	private final java.util.Map< Integer, java.util.BitSet > searched = new java.util.HashMap<>();
 
+	private final java.util.Set< Item > tried = java.util.Collections.newSetFromMap( new java.util.IdentityHashMap<>() );
+
 	public void reset(){
 		lastHp = -1;
 		waited = 0;
 		searched.clear();
+		tried.clear();
 	}
 
 	public boolean fresh(){
@@ -40,9 +48,9 @@ public final class DescentBot {
 		switch (env.mode()){
 			case SLOT:
 			case INVENTORY:
-				int pick = dying() ? healSlot( env ) : -1;
-				if (pick < 0) pick = foodSlot( env );
+				int pick = GameScene.answerableSelector() != null ? target( env ) : useSlot( env );
 				if (pick < 0) return Action.CANCEL;
+				if (GameScene.answerableSelector() == null) tried.add( env.mapper().slot( pick ) );
 				secondary[ 0 ] = pick;
 				return Action.USE;
 			case TALENT:
@@ -86,8 +94,10 @@ public final class DescentBot {
 		if (hunger != null && hunger.hunger() >= Hunger.HUNGRY && foodSlot( env ) >= 0 && legal( mask, Action.USE )){
 			return Action.USE;
 		}
+		if (hero.getVisibleEnemies().isEmpty() && improveSlot( env ) >= 0 && legal( mask, Action.USE )) return Action.USE;
 		boolean famished = hunger != null && hunger.hunger() >= Hunger.HUNGRY;
 		if (!hurt && !famished && hero.HP < hero.HT && hero.getVisibleEnemies().isEmpty() && legal( mask, Action.REST )) return Action.REST;
+		if (!famished && legal( mask, Action.TRAVEL_EXPLORE )) return Action.TRAVEL_EXPLORE;
 		if (legal( mask, Action.TRAVEL_STAIRS )) return Action.TRAVEL_STAIRS;
 		if (legal( mask, Action.TRAVEL_EXPLORE )) return Action.TRAVEL_EXPLORE;
 		return hunt( mask );
@@ -103,13 +113,13 @@ public final class DescentBot {
 			for (int d : PathFinder.NEIGHBOURS8) if (hero + d >= 0 && hero + d < level.length()) done.set( hero + d );
 			return legal( mask, Action.SEARCH ) ? Action.SEARCH : Action.WAIT;
 		}
-		Action move = toward( mask, hero, PathFinder.getStep( hero, target, Travel.walkable( level ) ) );
+		Action move = toward( mask, hero, PathFinder.getStep( hero, target, Travel.passThrough( level ) ) );
 		if (move != null) return move;
 		return legal( mask, Action.SEARCH ) ? Action.SEARCH : Action.WAIT;
 	}
 
 	private static int searchSpot( Level level, int hero, java.util.BitSet done, boolean nearUnknown ){
-		PathFinder.buildDistanceMap( hero, Travel.walkable( level ) );
+		PathFinder.buildDistanceMap( hero, Travel.passThrough( level ) );
 		int best = -1;
 		for (int c = 0; c < level.length(); c++){
 			if (PathFinder.distance[ c ] == Integer.MAX_VALUE) continue;
@@ -137,7 +147,7 @@ public final class DescentBot {
 	private static Action escape( float[] mask ){
 		Level level = Dungeon.level;
 		int hero = Dungeon.hero.pos;
-		boolean[] safe = Travel.walkable( level );
+		boolean[] safe = Travel.passThrough( level );
 		boolean near = Travel.harmful( level, hero );
 		for (int d : PathFinder.NEIGHBOURS8) near |= hero + d >= 0 && hero + d < level.length() && Travel.harmful( level, hero + d );
 		if (!near) return null;
@@ -197,6 +207,47 @@ public final class DescentBot {
 			else if (fallback < 0 && item instanceof Potion && !((Potion) item).isKnown()) fallback = i;
 		}
 		return fallback;
+	}
+
+	private int useSlot( SPDEnv env ){
+		int pick = dying() ? healSlot( env ) : -1;
+		if (pick < 0) pick = improveSlot( env );
+		if (pick < 0) pick = foodSlot( env );
+		return pick;
+	}
+
+	private int improveSlot( SPDEnv env ){
+		float[] mask = env.slotMask();
+		Hero hero = Dungeon.hero;
+		for (int i = 0; i < mask.length; i++){
+			Item item = env.mapper().slot( i );
+			if (mask[ i ] < 0.5f || item == null || tried.contains( item )) continue;
+			if (item instanceof PotionOfStrength && item.isIdentified()) return i;
+			if (item instanceof ScrollOfUpgrade || (item instanceof Scroll && !((Scroll) item).isKnown())) return i;
+			if (item instanceof Armor && betterArmor( (Armor) item, hero )) return i;
+		}
+		return -1;
+	}
+
+	private static boolean betterArmor( Armor armor, Hero hero ){
+		Armor worn = hero.belongings.armor();
+		if (armor.cursedKnown && armor.cursed) return false;
+		if (armor.STRReq() > hero.STR()) return false;
+		return worn == null || armor.tier > worn.tier;
+	}
+
+	private static int target( SPDEnv env ){
+		float[] mask = env.slotMask();
+		Hero hero = Dungeon.hero;
+		int first = -1;
+		for (Item want : new Item[]{ hero.belongings.armor(), hero.belongings.weapon() }){
+			for (int i = 0; i < mask.length; i++){
+				if (mask[ i ] < 0.5f) continue;
+				if (first < 0) first = i;
+				if (want != null && env.mapper().slot( i ) == want) return i;
+			}
+		}
+		return first;
 	}
 
 	private static int foodSlot( SPDEnv env ){

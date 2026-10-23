@@ -49,6 +49,8 @@ public class HeadlessGame extends Game {
 
 		Camera.reset();
 
+		HeadlessSprites.sizeTextures( com.shatteredpixel.shatteredpixeldungeon.Assets.Interfaces.ICONS );
+
 		com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.headlessEmitter(
 				new com.watabou.noosa.particles.Emitter() );
 

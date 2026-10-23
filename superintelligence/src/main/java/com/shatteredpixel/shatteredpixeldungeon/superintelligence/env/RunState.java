@@ -15,6 +15,8 @@ public class RunState {
 
 		GameScene.clearHeadlessWindow();
 
+		GameScene.clearSelector();
+
 		SlotAction.clearPendingUseItem();
 
 		com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm.jumpConfirmed = false;

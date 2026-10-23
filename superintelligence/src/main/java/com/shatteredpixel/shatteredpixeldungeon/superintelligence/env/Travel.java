@@ -13,7 +13,11 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Inferno;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.ParalyticGas;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.StenchGas;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.ToxicGas;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.NPC;
+import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
+import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.StairPotential;
 import com.watabou.utils.PathFinder;
@@ -42,8 +46,24 @@ public final class Travel {
 	public static int step( Action action, boolean commit ){
 		int target = target( action, commit );
 		if (target < 0 || target == Dungeon.hero.pos) return -1;
-		int step = PathFinder.getStep( Dungeon.hero.pos, target, walkable( Dungeon.level ) );
+		boolean[] walk = passThrough( Dungeon.level );
+		if (Actor.findChar( target ) == null) walk[ target ] = walkable( Dungeon.level )[ target ];
+		int step = PathFinder.getStep( Dungeon.hero.pos, target, walk );
 		return step >= 0 && Dungeon.level.adjacent( Dungeon.hero.pos, step ) ? step : -1;
+	}
+
+	public static boolean[] passThrough( Level level ){
+		boolean[] walk = walkable( level );
+		for (Heap heap : level.heaps.valueList()){
+			if (heap.type == Heap.Type.LOCKED_CHEST || heap.type == Heap.Type.CRYSTAL_CHEST) walk[ heap.pos ] = false;
+		}
+		for (Mob mob : level.mobs){
+			if (level.heroFOV[ mob.pos ] && mob instanceof NPC) walk[ mob.pos ] = false;
+		}
+		for (int c = 0; c < walk.length; c++){
+			if (level.map[ c ] == Terrain.ALCHEMY) walk[ c ] = false;
+		}
+		return walk;
 	}
 
 	private static int stairs(){
@@ -55,7 +75,7 @@ public final class Travel {
 	private static int frontier( boolean commit ){
 		Level level = Dungeon.level;
 		int hero = Dungeon.hero.pos;
-		PathFinder.buildDistanceMap( hero, walkable( level ) );
+		PathFinder.buildDistanceMap( hero, passThrough( level ) );
 		if (committedLevel == level && committed >= 0 && committed != hero
 				&& PathFinder.distance[ committed ] != Integer.MAX_VALUE && bordersUnknown( level, committed )){
 			return committed;

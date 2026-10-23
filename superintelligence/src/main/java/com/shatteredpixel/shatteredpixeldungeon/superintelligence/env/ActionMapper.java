@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.CellSelector;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndBag;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +60,13 @@ public class ActionMapper {
 	public void refreshSlots(){
 		for (int i = 0; i < slots.size(); i++) slots.set( i, null );
 
+		if (GameScene.answerableSelector() != null){
+			for (Item worn : worn()){
+				int empty = slots.indexOf( null );
+				if (empty >= 0) slots.set( empty, worn );
+			}
+		}
+
 		for (Item item : hero().belongings.backpack){
 			int bound = Dungeon.quickslot.getSlot( item );
 			if (bound >= 0 && bound < slots.size() && slots.get( bound ) == null){
@@ -68,6 +76,15 @@ public class ActionMapper {
 			int empty = slots.indexOf( null );
 			if (empty >= 0) slots.set( empty, item );
 		}
+	}
+
+	private List<Item> worn(){
+		ArrayList<Item> worn = new ArrayList<>();
+		for (Item item : new Item[]{ hero().belongings.weapon, hero().belongings.armor, hero().belongings.artifact,
+				hero().belongings.misc, hero().belongings.ring }){
+			if (item != null) worn.add( item );
+		}
+		return worn;
 	}
 
 	public ArrayList<Item> slots(){
@@ -111,6 +128,14 @@ public class ActionMapper {
 		if (mode == EnvMode.MENU){
 			mask[Action.CANCEL.index] = 1f;
 			if (WindowBridge.open()) mask[Action.MENU_SELECT.index] = 1f;
+			return;
+		}
+
+		if (mode == EnvMode.INVENTORY && GameScene.answerableSelector() != null){
+			mask[Action.CANCEL.index] = 1f;
+			float[] pickable = new float[ slots.size() ];
+			slotMask( pickable );
+			for (float p : pickable) if (p > 0.5f) mask[Action.USE.index] = 1f;
 			return;
 		}
 
@@ -213,8 +238,10 @@ public class ActionMapper {
 
 
 	public void slotMask( float[] mask ){
+		WndBag.ItemSelector picking = GameScene.answerableSelector();
 		for (int i = 0; i < mask.length; i++){
-			mask[i] = (i < slots.size() && slots.get( i ) != null) ? 1f : 0f;
+			Item item = i < slots.size() ? slots.get( i ) : null;
+			mask[i] = item != null && (picking == null || picking.itemSelectable( item )) ? 1f : 0f;
 		}
 	}
 
@@ -333,6 +360,9 @@ public class ActionMapper {
 
 			case SLOT:
 			case INVENTORY:
+				if (mode == EnvMode.INVENTORY && GameScene.answerableSelector() != null){
+					return SlotAction.pick( action == Action.USE ? slot( index ) : null );
+				}
 				if (PickupTrace.enabled() && action == Action.DROP) PickupTrace.drop( hero(), this, index );
 				return SlotAction.execute( hero(), slot( index ), action, config.allowEquipping );
 

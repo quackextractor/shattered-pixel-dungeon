@@ -485,6 +485,15 @@ public class WndUpgrade extends Window {
 
 	}
 
+	public boolean optionSelectable( int index ){
+		return index == 0 ? btnUpgrade.active : index == 1;
+	}
+
+	public boolean selectOption( int index ){
+		if (!optionSelectable( index )) return false;
+		return (index == 0 ? btnUpgrade : btnCancel).press();
+	}
+
 	@Override
 	public synchronized void update() {
 		super.update();
