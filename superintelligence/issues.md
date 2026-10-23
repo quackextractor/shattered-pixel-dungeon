@@ -9,4 +9,17 @@ Floor 1 is solved: `teach-demo-31` reaches depth>=2 in ~90% of episodes, mean de
 
 - Every death is melee to 0 HP, still attacking at 1-2 HP; never retreats, never drinks. Hero level 1-2
   on depth 3-4 (`out/analysis/DeathProbe.java`).
-- The `DescentBot` teacher is no better (mean depth 2.21, 92 of 100 die); the policy already beats it.
+- The `DescentBot` teacher is no better; the policy already beats it. `out/analysis/BotStats.java`, 200
+  episodes over five classes: 2.18 mean depth, 178 die, hero level 1.66, 41 of 92 final fights begun above
+  75% HP against ordinary depth 2-3 mobs, 24-27% starving with no food. Teacher now 2.38, 167 die
+  (`CHANGELOG.md` Unreleased). Exploring a floor fully before descending: 1.96, starvation doubles. Drinking
+  unknown potions when safe: no change. Remaining gap is stats: depth 3 at level ~2 in starting gear,
+  upgrade scrolls and strength potions carried unused.
+
+## 39. Wild Magic wand level draws gameplay RNG on the render thread - OPEN
+
+`Wand.buffedLvl` rolls `Random.Int(2)` while `WildMagicTracker` is attached, and `ItemSlot` calls it through
+`buffedVisiblyUpgraded` on every toolbar refresh, on the render thread. The viewer spends gameplay values the
+trainer does not, at a frame-dependent point. Not moved to `PRandom`: the roll sets wand power, so it would
+desync gameplay. Not wrapped in a pushed generator: the stack is shared with the actor thread. Unreachable
+by the trainer today (Battlemage armour ability, after Tengu).

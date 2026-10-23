@@ -5,7 +5,10 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.Waterskin;
 import com.shatteredpixel.shatteredpixeldungeon.items.food.Food;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Travel;
@@ -17,10 +20,13 @@ public final class DescentBot {
 
 	private int lastHp = -1;
 
+	private int waited = 0;
+
 	private final java.util.Map< Integer, java.util.BitSet > searched = new java.util.HashMap<>();
 
 	public void reset(){
 		lastHp = -1;
+		waited = 0;
 		searched.clear();
 	}
 
@@ -34,9 +40,10 @@ public final class DescentBot {
 		switch (env.mode()){
 			case SLOT:
 			case INVENTORY:
-				int food = foodSlot( env );
-				if (food < 0) return Action.CANCEL;
-				secondary[ 0 ] = food;
+				int pick = dying() ? healSlot( env ) : -1;
+				if (pick < 0) pick = foodSlot( env );
+				if (pick < 0) return Action.CANCEL;
+				secondary[ 0 ] = pick;
 				return Action.USE;
 			case TALENT:
 				secondary[ 0 ] = firstLegal( env.slotMask() );
@@ -65,15 +72,22 @@ public final class DescentBot {
 		Hero hero = Dungeon.hero;
 		boolean hurt = lastHp >= 0 && hero.HP < lastHp;
 		lastHp = hero.HP;
+		if (dying() && !hero.getVisibleEnemies().isEmpty() && healSlot( env ) >= 0 && legal( mask, Action.USE )) return Action.USE;
 		Action attack = attack( mask );
 		if (attack != null) return attack;
 		Action escape = escape( mask );
 		if (escape != null) return escape;
+		if (approaching() && waited < 2 && legal( mask, Action.WAIT )){
+			waited++;
+			return Action.WAIT;
+		}
+		waited = 0;
 		Hunger hunger = hero.buff( Hunger.class );
 		if (hunger != null && hunger.hunger() >= Hunger.HUNGRY && foodSlot( env ) >= 0 && legal( mask, Action.USE )){
 			return Action.USE;
 		}
-		if (!hurt && hero.HP * 4 < hero.HT * 3 && hero.getVisibleEnemies().isEmpty() && legal( mask, Action.REST )) return Action.REST;
+		boolean famished = hunger != null && hunger.hunger() >= Hunger.HUNGRY;
+		if (!hurt && !famished && hero.HP < hero.HT && hero.getVisibleEnemies().isEmpty() && legal( mask, Action.REST )) return Action.REST;
 		if (legal( mask, Action.TRAVEL_STAIRS )) return Action.TRAVEL_STAIRS;
 		if (legal( mask, Action.TRAVEL_EXPLORE )) return Action.TRAVEL_EXPLORE;
 		return hunt( mask );
@@ -146,6 +160,14 @@ public final class DescentBot {
 		return null;
 	}
 
+	private static boolean approaching(){
+		int hero = Dungeon.hero.pos;
+		for (Mob mob : Dungeon.hero.getVisibleEnemies()){
+			if (mob.isAlive() && mob.state == mob.HUNTING && Dungeon.level.distance( mob.pos, hero ) == 2) return true;
+		}
+		return false;
+	}
+
 	private static Action attack( float[] mask ){
 		int width = Dungeon.level.width();
 		int hero = Dungeon.hero.pos;
@@ -158,6 +180,23 @@ public final class DescentBot {
 			}
 		}
 		return null;
+	}
+
+	private static boolean dying(){
+		return Dungeon.hero.HP * 3 < Dungeon.hero.HT;
+	}
+
+	private static int healSlot( SPDEnv env ){
+		float[] mask = env.slotMask();
+		int fallback = -1;
+		for (int i = 0; i < mask.length; i++){
+			Item item = env.mapper().slot( i );
+			if (mask[ i ] < 0.5f || item == null) continue;
+			if (item instanceof PotionOfHealing && ((Potion) item).isKnown()) return i;
+			if (item instanceof Waterskin && !((Waterskin) item).isEmpty()) fallback = i;
+			else if (fallback < 0 && item instanceof Potion && !((Potion) item).isKnown()) fallback = i;
+		}
+		return fallback;
 	}
 
 	private static int foodSlot( SPDEnv env ){

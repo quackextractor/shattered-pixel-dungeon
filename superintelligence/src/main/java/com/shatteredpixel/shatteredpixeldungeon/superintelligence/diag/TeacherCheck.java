@@ -113,11 +113,11 @@ public class TeacherCheck {
 		}
 		float gain = taught[ 1 ] - taught[ 0 ];
 		if (!(gain > 0.002f) || !(gain > 5f * Math.abs( untaught[ 1 ] - untaught[ 0 ] ))){
-			fail( "an update over a demonstration moved p(recorded action) " + taught[ 0 ] + " -> " + taught[ 1 ]
+			fail( "an update over a demonstration moved mean p(recorded action) " + taught[ 0 ] + " -> " + taught[ 1 ]
 					+ " with rl.demo_weight 1 and " + untaught[ 0 ] + " -> " + untaught[ 1 ] + " with 0" );
 			return;
 		}
-		System.out.println( "  a " + replay.steps.size() + "-step demonstration moves p(recorded) " + taught[ 0 ] + " -> "
+		System.out.println( "  a " + replay.steps.size() + "-step demonstration moves mean p(recorded) " + taught[ 0 ] + " -> "
 				+ taught[ 1 ] + " with weight 1, " + untaught[ 0 ] + " -> " + untaught[ 1 ] + " with 0" );
 	}
 
@@ -166,9 +166,14 @@ public class TeacherCheck {
 			if (!t.demonstration || !labelled) return null;
 		}
 		Transition first = demo.get( 0 );
-		float[] grid = new float[ ppo.network.gridLength() ];
-		first.unpackGrid( grid );
-		float before = probability( ppo, grid, first, first.teacherIndex );
+		List< float[] > grids = new ArrayList<>();
+		for (Transition t : demo){
+			float[] g = new float[ ppo.network.gridLength() ];
+			t.unpackGrid( g );
+			grids.add( g );
+		}
+		float before = probability( ppo, grids.get( 0 ), first, first.teacherIndex );
+		float meanBefore = meanDemoProbability( ppo, demo, grids );
 		Transition anchor = copy( first, config, ppo );
 		anchor.episodeId = 0;
 		anchor.stepIndex = 0;
@@ -176,7 +181,19 @@ public class TeacherCheck {
 		ppo.addAll( java.util.Collections.singletonList( anchor ));
 		ppo.demonstrations.addAll( demo );
 		ppo.update();
-		return new float[]{ before, probability( ppo, grid, first, first.teacherIndex ) };
+		return new float[]{ meanBefore, meanDemoProbability( ppo, demo, grids ) };
+	}
+
+	private static float meanDemoProbability( PPO ppo, List< Transition > demo, List< float[] > grids ){
+		float sum = 0f;
+		int n = 0;
+		for (int i = 0; i < demo.size(); i++){
+			Transition t = demo.get( i );
+			if (t.liveHead != Policy.HEAD_ACTION) continue;
+			sum += probability( ppo, grids.get( i ), t, t.teacherIndex );
+			n++;
+		}
+		return n == 0 ? 0f : sum / n;
 	}
 
 	private static float[] teacherProbabilityAcrossAnUpdate( float weight ){

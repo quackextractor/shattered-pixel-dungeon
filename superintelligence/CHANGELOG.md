@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Smoke: `--generations 50 --hours 0.01` stopped and saved at 47.
 - **`train.sh`**, the Linux launcher: finds a JDK, always `--auto`, logs to `out/evidence/<name>.log`.
 
+### Changed
+- **`DescentBot` survives longer.** Rests to full HP instead of 75%, waits up to two turns for a hunting mob
+  two tiles away so it strikes first, drinks below a third of HP in a fight (known Healing, then a filled
+  Waterskin, then any unknown potion - nothing the player could not know), and stops resting while hungry
+  with no food, which only starved it. `BotStats`, 200 episodes over five classes: mean depth 2.18 -> 2.38,
+  deaths 178 -> 167, starving deaths ~50 -> 14, floor 4 reached 1 -> 6. Rest-to-full alone measured 2.14;
+  with the rest 2.38 against 2.27 without it. `out/evidence/botstats-200-*.txt`.
+- **`teachercheck`'s demonstration case reads the mean p(recorded action) over the demonstration**, not
+  the first step's alone. The fixture is 40 live `DescentBot` steps, so the first-step reading moved with
+  the bot: resting to full made 24 of the 40 steps REST and the first-step gain fell under 5x the drift.
+  Mean: 0.092 -> 0.103 against 0.092 -> 0.093 at weight 0; fails with the taught weight set to 0.
+
 ### Fixed
 - **Viewer/trainer divergences still open after the `WornDartTrap`, `HighGrass` and chasm-items fixes.**
   Same four shapes, ported where they were missing. Scene-less crashes: `PoisonDartTrap` in view now hits
