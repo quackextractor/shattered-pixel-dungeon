@@ -29,7 +29,7 @@ public final class TrainerMain {
 		}
 
 		if (options.auto){
-			AutoTune tune = AutoTune.measure( config, options.hyper, options.minibatchSize );
+			AutoTune tune = AutoTune.measure( config, options.hyper );
 			System.out.println( tune.report );
 			options.apply( tune );
 		}

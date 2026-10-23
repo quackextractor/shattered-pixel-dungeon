@@ -34,7 +34,8 @@ public final class AutoTune {
 		this.report = report;
 	}
 
-	public static AutoTune measure( EnvConfig config, PpoHyperparameters hyper, int minibatchSize ){
+	public static AutoTune measure( EnvConfig config, PpoHyperparameters hyper ){
+		int minibatchSize = hyper.minibatchSize;
 		int cores = ResourceStats.availableProcessors();
 		long availableMb = availableMemoryBytes() / (1024L * 1024);
 		long trainerMb = Runtime.getRuntime().maxMemory() / (1024L * 1024) + JVM_OVERHEAD_MB;
@@ -70,7 +71,7 @@ public final class AutoTune {
 		try {
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder.Loaded loaded =
 					com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfigBinder.load( null );
-			System.out.println( measure( loaded.config, loaded.hyper, loaded.hyper.minibatchSize ).report );
+			System.out.println( measure( loaded.config, loaded.hyper ).report );
 		} catch (IOException e){
 			System.err.println( "[ERROR] cannot read the configuration: " + e.getMessage() );
 			System.exit( 1 );

@@ -84,11 +84,15 @@ public final class ConfigAutoTuneCheck {
 	}
 
 	public static void checkAnExplicitFlagBeatsTheProbe() throws IOException {
-		TrainOptions o = TrainOptions.parse( new String[]{ "--auto", "--workers", "3", "--hours", "5.5" } );
+		TrainOptions o = TrainOptions.parse(
+				new String[]{ "--auto", "--workers", "3", "--hours", "5.5", "--minibatch", "3" } );
 		o.apply( AutoTune.fixed( 7, 5 ) );
-		if (!o.auto || o.hours != 5.5 || o.workers != 3 || o.episodes != 3 || o.updateThreads != 5){
+		if (!o.auto || o.hours != 5.5 || o.workers != 3 || o.episodes != 3 || o.updateThreads != 5
+				|| o.hyper.minibatchSize != 3){
 			fail( "--auto with --workers 3 gave workers " + o.workers + ", episodes " + o.episodes
-					+ ", update threads " + o.updateThreads + ", hours " + o.hours + "; expected 3, 3, 5, 5.5" );
+					+ ", update threads " + o.updateThreads + ", hours " + o.hours + ", probe minibatch "
+					+ o.hyper.minibatchSize + "; expected 3, 3, 5, 5.5, 3: the probe reads the run's minibatch"
+					+ " from hyper" );
 		}
 	}
 }

@@ -191,6 +191,7 @@ public class TrainOptions {
 		if (o.recordEvery < 1) o.recordEvery = 1;
 
 		if (o.minibatchSize < 1) o.minibatchSize = 1;
+		o.hyper.minibatchSize = o.minibatchSize;
 		if (o.epochs < 1) o.epochs = 1;
 		if (o.updateThreads < 0) o.updateThreads = 0;
 		if (o.maxSampledPerEpisode < 1) o.maxSampledPerEpisode = 1;
