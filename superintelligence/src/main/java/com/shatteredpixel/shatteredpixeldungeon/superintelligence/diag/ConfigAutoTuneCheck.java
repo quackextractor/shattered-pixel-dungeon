@@ -48,9 +48,13 @@ public final class ConfigAutoTuneCheck {
 		List< Integer > wide = AutoTune.threadCounts( 20, 8 );
 		List< Integer > narrow = AutoTune.threadCounts( 4, 8 );
 		int chunks = AutoTune.probeSamples( 8, 16 ) / 16;
-		if (!wide.equals( List.of( 1, 2, 4, 8 ) ) || !narrow.equals( List.of( 1, 2, 4 ) ) || chunks < 8 * 2){
-			fail( "autotune probed threads " + wide + " and " + narrow + " over " + chunks + " chunks, expected"
-					+ " [1, 2, 4, 8] and [1, 2, 4] over at least two minibatches of 8 chunks. An update shards"
+		int capped = AutoTune.probeSamples( 32, 64 );
+		if (!wide.equals( List.of( 1, 2, 4, 8 ) ) || !narrow.equals( List.of( 1, 2, 4 ) ) || chunks < 8 * 2
+				|| capped != 2 * 32 * 64){
+			fail( "autotune probed threads " + wide + " and " + narrow + " over " + chunks + " chunks and " + capped
+					+ " samples at minibatch 32, chunk 64, expected"
+					+ " [1, 2, 4, 8] and [1, 2, 4] over at least two minibatches of 8 chunks, and two minibatches"
+					+ " once four pass the sample cap. An update shards"
 					+ " one minibatch's chunks across threads, so a 4-chunk probe timed 4 and 16 threads alike"
 					+ " and left a 20-core machine at 4 where 8 is 29% faster" );
 		}

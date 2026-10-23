@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   size, past which no shard gets work. `updatecost --samples 1024`: 1.14 ms/sample at 4, 0.81 at 8, 0.84
   at 16. This machine now picks 8 (0.87 against 1.16 at 4); the 4-core server still picks 4.
   `configcheck` case 22.
+- **`--auto` rebuilt the same probe batch for every round and thread count.** It is now built once per
+  probe, and a probe stops at two minibatches once four would pass 4096 samples. `autotune` wall time
+  21.7 s -> 14.1 s at the defaults, 91 s -> 46 s at minibatch 16, chunk 32; same picks.
+  `out/evidence/autotune-{0,2}-*.txt`.
 - **Free memory read as unlimited on JDK 17+ and as MemFree on Linux.** `getFreeMemorySize` was looked
   up on the bean's internal class, which reflection may not call, so the pool sizing saw `Long.MAX_VALUE`;
   on Linux MemFree omits page cache (0.2 of 14.2 GB on the training server).

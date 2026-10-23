@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.train;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ParallelFixtures;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ResourceStats;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
@@ -20,6 +21,7 @@ public final class AutoTune {
 	static final long OS_RESERVE_MB = 1024;
 	static final double THREAD_TOLERANCE = 1.05;
 	static final int PROBE_MINIBATCHES = 4;
+	static final int PROBE_SAMPLE_CAP = 4096;
 
 	public final int workers;
 	public final int updateThreads;
@@ -39,9 +41,10 @@ public final class AutoTune {
 		int workers = workersFor( cores, availableMb, trainerMb, workerMb );
 
 		List< Integer > counts = threadCounts( cores, minibatchSize );
+		List< Transition > samples = probeBatch( config, minibatchSize, hyper.chunkLength );
 		double[] msPerSample = new double[ counts.size() ];
 		for (int i = 0; i < counts.size(); i++){
-			msPerSample[ i ] = timeUpdate( config, counts.get( i ), minibatchSize, hyper.chunkLength );
+			msPerSample[ i ] = timeUpdate( config, counts.get( i ), minibatchSize, hyper.chunkLength, samples );
 		}
 		int threads = counts.get( pickThreads( msPerSample ) );
 
@@ -96,7 +99,18 @@ public final class AutoTune {
 	}
 
 	public static int probeSamples( int minibatchSize, int chunkLength ){
-		return PROBE_MINIBATCHES * minibatchSize * chunkLength;
+		int perMinibatch = minibatchSize * chunkLength;
+		return perMinibatch * Math.max( 2, Math.min( PROBE_MINIBATCHES, PROBE_SAMPLE_CAP / perMinibatch ) );
+	}
+
+	private static List< Transition > probeBatch( EnvConfig config, int minibatchSize, int chunkLength ){
+		List< Transition > samples = ParallelFixtures.batch( new Network( config, new Random( 12345L ) ), config,
+				probeSamples( minibatchSize, chunkLength ), 4242L );
+		for (int i = 0; i < samples.size(); i++){
+			samples.get( i ).episodeId = i / chunkLength;
+			samples.get( i ).stepIndex = i % chunkLength;
+		}
+		return samples;
 	}
 
 	public static long megabytes( String heap ){
@@ -129,7 +143,8 @@ public final class AutoTune {
 		return -1;
 	}
 
-	private static double timeUpdate( EnvConfig config, int threads, int minibatchSize, int chunkLength ){
+	private static double timeUpdate( EnvConfig config, int threads, int minibatchSize, int chunkLength,
+			List< Transition > samples ){
 		PPO ppo = new PPO( config, new Random( 12345L ) );
 		ppo.threads = threads;
 		ppo.epochs = 1;
@@ -138,12 +153,6 @@ public final class AutoTune {
 		try {
 			double best = Double.MAX_VALUE;
 			for (int r = 0; r < 2; r++){
-				List< Transition > samples = ParallelFixtures.batch( ppo.network, config,
-						probeSamples( minibatchSize, chunkLength ), 4242L );
-				for (int i = 0; i < samples.size(); i++){
-					samples.get( i ).episodeId = i / ppo.chunkLength;
-					samples.get( i ).stepIndex = i % ppo.chunkLength;
-				}
 				ppo.addAll( samples );
 				long start = System.nanoTime();
 				ppo.update();
