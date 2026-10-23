@@ -284,7 +284,7 @@ if (mode == EnvMode.WORLD){
 			turnsThisFloor = turnsByFloor.getOrDefault( depth + 1000 * branch, 0 );
 			lastDepth = depth;
 			lastBranch = branch;
-			encoder.resetExplored();
+			encoder.enterFloor();
 			mapper.refreshSlots();
 			stallCount = 0;
 			freeStepsThisFloor = 0;

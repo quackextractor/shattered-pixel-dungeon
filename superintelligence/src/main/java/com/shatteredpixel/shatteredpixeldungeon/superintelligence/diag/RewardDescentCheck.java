@@ -5,6 +5,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardLedger;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardFixtures.Outcome;
@@ -95,9 +96,11 @@ public final class RewardDescentCheck {
 	public static void checkOnlyANewFloorIsPaidFor( EnvConfig config ){
 		final int[] descents = { 0 };
 		final int[] ascents = { 0 };
+		final java.util.HashMap<Integer, Integer> seenByFloor = new java.util.HashMap<>();
 
 		Outcome o = play( config, 120, "PINGPONG", turn -> {
 			SPDEnv env = turn.env;
+			noteSeen( seenByFloor );
 			if (env.mode() != EnvMode.WORLD ){
 				env.step( Action.CANCEL, 0 );
 				return;
@@ -144,8 +147,37 @@ public final class RewardDescentCheck {
 			return;
 		}
 
+		noteSeen( seenByFloor );
+		java.util.HashMap<Integer, Double> exploreByFloor = new java.util.HashMap<>();
+		StringBuilder visits = new StringBuilder();
+		for (RewardLedger.FloorTotals f : o.ledger.floors()){
+			double explore = f.totals[ RewardTerm.EXPLORE.ordinal() ];
+			exploreByFloor.merge( f.depth * 64 + f.branch, explore, Double::sum );
+			visits.append( ' ' ).append( f.depth ).append( ':' ).append( fmt( explore ) );
+		}
+		for (java.util.Map.Entry<Integer, Double> e : exploreByFloor.entrySet()){
+			int seen = seenByFloor.getOrDefault( e.getKey(), 0 );
+			double once = config.exploreReward * seen;
+			if (e.getValue() > once + 1e-3 ){
+				fail( "EXPLORE paid " + fmt( e.getValue() ) + " on depth " + e.getKey() / 64 + " over its visits ("
+						+ visits.toString().trim() + "), where its " + seen + " seen cells are worth " + fmt( once )
+						+ " once. Re-entering a floor paid its whole explored count again: +22.6 per ascent,"
+						+ " 127 ascents in one fresh-1023-to100 run." );
+				return;
+			}
+		}
+
 		System.out.println( "  " + descents[ 0 ] + " descents and " + ascents[ 0 ] + " ascents reached depth "
-				+ o.deepest + " and paid " + fmt( paid ) + " - one reward per new floor, not per stair" );
+				+ o.deepest + " and paid " + fmt( paid ) + " - one reward per new floor, not per stair; EXPLORE per"
+				+ " visit" + visits + ", no floor paid twice for a cell" );
+	}
+
+
+	private static void noteSeen( java.util.Map<Integer, Integer> seenByFloor ){
+		if (Dungeon.level == null) return;
+		int seen = 0;
+		for (boolean v : Dungeon.level.visited) if (v) seen++;
+		seenByFloor.merge( Dungeon.depth * 64 + Dungeon.branch, seen, Math::max );
 	}
 
 

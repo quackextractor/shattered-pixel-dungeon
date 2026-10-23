@@ -16,7 +16,7 @@ public class PpoHyperparameters {
 
 	public float teacherWeight = 1f;
 
-	public float teacherHalfLife = 10f;
+	public float teacherHalfLife = 30f;
 
 	public float demoWeight = 1f;
 

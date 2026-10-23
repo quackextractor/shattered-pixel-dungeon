@@ -45,7 +45,7 @@ public class Trainer {
 
 	private float teacherWeight;
 
-	private float teacherHalfLife = 10f;
+	private float teacherHalfLife = 30f;
 
 	private DemoSource demos;
 

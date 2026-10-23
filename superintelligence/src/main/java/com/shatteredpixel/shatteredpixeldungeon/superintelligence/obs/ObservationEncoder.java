@@ -322,21 +322,22 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 
 
 	private int lastExplored = 0;
-	private int lastDepth = -1;
+	private int lastFloor = -1;
+	private final java.util.HashMap<Integer, Integer> exploredByFloor = new java.util.HashMap<>();
 
 	private int countNewlyExplored( Level level ){
 		int explored = 0;
 		for (int i = 0; i < level.length(); i++) if (level.visited[ i ]) explored++;
 
-		if (Dungeon.depth != lastDepth){
-
-			lastDepth = Dungeon.depth;
-			lastExplored = explored;
-			return explored;
+		int floor = Dungeon.depth * 64 + Dungeon.branch;
+		if (floor != lastFloor){
+			lastFloor = floor;
+			lastExplored = exploredByFloor.getOrDefault( floor, 0 );
 		}
 
 		int delta = explored - lastExplored;
 		lastExplored = explored;
+		exploredByFloor.put( floor, explored );
 		return Math.max( 0, delta );
 	}
 
@@ -347,8 +348,14 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 
 
 	public void resetExplored(){
+		enterFloor();
+		exploredByFloor.clear();
+	}
+
+
+	public void enterFloor(){
 		lastExplored = 0;
-		lastDepth = -1;
+		lastFloor = -1;
 		seenTransitionCell = -1;
 	}
 

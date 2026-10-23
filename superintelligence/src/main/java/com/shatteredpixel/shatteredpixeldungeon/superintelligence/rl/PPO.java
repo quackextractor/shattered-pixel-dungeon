@@ -233,19 +233,17 @@ public float lastClipFraction;
 
 
 	private void oneMinibatch( List< List< Transition > > chunks, int from, int to ){
-		int count = Math.max( 1, to - from );
-
 		Minibatch m = threads > 1 ? sharded.run( this, chunks, from, to ) : null;
-		accumulate( m != null ? m : processMinibatch( chunks, from, to ), count );
+		accumulate( m != null ? m : processMinibatch( chunks, from, to ));
 	}
 
-	private void accumulate( Minibatch m, int count ){
+	private void accumulate( Minibatch m ){
 		int steps = Math.max( 1, m.steps );
 		lastPolicyLoss += m.policyLoss / steps;
 		lastValueLoss += m.valueLoss / steps;
 		lastEntropy += m.entropy / steps;
 		lastKLDivergence += m.kl / steps;
-		lastClipFraction += m.clipped / count;
+		lastClipFraction += m.clipped / steps;
 		lastGradNorm += m.gradNorm;
 		lastGradClipped += m.gradClipped;
 	}
@@ -381,8 +379,8 @@ Stats oneSample( Network net, Transition t,
 				continue;
 			}
 
-			s.clipBinding |= Policy.accumulatePolicyGradient( probabilities, mask, chosen,
-					t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient );
+			if (Policy.accumulatePolicyGradient( probabilities, mask, chosen,
+					t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient )) s.clippedSteps++;
 			Policy.accumulateImitationGradient( probabilities, mask, t.teacherIndex, teacherWeight, gradient );
 
 			float target = valueTarget( t );
@@ -428,7 +426,7 @@ Stats oneSample( Network net, Transition t,
 		float valueLoss;
 		float entropy;
 		float kl;
-		boolean clipBinding;
+		int clippedSteps;
 		int steps;
 	}
 
@@ -452,7 +450,7 @@ Stats oneSample( Network net, Transition t,
 			valueLoss += s.valueLoss;
 			entropy += s.entropy;
 			kl += s.kl;
-			clipped += s.clipBinding ? 1 : 0;
+			clipped += s.clippedSteps;
 			result.steps += s.steps;
 		}
 

@@ -25,7 +25,7 @@ Proposals not done, with reason and trigger. Measurements: `CHANGELOG.md`.
 | Corpus generated on demand | declined | checked-in bytes are what gates compare | - |
 | Fast + slow gate tiers | declined | one `gates` task ~40s; `viewcheck` already separate | - |
 | Death costs more than a dive pays (`VKG-DWR-EIN` dies on depth 4 at +2543) | declined | dive reward is what got the agent off floor 1; pricing death above it makes staying on floor 1 optimal again. Survival already pays through later descents | agent dives into deaths it could avoid by waiting |
-| Stronger `DescentBot` teacher (fight, retreat, potions) | deferred | three variants, no gain (explore 1.97, items 2.23, wait 2.17 vs 2.21); policy already beats teacher at 2.6-2.9 | policy plateau below teacher |
+| Stronger `DescentBot` teacher (fight, retreat, potions) | deferred | three variants, no gain (explore 1.97, items 2.23, wait 2.17 vs 2.21); policy already beats teacher at 2.6-2.9. Low-HP retreat to stairs, three more: 2.44 / 2.53 / 2.51 vs 2.56 (`out/evidence/botstats-200-retreat*.txt`); 60 of 197 deaths start the fight at full HP | policy plateau below teacher |
 | Measure walks-to-stairs against random walk | superseded | `TRAVEL_STAIRS` + teacher: depth>=2 in ~90% of episodes answers it | - |
 | Measure depth 2 entrance behind hidden door across seeds | declined | not blocking: depth>=2 in ~90%, best 4 | descent stalls on one depth across seeds |
 | Read `forfeit-quick` stalls before tuning `env.free_step_budget` | superseded | gen-2 near-uniform policy; ~20% of steps menu actions (`out/evidence/forfeit-quick-actions.txt`). Stall share fell to 11-15% in `long-1021`; `USE` no-op loop now masked | stall share >20% again |

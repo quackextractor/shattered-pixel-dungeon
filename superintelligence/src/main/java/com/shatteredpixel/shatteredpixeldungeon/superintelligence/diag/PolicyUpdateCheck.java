@@ -1,11 +1,17 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.function.Consumer;
 
@@ -14,6 +20,45 @@ final class PolicyUpdateCheck {
 	static void run( Consumer< String > fail ){
 		checkAnUpdateMovesTheChosenProbabilityWithTheAdvantage( fail );
 		checkTheClipOnlyStopsTheSideItBounds( fail );
+		checkTheClipFractionCountsSteps( fail );
+	}
+	private static void checkTheClipFractionCountsSteps( Consumer< String > fail ){
+		float serial = clipFractionOfHalfClippedChunks( 0 );
+		float sharded = clipFractionOfHalfClippedChunks( 2 );
+		if (Math.abs( serial - 0.5f ) > 1e-4f || Math.abs( sharded - 0.5f ) > 1e-4f){
+			fail.accept( "16-step chunks with every other step at ratio 2 reported clip fraction " + serial
+					+ " serial and " + sharded + " sharded; half the steps are clipped, so it has to read 0.5."
+					+ " A chunk counted as clipped when any one of its steps is reads 1.0" );
+			return;
+		}
+		System.out.println( "  half-clipped 16-step chunks report clip fraction " + serial + " serial, " + sharded + " sharded" );
+	}
+	private static float clipFractionOfHalfClippedChunks( int threads ){
+		EnvConfig config = new EnvConfig();
+		PPO ppo = new PPO( config, new Random( 779L ));
+		ppo.threads = threads;
+		ppo.normaliseValues = false;
+		ppo.epochs = 1;
+		List< Transition > batch = new ArrayList<>();
+		float[] grid = new float[ ppo.network.gridLength() ];
+		for (int episode = 0; episode < 2; episode++){
+			for (int step = 0; step < ppo.chunkLength; step++){
+				Transition t = Transition.take( grid.length, config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT,
+						HeroEncoder.FEATURES, Action.size(), config.maxSlots, ActionMapper.TARGET_COUNT, ppo.network.stateSize() );
+				t.packGrid( grid );
+				t.actionMask[ Action.WAIT.index ] = 1f;
+				t.liveHead = Policy.HEAD_ACTION;
+				t.actionIndex = Action.WAIT.index;
+				t.oldLogProbability = step % 2 == 0 ? 0f : (float) Math.log( 0.5 );
+				t.teacherIndex = -1;
+				t.episodeId = episode;
+				t.stepIndex = step;
+				batch.add( t );
+			}
+		}
+		ppo.addAll( batch );
+		ppo.update();
+		return ppo.lastClipFraction;
 	}
 	private static void checkAnUpdateMovesTheChosenProbabilityWithTheAdvantage( Consumer< String > fail ){
 		float[] up = chosenProbabilityAcrossOneUpdate( 1f );

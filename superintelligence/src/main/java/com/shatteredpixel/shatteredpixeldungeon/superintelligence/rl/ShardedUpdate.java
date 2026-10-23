@@ -104,7 +104,7 @@ final class ShardedUpdate {
 						e += s2.entropy;
 						k += s2.kl;
 						n2 += s2.steps;
-						if (s2.clipBinding) c++;
+						c += s2.clippedSteps;
 					}
 
 					policy[ shard ] = p;

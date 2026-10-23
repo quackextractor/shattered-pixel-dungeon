@@ -23,7 +23,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 public class GaeCheck {
 	private static final float GAMMA = 0.987f;
 	private static final float LAMBDA = 0.913f;
-	private static final int CHECKS = 15;
+	private static final int CHECKS = 16;
 	public static void main( String[] args ){		checkRecurrenceMatchesTheDiscountedSum();
 checkTerminalZerosTheTail();
 		checkTruncatedBootstraps();

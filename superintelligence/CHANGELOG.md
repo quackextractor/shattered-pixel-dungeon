@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`train.sh`**, the Linux launcher: finds a JDK, always `--auto`, logs to `out/evidence/<name>.log`.
 
 ### Changed
+- **`rl.teacher_half_life` 10 -> 30.** Three fresh 100-generation runs, same settings otherwise: half-life 10
+  peaked at depth 2.47 by generation 30 and averaged 2.26 over generations 50-99 with entropy climbing to
+  1.34; `rl.entropy_coefficient` 0.003 did not stop the climb (2.34, entropy 1.27); half-life 30 averaged
+  2.72 over 50-99, above `DescentBot`'s 2.56, with entropy 0.55-0.75 and 5 replays ending on floor 5.
+  Generations 90-99 eased to 2.56 as the weight fell to 0.125. `out/evidence/fresh-1023-{explorefix,ent003,teach30}.csv`.
 - **`DescentBot` survives longer.** Rests to full HP instead of 75%, waits up to two turns for a hunting mob
   two tiles away so it strikes first, drinks below a third of HP in a fight (known Healing, then a filled
   Waterskin, then any unknown potion - nothing the player could not know), and stops resting while hungry
@@ -38,6 +43,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Mean: 0.092 -> 0.103 against 0.092 -> 0.093 at weight 0; fails with the taught weight set to 0.
 
 ### Fixed
+- **Re-entering a floor paid EXPLORE for every cell already seen on it.** `ObservationEncoder` counted a
+  floor change as a fresh floor and returned its whole visited count, so climbing back up paid +22.6 and
+  re-descending +2.8 on a typical floor 1/2. `fresh-1023-to100` learned it: 99 of 227 replays ascend, 476
+  ascents in all, 127 in one run (16 of 103 at generation 29). The encoder now remembers each floor's
+  explored count for the episode and pays only cells new to it. `rewardcheck`'s ping-pong case bounds each
+  floor's EXPLORE by its seen cells: red without the fix (11.85 on depth 2 against 3.95), green with it.
+  Retrained fresh (`fresh-1023-explorefix`, same settings, 100 generations): depth by decade peaks 2.47 and
+  ends 2.34 against 2.49 / 2.35, and ascents are unchanged, 98 of 257 replays and 386 in all. The leak was
+  not what drove them: a round trip now costs about -5, and the trace (`out/evidence/clf-zqs-fhq-fulltrace.txt`)
+  shows random steps beside the entrance on arrival walking back onto it, then `TRAVEL_STAIRS` from the
+  exit next door. Entropy rose 0.92 -> 1.34 over the run.
+- **The reported clip fraction counted chunks, not steps.** `PPO` marked a 16-step chunk clipped when any one
+  of its steps was. Clipped steps are now counted and divided by steps, serial and sharded, like the
+  per-chunk entropy before it. `gaecheck` feeds two chunks with every other step at ratio 2: 1.0 before,
+  0.5 after. `fresh-1023-explorefix` reads 0.55 falling to 0.30 per step, where `fresh-1023` read 0.69
+  rising to 0.84 per chunk; KL 0.50 -> 0.036 in both.
 - **Item pickers did nothing headless.** `GameScene.selectItem` returns without a selector when there is
   no scene, so every Upgrade, Identify, Remove Curse, Enchantment or other "choose an item" read was a no-op,
   and an unknown one was spent for nothing. The selector is now parked headless (`GameScene.answerableSelector()`
