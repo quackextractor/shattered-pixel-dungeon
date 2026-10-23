@@ -39,6 +39,7 @@ import com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 import com.shatteredpixel.shatteredpixeldungeon.ui.HeroIcon;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
+import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.watabou.noosa.Game;
 import com.watabou.noosa.tweeners.Delayer;
 import com.watabou.utils.Callback;
@@ -149,7 +150,7 @@ public class WildMagic extends ArmorAbility {
 					public void call() {
 						cur.onZap(aim);
 						boolean alsoCursedZap = Random.Float() < WondrousResin.extraCurseEffectChance();
-						if (Game.timeTotal - startTime < 0.33f) {
+						if (!GameScene.headlessGameplay() && Game.timeTotal - startTime < 0.33f) {
 							hero.sprite.parent.add(new Delayer(0.33f - (Game.timeTotal - startTime)) {
 								@Override
 								protected void onComplete() {
@@ -197,7 +198,7 @@ public class WildMagic extends ArmorAbility {
 						new Callback() {
 							@Override
 							public void call() {
-								if (Game.timeTotal - startTime < 0.33f) {
+								if (!GameScene.headlessGameplay() && Game.timeTotal - startTime < 0.33f) {
 									hero.sprite.parent.add(new Delayer(0.33f - (Game.timeTotal - startTime)) {
 										@Override
 										protected void onComplete() {

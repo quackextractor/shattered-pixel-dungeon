@@ -236,6 +236,7 @@ public class LevelPipeline {
 
 		attachSprites();
 		placeDroppedItems();
+		if (result == Transition.DESCEND) ghostGreetsNewFloor();
 		dropStaleTarget();
 		PathFinder.setMapSize( level.width(), level.height() );
 
@@ -260,6 +261,7 @@ public class LevelPipeline {
 
 		attachSprites();
 		placeDroppedItems();
+		ghostGreetsNewFloor();
 		dropStaleTarget();
 		PathFinder.setMapSize( level.width(), level.height() );
 
@@ -285,6 +287,15 @@ public class LevelPipeline {
 			}
 		}
 		Dungeon.droppedItems.remove( Dungeon.depth );
+	}
+
+	static void ghostGreetsNewFloor(){
+		if (Dungeon.depth != com.shatteredpixel.shatteredpixeldungeon.Statistics.deepestFloor) return;
+		for (com.shatteredpixel.shatteredpixeldungeon.actors.Char ch : com.shatteredpixel.shatteredpixeldungeon.actors.Actor.chars()){
+			if (ch instanceof com.shatteredpixel.shatteredpixeldungeon.items.artifacts.DriedRose.GhostHero){
+				((com.shatteredpixel.shatteredpixeldungeon.items.artifacts.DriedRose.GhostHero) ch).sayAppeared();
+			}
+		}
 	}
 
 	static void dropStaleTarget(){

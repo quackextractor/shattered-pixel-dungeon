@@ -108,31 +108,40 @@ public class PoisonDartTrap extends Trap {
 					}
 					final Char finalTarget = target;
 					if (Dungeon.level.heroFOV[pos] || Dungeon.level.heroFOV[target.pos]) {
-						((MissileSprite) ShatteredPixelDungeon.scene().recycle(MissileSprite.class)).
-								reset(pos, finalTarget.sprite, new PoisonDart(), new Callback() {
-									@Override
-									public void call() {
-										int dmg = Random.NormalIntRange(4, 8) - finalTarget.drRoll();
-										finalTarget.damage(dmg, PoisonDartTrap.this);
-										if (finalTarget == Dungeon.hero){
-											//for the poison dart traps in the Tengu fight
-											if (Dungeon.depth == 10) {
-												Statistics.qualifiedForBossChallengeBadge = false;
-												Statistics.bossScores[1] -= 100;
-											}
-											if (!finalTarget.isAlive()) {
-												Dungeon.fail(PoisonDartTrap.this);
-												GLog.n(Messages.get(PoisonDartTrap.class, "ondeath"));
-												if (reclaimed) Badges.validateDeathFromFriendlyMagic();
-											}
-										}
-										Buff.affect( finalTarget, Poison.class ).set( poisonAmount() );
-										Sample.INSTANCE.play(Assets.Sounds.HIT, 1, 1, PRandom.Float(0.8f, 1.25f));
-										finalTarget.sprite.bloodBurstA(finalTarget.sprite.center(), dmg);
-										finalTarget.sprite.flash();
-										next();
+						Callback onHit = new Callback() {
+							@Override
+							public void call() {
+								int dmg = Random.NormalIntRange(4, 8) - finalTarget.drRoll();
+								finalTarget.damage(dmg, PoisonDartTrap.this);
+								if (finalTarget == Dungeon.hero){
+									//for the poison dart traps in the Tengu fight
+									if (Dungeon.depth == 10) {
+										Statistics.qualifiedForBossChallengeBadge = false;
+										Statistics.bossScores[1] -= 100;
 									}
-								});
+									if (!finalTarget.isAlive()) {
+										Dungeon.fail(PoisonDartTrap.this);
+										GLog.n(Messages.get(PoisonDartTrap.class, "ondeath"));
+										if (reclaimed) Badges.validateDeathFromFriendlyMagic();
+									}
+								}
+								Buff.affect( finalTarget, Poison.class ).set( poisonAmount() );
+								Sample.INSTANCE.play(Assets.Sounds.HIT, 1, 1, PRandom.Float(0.8f, 1.25f));
+								if (finalTarget.sprite != null){
+									finalTarget.sprite.bloodBurstA(finalTarget.sprite.center(), dmg);
+									finalTarget.sprite.flash();
+								}
+								next();
+							}
+						};
+
+						if (ShatteredPixelDungeon.scene() == null){
+							onHit.call();
+							return false;
+						}
+
+						((MissileSprite) ShatteredPixelDungeon.scene().recycle(MissileSprite.class)).
+								reset(pos, finalTarget.sprite, new PoisonDart(), onHit);
 						return false;
 					} else {
 						finalTarget.damage(Random.NormalIntRange(4, 8) - finalTarget.drRoll(), PoisonDartTrap.this);

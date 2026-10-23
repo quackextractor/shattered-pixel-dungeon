@@ -4,13 +4,18 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.HeroDisguise;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Levitation;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Poison;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.items.Gold;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.HighGrass;
+import com.shatteredpixel.shatteredpixeldungeon.levels.traps.DisintegrationTrap;
+import com.shatteredpixel.shatteredpixeldungeon.levels.traps.PoisonDartTrap;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
@@ -95,9 +100,60 @@ public final class SceneGateCheck {
 		}
 	}
 
+	static void checkADartTrapInViewHitsWithoutAScene(){
+		SPDEnv env = freshEnv();
+		Hero hero = Dungeon.hero;
+		new PoisonDartTrap().set( hero.pos ).activate();
+		env.step( Action.WAIT, 0 );
+
+		if (hero.buff( Poison.class ) == null){
+			fail( "a poison dart trap fired at the hero in view and the hero was not poisoned. Its in-view branch"
+					+ " recycled a MissileSprite from ShatteredPixelDungeon.scene(), which is null headlessly, so"
+					+ " the trainer threw where the viewer hits; WornDartTrap already calls the hit directly." );
+		}
+	}
+
+	static void checkADisintegrationTrapInViewHitsWithoutAScene(){
+		SPDEnv env = freshEnv();
+		Hero hero = Dungeon.hero;
+		int before = hero.HP;
+		new DisintegrationTrap().set( hero.pos ).activate();
+
+		if (hero.isAlive() && hero.HP >= before){
+			fail( "a disintegration trap fired at the hero in view and dealt nothing. It added its death ray to"
+					+ " ShatteredPixelDungeon.scene() before the damage roll, which threw headlessly." );
+		}
+	}
+
+	static void checkAnUnseenMobSpriteIsHidden(){
+		freshFloor();
+		Mob unseen = null;
+		for (Mob m : Dungeon.level.mobs){
+			if (m.sprite != null && !m.sprite.visibleOutOfFFOV && !Dungeon.level.heroFOV[ m.pos ]) unseen = m;
+		}
+		if (unseen == null){
+			fail( "no mob out of the hero's view on the SCENEGATECHECK floor to test sprite visibility with" );
+			return;
+		}
+		unseen.sprite.visible = true;
+		Dungeon.observe();
+
+		if (unseen.sprite.visible){
+			fail( "a mob out of the hero's view kept a visible sprite headlessly. GameScene.afterObserve sets"
+					+ " sprite.visible from the field of view only with a scene, and gameplay branches on it:"
+					+ " Great Crab's parry pitch, Flow and Swiftness particles and Mob.move's reveal drew or"
+					+ " wrote only on one side." );
+		}
+	}
+
 	private static Level freshFloor(){
+		freshEnv();
+		return Dungeon.level;
+	}
+
+	private static SPDEnv freshEnv(){
 		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );
 		env.reset( "SCENEGATECHECK", HeroClass.WARRIOR );
-		return Dungeon.level;
+		return env;
 	}
 }

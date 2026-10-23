@@ -57,6 +57,9 @@ public class ObserveCheck {
 		check( SceneGateCheck::checkLandingFromLevitationPressesTheCell );
 		check( SceneGateCheck::checkADisguiseRollsItsClassHeadlessly );
 		check( SceneGateCheck::checkAHeapDroppedInPlayIsExplored );
+		check( SceneGateCheck::checkADartTrapInViewHitsWithoutAScene );
+		check( SceneGateCheck::checkADisintegrationTrapInViewHitsWithoutAScene );
+		check( SceneGateCheck::checkAnUnseenMobSpriteIsHidden );
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     observation purity: " + checksRun + " checks passed" );
 		} else {

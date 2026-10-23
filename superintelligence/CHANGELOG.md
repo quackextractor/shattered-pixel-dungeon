@@ -20,6 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`train.sh`**, the Linux launcher: finds a JDK, always `--auto`, logs to `out/evidence/<name>.log`.
 
 ### Fixed
+- **Viewer/trainer divergences still open after the `WornDartTrap`, `HighGrass` and chasm-items fixes.**
+  Same four shapes, ported where they were missing. Scene-less crashes: `PoisonDartTrap` in view now hits
+  directly like `WornDartTrap`, `DisintegrationTrap` skips its death ray without a scene (both threw
+  `NullPointerException` headless, `observecheck` reproduced each). Delayers nothing updates headless:
+  mining beside a crystal and Wild Magic's `afterZap` run synchronously under `headlessGameplay()`, the
+  crystals after `Dungeon.observe()` as in the viewer. Scene-only gameplay: `GameScene.afterObserve` and
+  headless `GameScene.add` set mob `sprite.visible` from the field of view, so gameplay branching on it
+  agrees; `ImpShopRoom.spawnShop` schedules the shopkeeper headless. Render-only draws to `PRandom`: Great
+  Crab parry pitch, `Flow` and `Swiftness` particle counts. Arrival: `LevelPipeline` makes the Dried Rose
+  ghost greet a new deepest floor, the one gameplay draw `GameScene.create` spent that the trainer did not.
+  `observecheck` 23 cases; the dart, disintegration and visibility cases fail with their fix reverted.
+  Open: `Wand.buffedLvl` draws gameplay `Random.Int(2)` under Wild Magic and the toolbar calls it on the
+  render thread, so the viewer spends values the trainer does not at a frame-dependent point.
 - **`--auto` held a 20-core machine at 4 update threads.** The probe timed 64 samples, 4 chunks, and an
   update shards one minibatch's chunks across threads, so 4 and 16 threads timed alike. It now times 4
   minibatches at the run's `minibatch_size` and `chunk_length` and tries thread counts up to the minibatch

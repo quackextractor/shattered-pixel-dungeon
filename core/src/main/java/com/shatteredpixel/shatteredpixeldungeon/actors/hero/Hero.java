@@ -1382,35 +1382,47 @@ public class Hero extends Char {
 							GameScene.updateMap( action.dst+i );
 						}
 
-						if (crystalAdjacent){
+						Callback breakCrystals = new Callback() {
+							@Override
+							public void call() {
+								boolean broke = false;
+								for (int i : PathFinder.NEIGHBOURS8) {
+									if (Dungeon.level.map[action.dst+i] == Terrain.MINE_CRYSTAL){
+										Splash.at(action.dst+i, 0xFFFFFF, 5);
+										Level.set( action.dst+i, Terrain.EMPTY );
+										broke = true;
+									}
+								}
+								if (broke){
+									Sample.INSTANCE.play( Assets.Sounds.SHATTER );
+								}
+
+								for (int i : PathFinder.NEIGHBOURS9) {
+									GameScene.updateMap( action.dst+i );
+								}
+								spendAndNext(TICK);
+								ready();
+							}
+						};
+
+						if (!crystalAdjacent){
+							spendAndNext(TICK);
+							ready();
+						} else if (!GameScene.headlessGameplay()){
 							sprite.parent.add(new Delayer(0.2f){
 								@Override
 								protected void onComplete() {
-									boolean broke = false;
-									for (int i : PathFinder.NEIGHBOURS8) {
-										if (Dungeon.level.map[action.dst+i] == Terrain.MINE_CRYSTAL){
-											Splash.at(action.dst+i, 0xFFFFFF, 5);
-											Level.set( action.dst+i, Terrain.EMPTY );
-											broke = true;
-										}
-									}
-									if (broke){
-										Sample.INSTANCE.play( Assets.Sounds.SHATTER );
-									}
-
-									for (int i : PathFinder.NEIGHBOURS9) {
-										GameScene.updateMap( action.dst+i );
-									}
-									spendAndNext(TICK);
-									ready();
+									breakCrystals.call();
 								}
 							});
-						} else {
-							spendAndNext(TICK);
-							ready();
 						}
 
 						Dungeon.observe();
+
+						//headless has no frames to run the delayer, so it breaks the crystals after observing, as the delayer would
+						if (crystalAdjacent && GameScene.headlessGameplay()){
+							breakCrystals.call();
+						}
 					}
 				});
 			} else {

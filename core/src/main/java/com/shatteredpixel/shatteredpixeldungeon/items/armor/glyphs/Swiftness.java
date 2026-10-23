@@ -28,7 +28,7 @@ import com.shatteredpixel.shatteredpixeldungeon.effects.Speck;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite;
 import com.watabou.utils.PathFinder;
-import com.watabou.utils.Random;
+import com.watabou.utils.PRandom;
 
 public class Swiftness extends Armor.Glyph {
 
@@ -58,7 +58,7 @@ public class Swiftness extends Armor.Glyph {
 			return 1;
 		} else {
 			if (owner.sprite != null && owner.sprite.visible){
-				int particles = 1 + (int)Random.Float(1+level/5f);
+				int particles = 1 + (int)PRandom.Float(1+level/5f);
 				owner.sprite.emitter().startDelayed(Speck.factory(Speck.YELLOW_LIGHT), 0.02f, particles, 0.05f);
 			}
 			return (1.2f + 0.04f * level) * genericProcChanceMultiplier(owner);

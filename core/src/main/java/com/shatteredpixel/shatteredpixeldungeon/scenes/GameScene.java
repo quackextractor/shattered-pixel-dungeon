@@ -1253,6 +1253,7 @@ public synchronized void update() {
 			mob.spendToWhole();
 		} else if (headlessGameplay && headlessMobSprite != null ) {
 			if (mob.sprite == null ) headlessMobSprite.accept( mob );
+			if (mob.sprite != null) mob.sprite.visible = mob.sprite.visibleOutOfFFOV || Dungeon.level.heroFOV[mob.pos];
 			Actor.addDelayed( mob, delay );
 			mob.spendToWhole();
 		}
@@ -1719,7 +1720,7 @@ public static boolean showingWindow(){
 	}
 	
 	public static void afterObserve() {
-		if (scene != null) {
+		if (scene != null || headlessGameplay) {
 			for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
 				if (mob.sprite != null) {
 					if (mob instanceof Mimic && mob.state == mob.PASSIVE && ((Mimic) mob).stealthy() && Dungeon.level.visited[mob.pos]){

@@ -101,7 +101,7 @@ public class GreatCrab extends Crab {
 				&& enemy == this.enemy
 				&& enemy.invisible == 0){
 			if (sprite != null && sprite.visible) {
-				Sample.INSTANCE.play(Assets.Sounds.HIT_PARRY, 1, Random.Float(0.96f, 1.05f));
+				Sample.INSTANCE.play(Assets.Sounds.HIT_PARRY, 1, PRandom.Float(0.96f, 1.05f));
 				GLog.n( Messages.get(this, "noticed") );
 			}
 			if (enemy == Dungeon.hero){
