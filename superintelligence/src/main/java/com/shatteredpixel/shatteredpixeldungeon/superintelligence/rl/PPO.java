@@ -181,6 +181,7 @@ public float lastClipFraction;
 
 		List< List< Transition > > chunks = chunks();
 
+		if (gpu != null) gpu.begin();
 		for (int epoch = 0; epoch < epochs; epoch++){
 			shuffleChunks( chunks );
 
@@ -189,10 +190,12 @@ public float lastClipFraction;
 			for (int start = 0; start < chunks.size(); start += minibatchSize){
 				int end = Math.min( chunks.size(), start + minibatchSize );
 				oneMinibatch( chunks, start, end );
-				network.step( 1f );
+				if (gpu == null) network.step( 1f );
 				lastMinibatches++;
 			}
 		}
+
+		if (gpu != null) gpu.end();
 
 		if (lastMinibatches > 0){
 			lastPolicyLoss /= lastMinibatches;

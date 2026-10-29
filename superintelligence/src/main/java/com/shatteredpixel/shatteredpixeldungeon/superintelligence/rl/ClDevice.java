@@ -2,6 +2,9 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
+import org.lwjgl.opencl.CLBufferRegion;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -14,6 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.lwjgl.opencl.CL10.*;
+import static org.lwjgl.opencl.CL11.CL_BUFFER_CREATE_TYPE_REGION;
+import static org.lwjgl.opencl.CL11.clCreateSubBuffer;
 
 final class ClDevice implements AutoCloseable {
 
@@ -99,6 +104,30 @@ final class ClDevice implements AutoCloseable {
 		}
 		size.put( 0, global );
 		check( clEnqueueNDRangeKernel( queue, kernel, 1, null, size, null, null, null ), "enqueue kernel" );
+	}
+
+	int alignFloats(){
+		IntBuffer bits = BufferUtils.createIntBuffer( 1 );
+		check( clGetDeviceInfo( device, CL_DEVICE_MEM_BASE_ADDR_ALIGN, bits, null ), "clGetDeviceInfo alignment" );
+		return Math.max( 1, bits.get( 0 ) / 32 );
+	}
+
+	long view( long buffer, int offsetFloats, int lengthFloats ){
+		try (MemoryStack stack = MemoryStack.stackPush()){
+			CLBufferRegion region = CLBufferRegion.malloc( stack ).origin( 4L * offsetFloats ).size( 4L * Math.max( 1, lengthFloats ));
+			long b = clCreateSubBuffer( buffer, CL_MEM_READ_WRITE, CL_BUFFER_CREATE_TYPE_REGION,
+					MemoryUtil.memByteBuffer( region.address(), CLBufferRegion.SIZEOF ), err );
+			check( "clCreateSubBuffer" );
+			return b;
+		}
+	}
+
+	void write( long buffer, int offsetFloats, float[] data ){
+		check( clEnqueueWriteBuffer( queue, buffer, true, 4L * offsetFloats, data, null, null ), "write" );
+	}
+
+	void read( long buffer, int offsetFloats, float[] into ){
+		check( clEnqueueReadBuffer( queue, buffer, true, 4L * offsetFloats, into, null, null ), "read" );
 	}
 
 	void write( long buffer, float[] data ){

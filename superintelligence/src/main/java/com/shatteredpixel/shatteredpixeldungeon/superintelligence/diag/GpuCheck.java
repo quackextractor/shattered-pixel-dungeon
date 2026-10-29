@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
@@ -14,6 +15,8 @@ public class GpuCheck {
 	private static final int CHECKS = 4;
 
 	private static final double TOLERANCE = 1e-4;
+
+	private static final double STEP_TOLERANCE = 1e-2;
 
 	private static final long SEED = 20261029L;
 
@@ -65,6 +68,24 @@ public class GpuCheck {
 					+ tensor + " element " + at + ", tolerance " + TOLERANCE );
 			return;
 		}
+		double step = 0, moved = 0;
+		for (int i = 0; i < cpu.layers.length; i++){
+			for (int part = 0; part < 2; part++){
+				float[] b = part == 0 ? cpu.before[ i ].weights : cpu.before[ i ].bias;
+				float[] x = part == 0 ? cpu.layers[ i ].weights : cpu.layers[ i ].bias;
+				float[] y = part == 0 ? gpu.layers[ i ].weights : gpu.layers[ i ].bias;
+				for (int k = 0; k < b.length; k++){
+					step += (double) ( x[ k ] - b[ k ] ) * ( x[ k ] - b[ k ] );
+					moved += (double) ( x[ k ] - y[ k ] ) * ( x[ k ] - y[ k ] );
+				}
+			}
+		}
+		double drift = Math.sqrt( moved / Math.max( 1e-30, step ));
+		if (step == 0 || drift > STEP_TOLERANCE){
+			fail( where + ": the GPU Adam step moved the parameters " + drift + " of the CPU step's length away from it,"
+					+ " tolerance " + STEP_TOLERANCE );
+			return;
+		}
 		for (int m = 0; m < METRICS.length; m++){
 			if (Math.abs( cpu.metrics[ m ] - gpu.metrics[ m ] ) > 1e-3 * Math.max( 1f, Math.abs( cpu.metrics[ m ] ))){
 				fail( where + ": " + METRICS[ m ] + " reads " + gpu.metrics[ m ] + " on the GPU and "
@@ -73,7 +94,8 @@ public class GpuCheck {
 			}
 		}
 		System.out.println( "  " + where + ": GPU and CPU gradients agree to " + worst + " of the norm "
-				+ (float) norm + "; policy loss " + gpu.metrics[ 0 ] + " on both" );
+				+ (float) norm + ", parameters after the Adam step to " + (float) drift + " of the step; policy loss "
+				+ gpu.metrics[ 0 ] + " on both" );
 	}
 
 	private static void checkTheShippedSizeIsFaster(){
@@ -92,6 +114,7 @@ public class GpuCheck {
 	}
 
 	private static class Run {
+		Network.Layer[] before, layers;
 		float[][] gradients;
 		float[] metrics;
 		double msPerSample;
@@ -111,9 +134,12 @@ public class GpuCheck {
 				batch.get( i ).stepIndex = i;
 			}
 			ppo.buffer().addAll( batch );
+			Network.Layer[] before = copy( ppo.network.layers() );
 			long start = System.nanoTime();
 			ppo.update();
 			Run r = new Run();
+			r.before = before;
+			r.layers = copy( ppo.network.layers() );
 			r.msPerSample = ( System.nanoTime() - start ) / 1e6 / samples / epochs;
 			float[][] g = ppo.network.gradientArrays();
 			r.gradients = new float[ g.length ][];
@@ -124,6 +150,15 @@ public class GpuCheck {
 		} finally {
 			ppo.close();
 		}
+	}
+
+	private static Network.Layer[] copy( Network.Layer[] layers ){
+		Network.Layer[] out = new Network.Layer[ layers.length ];
+		for (int i = 0; i < layers.length; i++){
+			Network.Layer l = layers[ i ];
+			out[ i ] = new Network.Layer( l.name, l.in, l.out, l.weights.clone(), l.bias.clone() );
+		}
+		return out;
 	}
 
 	private static String format( double v ){

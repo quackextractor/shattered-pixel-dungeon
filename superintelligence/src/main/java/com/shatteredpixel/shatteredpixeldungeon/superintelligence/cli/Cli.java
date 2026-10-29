@@ -58,7 +58,8 @@ public final class Cli {
 
 		int failures = new GradientCheck( new EnvConfig(), 7 ).run( verbose )
 				+ new GradientCheck( GradientCheck.nonSquare(), 7 ).run( verbose )
-				+ GradientCheck.checkGridShape( GradientCheck.nonSquare() );
+				+ GradientCheck.checkGridShape( GradientCheck.nonSquare() )
+				+ GradientCheck.checkSparseConvIsExact();
 		return failures > 0 ? 1 : 0;
 	}
 }

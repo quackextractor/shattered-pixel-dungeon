@@ -20,15 +20,13 @@ final class ClEncoder implements AutoCloseable {
 	private final long convW, convB, reduceW, reduceB, trunkW, trunkB, trunkWT;
 	private final long gConvW, gConvB, gReduceW, gReduceB, gTrunkW, gTrunkB;
 
-	private final float[] gConvWHost, gConvBHost, gReduceWHost, gReduceBHost, gTrunkWHost, gTrunkBHost;
-
 	private int capacity;
 	private long packed, extras, grid, convPre, reducePre, concat, dReduce, dConv, partial, partialBias;
 	long hiddenOut, dHidden;
 	private ByteBuffer packedHost;
 	private FloatBuffer extrasHost;
 
-	ClEncoder( ClDevice cl, Network net ){
+	ClEncoder( ClDevice cl, Network net, ClParameters params ){
 		this.cl = cl;
 		this.net = net;
 		kUnpack = cl.kernel( "unpack_grid" );
@@ -65,26 +63,19 @@ final class ClEncoder implements AutoCloseable {
 		planeLevels = cl.floats( levels.length );
 		cl.write( planeLevels, levels );
 
-		convW = cl.floats( net.conv.W.data.length );
-		convB = cl.floats( net.conv.b.data.length );
-		reduceW = cl.floats( net.reduce.W.data.length );
-		reduceB = cl.floats( net.reduce.b.data.length );
-		trunkW = cl.floats( net.trunk.W.data.length );
-		trunkB = cl.floats( net.trunk.b.data.length );
+		convW = params.weight( 0 );
+		convB = params.bias( 0 );
+		reduceW = params.weight( 1 );
+		reduceB = params.bias( 1 );
+		trunkW = params.weight( 2 );
+		trunkB = params.bias( 2 );
 		trunkWT = cl.floats( net.trunk.W.data.length );
-		gConvW = cl.floats( net.conv.W.data.length );
-		gConvB = cl.floats( net.conv.b.data.length );
-		gReduceW = cl.floats( net.reduce.W.data.length );
-		gReduceB = cl.floats( net.reduce.b.data.length );
-		gTrunkW = cl.floats( net.trunk.W.data.length );
-		gTrunkB = cl.floats( net.trunk.b.data.length );
-
-		gConvWHost = new float[ net.conv.gW.data.length ];
-		gConvBHost = new float[ net.conv.gb.data.length ];
-		gReduceWHost = new float[ net.reduce.gW.data.length ];
-		gReduceBHost = new float[ net.reduce.gb.data.length ];
-		gTrunkWHost = new float[ net.trunk.gW.data.length ];
-		gTrunkBHost = new float[ net.trunk.gb.data.length ];
+		gConvW = params.weightGrad( 0 );
+		gConvB = params.biasGrad( 0 );
+		gReduceW = params.weightGrad( 1 );
+		gReduceB = params.biasGrad( 1 );
+		gTrunkW = params.weightGrad( 2 );
+		gTrunkB = params.biasGrad( 2 );
 	}
 
 	ByteBuffer packedStage( int rows ){
@@ -100,7 +91,7 @@ final class ClEncoder implements AutoCloseable {
 	}
 
 	void forward( int rows ){
-		uploadWeights();
+		cl.run( kTranspose, (long) trunkIn * hidden, trunkW, trunkWT, trunkIn, hidden );
 		cl.write( packed, packedHost.rewind() );
 		cl.write( extras, extrasHost.rewind() );
 
@@ -137,29 +128,6 @@ final class ClEncoder implements AutoCloseable {
 		cl.run( kSum, (long) convPatch * c.outChannels, partial, gConvW, rows, convPatch * c.outChannels );
 		cl.run( kSum, (long) rows * c.outChannels, dConv, partialBias, c.outWidth * c.outHeight, c.outChannels );
 		cl.run( kSum, c.outChannels, partialBias, gConvB, rows, c.outChannels );
-
-		addGradient( gTrunkW, gTrunkWHost, net.trunk.gW );
-		addGradient( gTrunkB, gTrunkBHost, net.trunk.gb );
-		addGradient( gReduceW, gReduceWHost, net.reduce.gW );
-		addGradient( gReduceB, gReduceBHost, net.reduce.gb );
-		addGradient( gConvW, gConvWHost, net.conv.gW );
-		addGradient( gConvB, gConvBHost, net.conv.gb );
-	}
-
-	private void addGradient( long buffer, float[] host, Tensor into ){
-		cl.read( buffer, host );
-		float[] g = into.data;
-		for (int i = 0; i < g.length; i++) g[ i ] += host[ i ];
-	}
-
-	private void uploadWeights(){
-		cl.write( convW, net.conv.W.data );
-		cl.write( convB, net.conv.b.data );
-		cl.write( reduceW, net.reduce.W.data );
-		cl.write( reduceB, net.reduce.b.data );
-		cl.write( trunkW, net.trunk.W.data );
-		cl.write( trunkB, net.trunk.b.data );
-		cl.run( kTranspose, (long) trunkIn * hidden, trunkW, trunkWT, trunkIn, hidden );
 	}
 
 	private void reserve( int rows ){
@@ -191,7 +159,6 @@ final class ClEncoder implements AutoCloseable {
 	@Override
 	public void close(){
 		releaseRows();
-		cl.release( planeLevels, convW, convB, reduceW, reduceB, trunkW, trunkB, trunkWT,
-				gConvW, gConvB, gReduceW, gReduceB, gTrunkW, gTrunkB );
+		cl.release( planeLevels, trunkWT );
 	}
 }

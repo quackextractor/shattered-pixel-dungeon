@@ -23,6 +23,10 @@ public class Conv2D {
 
 	private final float[] preAct;
 
+	private final float[] zeros;
+
+	private boolean sparse;
+
 	public Conv2D( int inChannels, int inWidth, int inHeight, int outChannels, int kernel, int stride, Random rng ){
 		this.inChannels = inChannels;
 		this.inWidth = inWidth;
@@ -48,6 +52,7 @@ public class Conv2D {
 
 		this.col = new Tensor( patch, outWidth * outHeight );
 		this.preAct = new float[ outWidth * outHeight * outChannels ];
+		this.zeros = new float[ inWidth * inHeight ];
 
 		W.randomNormal( rng, (float) Math.sqrt( 2.0 / patch ) );
 		b.fill( 0f );
@@ -70,24 +75,49 @@ public class Conv2D {
 	}
 
 	public void forward( float[] input, Tensor out ){
-		im2col( input );
-
 		int positions = outWidth * outHeight;
-		float[] o = preAct, w = W.data, c = col.data;
+		float[] o = preAct, w = W.data;
 		for (int p = 0; p < positions; p++) System.arraycopy( b.data, 0, o, p * outChannels, outChannels );
 
-		for (int k = 0; k < W.rows; k++){
-			int colOff = k * col.cols;
-			int wOff = k * outChannels;
-			for (int p = 0; p < positions; p++){
-				float x = c[ colOff + p ];
-				if (x == 0f) continue;
-				int oOff = p * outChannels;
+		int planeSize = inWidth * inHeight, nonZero = 0;
+		for (int ch = 0; ch < inChannels; ch++){
+			int plane = ch * planeSize, end = plane + planeSize;
+			if (sparse){
+				for (int at = plane;;){
+					int skip = java.util.Arrays.mismatch( input, at, end, zeros, 0, end - at );
+					if (skip < 0) break;
+					at += skip + 1;
+					float x = input[ at - 1 ];
+					if (x == 0f) continue;
+					scatter( x, ch, at - 1 - plane, o, w );
+					nonZero++;
+				}
+			} else {
+				for (int at = plane; at < end; at++){
+					float x = input[ at ];
+					if (x == 0f) continue;
+					scatter( x, ch, at - plane, o, w );
+					nonZero++;
+				}
+			}
+		}
+		sparse = nonZero * 10 < inChannels * planeSize;
+
+		for (int i = 0; i < o.length; i++) out.data[ i ] = Math.max( 0f, o[ i ] );
+	}
+
+	private void scatter( float x, int ch, int cell, float[] o, float[] w ){
+		int iy = cell / inWidth, ix = cell - iy * inWidth;
+		int oyFirst = Math.max( 0, ( iy - kernel + stride ) / stride ), oyLast = Math.min( outHeight - 1, iy / stride );
+		int oxFirst = Math.max( 0, ( ix - kernel + stride ) / stride ), oxLast = Math.min( outWidth - 1, ix / stride );
+		for (int oy = oyFirst; oy <= oyLast; oy++){
+			int row = ( ch * kernel + iy - oy * stride ) * kernel;
+			for (int ox = oxFirst; ox <= oxLast; ox++){
+				int wOff = ( row + ix - ox * stride ) * outChannels;
+				int oOff = ( oy * outWidth + ox ) * outChannels;
 				for (int q = 0; q < outChannels; q++) o[ oOff + q ] += x * w[ wOff + q ];
 			}
 		}
-
-		for (int i = 0; i < o.length; i++) out.data[ i ] = Math.max( 0f, o[ i ] );
 	}
 
 	private void im2col( float[] input ){

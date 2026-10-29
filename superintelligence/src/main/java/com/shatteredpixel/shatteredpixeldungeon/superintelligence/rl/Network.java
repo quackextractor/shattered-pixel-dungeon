@@ -33,7 +33,9 @@ public class Network extends NetworkWeights {
 	private final Tensor dConv;
 
 
-	private final float[] gridSnapshot;
+	private final int gridLength;
+
+	private float[] lastGrid;
 
 	public Network( EnvConfig config, Random rng ){
 		super( config, rng );
@@ -64,7 +66,7 @@ public class Network extends NetworkWeights {
 		this.dReduce = new Tensor( 1, convFeatures );
 		this.dConv = new Tensor( 1, conv.outputSize() );
 
-		this.gridSnapshot = new float[ config.spatialChannels() * config.gridWidth * config.gridHeight ];
+		this.gridLength = config.spatialChannels() * config.gridWidth * config.gridHeight;
 	}
 
 
@@ -74,7 +76,7 @@ public class Network extends NetworkWeights {
 
 
 	public int gridLength(){
-		return gridSnapshot.length;
+		return gridLength;
 	}
 
 
@@ -156,8 +158,7 @@ public class Network extends NetworkWeights {
 	}
 
 	private void runForward( float[] grid, float[] inventory, float[] heroFeatures ){
-		System.arraycopy( grid, 0, gridSnapshot, 0,
-				Math.min( grid.length, gridSnapshot.length ) );
+		lastGrid = grid;
 		encode( grid, inventory, heroFeatures );
 		trunk.forward( concat, hidden );
 		recur();
@@ -209,7 +210,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		backHeadsAndMemory( dActionLogits, dSlotLogits, dTargetLogits, dCritic );
 		dTrunkIn.fill( 0f );
 		trunk.backward( concat, dLstmIn, dTrunkIn );
-		backEncoder( gridSnapshot, dTrunkIn.data );
+		backEncoder( lastGrid, dTrunkIn.data );
 	}
 
 	private void backHeadsAndMemory( float[] dActionLogits, float[] dSlotLogits, float[] dTargetLogits,
@@ -311,7 +312,7 @@ public void backward( float[] dActionLogits, float[] dSlotLogits, float[] dTarge
 		System.arraycopy( cache.concat, 0, concat.data, 0, concat.cols );
 		System.arraycopy( cache.hidden, 0, hidden.data, 0, hidden.cols );
 		System.arraycopy( cache.memoryOut, 0, memoryOut.data, 0, memoryOut.cols );
-		System.arraycopy( cache.grid, 0, gridSnapshot, 0, gridSnapshot.length );
+		lastGrid = cache.grid;
 
 		conv.loadPreAct( cache.convPreAct );
 		for (int i = 0; i < convOut.cols; i++) convOut.data[ i ] = Math.max( 0f, cache.convPreAct[ i ] );

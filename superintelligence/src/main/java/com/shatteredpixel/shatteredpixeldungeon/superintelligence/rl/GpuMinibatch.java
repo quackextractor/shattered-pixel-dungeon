@@ -12,6 +12,7 @@ final class GpuMinibatch implements AutoCloseable {
 	private final ClDevice cl;
 	private final ClEncoder encoder;
 	private final ClRecurrent recurrent;
+	private final ClParameters params;
 
 	private final float[][] headLogits, headProbs, headGrads;
 	private final int[] headOffset;
@@ -20,10 +21,11 @@ final class GpuMinibatch implements AutoCloseable {
 
 	GpuMinibatch( Network net ){
 		this.net = net;
-		cl = new ClDevice( "encoder.cl", "recurrent.cl" );
+		cl = new ClDevice( "encoder.cl", "recurrent.cl", "params.cl" );
 		try {
-			encoder = new ClEncoder( cl, net );
-			recurrent = new ClRecurrent( cl, net );
+			params = new ClParameters( cl, net );
+			encoder = new ClEncoder( cl, net, params );
+			recurrent = new ClRecurrent( cl, net, params );
 		} catch (RuntimeException e){
 			cl.close();
 			throw e;
@@ -45,6 +47,14 @@ final class GpuMinibatch implements AutoCloseable {
 
 	String deviceName(){
 		return cl.name;
+	}
+
+	void begin(){
+		params.upload();
+	}
+
+	void end(){
+		params.download();
 	}
 
 	PPO.Minibatch run( PPO ppo, List< List< Transition > > chunks, int from, int to ){
@@ -75,12 +85,10 @@ final class GpuMinibatch implements AutoCloseable {
 			m.steps += s.steps;
 		}
 
-		ppo.network.zeroGrad();
 		recurrent.backward( steps, count, dLogits, encoder.hiddenOut, encoder.dHidden );
 		encoder.backward( steps * count );
 
-		ppo.network.scaleGradients( 1f / count );
-		m.gradNorm = ppo.network.clipGradients( ppo.network.gradClip );
+		m.gradNorm = params.step( count, ppo.network.gradClip );
 		if (m.gradNorm > ppo.network.gradClip) m.gradClipped = 1;
 		return m;
 	}
@@ -132,6 +140,7 @@ final class GpuMinibatch implements AutoCloseable {
 	public void close(){
 		recurrent.close();
 		encoder.close();
+		params.close();
 		cl.close();
 	}
 }

@@ -3,8 +3,10 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Conv2D;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.StepCache;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Tensor;
 
 import java.lang.reflect.Field;
 import java.util.Random;
@@ -143,6 +145,45 @@ public class GradientCheck {
 		config.gridWidth = 10;
 		config.gridHeight = 18;
 		return config;
+	}
+
+	public static int checkSparseConvIsExact(){
+		Random rng = new Random( 29L );
+		int[][] shapes = { { 22, 48, 48, 24, 4, 2 }, { 24, 23, 23, 32, 4, 2 }, { 3, 10, 18, 5, 3, 1 } };
+		for (int[] sh : shapes){
+			Conv2D conv = new Conv2D( sh[ 0 ], sh[ 1 ], sh[ 2 ], sh[ 3 ], sh[ 4 ], sh[ 5 ], rng );
+			for (int i = 0; i < conv.b.data.length; i++) conv.b.data[ i ] = rng.nextFloat() - 0.5f;
+			float[] input = new float[ sh[ 0 ] * sh[ 1 ] * sh[ 2 ] ];
+			for (int i = 0; i < input.length; i++) input[ i ] = rng.nextFloat() < 0.15f ? rng.nextFloat() * 2f - 0.5f : 0f;
+			Tensor out = new Tensor( 1, conv.outputSize() );
+			conv.forward( input, out );
+			float[] reference = denseConv( conv, input );
+			for (int i = 0; i < reference.length; i++){
+				if (Float.floatToIntBits( Math.max( 0f, reference[ i ] )) != Float.floatToIntBits( out.data[ i ] )){
+					System.err.println( "[ERROR] Conv2D.forward " + java.util.Arrays.toString( sh ) + " output " + i + " is "
+							+ out.data[ i ] + ", the dense im2col order gives " + Math.max( 0f, reference[ i ] ));
+					return 1;
+				}
+			}
+		}
+		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "     the sparse Conv2D.forward equals the dense im2col order bit for bit on 3 shapes" );
+		return 0;
+	}
+
+	private static float[] denseConv( Conv2D c, float[] input ){
+		int positions = c.outWidth * c.outHeight;
+		float[] o = new float[ positions * c.outChannels ];
+		for (int p = 0; p < positions; p++) System.arraycopy( c.b.data, 0, o, p * c.outChannels, c.outChannels );
+		for (int r = 0; r < c.W.rows; r++){
+			int ch = r / ( c.kernel * c.kernel ), ky = ( r / c.kernel ) % c.kernel, kx = r % c.kernel;
+			for (int p = 0; p < positions; p++){
+				float x = input[ ch * c.inWidth * c.inHeight + ( ( p / c.outWidth ) * c.stride + ky ) * c.inWidth
+						+ ( p % c.outWidth ) * c.stride + kx ];
+				if (x == 0f) continue;
+				for (int q = 0; q < c.outChannels; q++) o[ p * c.outChannels + q ] += x * c.W.data[ r * c.outChannels + q ];
+			}
+		}
+		return o;
 	}
 
 	public static int checkGridShape( EnvConfig config ){

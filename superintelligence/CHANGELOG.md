@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Measured on an RX 6900 XT (`out/evidence/gpu-ab-*`, 12 generations from `floor-teach03` generation
   150, 6 workers x 7 episodes): PPO update 10.56 -> 4.73 s a generation, depth 2.92 / 2.93, entropy
   0.456 on both.
+- **Parameters, gradients and Adam state stay on the GPU for a whole update** (`ClParameters`): one
+  upload before the first minibatch, one download after the last, and the norm, clip and Adam step run
+  on the device. Per minibatch the CPU spent 2.4 ms in Adam, 0.9 ms in the norm and clip and ~4 ms moving
+  4.4 MB each way. `gpucheck` now also compares the parameters after the step: 4e-5 of the step's length;
+  dropping Adam's first-moment bias correction fails it at 0.9. 0.186 -> 0.126 ms/sample.
+
 - **`rl.teacher_floor` (0.3): the imitation weight stops decaying there.** Decayed to zero over 300
   generations (`long-teach30`), depth followed the weight down: 2.78 at 0.3, 2.63 at 0.08, 2.43 at 0.02,
   2.17 at 0.001, with entropy 0.58 -> 1.35 and turns 636 -> 980. Held at 0.3 from the start
@@ -39,6 +45,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`train.sh`**, the Linux launcher: finds a JDK, always `--auto`, logs to `out/evidence/<name>.log`.
 
 ### Changed
+- **`Conv2D.forward` scatters only the nonzero inputs and no longer builds an im2col buffer.** A worker
+  spent 60% of its time in `im2col` (JFR, `out/evidence/jfr3`): the trained policy's grids are 1.4%
+  nonzero and the buffer is 352 x 529 floats a step. Each nonzero cell is scattered into the output
+  windows it reaches, rows in order, so every output still sums its terms in patch-row order and the
+  result is bit-identical; long zero runs are skipped with `Arrays.mismatch` when the previous call was
+  under 10% dense. `gradcheck` compares it bit for bit with the dense im2col order on 3 shapes, and
+  swapping the kernel loops fails it by one ulp. `Network.forward` keeps a reference to the grid instead
+  of copying 200 KB per step (5.8% of a worker). Trained-policy forward pass: 0.46 -> 0.28 ms
+  (conv 0.215 -> 0.048, reduce 0.142 -> 0.134).
+- **Throughput on an RX 6900 XT + i5-14600KF**, 12 generations from `floor-teach03` generation 150,
+  turns trained per second of wall clock: CPU update, 6 workers x 7 episodes **2,197**; GPU update
+  4,223; GPU with 12 workers x 4 **7,114** (3.24x; collection 3.53 s, update 3.02 s a generation). 16
+  workers x 3 was slower (5,473): the extra workers land on hyperthreads and E-cores and starve the
+  update thread. `out/evidence/gpu-*`.
 - **`rl.teacher_half_life` 10 -> 30.** Three fresh 100-generation runs, same settings otherwise: half-life 10
   peaked at depth 2.47 by generation 30 and averaged 2.26 over generations 50-99 with entropy climbing to
   1.34; `rl.entropy_coefficient` 0.003 did not stop the climb (2.34, entropy 1.27); half-life 30 averaged
