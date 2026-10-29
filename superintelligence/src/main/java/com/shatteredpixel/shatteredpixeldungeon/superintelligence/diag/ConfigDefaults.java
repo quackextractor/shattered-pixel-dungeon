@@ -119,6 +119,7 @@ public final class ConfigDefaults {
 			case "rl.value_gradient_clip":    return String.valueOf( hyper.valueGradientClip );
 			case "rl.teacher_weight":         return String.valueOf( hyper.teacherWeight );
 			case "rl.teacher_half_life":      return String.valueOf( hyper.teacherHalfLife );
+			case "rl.teacher_floor":          return String.valueOf( hyper.teacherFloor );
 			case "rl.demo_weight":            return String.valueOf( hyper.demoWeight );
 			case "rl.huber_values":           return String.valueOf( hyper.huberValues );
 			case "rl.max_grad_norm":          return String.valueOf( hyper.maxGradNorm );
@@ -239,6 +240,7 @@ public final class ConfigDefaults {
 			case "rl.value_gradient_clip":    return "3.5";
 			case "rl.teacher_weight":         return "0.25";
 			case "rl.teacher_half_life":      return "4.0";
+			case "rl.teacher_floor":          return "0.125";
 			case "rl.demo_weight":            return "0.75";
 			case "rl.max_grad_norm":          return "0.75";
 			case "rl.adam_beta1":             return "0.5";

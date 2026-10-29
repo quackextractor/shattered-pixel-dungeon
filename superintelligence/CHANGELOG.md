@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`rl.teacher_floor` (0.3): the imitation weight stops decaying there.** Decayed to zero over 300
+  generations (`long-teach30`), depth followed the weight down: 2.78 at 0.3, 2.63 at 0.08, 2.43 at 0.02,
+  2.17 at 0.001, with entropy 0.58 -> 1.35 and turns 636 -> 980. Held at 0.3 from the start
+  (`const-teach03`), it stayed 2.74-2.83 over generations 60-149 with entropy falling to 0.46. Capped at
+  `rl.teacher_weight`, so 0 still turns the teacher off. `teachercheck` holds the schedule; with the floor
+  removed it reads 0.00098 at generation 300. On the defaults (`floor-teach03`, 150 generations): 2.82
+  over generations 50-149, 2.90-2.92 over 120-149, entropy 0.79 -> 0.36.
 - **`train --auto` and `autotune`.** Probe RAM (`/proc/meminfo` MemAvailable, else the OS bean) and CPU
   (timed PPO update at 1, 2, 4 .. cores threads), then set `--workers` and `--update-threads` unless given.
   This machine: 20 cores, 16.4 GB free -> 7 workers, 4 update threads (1.28 ms/sample at 4, 1.26 at 8).

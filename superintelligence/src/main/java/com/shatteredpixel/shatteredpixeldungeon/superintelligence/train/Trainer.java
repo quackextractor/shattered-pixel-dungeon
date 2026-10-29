@@ -47,6 +47,8 @@ public class Trainer {
 
 	private float teacherHalfLife = 30f;
 
+	private float teacherFloor = 0.3f;
+
 	private DemoSource demos;
 
 	public void demonstrations( DemoSource demos ){
@@ -144,6 +146,7 @@ public class Trainer {
 		hyper.applyTo( ppo );
 		teacherWeight = hyper.teacherWeight;
 		teacherHalfLife = hyper.teacherHalfLife;
+		teacherFloor = hyper.teacherFloor;
 	}
 
 	public MetricsHistory metrics(){ return metrics; }
@@ -303,7 +306,7 @@ Worker.writeWeights( out, ppo.network );
 
 			if (!episodes.isEmpty()){
 				ResourceStats.Interval update = ResourceStats.start();
-				ppo.teacherWeight = (float) (teacherWeight * Math.pow( 0.5, epoch / teacherHalfLife ));
+				ppo.teacherWeight = PpoHyperparameters.teacherWeightAt( teacherWeight, teacherHalfLife, teacherFloor, epoch );
 				pool.whileBusy( () -> {
 					if (demos != null) ppo.demonstrations.addAll( demos.transitions( ppo.network ));
 					ppo.update();

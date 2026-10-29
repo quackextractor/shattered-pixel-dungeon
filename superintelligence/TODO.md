@@ -25,4 +25,9 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       so the bonus is not the drift. Every run peaks while the teacher has weight (half-life 10) and
       declines after. `fresh-1023-teach30`: 2.72 over gens 50-99 (sd 0.15),
       entropy 0.55-0.75, now the default; eases to 2.56 by gen 90-99 at weight 0.125. Ascents 80/257.
-      Next: a longer run to see whether depth holds once the teacher is gone, or a weight floor.
+      `long-teach30` (300 gens): depth tracks the teacher weight - 2.78 at weight 0.3 (gens 40-59), 2.63
+      at 0.08, 2.43 at 0.02, 2.17 at 0.001; entropy 0.58 -> 1.35, turns 636 -> 980. PPO alone drifts back
+      to the half-life-10 plateau. `const-teach03` (weight held 0.3): 2.74-2.83 over gens 60-149,
+      entropy 0.46. Now `rl.teacher_floor` 0.3. `floor-teach03` (defaults, 150 gens):
+      2.82 over gens 50-149 (sd 0.15), 2.90-2.92 in gens 120-149 and still rising, entropy 0.36.
+      Next: a longer run on the floor; the plateau is still well short of floor 4.

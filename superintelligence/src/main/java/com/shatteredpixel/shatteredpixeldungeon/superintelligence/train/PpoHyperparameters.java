@@ -18,6 +18,8 @@ public class PpoHyperparameters {
 
 	public float teacherHalfLife = 30f;
 
+	public float teacherFloor = 0.3f;
+
 	public float demoWeight = 1f;
 
 	public float learningRate = 3e-4f;
@@ -87,6 +89,7 @@ public class PpoHyperparameters {
 		require( entropyCoeff >= 0f, "rl.entropy_coefficient must be non-negative, was " + entropyCoeff );
 		require( teacherWeight >= 0f, "rl.teacher_weight must be non-negative, was " + teacherWeight );
 		require( teacherHalfLife > 0f, "rl.teacher_half_life must be positive, was " + teacherHalfLife );
+		require( teacherFloor >= 0f, "rl.teacher_floor must be non-negative, was " + teacherFloor );
 		require( demoWeight >= 0f, "rl.demo_weight must be non-negative, was " + demoWeight );
 		require( minibatchSize >= 1, "rl.minibatch_size must be at least 1, was " + minibatchSize );
 		require( epochs >= 1, "rl.epochs must be at least 1, was " + epochs );
@@ -128,6 +131,10 @@ public class PpoHyperparameters {
 		if (!condition) throw new IllegalArgumentException( message );
 	}
 
+	public static float teacherWeightAt( float weight, float halfLife, float floor, int generation ){
+		return (float) Math.max( Math.min( floor, weight ), weight * Math.pow( 0.5, generation / halfLife ));
+	}
+
 	public PpoHyperparameters copy(){
 		PpoHyperparameters p = new PpoHyperparameters();
 		p.gamma = gamma;
@@ -137,6 +144,7 @@ public class PpoHyperparameters {
 		p.entropyCoeff = entropyCoeff;
 		p.teacherWeight = teacherWeight;
 		p.teacherHalfLife = teacherHalfLife;
+		p.teacherFloor = teacherFloor;
 		p.demoWeight = demoWeight;
 		p.learningRate = learningRate;
 		p.minibatchSize = minibatchSize;

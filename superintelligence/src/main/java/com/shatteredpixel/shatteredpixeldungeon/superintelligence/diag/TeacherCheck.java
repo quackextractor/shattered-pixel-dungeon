@@ -17,6 +17,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeColl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.PpoHyperparameters;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +25,7 @@ import java.util.Random;
 
 public class TeacherCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 5;
 
 	private static final String[] SEEDS = { "TEACHER-A", "TEACHER-B", "TEACHER-C", "TEACHER-D", "TEACHER-E", "TEACHER-F" };
 
@@ -38,6 +39,7 @@ public class TeacherCheck {
 		checkAnUpdateMovesThePolicyTowardTheTeacher();
 		checkADemonstrationIsImitated();
 		checkEachEpisodeGetsAFreshTeacher();
+		checkTheWeightDecaysToItsFloor();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     teacher: " + CHECKS + " checks passed" );
@@ -148,6 +150,20 @@ public class TeacherCheck {
 			return;
 		}
 		System.out.println( "  a teacher reused by the collector starts each episode fresh" );
+	}
+
+	private static void checkTheWeightDecaysToItsFloor(){
+		float start = PpoHyperparameters.teacherWeightAt( 1f, 30f, 0.3f, 0 );
+		float halved = PpoHyperparameters.teacherWeightAt( 1f, 30f, 0.3f, 30 );
+		float late = PpoHyperparameters.teacherWeightAt( 1f, 30f, 0.3f, 300 );
+		float off = PpoHyperparameters.teacherWeightAt( 0f, 30f, 0.3f, 300 );
+		if (start != 1f || Math.abs( halved - 0.5f ) > 1e-6f || late != 0.3f || off != 0f){
+			fail( "teacher weight 1, half-life 30, floor 0.3 read " + start + " at generation 0, " + halved + " at 30, "
+					+ late + " at 300, and " + off + " at 300 with weight 0; it has to start at the weight, halve per"
+					+ " half-life, stop at the floor, and stay off at weight 0" );
+			return;
+		}
+		System.out.println( "  teacher weight 1 -> " + halved + " at one half-life, held at " + late + ", off stays " + off );
 	}
 
 	private static float[] demoProbabilityAcrossAnUpdate( EnvConfig config, Replay replay, float weight ){
