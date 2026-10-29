@@ -1,7 +1,11 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryEncoder;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.BatchedInference;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Network;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PPO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition;
 
@@ -12,7 +16,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class GpuCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 5;
 
 	private static final double TOLERANCE = 1e-4;
 
@@ -36,6 +40,7 @@ public class GpuCheck {
 		checkTheGradientMatchesTheCpu( "10x10", small(), 4, 128 );
 		checkTheGradientMatchesTheCpu( "48x48", new EnvConfig(), 4, 128 );
 		checkTheShippedSizeIsFaster();
+		checkBatchedInferenceMatchesTheCpu();
 
 		System.exit( GateReport.report( "gpu update", CHECKS ));
 	}
@@ -111,6 +116,63 @@ public class GpuCheck {
 			return;
 		}
 		System.out.println( "  " + line + " (" + format( cpu.msPerSample / gpu.msPerSample ) + "x)" );
+	}
+
+	private static void checkBatchedInferenceMatchesTheCpu(){
+		EnvConfig config = new EnvConfig();
+		int envs = 3, steps = 6;
+		Network source = new Network( config, new Random( SEED ));
+		BatchedInference server = new BatchedInference( source );
+		try {
+			Network[] cpu = new Network[ envs ];
+			RemoteNetwork[] gpu = new RemoteNetwork[ envs ];
+			for (int e = 0; e < envs; e++){
+				cpu[ e ] = new Network( config, new Random( 1 ));
+				cpu[ e ].copyParametersFrom( source );
+				gpu[ e ] = new RemoteNetwork( config, new Random( 1 ), server );
+			}
+			double[] worst = new double[ envs ];
+			Thread[] threads = new Thread[ envs ];
+			for (int e = 0; e < envs; e++){
+				final int id = e;
+				threads[ e ] = new Thread( () -> {
+					Random rng = new Random( 100 + id );
+					float[] grid = new float[ cpu[ id ].gridLength() ];
+					float[] inventory = new float[ config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT ];
+					float[] hero = new float[ HeroEncoder.FEATURES ];
+					for (int t = 0; t < steps; t++){
+						java.util.Arrays.fill( grid, 0f );
+						for (int i = 0; i < grid.length; i++) if (rng.nextFloat() < 0.02f) grid[ i ] = 1f;
+						for (int i = 0; i < hero.length; i++) hero[ i ] = rng.nextFloat();
+						for (int i = 0; i < inventory.length; i++) inventory[ i ] = rng.nextFloat() < 0.3f ? rng.nextFloat() : 0f;
+						cpu[ id ].forward( grid, inventory, hero );
+						gpu[ id ].forward( grid, inventory, hero );
+						float[][] a = { cpu[ id ].actionLogits(), cpu[ id ].slotLogits(), cpu[ id ].targetLogits(), { cpu[ id ].value() } };
+						float[][] b = { gpu[ id ].actionLogits(), gpu[ id ].slotLogits(), gpu[ id ].targetLogits(), { gpu[ id ].value() } };
+						for (int h = 0; h < a.length; h++){
+							for (int k = 0; k < a[ h ].length; k++){
+								worst[ id ] = Math.max( worst[ id ], Math.abs( a[ h ][ k ] - b[ h ][ k ] ) / Math.max( 1f, Math.abs( a[ h ][ k ] )));
+							}
+						}
+					}
+				} );
+				threads[ e ].start();
+			}
+			for (Thread t : threads) t.join();
+			double max = 0;
+			for (double w : worst) max = Math.max( max, w );
+			if (max > 1e-4){
+				fail( "batched GPU inference for " + envs + " envs over " + steps + " steps differs from the CPU network by " + max );
+				return;
+			}
+			System.out.println( "  batched GPU inference, " + envs + " envs x " + steps + " steps on their own threads: logits and value"
+					+ " agree with the CPU network to " + (float) max );
+		} catch (InterruptedException e){
+			Thread.currentThread().interrupt();
+			fail( "interrupted while comparing batched inference" );
+		} finally {
+			server.close();
+		}
 	}
 
 	private static class Run {

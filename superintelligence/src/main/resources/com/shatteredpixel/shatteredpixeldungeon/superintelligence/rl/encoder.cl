@@ -156,3 +156,57 @@ __kernel void conv_input_grad( __global const float* dPre, __global const float*
 	}
 	dIn[ gid ] = sum;
 }
+
+__kernel void dense_forward_tanh_wt( __global const float* x, __global const float* WT, __global const float* b,
+		__global float* y, const int in, const int out ){
+	__local float part[ 64 ];
+	int group = get_group_id( 0 );
+	int lid = get_local_id( 0 );
+	int n = group / out;
+	int j = group - n * out;
+	__global const float* xr = x + (long) n * in;
+	__global const float* w = WT + (long) j * in;
+	float sum = 0.0f;
+	for (int m = lid; m < in; m += 64) sum += xr[ m ] * w[ m ];
+	part[ lid ] = sum;
+	barrier( CLK_LOCAL_MEM_FENCE );
+	for (int k = 32; k > 0; k >>= 1){
+		if (lid < k) part[ lid ] += part[ lid + k ];
+		barrier( CLK_LOCAL_MEM_FENCE );
+	}
+	if (lid == 0) y[ group ] = tanh( b[ j ] + part[ 0 ] );
+}
+
+__kernel void conv_packed_forward( __global const uchar* packed, __global const int* planeLevels, __global const float* W,
+		__global const float* b, __global float* pre, const int packedBytes, const int area, const float levels,
+		const int inC, const int inW, const int outC, const int k, const int stride, const int outW, const int outH ){
+	int gid = get_global_id( 0 );
+	int groups = ( outC + 7 ) / 8;
+	int positions = outW * outH;
+	int perSample = positions * groups;
+	int n = gid / perSample;
+	int r = gid - n * perSample;
+	int p = r / groups;
+	int q0 = ( r - p * groups ) * 8;
+	int oy = ( p / outW ) * stride;
+	int ox = ( p % outW ) * stride;
+	__global const uchar* g = packed + (long) n * packedBytes;
+	float acc[ 8 ];
+	for (int j = 0; j < 8; j++) acc[ j ] = q0 + j < outC ? b[ q0 + j ] : 0.0f;
+	for (int ch = 0; ch < inC; ch++){
+		int at = planeLevels[ ch ];
+		for (int ky = 0; ky < k; ky++){
+			int row = ( oy + ky ) * inW + ox;
+			for (int kx = 0; kx < k; kx++){
+				int cell = row + kx;
+				int i = ch * area + cell;
+				float v = at >= 0 ? g[ at + cell ] / levels : (float) ( ( g[ i >> 3 ] >> ( i & 7 ) ) & 1 );
+				if (v == 0.0f) continue;
+				__global const float* w = W + ( ( ch * k + ky ) * k + kx ) * outC + q0;
+				for (int j = 0; j < 8; j++) if (q0 + j < outC) acc[ j ] += v * w[ j ];
+			}
+		}
+	}
+	__global float* o = pre + ( (long) n * positions + p ) * outC + q0;
+	for (int j = 0; j < 8; j++) if (q0 + j < outC) o[ j ] = acc[ j ];
+}

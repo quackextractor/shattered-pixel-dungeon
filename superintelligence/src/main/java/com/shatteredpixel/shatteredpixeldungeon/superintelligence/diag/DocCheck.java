@@ -181,32 +181,21 @@ public class DocCheck {
 	}
 
 
+	private static final java.util.List< String > UNITS = java.util.Arrays.asList( "zero", "one", "two", "three", "four",
+			"five", "six", "seven", "eight", "nine" );
+
+	private static final java.util.List< String > TENS = java.util.Arrays.asList( "", "", "twenty", "thirty", "forty",
+			"fifty", "sixty", "seventy", "eighty", "ninety" );
+
 	private static int spelledNumber( String word ){
-		switch (word.toLowerCase()){
-			case "twenty": return 20;
-			case "twenty-one": return 21;
-			case "twenty-two": return 22;
-			case "twenty-three": return 23;
-			case "twenty-four": return 24;
-			case "twenty-five": return 25;
-			case "twenty-six": return 26;
-			case "twenty-seven": return 27;
-			case "twenty-eight": return 28;
-			case "twenty-nine": return 29;
-			case "thirty": return 30;
-			case "thirty-one": return 31;
-			case "thirty-two": return 32;
-			case "thirty-three": return 33;
-			case "thirty-four": return 34;
-			case "thirty-five": return 35;
-			case "thirty-six": return 36;
-			case "thirty-seven": return 37;
-			default:
-				try {
-					return Integer.parseInt( word );
-				} catch (NumberFormatException e){
-					return -1;
-				}
+		String[] parts = word.toLowerCase().split( "-" );
+		int tens = TENS.indexOf( parts[ 0 ] );
+		if (tens >= 2 && parts.length == 1) return tens * 10;
+		if (tens >= 2 && parts.length == 2 && UNITS.indexOf( parts[ 1 ] ) > 0) return tens * 10 + UNITS.indexOf( parts[ 1 ] );
+		try {
+			return Integer.parseInt( word );
+		} catch (NumberFormatException e){
+			return -1;
 		}
 	}
 

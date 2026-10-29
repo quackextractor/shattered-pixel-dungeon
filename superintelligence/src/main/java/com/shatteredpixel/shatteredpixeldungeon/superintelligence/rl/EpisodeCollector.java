@@ -168,7 +168,7 @@ public class EpisodeCollector {
 
 		while (env.running()){
 			Transition snapshot = snapshot( env );
-			network.forward( env.grid(), env.inventory(), env.heroFeatures() );
+			network.forward( env.grid(), env.gridTouched(), env.gridTouchedCount(), env.inventory(), env.heroFeatures() );
 
 			int liveHead = headFor( env.mode() );
 			if (teacher != null) snapshot.teacherIndex = teacher.label( env, liveHead );
@@ -222,7 +222,7 @@ public class EpisodeCollector {
 					logProbability );
 
 			if (!env.running()){
-				network.forward( env.grid(), env.inventory(), env.heroFeatures() );
+				network.forward( env.grid(), env.gridTouched(), env.gridTouchedCount(), env.inventory(), env.heroFeatures() );
 				record.finalValue( baseline() );
 			}
 		}
@@ -249,7 +249,7 @@ public class EpisodeCollector {
 			Replay.Step step = replay.steps.get( i );
 			Action action = Action.valueOf( step.action );
 			Transition t = snapshot( env );
-			network.forward( env.grid(), env.inventory(), env.heroFeatures() );
+			network.forward( env.grid(), env.gridTouched(), env.gridTouchedCount(), env.inventory(), env.heroFeatures() );
 			t.liveHead = headFor( env.mode() );
 			t.actionIndex = action.index;
 			t.slotIndex = step.slot;
@@ -273,7 +273,7 @@ public class EpisodeCollector {
 
 	private Transition snapshot( SPDEnv env ){
 		Transition t = take();
-		t.packGrid( env.grid() );
+		t.packGrid( env.grid(), env.gridTouched(), env.gridTouchedCount() );
 		System.arraycopy( env.inventory(), 0, t.inventory, 0, inventorySize );
 		System.arraycopy( env.heroFeatures(), 0, t.hero, 0, heroSize );
 		System.arraycopy( env.actionMask(), 0, t.actionMask, 0, t.actionMask.length );

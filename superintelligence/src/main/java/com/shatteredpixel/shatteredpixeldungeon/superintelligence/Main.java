@@ -82,6 +82,7 @@ public class Main {
 		case "valuescale": ValueScale.main( rest ); break;
 		case "parallelcheck": ParallelCheck.main( rest ); break;
 		case "gpucheck": GpuCheck.main( rest ); break;
+		case "sparsecheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SparseObservationCheck.main( rest ); break;
 		case "rewardcheck": RewardCheck.main( rest ); break;
 		case "transitioncheck": TransitionCheck.main( rest ); break;
 		case "travelcheck": TravelCheck.main( rest ); break;

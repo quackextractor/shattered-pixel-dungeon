@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **In-process workers (`worker.in_process`).** Each worker is a thread in the trainer with its own
+  `IsolatedLoader`, so its game statics are its own; it speaks the same protocol over `java.nio` pipes.
+  `com.badlogic.*`, `org.lwjgl.*` and `superintelligence.shared.*` stay shared, so gdx natives load once;
+  `ThreadRouted` proxies every `Gdx` service per thread, which a seed-text race between envs needed (one
+  env read another's preferences). 24 envs in one JVM replay transcripts identical to a lone env.
+- **Batched GPU inference for in-process workers** (`BatchedInference`, `RemoteNetwork`,
+  `InferenceBroker`): envs submit packed grids, pipelines on the GPU run the encoder, one LSTM step and the
+  heads for whatever is pending, and per-env LSTM state stays with the server. Matches the CPU network to
+  2e-7 (`gpucheck` case 5). New kernels: a 64-lane reduction for the trunk and the LSTM gates, and a first
+  convolution that reads packed bits and computes 8 channels a thread. 48 envs: 43,500 forwards/s.
+- **`sparsecheck`.** The observation encoder lists the cells it writes; clearing and packing touch only
+  those. Over 1,126 steps every nonzero cell is listed and the sparse pack equals the full one.
+
 - **The update runs on the GPU (`rl.device`, default `auto`).** OpenCL through LWJGL 3.3.3, the binding
   stack the viewer already ships; `rl.device=gpu` fails without a device, `cpu` is the old path. Each
   minibatch is laid out timestep-major (`row = t * chunks + chunk`, short chunks zero-padded): packed
@@ -45,6 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`train.sh`**, the Linux launcher: finds a JDK, always `--auto`, logs to `out/evidence/<name>.log`.
 
 ### Changed
+- **Env hot paths** (profiled on in-process collection): `Travel` builds the harmful-cell mask once per
+  walkability pass instead of scanning every blob for every cell, and stops rebuilding the walkable grid to
+  read one cell; `StairPotential` compares the map to a copy instead of hashing it twice a step;
+  `Transition.packGrid` skips zero runs.
 - **`Conv2D.forward` scatters only the nonzero inputs and no longer builds an im2col buffer.** A worker
   spent 60% of its time in `im2col` (JFR, `out/evidence/jfr3`): the trained policy's grids are 1.4%
   nonzero and the buffer is 352 x 529 floats a step. Each nonzero cell is scattered into the output

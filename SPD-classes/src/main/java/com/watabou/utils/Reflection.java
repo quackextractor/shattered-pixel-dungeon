@@ -50,7 +50,7 @@ public class Reflection {
 	
 	public static Class forName( String name ){
 		try {
-			return ClassReflection.forName( name );
+			return Class.forName( name, true, Reflection.class.getClassLoader() );
 		} catch (Exception e) {
 			Game.reportException(e);
 			return null;
@@ -58,7 +58,7 @@ public class Reflection {
 	}
 	
 	public static Class forNameUnhandled( String name ) throws Exception {
-		return ClassReflection.forName( name );
+		return Class.forName( name, true, Reflection.class.getClassLoader() );
 	}
 	
 }

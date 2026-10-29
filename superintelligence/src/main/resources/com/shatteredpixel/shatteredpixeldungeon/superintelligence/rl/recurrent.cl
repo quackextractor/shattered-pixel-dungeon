@@ -99,3 +99,29 @@ __kernel void lstm_weight_grad( __global const float* X, __global const float* h
 	}
 	gW[ gid ] = sum;
 }
+
+__kernel void lstm_gates_wt( __global const float* X, __global const float* h0, __global const float* hout,
+		__global const float* WT, __global const float* b, __global float* gates,
+		const int t, const int B, const int in, const int s ){
+	__local float part[ 64 ];
+	int G = 4 * s;
+	int R = in + s;
+	int group = get_group_id( 0 );
+	int lid = get_local_id( 0 );
+	int bb = group / G;
+	int j = group - bb * G;
+	int row = t * B + bb;
+	__global const float* x = X + (long) row * in;
+	__global const float* h = t == 0 ? h0 + bb * s : hout + (long) ( row - B ) * s;
+	__global const float* w = WT + (long) j * R;
+	float sum = 0.0f;
+	for (int r = lid; r < in; r += 64) sum += x[ r ] * w[ r ];
+	for (int r = lid; r < s; r += 64) sum += h[ r ] * w[ in + r ];
+	part[ lid ] = sum;
+	barrier( CLK_LOCAL_MEM_FENCE );
+	for (int k = 32; k > 0; k >>= 1){
+		if (lid < k) part[ lid ] += part[ lid + k ];
+		barrier( CLK_LOCAL_MEM_FENCE );
+	}
+	if (lid == 0) gates[ (long) row * G + j ] = b[ j ] + part[ 0 ];
+}

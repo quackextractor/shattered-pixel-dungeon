@@ -83,6 +83,8 @@ public class PpoHyperparameters {
 
 	public int workerGcPauseMs = 200;
 
+	public boolean workerInProcess = false;
+
 	public void validate(){
 		require( gamma > 0f && gamma <= 1f, "rl.gamma must be in (0, 1], was " + gamma );
 		require( lambda >= 0f && lambda <= 1f, "rl.gae_lambda must be in [0, 1], was " + lambda );
@@ -180,6 +182,7 @@ public class PpoHyperparameters {
 		p.workerHeapMin = workerHeapMin;
 		p.workerHeapMax = workerHeapMax;
 		p.workerGcPauseMs = workerGcPauseMs;
+		p.workerInProcess = workerInProcess;
 		return p;
 	}
 

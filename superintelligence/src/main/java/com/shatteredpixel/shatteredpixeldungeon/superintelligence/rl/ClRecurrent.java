@@ -11,7 +11,8 @@ final class ClRecurrent implements AutoCloseable {
 
 	private final long W, WT, b, Wh, WhT, bh, gW, gb, gWh, gbh;
 
-	private int capacityRows, capacityChunks;
+	private int capacityRows, capacityChunks, weightsVersion = -1;
+	private java.nio.FloatBuffer hHost, cHost, hRead, cRead;
 	private long h0, c0, gateBuf, cout, hout, logits, dLogits, dhHeads, gg, dPrev, dCell;
 	private float[] logitsHost, zeros;
 
@@ -19,7 +20,7 @@ final class ClRecurrent implements AutoCloseable {
 		this.cl = cl;
 		this.params = params;
 		this.heads = new Dense[]{ net.actionHead, net.slotHead, net.targetHead, net.valueHead };
-		kGates = cl.kernel( "lstm_gates" );
+		kGates = cl.kernel( "lstm_gates_wt" );
 		kCell = cl.kernel( "lstm_cell" );
 		kLinear = cl.kernel( "dense_forward_linear" );
 		kCellBack = cl.kernel( "lstm_cell_backward" );
@@ -52,23 +53,43 @@ final class ClRecurrent implements AutoCloseable {
 	}
 
 	float[] forward( int steps, int chunks, float[] state0, long X ){
+		return forward( steps, chunks, state0, X, null );
+	}
+
+	float[] forward( int steps, int chunks, float[] state0, long X, float[] finalState ){
 		reserve( steps * chunks, chunks );
 		int rows = steps * chunks;
-		uploadWeights();
-		float[] h = new float[ chunks * s ], c = new float[ chunks * s ];
-		for (int i = 0; i < chunks; i++){
-			System.arraycopy( state0, i * 2 * s, h, i * s, s );
-			System.arraycopy( state0, i * 2 * s + s, c, i * s, s );
+		if (weightsVersion != params.version()){
+			uploadWeights();
+			weightsVersion = params.version();
 		}
-		cl.write( h0, h );
-		cl.write( c0, c );
+		hHost.clear().limit( chunks * s );
+		cHost.clear().limit( chunks * s );
+		for (int i = 0; i < chunks; i++){
+			hHost.put( state0, i * 2 * s, s );
+			cHost.put( state0, i * 2 * s + s, s );
+		}
+		cl.writeAsync( h0, hHost.flip() );
+		cl.writeAsync( c0, cHost.flip() );
 
 		for (int t = 0; t < steps; t++){
-			cl.run( kGates, (long) chunks * gates, X, h0, hout, W, b, gateBuf, t, chunks, in, s );
+			cl.runGroups( kGates, (long) chunks * gates, X, h0, hout, WT, b, gateBuf, t, chunks, in, s );
 			cl.run( kCell, (long) chunks * s, gateBuf, c0, cout, hout, t, chunks, s );
 		}
 		cl.run( kLinear, (long) rows * K, hout, Wh, bh, logits, s, K );
+		if (finalState != null){
+			hRead.clear().limit( chunks * s );
+			cRead.clear().limit( chunks * s );
+			cl.readAsync( hout, ( steps - 1 ) * chunks * s, hRead );
+			cl.readAsync( cout, ( steps - 1 ) * chunks * s, cRead );
+		}
 		cl.read( logits, logitsHost );
+		if (finalState != null){
+			for (int i = 0; i < chunks; i++){
+				hRead.get( i * s, finalState, i * 2 * s, s );
+				cRead.get( i * s, finalState, i * 2 * s + s, s );
+			}
+		}
 		return logitsHost;
 	}
 
@@ -105,10 +126,17 @@ final class ClRecurrent implements AutoCloseable {
 	}
 
 	private void reserve( int rows, int chunks ){
-		if (rows == capacityRows && chunks == capacityChunks) return;
+		if (logitsHost == null || logitsHost.length != rows * K) logitsHost = new float[ rows * K ];
+		if (zeros == null || zeros.length != chunks * s) zeros = new float[ chunks * s ];
+		if (rows <= capacityRows && chunks <= capacityChunks) return;
+		int grownRows = Math.max( rows, capacityRows ), grownChunks = Math.max( chunks, capacityChunks );
 		release();
-		capacityRows = rows;
-		capacityChunks = chunks;
+		capacityRows = rows = grownRows;
+		capacityChunks = chunks = grownChunks;
+		hHost = org.lwjgl.BufferUtils.createFloatBuffer( chunks * s );
+		cHost = org.lwjgl.BufferUtils.createFloatBuffer( chunks * s );
+		hRead = org.lwjgl.BufferUtils.createFloatBuffer( chunks * s );
+		cRead = org.lwjgl.BufferUtils.createFloatBuffer( chunks * s );
 		h0 = cl.floats( (long) chunks * s );
 		c0 = cl.floats( (long) chunks * s );
 		dPrev = cl.floats( (long) chunks * s );
@@ -120,8 +148,6 @@ final class ClRecurrent implements AutoCloseable {
 		dhHeads = cl.floats( (long) rows * s );
 		logits = cl.floats( (long) rows * K );
 		dLogits = cl.floats( (long) rows * K );
-		logitsHost = new float[ rows * K ];
-		zeros = new float[ chunks * s ];
 	}
 
 	private void release(){

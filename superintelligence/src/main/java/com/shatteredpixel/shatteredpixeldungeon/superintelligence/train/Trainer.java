@@ -126,6 +126,10 @@ public class Trainer {
 		WorkerPool.heapMin = hyper.workerHeapMin;
 		WorkerPool.heapMax = hyper.workerHeapMax;
 		WorkerPool.gcPauseMs = hyper.workerGcPauseMs;
+		WorkerPool.inProcess = hyper.workerInProcess;
+		if (hyper.workerInProcess && !hyper.device.equals( "cpu" )){
+			System.out.println( Ansi.wrap( "infer", Ansi.DIM ) + "    worker inference " + pool.batchInference() );
+		}
 		TrainerWorkers.pushChunkBytes = hyper.pushChunkBytes;
 		this.seeds.configure( hyper );
 		learning( hyper );

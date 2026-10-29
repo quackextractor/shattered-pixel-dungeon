@@ -136,6 +136,10 @@ public class Network extends NetworkWeights {
 		runForward( grid, inventory, heroFeatures );
 	}
 
+	public void forward( float[] grid, int[] touched, int touchedCount, float[] inventory, float[] heroFeatures ){
+		forward( grid, inventory, heroFeatures );
+	}
+
 
 	public void forwardCached( float[] grid, float[] inventory, float[] heroFeatures,
 			StepCache cache ){

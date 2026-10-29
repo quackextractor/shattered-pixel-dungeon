@@ -11,7 +11,7 @@ final class ClEncoder implements AutoCloseable {
 
 	private final ClDevice cl;
 	private final Network net;
-	private final long kUnpack, kConv, kConcat, kDense, kTanhBack, kRelu, kDenseW, kDenseIn, kSum, kConvW, kConvIn, kTranspose;
+	private final long kUnpack, kConv, kConcat, kDense, kTanhBack, kRelu, kDenseW, kDenseIn, kSum, kConvW, kConvIn, kTranspose, kConvPacked;
 
 	final int cells, packedBytes, features, extra, hidden, trunkIn;
 	private final int area, convOut, convPatch, reducePatch;
@@ -20,7 +20,9 @@ final class ClEncoder implements AutoCloseable {
 	private final long convW, convB, reduceW, reduceB, trunkW, trunkB, trunkWT;
 	private final long gConvW, gConvB, gReduceW, gReduceB, gTrunkW, gTrunkB;
 
-	private int capacity;
+	private final ClParameters params;
+
+	private int capacity, weightsVersion = -1;
 	private long packed, extras, grid, convPre, reducePre, concat, dReduce, dConv, partial, partialBias;
 	long hiddenOut, dHidden;
 	private ByteBuffer packedHost;
@@ -29,10 +31,11 @@ final class ClEncoder implements AutoCloseable {
 	ClEncoder( ClDevice cl, Network net, ClParameters params ){
 		this.cl = cl;
 		this.net = net;
+		this.params = params;
 		kUnpack = cl.kernel( "unpack_grid" );
 		kConv = cl.kernel( "conv_forward" );
 		kConcat = cl.kernel( "build_concat" );
-		kDense = cl.kernel( "dense_forward_tanh" );
+		kDense = cl.kernel( "dense_forward_tanh_wt" );
 		kTanhBack = cl.kernel( "tanh_backward" );
 		kRelu = cl.kernel( "relu_mask" );
 		kDenseW = cl.kernel( "dense_weight_grad" );
@@ -41,6 +44,7 @@ final class ClEncoder implements AutoCloseable {
 		kConvW = cl.kernel( "conv_weight_partial" );
 		kConvIn = cl.kernel( "conv_input_grad" );
 		kTranspose = cl.kernel( "transpose" );
+		kConvPacked = cl.kernel( "conv_packed_forward" );
 
 		cells = net.gridLength();
 		area = cells / GridChannel.fractionalPlanes().length;
@@ -90,19 +94,37 @@ final class ClEncoder implements AutoCloseable {
 		return extrasHost;
 	}
 
-	void forward( int rows ){
-		cl.run( kTranspose, (long) trunkIn * hidden, trunkW, trunkWT, trunkIn, hidden );
-		cl.write( packed, packedHost.rewind() );
-		cl.write( extras, extrasHost.rewind() );
+	void forwardInference( int rows ){
+		prepare();
+		Conv2D c = net.conv, r = net.reduce;
+		cl.run( kConvPacked, (long) rows * c.outWidth * c.outHeight * ( ( c.outChannels + 7 ) / 8 ), packed, planeLevels, convW, convB, convPre, packedBytes, area,
+				(float) GridChannel.LEVELS, c.inChannels, c.inWidth, c.outChannels, c.kernel, c.stride, c.outWidth, c.outHeight );
+		trunkForward( rows, r );
+	}
 
+	private void prepare(){
+		if (weightsVersion != params.version()){
+			cl.run( kTranspose, (long) trunkIn * hidden, trunkW, trunkWT, trunkIn, hidden );
+			weightsVersion = params.version();
+		}
+		cl.writeAsync( packed, packedHost.rewind() );
+		cl.writeAsync( extras, extrasHost.rewind() );
+	}
+
+	private void trunkForward( int rows, Conv2D r ){
+		cl.run( kConv, (long) rows * features, convPre, reduceW, reduceB, reducePre,
+				r.inChannels, r.inWidth, r.inHeight, r.outChannels, r.kernel, r.stride, r.outWidth, r.outHeight, 1 );
+		cl.run( kConcat, (long) rows * trunkIn, reducePre, extras, concat, features, extra );
+		cl.runGroups( kDense, (long) rows * hidden, concat, trunkWT, trunkB, hiddenOut, trunkIn, hidden );
+	}
+
+	void forward( int rows ){
+		prepare();
 		Conv2D c = net.conv, r = net.reduce;
 		cl.run( kUnpack, (long) rows * cells, packed, planeLevels, grid, cells, area, packedBytes, (float) GridChannel.LEVELS );
 		cl.run( kConv, (long) rows * convOut, grid, convW, convB, convPre,
 				c.inChannels, c.inWidth, c.inHeight, c.outChannels, c.kernel, c.stride, c.outWidth, c.outHeight, 0 );
-		cl.run( kConv, (long) rows * features, convPre, reduceW, reduceB, reducePre,
-				r.inChannels, r.inWidth, r.inHeight, r.outChannels, r.kernel, r.stride, r.outWidth, r.outHeight, 1 );
-		cl.run( kConcat, (long) rows * trunkIn, reducePre, extras, concat, features, extra );
-		cl.run( kDense, (long) rows * hidden, concat, trunkW, trunkB, hiddenOut, trunkIn, hidden );
+		trunkForward( rows, r );
 	}
 
 	void backward( int rows ){

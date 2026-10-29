@@ -113,7 +113,8 @@ public class EnvConfigBinder {
 
 			"worker.heap_min",
 			"worker.heap_max",
-			"worker.gc_pause_ms"
+			"worker.gc_pause_ms",
+			"worker.in_process"
 	);
 
 
@@ -365,6 +366,7 @@ public class EnvConfigBinder {
 			case "worker.heap_min":           hyper.workerHeapMin = text( key, value, origin ); break;
 			case "worker.heap_max":           hyper.workerHeapMax = text( key, value, origin ); break;
 			case "worker.gc_pause_ms":        hyper.workerGcPauseMs = integer( key, value, origin ); break;
+			case "worker.in_process":         hyper.workerInProcess = bool( key, value, origin ); break;
 
 			default:
 

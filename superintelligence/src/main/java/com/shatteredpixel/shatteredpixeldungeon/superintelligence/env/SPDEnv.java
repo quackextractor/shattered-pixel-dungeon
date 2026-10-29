@@ -382,6 +382,8 @@ public float[] actionMask(){ return actionMask; }
 		System.arraycopy( targets, 0, targetLogits, 0, Math.min( targets.length, targetLogits.length ) );
 	}
 	public float[] grid(){ return encoder.grid(); }
+	public int[] gridTouched(){ return encoder.touched(); }
+	public int gridTouchedCount(){ return encoder.touchedCount(); }
 	public float[] inventory(){ return encoder.inventory(); }
 	public float[] heroFeatures(){ return encoder.hero(); }
 	public int gridWidth(){ return encoder.gridWidth(); }

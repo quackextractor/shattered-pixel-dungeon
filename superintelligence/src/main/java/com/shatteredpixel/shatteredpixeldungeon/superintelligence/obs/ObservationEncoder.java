@@ -48,6 +48,7 @@ public class ObservationEncoder {
 		this.gridWidth = config.gridWidth;
 		this.gridHeight = config.gridHeight;
 		this.grid = new float[GridChannel.spatialCount() * gridWidth * gridHeight];
+		this.touched = new int[ grid.length ];
 		this.inventory = new float[config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT];
 		this.heroFeatures = new float[HeroEncoder.FEATURES];
 		this.edges = new float[gridWidth * gridHeight];
@@ -59,6 +60,10 @@ public class ObservationEncoder {
 	}
 
 	public float[] grid(){ return grid; }
+
+	public int[] touched(){ return touched; }
+
+	public int touchedCount(){ return touchedCount; }
 	public float[] inventory(){ return inventory; }
 	public float[] hero(){ return heroFeatures; }
 
@@ -76,7 +81,8 @@ public class ObservationEncoder {
 		Level level = Dungeon.level;
 		Hero hero = Dungeon.hero;
 
-		java.util.Arrays.fill( grid, 0f );
+		for (int i = 0; i < touchedCount; i++) grid[ touched[ i ] ] = 0f;
+		touchedCount = 0;
 		java.util.Arrays.fill( inventory, 0f );
 		java.util.Arrays.fill( heroFeatures, 0f );
 
@@ -288,7 +294,11 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 	private void applyEdges(){
 		int plane = PLANE_INDEX[ GridChannel.VISIBLE_EDGE.ordinal() ];
 		if (plane < 0) return;
-		System.arraycopy( edges, 0, grid, plane * PLANE_AREA, edges.length );
+		int base = plane * PLANE_AREA;
+		for (int i = 0; i < edges.length; i++){
+			if (edges[ i ] != 0f && grid[ base + i ] == 0f) touched[ touchedCount++ ] = base + i;
+		}
+		System.arraycopy( edges, 0, grid, base, edges.length );
 	}
 
 
@@ -317,8 +327,14 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 		if (value == 0f) return;
 		int plane = PLANE_INDEX[ channel.ordinal() ];
 		if (plane < 0) return;
-		grid[ plane * PLANE_AREA + p] = value;
+		int at = plane * PLANE_AREA + p;
+		if (grid[ at ] == 0f) touched[ touchedCount++ ] = at;
+		grid[ at ] = value;
 	}
+
+	private int[] touched = new int[ 0 ];
+
+	private int touchedCount;
 
 
 	private int lastExplored = 0;

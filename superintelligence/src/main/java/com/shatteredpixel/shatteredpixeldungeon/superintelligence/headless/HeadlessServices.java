@@ -20,6 +20,8 @@ import com.badlogic.gdx.net.Socket;
 import com.badlogic.gdx.net.SocketHints;
 import com.badlogic.gdx.utils.Clipboard;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.ThreadRouted;
+
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.util.HashMap;
@@ -38,12 +40,12 @@ public class HeadlessServices {
 		loadNatives();
 
 		files = new HeadlessFiles( saveDirectory );
-		Gdx.app        = new App();
-		Gdx.files      = files;
-		Gdx.audio      = new SilentAudio();
+		Gdx.app        = ThreadRouted.route( Application.class, new App() );
+		Gdx.files      = ThreadRouted.route( Files.class, files );
+		Gdx.audio      = ThreadRouted.route( Audio.class, new SilentAudio() );
 		Gdx.input      = null;
-		Gdx.graphics   = HeadlessGraphics.install();
-		Gdx.net        = new SilentNet();
+		Gdx.graphics   = ThreadRouted.route( com.badlogic.gdx.Graphics.class, HeadlessGraphics.install() );
+		Gdx.net        = ThreadRouted.route( Net.class, new SilentNet() );
 
 		Gdx.gl = null;
 		Gdx.gl20 = null;
@@ -59,6 +61,10 @@ public class HeadlessServices {
 
 	private static void loadNatives(){
 		com.badlogic.gdx.utils.GdxNativesLoader.load();
+	}
+
+	public static HeadlessFiles files(){
+		return files;
 	}
 
 	public static void disableSaving( boolean disabled ){

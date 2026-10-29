@@ -3,7 +3,6 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.env;
 import com.shatteredpixel.shatteredpixeldungeon.Bones;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
-import com.badlogic.gdx.Gdx;
 
 public class RunState {
 
@@ -36,8 +35,8 @@ public class RunState {
 		Bones.clear();
 
 		try {
-			if (Gdx.files instanceof HeadlessServices.HeadlessFiles){
-				((HeadlessServices.HeadlessFiles) Gdx.files).deleteSave( BONES_FILE );
+			if (HeadlessServices.installed && HeadlessServices.files() != null){
+				HeadlessServices.files().deleteSave( BONES_FILE );
 			} else {
 				com.badlogic.gdx.files.FileHandle remains =
 						com.watabou.utils.FileUtils.getFileHandle( BONES_FILE );

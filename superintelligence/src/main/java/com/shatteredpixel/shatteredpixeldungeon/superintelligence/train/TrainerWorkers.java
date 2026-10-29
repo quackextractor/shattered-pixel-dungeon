@@ -26,9 +26,21 @@ public class TrainerWorkers {
 
 	private final Map<String, Double> lastCpuByWorker = new java.util.HashMap<>();
 
+	private com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.BatchedInference inference;
+
 	public TrainerWorkers( EnvConfig config, PPO ppo ){
 		this.config = config;
 		this.ppo = ppo;
+	}
+
+	public String batchInference(){
+		try {
+			inference = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.BatchedInference( ppo.network );
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.InferenceBroker.install( inference );
+			return "batched on " + inference.deviceName() + " (OpenCL)";
+		} catch (RuntimeException | LinkageError e){
+			return "per worker on the cpu (no OpenCL GPU: " + e.getMessage() + ")";
+		}
 	}
 
 	public static class Job {
@@ -48,6 +60,7 @@ public class TrainerWorkers {
 	public void launch( int count, String javaHome, String classpath, WorkerPool.ParamWriter params )
 			throws IOException {
 		this.paramWriter = params;
+		if (inference != null) inference.load( ppo.network );
 		pool.launch( count, javaHome, classpath, params );
 	}
 
@@ -178,6 +191,7 @@ public class TrainerWorkers {
 	}
 
 	public void pushWeights() throws IOException {
+		if (inference != null) inference.load( ppo.network );
 		List<Thread> threads = new ArrayList<>();
 		List<IOException> failures = Collections.synchronizedList( new ArrayList<>() );
 

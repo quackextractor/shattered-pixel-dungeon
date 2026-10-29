@@ -46,14 +46,18 @@ public final class Travel {
 	public static int step( Action action, boolean commit ){
 		int target = target( action, commit );
 		if (target < 0 || target == Dungeon.hero.pos) return -1;
-		boolean[] walk = passThrough( Dungeon.level );
-		if (Actor.findChar( target ) == null) walk[ target ] = walkable( Dungeon.level )[ target ];
+		boolean[] base = walkable( Dungeon.level );
+		boolean[] walk = passThrough( Dungeon.level, base.clone() );
+		if (Actor.findChar( target ) == null) walk[ target ] = base[ target ];
 		int step = PathFinder.getStep( Dungeon.hero.pos, target, walk );
 		return step >= 0 && Dungeon.level.adjacent( Dungeon.hero.pos, step ) ? step : -1;
 	}
 
 	public static boolean[] passThrough( Level level ){
-		boolean[] walk = walkable( level );
+		return passThrough( level, walkable( level ));
+	}
+
+	private static boolean[] passThrough( Level level, boolean[] walk ){
 		for (Heap heap : level.heaps.valueList()){
 			if (heap.type == Heap.Type.LOCKED_CHEST || heap.type == Heap.Type.CRYSTAL_CHEST) walk[ heap.pos ] = false;
 		}
@@ -108,8 +112,9 @@ public final class Travel {
 		for (LevelTransition t : level.transitions){
 			if (t.type != LevelTransition.Type.REGULAR_EXIT) walk[ t.cell() ] = false;
 		}
+		boolean[] harmful = harmfulCells( level );
 		for (int c = 0; c < walk.length; c++){
-			if (!harmful( level, c ) && !remembered( level, c )) continue;
+			if (!harmful[ c ] && !remembered( level, c )) continue;
 			walk[ c ] = false;
 			for (int d : PathFinder.NEIGHBOURS8){
 				if (c + d >= 0 && c + d < walk.length) walk[ c + d ] = false;
@@ -127,8 +132,9 @@ public final class Travel {
 			gasSeenAt = new float[ level.length() ];
 			java.util.Arrays.fill( gasSeenAt, Float.NEGATIVE_INFINITY );
 		}
+		boolean[] harmful = harmfulCells( level );
 		for (int c = 0; c < gasSeenAt.length; c++){
-			if (harmful( level, c )) gasSeenAt[ c ] = Actor.now();
+			if (harmful[ c ]) gasSeenAt[ c ] = Actor.now();
 		}
 	}
 
@@ -136,9 +142,18 @@ public final class Travel {
 		return gasLevel == level && Actor.now() - gasSeenAt[ cell ] < GAS_MEMORY_TURNS;
 	}
 
+	private static boolean[] harmfulCells( Level level ){
+		boolean[] out = new boolean[ level.length() ];
+		for (Blob blob : level.blobs.values()){
+			if (blob.volume <= 0 || !HARMFUL.contains( blob.getClass() )) continue;
+			for (int c = 0; c < out.length; c++) if (blob.cur[ c ] > 0 && level.heroFOV[ c ]) out[ c ] = true;
+		}
+		return out;
+	}
+
 	public static boolean harmful( Level level, int cell ){
 		for (Blob blob : level.blobs.values()){
-			if (blob.volume > 0 && HARMFUL.contains( blob.getClass() ) && blob.cur[ cell ] > 0 && level.heroFOV[ cell ]) return true;
+			if (blob.volume > 0 && blob.cur[ cell ] > 0 && level.heroFOV[ cell ] && HARMFUL.contains( blob.getClass() )) return true;
 		}
 		return false;
 	}

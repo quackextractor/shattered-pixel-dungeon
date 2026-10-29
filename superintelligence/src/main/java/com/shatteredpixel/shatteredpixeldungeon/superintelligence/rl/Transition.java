@@ -5,6 +5,7 @@ public class Transition {
 	public byte[] grid;
 	public int gridCells;
 	private static final boolean[] FRACTIONAL = GridChannel.fractionalPlanes();
+	private static float[] zeros = new float[ 0 ];
 	public void packGrid( float[] src ){
 		java.util.Arrays.fill( grid, (byte) 0 );
 		int n = Math.min( src.length, gridCells );
@@ -18,12 +19,44 @@ public class Transition {
 				levels += area;
 				continue;
 			}
+			if (zeros.length < end - start) zeros = new float[ end - start ];
 			for (int i = start; i < end; i++){
+				int skip = java.util.Arrays.mismatch( src, i, end, zeros, 0, end - i );
+				if (skip < 0) break;
+				i += skip;
 				if (src[ i ] <= 0.5f ) continue;
 				grid[ i >>> 3 ] |= (byte) (1 << ( i & 7 ));
 			}
 		}
 	}
+	public void packGrid( float[] src, int[] touched, int count ){
+		java.util.Arrays.fill( grid, (byte) 0 );
+		int n = Math.min( src.length, gridCells );
+		int area = planeArea( gridCells );
+		int bits = bitBytes( gridCells );
+		int[] levelAt = levelOffsets( area, bits );
+		for (int k = 0; k < count; k++){
+			int i = touched[ k ];
+			if (i >= n) continue;
+			int plane = i / area;
+			if (levelAt[ plane ] >= 0){
+				grid[ levelAt[ plane ] + i - plane * area ] = (byte) GridChannel.level( src[ i ] );
+			} else if (src[ i ] > 0.5f){
+				grid[ i >>> 3 ] |= (byte) (1 << ( i & 7 ));
+			}
+		}
+	}
+
+	private static int[] levelOffsets( int area, int bits ){
+		int[] out = new int[ FRACTIONAL.length ];
+		int at = bits;
+		for (int plane = 0; plane < FRACTIONAL.length; plane++){
+			out[ plane ] = FRACTIONAL[ plane ] ? at : -1;
+			if (FRACTIONAL[ plane ]) at += area;
+		}
+		return out;
+	}
+
 	public void unpackGrid( float[] dst ){
 		int n = Math.min( dst.length, gridCells );
 		int area = planeArea( gridCells );

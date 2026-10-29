@@ -137,6 +137,7 @@ public final class ConfigDefaults {
 			case "ipc.push_chunk_bytes":      return String.valueOf( hyper.pushChunkBytes );
 			case "worker.heap_min":           return hyper.workerHeapMin;
 			case "worker.heap_max":           return hyper.workerHeapMax;
+			case "worker.in_process":         return String.valueOf( hyper.workerInProcess );
 			case "worker.gc_pause_ms":        return String.valueOf( hyper.workerGcPauseMs );
 
 			default: return null;
@@ -162,6 +163,7 @@ public final class ConfigDefaults {
 			case "rl.normalise_values":
 			case "rl.overlap_collection":
 			case "rl.huber_values":
+			case "worker.in_process":
 				return true;
 			default:
 				return false;

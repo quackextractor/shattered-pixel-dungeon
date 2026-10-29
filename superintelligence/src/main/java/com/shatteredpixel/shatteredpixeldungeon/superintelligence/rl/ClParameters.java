@@ -16,6 +16,12 @@ final class ClParameters implements AutoCloseable {
 
 	private float lastScale = 1f;
 
+	private int version;
+
+	int version(){
+		return version;
+	}
+
 	ClParameters( ClDevice cl, NetworkWeights net ){
 		this.cl = cl;
 		this.net = net;
@@ -52,6 +58,7 @@ final class ClParameters implements AutoCloseable {
 	long biasGrad( int layer ){ return gradView[ 2 * layer + 1 ]; }
 
 	void upload(){
+		version++;
 		float[][] p = paramArrays(), mm = momentArrays( true ), vv = momentArrays( false );
 		for (int i = 0; i < p.length; i++){
 			cl.write( params, offset[ i ], p[ i ] );
@@ -84,6 +91,7 @@ final class ClParameters implements AutoCloseable {
 		net.adamSteps( step );
 		float bias1 = 1f - (float) Math.pow( net.beta1, step );
 		float bias2 = 1f - (float) Math.pow( net.beta2, step );
+		version++;
 		cl.run( kAdam, total, params, grads, m, v, net.learningRate, net.beta1, net.beta2, net.adamEps, lastScale, bias1, bias2 );
 		return norm;
 	}

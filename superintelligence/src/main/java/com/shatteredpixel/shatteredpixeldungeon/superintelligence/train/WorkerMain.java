@@ -10,6 +10,8 @@ import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public class WorkerMain {
 
@@ -38,20 +40,24 @@ public class WorkerMain {
 			System.exit( 1 );
 		}
 
-		HeadlessServices.install( workDir );
-		HeadlessServices.disableSaving( true );
-
-		DataInputStream in = new DataInputStream( new BufferedInputStream( System.in ) );
-		DataOutputStream out = new DataOutputStream( new BufferedOutputStream( System.out ) );
-
 		try {
-			new Worker( in, out ).serve();
-		} catch (EOFException e){
-
+			serveStreams( System.in, System.out, workDir );
 			System.exit( 0 );
 		} catch (IOException e){
 			System.err.println( "[ERROR] worker: " + e );
 			System.exit( 1 );
+		}
+	}
+
+	public static void serveStreams( InputStream in, OutputStream out, File workDir ) throws IOException {
+		if (!workDir.isDirectory() && !workDir.mkdirs()) throw new IOException( "could not create " + workDir );
+		HeadlessServices.install( workDir );
+		HeadlessServices.disableSaving( true );
+		try {
+			new Worker( new DataInputStream( new BufferedInputStream( in ) ),
+					new DataOutputStream( new BufferedOutputStream( out ) ) ).serve();
+		} catch (EOFException e){
+			return;
 		}
 	}
 }

@@ -29,6 +29,10 @@ final class ClDevice implements AutoCloseable {
 	private final IntBuffer err = BufferUtils.createIntBuffer( 1 );
 	private final PointerBuffer size = BufferUtils.createPointerBuffer( 1 );
 
+	static final int GROUP = 64;
+
+	private final PointerBuffer local = BufferUtils.createPointerBuffer( 1 ).put( 0, GROUP );
+
 	private final List< Long > kernels = new ArrayList<>();
 
 	ClDevice( String... sources ){
@@ -122,6 +126,19 @@ final class ClDevice implements AutoCloseable {
 		}
 	}
 
+	void runGroups( long kernel, long groups, Object... args ){
+		for (int i = 0; i < args.length; i++){
+			Object a = args[ i ];
+			int status;
+			if (a instanceof Long) status = clSetKernelArg1p( kernel, i, (Long) a );
+			else if (a instanceof Float) status = clSetKernelArg1f( kernel, i, (Float) a );
+			else status = clSetKernelArg1i( kernel, i, (Integer) a );
+			check( status, "kernel argument " + i );
+		}
+		size.put( 0, groups * GROUP );
+		check( clEnqueueNDRangeKernel( queue, kernel, 1, null, size, local, null, null ), "enqueue kernel" );
+	}
+
 	void write( long buffer, int offsetFloats, float[] data ){
 		check( clEnqueueWriteBuffer( queue, buffer, true, 4L * offsetFloats, data, null, null ), "write" );
 	}
@@ -144,6 +161,18 @@ final class ClDevice implements AutoCloseable {
 
 	void write( long buffer, ByteBuffer data ){
 		check( clEnqueueWriteBuffer( queue, buffer, true, 0, data, null, null ), "write" );
+	}
+
+	void writeAsync( long buffer, ByteBuffer data ){
+		check( clEnqueueWriteBuffer( queue, buffer, false, 0, data, null, null ), "write" );
+	}
+
+	void writeAsync( long buffer, FloatBuffer data ){
+		check( clEnqueueWriteBuffer( queue, buffer, false, 0, data, null, null ), "write" );
+	}
+
+	void readAsync( long buffer, int offsetFloats, FloatBuffer into ){
+		check( clEnqueueReadBuffer( queue, buffer, false, 4L * offsetFloats, into, null, null ), "read" );
 	}
 
 	void read( long buffer, float[] into ){

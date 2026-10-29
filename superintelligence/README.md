@@ -470,7 +470,7 @@ deep it gets* - and it does not answer whether the policy is learning, because t
 about 100 points over 15 generations. Anything named on the command line wins, so
 `-Quick -Generations 10` is ten quick generations.
 
-**Thirty-seven gates, one invocation.** Each has had the thing it guards deleted, and each has been
+**Thirty-eight gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives

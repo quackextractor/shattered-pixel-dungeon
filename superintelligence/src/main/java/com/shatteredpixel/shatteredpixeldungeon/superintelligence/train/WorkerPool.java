@@ -9,6 +9,11 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Method;
+import java.nio.channels.Channels;
+import java.nio.channels.Pipe;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,6 +52,8 @@ public class WorkerPool {
 	public static String heapMax = "1536m";
 	public static int gcPauseMs = 200;
 
+	public static boolean inProcess = false;
+
 
 	public void launch( int count, String javaHome, String classpath, ParamWriter params )
 			throws IOException {
@@ -56,8 +63,8 @@ public class WorkerPool {
 				: join( javaHome, "bin", "java" );
 
 		for (int i = 0; i < count; i++){
-			WorkerHandle handle = new WorkerHandle( java, classpath, "worker" + i,
-					heapMin, heapMax, gcPauseMs );
+			WorkerHandle handle = inProcess ? new WorkerHandle( "worker" + i )
+					: new WorkerHandle( java, classpath, "worker" + i, heapMin, heapMax, gcPauseMs );
 
 			DataOutputStream out = handle.dataOut;
 			out.writeInt( Protocol.MSG_HELLO );
@@ -77,7 +84,7 @@ public class WorkerPool {
 		}
 
 		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "   started " + workers.size()
-				+ " worker processes" );
+				+ ( inProcess ? " in-process workers, one classloader each" : " worker processes" ));
 	}
 
 	public void progress(){
@@ -128,8 +135,7 @@ public class WorkerPool {
 				+ "s. A worker and the trainer are most likely waiting on each"
 				+ " other over a desynchronised protocol." );
 		for (WorkerHandle worker : workers){
-			System.err.println( "  worker pid " + worker.process.pid()
-					+ " alive=" + worker.process.isAlive() );
+			System.err.println( "  " + worker.name + " " + worker.describe() );
 		}
 
 		for (Thread t : Thread.getAllStackTraces().keySet()){
@@ -152,8 +158,8 @@ public class WorkerPool {
 	public void shutdown(){
 		for (WorkerHandle worker : workers){
 			try {
-				worker.process.destroy();
-			} catch (RuntimeException e){
+				worker.stop();
+			} catch (RuntimeException | IOException e){
 
 			}
 		}
@@ -172,9 +178,53 @@ public class WorkerPool {
 public static class WorkerHandle {
 
 		final Process process;
+	final Thread thread;
 	final DataInputStream dataIn;
 	final DataOutputStream dataOut;
 	final String name;
+
+		WorkerHandle( String name ) throws IOException {
+			this.name = name;
+			this.process = null;
+			File dir = new File( workerDir(), name );
+			Pipe toWorker = Pipe.open(), fromWorker = Pipe.open();
+			this.dataOut = new DataOutputStream( new BufferedOutputStream( Channels.newOutputStream( toWorker.sink() ), bufferBytes ));
+			this.dataIn = new DataInputStream( new BufferedInputStream( Channels.newInputStream( fromWorker.source() ), bufferBytes ));
+			InputStream workerIn = Channels.newInputStream( toWorker.source() );
+			OutputStream workerOut = Channels.newOutputStream( fromWorker.sink() );
+			Method serve;
+			try {
+				serve = Class.forName( WorkerMain.class.getName(), true, new IsolatedLoader( WorkerPool.class.getClassLoader() ))
+						.getMethod( "serveStreams", InputStream.class, OutputStream.class, File.class );
+			} catch (ReflectiveOperationException e){
+				throw new IOException( "could not load an isolated worker", e );
+			}
+			this.thread = new Thread( () -> {
+				try {
+					serve.invoke( null, workerIn, workerOut, dir );
+				} catch (ReflectiveOperationException e){
+					System.err.println( "[ERROR] " + name + ": " + ( e.getCause() != null ? e.getCause() : e ));
+				} finally {
+					try {
+						workerOut.close();
+					} catch (IOException ignored){
+
+					}
+				}
+			}, name );
+			this.thread.setDaemon( true );
+			this.thread.start();
+		}
+
+		String describe(){
+			return process != null ? "pid " + process.pid() + " alive=" + process.isAlive()
+					: "thread " + thread.getState();
+		}
+
+		void stop() throws IOException {
+			if (process != null) process.destroy();
+			else dataOut.close();
+		}
 
 		WorkerHandle( String java, String classpath, String name,
 				String heapMin, String heapMax, int gcPauseMs ) throws IOException {
@@ -200,6 +250,7 @@ public static class WorkerHandle {
 			}
 			pb.directory( dir );
 
+			this.thread = null;
 			this.process = pb.start();
 			this.dataOut = new DataOutputStream( new BufferedOutputStream( process.getOutputStream(), bufferBytes ) );
 			this.dataIn = new DataInputStream( new BufferedInputStream( process.getInputStream(), bufferBytes ) );

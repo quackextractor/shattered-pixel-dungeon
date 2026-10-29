@@ -93,7 +93,11 @@ private EnvConfig config;
 		HeadlessGame game = HeadlessGame.install();
 		env = new SPDEnv( config, game );
 
-		network = new Network( config, policyRng );
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.InferenceBroker.Server server =
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.InferenceBroker.server();
+		network = server != null
+				? new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork( config, policyRng, server )
+				: new Network( config, policyRng );
 
 		collector = new EpisodeCollector( config, network, policyRng, new Random( policyRng.nextLong() ),
 				gamma, lambda, sampleRate, maxSampledPerEpisode, chunkLength );
