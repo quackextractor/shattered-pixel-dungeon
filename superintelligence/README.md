@@ -696,6 +696,7 @@ The renderer bypass required small, additive changes to `:core` and `:SPD-classe
 rather than behaviour-changing when a renderer is present:
 
 - `Actor.headlessStep()` - one scheduler iteration without the render-thread handshake.
+- `Holiday.pin()` - fixes the date-driven holiday at `NONE`, so a recording replays on any date.
 - `GameScene` - `show`, `selectCell`, `checkKeyHold` and `resetKeyHold` handle a null scene /
   cell selector, and stash pending dialogs and aiming requests for a headless caller.
 - `Button.press()`, `WndOptions.optionCount/optionSelectable/selectOption` - let a caller drive a

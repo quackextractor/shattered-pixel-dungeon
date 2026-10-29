@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Document;
+import com.shatteredpixel.shatteredpixeldungeon.utils.Holiday;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.CellSelector;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
@@ -23,7 +24,7 @@ import java.util.Random;
 
 public class ResetCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -52,6 +53,7 @@ public class ResetCheck {
 		checkTrajectoriesDoNotDependOnOrder( env, config );
 		checkSpecialRoomPoolsDoNotDependOnOrder( env, config );
 		checkGuidePagesDoNotSurviveAReset( env, config );
+		checkTheCalendarDoesNotReachTheGame( env );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reset isolation: " + CHECKS + " checks passed" );
@@ -351,6 +353,22 @@ public class ResetCheck {
 
 		System.out.println( "  three collected guide pages leave the next floor 2 identical ("
 				+ clean + ")" );
+	}
+
+
+	private static void checkTheCalendarDoesNotReachTheGame( SPDEnv env ){
+		Holiday.pin( Holiday.HALLOWEEN );
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		Holiday read = Holiday.getCurrentHoliday();
+		Holiday.clearCachedHoliday();
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		Holiday dated = Holiday.getCurrentHoliday();
+		if (read != Holiday.NONE || dated != Holiday.NONE){
+			fail( "a reset left the holiday at " + read + " after HALLOWEEN, and at " + dated + " read from today's"
+					+ " date; Pasty and RatKing read it, so a recording made on one date diverges on another" );
+			return;
+		}
+		System.out.println( "  a reset pins the holiday to NONE, whatever the date or the previous run" );
 	}
 
 

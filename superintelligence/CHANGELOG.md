@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Mean: 0.092 -> 0.103 against 0.092 -> 0.093 at weight 0; fails with the taught weight set to 0.
 
 ### Fixed
+- **Every recording diverged during a holiday.** `Holiday` reads the wall clock, and `Pasty` becomes a
+  pumpkin pie from Oct 24-31, so `mage-mid.replay` (recorded Oct 22) diverged at step 36 on Oct 29 in
+  `verify`, `playbackcheck` and the trainer alike: `USE/0 in SLOT: hp is 12, recording says 9`.
+  `RunState.clearRunStatics` now pins `Holiday.NONE` (new `Holiday.pin`), which the env and
+  `ReplayPlayer` both call. `resetcheck` case 8: red without the pin, green with it.
 - **Re-entering a floor paid EXPLORE for every cell already seen on it.** `ObservationEncoder` counted a
   floor change as a fresh floor and returned its whole visited count, so climbing back up paid +22.6 and
   re-descending +2.8 on a typical floor 1/2. `fresh-1023-to100` learned it: 99 of 227 replays ascend, 476

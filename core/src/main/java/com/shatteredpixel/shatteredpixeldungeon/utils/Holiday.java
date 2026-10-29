@@ -51,6 +51,10 @@ public enum Holiday {
 		cached = null;
 	}
 
+	public static void pin(Holiday holiday){
+		cached = holiday;
+	}
+
 	public static Holiday getCurrentHoliday(){
 		if (cached == null){
 			cached = getHolidayForDate((GregorianCalendar) GregorianCalendar.getInstance());
