@@ -49,6 +49,13 @@ public class WorkerMain {
 		}
 	}
 
+	static boolean inProcess;
+
+	public static void serveInProcess( InputStream in, OutputStream out, File workDir ) throws IOException {
+		inProcess = true;
+		serveStreams( in, out, workDir );
+	}
+
 	public static void serveStreams( InputStream in, OutputStream out, File workDir ) throws IOException {
 		if (!workDir.isDirectory() && !workDir.mkdirs()) throw new IOException( "could not create " + workDir );
 		HeadlessServices.install( workDir );

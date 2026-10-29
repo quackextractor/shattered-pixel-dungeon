@@ -12,10 +12,10 @@ public final class RemoteNetwork extends Network {
 	private final Transition packer = new Transition();
 	private final float[] out, action, slots, targets;
 
-	public RemoteNetwork( EnvConfig config, Random rng, InferenceBroker.Server server ){
+	public RemoteNetwork( EnvConfig config, Random rng, InferenceBroker.Server server, int slot ){
 		super( config, rng );
 		this.server = server;
-		this.slot = server.open();
+		this.slot = slot >= 0 ? slot : server.open();
 		packer.gridCells = gridLength();
 		packer.grid = new byte[ Transition.packedGridBytes( packer.gridCells ) ];
 		action = new float[ actionCount() ];
@@ -42,6 +42,8 @@ public final class RemoteNetwork extends Network {
 		System.arraycopy( out, action.length, slots, 0, slots.length );
 		System.arraycopy( out, action.length + slots.length, targets, 0, targets.length );
 	}
+
+	public int slot(){ return slot; }
 
 	@Override public float[] actionLogits(){ return action; }
 	@Override public float[] slotLogits(){ return slots; }

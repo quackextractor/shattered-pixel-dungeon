@@ -164,7 +164,6 @@ public final class AutoTune {
 		hyper.applyTo( ppo );
 		ppo.teacherWeight = hyper.teacherWeight;
 		ppo.threads = threads;
-		ppo.useDevice( hyper.device );
 		ppo.epochs = 1;
 		ppo.minibatchSize = hyper.minibatchSize;
 		try {

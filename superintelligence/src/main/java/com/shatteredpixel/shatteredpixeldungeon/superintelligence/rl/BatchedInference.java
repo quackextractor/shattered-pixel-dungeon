@@ -53,7 +53,7 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 		void load(){
 			synchronized (this){
 				local.copyParametersFrom( weights );
-				params.upload();
+				params.uploadParameters();
 			}
 		}
 
@@ -79,6 +79,8 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 					}
 				} catch (RuntimeException e){
 					failure = e;
+				} catch (Throwable t){
+					failure = new IllegalStateException( "batched inference failed", t );
 				}
 				for (Request r : batch){
 					r.failure = failure;
@@ -135,6 +137,10 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 			engines.add( engine );
 		}
 		for (Engine engine : engines) engine.thread.start();
+	}
+
+	public int slots(){
+		return open;
 	}
 
 	public String deviceName(){

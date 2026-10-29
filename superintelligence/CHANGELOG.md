@@ -57,6 +57,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Smoke: `--generations 50 --hours 0.01` stopped and saved at 47.
 - **`train.sh`**, the Linux launcher: finds a JDK, always `--auto`, logs to `out/evidence/<name>.log`.
 
+### Fixed
+- **In-process workers leaked an inference slot on every policy push** (review): `Worker.readParams` rebuilt
+  its `RemoteNetwork`, which opened a new slot each time, so after k generations the server counted
+  (k+1) x the envs and batches never filled, ending every step on the gather timeout. The slot now
+  survives the rebuild; `gpucheck` case 5 asserts a rebuild keeps the slot count. Every in-process
+  throughput figure in this file before this entry was measured with the leak.
+- **In-process failures hung instead of failing**: a worker thread that died left the trainer's write end
+  blocking on a full pipe (its read end is now closed), and an `Error` in batched inference left envs
+  parked (any `Throwable` now completes the batch with the failure).
+- `gpucheck`'s GPU-faster-than-CPU case warns instead of failing, so a slow first GPU does not fail `gates`.
+- Process workers no longer route `Gdx` services through reflective proxies; `ThreadRouted` is enabled only
+  when in-process workers launch. Inference engines upload parameters only, not Adam's moments. In-process
+  workers report their own thread's CPU, not the JVM's. `--classpath`/`--java-home` with
+  `worker.in_process` are refused rather than ignored. `--auto` times the CPU update its thread sweep
+  is about again.
+
 ### Changed
 - **Env hot paths** (profiled on in-process collection): `Travel` builds the harmful-cell mask once per
   walkability pass instead of scanning every blob for every cell, and stops rebuilding the walkable grid to

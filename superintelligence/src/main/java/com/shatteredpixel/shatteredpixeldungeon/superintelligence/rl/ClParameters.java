@@ -67,6 +67,12 @@ final class ClParameters implements AutoCloseable {
 		}
 	}
 
+	void uploadParameters(){
+		version++;
+		float[][] p = paramArrays();
+		for (int i = 0; i < p.length; i++) cl.write( params, offset[ i ], p[ i ] );
+	}
+
 	void download(){
 		float[][] p = paramArrays(), mm = momentArrays( true ), vv = momentArrays( false ), g = net.gradientArrays();
 		for (int i = 0; i < p.length; i++){

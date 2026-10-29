@@ -95,8 +95,10 @@ private EnvConfig config;
 
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.InferenceBroker.Server server =
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.InferenceBroker.server();
+		int slot = network instanceof com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork
+				? ( (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork) network ).slot() : -1;
 		network = server != null
-				? new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork( config, policyRng, server )
+				? new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork( config, policyRng, server, slot )
 				: new Network( config, policyRng );
 
 		collector = new EpisodeCollector( config, network, policyRng, new Random( policyRng.nextLong() ),
@@ -172,7 +174,9 @@ private EnvConfig config;
 			summary.termCounts[ term.ordinal() ] = env.ledger().notes( term );
 		}
 
-		summary.workerCpuTotal = ResourceStats.processCpuSecondsTotal();
+		summary.workerCpuTotal = WorkerMain.inProcess
+				? java.lang.management.ManagementFactory.getThreadMXBean().getCurrentThreadCpuTime() / 1e9
+				: ResourceStats.processCpuSecondsTotal();
 		summary.workerHeapMb = work.to().heapUsedMb();
 
 		Episode.write( out, summary );

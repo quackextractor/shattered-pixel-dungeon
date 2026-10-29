@@ -62,6 +62,12 @@ public class WorkerPool {
 				? join( System.getProperty( "java.home" ), "bin", "java" )
 				: join( javaHome, "bin", "java" );
 
+		if (inProcess && ( !classpath.equals( System.getProperty( "java.class.path" ))
+				|| ( javaHome != null && !javaHome.isEmpty() ))){
+			throw new IOException( "worker.in_process runs workers on the trainer's own classpath and JVM;"
+					+ " --classpath and --java-home only apply to worker processes" );
+		}
+		if (inProcess) com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.ThreadRouted.enable();
 		for (int i = 0; i < count; i++){
 			WorkerHandle handle = inProcess ? new WorkerHandle( "worker" + i )
 					: new WorkerHandle( java, classpath, "worker" + i, heapMin, heapMax, gcPauseMs );
@@ -195,7 +201,7 @@ public static class WorkerHandle {
 			Method serve;
 			try {
 				serve = Class.forName( WorkerMain.class.getName(), true, new IsolatedLoader( WorkerPool.class.getClassLoader() ))
-						.getMethod( "serveStreams", InputStream.class, OutputStream.class, File.class );
+						.getMethod( "serveInProcess", InputStream.class, OutputStream.class, File.class );
 			} catch (ReflectiveOperationException e){
 				throw new IOException( "could not load an isolated worker", e );
 			}
@@ -207,6 +213,7 @@ public static class WorkerHandle {
 				} finally {
 					try {
 						workerOut.close();
+						workerIn.close();
 					} catch (IOException ignored){
 
 					}
