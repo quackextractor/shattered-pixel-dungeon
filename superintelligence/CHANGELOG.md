@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The update runs on the GPU (`rl.device`, default `auto`).** OpenCL through LWJGL 3.3.3, the binding
+  stack the viewer already ships; `rl.device=gpu` fails without a device, `cpu` is the old path. Each
+  minibatch is laid out timestep-major (`row = t * chunks + chunk`, short chunks zero-padded): packed
+  grids are unpacked on the device, the conv, reduce and trunk layers run batched over every row, the LSTM
+  runs batched over the chunks one timestep at a time, and the four heads run as one matrix. Only the
+  logits come back; `PPO.lossStep`, the same code the CPU path runs, turns them into logit gradients,
+  and the backward pass runs on the device. Adam, clipping and checkpoints stay on the CPU, so a
+  checkpoint is the same file either way. `gpucheck`: the GPU gradient matches the CPU one to 5e-8 of
+  its norm at 10x10 and 48x48, and dropping one factor of the forget-gate derivative fails it at 4e-3.
+  Measured on an RX 6900 XT (`out/evidence/gpu-ab-*`, 12 generations from `floor-teach03` generation
+  150, 6 workers x 7 episodes): PPO update 10.56 -> 4.73 s a generation, depth 2.92 / 2.93, entropy
+  0.456 on both.
 - **`rl.teacher_floor` (0.3): the imitation weight stops decaying there.** Decayed to zero over 300
   generations (`long-teach30`), depth followed the weight down: 2.78 at 0.3, 2.63 at 0.08, 2.43 at 0.02,
   2.17 at 0.001, with entropy 0.58 -> 1.35 and turns 636 -> 980. Held at 0.3 from the start

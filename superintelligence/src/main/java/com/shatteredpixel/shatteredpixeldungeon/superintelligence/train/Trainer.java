@@ -147,6 +147,7 @@ public class Trainer {
 		teacherWeight = hyper.teacherWeight;
 		teacherHalfLife = hyper.teacherHalfLife;
 		teacherFloor = hyper.teacherFloor;
+		System.out.println( Ansi.wrap( "device", Ansi.DIM ) + "   update encoder on " + ppo.useDevice( hyper.device ));
 	}
 
 	public MetricsHistory metrics(){ return metrics; }

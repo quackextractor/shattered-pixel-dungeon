@@ -105,6 +105,7 @@ public final class ConfigDefaults {
 			case "rl.epochs":                 return String.valueOf( hyper.epochs );
 			case "rl.minibatch_size":         return String.valueOf( hyper.minibatchSize );
 			case "rl.update_threads":         return String.valueOf( hyper.updateThreads );
+			case "rl.device":                 return hyper.device;
 			case "rl.overlap_collection":     return String.valueOf( hyper.overlapCollection );
 			case "rl.sample_rate":            return String.valueOf( hyper.sampleRate );
 			case "rl.max_sampled_per_episode": return String.valueOf( hyper.maxSampledPerEpisode );
@@ -230,6 +231,7 @@ public final class ConfigDefaults {
 			case "rl.epochs":                 return "3";
 			case "rl.minibatch_size":         return "16";
 			case "rl.update_threads":         return "2";
+			case "rl.device":                 return "cpu";
 			case "rl.max_sampled_per_episode": return "128";
 			case "rl.max_samples_per_generation": return "512";
 			case "rl.stall_seconds":          return "60";

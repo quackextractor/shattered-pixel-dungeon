@@ -384,6 +384,7 @@ something.
 | Weight save / load, resume a run | Done - `--save` / `--resume` / `--checkpoint-every`, atomic writes, Adam moments and step count included, **checkpoint format 3 adds the value normaliser and the trainer rng**, **and the seed schedule**: the pool seed, the schedule seed, the pool size and the number of draws made all travel in `Checkpoint.Meta`, so a resumed run continues the sequence instead of replaying generation 0's. `checkpointcheck` is a gate, 10 cases - one asserts that a flag with no value after it is **refused naming itself**, because every flag reads `args[i + 1]` and `train.ps1 -Resume` used to append a bare `--resume`; another that `--checkpoint-every` and `--record-every` override the properties file rather than being ignored, which they were. `seedcheck` is a gate, 6 cases |
 | Bad checkpoint handling | Done - foreign, truncated, trailing-byte and wrong-config files all refused, the last naming the field |
 | Parallel minibatch update | Done - `--update-threads N`, default 8, 5.4x at 8 threads; collection overlaps the update (`rl.overlap_collection`). `parallelcheck` is a gate |
+| GPU update | Done - `rl.device` (`auto`, `gpu`, `cpu`), OpenCL; conv, trunk, LSTM and heads on the device, loss and Adam on the CPU. 10.56 -> 4.73 s an update on an RX 6900 XT. `gpucheck` is a gate |
 | Cross-sample gradient leak | Fixed - `dCell` was not cleared, so every gradient depended on the previous sample |
 | Value head range | Fixed - was tanh-bounded to [-1,+1] against a death penalty of 100 |
 | LSTM state with each transition | Fixed - the replay ran under an unrelated sample's state |
@@ -469,7 +470,7 @@ deep it gets* - and it does not answer whether the policy is learning, because t
 about 100 points over 15 generations. Anything named on the command line wins, so
 `-Quick -Generations 10` is ten quick generations.
 
-**Thirty-six gates, one invocation.** Each has had the thing it guards deleted, and each has been
+**Thirty-seven gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives

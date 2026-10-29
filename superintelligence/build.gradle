@@ -6,6 +6,10 @@ dependencies {
     implementation project(':core')
     implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
     runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+    implementation "org.lwjgl:lwjgl:3.3.3"
+    implementation "org.lwjgl:lwjgl-opencl:3.3.3"
+    runtimeOnly "org.lwjgl:lwjgl:3.3.3:natives-windows"
+    runtimeOnly "org.lwjgl:lwjgl:3.3.3:natives-linux"
 }
 def headlessSpriteTemplate = file('src/main/java/com/shatteredpixel/shatteredpixeldungeon/superintelligence/headless/HeadlessSprite.java')
 def headlessSpriteDir = layout.buildDirectory.dir('generated/sources/headlessSprites/java')
@@ -208,6 +212,7 @@ cliTask('verifycheck', 'Fails if replay verification cannot detect an altered re
   cliTask('rngtrace', 'Reports how much randomness each replayed step consumed, for comparing headless against the rendered game.')
   cliTask('valuescale', "Reports the critic's target range against the range it can reach.")
   cliTask('parallelcheck', "Fails if a parallel update computes a different gradient from the serial one.")
+  cliTask('gpucheck', 'Fails if the OpenCL update computes a different gradient from the CPU one, or is slower.')
   cliTask('rewardcheck', 'Fails if ending an episode can be cheaper than dying.')
 cliTask('transitioncheck', 'Fails if descending ends the episode, or is worth nothing.')
 cliTask('travelcheck', 'Fails if a travel action leaks unseen cells, or travelling alone cannot descend.')
@@ -239,7 +244,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
   cliTask('checkpointcheck', 'Fails if a policy does not survive a trip through disk, or if a bad checkpoint is accepted.')
   cliTask('weightsdiff', 'Reports how far a checkpoint is from a freshly initialised policy.')
 tasks.register('gates') {
-    dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'rewardcheck', 'transitioncheck', 'travelcheck', 'teachercheck', 'fallcheck', 'dialogcheck',
+    dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'gpucheck', 'rewardcheck', 'transitioncheck', 'travelcheck', 'teachercheck', 'fallcheck', 'dialogcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
 		'observecheck', 'renderdrawcheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck', 'freeactioncheck', 'bpttcheck', 'pushcheck', 'curriculumcheck', 'samplercheck', 'seedcheck', 'doccheck', 'javaclint'
     group = 'verification'

@@ -80,6 +80,7 @@ public class EnvConfigBinder {
 			"rl.epochs",
 			"rl.minibatch_size",
 			"rl.update_threads",
+			"rl.device",
 			"rl.overlap_collection",
 			"rl.sample_rate",
 			"rl.max_sampled_per_episode",
@@ -328,6 +329,7 @@ public class EnvConfigBinder {
 			case "rl.epochs":            hyper.epochs = integer( key, value, origin ); break;
 			case "rl.minibatch_size":    hyper.minibatchSize = integer( key, value, origin ); break;
 			case "rl.update_threads":    hyper.updateThreads = integer( key, value, origin ); break;
+			case "rl.device":            hyper.device = value.trim().toLowerCase(); break;
 			case "rl.overlap_collection": hyper.overlapCollection = bool( key, value, origin ); break;
 			case "rl.sample_rate":       hyper.sampleRate = decimal( key, value, origin ); break;
 			case "rl.max_sampled_per_episode":

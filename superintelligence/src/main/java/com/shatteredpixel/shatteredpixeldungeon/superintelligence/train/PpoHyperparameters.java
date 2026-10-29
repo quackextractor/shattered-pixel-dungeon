@@ -30,6 +30,8 @@ public class PpoHyperparameters {
 
 	public int updateThreads = 8;
 
+	public String device = "auto";
+
 	public boolean overlapCollection = true;
 
 	public double sampleRate = 0.25;
@@ -94,6 +96,8 @@ public class PpoHyperparameters {
 		require( minibatchSize >= 1, "rl.minibatch_size must be at least 1, was " + minibatchSize );
 		require( epochs >= 1, "rl.epochs must be at least 1, was " + epochs );
 		require( updateThreads >= 0, "rl.update_threads must be zero or more, was " + updateThreads );
+		require( device.equals( "auto" ) || device.equals( "gpu" ) || device.equals( "cpu" ),
+				"rl.device must be auto, gpu or cpu, was " + device );
 		require( sampleRate >= 0.0 && sampleRate <= 1.0,
 				"rl.sample_rate must be in [0, 1], was " + sampleRate );
 		require( maxSampledPerEpisode >= 1,
@@ -150,6 +154,7 @@ public class PpoHyperparameters {
 		p.minibatchSize = minibatchSize;
 		p.epochs = epochs;
 		p.updateThreads = updateThreads;
+		p.device = device;
 		p.overlapCollection = overlapCollection;
 		p.sampleRate = sampleRate;
 		p.maxSampledPerEpisode = maxSampledPerEpisode;

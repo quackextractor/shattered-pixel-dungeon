@@ -54,7 +54,7 @@ In practice: uncommitted engine edits are the normal way to test a hypothesis �
 
 ## Training
 
-- **Go wide on serious runs.** Scale workers to the machine: `./gradlew :superintelligence:train --args="--workers N"`. `trainerJvmArgs` pins `-Xmx1536m` per process, so pushing workers past what that heap supports trades throughput for GC thrash. There is no GPU path — the trainer is pure-Java PPO/IMPALA on CPU. Adding one means a native or ONNX runtime, not a flag.
+- **Go wide on serious runs.** Scale workers to the machine: `./gradlew :superintelligence:train --args="--workers N"`. `trainerJvmArgs` pins `-Xmx1536m` per process, so pushing workers past what that heap supports trades throughput for GC thrash. The update runs on the GPU through OpenCL (`rl.device`, default `auto`); collection and worker inference stay on the CPU.
 - **The two gates are expensive.** `./gradlew verifyall` and `./gradlew :desktop:viewcheck` run about 40s each. `viewcheck` is *not* part of `verifyall`, so run both before calling anything done. Never run them speculatively.
 - **Smoke runs stay short.** Bound every test training run with `--max-turns` and an external timeout. A run proving a wiring change does not need to finish an episode.
 - **Tune rewards, don't stall.** Every knob lives in `superintelligence/superintelligence.properties`, overridable via `.env` as `SPD_*`. If a value you need is not exposed, expose it — properties file, `.env`, or a CLI flag. Modify the trainer when that is what it takes. Do not ask for input and do not wait to be told. That is the job.

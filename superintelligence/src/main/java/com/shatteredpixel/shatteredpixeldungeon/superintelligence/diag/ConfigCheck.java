@@ -347,6 +347,7 @@ checkOutputPathsFollowTheWorkingDirectory();
 		expectRefusal( "a zero minibatch", "rl.minibatch_size=0", "rl.minibatch_size" );
 		expectRefusal( "a sample rate above 1", "rl.sample_rate=1.5", "rl.sample_rate" );
 		expectRefusal( "a non-positive stall timeout", "rl.stall_seconds=0", "rl.stall_seconds" );
+		expectRefusal( "an unknown update device", "rl.device=tpu", "rl.device" );
 
 		System.out.println( "  malformed and out-of-range values are refused, naming the key and the file" );
 	}

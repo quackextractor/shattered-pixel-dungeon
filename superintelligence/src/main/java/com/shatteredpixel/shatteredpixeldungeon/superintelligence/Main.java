@@ -21,6 +21,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ModeCover
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.MobSpriteCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ObserveCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RenderDrawCheck;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.GpuCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ParallelCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.PressCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.PushCheck;
@@ -80,6 +81,7 @@ public class Main {
 		case "bpttcheck": BpttCheck.main( rest ); break;
 		case "valuescale": ValueScale.main( rest ); break;
 		case "parallelcheck": ParallelCheck.main( rest ); break;
+		case "gpucheck": GpuCheck.main( rest ); break;
 		case "rewardcheck": RewardCheck.main( rest ); break;
 		case "transitioncheck": TransitionCheck.main( rest ); break;
 		case "travelcheck": TravelCheck.main( rest ); break;
@@ -126,6 +128,7 @@ public class Main {
 		System.out.println( "  checkpointcheck           fail if a policy does not survive disk, or a bad one loads" );
 		System.out.println( "  weightsdiff <file>        report how far a checkpoint is from a fresh policy" );
 		System.out.println( "  parallelcheck             fail if a parallel update differs from the serial one" );
+		System.out.println( "  gpucheck                  fail if the OpenCL update differs from the CPU one, or is slower" );
 		System.out.println( "  statecheck                fail if a sample does not replay to its rollout's value" );
 		System.out.println( "  rewardcheck               fail if ending an episode can be cheaper than dying" );
 		System.out.println( "  freeactioncheck           fail if a free action can be repeated forever, or a talent point cannot be spent" );

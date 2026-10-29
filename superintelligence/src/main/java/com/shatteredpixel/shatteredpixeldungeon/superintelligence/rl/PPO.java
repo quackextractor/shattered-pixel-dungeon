@@ -54,6 +54,8 @@ public class PPO {
 
 	private final ShardedUpdate sharded = new ShardedUpdate();
 
+	private GpuMinibatch gpu;
+
 
 	public int threadCount(){
 		return sharded.resolveThreads( Math.min( threads, minibatchSize ) );
@@ -67,6 +69,21 @@ public class PPO {
 
 	public void close(){
 		sharded.close();
+		if (gpu != null) gpu.close();
+		gpu = null;
+	}
+
+
+	public String useDevice( String device ){
+		close();
+		if (device.equals( "cpu" )) return "cpu";
+		try {
+			gpu = new GpuMinibatch( network );
+			return gpu.deviceName() + " (OpenCL)";
+		} catch (RuntimeException | LinkageError e){
+			if (device.equals( "gpu" )) throw new IllegalStateException( "rl.device gpu: " + e.getMessage(), e );
+			return "cpu (no OpenCL GPU: " + e.getMessage() + ")";
+		}
 	}
 
 
@@ -233,7 +250,8 @@ public float lastClipFraction;
 
 
 	private void oneMinibatch( List< List< Transition > > chunks, int from, int to ){
-		Minibatch m = threads > 1 ? sharded.run( this, chunks, from, to ) : null;
+		Minibatch m = gpu != null ? gpu.run( this, chunks, from, to )
+				: threads > 1 ? sharded.run( this, chunks, from, to ) : null;
 		accumulate( m != null ? m : processMinibatch( chunks, from, to ));
 	}
 
@@ -339,58 +357,17 @@ Stats oneSample( Network net, Transition t,
 
 			net.recurrentStep( cache );
 
-			float[] probabilities;
-			float[] mask;
-			float[] logits;
-			float[] gradient;
-			int chosen;
-
 			switch (t.liveHead) {
 				case Policy.HEAD_SLOT:
-					logits = net.slotLogits();
-					mask = t.slotMask;
-					chosen = t.slotIndex;
-					probabilities = slotProbs;
-					gradient = cache.slotGrad;
+					cache.valueGrad = lossStep( t, net.slotLogits(), slotProbs, cache.slotGrad, net.value(), s );
 					break;
 				case Policy.HEAD_TARGET:
-					logits = net.targetLogits();
-					mask = t.targetMask;
-					chosen = t.slotIndex;
-					probabilities = targetProbs;
-					gradient = cache.targetGrad;
+					cache.valueGrad = lossStep( t, net.targetLogits(), targetProbs, cache.targetGrad, net.value(), s );
 					break;
 				default:
-					logits = net.actionLogits();
-					mask = t.actionMask;
-					chosen = t.actionIndex;
-					probabilities = actionProbs;
-					gradient = cache.actionGrad;
+					cache.valueGrad = lossStep( t, net.actionLogits(), actionProbs, cache.actionGrad, net.value(), s );
 					break;
 			}
-
-			java.util.Arrays.fill( gradient, 0f );
-
-			Policy.probabilities( logits, mask, probabilities );
-
-			if (t.demonstration){
-				Policy.accumulateImitationGradient( probabilities, mask, t.teacherIndex, demoWeight, gradient );
-				cache.valueGrad = 0f;
-				continue;
-			}
-
-			if (Policy.accumulatePolicyGradient( probabilities, mask, chosen,
-					t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient )) s.clippedSteps++;
-			Policy.accumulateImitationGradient( probabilities, mask, t.teacherIndex, teacherWeight, gradient );
-
-			float target = valueTarget( t );
-			cache.valueGrad = Policy.valueGradient( net.value(), target, valueGradientClip )
-					* valueLossCoefficient;
-
-			s.policyLoss += surrogateLoss( probabilities, chosen, t.oldLogProbability, t.advantage );
-			s.valueLoss += Policy.valueLoss( net.value(), target, huberValues );
-			s.entropy += Policy.entropy( probabilities );
-			s.kl += approximateKL( chosen, t.oldLogProbability, probabilities );
 		}
 
 		for (int i = steps - 1; i >= 0; i--){
@@ -406,6 +383,34 @@ Stats oneSample( Network net, Transition t,
 		for (int i = steps - 1; i >= 0; i--) net.encoderBackwardStep( caches[ i ] );
 
 		return s;
+	}
+
+	float lossStep( Transition t, float[] logits, float[] probabilities, float[] gradient, float value, Stats s ){
+		boolean slotted = t.liveHead == Policy.HEAD_SLOT || t.liveHead == Policy.HEAD_TARGET;
+		float[] mask = t.liveHead == Policy.HEAD_SLOT ? t.slotMask : t.liveHead == Policy.HEAD_TARGET ? t.targetMask : t.actionMask;
+		int chosen = slotted ? t.slotIndex : t.actionIndex;
+
+		java.util.Arrays.fill( gradient, 0f );
+
+		Policy.probabilities( logits, mask, probabilities );
+
+		if (t.demonstration){
+			Policy.accumulateImitationGradient( probabilities, mask, t.teacherIndex, demoWeight, gradient );
+			return 0f;
+		}
+
+		if (Policy.accumulatePolicyGradient( probabilities, mask, chosen,
+				t.oldLogProbability, t.advantage, clipEpsilon, entropyCoeff, gradient )) s.clippedSteps++;
+		Policy.accumulateImitationGradient( probabilities, mask, t.teacherIndex, teacherWeight, gradient );
+
+		float target = valueTarget( t );
+
+		s.policyLoss += surrogateLoss( probabilities, chosen, t.oldLogProbability, t.advantage );
+		s.valueLoss += Policy.valueLoss( value, target, huberValues );
+		s.entropy += Policy.entropy( probabilities );
+		s.kl += approximateKL( chosen, t.oldLogProbability, probabilities );
+
+		return Policy.valueGradient( value, target, valueGradientClip ) * valueLossCoefficient;
 	}
 
 	public float baselineMean(){
