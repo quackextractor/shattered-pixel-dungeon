@@ -26,3 +26,15 @@ Floor 1 is solved: `teach-demo-31` reaches depth>=2 in ~90% of episodes, mean de
 trainer does not, at a frame-dependent point. Not moved to `PRandom`: the roll sets wand power, so it would
 desync gameplay. Not wrapped in a pushed generator: the stack is shared with the actor thread. Unreachable
 by the trainer today (Battlemage armour ability, after Tengu).
+
+## 40. Trainer recordings diverge in the rendered viewer after a melee exchange - OPEN
+
+About 2% of trainer-written recordings play clean headlessly and diverge in `viewcheck`, always on the step
+after the hero attacks an adjacent enemy in place (a `MOVE_*` that does not move): the viewer's HP is higher by
+the hit the recording took (`DLR-FFJ-GLH` step 77: 15 against 12; `VKG-DWR-EIN` 623: 12 against 9;
+`RQN-XJG-SVG` 748: 7 against 6). World traces agree field for field up to the attack step; there the
+headless run advances to the next turn and takes the hit, and the viewer is still a turn behind when the
+next step is compared. Measured 2.5% of 199 recordings (`out/evidence/rp-proc`, `rp-inb`, `soak-inb`),
+process and in-process workers alike, and `master`'s viewer diverges at the same steps on the same files,
+so it predates `perf/throughput`. Not the holiday: with `Holiday.clearCachedHoliday` disabled the two files
+diverge at the same steps.
