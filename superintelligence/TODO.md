@@ -31,3 +31,8 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       entropy 0.46. Now `rl.teacher_floor` 0.3. `floor-teach03` (defaults, 150 gens):
       2.82 over gens 50-149 (sd 0.15), 2.90-2.92 in gens 120-149 and still rising, entropy 0.36.
       Next: a longer run on the floor; the plateau is still well short of floor 4.
+- [ ] **Training throughput past 7,114 turns/s.** GPU update + 12 workers x 4 is 3.24x the CPU update
+      (2,197; `CHANGELOG.md` Unreleased). Collection 3.53 s and update 3.02 s a generation, so both bind.
+      Worker step: env 0.24 ms, forward 0.28 ms (reduce layer 0.134 of it). Update: naive OpenCL kernels,
+      ~16 ms a minibatch of 128 rows. Ceiling with free inference and a free update is ~0.24 ms a step on
+      ~9 effective cores, ~25-35K turns/s; past that is the engine, which is not ours to change.
