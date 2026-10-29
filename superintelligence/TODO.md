@@ -36,3 +36,8 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       Worker step: env 0.24 ms, forward 0.28 ms (reduce layer 0.134 of it). Update: naive OpenCL kernels,
       ~16 ms a minibatch of 128 rows. Ceiling with free inference and a free update is ~0.24 ms a step on
       ~9 effective cores, ~25-35K turns/s; past that is the engine, which is not ours to change.
+      Measured on `perf/throughput` with inference stubbed to zero cost (uniform policy, `out/bench/spike`):
+      one env 9,690 turns/s, 16 envs in one JVM 22,706, 4 JVMs x 4 envs ~27,900 - 2.9x one env on 20
+      logical cores. That is the ceiling for env + game on this i5-14600KF whatever the network costs,
+      12.7x the 2,197 CPU baseline. In-process workers with batched GPU inference (`worker.in_process`)
+      match but do not yet beat process workers end to end (3,605 against 3,754 turns/s, same load).
