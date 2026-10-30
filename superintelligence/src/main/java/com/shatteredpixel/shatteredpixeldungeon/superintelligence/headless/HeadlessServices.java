@@ -134,7 +134,10 @@ public class HeadlessServices {
 
 			this.root.mkdirs();
 			this.sink = com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Scratch.dir( "nosave" );
+			this.memory = new MemorySaves( sink );
 		}
+
+		private final MemorySaves memory;
 
 		@Override public FileHandle getFileHandle(String path, FileType type) {
 			switch (type) {
@@ -151,8 +154,8 @@ public class HeadlessServices {
 				default:
 
 					if (isSave( path )){
-						File base = savingEnabled ? root : sink;
-						return new FileHandle( new File( base, path ).getAbsolutePath() );
+						if (!savingEnabled) return memory.handle( path );
+						return new FileHandle( new File( root, path ).getAbsolutePath() );
 					}
 					return classpathHandle( path );
 			}
@@ -197,9 +200,9 @@ public class HeadlessServices {
 		@Override public boolean isLocalStorageAvailable() { return true; }
 
 		public boolean deleteSave( String name ){
-			File base = savingEnabled ? root : sink;
-			boolean existed = new File( base, name ).delete();
-			existed |= new File( base, name + ".spdtmp" ).delete();
+			if (!savingEnabled) return memory.delete( name ) | memory.delete( name + ".spdtmp" );
+			boolean existed = new File( root, name ).delete();
+			existed |= new File( root, name + ".spdtmp" ).delete();
 			return existed;
 		}
 	}

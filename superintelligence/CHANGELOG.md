@@ -92,6 +92,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is about again.
 
 ### Changed
+- **Unsaved headless saves live in memory (`MemorySaves`).** With saving disabled the game still wrote
+  every level and run save to a scratch directory, gzip plus write plus rename, and threads blocked in
+  Windows file I/O (machine 42% busy, 8-12% kernel time at 20 envs). Save paths now resolve to a
+  per-env in-memory `FileHandle`. Observation hash identical over 3,490 steps; `resetcheck` case 9.
+  Env leg, 20 envs: 11.4K -> 14.5K turns/s.
+- **`throughputbench` env rounds are time-bounded (`--seconds`, replacing `--episodes`).** A fixed episode
+  count per env made each round wait for the slowest env, which mimicked a scaling collapse.
 - **The encoder no longer clears and copies whole buffers each step.** Edge strength is written into its
   plane through `put` (which skips zeros and records touched cells) instead of a 2,304-float buffer that
   was filled, scanned and copied; the inventory features are cleared only up to the larger of this and

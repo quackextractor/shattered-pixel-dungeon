@@ -24,7 +24,7 @@ import java.util.Random;
 
 public class ResetCheck {
 
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 9;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -54,6 +54,7 @@ public class ResetCheck {
 		checkSpecialRoomPoolsDoNotDependOnOrder( env, config );
 		checkGuidePagesDoNotSurviveAReset( env, config );
 		checkTheCalendarDoesNotReachTheGame( env );
+		checkUnsavedSavesStayInMemory();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reset isolation: " + CHECKS + " checks passed" );
@@ -65,6 +66,32 @@ public class ResetCheck {
 		}
 	}
 
+
+	private static void checkUnsavedSavesStayInMemory(){
+		String name = "game9/memorycheck.dat";
+		try {
+			for (int v = 1; v <= 2; v++){
+				com.watabou.utils.Bundle b = new com.watabou.utils.Bundle();
+				b.put( "value", v );
+				com.watabou.utils.FileUtils.bundleToFile( name, b );
+			}
+			int read = com.watabou.utils.FileUtils.bundleFromFile( name ).getInt( "value" );
+			boolean listed = com.watabou.utils.FileUtils.getFileHandle( "game9" ).list().length == 1;
+			boolean onDisk = com.badlogic.gdx.Gdx.files.local( name ).file().exists();
+			com.watabou.utils.FileUtils.deleteFile( name );
+			boolean gone = !com.watabou.utils.FileUtils.fileExists( name );
+			if (read != 2 || !listed || onDisk || !gone){
+				failures.add( "an unsaved save did not round-trip in memory: read " + read + ", listed " + listed
+						+ ", on disk " + onDisk + ", deleted " + gone );
+				return;
+			}
+		} catch (java.io.IOException e){
+			failures.add( "an unsaved save threw " + e );
+			return;
+		}
+		System.out.println( "  with saving disabled a save is rewritten through its temp file, read back, listed and"
+				+ " deleted in memory, and never reaches the disk" );
+	}
 
 	private static void checkResetClearsAnArmedAim( SPDEnv env, EnvConfig config ){
 		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );

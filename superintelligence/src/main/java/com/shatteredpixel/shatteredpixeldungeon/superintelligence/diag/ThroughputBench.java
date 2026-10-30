@@ -37,7 +37,8 @@ public final class ThroughputBench {
 
 	private static final float GRID_DENSITY = 0.014f;
 
-	private static int rounds = 4, envs = 16, episodes = 4, forwards = 2000, samples = 2048;
+	private static int rounds = 4, envs = 16, forwards = 2000, samples = 2048;
+	private static double seconds = 15;
 	private static String label = "current", legs = "env,inference,update";
 	private static boolean batched;
 	private static File csv = new File( "out/evidence/throughputbench.csv" );
@@ -61,7 +62,7 @@ public final class ThroughputBench {
 			switch (args[ i ]){
 			case "--rounds": rounds = Integer.parseInt( args[ i + 1 ] ); break;
 			case "--envs": envs = Integer.parseInt( args[ i + 1 ] ); break;
-			case "--episodes": episodes = Integer.parseInt( args[ i + 1 ] ); break;
+			case "--seconds": seconds = Double.parseDouble( args[ i + 1 ] ); break;
 			case "--forwards": forwards = Integer.parseInt( args[ i + 1 ] ); break;
 			case "--samples": samples = Integer.parseInt( args[ i + 1 ] ); break;
 			case "--label": label = args[ i + 1 ]; break;
@@ -133,6 +134,7 @@ public final class ThroughputBench {
 	private static final class EnvLeg {
 		final Method[] runs = new Method[ envs ];
 		final ExecutorService[] threads = new ExecutorService[ envs ];
+		final int[] played = new int[ envs ];
 
 		EnvLeg() throws Exception {
 			ThreadRouted.enable();
@@ -170,19 +172,23 @@ public final class ThroughputBench {
 		Measurement round() throws Exception {
 			double load = idleLoad();
 			List< Future< Long > > out = new ArrayList<>();
-			long start = System.nanoTime();
+			long start = System.nanoTime(), deadline = start + (long) ( seconds * 1e9 );
 			for (int i = 0; i < envs; i++){
 				Method run = runs[ i ];
 				int id = i;
 				out.add( threads[ i ].submit( () -> {
 					long turns = 0;
-					for (int e = 0; e < episodes; e++) turns += (Long) run.invoke( null, "BENCH-" + id + "-" + e, e % 4 );
+					while (System.nanoTime() < deadline){
+						int e = played[ id ]++;
+						long t = (Long) run.invoke( null, "BENCH-" + id + "-" + e, e % 4 );
+						if (System.nanoTime() <= deadline) turns += t;
+					}
 					return turns;
 				} ));
 			}
 			long turns = 0;
 			for (Future< Long > f : out) turns += f.get();
-			return new Measurement( turns / ( ( System.nanoTime() - start ) / 1e9 ), load );
+			return new Measurement( turns / seconds, load );
 		}
 	}
 

@@ -96,7 +96,15 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
         labels only on retained steps, with `lastHp` and `waited` (the only state it carries) updated
         cheaply every step; reward terms incremental. Gate: `sparsecheck`, `teachercheck`, `rewardcheck`
         byte-identical on the corpus.
-  - [ ] **P4 Parallel scaling (16 threads are 2.9x one).** Find why: memory bandwidth, allocation rate,
+  - [ ] **P4 Parallel scaling (16 threads are 2.9x one).** Measured with time-bounded rounds, idle machine:
+        in-process env-only 1/4/12/20/48 envs = 14.5K/47.1K/17.9K/17.7K/11.6K turns/s (20 envs warm to
+        ~23K after 2 min); K separate JVMs x 1 env = 44.0K/42.1K/26.6K/22.2K/15.6K for K = 4/8/12/16/20.
+        Same collapse with separate JVMs, so not class loaders or locks (JFR at zero thresholds: <1 s of
+        monitor wait) and not GC (290 ms). All CPUs read 100% busy at 20 envs, so per-thread work gets
+        ~10x dearer: consistent with every env running its own compiled copy of the game plus ~32 KB
+        allocated a step outgrowing the 24 MB L3. Optimum is 4-8 concurrent env threads (~45K). With GPU
+        inference the collect leg is 12.6K/17.3K/20.4K/27.2K at 8/12/16/24 envs (19K at 48 and 96).
+        Original note: Find why: memory bandwidth, allocation rate,
         per-loader JIT copies (code cache full GCs), E-core placement. Fixes in reach: allocation-free step
         loop, a larger code cache, pinning envs to P-cores. Target 6x on 16 threads.
   - [ ] **P5 Game engine hot paths (signed off 2026-10-30, bit-identical only).** FOV (`ShadowCaster`), `PathFinder` and actor
