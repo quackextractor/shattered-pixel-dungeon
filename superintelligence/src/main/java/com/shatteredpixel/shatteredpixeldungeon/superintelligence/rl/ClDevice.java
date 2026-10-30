@@ -29,11 +29,23 @@ final class ClDevice implements AutoCloseable {
 	private final IntBuffer err = BufferUtils.createIntBuffer( 1 );
 	private final PointerBuffer size = BufferUtils.createPointerBuffer( 1 );
 
-	static final int GROUP = 64;
-
-	private final PointerBuffer local = BufferUtils.createPointerBuffer( 1 ).put( 0, GROUP );
+	private final PointerBuffer local = BufferUtils.createPointerBuffer( 1 );
 
 	private final List< Long > kernels = new ArrayList<>();
+	private long gemm;
+	private final java.util.HashMap< Long, String > names = new java.util.HashMap<>();
+	private final PointerBuffer event = BufferUtils.createPointerBuffer( 1 );
+	private final java.nio.LongBuffer tick = BufferUtils.createLongBuffer( 1 );
+
+	private void profile( long kernel ){
+		if (!KernelProfile.ON) return;
+		clWaitForEvents( event );
+		clGetEventProfilingInfo( event.get( 0 ), CL_PROFILING_COMMAND_START, tick, null );
+		long start = tick.get( 0 );
+		clGetEventProfilingInfo( event.get( 0 ), CL_PROFILING_COMMAND_END, tick, null );
+		KernelProfile.add( names.get( kernel ) + "@" + size.get( 0 ), tick.get( 0 ) - start );
+		clReleaseEvent( event.get( 0 ));
+	}
 
 	ClDevice( String... sources ){
 		device = firstGpu();
@@ -47,7 +59,7 @@ final class ClDevice implements AutoCloseable {
 		PointerBuffer devices = BufferUtils.createPointerBuffer( 1 ).put( 0, device );
 		context = clCreateContext( properties, devices, null, 0L, err );
 		check( "clCreateContext" );
-		queue = clCreateCommandQueue( context, device, 0L, err );
+		queue = clCreateCommandQueue( context, device, KernelProfile.ON ? CL_QUEUE_PROFILING_ENABLE : 0L, err );
 		check( "clCreateCommandQueue" );
 
 		StringBuilder text = new StringBuilder();
@@ -78,6 +90,7 @@ final class ClDevice implements AutoCloseable {
 		long k = clCreateKernel( program, name, err );
 		check( "clCreateKernel " + name );
 		kernels.add( k );
+		names.put( k, name );
 		return k;
 	}
 
@@ -107,7 +120,28 @@ final class ClDevice implements AutoCloseable {
 			check( status, "kernel argument " + i );
 		}
 		size.put( 0, global );
-		check( clEnqueueNDRangeKernel( queue, kernel, 1, null, size, null, null, null ), "enqueue kernel" );
+		check( clEnqueueNDRangeKernel( queue, kernel, 1, null, size, null, null, KernelProfile.ON ? event : null ), "enqueue kernel" );
+		profile( kernel );
+	}
+
+	int gemm( long a, long b, long c, int M, int N, int K, int sAi, int sAk, int sBk, int sBj, int sCi, int slices ){
+		return gemm( a, 0, b, 0, c, 0, M, N, K, sAi, sAk, sBk, sBj, sCi, slices );
+	}
+
+	int gemm( long a, int aOff, long b, int bOff, long c, int cOff, int M, int N, int K, int sAi, int sAk, int sBk, int sBj,
+			int sCi, int slices ){
+		if (gemm == 0L) gemm = kernel( "gemm" );
+		int tilesM = ( M + 63 ) / 64, tilesN = ( N + 63 ) / 64;
+		int kSlice = ( ( K + slices - 1 ) / slices + 15 ) / 16 * 16;
+		slices = ( K + kSlice - 1 ) / kSlice;
+		runSized( gemm, (long) slices * tilesM * tilesN, 256, a, b, c, M, N, K, sAi, sAk, sBk, sBj, sCi, kSlice, tilesM, tilesN,
+				M * sCi, aOff, bOff, cOff );
+		return slices;
+	}
+
+	void copy( long src, int srcOffFloats, long dst, int dstOffFloats, int floats ){
+		if (floats <= 0) return;
+		check( clEnqueueCopyBuffer( queue, src, dst, 4L * srcOffFloats, 4L * dstOffFloats, 4L * floats, null, null ), "copy" );
 	}
 
 	int alignFloats(){
@@ -126,7 +160,7 @@ final class ClDevice implements AutoCloseable {
 		}
 	}
 
-	void runGroups( long kernel, long groups, Object... args ){
+	void runSized( long kernel, long groups, int groupSize, Object... args ){
 		for (int i = 0; i < args.length; i++){
 			Object a = args[ i ];
 			int status;
@@ -135,8 +169,10 @@ final class ClDevice implements AutoCloseable {
 			else status = clSetKernelArg1i( kernel, i, (Integer) a );
 			check( status, "kernel argument " + i );
 		}
-		size.put( 0, groups * GROUP );
-		check( clEnqueueNDRangeKernel( queue, kernel, 1, null, size, local, null, null ), "enqueue kernel" );
+		size.put( 0, groups * groupSize );
+		local.put( 0, groupSize );
+		check( clEnqueueNDRangeKernel( queue, kernel, 1, null, size, local, null, KernelProfile.ON ? event : null ), "enqueue kernel" );
+		profile( kernel );
 	}
 
 	void write( long buffer, int offsetFloats, float[] data ){
@@ -164,6 +200,18 @@ final class ClDevice implements AutoCloseable {
 	}
 
 	void writeAsync( long buffer, ByteBuffer data ){
+		check( clEnqueueWriteBuffer( queue, buffer, false, 0, data, null, null ), "write" );
+	}
+
+	void write( long buffer, IntBuffer data ){
+		check( clEnqueueWriteBuffer( queue, buffer, true, 0, data, null, null ), "write" );
+	}
+
+	void writeAsync( long buffer, int offsetInts, IntBuffer data ){
+		check( clEnqueueWriteBuffer( queue, buffer, false, 4L * offsetInts, data, null, null ), "write" );
+	}
+
+	void writeAsync( long buffer, IntBuffer data ){
 		check( clEnqueueWriteBuffer( queue, buffer, false, 0, data, null, null ), "write" );
 	}
 

@@ -50,7 +50,9 @@ Edit this file, not `instructions.md`. `STATUS.md` records which of these have a
 
 > You may edit the game files (`core`, `SPD-classes`, `desktop`), even logic changes, as long as you don't commit those changes — e.g. for testing purposes. Getters and such are always fine, even for committing. Also don't refactor them (such as splitting the files to make sure the character limit is appropriate). Also the replay function has priority. At no point should the trainer be considered more important than being actually faithful to the game. The only exception I would make is overhauling the rng system as it would still be random, although such changes to the pre-existing source code would be risky and error-prone.
 
-In practice: uncommitted engine edits are the normal way to test a hypothesis — change it, run the gate, then revert or propose it. Getters and observation-only additions may always be committed. Logic changes stay uncommitted unless asked; permission to experiment is not permission to ship a behaviour change. A committed tree must always build and pass `verifyall` on its own.
+In practice: uncommitted engine edits are the normal way to test a hypothesis — change it, run the gate, then revert or propose it. Getters and observation-only additions may always be committed.
+
+Signed off 2026-10-30: performance-only engine changes (FOV, pathfinding, actor scheduling and the like) may be committed when every recording in `test-replays/` and every RNG trace stays bit-identical (`verifyall`, `viewcheck`, `paritycheck`). Learning-loop changes (asynchronous learner, minibatch size, learning-rate scaling) may be committed when depth at equal turns does not drop. Logic changes stay uncommitted unless asked; permission to experiment is not permission to ship a behaviour change. A committed tree must always build and pass `verifyall` on its own.
 
 ## Training
 

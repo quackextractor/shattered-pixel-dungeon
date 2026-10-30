@@ -83,6 +83,7 @@ public class Main {
 		case "parallelcheck": ParallelCheck.main( rest ); break;
 		case "gpucheck": GpuCheck.main( rest ); break;
 		case "sparsecheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SparseObservationCheck.main( rest ); break;
+		case "throughputbench": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ThroughputBench.main( rest ); break;
 		case "rewardcheck": RewardCheck.main( rest ); break;
 		case "transitioncheck": TransitionCheck.main( rest ); break;
 		case "travelcheck": TravelCheck.main( rest ); break;

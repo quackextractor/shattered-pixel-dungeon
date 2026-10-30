@@ -47,7 +47,11 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       sample-pass (0.25 sample rate x 4 epochs); today they are ~1.3 ms and 87.5 us. Every phase keeps the
       replay contract (`verifyall`, `viewcheck`, `paritycheck` byte-identical) and is merged only when it
       beats the previous default in an ABAB run on a quiet machine.
-  - [ ] **P0 Bench as a gate.** Commit `out/bench` as `throughputbench`: env-only (inference stubbed),
+  - [x] **P0 Bench as a gate.** Done: `throughputbench` (env-only, inference-only, update-only; round 0
+        warms the JIT, median of the rest; 1 s idle-CPU sample before each leg, `[WARN]` above 10%; CSV
+        appended to `out/evidence/throughputbench.csv`, `--label` names the tree). End-to-end stays the
+        trainer's own turns/s. ABAB: run it in two worktrees alternately with different labels.
+        Original note: Commit `out/bench` as `throughputbench`: env-only (inference stubbed),
         inference-only, update-only and end-to-end, each reporting turns/s, plus a JFR profile flag. Fixes
         the noise that cost a day: ABAB order, idle-CPU check before each leg, results to `out/evidence`.
   - [ ] **P1 Inference off the CPU, latency hidden (target 25-28K, the env-only ceiling).** Per-step
@@ -56,7 +60,15 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
         conv, reduce, trunk, one LSTM step, heads), LSTM state resident per slot, inputs and outputs in
         one pinned buffer each: target <150 us a batch at 128 rows. (c) 64-128 in-process envs; in-process
         becomes the default only when it wins. Gate: `gpucheck` batched case at 128 rows.
-  - [ ] **P2 Update 20x (target 4.5 us/sample-pass).** (a) PPO loss, imitation, value and entropy as a
+  - [ ] **P2 Update 20x (target 4.5 us/sample-pass).** Done so far (a, b and most of c): 84 -> 15.8 us
+        a sample-pass in `throughputbench` (GPU time 557 -> 94 ms an update of 2,048 x 4), 58 launches a
+        minibatch, no host round trip. In training the update fell 2.3 -> 0.35-0.5 s a generation, but
+        `rl.overlap_collection` already hid it behind collection (barrier ~100% before, ~25% now), so end
+        to end is unchanged at ~11.5-12K turns/s steady state (`out/evidence/p2-proc.log` against
+        `fix-proc.log`). The update has 4-5x headroom; collection is the whole critical path until P1/P3/P4
+        land. Left: im2col/col2im (115/132 us a minibatch), first-layer packed kernels (~100 us each), fused
+        LSTM (100/92 us), the 85 us slice sum; bigger minibatches (P6) amortise the 58 launches.
+        Original note: (a) PPO loss, imitation, value and entropy as a
         kernel, so a minibatch needs no host round trip; clip scale computed on the device. (b) The whole
         update enqueued at once, one sync per update; the buffer's packed grids (~47 MB) uploaded once and
         indexed per minibatch. (c) Tiled local-memory GEMM for trunk and LSTM, packed-bit conv in the
@@ -71,10 +83,10 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
   - [ ] **P4 Parallel scaling (16 threads are 2.9x one).** Find why: memory bandwidth, allocation rate,
         per-loader JIT copies (code cache full GCs), E-core placement. Fixes in reach: allocation-free step
         loop, a larger code cache, pinning envs to P-cores. Target 6x on 16 threads.
-  - [ ] **P5 Game engine hot paths (needs your sign-off).** FOV (`ShadowCaster`), `PathFinder` and actor
+  - [ ] **P5 Game engine hot paths (signed off 2026-10-30, bit-identical only).** FOV (`ShadowCaster`), `PathFinder` and actor
         scheduling are what is left after P3. Changes only if every recording and RNG trace stays
         bit-identical; the engine boundary otherwise forbids committing them.
-  - [ ] **P6 Learning-loop changes (needs your sign-off, changes what is learned).** Asynchronous
+  - [ ] **P6 Learning-loop changes (signed off 2026-10-30, depth at equal turns must hold).** Asynchronous
         IMPALA-style learner with no generation barrier, larger minibatches with a scaled learning rate.
         Speed only counts if depth at equal turns does not drop.
       Projection, compounding: P1 + P2 ~20-25K (10x); + P3 60-90K (30-40x); + P4 and P5 150-220K (70-100x).

@@ -2,19 +2,17 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
 final class ClParameters implements AutoCloseable {
 
-	private static final int NORM_GROUPS = 4096;
+	private static final int NORM_GROUPS = 32768;
 
 	private final ClDevice cl;
 	private final NetworkWeights net;
-	private final long kSquares, kAdam;
+	private final long kSquares, kScale, kAdam;
 
 	private final int[] offset, length;
 	private final int total;
-	private final long params, grads, m, v, partial;
+	private final long params, grads, m, v, partial, scale;
 	private final long[] paramView, gradView;
-	private final float[] partialHost = new float[ NORM_GROUPS ];
-
-	private float lastScale = 1f;
+	private final float[] scaleHost = new float[ 1 ];
 
 	private int version;
 
@@ -26,7 +24,8 @@ final class ClParameters implements AutoCloseable {
 		this.cl = cl;
 		this.net = net;
 		kSquares = cl.kernel( "sum_squares" );
-		kAdam = cl.kernel( "adam" );
+		kScale = cl.kernel( "grad_scale" );
+		kAdam = cl.kernel( "adam_scaled" );
 
 		float[][] p = paramArrays();
 		offset = new int[ p.length ];
@@ -43,6 +42,7 @@ final class ClParameters implements AutoCloseable {
 		m = cl.floats( total );
 		v = cl.floats( total );
 		partial = cl.floats( NORM_GROUPS );
+		scale = cl.floats( 1 );
 		cl.write( grads, 0, new float[ total ] );
 		paramView = new long[ p.length ];
 		gradView = new long[ p.length ];
@@ -75,6 +75,8 @@ final class ClParameters implements AutoCloseable {
 
 	void download(){
 		float[][] p = paramArrays(), mm = momentArrays( true ), vv = momentArrays( false ), g = net.gradientArrays();
+		cl.read( scale, scaleHost );
+		float lastScale = scaleHost[ 0 ];
 		for (int i = 0; i < p.length; i++){
 			cl.read( params, offset[ i ], p[ i ] );
 			cl.read( m, offset[ i ], mm[ i ] );
@@ -84,22 +86,16 @@ final class ClParameters implements AutoCloseable {
 		}
 	}
 
-	float step( int count, float maxNorm ){
+	void step( int count, float maxNorm, long stats, int slot ){
 		cl.run( kSquares, NORM_GROUPS, grads, partial, total, NORM_GROUPS );
-		cl.read( partial, partialHost );
-		double sum = 0;
-		for (float s : partialHost) sum += s;
-		float norm = (float) ( Math.sqrt( sum ) / count );
-		lastScale = 1f / count;
-		if (maxNorm > 0f && norm > maxNorm && norm > 0f) lastScale *= maxNorm / norm;
+		cl.runSized( kScale, 1, 256, partial, scale, stats, NORM_GROUPS, (float) count, maxNorm, slot );
 
 		int step = net.adamSteps() + 1;
 		net.adamSteps( step );
 		float bias1 = 1f - (float) Math.pow( net.beta1, step );
 		float bias2 = 1f - (float) Math.pow( net.beta2, step );
 		version++;
-		cl.run( kAdam, total, params, grads, m, v, net.learningRate, net.beta1, net.beta2, net.adamEps, lastScale, bias1, bias2 );
-		return norm;
+		cl.run( kAdam, total, params, grads, m, v, scale, net.learningRate, net.beta1, net.beta2, net.adamEps, bias1, bias2 );
 	}
 
 	private float[][] paramArrays(){
@@ -126,6 +122,6 @@ final class ClParameters implements AutoCloseable {
 	public void close(){
 		cl.release( paramView );
 		cl.release( gradView );
-		cl.release( params, grads, m, v, partial );
+		cl.release( params, grads, m, v, partial, scale );
 	}
 }

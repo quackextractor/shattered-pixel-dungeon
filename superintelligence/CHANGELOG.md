@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`throughputbench`.** Env-only, batched-inference and update throughput in one run, with an idle-CPU
+  check before each leg and results appended to `out/evidence/throughputbench.csv`; round 0 warms the JIT
+  and is left out of the median. `IsolatedLoader` is public so the bench can build isolated envs. The
+  update leg packs its fixture grids at the 1.4% density real observations have; `--kernels true` prints
+  GPU time by kernel (`spd.clprofile`, `KernelProfile`).
 - **In-process workers (`worker.in_process`).** Each worker is a thread in the trainer with its own
   `IsolatedLoader`, so its game statics are its own; it speaks the same protocol over `java.nio` pipes.
   `com.badlogic.*`, `org.lwjgl.*` and `superintelligence.shared.*` stay shared, so gdx natives load once;
@@ -74,6 +79,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is about again.
 
 ### Changed
+- **The whole GPU update is enqueued at once.** `GpuMinibatch.begin` uploads the buffer once (packed
+  grids, extras, chunk-start LSTM state, per-row loss inputs and masks, staged in parallel); each
+  minibatch gathers its rows on the device through a row map, the PPO loss, imitation, entropy and value
+  terms run as `ppo_loss`, the clip scale is computed on the device (`grad_scale`, `adam_scaled`), and
+  `end` reads the per-minibatch stats once. No host round trip inside an update.
+- **New kernels, measured per 128-row minibatch at real grid density** (RX 6900 XT, 2,048 samples x 4 epochs:
+  GPU time 557 -> 94 ms; the old kernels were dense, so their 557 does not depend on density): a tiled split-K GEMM (`gemm`) for the trunk, the reduce layer (via
+  `im2col`/`col2im` in a transposed layout), the LSTM input projection, weight grads and the heads; first
+  convolution forward and weight grad read packed bits a row at a time and add float4 rows only for set
+  bits; the LSTM time loop runs in one launch per direction (`lstm_forward_fused`, `lstm_backward_fused`).
+  Launches per minibatch 121 -> 58. Update 84 -> 15.8 us per sample-pass (5.3x).
+- `gpucheck` has 6 cases: a 48x48 case with teacher and demonstration rows, 11-step chunks (padded rows)
+  and 2 epochs of 4 minibatches covers the device loss and the row map.
 - **Env hot paths** (profiled on in-process collection): `Travel` builds the harmful-cell mask once per
   walkability pass instead of scanning every blob for every cell, and stops rebuilding the walkable grid to
   read one cell; `StairPotential` compares the map to a copy instead of hashing it twice a step;

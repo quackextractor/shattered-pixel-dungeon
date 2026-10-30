@@ -7,14 +7,14 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
 
-final class IsolatedLoader extends URLClassLoader {
+public final class IsolatedLoader extends URLClassLoader {
 
 	private static final String[] SHARED = {
 			"java.", "javax.", "jdk.", "sun.", "com.sun.", "com.badlogic.", "org.lwjgl.",
 			"com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared."
 	};
 
-	IsolatedLoader( ClassLoader parent ){
+	public IsolatedLoader( ClassLoader parent ){
 		super( classpath(), parent );
 	}
 

@@ -1,41 +1,3 @@
-__kernel void unpack_grid( __global const uchar* packed, __global const int* planeLevels, __global float* grid,
-		const int cells, const int area, const int packedBytes, const float levels ){
-	int gid = get_global_id( 0 );
-	int n = gid / cells;
-	int i = gid - n * cells;
-	__global const uchar* p = packed + (long) n * packedBytes;
-	int at = planeLevels[ i / area ];
-	grid[ gid ] = at >= 0 ? p[ at + i % area ] / levels : (float) ( ( p[ i >> 3 ] >> ( i & 7 ) ) & 1 );
-}
-
-__kernel void conv_forward( __global const float* in, __global const float* W, __global const float* b,
-		__global float* pre, const int inC, const int inW, const int inH, const int outC, const int k,
-		const int stride, const int outW, const int outH, const int reluIn ){
-	int gid = get_global_id( 0 );
-	int perSample = outW * outH * outC;
-	int n = gid / perSample;
-	int r = gid - n * perSample;
-	int p = r / outC;
-	int q = r - p * outC;
-	int oy = ( p / outW ) * stride;
-	int ox = ( p % outW ) * stride;
-	int plane = inW * inH;
-	__global const float* x = in + (long) n * inC * plane;
-	float sum = b[ q ];
-	for (int ch = 0; ch < inC; ch++){
-		for (int ky = 0; ky < k; ky++){
-			__global const float* row = x + ch * plane + ( oy + ky ) * inW + ox;
-			__global const float* w = W + ( ( ch * k + ky ) * k ) * outC + q;
-			for (int kx = 0; kx < k; kx++){
-				float v = row[ kx ];
-				if (reluIn) v = fmax( v, 0.0f );
-				sum += v * w[ kx * outC ];
-			}
-		}
-	}
-	pre[ gid ] = sum;
-}
-
 __kernel void build_concat( __global const float* reducePre, __global const float* extras, __global float* concat,
 		const int features, const int extra ){
 	int gid = get_global_id( 0 );
@@ -43,17 +5,6 @@ __kernel void build_concat( __global const float* reducePre, __global const floa
 	int n = gid / width;
 	int m = gid - n * width;
 	concat[ gid ] = m < features ? fmax( reducePre[ n * features + m ], 0.0f ) : extras[ n * extra + m - features ];
-}
-
-__kernel void dense_forward_tanh( __global const float* x, __global const float* W, __global const float* b,
-		__global float* y, const int in, const int out ){
-	int gid = get_global_id( 0 );
-	int n = gid / out;
-	int j = gid - n * out;
-	__global const float* xr = x + (long) n * in;
-	float sum = b[ j ];
-	for (int m = 0; m < in; m++) sum += xr[ m ] * W[ m * out + j ];
-	y[ gid ] = tanh( sum );
 }
 
 __kernel void tanh_backward( __global const float* h, __global float* d ){
@@ -67,32 +18,11 @@ __kernel void relu_mask( __global const float* pre, __global float* d ){
 	if (pre[ i ] <= 0.0f) d[ i ] = 0.0f;
 }
 
-__kernel void dense_weight_grad( __global const float* x, __global const float* dy, __global float* gW,
-		const int rows, const int in, const int out ){
-	int gid = get_global_id( 0 );
-	int m = gid / out;
-	int j = gid - m * out;
-	float sum = 0.0f;
-	for (int n = 0; n < rows; n++) sum += x[ (long) n * in + m ] * dy[ n * out + j ];
-	gW[ gid ] = sum;
-}
-
 __kernel void transpose( __global const float* src, __global float* dst, const int rows, const int cols ){
 	int gid = get_global_id( 0 );
 	int c = gid / rows;
 	int r = gid - c * rows;
 	dst[ gid ] = src[ r * cols + c ];
-}
-
-__kernel void dense_input_grad( __global const float* dy, __global const float* WT, __global float* dx,
-		const int used, const int in, const int out ){
-	int gid = get_global_id( 0 );
-	int n = gid / used;
-	int m = gid - n * used;
-	__global const float* d = dy + (long) n * out;
-	float sum = 0.0f;
-	for (int j = 0; j < out; j++) sum += d[ j ] * WT[ j * in + m ];
-	dx[ gid ] = sum;
 }
 
 __kernel void sum_rows( __global const float* src, __global float* dst, const int rowsPerGroup, const int width ){
@@ -105,43 +35,190 @@ __kernel void sum_rows( __global const float* src, __global float* dst, const in
 	dst[ gid ] = sum;
 }
 
-__kernel void conv_weight_partial( __global const float* in, __global const float* dPre, __global float* partial,
-		const int inC, const int inW, const int inH, const int outC, const int k, const int stride,
-		const int outW, const int outH, const int reluIn ){
+#define TS 64
+#define TK 16
+
+__kernel __attribute__(( reqd_work_group_size( 256, 1, 1 ) ))
+void gemm( __global const float* A, __global const float* B, __global float* C,
+		const int M, const int N, const int K, const int sAi, const int sAk, const int sBk, const int sBj,
+		const int sCi, const int kSlice, const int tilesM, const int tilesN, const int sliceStride,
+		const int aOff, const int bOff, const int cOff ){
+	__local float As[ TK ][ TS ];
+	__local float Bs[ TK ][ TS ];
+	int lid = get_local_id( 0 );
+	int tx = lid & 15, ty = lid >> 4;
+	int g = get_group_id( 0 );
+	int tn = g % tilesN;
+	int tm = ( g / tilesN ) % tilesM;
+	int slice = g / ( tilesN * tilesM );
+	int i0 = tm * TS, j0 = tn * TS;
+	int kFrom = slice * kSlice, kTo = min( K, kFrom + kSlice );
+	A += aOff;
+	B += bOff;
+	float acc[ 4 ][ 4 ];
+	for (int a = 0; a < 4; a++) for (int b = 0; b < 4; b++) acc[ a ][ b ] = 0.0f;
+	for (int k0 = kFrom; k0 < kTo; k0 += TK){
+		for (int q = 0; q < 4; q++){
+			int e = lid + 256 * q;
+			int i, k;
+			if (sAk == 1){ i = e / TK; k = e % TK; } else { i = e % TS; k = e / TS; }
+			int gi = i0 + i, gk = k0 + k;
+			As[ k ][ i ] = gi < M && gk < kTo ? A[ (long) gi * sAi + (long) gk * sAk ] : 0.0f;
+			int j;
+			if (sBj == 1){ k = e / TS; j = e % TS; } else { j = e / TK; k = e % TK; }
+			int gj = j0 + j;
+			gk = k0 + k;
+			Bs[ k ][ j ] = gj < N && gk < kTo ? B[ (long) gk * sBk + (long) gj * sBj ] : 0.0f;
+		}
+		barrier( CLK_LOCAL_MEM_FENCE );
+		for (int k = 0; k < TK; k++){
+			float av[ 4 ], bv[ 4 ];
+			for (int a = 0; a < 4; a++) av[ a ] = As[ k ][ ty + 16 * a ];
+			for (int b = 0; b < 4; b++) bv[ b ] = Bs[ k ][ tx + 16 * b ];
+			for (int a = 0; a < 4; a++) for (int b = 0; b < 4; b++) acc[ a ][ b ] += av[ a ] * bv[ b ];
+		}
+		barrier( CLK_LOCAL_MEM_FENCE );
+	}
+	__global float* c = C + cOff + (long) slice * sliceStride;
+	for (int a = 0; a < 4; a++){
+		int gi = i0 + ty + 16 * a;
+		if (gi >= M) continue;
+		for (int b = 0; b < 4; b++){
+			int gj = j0 + tx + 16 * b;
+			if (gj < N) c[ (long) gi * sCi + gj ] = acc[ a ][ b ];
+		}
+	}
+}
+
+__kernel void slices_bias_tanh( __global const float* partial, __global const float* b, __global float* y,
+		const int slices, const int out, const int stride ){
 	int gid = get_global_id( 0 );
-	int perSample = inC * k * k * outC;
-	int n = gid / perSample;
-	int rq = gid - n * perSample;
-	int r = rq / outC;
-	int q = rq - r * outC;
+	float sum = b[ gid % out ];
+	for (int s = 0; s < slices; s++) sum += partial[ (long) s * stride + gid ];
+	y[ gid ] = tanh( sum );
+}
+
+float packed_input( __global const uchar* g, const int at, const int i, const int cell, const float levels ){
+	return at >= 0 ? g[ at + cell ] / levels : (float) ( ( g[ i >> 3 ] >> ( i & 7 ) ) & 1 );
+}
+
+__kernel void conv_packed_rows( __global const uchar* packed, __global const int* planeLevels, __global const float* W,
+		__global const float* b, __global float* pre, const int packedBytes, const int area, const float levels,
+		const int inC, const int inW, const int outC, const int k, const int stride, const int outW, const int outH ){
+	int gid = get_global_id( 0 );
+	int positions = outW * outH;
+	int n = gid / positions;
+	int p = gid - n * positions;
+	int oy = ( p / outW ) * stride;
+	int ox = ( p % outW ) * stride;
+	int quads = outC >> 2;
+	__global const uchar* g = packed + (long) n * packedBytes;
+	float4 acc[ 8 ];
+	for (int q = 0; q < 8; q++) acc[ q ] = q < quads ? vload4( q, b ) : (float4) 0.0f;
+	bool aligned = ( area & 7 ) == 0 && ( inW & 7 ) == 0 && k <= 8;
+	for (int ch = 0; ch < inC; ch++){
+		int at = planeLevels[ ch ];
+		for (int ky = 0; ky < k; ky++){
+			int row = ( oy + ky ) * inW + ox;
+			if (aligned && at < 0){
+				int bit = ch * area + row;
+				uint bits = ( ( g[ bit >> 3 ] | ( g[ ( bit >> 3 ) + 1 ] << 8 ) ) >> ( bit & 7 ) ) & ( ( 1u << k ) - 1 );
+				while (bits){
+					int kx = 31 - (int) clz( bits & ( ~bits + 1 ) );
+					bits &= bits - 1;
+					__global const float* w = W + ( ( ch * k + ky ) * k + kx ) * outC;
+					for (int q = 0; q < 8; q++) if (q < quads) acc[ q ] += vload4( q, w );
+				}
+				continue;
+			}
+			for (int kx = 0; kx < k; kx++){
+				float v = packed_input( g, at, ch * area + row + kx, row + kx, levels );
+				if (v == 0.0f) continue;
+				__global const float* w = W + ( ( ch * k + ky ) * k + kx ) * outC;
+				for (int q = 0; q < 8; q++) if (q < quads) acc[ q ] += v * vload4( q, w );
+			}
+		}
+	}
+	__global float* o = pre + (long) gid * outC;
+	for (int q = 0; q < 8; q++) if (q < quads) vstore4( acc[ q ], q, o );
+}
+
+__kernel void conv_packed_weight( __global const uchar* packed, __global const int* planeLevels, __global const float* dPre,
+		__global float* partial, const int packedBytes, const int area, const float levels,
+		const int inC, const int inW, const int outC, const int k, const int stride, const int outW, const int outH,
+		const int rowSlices, const int rows ){
+	int gid = get_global_id( 0 );
+	int patch = inC * k * k;
+	int slice = gid / ( rows * patch );
+	int nr = gid - slice * rows * patch;
+	int n = nr / patch;
+	int r = nr - n * patch;
 	int ch = r / ( k * k );
 	int ky = ( r / k ) % k;
 	int kx = r % k;
-	int plane = inW * inH;
-	int positions = outW * outH;
-	__global const float* x = in + (long) n * inC * plane + ch * plane + ky * inW + kx;
-	__global const float* d = dPre + (long) n * positions * outC + q;
-	float sum = 0.0f;
-	for (int p = 0; p < positions; p++){
-		float v = x[ ( p / outW ) * stride * inW + ( p % outW ) * stride ];
-		if (reluIn) v = fmax( v, 0.0f );
-		sum += v * d[ p * outC ];
+	int at = planeLevels[ ch ];
+	int per = ( outH + rowSlices - 1 ) / rowSlices;
+	int yFrom = slice * per, yTo = min( outH, yFrom + per );
+	int quads = outC >> 2;
+	__global const uchar* g = packed + (long) n * packedBytes;
+	__global const float* d = dPre + (long) n * outW * outH * outC;
+	float4 acc[ 8 ];
+	for (int q = 0; q < 8; q++) acc[ q ] = (float4) 0.0f;
+	bool aligned = at < 0 && ( area & 7 ) == 0 && ( inW & 7 ) == 0 && inW <= 64;
+	ulong lanes = 0;
+	for (int ox = 0; ox < outW; ox++) lanes |= 1UL << ( ox * stride );
+	for (int oy = yFrom; oy < yTo; oy++){
+		int rowCell = ( oy * stride + ky ) * inW + kx;
+		if (aligned){
+			__global const uchar* rb = g + ( ( ch * area + rowCell - kx ) >> 3 );
+			ulong row = 0;
+			for (int b = 0; b < ( inW >> 3 ); b++) row |= (ulong) rb[ b ] << ( 8 * b );
+			ulong m = ( row >> kx ) & lanes;
+			while (m){
+				int ox = ( 63 - (int) clz( m & ( ~m + 1 ) ) ) / stride;
+				m &= m - 1;
+				__global const float* dd = d + ( oy * outW + ox ) * outC;
+				for (int q = 0; q < 8; q++) if (q < quads) acc[ q ] += vload4( q, dd );
+			}
+			continue;
+		}
+		for (int ox = 0; ox < outW; ox++){
+			int cell = rowCell + ox * stride;
+			float v = packed_input( g, at, ch * area + cell, cell, levels );
+			if (v == 0.0f) continue;
+			__global const float* dd = d + ( oy * outW + ox ) * outC;
+			for (int q = 0; q < 8; q++) if (q < quads) acc[ q ] += v * vload4( q, dd );
+		}
 	}
-	partial[ gid ] = sum;
+	__global float* o = partial + (long) gid * outC;
+	for (int q = 0; q < 8; q++) if (q < quads) vstore4( acc[ q ], q, o );
 }
 
-__kernel void conv_input_grad( __global const float* dPre, __global const float* W, __global float* dIn,
-		const int inC, const int inW, const int inH, const int outC, const int k, const int stride,
-		const int outW, const int outH ){
+__kernel void im2col( __global const float* in, __global float* col, const int inC, const int inW, const int inH,
+		const int k, const int stride, const int outW, const int outH, const int reluIn, const int total ){
+	int gid = get_global_id( 0 );
+	int r = gid / total;
+	int row = gid - r * total;
+	int positions = outW * outH;
+	int n = row / positions;
+	int p = row - n * positions;
+	int ch = r / ( k * k );
+	int ky = ( r / k ) % k;
+	int kx = r % k;
+	float v = in[ (long) n * inC * inW * inH + ch * inW * inH + ( ( p / outW ) * stride + ky ) * inW + ( p % outW ) * stride + kx ];
+	col[ gid ] = reluIn ? fmax( v, 0.0f ) : v;
+}
+
+__kernel void col2im( __global const float* col, __global float* dIn, const int inC, const int inW, const int inH,
+		const int k, const int stride, const int outW, const int outH, const int total ){
 	int gid = get_global_id( 0 );
 	int plane = inW * inH;
-	int perSample = inC * plane;
-	int n = gid / perSample;
-	int r = gid - n * perSample;
+	int n = gid / ( inC * plane );
+	int r = gid - n * inC * plane;
 	int ch = r / plane;
 	int iy = ( r % plane ) / inW;
 	int ix = r % inW;
-	__global const float* d = dPre + (long) n * outW * outH * outC;
+	__global const float* c = col + (long) n * outW * outH;
 	float sum = 0.0f;
 	for (int ky = 0; ky < k; ky++){
 		int ty = iy - ky;
@@ -149,64 +226,28 @@ __kernel void conv_input_grad( __global const float* dPre, __global const float*
 		for (int kx = 0; kx < k; kx++){
 			int tx = ix - kx;
 			if (tx < 0 || tx % stride != 0 || tx / stride >= outW) continue;
-			__global const float* dd = d + ( ( ty / stride ) * outW + tx / stride ) * outC;
-			__global const float* w = W + ( ( ch * k + ky ) * k + kx ) * outC;
-			for (int q = 0; q < outC; q++) sum += dd[ q ] * w[ q ];
+			sum += c[ (long) ( ( ch * k + ky ) * k + kx ) * total + ( ty / stride ) * outW + tx / stride ];
 		}
 	}
 	dIn[ gid ] = sum;
 }
 
-__kernel void dense_forward_tanh_wt( __global const float* x, __global const float* WT, __global const float* b,
-		__global float* y, const int in, const int out ){
-	__local float part[ 64 ];
-	int group = get_group_id( 0 );
+__kernel void add_bias( __global float* y, __global const float* b, const int out ){
+	int gid = get_global_id( 0 );
+	y[ gid ] += b[ gid % out ];
+}
+
+__kernel void column_sum( __global const float* src, __global float* dst, const int rows, const int width ){
+	__local float part[ 256 ];
+	int j = get_group_id( 0 );
 	int lid = get_local_id( 0 );
-	int n = group / out;
-	int j = group - n * out;
-	__global const float* xr = x + (long) n * in;
-	__global const float* w = WT + (long) j * in;
 	float sum = 0.0f;
-	for (int m = lid; m < in; m += 64) sum += xr[ m ] * w[ m ];
+	for (int r = lid; r < rows; r += 256) sum += src[ (long) r * width + j ];
 	part[ lid ] = sum;
 	barrier( CLK_LOCAL_MEM_FENCE );
-	for (int k = 32; k > 0; k >>= 1){
+	for (int k = 128; k > 0; k >>= 1){
 		if (lid < k) part[ lid ] += part[ lid + k ];
 		barrier( CLK_LOCAL_MEM_FENCE );
 	}
-	if (lid == 0) y[ group ] = tanh( b[ j ] + part[ 0 ] );
-}
-
-__kernel void conv_packed_forward( __global const uchar* packed, __global const int* planeLevels, __global const float* W,
-		__global const float* b, __global float* pre, const int packedBytes, const int area, const float levels,
-		const int inC, const int inW, const int outC, const int k, const int stride, const int outW, const int outH ){
-	int gid = get_global_id( 0 );
-	int groups = ( outC + 7 ) / 8;
-	int positions = outW * outH;
-	int perSample = positions * groups;
-	int n = gid / perSample;
-	int r = gid - n * perSample;
-	int p = r / groups;
-	int q0 = ( r - p * groups ) * 8;
-	int oy = ( p / outW ) * stride;
-	int ox = ( p % outW ) * stride;
-	__global const uchar* g = packed + (long) n * packedBytes;
-	float acc[ 8 ];
-	for (int j = 0; j < 8; j++) acc[ j ] = q0 + j < outC ? b[ q0 + j ] : 0.0f;
-	for (int ch = 0; ch < inC; ch++){
-		int at = planeLevels[ ch ];
-		for (int ky = 0; ky < k; ky++){
-			int row = ( oy + ky ) * inW + ox;
-			for (int kx = 0; kx < k; kx++){
-				int cell = row + kx;
-				int i = ch * area + cell;
-				float v = at >= 0 ? g[ at + cell ] / levels : (float) ( ( g[ i >> 3 ] >> ( i & 7 ) ) & 1 );
-				if (v == 0.0f) continue;
-				__global const float* w = W + ( ( ch * k + ky ) * k + kx ) * outC + q0;
-				for (int j = 0; j < 8; j++) if (q0 + j < outC) acc[ j ] += v * w[ j ];
-			}
-		}
-	}
-	__global float* o = pre + ( (long) n * positions + p ) * outC + q0;
-	for (int j = 0; j < 8; j++) if (q0 + j < outC) o[ j ] = acc[ j ];
+	if (lid == 0) dst[ j ] = part[ 0 ];
 }

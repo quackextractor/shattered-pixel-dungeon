@@ -213,6 +213,7 @@ cliTask('verifycheck', 'Fails if replay verification cannot detect an altered re
   cliTask('valuescale', "Reports the critic's target range against the range it can reach.")
   cliTask('parallelcheck', "Fails if a parallel update computes a different gradient from the serial one.")
   cliTask('sparsecheck', 'Fails if the sparse observation path packs or clears differently from the full grid.')
+  cliTask('throughputbench', 'Measures env-only, batched-inference and update throughput; results to out/evidence.')
   cliTask('gpucheck', 'Fails if the OpenCL update computes a different gradient from the CPU one, or is slower.')
   cliTask('rewardcheck', 'Fails if ending an episode can be cheaper than dying.')
 cliTask('transitioncheck', 'Fails if descending ends the episode, or is worth nothing.')

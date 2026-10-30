@@ -16,7 +16,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class GpuCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 6;
 
 	private static final double TOLERANCE = 1e-4;
 
@@ -39,6 +39,7 @@ public class GpuCheck {
 		checkTheGradientMatchesTheCpu( "10x10", small(), 1, 128 );
 		checkTheGradientMatchesTheCpu( "10x10", small(), 4, 128 );
 		checkTheGradientMatchesTheCpu( "48x48", new EnvConfig(), 4, 128 );
+		checkTheGradientMatchesTheCpu( "48x48 with teacher and demo rows, short chunks, 2 epochs of 4 minibatches", new EnvConfig(), 4, -512 );
 		checkTheShippedSizeIsFaster();
 		checkBatchedInferenceMatchesTheCpu();
 
@@ -46,8 +47,10 @@ public class GpuCheck {
 	}
 
 	private static void checkTheGradientMatchesTheCpu( String label, EnvConfig config, int threads, int samples ){
-		Run cpu = update( config, "cpu", threads, samples, 1 );
-		Run gpu = update( config, "gpu", threads, samples, 1 );
+		boolean rich = samples < 0;
+		int epochs = rich ? 2 : 1;
+		Run cpu = update( config, "cpu", threads, Math.abs( samples ), epochs, rich );
+		Run gpu = update( config, "gpu", threads, Math.abs( samples ), epochs, rich );
 
 		double norm = 0, worst = 0;
 		int at = -1, tensor = -1;
@@ -189,6 +192,10 @@ public class GpuCheck {
 	}
 
 	private static Run update( EnvConfig config, String device, int threads, int samples, int epochs ){
+		return update( config, device, threads, samples, epochs, false );
+	}
+
+	private static Run update( EnvConfig config, String device, int threads, int samples, int epochs, boolean rich ){
 		PPO ppo = new PPO( config, new Random( SEED ));
 		try {
 			ppo.useDevice( device );
@@ -198,8 +205,19 @@ public class GpuCheck {
 			ppo.minibatchSize = samples <= 128 ? samples / 16 : 8;
 			List< Transition > batch = ParallelFixtures.batch( ppo.network, config, samples, 4242L );
 			for (int i = 0; i < batch.size(); i++){
-				batch.get( i ).episodeId = i / 64;
-				batch.get( i ).stepIndex = i;
+				Transition t = batch.get( i );
+				t.episodeId = rich ? i / 11 : i / 64;
+				t.stepIndex = i;
+				if (rich){
+					t.teacherIndex = i % 5 - 1;
+					t.demonstration = i % 7 == 0;
+					t.actionMask[ 0 ] = 0f;
+				}
+			}
+			if (rich){
+				ppo.minibatchSize = 13;
+				ppo.teacherWeight = 0.3f;
+				ppo.demoWeight = 0.5f;
 			}
 			ppo.buffer().addAll( batch );
 			Network.Layer[] before = copy( ppo.network.layers() );

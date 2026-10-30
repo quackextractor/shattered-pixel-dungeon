@@ -181,7 +181,8 @@ public float lastClipFraction;
 
 		List< List< Transition > > chunks = chunks();
 
-		if (gpu != null) gpu.begin();
+		int perEpoch = ( chunks.size() + Math.max( 1, minibatchSize ) - 1 ) / Math.max( 1, minibatchSize );
+		if (gpu != null) gpu.begin( this, chunks, epochs * perEpoch );
 		for (int epoch = 0; epoch < epochs; epoch++){
 			shuffleChunks( chunks );
 
@@ -195,7 +196,7 @@ public float lastClipFraction;
 			}
 		}
 
-		if (gpu != null) gpu.end();
+		if (gpu != null) for (Minibatch m : gpu.end()) accumulate( m );
 
 		if (lastMinibatches > 0){
 			lastPolicyLoss /= lastMinibatches;
@@ -253,8 +254,11 @@ public float lastClipFraction;
 
 
 	private void oneMinibatch( List< List< Transition > > chunks, int from, int to ){
-		Minibatch m = gpu != null ? gpu.run( this, chunks, from, to )
-				: threads > 1 ? sharded.run( this, chunks, from, to ) : null;
+		if (gpu != null){
+			gpu.enqueue( this, chunks, from, to );
+			return;
+		}
+		Minibatch m = threads > 1 ? sharded.run( this, chunks, from, to ) : null;
 		accumulate( m != null ? m : processMinibatch( chunks, from, to ));
 	}
 

@@ -9,21 +9,22 @@ import java.nio.FloatBuffer;
 
 final class ClEncoder implements AutoCloseable {
 
+	private static final int MAX_CHANNELS = 32, WEIGHT_SLICES = 40, ROW_SLICES = 4;
+
 	private final ClDevice cl;
 	private final Network net;
-	private final long kUnpack, kConv, kConcat, kDense, kTanhBack, kRelu, kDenseW, kDenseIn, kSum, kConvW, kConvIn, kTranspose, kConvPacked;
+	private final long kConcat, kTanhBack, kRelu, kSum, kConvRows, kConvWeight, kIm2col, kCol2im, kBias, kSlicesTanh, kColumnSum;
 
 	final int cells, packedBytes, features, extra, hidden, trunkIn;
-	private final int area, convOut, convPatch, reducePatch;
+	private final int area, convOut, convPatch, reducePatch, reducePositions;
 
 	private final long planeLevels;
-	private final long convW, convB, reduceW, reduceB, trunkW, trunkB, trunkWT;
+	private final long convW, convB, reduceW, reduceB, trunkW, trunkB;
 	private final long gConvW, gConvB, gReduceW, gReduceB, gTrunkW, gTrunkB;
 
-	private final ClParameters params;
-
-	private int capacity, weightsVersion = -1;
-	private long packed, extras, grid, convPre, reducePre, concat, dReduce, dConv, partial, partialBias;
+	private int capacity;
+	private long slicePartial, sliceCapacity;
+	private long packed, extras, convPre, col, reducePre, concat, dReduce, dConv, partial;
 	long hiddenOut, dHidden;
 	private ByteBuffer packedHost;
 	private FloatBuffer extrasHost;
@@ -31,20 +32,20 @@ final class ClEncoder implements AutoCloseable {
 	ClEncoder( ClDevice cl, Network net, ClParameters params ){
 		this.cl = cl;
 		this.net = net;
-		this.params = params;
-		kUnpack = cl.kernel( "unpack_grid" );
-		kConv = cl.kernel( "conv_forward" );
+		if (net.conv.outChannels > MAX_CHANNELS || net.conv.outChannels % 4 != 0){
+			throw new IllegalStateException( "the OpenCL encoder needs a first layer of at most " + MAX_CHANNELS + " channels, a multiple of 4" );
+		}
 		kConcat = cl.kernel( "build_concat" );
-		kDense = cl.kernel( "dense_forward_tanh_wt" );
 		kTanhBack = cl.kernel( "tanh_backward" );
 		kRelu = cl.kernel( "relu_mask" );
-		kDenseW = cl.kernel( "dense_weight_grad" );
-		kDenseIn = cl.kernel( "dense_input_grad" );
 		kSum = cl.kernel( "sum_rows" );
-		kConvW = cl.kernel( "conv_weight_partial" );
-		kConvIn = cl.kernel( "conv_input_grad" );
-		kTranspose = cl.kernel( "transpose" );
-		kConvPacked = cl.kernel( "conv_packed_forward" );
+		kConvRows = cl.kernel( "conv_packed_rows" );
+		kConvWeight = cl.kernel( "conv_packed_weight" );
+		kIm2col = cl.kernel( "im2col" );
+		kCol2im = cl.kernel( "col2im" );
+		kBias = cl.kernel( "add_bias" );
+		kSlicesTanh = cl.kernel( "slices_bias_tanh" );
+		kColumnSum = cl.kernel( "column_sum" );
 
 		cells = net.gridLength();
 		area = cells / GridChannel.fractionalPlanes().length;
@@ -56,6 +57,7 @@ final class ClEncoder implements AutoCloseable {
 		convOut = net.conv.outputSize();
 		convPatch = net.conv.W.rows;
 		reducePatch = net.reduce.W.rows;
+		reducePositions = net.reduce.outWidth * net.reduce.outHeight;
 
 		boolean[] fractional = GridChannel.fractionalPlanes();
 		int[] levels = new int[ fractional.length ];
@@ -73,13 +75,20 @@ final class ClEncoder implements AutoCloseable {
 		reduceB = params.bias( 1 );
 		trunkW = params.weight( 2 );
 		trunkB = params.bias( 2 );
-		trunkWT = cl.floats( net.trunk.W.data.length );
 		gConvW = params.weightGrad( 0 );
 		gConvB = params.biasGrad( 0 );
 		gReduceW = params.weightGrad( 1 );
 		gReduceB = params.biasGrad( 1 );
 		gTrunkW = params.weightGrad( 2 );
 		gTrunkB = params.biasGrad( 2 );
+	}
+
+	long packed(){
+		return packed;
+	}
+
+	long extras(){
+		return extras;
 	}
 
 	ByteBuffer packedStage( int rows ){
@@ -95,92 +104,97 @@ final class ClEncoder implements AutoCloseable {
 	}
 
 	void forwardInference( int rows ){
-		prepare();
-		Conv2D c = net.conv, r = net.reduce;
-		cl.run( kConvPacked, (long) rows * c.outWidth * c.outHeight * ( ( c.outChannels + 7 ) / 8 ), packed, planeLevels, convW, convB, convPre, packedBytes, area,
-				(float) GridChannel.LEVELS, c.inChannels, c.inWidth, c.outChannels, c.kernel, c.stride, c.outWidth, c.outHeight );
-		trunkForward( rows, r );
-	}
-
-	private void prepare(){
-		if (weightsVersion != params.version()){
-			cl.run( kTranspose, (long) trunkIn * hidden, trunkW, trunkWT, trunkIn, hidden );
-			weightsVersion = params.version();
-		}
 		cl.writeAsync( packed, packedHost.rewind() );
 		cl.writeAsync( extras, extrasHost.rewind() );
-	}
-
-	private void trunkForward( int rows, Conv2D r ){
-		cl.run( kConv, (long) rows * features, convPre, reduceW, reduceB, reducePre,
-				r.inChannels, r.inWidth, r.inHeight, r.outChannels, r.kernel, r.stride, r.outWidth, r.outHeight, 1 );
-		cl.run( kConcat, (long) rows * trunkIn, reducePre, extras, concat, features, extra );
-		cl.runGroups( kDense, (long) rows * hidden, concat, trunkWT, trunkB, hiddenOut, trunkIn, hidden );
+		forward( rows );
 	}
 
 	void forward( int rows ){
-		prepare();
 		Conv2D c = net.conv, r = net.reduce;
-		cl.run( kUnpack, (long) rows * cells, packed, planeLevels, grid, cells, area, packedBytes, (float) GridChannel.LEVELS );
-		cl.run( kConv, (long) rows * convOut, grid, convW, convB, convPre,
-				c.inChannels, c.inWidth, c.inHeight, c.outChannels, c.kernel, c.stride, c.outWidth, c.outHeight, 0 );
-		trunkForward( rows, r );
+		cl.run( kConvRows, (long) rows * c.outWidth * c.outHeight, packed, planeLevels, convW, convB, convPre, packedBytes, area,
+				(float) GridChannel.LEVELS, c.inChannels, c.inWidth, c.outChannels, c.kernel, c.stride, c.outWidth, c.outHeight );
+		int reduceRows = rows * reducePositions;
+		cl.run( kIm2col, (long) reduceRows * reducePatch, convPre, col,
+				r.inChannels, r.inWidth, r.inHeight, r.kernel, r.stride, r.outWidth, r.outHeight, 1, reduceRows );
+		gemm( col, reduceW, reducePre, reduceRows, r.outChannels, reducePatch, 1, reduceRows, r.outChannels, 1, r.outChannels, 1 );
+		cl.run( kBias, (long) rows * features, reducePre, reduceB, r.outChannels );
+		cl.run( kConcat, (long) rows * trunkIn, reducePre, extras, concat, features, extra );
+		int tiles = ( ( rows + 63 ) / 64 ) * ( ( hidden + 63 ) / 64 );
+		reserveSlices( (long) ( 240 / tiles + 1 ) * rows * hidden );
+		int slices = gemm( concat, trunkW, slicePartial, rows, hidden, trunkIn, trunkIn, 1, hidden, 1, hidden, 240 / tiles + 1 );
+		cl.run( kSlicesTanh, (long) rows * hidden, slicePartial, trunkB, hiddenOut, slices, hidden, rows * hidden );
 	}
 
 	void backward( int rows ){
 		Conv2D c = net.conv, r = net.reduce;
 		cl.run( kTanhBack, (long) rows * hidden, hiddenOut, dHidden );
-		cl.run( kDenseW, (long) trunkIn * hidden, concat, dHidden, gTrunkW, rows, trunkIn, hidden );
+		gemm( concat, dHidden, gTrunkW, trunkIn, hidden, rows, 1, trunkIn, hidden, 1, hidden, 1 );
 		cl.run( kSum, hidden, dHidden, gTrunkB, rows, hidden );
-		cl.run( kDenseIn, (long) rows * features, dHidden, trunkWT, dReduce, features, trunkIn, hidden );
+		gemm( dHidden, trunkW, dReduce, rows, features, hidden, hidden, 1, 1, hidden, features, 1 );
 		cl.run( kRelu, (long) rows * features, reducePre, dReduce );
 
-		cl.run( kConvW, (long) rows * reducePatch * r.outChannels, convPre, dReduce, partial,
-				r.inChannels, r.inWidth, r.inHeight, r.outChannels, r.kernel, r.stride, r.outWidth, r.outHeight, 1 );
-		cl.run( kSum, (long) reducePatch * r.outChannels, partial, gReduceW, rows, reducePatch * r.outChannels );
-		cl.run( kSum, (long) rows * r.outChannels, dReduce, partialBias, r.outWidth * r.outHeight, r.outChannels );
-		cl.run( kSum, r.outChannels, partialBias, gReduceB, rows, r.outChannels );
+		int reduceRows = rows * reducePositions;
+		reserveSlices( (long) WEIGHT_SLICES * reducePatch * r.outChannels );
+		int slices = gemm( col, dReduce, slicePartial, reducePatch, r.outChannels, reduceRows, reduceRows, 1, r.outChannels, 1,
+				r.outChannels, WEIGHT_SLICES );
+		cl.run( kSum, (long) reducePatch * r.outChannels, slicePartial, gReduceW, slices, reducePatch * r.outChannels );
+		biasGrad( dReduce, gReduceB, rows, reducePositions, r.outChannels );
 
-		cl.run( kConvIn, (long) rows * convOut, dReduce, reduceW, dConv,
-				r.inChannels, r.inWidth, r.inHeight, r.outChannels, r.kernel, r.stride, r.outWidth, r.outHeight );
+		gemm( reduceW, dReduce, col, reducePatch, reduceRows, r.outChannels, r.outChannels, 1, 1, r.outChannels, reduceRows, 1 );
+		cl.run( kCol2im, (long) rows * convOut, col, dConv, r.inChannels, r.inWidth, r.inHeight, r.kernel, r.stride, r.outWidth,
+				r.outHeight, reduceRows );
 		cl.run( kRelu, (long) rows * convOut, convPre, dConv );
 
-		cl.run( kConvW, (long) rows * convPatch * c.outChannels, grid, dConv, partial,
-				c.inChannels, c.inWidth, c.inHeight, c.outChannels, c.kernel, c.stride, c.outWidth, c.outHeight, 0 );
-		cl.run( kSum, (long) convPatch * c.outChannels, partial, gConvW, rows, convPatch * c.outChannels );
-		cl.run( kSum, (long) rows * c.outChannels, dConv, partialBias, c.outWidth * c.outHeight, c.outChannels );
-		cl.run( kSum, c.outChannels, partialBias, gConvB, rows, c.outChannels );
+		cl.run( kConvWeight, (long) ROW_SLICES * rows * convPatch, packed, planeLevels, dConv, partial, packedBytes, area,
+				(float) GridChannel.LEVELS, c.inChannels, c.inWidth, c.outChannels, c.kernel, c.stride, c.outWidth, c.outHeight,
+				ROW_SLICES, rows );
+		cl.run( kSum, (long) convPatch * c.outChannels, partial, gConvW, ROW_SLICES * rows, convPatch * c.outChannels );
+		biasGrad( dConv, gConvB, rows, c.outWidth * c.outHeight, c.outChannels );
 	}
 
-	private void reserve( int rows ){
+	private void biasGrad( long d, long gb, int rows, int positions, int channels ){
+		cl.runSized( kColumnSum, channels, 256, d, gb, rows * positions, channels );
+	}
+
+	private int gemm( long a, long b, long c, int M, int N, int K, int sAi, int sAk, int sBk, int sBj, int sCi, int slices ){
+		return cl.gemm( a, b, c, M, N, K, sAi, sAk, sBk, sBj, sCi, slices );
+	}
+
+	private void reserveSlices( long floats ){
+		if (floats <= sliceCapacity) return;
+		cl.release( slicePartial );
+		slicePartial = cl.floats( floats );
+		sliceCapacity = floats;
+	}
+
+	void reserve( int rows ){
 		if (rows <= capacity) return;
 		releaseRows();
 		capacity = rows;
 		packed = cl.bytes( (long) rows * packedBytes );
 		extras = cl.floats( (long) rows * extra );
-		grid = cl.floats( (long) rows * cells );
 		convPre = cl.floats( (long) rows * convOut );
+		col = cl.floats( (long) rows * reducePositions * reducePatch );
 		reducePre = cl.floats( (long) rows * features );
 		concat = cl.floats( (long) rows * trunkIn );
 		hiddenOut = cl.floats( (long) rows * hidden );
 		dHidden = cl.floats( (long) rows * hidden );
 		dReduce = cl.floats( (long) rows * features );
 		dConv = cl.floats( (long) rows * convOut );
-		partial = cl.floats( (long) rows * Math.max( convPatch * net.conv.outChannels, reducePatch * net.reduce.outChannels ));
-		partialBias = cl.floats( (long) rows * Math.max( net.conv.outChannels, net.reduce.outChannels ));
+		partial = cl.floats( (long) ROW_SLICES * rows * convPatch * net.conv.outChannels );
 		packedHost = BufferUtils.createByteBuffer( rows * packedBytes );
 		extrasHost = BufferUtils.createFloatBuffer( rows * extra );
 	}
 
 	private void releaseRows(){
 		if (capacity == 0) return;
-		cl.release( packed, extras, grid, convPre, reducePre, concat, hiddenOut, dHidden, dReduce, dConv, partial, partialBias );
+		cl.release( packed, extras, convPre, col, reducePre, concat, hiddenOut, dHidden, dReduce, dConv, partial );
 		capacity = 0;
 	}
 
 	@Override
 	public void close(){
 		releaseRows();
-		cl.release( planeLevels, trunkWT );
+		cl.release( planeLevels, slicePartial );
 	}
 }

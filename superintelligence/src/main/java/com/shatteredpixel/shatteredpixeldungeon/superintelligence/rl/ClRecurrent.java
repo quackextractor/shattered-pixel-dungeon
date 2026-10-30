@@ -5,29 +5,24 @@ final class ClRecurrent implements AutoCloseable {
 	private final ClDevice cl;
 	private final Dense[] heads;
 	private final ClParameters params;
-	private final long kGates, kCell, kLinear, kCellBack, kInGrad, kLstmW, kDenseW, kDenseIn, kSum, kTranspose, kPack, kUnpack;
+	private final long kForward, kBackward, kBias, kSum, kTranspose, kPack, kUnpack;
 
 	final int in, s, gates, K;
 
-	private final long W, WT, b, Wh, WhT, bh, gW, gb, gWh, gbh;
+	private final long W, WT, b, Wh, bh, gW, gb, gWh, gbh;
 
 	private int capacityRows, capacityChunks, weightsVersion = -1;
 	private java.nio.FloatBuffer hHost, cHost, hRead, cRead;
-	private long h0, c0, gateBuf, cout, hout, logits, dLogits, dhHeads, gg, dPrev, dCell;
-	private float[] logitsHost, zeros;
+	private long h0, c0, gateBuf, cout, hout, hprev, logits, dLogits, dhHeads, gg;
+	private float[] logitsHost;
 
 	ClRecurrent( ClDevice cl, Network net, ClParameters params ){
 		this.cl = cl;
 		this.params = params;
 		this.heads = new Dense[]{ net.actionHead, net.slotHead, net.targetHead, net.valueHead };
-		kGates = cl.kernel( "lstm_gates_wt" );
-		kCell = cl.kernel( "lstm_cell" );
-		kLinear = cl.kernel( "dense_forward_linear" );
-		kCellBack = cl.kernel( "lstm_cell_backward" );
-		kInGrad = cl.kernel( "lstm_input_grad" );
-		kLstmW = cl.kernel( "lstm_weight_grad" );
-		kDenseW = cl.kernel( "dense_weight_grad" );
-		kDenseIn = cl.kernel( "dense_input_grad" );
+		kForward = cl.kernel( "lstm_forward_fused" );
+		kBackward = cl.kernel( "lstm_backward_fused" );
+		kBias = cl.kernel( "add_bias" );
 		kSum = cl.kernel( "sum_rows" );
 		kTranspose = cl.kernel( "transpose" );
 		kPack = cl.kernel( "pack_columns" );
@@ -35,6 +30,7 @@ final class ClRecurrent implements AutoCloseable {
 
 		in = net.memory.inputSize;
 		s = net.memory.size;
+		if (s > 256) throw new IllegalStateException( "the OpenCL LSTM holds at most 256 cells, the network has " + s );
 		gates = 4 * s;
 		int k = 0;
 		for (Dense h : heads) k += h.out;
@@ -46,23 +42,40 @@ final class ClRecurrent implements AutoCloseable {
 		gb = params.biasGrad( 3 );
 		WT = cl.floats( net.memory.W.data.length );
 		Wh = cl.floats( (long) s * K );
-		WhT = cl.floats( (long) s * K );
 		bh = cl.floats( K );
 		gWh = cl.floats( (long) s * K );
 		gbh = cl.floats( K );
 	}
 
-	float[] forward( int steps, int chunks, float[] state0, long X ){
-		return forward( steps, chunks, state0, X, null );
+	long h0(){ return h0; }
+	long c0(){ return c0; }
+	long logits(){ return logits; }
+	long dLogits(){ return dLogits; }
+
+	void forward( int steps, int chunks, long X ){
+		reserve( steps * chunks, chunks );
+		uploadIfChanged();
+		run( steps, chunks, X );
 	}
 
-	float[] forward( int steps, int chunks, float[] state0, long X, float[] finalState ){
-		reserve( steps * chunks, chunks );
-		int rows = steps * chunks;
+	private void uploadIfChanged(){
 		if (weightsVersion != params.version()){
 			uploadWeights();
 			weightsVersion = params.version();
 		}
+	}
+
+	private void run( int steps, int chunks, long X ){
+		int rows = steps * chunks;
+		cl.gemm( X, W, gateBuf, rows, gates, in, in, 1, gates, 1, gates, 1 );
+		cl.runSized( kForward, chunks, 256, gateBuf, h0, c0, W, b, gateBuf, hout, cout, steps, chunks, in, s );
+		cl.gemm( hout, Wh, logits, rows, K, s, s, 1, K, 1, K, 1 );
+		cl.run( kBias, (long) rows * K, logits, bh, K );
+	}
+
+	float[] forward( int steps, int chunks, float[] state0, long X, float[] finalState ){
+		reserve( steps * chunks, chunks );
+		uploadIfChanged();
 		hHost.clear().limit( chunks * s );
 		cHost.clear().limit( chunks * s );
 		for (int i = 0; i < chunks; i++){
@@ -71,12 +84,7 @@ final class ClRecurrent implements AutoCloseable {
 		}
 		cl.writeAsync( h0, hHost.flip() );
 		cl.writeAsync( c0, cHost.flip() );
-
-		for (int t = 0; t < steps; t++){
-			cl.runGroups( kGates, (long) chunks * gates, X, h0, hout, WT, b, gateBuf, t, chunks, in, s );
-			cl.run( kCell, (long) chunks * s, gateBuf, c0, cout, hout, t, chunks, s );
-		}
-		cl.run( kLinear, (long) rows * K, hout, Wh, bh, logits, s, K );
+		run( steps, chunks, X );
 		if (finalState != null){
 			hRead.clear().limit( chunks * s );
 			cRead.clear().limit( chunks * s );
@@ -93,21 +101,18 @@ final class ClRecurrent implements AutoCloseable {
 		return logitsHost;
 	}
 
-	void backward( int steps, int chunks, float[] dLogitsHost, long X, long dX ){
+	void backward( int steps, int chunks, long X, long dX ){
 		int rows = steps * chunks;
-		cl.write( dLogits, dLogitsHost );
-		cl.write( dPrev, zeros );
-		cl.write( dCell, zeros );
-
-		cl.run( kDenseIn, (long) rows * s, dLogits, WhT, dhHeads, s, s, K );
-		cl.run( kDenseW, (long) s * K, hout, dLogits, gWh, rows, s, K );
+		cl.gemm( dLogits, Wh, dhHeads, rows, s, K, K, 1, 1, K, s, 1 );
+		cl.gemm( hout, dLogits, gWh, s, K, rows, 1, s, K, 1, K, 1 );
 		cl.run( kSum, K, dLogits, gbh, rows, K );
 
-		for (int t = steps - 1; t >= 0; t--){
-			cl.run( kCellBack, (long) chunks * s, gateBuf, c0, cout, dhHeads, dPrev, dCell, gg, t, chunks, s );
-			cl.run( kInGrad, (long) chunks * ( in + s ), gg, WT, dX, dPrev, t, chunks, in, s );
-		}
-		cl.run( kLstmW, (long) ( in + s ) * gates, X, h0, hout, gg, gW, rows, chunks, in, s );
+		cl.runSized( kBackward, chunks, 256, gateBuf, c0, cout, dhHeads, WT, gg, steps, chunks, in, s );
+		cl.gemm( gg, W, dX, rows, in, gates, gates, 1, 1, gates, in, 1 );
+		cl.gemm( X, gg, gW, in, gates, rows, 1, in, gates, 1, gates, 1 );
+		cl.copy( h0, 0, hprev, 0, chunks * s );
+		cl.copy( hout, 0, hprev, chunks * s, ( rows - chunks ) * s );
+		cl.gemm( hprev, 0, gg, 0, gW, in * gates, s, gates, rows, 1, s, gates, 1, gates, 1 );
 		cl.run( kSum, gates, gg, gb, rows, gates );
 
 		for (int h = 0, off = 0; h < heads.length; off += heads[ h ].out, h++){
@@ -122,12 +127,10 @@ final class ClRecurrent implements AutoCloseable {
 			cl.run( kPack, (long) s * heads[ h ].out, params.weight( 4 + h ), Wh, heads[ h ].out, K, off );
 			cl.run( kPack, heads[ h ].out, params.bias( 4 + h ), bh, heads[ h ].out, K, off );
 		}
-		cl.run( kTranspose, (long) s * K, Wh, WhT, s, K );
 	}
 
-	private void reserve( int rows, int chunks ){
+	void reserve( int rows, int chunks ){
 		if (logitsHost == null || logitsHost.length != rows * K) logitsHost = new float[ rows * K ];
-		if (zeros == null || zeros.length != chunks * s) zeros = new float[ chunks * s ];
 		if (rows <= capacityRows && chunks <= capacityChunks) return;
 		int grownRows = Math.max( rows, capacityRows ), grownChunks = Math.max( chunks, capacityChunks );
 		release();
@@ -139,12 +142,11 @@ final class ClRecurrent implements AutoCloseable {
 		cRead = org.lwjgl.BufferUtils.createFloatBuffer( chunks * s );
 		h0 = cl.floats( (long) chunks * s );
 		c0 = cl.floats( (long) chunks * s );
-		dPrev = cl.floats( (long) chunks * s );
-		dCell = cl.floats( (long) chunks * s );
 		gateBuf = cl.floats( (long) rows * gates );
 		gg = cl.floats( (long) rows * gates );
 		cout = cl.floats( (long) rows * s );
 		hout = cl.floats( (long) rows * s );
+		hprev = cl.floats( (long) rows * s );
 		dhHeads = cl.floats( (long) rows * s );
 		logits = cl.floats( (long) rows * K );
 		dLogits = cl.floats( (long) rows * K );
@@ -152,13 +154,13 @@ final class ClRecurrent implements AutoCloseable {
 
 	private void release(){
 		if (capacityRows == 0) return;
-		cl.release( h0, c0, dPrev, dCell, gateBuf, gg, cout, hout, dhHeads, logits, dLogits );
+		cl.release( h0, c0, gateBuf, gg, cout, hout, hprev, dhHeads, logits, dLogits );
 		capacityRows = 0;
 	}
 
 	@Override
 	public void close(){
 		release();
-		cl.release( WT, Wh, WhT, bh, gWh, gbh );
+		cl.release( WT, Wh, bh, gWh, gbh );
 	}
 }
