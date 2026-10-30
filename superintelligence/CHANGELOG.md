@@ -21,9 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one being awaited and hands each worker the newest published weights between its own episodes, so no
   worker waits for a generation's slowest episode. `SyncCollection` keeps the old path; both behind
   `GenerationSource`. `asynccheck` holds ordering, staleness and queue-ahead with a fake
-  `JobRunner`. Measured steady state (generations 4+): 12 x 4 processes 13,099 async against 13,200 sync
-  turns/s; 48 in-process envs x 2 async 13,556, where without it 1-2 episodes a worker stalled on the
-  slowest. Off by default until depth at equal turns is compared on a long run.
+  `JobRunner`. Measured on the progress-bar clock (the per-generation wall under-counted async runs, see
+  Fixed): in-process 96 x 1 async 15,035/13,964 against process 12 x 8 sync 12,060/11,993 turns/s, ABAB
+  with a game in front. Depth at equal turns over 40 generations: 2.898 async vs 2.876 sync. Still off
+  by default; the in-process async setting is the faster one to run.
 - **In-process workers (`worker.in_process`).** Each worker is a thread in the trainer with its own
   `IsolatedLoader`, so its game statics are its own; it speaks the same protocol over `java.nio` pipes.
   `com.badlogic.*`, `org.lwjgl.*` and `superintelligence.shared.*` stay shared, so gdx natives load once;
@@ -71,6 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`train.sh`**, the Linux launcher: finds a JDK, always `--auto`, logs to `out/evidence/<name>.log`.
 
 ### Fixed
+- **Every `ResourceStats` sample spent ~1.3 s in `getProcessCpuLoad()`** (Windows, 96 in-process
+  workers), after taking its timestamp and on the trainer thread, several times a generation; nothing
+  read the value. Removed. Per-generation wall now sums to elapsed time (37 s vs 36 s; it was 139 s vs
+  181 s for async, which made earlier async and oversubscription comparisons wrong).
 - **In-process workers leaked an inference slot on every policy push** (review): `Worker.readParams` rebuilt
   its `RemoteNetwork`, which opened a new slot each time, so after k generations the server counted
   (k+1) x the envs and batches never filled, ending every step on the gather timeout. The slot now
