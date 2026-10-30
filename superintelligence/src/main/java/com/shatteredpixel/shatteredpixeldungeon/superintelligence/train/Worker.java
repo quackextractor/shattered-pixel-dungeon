@@ -29,6 +29,7 @@ public class Worker {
 
 private EnvConfig config;
 	private Network network;
+	private byte[] shape;
 	private EpisodeCollector collector;
 	private SPDEnv env;
 	private String rngTraceDir = "";
@@ -75,6 +76,10 @@ private EnvConfig config;
 		}
 
 		config.readFrom( in );
+		java.io.ByteArrayOutputStream shapeBytes = new java.io.ByteArrayOutputStream();
+		config.writeTo( new java.io.DataOutputStream( shapeBytes ));
+		boolean sameShape = network != null && java.util.Arrays.equals( shape, shapeBytes.toByteArray() );
+		shape = shapeBytes.toByteArray();
 
 		float gamma = in.readFloat();
 		float lambda = in.readFloat();
@@ -97,9 +102,11 @@ private EnvConfig config;
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.InferenceBroker.server();
 		int slot = network instanceof com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork
 				? ( (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork) network ).slot() : -1;
-		network = server != null
-				? new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork( config, policyRng, server, slot )
-				: new Network( config, policyRng );
+		if (!sameShape){
+			network = server != null
+					? new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork( config, policyRng, server, slot )
+					: new Network( config, policyRng );
+		}
 
 		collector = new EpisodeCollector( config, network, policyRng, new Random( policyRng.nextLong() ),
 				gamma, lambda, sampleRate, maxSampledPerEpisode, chunkLength );

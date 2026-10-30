@@ -82,6 +82,7 @@ public class EnvConfigBinder {
 			"rl.update_threads",
 			"rl.device",
 			"rl.overlap_collection",
+			"rl.async_collection",
 			"rl.sample_rate",
 			"rl.max_sampled_per_episode",
 			"rl.max_samples_per_generation",
@@ -332,6 +333,7 @@ public class EnvConfigBinder {
 			case "rl.update_threads":    hyper.updateThreads = integer( key, value, origin ); break;
 			case "rl.device":            hyper.device = value.trim().toLowerCase(); break;
 			case "rl.overlap_collection": hyper.overlapCollection = bool( key, value, origin ); break;
+			case "rl.async_collection": hyper.asyncCollection = bool( key, value, origin ); break;
 			case "rl.sample_rate":       hyper.sampleRate = decimal( key, value, origin ); break;
 			case "rl.max_sampled_per_episode":
 				hyper.maxSampledPerEpisode = integer( key, value, origin ); break;

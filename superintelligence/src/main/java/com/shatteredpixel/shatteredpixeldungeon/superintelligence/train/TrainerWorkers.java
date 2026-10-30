@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class TrainerWorkers {
+public class TrainerWorkers implements JobRunner {
 
 	private final EnvConfig config;
 	private final PPO ppo;
@@ -44,12 +44,12 @@ public class TrainerWorkers {
 	}
 
 	public static class Job {
-		final String seed;
-		final HeroClass heroClass;
-		final boolean wantReplay;
-		final long policySeed;
+		public final String seed;
+		public final HeroClass heroClass;
+		public final boolean wantReplay;
+		public final long policySeed;
 
-		Job( String seed, HeroClass heroClass, boolean wantReplay, long policySeed ){
+		public Job( String seed, HeroClass heroClass, boolean wantReplay, long policySeed ){
 			this.seed = seed;
 			this.heroClass = heroClass;
 			this.wantReplay = wantReplay;
@@ -68,6 +68,7 @@ public class TrainerWorkers {
 		pool.shutdown();
 	}
 
+	@Override
 	public int size(){
 		return pool.size();
 	}
@@ -142,7 +143,7 @@ public class TrainerWorkers {
 		return new ArrayList<>( java.util.Arrays.asList( results ));
 	}
 
-	private Episode runOne( WorkerHandle worker, Job job ) throws IOException {
+	Episode runOne( WorkerHandle worker, Job job ) throws IOException {
 		DataOutputStream out = worker.dataOut;
 		DataInputStream in = worker.dataIn;
 
@@ -190,27 +191,50 @@ public class TrainerWorkers {
 		return total;
 	}
 
-	public void pushWeights() throws IOException {
-		if (inference != null) inference.load( ppo.network );
-		List<Thread> threads = new ArrayList<>();
-		List<IOException> failures = Collections.synchronizedList( new ArrayList<>() );
+	@Override
+	public Episode run( int worker, Job job ) throws IOException {
+		return runOne( pool.workers().get( worker ), job );
+	}
 
-		for (final WorkerHandle worker : pool.workers()){
+	@Override
+	public void push( int worker, byte[] payload ) throws IOException {
+		pushTo( pool.workers().get( worker ), payload );
+	}
+
+	@Override
+	public List<byte[]> publish() throws IOException {
+		if (inference != null) inference.load( ppo.network );
+		List<byte[]> payloads = new ArrayList<>();
+		for (int i = 0; i < pool.size(); i++){
 			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 			DataOutputStream tmp = new DataOutputStream( buffer );
 			paramWriter.write( tmp );
 			tmp.flush();
-			final byte[] payload = buffer.toByteArray();
+			payloads.add( buffer.toByteArray() );
+		}
+		return payloads;
+	}
 
+	void pushTo( WorkerHandle worker, byte[] payload ) throws IOException {
+		writeFully( worker.dataOut, worker.name, payload );
+		worker.dataOut.flush();
+		int reply = worker.dataIn.readInt();
+		if (reply != Protocol.MSG_PARAMS){
+			throw new IOException( worker.name + " rejected a policy push, replied with message " + reply );
+		}
+	}
+
+	public void pushWeights() throws IOException {
+		List<byte[]> payloads = publish();
+		List<Thread> threads = new ArrayList<>();
+		List<IOException> failures = Collections.synchronizedList( new ArrayList<>() );
+
+		for (int i = 0; i < pool.size(); i++){
+			final WorkerHandle worker = pool.workers().get( i );
+			final byte[] payload = payloads.get( i );
 			Thread thread = new Thread( () -> {
 				try {
-					writeFully( worker.dataOut, worker.name, payload );
-					worker.dataOut.flush();
-					int reply = worker.dataIn.readInt();
-					if (reply != Protocol.MSG_PARAMS){
-						throw new IOException( worker.name + " rejected a policy push, replied with "
-								+ "message " + reply );
-					}
+					pushTo( worker, payload );
 				} catch (IOException e){
 					failures.add( e );
 				}

@@ -39,6 +39,7 @@ public final class ThroughputBench {
 
 	private static int rounds = 4, envs = 16, episodes = 4, forwards = 2000, samples = 2048;
 	private static String label = "current", legs = "env,inference,update";
+	private static boolean batched;
 	private static File csv = new File( "out/evidence/throughputbench.csv" );
 	private static final Map< String, List< Double > > results = new HashMap<>();
 
@@ -65,6 +66,7 @@ public final class ThroughputBench {
 			case "--samples": samples = Integer.parseInt( args[ i + 1 ] ); break;
 			case "--label": label = args[ i + 1 ]; break;
 			case "--legs": legs = args[ i + 1 ]; break;
+			case "--env-inference": batched = args[ i + 1 ].equals( "batched" ); break;
 			case "--csv": csv = new File( args[ i + 1 ] ); break;
 			case "--kernels":
 				if (Boolean.parseBoolean( args[ i + 1 ] )) System.setProperty( "spd.clprofile", "true" );
@@ -75,10 +77,12 @@ public final class ThroughputBench {
 		List< String > chosen = Arrays.asList( legs.split( "," ));
 		EnvLeg env = chosen.contains( "env" ) ? new EnvLeg() : null;
 		for (int round = 0; round < rounds; round++){
-			if (env != null) record( "env", round, "turns/s", env.round() );
+			if (env != null) record( batched ? "collect" : "env", round, "turns/s", env.round() );
 			if (chosen.contains( "inference" )) record( "inference", round, "forwards/s", inference() );
 			if (chosen.contains( "update" )) record( "update", round, "us/sample-pass", update() );
 		}
+		if (batched) chosen = new ArrayList<>( chosen );
+		if (batched) chosen.replaceAll( l -> l.equals( "env" ) ? "collect" : l );
 		for (String leg : chosen){
 			List< Double > v = results.get( leg );
 			if (v == null || v.size() < 2) continue;
@@ -132,7 +136,8 @@ public final class ThroughputBench {
 
 		EnvLeg() throws Exception {
 			ThreadRouted.enable();
-			InferenceBroker.install( new InferenceBroker.Server() {
+			if (batched) InferenceBroker.install( new BatchedInference( new Network( new EnvConfig(), new Random( 1 ))));
+			else InferenceBroker.install( new InferenceBroker.Server() {
 				@Override public int open(){ return 0; }
 				@Override public void reset( int slot ){}
 				@Override public void save( int slot, float[] into ){}

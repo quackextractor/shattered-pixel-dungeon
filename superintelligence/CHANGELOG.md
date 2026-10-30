@@ -15,7 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   check before each leg and results appended to `out/evidence/throughputbench.csv`; round 0 warms the JIT
   and is left out of the median. `IsolatedLoader` is public so the bench can build isolated envs. The
   update leg packs its fixture grids at the 1.4% density real observations have; `--kernels true` prints
-  GPU time by kernel (`spd.clprofile`, `KernelProfile`).
+  GPU time by kernel (`spd.clprofile`, `KernelProfile`). `--env-inference batched` runs the env leg on
+  batched GPU inference (`collect`), so collection can be measured without the trainer.
+- **`rl.async_collection` (default false).** `AsyncCollection` keeps a generation of jobs queued past the
+  one being awaited and hands each worker the newest published weights between its own episodes, so no
+  worker waits for a generation's slowest episode. `SyncCollection` keeps the old path; both behind
+  `GenerationSource`. `asynccheck` holds ordering, staleness and queue-ahead with a fake
+  `JobRunner`. Measured steady state (generations 4+): 12 x 4 processes 13,099 async against 13,200 sync
+  turns/s; 48 in-process envs x 2 async 13,556, where without it 1-2 episodes a worker stalled on the
+  slowest. Off by default until depth at equal turns is compared on a long run.
 - **In-process workers (`worker.in_process`).** Each worker is a thread in the trainer with its own
   `IsolatedLoader`, so its game statics are its own; it speaks the same protocol over `java.nio` pipes.
   `com.badlogic.*`, `org.lwjgl.*` and `superintelligence.shared.*` stay shared, so gdx natives load once;
@@ -79,6 +87,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is about again.
 
 ### Changed
+- **Batched inference dispatches after 50 us, not 2 ms.** With 48 envs the gather loop always ran to its
+  2 ms cap (some env is always stepping), so every forward waited 2 ms; it also yields instead of spinning.
+  `throughputbench --env-inference batched`, 48 envs: 12,677 -> 17,698 turns/s.
+- **A worker keeps its network across policy pushes** when the pushed configuration is byte-identical,
+  instead of building and randomly initialising 1.4M parameters that `readWeights` then overwrites. Every
+  episode reseeds the policy RNG, so episodes are unchanged.
+- **`Travel` caches the walkable and pass-through maps per decision.** The action mask (twice per travel
+  action), the teacher and the executed travel step all rebuilt them from the whole level; `walkable` was
+  23% of in-process training samples. Invalidated by `SPDEnv.refreshMasks` and guarded by level, hero cell
+  and game time; callers get copies. `travelcheck` case 5 compares against a fresh build at every
+  decision; `viewcheck` 23 recordings clean.
 - **The whole GPU update is enqueued at once.** `GpuMinibatch.begin` uploads the buffer once (packed
   grids, extras, chunk-start LSTM state, per-row loss inputs and masks, staged in parallel); each
   minibatch gathers its rows on the device through a row map, the PPO loss, imitation, entropy and value

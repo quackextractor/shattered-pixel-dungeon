@@ -256,28 +256,36 @@ Worker.writeWeights( out, ppo.network );
 	private void runGenerations( int first, int generations, long startedAt, int workerCount )
 			throws IOException {
 		episodesPerWorker = workerCount;
-		PendingGeneration next = null;
+		epoch = first;
+		GenerationSource source = GenerationSource.of( hyper, pool, done -> {
+			if (done != null){
+				lastEpisodes.clear();
+				lastEpisodes.addAll( done );
+			}
+			advanceSchedule();
+			return planGeneration( workerCount );
+		}, () -> {
+			if (deadlineMillis > 0 && System.currentTimeMillis() >= deadlineMillis) lastGeneration = epoch + 1;
+			return lastGeneration - epoch - 1;
+		} );
+		try {
+			generations( first, generations, startedAt, source );
+		} finally {
+			source.close();
+		}
+	}
+
+	private void generations( int first, int generations, long startedAt, GenerationSource source ) throws IOException {
 		for (int g = first; g < lastGeneration; g++){
 			epoch = g;
-			if (next == null){
-				advanceSchedule();
-				next = new PendingGeneration( pool, planGeneration( workerCount ));
-			}
 
 			ChunkReservoir reservoir = new ChunkReservoir(
 					Math.max( 1, maxSamplesPerGeneration / Math.max( 1, ppo.chunkLength )),
 					ppo.chunkLength, rngSeed * 31 + epoch );
 
-			List<Episode> episodes = next.await();
-			ResourceStats.Interval gen = next.wall;
-			next = null;
+			List<Episode> episodes = source.await();
+			ResourceStats.Interval gen = source.wall();
 			if (deadlineMillis > 0 && System.currentTimeMillis() >= deadlineMillis) lastGeneration = g + 1;
-			if (hyper.overlapCollection && g + 1 < lastGeneration){
-				lastEpisodes.clear();
-				lastEpisodes.addAll( episodes );
-				advanceSchedule();
-				next = new PendingGeneration( pool, planGeneration( workerCount ));
-			}
 			lastWorkerSeconds = pool.cpuSecondsSinceLast( episodes );
 
 			for (Episode e : episodes){
@@ -318,10 +326,9 @@ Worker.writeWeights( out, ppo.network );
 				} );
 				update.stop();
 				lastUpdate = update;
-				if (next != null) next.await();
 
 				ResourceStats.Interval push = ResourceStats.start();
-				pool.pushWeights();
+				source.updated();
 				push.stop();
 
 				lastBarrierSeconds = update.wallSeconds() + push.wallSeconds();

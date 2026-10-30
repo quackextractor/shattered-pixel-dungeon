@@ -36,6 +36,11 @@ public final class Travel {
 	private static float[] gasSeenAt;
 	private static int committed = -1;
 
+	private static int version, cachedVersion = -1, cachedPos;
+	private static float cachedNow;
+	private static Level cachedLevel;
+	private static boolean[] cached, cachedPass;
+
 	private Travel(){}
 
 	public static int target( Action action, boolean commit ){
@@ -46,15 +51,33 @@ public final class Travel {
 	public static int step( Action action, boolean commit ){
 		int target = target( action, commit );
 		if (target < 0 || target == Dungeon.hero.pos) return -1;
-		boolean[] base = walkable( Dungeon.level );
-		boolean[] walk = passThrough( Dungeon.level, base.clone() );
+		boolean[] base = cachedWalkable( Dungeon.level );
+		boolean[] walk = cachedPass.clone();
 		if (Actor.findChar( target ) == null) walk[ target ] = base[ target ];
 		int step = PathFinder.getStep( Dungeon.hero.pos, target, walk );
 		return step >= 0 && Dungeon.level.adjacent( Dungeon.hero.pos, step ) ? step : -1;
 	}
 
 	public static boolean[] passThrough( Level level ){
-		return passThrough( level, walkable( level ));
+		cachedWalkable( level );
+		return cachedPass.clone();
+	}
+
+	public static void invalidate(){
+		version++;
+	}
+
+	private static boolean[] cachedWalkable( Level level ){
+		if (cached == null || cachedVersion != version || cachedLevel != level || cachedPos != Dungeon.hero.pos
+				|| cachedNow != Actor.now()){
+			cached = walkable( level );
+			cachedPass = passThrough( level, cached.clone() );
+			cachedVersion = version;
+			cachedLevel = level;
+			cachedPos = Dungeon.hero.pos;
+			cachedNow = Actor.now();
+		}
+		return cached;
 	}
 
 	private static boolean[] passThrough( Level level, boolean[] walk ){

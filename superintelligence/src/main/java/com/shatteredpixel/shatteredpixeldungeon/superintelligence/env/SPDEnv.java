@@ -401,6 +401,7 @@ public float[] actionMask(){ return actionMask; }
 	public int deepestDepth(){ return com.shatteredpixel.shatteredpixeldungeon.Statistics.deepestFloor; }
 	public int heroPosition(){ return Dungeon.hero.pos; }
 	private void refreshMasks(){
+		Travel.invalidate();
 		mapper.actionMask( mode, actionMask );
 		mapper.slotMask( mode, slotMask );
 		for (int i = 0; i < targetMask.length; i++){

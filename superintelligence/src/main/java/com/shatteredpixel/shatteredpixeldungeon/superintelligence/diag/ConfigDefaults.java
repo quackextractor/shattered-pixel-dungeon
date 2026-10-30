@@ -107,6 +107,7 @@ public final class ConfigDefaults {
 			case "rl.update_threads":         return String.valueOf( hyper.updateThreads );
 			case "rl.device":                 return hyper.device;
 			case "rl.overlap_collection":     return String.valueOf( hyper.overlapCollection );
+			case "rl.async_collection":       return String.valueOf( hyper.asyncCollection );
 			case "rl.sample_rate":            return String.valueOf( hyper.sampleRate );
 			case "rl.max_sampled_per_episode": return String.valueOf( hyper.maxSampledPerEpisode );
 			case "rl.max_samples_per_generation":
@@ -162,6 +163,7 @@ public final class ConfigDefaults {
 			case "env.record_rng_fingerprint":
 			case "rl.normalise_values":
 			case "rl.overlap_collection":
+			case "rl.async_collection":
 			case "rl.huber_values":
 			case "worker.in_process":
 				return true;

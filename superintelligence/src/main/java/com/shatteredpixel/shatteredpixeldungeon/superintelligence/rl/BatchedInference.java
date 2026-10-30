@@ -20,7 +20,7 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 
 	private static final long QUIET_NANOS = 200_000;
 
-	private static final long GATHER_NANOS = 2_000_000;
+	private static final long GATHER_NANOS = 50_000;
 
 	private final Network weights;
 	private final int stateSize, heroAt;
@@ -66,7 +66,7 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 				}
 				long start = System.nanoTime();
 				for (long now = start; pending.get() < open && now - start < GATHER_NANOS && now - lastArrival < QUIET_NANOS; now = System.nanoTime()){
-					Thread.onSpinWait();
+					Thread.yield();
 				}
 				batch.clear();
 				for (Request r; ( r = queue.poll() ) != null; ) batch.add( r );

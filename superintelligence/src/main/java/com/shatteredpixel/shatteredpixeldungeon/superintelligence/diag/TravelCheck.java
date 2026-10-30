@@ -12,13 +12,14 @@ import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.StairPotential;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class TravelCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 5;
 
 	private static final String[] SEEDS = { "TRAVEL-A", "TRAVEL-B", "TRAVEL-C", "TRAVEL-D", "TRAVEL-E", "TRAVEL-F" };
 
@@ -32,6 +33,7 @@ public class TravelCheck {
 		checkTravelOnlyStepsOntoKnownCells();
 		checkTravellingAloneDescends();
 		checkTravelNeverCrossesTheUpstairs();
+		checkCachedTravelMatchesFresh();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     travel actions: " + CHECKS + " checks passed" );
@@ -141,6 +143,46 @@ public class TravelCheck {
 			return;
 		}
 		System.out.println( "  travel paths avoid the upstairs at " + up.cell() + " on depth 2" );
+	}
+
+	private static void checkCachedTravelMatchesFresh(){
+		int decisions = 0;
+		for (String seed : SEEDS){
+			SPDEnv env = fresh( seed );
+			java.util.Random rng = new java.util.Random( seed.hashCode() );
+			float[] mask = new float[ env.actionMask().length ];
+			for (int i = 0; i < 400 && env.running(); i++){
+				if (env.mode() == EnvMode.WORLD){
+					boolean[] cached = Travel.passThrough( Dungeon.level );
+					System.arraycopy( env.actionMask(), 0, mask, 0, mask.length );
+					Travel.remember();
+					boolean[] remembered = Travel.passThrough( Dungeon.level );
+					Travel.invalidate();
+					boolean[] fresh = Travel.passThrough( Dungeon.level );
+					if (!java.util.Arrays.equals( remembered, fresh )){
+						fail( seed + " step " + i + ": remembering the gas the hero sees changed the travel map at the same moment" );
+						return;
+					}
+					float[] freshMask = new float[ mask.length ];
+					env.mapper().actionMask( env.mode(), freshMask );
+					boolean sameMask = true;
+					for (Action a : new Action[]{ Action.TRAVEL_STAIRS, Action.TRAVEL_EXPLORE }) sameMask &= mask[ a.index ] == freshMask[ a.index ];
+					if (!java.util.Arrays.equals( cached, fresh ) || !sameMask){
+						fail( seed + " step " + i + ": " + ( sameMask ? "the cached travel map differs from a fresh one"
+								: "a travel action's mask bit differs from one rebuilt on a fresh travel map" ));
+						return;
+					}
+					decisions++;
+				}
+				float[] zero = new float[ Math.max( env.actionMask().length, Math.max( env.slotMask().length, env.targetMask().length ))];
+				int action = Policy.sample( java.util.Arrays.copyOf( zero, env.actionMask().length ), env.actionMask(), rng );
+				int slot = Policy.sample( java.util.Arrays.copyOf( zero, env.slotMask().length ), env.slotMask(), rng );
+				int target = Policy.sample( java.util.Arrays.copyOf( zero, env.targetMask().length ), env.targetMask(), rng );
+				env.step( Action.values()[ action ], env.mode() == EnvMode.TARGETING ? target : slot );
+			}
+		}
+		System.out.println( "  at " + decisions + " decisions over random play the cached travel map and the action mask"
+				+ " equal fresh ones" );
 	}
 
 	private static SPDEnv fresh( String seed ){

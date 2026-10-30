@@ -54,7 +54,12 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
         Original note: Commit `out/bench` as `throughputbench`: env-only (inference stubbed),
         inference-only, update-only and end-to-end, each reporting turns/s, plus a JFR profile flag. Fixes
         the noise that cost a day: ABAB order, idle-CPU check before each leg, results to `out/evidence`.
-  - [ ] **P1 Inference off the CPU, latency hidden (target 25-28K, the env-only ceiling).** Per-step
+  - [ ] **P1 Inference off the CPU, latency hidden (target 25-28K, the env-only ceiling).** Measured with
+        `throughputbench --env-inference batched` at 48 envs: env-only 26.5K, batched collect 12.7K, of which
+        the 2 ms gather cap was the largest cost (now 50 us: 17.7K). In training both in-process (48 x 2)
+        and process mode (12 x 4) sit at ~13.5-14K steady state with the update off the critical path;
+        in-process workers still each carry an unused ~25 MB CPU network (`RemoteNetwork extends
+        Network`), which is what runs 96 envs out of heap. Per-step
         inference is 70% of worker CPU. (a) Each env thread owns 4-8 envs and steps whichever has its
         action back, so no thread waits on the GPU. (b) One fused inference kernel per batch (packed-bit
         conv, reduce, trunk, one LSTM step, heads), LSTM state resident per slot, inputs and outputs in
@@ -74,7 +79,11 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
         indexed per minibatch. (c) Tiled local-memory GEMM for trunk and LSTM, packed-bit conv in the
         backward pass, fewer and fused launches (~100 a minibatch today). Gate: `gpucheck` against the CPU
         update to 1e-4, parameters to 1e-2 of the step.
-  - [ ] **P3 Env CPU 5x (target ~20 us/turn, 60-90K).** Re-profile env-only after the sparse fixes.
+  - [ ] **P3 Env CPU 5x (target ~20 us/turn, 60-90K).** Done: travel maps cached per decision (was 23% of
+        in-process training samples). Next in the profile: `ObservationEncoder.buildSpatial`,
+        `countNewlyExplored`, `levelExplorePercent`, `applyEdges` (~25% together), `PathFinder` in
+        `Travel.frontier`, level saves on floor change (engine). Measure only with no foreground game:
+        Windows power throttling cut the env leg 26.5K -> 7.6K at one commit. Re-profile env-only after the sparse fixes.
         Candidates: observation built as packed bits directly and windowed on the GPU from level-space
         deltas; travel masks only when TRAVEL could be chosen, cached per game-state version; teacher
         labels only on retained steps, with `lastHp` and `waited` (the only state it carries) updated
@@ -86,7 +95,10 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
   - [ ] **P5 Game engine hot paths (signed off 2026-10-30, bit-identical only).** FOV (`ShadowCaster`), `PathFinder` and actor
         scheduling are what is left after P3. Changes only if every recording and RNG trace stays
         bit-identical; the engine boundary otherwise forbids committing them.
-  - [ ] **P6 Learning-loop changes (signed off 2026-10-30, depth at equal turns must hold).** Asynchronous
+  - [ ] **P6 Learning-loop changes (signed off 2026-10-30, depth at equal turns must hold).** Async
+        collection exists (`rl.async_collection`, off): no gain at 12 x 4 processes (13.1K vs 13.2K), it
+        only matters with few episodes a worker. Left: a long run comparing depth at equal turns before
+        it becomes the default; bigger minibatches with a scaled learning rate. Asynchronous
         IMPALA-style learner with no generation barrier, larger minibatches with a scaled learning rate.
         Speed only counts if depth at equal turns does not drop.
       Projection, compounding: P1 + P2 ~20-25K (10x); + P3 60-90K (30-40x); + P4 and P5 150-220K (70-100x).
