@@ -31,12 +31,6 @@ public class ResourceStats {
 		return ns < 0 ? -1 : ns / 1e9;
 	}
 
-	public static double processCpuLoad(){
-		if (!(OS instanceof com.sun.management.OperatingSystemMXBean)) return -1;
-		double v = ((com.sun.management.OperatingSystemMXBean) OS).getProcessCpuLoad();
-		return v < 0 ? -1 : v;
-	}
-
 	public static int availableProcessors(){
 		return Runtime.getRuntime().availableProcessors();
 	}
@@ -44,7 +38,6 @@ public class ResourceStats {
 	public static class Sample {
 		public final long wallNanos;
 		public final long cpuNanos;
-		public final double cpuLoad;
 		public final long heapUsed;
 		public final long heapCommitted;
 		public final long heapMax;
@@ -55,7 +48,6 @@ public class ResourceStats {
 		Sample(){
 			wallNanos = System.nanoTime();
 			cpuNanos = processCpuNanos();
-			cpuLoad = processCpuLoad();
 			heapUsed = MEMORY.getHeapMemoryUsage().getUsed();
 			heapCommitted = MEMORY.getHeapMemoryUsage().getCommitted();
 			heapMax = MEMORY.getHeapMemoryUsage().getMax();
