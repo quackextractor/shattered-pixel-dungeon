@@ -59,9 +59,11 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
         the 2 ms gather cap was the largest cost (now 50 us: 17.7K). In training both in-process (48 x 2)
         and process mode (12 x 4) sit at ~13.5-14K steady state with the update off the critical path;
         `RemoteNetwork` no longer carries a CPU network (30.1 MB -> 10 KB an env), so 96-128 envs fit.
-        Idle-machine A/B: travel cache 23.7K -> 33.8K env-only; collect at 48 envs 18.0K. Next: 96-128
-        envs (oversubscription) measured on an idle machine, then several envs a thread if it does not
-        scale. Per-step
+        Idle-machine A/B: travel cache 23.7K -> 33.8K env-only; collect at 48 envs 18.0K. Oversubscription
+        works: in-process async training ABAB with a game in front, 48 -> 96 envs 6,714/6,395 -> 9,221/8,054
+        turns/s; 96 vs 160 is a wash (9,396/11,434 vs 11,676/10,215). Use ~96 in-process envs with
+        `rl.async_collection=true`; re-measure absolute numbers on an idle machine. Several envs a thread
+        is not needed for now (and per-loader game statics make it hard). Per-step
         inference is 70% of worker CPU. (a) Each env thread owns 4-8 envs and steps whichever has its
         action back, so no thread waits on the GPU. (b) One fused inference kernel per batch (packed-bit
         conv, reduce, trunk, one LSTM step, heads), LSTM state resident per slot, inputs and outputs in
