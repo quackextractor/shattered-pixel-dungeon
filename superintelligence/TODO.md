@@ -41,3 +41,41 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       logical cores. That is the ceiling for env + game on this i5-14600KF whatever the network costs,
       12.7x the 2,197 CPU baseline. In-process workers with batched GPU inference (`worker.in_process`)
       match but do not yet beat process workers end to end (3,605 against 3,754 turns/s, same load).
+- [ ] **Throughput plan: 9,343 -> 220,000 turns/s (100x the 2,197 CPU baseline).** Today: 12 process
+      workers x 4, GPU update, 9,343 turns/s end to end; collection 2.8 s and update 2.3 s a generation.
+      100x means, per trained turn, ~45 us of CPU across ~9 effective cores and 4.5 us of GPU update per
+      sample-pass (0.25 sample rate x 4 epochs); today they are ~1.3 ms and 87.5 us. Every phase keeps the
+      replay contract (`verifyall`, `viewcheck`, `paritycheck` byte-identical) and is merged only when it
+      beats the previous default in an ABAB run on a quiet machine.
+  - [ ] **P0 Bench as a gate.** Commit `out/bench` as `throughputbench`: env-only (inference stubbed),
+        inference-only, update-only and end-to-end, each reporting turns/s, plus a JFR profile flag. Fixes
+        the noise that cost a day: ABAB order, idle-CPU check before each leg, results to `out/evidence`.
+  - [ ] **P1 Inference off the CPU, latency hidden (target 25-28K, the env-only ceiling).** Per-step
+        inference is 70% of worker CPU. (a) Each env thread owns 4-8 envs and steps whichever has its
+        action back, so no thread waits on the GPU. (b) One fused inference kernel per batch (packed-bit
+        conv, reduce, trunk, one LSTM step, heads), LSTM state resident per slot, inputs and outputs in
+        one pinned buffer each: target <150 us a batch at 128 rows. (c) 64-128 in-process envs; in-process
+        becomes the default only when it wins. Gate: `gpucheck` batched case at 128 rows.
+  - [ ] **P2 Update 20x (target 4.5 us/sample-pass).** (a) PPO loss, imitation, value and entropy as a
+        kernel, so a minibatch needs no host round trip; clip scale computed on the device. (b) The whole
+        update enqueued at once, one sync per update; the buffer's packed grids (~47 MB) uploaded once and
+        indexed per minibatch. (c) Tiled local-memory GEMM for trunk and LSTM, packed-bit conv in the
+        backward pass, fewer and fused launches (~100 a minibatch today). Gate: `gpucheck` against the CPU
+        update to 1e-4, parameters to 1e-2 of the step.
+  - [ ] **P3 Env CPU 5x (target ~20 us/turn, 60-90K).** Re-profile env-only after the sparse fixes.
+        Candidates: observation built as packed bits directly and windowed on the GPU from level-space
+        deltas; travel masks only when TRAVEL could be chosen, cached per game-state version; teacher
+        labels only on retained steps, with `lastHp` and `waited` (the only state it carries) updated
+        cheaply every step; reward terms incremental. Gate: `sparsecheck`, `teachercheck`, `rewardcheck`
+        byte-identical on the corpus.
+  - [ ] **P4 Parallel scaling (16 threads are 2.9x one).** Find why: memory bandwidth, allocation rate,
+        per-loader JIT copies (code cache full GCs), E-core placement. Fixes in reach: allocation-free step
+        loop, a larger code cache, pinning envs to P-cores. Target 6x on 16 threads.
+  - [ ] **P5 Game engine hot paths (needs your sign-off).** FOV (`ShadowCaster`), `PathFinder` and actor
+        scheduling are what is left after P3. Changes only if every recording and RNG trace stays
+        bit-identical; the engine boundary otherwise forbids committing them.
+  - [ ] **P6 Learning-loop changes (needs your sign-off, changes what is learned).** Asynchronous
+        IMPALA-style learner with no generation barrier, larger minibatches with a scaled learning rate.
+        Speed only counts if depth at equal turns does not drop.
+      Projection, compounding: P1 + P2 ~20-25K (10x); + P3 60-90K (30-40x); + P4 and P5 150-220K (70-100x).
+      P1 and P2 are engineering with known shapes; P3-P5 are where 100x is won or lost.
