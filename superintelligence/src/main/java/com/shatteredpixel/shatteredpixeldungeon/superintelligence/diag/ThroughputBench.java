@@ -193,7 +193,7 @@ public final class ThroughputBench {
 		try {
 			Thread[] threads = new Thread[ envs ];
 			for (int e = 0; e < envs; e++){
-				RemoteNetwork net = new RemoteNetwork( config, new Random( 2 ), server, -1 );
+				RemoteNetwork net = new RemoteNetwork( config, server, -1 );
 				Random rng = new Random( 3 + e );
 				float[] grid = new float[ net.gridLength() ];
 				for (int i = 0; i < grid.length; i++) if (rng.nextFloat() < 0.014f) grid[ i ] = 1f;

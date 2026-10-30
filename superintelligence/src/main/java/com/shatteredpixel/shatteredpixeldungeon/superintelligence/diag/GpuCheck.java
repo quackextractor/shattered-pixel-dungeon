@@ -132,7 +132,7 @@ public class GpuCheck {
 			for (int e = 0; e < envs; e++){
 				cpu[ e ] = new Network( config, new Random( 1 ));
 				cpu[ e ].copyParametersFrom( source );
-				gpu[ e ] = new RemoteNetwork( config, new Random( 1 ), server, -1 );
+				gpu[ e ] = new RemoteNetwork( config, server, -1 );
 			}
 			double[] worst = new double[ envs ];
 			Thread[] threads = new Thread[ envs ];
@@ -162,7 +162,7 @@ public class GpuCheck {
 				threads[ e ].start();
 			}
 			for (Thread t : threads) t.join();
-			new RemoteNetwork( config, new Random( 1 ), server, gpu[ 0 ].slot() );
+			new RemoteNetwork( config, server, gpu[ 0 ].slot() );
 			if (server.slots() != envs){
 				fail( "a worker rebuilding its network on a policy push opened another inference slot: "
 						+ server.slots() + " slots for " + envs + " envs, so batches can never fill" );

@@ -26,7 +26,7 @@ public final class BenchSlot {
 		EnvConfig config = new EnvConfig();
 		env = new SPDEnv( config, HeadlessGame.install() );
 		Random rng = new Random( 77 );
-		collector = new EpisodeCollector( config, new RemoteNetwork( config, rng, InferenceBroker.server(), -1 ),
+		collector = new EpisodeCollector( config, new RemoteNetwork( config, InferenceBroker.server(), -1 ),
 				rng, new Random( 5 ), 0.99f, 0.95f, 0.25f, 2048, 16 );
 		collector.tailSteps( 20 );
 		collector.teacher( new DescentBot() );

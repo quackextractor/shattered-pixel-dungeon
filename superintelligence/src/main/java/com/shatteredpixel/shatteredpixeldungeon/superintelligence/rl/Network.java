@@ -6,7 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.InventoryE
 import java.util.Random;
 
 
-public class Network extends NetworkWeights {
+public class Network extends NetworkWeights implements PolicyNetwork {
 
 	private final Tensor convOut;
 	private final Tensor reduceOut;

@@ -58,8 +58,10 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
         `throughputbench --env-inference batched` at 48 envs: env-only 26.5K, batched collect 12.7K, of which
         the 2 ms gather cap was the largest cost (now 50 us: 17.7K). In training both in-process (48 x 2)
         and process mode (12 x 4) sit at ~13.5-14K steady state with the update off the critical path;
-        in-process workers still each carry an unused ~25 MB CPU network (`RemoteNetwork extends
-        Network`), which is what runs 96 envs out of heap. Per-step
+        `RemoteNetwork` no longer carries a CPU network (30.1 MB -> 10 KB an env), so 96-128 envs fit.
+        Idle-machine A/B: travel cache 23.7K -> 33.8K env-only; collect at 48 envs 18.0K. Next: 96-128
+        envs (oversubscription) measured on an idle machine, then several envs a thread if it does not
+        scale. Per-step
         inference is 70% of worker CPU. (a) Each env thread owns 4-8 envs and steps whichever has its
         action back, so no thread waits on the GPU. (b) One fused inference kernel per batch (packed-bit
         conv, reduce, trunk, one LSTM step, heads), LSTM state resident per slot, inputs and outputs in

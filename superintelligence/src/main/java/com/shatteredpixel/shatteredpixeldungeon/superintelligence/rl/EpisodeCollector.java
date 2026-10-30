@@ -37,7 +37,7 @@ public class EpisodeCollector {
 	public static final int DEFAULT_MAX_SAMPLED = 2048;
 
 	private final EnvConfig config;
-	private final Network network;
+	private final PolicyNetwork network;
 	private final Random rng;
 	private final Random samplingRng;
 
@@ -112,18 +112,18 @@ public class EpisodeCollector {
 		this.teacher = teacher;
 	}
 
-	public EpisodeCollector( EnvConfig config, Network network, Random rng, Random samplingRng,
+	public EpisodeCollector( EnvConfig config, PolicyNetwork network, Random rng, Random samplingRng,
 			float gamma, float lambda, float sampleRate ){
 		this( config, network, rng, samplingRng, gamma, lambda, sampleRate, DEFAULT_MAX_SAMPLED );
 	}
 
-	public EpisodeCollector( EnvConfig config, Network network, Random rng, Random samplingRng,
+	public EpisodeCollector( EnvConfig config, PolicyNetwork network, Random rng, Random samplingRng,
 			float gamma, float lambda, float sampleRate, int maxSampled ){
 		this( config, network, rng, samplingRng, gamma, lambda, sampleRate, maxSampled,
 				DEFAULT_CHUNK_LENGTH );
 	}
 
-	public EpisodeCollector( EnvConfig config, Network network, Random rng, Random samplingRng,
+	public EpisodeCollector( EnvConfig config, PolicyNetwork network, Random rng, Random samplingRng,
 			float gamma, float lambda, float sampleRate, int maxSampled, int chunkLength ){
 
 		this.config = config;

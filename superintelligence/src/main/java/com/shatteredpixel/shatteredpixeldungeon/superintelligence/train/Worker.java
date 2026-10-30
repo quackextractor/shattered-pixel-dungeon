@@ -28,7 +28,7 @@ public class Worker {
 	private final DataOutputStream out;
 
 private EnvConfig config;
-	private Network network;
+	private com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.PolicyNetwork network;
 	private byte[] shape;
 	private EpisodeCollector collector;
 	private SPDEnv env;
@@ -104,7 +104,7 @@ private EnvConfig config;
 				? ( (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork) network ).slot() : -1;
 		if (!sameShape){
 			network = server != null
-					? new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork( config, policyRng, server, slot )
+					? new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.RemoteNetwork( config, server, slot )
 					: new Network( config, policyRng );
 		}
 
@@ -114,7 +114,8 @@ private EnvConfig config;
 		collector.teacher( new com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.DescentBot() );
 		collector.valueScale( valueMean, valueStd );
 		if (traceWorld != null && !traceWorld.isEmpty()) collector.trace( traceWorld );
-		readWeights( in, network );
+		if (network instanceof Network) readWeights( in, (Network) network );
+		else skipWeights( in );
 
 		out.writeInt( Protocol.MSG_PARAMS );
 		out.flush();
@@ -258,6 +259,17 @@ private EnvConfig config;
 			float[] bias = readFloats( in );
 
 			net.loadLayer( new Network.Layer( name, rows, cols, weights, bias ) );
+		}
+	}
+
+	private static void skipWeights( DataInputStream in ) throws IOException {
+		int count = in.readInt();
+		for (int i = 0; i < count; i++){
+			in.readUTF();
+			in.readInt();
+			in.readInt();
+			in.skipNBytes( 4L * in.readInt() );
+			in.skipNBytes( 4L * in.readInt() );
 		}
 	}
 

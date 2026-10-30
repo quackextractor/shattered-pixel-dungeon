@@ -87,6 +87,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is about again.
 
 ### Changed
+- **`RemoteNetwork` no longer carries a CPU network.** It implemented the collector's view by extending
+  `Network`, so every in-process env held 1.4M parameters, their gradients and Adam moments it never used,
+  and parsed a 5.6 MB weight blob on every push. `EpisodeCollector` now takes a `PolicyNetwork` interface
+  (`Network` implements it); a worker skips the weight bytes for a remote network. Heap per env measured
+  after GC: 30.1 MB -> 10 KB, about 1.4 GB at 48 envs.
 - **Batched inference dispatches after 50 us, not 2 ms.** With 48 envs the gather loop always ran to its
   2 ms cap (some env is always stepping), so every forward waited 2 ms; it also yields instead of spinning.
   `throughputbench --env-inference batched`, 48 envs: 12,677 -> 17,698 turns/s.

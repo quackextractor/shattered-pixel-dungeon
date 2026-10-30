@@ -40,6 +40,8 @@ public abstract class NetworkWeights {
 	public static final int CONV_KERNEL = 4;
 	public static final int CONV_STRIDE = 2;
 
+	public static final int MEMORY_CELLS = 128;
+
 	public static final int REDUCE_FILTERS = 32;
 	public static final int REDUCE_KERNEL = 4;
 	public static final int REDUCE_STRIDE = 2;
@@ -58,7 +60,7 @@ public abstract class NetworkWeights {
 		int convFeatures = reduce.outputSize();
 
 		this.trunk = new Dense( convFeatures + extraInputs, 256, rng, 1f );
-		this.memory = new LSTM( 256, 128, rng );
+		this.memory = new LSTM( 256, MEMORY_CELLS, rng );
 
 		this.actionHead = new Dense( 128, Action.size(), rng, 1f, false );
 		this.slotHead = new Dense( 128, config.maxSlots, rng, 1f, false );

@@ -1,26 +1,26 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.InferenceBroker;
 
-import java.util.Random;
-
-public final class RemoteNetwork extends Network {
+public final class RemoteNetwork implements PolicyNetwork {
 
 	private final InferenceBroker.Server server;
-	private final int slot;
+	private final int slot, gridLength;
 	private final Transition packer = new Transition();
 	private final float[] out, action, slots, targets;
 
-	public RemoteNetwork( EnvConfig config, Random rng, InferenceBroker.Server server, int slot ){
-		super( config, rng );
+	public RemoteNetwork( EnvConfig config, InferenceBroker.Server server, int slot ){
 		this.server = server;
 		this.slot = slot >= 0 ? slot : server.open();
-		packer.gridCells = gridLength();
-		packer.grid = new byte[ Transition.packedGridBytes( packer.gridCells ) ];
-		action = new float[ actionCount() ];
-		slots = new float[ slotCount() ];
-		targets = new float[ targetCount() ];
+		gridLength = config.spatialChannels() * config.gridWidth * config.gridHeight;
+		packer.gridCells = gridLength;
+		packer.grid = new byte[ Transition.packedGridBytes( gridLength ) ];
+		action = new float[ Action.size() ];
+		slots = new float[ config.maxSlots ];
+		targets = new float[ ActionMapper.TARGET_COUNT ];
 		out = new float[ action.length + slots.length + targets.length + 1 ];
 	}
 
@@ -45,11 +45,14 @@ public final class RemoteNetwork extends Network {
 
 	public int slot(){ return slot; }
 
+	public int gridLength(){ return gridLength; }
+
 	@Override public float[] actionLogits(){ return action; }
 	@Override public float[] slotLogits(){ return slots; }
 	@Override public float[] targetLogits(){ return targets; }
 	@Override public float value(){ return out[ out.length - 1 ]; }
 
+	@Override public int stateSize(){ return 2 * NetworkWeights.MEMORY_CELLS; }
 	@Override public void resetState(){ server.reset( slot ); }
 	@Override public void saveState( float[] into ){ server.save( slot, into ); }
 	@Override public void loadState( float[] from ){ server.load( slot, from ); }
