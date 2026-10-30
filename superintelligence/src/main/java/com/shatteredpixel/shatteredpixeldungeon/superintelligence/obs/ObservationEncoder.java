@@ -52,7 +52,6 @@ public class ObservationEncoder {
 		this.touched = new int[ grid.length ];
 		this.inventory = new float[config.maxSlots * InventoryEncoder.FEATURES_PER_SLOT];
 		this.heroFeatures = new float[HeroEncoder.FEATURES];
-		this.edges = new float[gridWidth * gridHeight];
 		this.spanX = gridWidth + MARGIN * 2;
 		this.spanY = gridHeight + MARGIN * 2;
 		this.stepX = (float) spanX / gridWidth;
@@ -88,7 +87,9 @@ public class ObservationEncoder {
 
 		for (int i = 0; i < touchedCount; i++) grid[ touched[ i ] ] = 0f;
 		touchedCount = 0;
-		java.util.Arrays.fill( inventory, 0f );
+		int slots = Math.min( config.maxSlots, mapper.slots().size() );
+		java.util.Arrays.fill( inventory, 0, Math.max( slots, inventorySlots ) * InventoryEncoder.FEATURES_PER_SLOT, 0f );
+		inventorySlots = slots;
 		java.util.Arrays.fill( heroFeatures, 0f );
 
 				int newlyExplored = countNewlyExplored( level );
@@ -107,8 +108,6 @@ public class ObservationEncoder {
 		int originX = hero.pos % width - spanX / 2;
 		int originY = hero.pos / width - spanY / 2;
 
-		float[] edges = this.edges;
-		java.util.Arrays.fill( edges, 0f );
 		boolean[] fov = level.heroFOV, visited = level.visited, mapped = level.mapped;
 
 		for (int gy = 0; gy < gridHeight; gy++){
@@ -124,11 +123,10 @@ public class ObservationEncoder {
 				int p = gx + gy * gridWidth;
 
 				writeCell( level, hero, cell, p );
-				edges[ p ] = edgeStrength( level, cell, width );
+				put( GridChannel.VISIBLE_EDGE, p, edgeStrength( level, cell, width ));
 			}
 		}
 
-		applyEdges();
 		applyExitBeacon( level, hero );
 	}
 
@@ -298,17 +296,6 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 		return GridChannel.quantise( n / 8f );
 	}
 
-	private void applyEdges(){
-		int plane = PLANE_INDEX[ GridChannel.VISIBLE_EDGE.ordinal() ];
-		if (plane < 0) return;
-		int base = plane * PLANE_AREA;
-		for (int i = 0; i < edges.length; i++){
-			if (edges[ i ] != 0f && grid[ base + i ] == 0f) touched[ touchedCount++ ] = base + i;
-		}
-		System.arraycopy( edges, 0, grid, base, edges.length );
-	}
-
-
 	private static final int[] PLANE_INDEX = new int[ GridChannel.count() ];
 	private static final int PLANE_SIZE;
 
@@ -324,7 +311,7 @@ if (!Dungeon.level.adjacent( mob.pos, Dungeon.hero.pos )) return false;
 	}
 
 
-	private final float[] edges;
+	private int inventorySlots;
 
 	private void put( GridChannel channel, int p, boolean value ){
 		put( channel, p, value ? 1f : 0f );

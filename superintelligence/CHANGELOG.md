@@ -87,6 +87,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is about again.
 
 ### Changed
+- **The encoder no longer clears and copies whole buffers each step.** Edge strength is written into its
+  plane through `put` (which skips zeros and records touched cells) instead of a 2,304-float buffer that
+  was filled, scanned and copied; the inventory features are cleared only up to the larger of this and
+  the last step's slot count, not all 96 x 14. `Arrays.fill` was 20% of env-leg samples. Observation hash
+  identical over 3,490 steps; `sparsecheck` passes; warm single-thread ABAB 62.7/35.8/53.7 ->
+  44.8/31.3/26.9 us a step (Windows thread CPU time is coarse).
 - **The observation window skips cells the hero has never seen or mapped** before writing them (they write
   nothing and have no edge strength), and its sampling offsets are computed once. Random play on 6 seeds
   x 2 heroes, 3,490 steps: observation hash identical (`out/evidence/ObsHash.java`), env step CPU warm,
