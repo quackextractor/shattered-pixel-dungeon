@@ -39,6 +39,7 @@ public class ObservationEncoder {
 	private final int spanY;
 	private final float stepX;
 	private final float stepY;
+	private final int[] columnOffset, rowOffset;
 
 	private final ActionMapper mapper;
 
@@ -56,6 +57,10 @@ public class ObservationEncoder {
 		this.spanY = gridHeight + MARGIN * 2;
 		this.stepX = (float) spanX / gridWidth;
 		this.stepY = (float) spanY / gridHeight;
+		this.columnOffset = new int[ gridWidth ];
+		this.rowOffset = new int[ gridHeight ];
+		for (int gx = 0; gx < gridWidth; gx++) columnOffset[ gx ] = Math.round( gx * stepX );
+		for (int gy = 0; gy < gridHeight; gy++) rowOffset[ gy ] = Math.round( gy * stepY );
 		this.PLANE_AREA = gridWidth * gridHeight;
 	}
 
@@ -104,16 +109,18 @@ public class ObservationEncoder {
 
 		float[] edges = this.edges;
 		java.util.Arrays.fill( edges, 0f );
+		boolean[] fov = level.heroFOV, visited = level.visited, mapped = level.mapped;
 
 		for (int gy = 0; gy < gridHeight; gy++){
-			int sy = originY + Math.round( gy * stepY );
+			int sy = originY + rowOffset[ gy ];
 			if (sy < 0 || sy >= height) continue;
 
 			for (int gx = 0; gx < gridWidth; gx++){
-				int sx = originX + Math.round( gx * stepX );
+				int sx = originX + columnOffset[ gx ];
 				if (sx < 0 || sx >= width) continue;
 
 				int cell = sx + sy * width;
+				if (!visited[ cell ] && !mapped[ cell ] && !( cell < fov.length && fov[ cell ] )) continue;
 				int p = gx + gy * gridWidth;
 
 				writeCell( level, hero, cell, p );

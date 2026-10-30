@@ -87,6 +87,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is about again.
 
 ### Changed
+- **The observation window skips cells the hero has never seen or mapped** before writing them (they write
+  nothing and have no edge strength), and its sampling offsets are computed once. Random play on 6 seeds
+  x 2 heroes, 3,490 steps: observation hash identical (`out/evidence/ObsHash.java`), env step CPU warm,
+  single thread, ABAB 53.7/58.2 -> 44.8/44.8 us.
 - **`Travel` caches each travel action's step per decision too.** The mask computed `TRAVEL_STAIRS` and
   `TRAVEL_EXPLORE` (a frontier scan and two path searches) and the executed action computed its own again
   on the same state. The explore target's commit side effect is replayed from the cached outcome, so
