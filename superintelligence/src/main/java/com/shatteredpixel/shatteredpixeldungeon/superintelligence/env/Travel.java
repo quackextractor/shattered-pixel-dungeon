@@ -40,6 +40,10 @@ public final class Travel {
 	private static float cachedNow;
 	private static Level cachedLevel;
 	private static boolean[] cached, cachedPass;
+	private static final int[] steps = new int[ 2 ];
+	private static final boolean[] stepKnown = new boolean[ 2 ];
+	private static boolean frontierEarly;
+	private static int frontierBest;
 
 	private Travel(){}
 
@@ -49,6 +53,22 @@ public final class Travel {
 	}
 
 	public static int step( Action action, boolean commit ){
+		if (Dungeon.level == null || Dungeon.hero == null) return -1;
+		cachedWalkable( Dungeon.level );
+		int i = action == Action.TRAVEL_STAIRS ? 0 : 1;
+		if (stepKnown[ i ]){
+			if (commit && i == 1 && !frontierEarly){
+				committedLevel = Dungeon.level;
+				committed = frontierBest;
+			}
+			return steps[ i ];
+		}
+		steps[ i ] = freshStep( action, commit );
+		stepKnown[ i ] = true;
+		return steps[ i ];
+	}
+
+	private static int freshStep( Action action, boolean commit ){
 		int target = target( action, commit );
 		if (target < 0 || target == Dungeon.hero.pos) return -1;
 		boolean[] base = cachedWalkable( Dungeon.level );
@@ -72,6 +92,7 @@ public final class Travel {
 				|| cachedNow != Actor.now()){
 			cached = walkable( level );
 			cachedPass = passThrough( level, cached.clone() );
+			stepKnown[ 0 ] = stepKnown[ 1 ] = false;
 			cachedVersion = version;
 			cachedLevel = level;
 			cachedPos = Dungeon.hero.pos;
@@ -105,6 +126,7 @@ public final class Travel {
 		PathFinder.buildDistanceMap( hero, passThrough( level ) );
 		if (committedLevel == level && committed >= 0 && committed != hero
 				&& PathFinder.distance[ committed ] != Integer.MAX_VALUE && bordersUnknown( level, committed )){
+			frontierEarly = true;
 			return committed;
 		}
 		int best = -1;
@@ -112,6 +134,8 @@ public final class Travel {
 			if (c == hero || PathFinder.distance[ c ] == Integer.MAX_VALUE || !bordersUnknown( level, c )) continue;
 			if (best < 0 || PathFinder.distance[ c ] < PathFinder.distance[ best ]) best = c;
 		}
+		frontierEarly = false;
+		frontierBest = best;
 		if (commit){
 			committedLevel = level;
 			committed = best;

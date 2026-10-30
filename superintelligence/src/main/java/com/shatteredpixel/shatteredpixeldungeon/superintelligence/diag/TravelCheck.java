@@ -153,12 +153,19 @@ public class TravelCheck {
 			float[] mask = new float[ env.actionMask().length ];
 			for (int i = 0; i < 400 && env.running(); i++){
 				if (env.mode() == EnvMode.WORLD){
+					int[] cachedSteps = { Travel.step( Action.TRAVEL_STAIRS, false ), Travel.step( Action.TRAVEL_EXPLORE, false ) };
 					boolean[] cached = Travel.passThrough( Dungeon.level );
 					System.arraycopy( env.actionMask(), 0, mask, 0, mask.length );
 					Travel.remember();
 					boolean[] remembered = Travel.passThrough( Dungeon.level );
 					Travel.invalidate();
 					boolean[] fresh = Travel.passThrough( Dungeon.level );
+					int[] freshSteps = { Travel.step( Action.TRAVEL_STAIRS, false ), Travel.step( Action.TRAVEL_EXPLORE, false ) };
+					if (!java.util.Arrays.equals( cachedSteps, freshSteps )){
+						fail( seed + " step " + i + ": a cached travel step " + java.util.Arrays.toString( cachedSteps )
+								+ " differs from a fresh one " + java.util.Arrays.toString( freshSteps ));
+						return;
+					}
 					if (!java.util.Arrays.equals( remembered, fresh )){
 						fail( seed + " step " + i + ": remembering the gas the hero sees changed the travel map at the same moment" );
 						return;

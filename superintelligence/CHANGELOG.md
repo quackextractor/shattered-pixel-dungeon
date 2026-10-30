@@ -87,6 +87,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is about again.
 
 ### Changed
+- **`Travel` caches each travel action's step per decision too.** The mask computed `TRAVEL_STAIRS` and
+  `TRAVEL_EXPLORE` (a frontier scan and two path searches) and the executed action computed its own again
+  on the same state. The explore target's commit side effect is replayed from the cached outcome, so
+  `committed` evolves exactly as before. `travelcheck` case 5 also compares both cached steps with fresh
+  ones; `viewcheck` 23 recordings clean. Env leg ABAB at 48 envs with a game running in front:
+  13.5K/16.2K -> 24.7K/17.7K.
 - **`RemoteNetwork` no longer carries a CPU network.** It implemented the collector's view by extending
   `Network`, so every in-process env held 1.4M parameters, their gradients and Adam moments it never used,
   and parsed a 5.6 MB weight blob on every push. `EpisodeCollector` now takes a `PolicyNetwork` interface
