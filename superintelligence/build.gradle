@@ -74,7 +74,8 @@ def trainerSetting = { String key, String projectProperty, String compiledDefaul
     return System.getenv( envName ) ?: ( project.findProperty( projectProperty )?.toString() ) ?:
             dotEnv[envName] ?: shippedProperties.getProperty( key )?.trim() ?: compiledDefault
 }
-def trainerJvmArgs = [
+def inProcessJvmArgs = trainerSetting( 'worker.in_process', 'spd.workerInProcess', 'false' ) == 'true' ? ['-XX:-TieredCompilation'] : []
+def trainerJvmArgs = inProcessJvmArgs + [
         '-Xms' + trainerSetting( 'worker.heap_min', 'spd.workerHeapMin', '256m' ),
         '-Xmx' + trainerSetting( 'worker.heap_max', 'spd.workerHeapMax', '1536m' ),
         '-XX:+UseParallelGC',

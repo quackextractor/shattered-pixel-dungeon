@@ -41,13 +41,10 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       logical cores. That is the ceiling for env + game on this i5-14600KF whatever the network costs,
       12.7x the 2,197 CPU baseline. In-process workers with batched GPU inference (`worker.in_process`)
       match but do not yet beat process workers end to end (3,605 against 3,754 turns/s, same load).
-- [ ] **Throughput plan 3 (2026-11-04): two walls at ~40K turns/s.** Best run 31,790 turns/s (48 x 2
-      in-process async). GPU costs 26.3 us a turn (inference 14.3, update 12.0) against 4.5 us at 220K,
-      ceiling 38-44K. Workers cost 341 us of core time a turn against ~64 us, ceiling ~41K on 14 cores.
-      Simulation alone tops out at 76-114K. The code cache fix (`CHANGELOG.md`) took workers to 207 us, ceiling
-      ~68K, so the GPU binds now. Each item ends in `CHANGELOG.md` or `REJECTED.md`. Measured
-      while the machine is in use: below-normal priority, one job at a time, under 3 minutes, ABAB ratios.
-  - [ ] **7. One compiled copy of the game.** Rewrite statics at class load so envs share code.
+- [ ] **Inference round trip binds now (2026-11-04).** 48 x 2 async, machine in use: ~34K turns/s at 69% of
+      the machine. Env-only 118K at 139 us of core time a turn, inference 130K forwards/s at 256 callers,
+      so 48 envs wait ~1.4 ms a step and neither CPU nor GPU compute is full. Plan 3's seven items are in
+      `CHANGELOG.md` and `REJECTED.md`. Next: an idle-machine 48 x 2 baseline, then plan 2 C and E.
 - [ ] **Throughput plan 2 (2026-11-04, replaces the estimates below, all made on a throttled machine).**
       Target unchanged: 220,000 turns/s. Now: env leg 76-114K, best end-to-end ~18-20K (24 in-process envs,
       async). Inference capacity scales with callers: 36.8K/58.7K/71.0K forwards/s at 48/96/192 with a game

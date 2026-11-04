@@ -94,6 +94,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `worker.in_process` are refused rather than ignored. `--auto` times the CPU update its thread sweep
   is about again.
 
+### Changed
+- **`worker.in_process=true` drops tiered compilation in the trainer JVM.** With each worker compiling its own
+  copy of the game, tier-3 profiled code cost more than it earned; compilers used only 0.45 of 17 cores, and
+  lowering compile thresholds made it worse (541 us), so the cost is the volume of code, not warm-up.
+  `-XX:-TieredCompilation`, 48 envs, env-only, last round: 55-59K -> ~118K turns/s, 314 -> 139 us of
+  core time a turn, against 125 us at 12 envs. 48 x 2 async training with the machine in use: ~30K ->
+  ~34K turns/s, with depth at equal turns 2.62 against 2.59. Process workers and gates keep tiered
+  compilation. Evidence: `out/evidence/env48nt.log`, `out/evidence/nt-train.log`.
+
 ### Fixed
 - **Headless windows no longer pile up key listeners.** Every refused exit from floor 1 builds a `WndMessage`
   whose `Window` adds a key listener nobody removes, since a headless window is never hidden. The list grew
