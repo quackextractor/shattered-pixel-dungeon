@@ -19,7 +19,7 @@ public final class ReplayListing {
 		return render( catalog, plain, new CatalogView() );
 	}
 
-	static String render( ReplayCatalog catalog, boolean plain, CatalogView view ){
+	public static String render( ReplayCatalog catalog, boolean plain, CatalogView view ){
 		List<CatalogLayout.Section> sections = CatalogLayout.sections( catalog, view );
 		StringBuilder out = new StringBuilder();
 
@@ -56,15 +56,17 @@ public final class ReplayListing {
 					if (list.getKey().isEmpty()) note = ( entry.heroClass == null ? "?" : entry.heroClass.toLowerCase( Locale.ROOT )) + ( note.isEmpty() ? "" : "  " + note );
 					if (!note.isEmpty() && !plain) note = Ansi.wrap( note, Ansi.DIM );
 
-					out.append( String.format( Locale.US,
-							"     %2d  %-22s %9s  %5s  %9s  %7s   %s%n",
+					String row = String.format( Locale.US,
+							"     %2d  %-22s %9s  %5s  %9s  %7s",
 							shown,
 							entry.label(),
 							formatScore( entry ),
 							formatDepth( entry ),
 							formatRecordedAt( entry ),
-							String.format( Locale.US, "%,d", entry.turns ),
-							note ) );
+							String.format( Locale.US, "%,d", entry.turns ));
+					if (entry.diverged() && !plain) row = Ansi.wrap( row, Ansi.RED );
+					out.append( row ).append( "   " ).append( mark( entry, plain )).append( " " ).append( note )
+							.append( System.lineSeparator() );
 				}
 			}
 		}
@@ -118,6 +120,12 @@ public final class ReplayListing {
 		return out.toString();
 	}
 
+	private static String mark( Entry entry, boolean plain ){
+		if (entry.diverged()) return plain ? "[DIV]" : Ansi.wrap( "[DIV]", Ansi.RED );
+		if (entry.playsClean()) return plain ? "[OK] " : Ansi.wrap( "[OK] ", Ansi.GREEN );
+		return dim( "[ ? ]", plain );
+	}
+
 	private static String dim( String text, boolean plain ){
 		return plain ? text : Ansi.wrap( text, Ansi.DIM );
 	}
@@ -130,6 +138,12 @@ public final class ReplayListing {
 		double best = CatalogLayout.best( section );
 		if (best > Double.NEGATIVE_INFINITY) line.append( ", best " ).append( String.format( Locale.US, "%,.1f", best ));
 		line.append( ", deepest d" ).append( CatalogLayout.deepest( section ));
+		int ok = 0, diverged = 0;
+		for (Entry entry : section.matched){
+			if (entry.playsClean()) ok++;
+			if (entry.diverged()) diverged++;
+		}
+		line.append( ", " ).append( ok ).append( " ok, " ).append( diverged ).append( " diverged" );
 		long newest = CatalogLayout.newest( section );
 		if (newest > 0) line.append( ", newest " ).append( formatInstant( newest ));
 		int shown = section.shown();
@@ -156,6 +170,12 @@ public final class ReplayListing {
 				? "written by training run group " + section.substring( ReplayCatalog.GROUP_PREFIX.length() ).toLowerCase( Locale.ROOT ) + " - these reproduce"
 				: "written by the trainer through the worker pipe - these reproduce";
 
+		int diverged = 0;
+		for (Entry entry : entries) if (entry.diverged()) diverged++;
+		if (unwatchable == 0 && diverged > 0){
+			return origin + ", but " + diverged + " of " + entries.size() + ", marked [DIV], diverged in the viewer";
+		}
+
 		if (unwatchable == 0){
 			return origin + ", and every one of them is watchable in the viewer";
 		}
@@ -168,6 +188,8 @@ public final class ReplayListing {
 
 	private static String note( Entry entry ){
 		if (entry.error != null) return "[WARN] unreadable: " + entry.error;
+
+		if (entry.diverged()) return entry.playback;
 
 		if (entry.copies > 1){
 			return "[WARN] " + entry.copies + " recordings share this seed - name the file"

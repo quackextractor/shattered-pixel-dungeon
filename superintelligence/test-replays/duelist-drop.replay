@@ -14,6 +14,7 @@ termination=OTHER
 reward_profile=default
 group=
 steps=60
+playback=ok
 USE 0 WORLD 413 -1.0  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 -1
 DROP 1 SLOT 413 -2.0 ThrowingSpike:1,Waterskin:2 20 1.0 Food:1,VelvetPouch():1,Waterskin:1 0 0 -1
 USE 0 WORLD 413 -0.5  20 1.0 Food:1,VelvetPouch():1,Waterskin:1 0 0 -1

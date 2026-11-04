@@ -108,6 +108,36 @@ public final class ReplayCatalogViewCheck {
 		check( "only floor-1 top 1 flat", "F1-SHALLOW" );
 	}
 
+	public static void checkPlaybackMarksAreListedAndFiltered(){
+		File dir = dir( "marks" );
+		File clean = write( dir, "MARK-OK", "WARRIOR", 3.0, 1, 100 );
+		File wrong = write( dir, "MARK-DIV", "WARRIOR", 2.0, 1, 100 );
+		write( dir, "MARK-NEW", "WARRIOR", 1.0, 1, 100 );
+		try {
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.stamp( clean, "ok" );
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.stamp( wrong, "diverged at step 7 - hp is 9, recording says 7" );
+		} catch (IOException e){
+			fail( "could not stamp a fixture: " + e.getMessage() );
+			return;
+		}
+		ReplayCatalog catalog = new ReplayCatalog().corpus( dir( "marks-corpus" )).scan( List.of( dir ));
+		String listing = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayListing
+				.render( catalog, true, CatalogView.parse());
+		String row = ReplayCatalogFixture.rowFor( listing, "MARK-DIV" );
+		if (!ReplayCatalogFixture.rowFor( listing, "MARK-OK" ).contains( "[OK]" ) || !row.contains( "[DIV]" )
+				|| !row.contains( "hp is 9" ) || !ReplayCatalogFixture.rowFor( listing, "MARK-NEW" ).contains( "[ ? ]" )
+				|| !listing.contains( "1 ok, 1 diverged" )){
+			fail( "the listing does not tell played, diverged and unchecked recordings apart:\n" + listing );
+		}
+		String[][] filters = { { "ok", "MARK-OK" }, { "diverged", "MARK-DIV" }, { "unchecked", "MARK-NEW" } };
+		for (String[] filter : filters){
+			List<ReplayCatalog.Entry> rows = CatalogLayout.numbered( catalog, CatalogView.parse( filter[ 0 ] ));
+			if (rows.size() != 1 || !rows.get( 0 ).label().equals( filter[ 1 ] )){
+				fail( "'" + filter[ 0 ] + "' listed " + rows.size() + " rows, expected only " + filter[ 1 ] );
+			}
+		}
+	}
+
 	private static void check( String command, String... expected ){
 		List<String> got = labels( CatalogView.parse( command ));
 		if (!got.equals( Arrays.asList( expected ))){

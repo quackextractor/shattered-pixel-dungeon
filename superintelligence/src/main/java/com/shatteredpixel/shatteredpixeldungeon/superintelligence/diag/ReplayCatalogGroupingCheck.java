@@ -25,6 +25,36 @@ public final class ReplayCatalogGroupingCheck {
 
 	private ReplayCatalogGroupingCheck(){}
 
+	public static void checkAStampChangesOnlyTheMark(){
+		File file = com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayCatalogFixture.write(
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ReplayCatalogFixture.dir( "stamp" ),
+				"STAMP", "WARRIOR", 1.0, 1, 100 );
+		try {
+			long recorded = file.lastModified() - 60_000;
+			file.setLastModified( recorded );
+			byte[] before = java.nio.file.Files.readAllBytes( file.toPath() );
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.stamp( file, "diverged at step 3" );
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.stamp( file, "ok" );
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay stamped =
+					com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.read( file );
+			String text = new String( java.nio.file.Files.readAllBytes( file.toPath() ), java.nio.charset.StandardCharsets.UTF_8 );
+			String removed = text.replaceFirst( "playback=ok\\r?\\n", "" );
+			if (!stamped.playback.equals( "ok" ) || file.lastModified() != recorded
+					|| !java.util.Arrays.equals( before, removed.getBytes( java.nio.charset.StandardCharsets.UTF_8 ))){
+				fail( "a second stamp read back as '" + stamped.playback + "', moved the recorded time, or changed"
+						+ " something other than the one playback line" );
+			}
+			stamped.playback = "ok";
+			File again = new File( file.getParentFile(), "STAMP-AGAIN.replay" );
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.write( stamped, again );
+			if (!com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.read( again ).playback.equals( "ok" )){
+				fail( "rewriting a recording lost its playback mark" );
+			}
+		} catch (java.io.IOException e){
+			fail( "could not stamp a recording: " + e.getMessage() );
+		}
+	}
+
 	public static void checkHeaderOnlyReadMatchesAFullRead(){
 		File dir = dir( "parity" );
 

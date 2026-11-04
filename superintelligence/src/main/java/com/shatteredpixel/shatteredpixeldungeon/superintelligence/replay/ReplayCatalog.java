@@ -38,6 +38,9 @@ public class ReplayCatalog {
 
 		public final String error;
 
+
+		public final String playback;
+
 		Entry( File file, Replay replay ){
 			this.file = file;
 			this.seed = replay.seedText;
@@ -52,6 +55,7 @@ public class ReplayCatalog {
 			this.truncatedAt = replay.truncatedAt;
 			this.watchable = !replay.wireDroppedStepFields();
 			this.error = null;
+			this.playback = replay.playback;
 		}
 
 		Entry( File file, String error ){
@@ -68,6 +72,7 @@ public class ReplayCatalog {
 			this.truncatedAt = -1;
 			this.watchable = false;
 			this.error = error;
+			this.playback = "";
 		}
 
 
@@ -75,6 +80,14 @@ public class ReplayCatalog {
 
 
 		public boolean inCorpus;
+
+		public boolean playsClean(){
+			return playback.equals( "ok" );
+		}
+
+		public boolean diverged(){
+			return playback.startsWith( "diverged" );
+		}
 
 		public boolean damaged(){
 			return error != null || truncatedAt >= 0;

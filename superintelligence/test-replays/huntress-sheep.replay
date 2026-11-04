@@ -18,6 +18,7 @@ termination=DEATH
 reward_profile=default
 group=
 steps=569
+playback=ok
 MOVE_N 1 WORLD 1025 2.8800010681152344  20 1.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 1 -4296116927082722976 1
 USE 0 WORLD 1025 -0.11999893188476562  20 1.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 1 -4296116927082722976 1
 USE 0 SLOT 1025 -4.119998931884766 Waterskin:1@1,SpiritBow:0@2 20 4.0 SpiritBow:1,VelvetPouch():1,Waterskin:1 1 -4296116927082722976 1

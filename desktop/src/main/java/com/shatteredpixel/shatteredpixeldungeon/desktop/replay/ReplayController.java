@@ -592,6 +592,8 @@ if (controller.hudLines.isEmpty() || controller.hudScene != Game.scene()){
 		}
 
 		ArrayList<String> wrapped = wrapText( playback.status()
+				+ ( playback.replay().playback.startsWith( "diverged" )
+						? "\nlast check: " + playback.replay().playback : "" )
 				+ "\nseed " + playback.replay().seedText
 				+ "   hero " + playback.replay().heroClass
 				+ "\nrecorded depth " + playback.replay().depth

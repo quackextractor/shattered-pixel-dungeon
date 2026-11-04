@@ -126,6 +126,8 @@ public class Replay {
 
 	public String termination = "";
 
+	public String playback = "";
+
 	public void captureOutcome( double score, int depth, int turns, int generation, String termination ){
 		this.score = score;
 		this.depth = depth;

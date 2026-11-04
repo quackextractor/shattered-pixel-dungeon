@@ -14,6 +14,7 @@ termination=TURN_LIMIT
 reward_profile=default
 group=
 steps=25
+playback=ok
 USE 0 WORLD 829 -1.0  20 0.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 2 SLOT 829 0.0 Waterskin:1,SpiritBow:0 20 0.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 0 TARGETING 829 -2.0  20 1.0 Food:1,VelvetPouch():1,Waterskin:1 0 0 1

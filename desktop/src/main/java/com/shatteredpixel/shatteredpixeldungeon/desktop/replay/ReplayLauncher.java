@@ -127,6 +127,7 @@ private static void describe( Replay replay ){
 		System.out.println( "  seed   " + ( replay.seedText.isEmpty() ? "<random>" : replay.seedText ) );
 		System.out.println( "  hero   " + replay.heroClass );
 		System.out.println( "  steps  " + replay.steps.size() );
+		System.out.println( "  check  " + ( replay.playback.isEmpty() ? "never played by viewcheck" : replay.playback ));
 
 		System.out.println( "  depth  " + replay.depth
 				+ "   actions " + replay.turns + "/" + replay.turnLimitPerFloor

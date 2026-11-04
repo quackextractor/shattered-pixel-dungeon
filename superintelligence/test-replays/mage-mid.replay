@@ -18,6 +18,7 @@ termination=DEMONSTRATION
 reward_profile=default
 group=
 steps=149
+playback=ok
 USE 0 WORLD 481 1.4000015258789062  20 0.0 Food:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 0 SLOT 481 -4.099998474121094 Waterskin:1@1 20 3.0 VelvetPouch():1,Waterskin:1 0 0 1
 OPEN_INVENTORY 0 WORLD 481 -0.09999847412109375  20 3.0 VelvetPouch():1,Waterskin:1 0 0 1

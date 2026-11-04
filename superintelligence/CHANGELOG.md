@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Recordings carry their last playback verdict.** A `playback=` header line holds `ok` or `diverged ...` with
+  the step and reason; no line means never checked. `viewcheck` writes it as each recording finishes, the
+  serial re-run deciding anything that failed under load, and `verify` writes a headless divergence but never
+  `ok`, because reproducing headless is not the claim the viewer makes. `ReplayIO.stamp` changes that one line
+  and keeps the file's recorded time. `replays` shows `[OK]`, `[DIV]` in red with the reason, or `[ ? ]`, counts
+  them per group, and filters with `ok`, `diverged` and `unchecked`; the viewer's HUD names a recording that
+  diverged. `replaycheck` holds it, 30 cases. The corpus is marked `ok`, 24 of 24.
+
 ### Changed
 - **Training defaults to in-process workers, async collection, 48 x 2 here.** `worker.in_process` and
   `rl.async_collection` are true. Workers default to 2.4 per logical core with GPU inference, one per

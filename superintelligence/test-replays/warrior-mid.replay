@@ -18,6 +18,7 @@ termination=TURN_LIMIT
 reward_profile=default
 group=
 steps=204
+playback=ok
 USE 0 WORLD 744 1.5799980163574219  20 0.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 0 SLOT 744 0.0 ThrowingStone:0@0,Waterskin:1@2 20 0.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 0 TARGETING 744 -0.4200019836425781  20 1.0 Food:1,ThrowingStone:1,VelvetPouch():1,Waterskin:1 2 1099511628211 1

@@ -14,6 +14,7 @@ termination=OTHER
 reward_profile=default
 group=
 steps=60
+playback=ok
 USE 0 WORLD 653 -1.0  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 -1
 USE 1 SLOT 653 0.0 ThrowingSpike:1,Waterskin:2 20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 -1
 USE 1 TARGETING 653 -0.8500000238418579  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 4 4858195488955696953 -1

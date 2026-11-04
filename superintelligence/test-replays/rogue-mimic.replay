@@ -18,6 +18,7 @@ termination=DEATH
 reward_profile=default
 group=fresh-1022
 steps=134
+playback=ok
 TRAVEL_EXPLORE 1 WORLD 644 2.9199981689453125  20 1.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 1 6662119535993823662 1
 TRAVEL_EXPLORE 1 WORLD 608 2.9000015258789062  20 2.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 2 -4405414554969519894 1
 TRAVEL_EXPLORE 0 WORLD 573 4.330000877380371  20 3.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 4 2222081062364018994 1

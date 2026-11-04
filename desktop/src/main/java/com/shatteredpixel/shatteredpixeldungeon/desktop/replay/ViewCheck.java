@@ -171,6 +171,25 @@ public class ViewCheck {
 		return dir.listFiles( ( d, name ) -> name.endsWith( ".replay" ) || name.endsWith( ".dat" ) );
 	}
 
+	private static void mark( File file, String playback ){
+		try {
+			ReplayIO.stamp( file, playback );
+		} catch (IOException e){
+			System.out.println( "[WARN]   could not mark " + file.getName() + ": " + e.getMessage() );
+		}
+	}
+
+	private static String verdict( String said, int code ){
+		String marker = "[replay] halted: ";
+		for (String line : said.split( "\n" )){
+			int at = line.indexOf( marker );
+			if (at < 0) continue;
+			String reason = line.substring( at + marker.length() ).trim();
+			return reason.startsWith( "DIVERGED " ) ? "diverged " + reason.substring( 9 ) : "diverged: " + reason;
+		}
+		return "diverged: the viewer exited with code " + code;
+	}
+
 	private static void supervise( File corpus ) throws IOException, InterruptedException {
 		File[] files = recordings( corpus );
 		if (files == null || files.length == 0){
@@ -199,6 +218,7 @@ public class ViewCheck {
 				AtomicInteger outcome = new AtomicInteger( 1 );
 				try {
 					outcome.set( runChild( file, new LinkedHashMap<>(), new StringBuilder(), true ));
+					if (outcome.get() == 0) mark( file, "ok" );
 				} catch (IOException | InterruptedException e){
 					System.out.println( "        " + file.getName() + " could not be run ("
 							+ e.getClass().getSimpleName() + ")" );
@@ -227,13 +247,15 @@ public class ViewCheck {
 			for (String name : sortedFailures( failed )){
 				File file = new File( corpus, name );
 				int code;
+				StringBuilder said = new StringBuilder();
 				try {
-					code = runChild( file, new LinkedHashMap<>(), new StringBuilder(), false );
+					code = runChild( file, new LinkedHashMap<>(), said, false );
 				} catch (IOException | InterruptedException e){
 					code = 1;
 				}
 				if (code == 0) recovered.add( name );
 				else confirmed.add( name );
+				mark( file, code == 0 ? "ok" : verdict( said.toString(), code ));
 			}
 		}
 
@@ -672,6 +694,7 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 		while (!child.waitFor( 1, TimeUnit.SECONDS )){
 			if (System.nanoTime() - progressed.get() > STALL_MS * 1_000_000L){
 				child.destroyForcibly();
+				sink.append( "[replay] halted: stalled after step " ).append( lastStep.get() ).append( '\n' );
 				System.err.println( "[ERROR]  " + file.getName() + " applied no step for " + ( STALL_MS / 1000 )
 						+ "s after step " + lastStep.get() + "; the viewer stalled: " + lastBeat.get() );
 				return 1;

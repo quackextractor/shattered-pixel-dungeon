@@ -15,6 +15,14 @@ public final class VerifyCommand {
 
 	private VerifyCommand(){}
 
+	private static void stamp( File file, String playback ){
+		try {
+			ReplayIO.stamp( file, playback );
+		} catch (IOException e){
+			System.err.println( "[WARN] could not mark " + file.getName() + ": " + e.getMessage() );
+		}
+	}
+
 	public static void main( String[] args ){
 		if (args.length == 0){
 			System.err.println( "[ERROR] replay needs a file" );
@@ -62,6 +70,7 @@ public final class VerifyCommand {
 		System.out.println();
 
 		if (result.diverged){
+			stamp( file, "diverged at step " + result.divergedAt + " headless: " + result.divergence );
 			System.err.println( "[ERROR] replay diverged at step " + result.divergedAt
 					+ " of " + replay.steps.size() );
 			System.err.println( "        " + result.divergence );
@@ -73,6 +82,7 @@ public final class VerifyCommand {
 		}
 
 		if (result.unwatchableAt >= 0){
+			stamp( file, "diverged at step " + result.unwatchableAt + " headless: " + result.unwatchable );
 			System.err.println( "[ERROR] replay reproduced in " + result.stepsVerified
 					+ " steps but is not watchable:" );
 			System.err.println( "        " + result.unwatchable );

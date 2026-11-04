@@ -43,6 +43,7 @@ public final class CatalogView {
 			"  score <min>..<max>                 either side optional, eg score 0.. or score ..-3000",
 			"  gen <n> | since <yyyy-mm-dd|3d|12h> | find <text>   generation, recorded since, name/seed/group contains",
 			"  watchable | broken | dupes         only playable, only damaged/unwatchable, only seeds recorded twice",
+			"  ok | diverged | unchecked          only what the viewer played clean, only what it did not, only what was never checked",
 			"  flat | nested                      one list per group, or one per hero class (default)",
 			"  top <n>                            first n rows of each list, 0 for all",
 			"  order <name|newest|best|size>      order of the run groups",
@@ -61,7 +62,7 @@ public final class CatalogView {
 	Integer minDepth, maxDepth, gen;
 	Double minScore, maxScore;
 	String since, text;
-	boolean watchable, broken, dupes, flat;
+	boolean watchable, broken, dupes, flat, playsOk, diverged, unchecked;
 	int top;
 
 	public static CatalogView parse( String... tokens ){
@@ -187,6 +188,9 @@ public final class CatalogView {
 					case "watchable": watchable = !"off".equals( next ); if ("off".equals( next )) i++; break;
 					case "broken": broken = !"off".equals( next ); if ("off".equals( next )) i++; break;
 					case "dupes": dupes = !"off".equals( next ); if ("off".equals( next )) i++; break;
+					case "ok": playsOk = !"off".equals( next ); if ("off".equals( next )) i++; break;
+					case "diverged": diverged = !"off".equals( next ); if ("off".equals( next )) i++; break;
+					case "unchecked": unchecked = !"off".equals( next ); if ("off".equals( next )) i++; break;
 					case "flat": flat = true; break;
 					case "nested": flat = false; break;
 					case "top":
@@ -214,7 +218,8 @@ public final class CatalogView {
 		minDepth = other.minDepth; maxDepth = other.maxDepth; gen = other.gen;
 		minScore = other.minScore; maxScore = other.maxScore;
 		since = other.since; text = other.text;
-		watchable = other.watchable; broken = other.broken; dupes = other.dupes; flat = other.flat;
+		watchable = other.watchable; broken = other.broken; dupes = other.dupes;
+		playsOk = other.playsOk; diverged = other.diverged; unchecked = other.unchecked; flat = other.flat;
 		top = other.top;
 	}
 
@@ -255,6 +260,9 @@ public final class CatalogView {
 		if (watchable && (entry.damaged() || !entry.watchable)) return false;
 		if (broken && !(entry.damaged() || !entry.watchable)) return false;
 		if (dupes && entry.copies < 2) return false;
+		if (playsOk && !entry.playsClean()) return false;
+		if (diverged && !entry.diverged()) return false;
+		if (unchecked && !entry.playback.isEmpty()) return false;
 		if (text != null){
 			String haystack = ( entry.label() + " " + entry.seed + " " + entry.group ).toLowerCase( Locale.ROOT );
 			if (!haystack.contains( text )) return false;
@@ -324,6 +332,9 @@ public final class CatalogView {
 		if (watchable) parts.add( "watchable" );
 		if (broken) parts.add( "broken" );
 		if (dupes) parts.add( "dupes" );
+		if (playsOk) parts.add( "ok" );
+		if (diverged) parts.add( "diverged" );
+		if (unchecked) parts.add( "unchecked" );
 		if (flat) parts.add( "flat" );
 		if (top > 0) parts.add( "top " + top );
 		return String.join( " ", parts );

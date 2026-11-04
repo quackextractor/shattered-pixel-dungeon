@@ -71,6 +71,10 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
   			out.newLine();
   			out.write( "group=" + ( replay.group == null ? "" : replay.group ));
   			out.newLine();
+			if (!replay.playback.isEmpty()){
+				out.write( "playback=" + replay.playback );
+				out.newLine();
+			}
  			out.write( "steps=" + replay.steps.size() );
 			out.newLine();
 
@@ -105,6 +109,27 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				out.newLine();
 			}
 		}
+	}
+
+	public static void stamp( File file, String playback ) throws IOException {
+		String text = new String( Files.readAllBytes( file.toPath() ), StandardCharsets.UTF_8 );
+		String newline = text.contains( "\r\n" ) ? "\r\n" : "\n";
+		java.util.List<String> lines = new java.util.ArrayList<>( java.util.Arrays.asList( text.split( "\r?\n", -1 )));
+		if (!Replay.MAGIC.equals( lines.get( 0 ))) throw new IOException( "Not a replay file: " + file.getPath() );
+
+		String line = "playback=" + playback.replaceAll( "\\s+", " " ).trim();
+		int end = headerEnd( lines ), at = end;
+		for (int i = 1; i < end; i++) if (lines.get( i ).startsWith( "playback=" )) at = i;
+		if (at < end && lines.get( at ).equals( line )) return;
+		if (at < end) lines.set( at, line );
+		else lines.add( end, line );
+
+		long recorded = file.lastModified();
+		File written = new File( file.getPath() + ".stamp" );
+		Files.write( written.toPath(), String.join( newline, lines ).getBytes( StandardCharsets.UTF_8 ));
+		written.setLastModified( recorded );
+		Files.move( written.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+				java.nio.file.StandardCopyOption.ATOMIC_MOVE );
 	}
 
 	public static Replay read( File file ) throws IOException {
@@ -255,6 +280,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 				case "steps":      replay.declaredSteps = Integer.parseInt( value ); break;
 
 				case "group":      replay.group = value; break;
+				case "playback":   replay.playback = value; break;
 				default: break;
 			}
 		}
