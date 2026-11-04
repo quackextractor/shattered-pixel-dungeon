@@ -456,8 +456,10 @@ command it is about to run, and passes `-Name` as the run's replay group.
 
 **On Linux, `superintelligence/train.sh`**: `./superintelligence/train.sh -H 6 -n server-6h` runs six
 hours and checkpoints, `-r` resumes, `-k` prints what the probe would choose. It finds a JDK (`JAVA_HOME`,
-`java` on `PATH`, else `~/.local/jdk21`) and always passes `--auto`: workers are the logical cores capped
-by `/proc/meminfo` MemAvailable over `worker.heap_max` + 300 MB, and update threads the fewest within 5%
+`java` on `PATH`, else `~/.local/jdk21`) and always passes `--auto`: workers are 2.4 per logical core (one
+per core with `rl.device=cpu`) capped at 125 MB each of `worker.in_process_heap`, or with
+`worker.in_process=false` the logical cores capped by `/proc/meminfo` MemAvailable over
+`worker.heap_max` + 300 MB, and update threads the fewest within 5%
 of the fastest timed PPO update, tried up to `rl.minibatch_size` (an update cannot use more). Flags after
 `--` win. `--hours` stops after the generation that crosses the budget and checkpoints, so a long run
 needs no generation estimate.
@@ -470,7 +472,7 @@ deep it gets* - and it does not answer whether the policy is learning, because t
 about 100 points over 15 generations. Anything named on the command line wins, so
 `-Quick -Generations 10` is ten quick generations.
 
-**Forty gates, one invocation.** Each has had the thing it guards deleted, and each has been
+**Forty-one gates, one invocation.** Each has had the thing it guards deleted, and each has been
 required to fail - a check that cannot fail is not a check. Two reach faults the rest structurally
 cannot: `resetcheck` proves a reset is a function of its arguments, which needs two episodes in one
 process because with one there is nothing to leak from; and `paritycheck` proves a *recording* survives

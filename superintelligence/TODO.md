@@ -41,10 +41,11 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       logical cores. That is the ceiling for env + game on this i5-14600KF whatever the network costs,
       12.7x the 2,197 CPU baseline. In-process workers with batched GPU inference (`worker.in_process`)
       match but do not yet beat process workers end to end (3,605 against 3,754 turns/s, same load).
-- [ ] **Inference round trip binds now (2026-11-04).** 48 x 2 async, machine in use: ~34K turns/s at 69% of
-      the machine. Env-only 118K at 139 us of core time a turn, inference 130K forwards/s at 256 callers,
-      so 48 envs wait ~1.4 ms a step and neither CPU nor GPU compute is full. Plan 3's seven items are in
-      `CHANGELOG.md` and `REJECTED.md`. Next: an idle-machine 48 x 2 baseline, then plan 2 C and E.
+- [ ] **Inference round trip binds now (2026-11-04).** 48 x 2 async is the default: idle machine 43K turns/s
+      steady over 30 minutes, ~34K with the machine in use. Env-only 118K at 139 us of core time a turn,
+      inference 130K forwards/s at 256 callers, so 48 envs wait ~1.1 ms a step and neither CPU nor GPU
+      compute is full. Plan 3's seven items are in `CHANGELOG.md` and `REJECTED.md`. Next: plan 2 C, and
+      an hours-long run; the longest in-process run so far is 30 minutes.
 - [ ] **Throughput plan 2 (2026-11-04, replaces the estimates below, all made on a throttled machine).**
       Target unchanged: 220,000 turns/s. Now: env leg 76-114K, best end-to-end ~18-20K (24 in-process envs,
       async). Inference capacity scales with callers: 36.8K/58.7K/71.0K forwards/s at 48/96/192 with a game
@@ -58,8 +59,6 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
         resident per slot.
   - [ ] **D. CPU inference that survives a game on the GPU.** Process workers spend most of a step in
         `Network.forward`; try the Vector API for the dense layers.
-  - [ ] **E. Defaults.** Flip `worker.in_process` and `rl.async_collection` once A wins on a free GPU;
-        depth at equal turns already held over 40 generations (2.898 vs 2.876).
 - [ ] **Throughput plan: 9,343 -> 220,000 turns/s (100x the 2,197 CPU baseline).** Today: 12 process
       workers x 4, GPU update, 9,343 turns/s end to end; collection 2.8 s and update 2.3 s a generation.
       100x means, per trained turn, ~45 us of CPU across ~9 effective cores and 4.5 us of GPU update per

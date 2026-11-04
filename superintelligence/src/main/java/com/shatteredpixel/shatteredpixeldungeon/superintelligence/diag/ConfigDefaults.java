@@ -140,6 +140,7 @@ public final class ConfigDefaults {
 			case "worker.heap_max":           return hyper.workerHeapMax;
 			case "worker.code_cache":         return hyper.workerCodeCache;
 			case "worker.in_process":         return String.valueOf( hyper.workerInProcess );
+			case "worker.in_process_heap":    return hyper.workerInProcessHeap;
 			case "worker.high_qos":           return String.valueOf( hyper.workerHighQos );
 			case "worker.gc_pause_ms":        return String.valueOf( hyper.workerGcPauseMs );
 
@@ -176,7 +177,8 @@ public final class ConfigDefaults {
 	}
 
 	private static boolean isTextKey( String key ){
-		return key.equals( "worker.code_cache" ) || key.equals( "worker.heap_min" ) || key.equals( "worker.heap_max" );
+		return key.equals( "worker.code_cache" ) || key.equals( "worker.in_process_heap" )
+				|| key.equals( "worker.heap_min" ) || key.equals( "worker.heap_max" );
 	}
 
 	private static String numericSentinelFor( String key ){

@@ -24,7 +24,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Co
 
 public class ConfigCheck {
 
-	private static final int CHECKS = 23;
+	private static final int CHECKS = 24;
 
 	public static void main( String[] args ) throws IOException {		if (args.length > 0 && (args[ 0 ].equals( "--verbose" ) || args[ 0 ].equals( "-v" ) )){
 			ConfigDefaults.verbose = true;
@@ -53,6 +53,7 @@ checkOutputPathsFollowTheWorkingDirectory();
 		ConfigPathCheck.checkTheTrainerResolvesItsOwnPathsToo();
 		ConfigAutoTuneCheck.checkMemoryIsWhatLinuxCanReclaim();
 		ConfigAutoTuneCheck.checkThePoolFitsCoresAndMemory();
+		ConfigAutoTuneCheck.checkInProcessWorkersFitTheHeapAndTheInference();
 		ConfigAutoTuneCheck.checkTheFewestThreadsNearTheBestWin();
 		ConfigAutoTuneCheck.checkTheProbeGivesEveryThreadAShard();
 		ConfigAutoTuneCheck.checkTheProbeCutsRaggedChunks();

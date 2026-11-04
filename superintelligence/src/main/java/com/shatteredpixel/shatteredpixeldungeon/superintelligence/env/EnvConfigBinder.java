@@ -117,6 +117,7 @@ public class EnvConfigBinder {
 			"worker.code_cache",
 			"worker.gc_pause_ms",
 			"worker.in_process",
+			"worker.in_process_heap",
 			"worker.high_qos"
 	);
 
@@ -372,6 +373,7 @@ public class EnvConfigBinder {
 			case "worker.code_cache":         hyper.workerCodeCache = text( key, value, origin ); break;
 			case "worker.gc_pause_ms":        hyper.workerGcPauseMs = integer( key, value, origin ); break;
 			case "worker.in_process":         hyper.workerInProcess = bool( key, value, origin ); break;
+			case "worker.in_process_heap":    hyper.workerInProcessHeap = text( key, value, origin ); break;
 			case "worker.high_qos":           hyper.workerHighQos = bool( key, value, origin ); break;
 
 			default:

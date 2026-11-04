@@ -39,8 +39,10 @@ public final class AutoTune {
 		int cores = ResourceStats.availableProcessors();
 		long availableMb = availableMemoryBytes() / (1024L * 1024);
 		long trainerMb = Runtime.getRuntime().maxMemory() / (1024L * 1024) + JVM_OVERHEAD_MB;
-		long workerMb = megabytes( hyper.workerHeapMax ) + JVM_OVERHEAD_MB;
-		int workers = workersFor( cores, availableMb, trainerMb, workerMb );
+		long workerMb = hyper.workerInProcess ? TrainOptions.IN_PROCESS_WORKER_MB
+				: megabytes( hyper.workerHeapMax ) + JVM_OVERHEAD_MB;
+		int workers = hyper.workerInProcess ? TrainOptions.defaultWorkerCount( hyper )
+				: workersFor( cores, availableMb, trainerMb, workerMb );
 
 		List< Integer > counts = threadCounts( cores, minibatchSize );
 		List< Transition > samples = probeBatch( config, minibatchSize, hyper.chunkLength );

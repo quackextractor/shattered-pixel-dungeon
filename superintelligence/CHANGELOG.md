@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Training defaults to in-process workers, async collection, 48 x 2 here.** `worker.in_process` and
+  `rl.async_collection` are true. Workers default to 2.4 per logical core with GPU inference, one per
+  core with `rl.device=cpu`, capped at 125 MB each of the new `worker.in_process_heap` (6g); episodes
+  default to 2; `--auto` uses the same rule. Idle machine, plain defaults: 43K turns/s steady, 39.7K
+  over 30 minutes with warm-up, against 19K for 12 x 8 processes, depth 2.78 in the last sixth. Set
+  both keys false for the old behaviour. An async run no longer reproduces from its seed, because
+  weight pickup depends on timing; recordings still reproduce (`inprocesscheck`), and a crash in
+  one worker now stops the whole trainer.
+- **`train` and `throughputbench` alone carry the in-process JVM flags.** Gates keep tiered
+  compilation and `worker.heap_max`, so the flip costs `verifyall` nothing.
+
+### Fixed
+- **Speed halved 25 minutes into a long in-process run, with pauses up to 30 s.** Once full collections
+  passed `worker.gc_pause_ms`, HotSpot shrank the young generation to ~60 MB, so every episode was
+  promoted and a full collection ran every 6 s: 42K -> 20K turns/s. `train` now fixes young at a third
+  of the heap. Last 6 minutes of 30: 43,012 turns/s, longest generation after start-up 3.8 s.
+
 ### Fixed
 - **Headless windows leaked until a long run choked.** A window is never hidden headless, so its
   blocker stayed in `PointerEvent`'s signal, its camera in `Camera.all`, and a superseded window in
@@ -33,20 +51,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`throughputbench --engines N`, and kernel times on the inference leg.** `--kernels true` now reports
   the inference leg as well as the update leg. The env and collect legs print process cores and core time a
   turn, the number that decides whether a CPU change worked while the machine is in use.
+- **`inprocesscheck`.** Trains one generation on two in-process workers and verifies every recording they
+  wrote in a fresh game. Sharing `com.watabou` between workers fails it.
 - **`throughputbench`.** Env-only, batched-inference and update throughput in one run, with an idle-CPU
   check before each leg and results appended to `out/evidence/throughputbench.csv`; round 0 warms the JIT
   and is left out of the median. `IsolatedLoader` is public so the bench can build isolated envs. The
   update leg packs its fixture grids at the 1.4% density real observations have; `--kernels true` prints
   GPU time by kernel (`spd.clprofile`, `KernelProfile`). `--env-inference batched` runs the env leg on
   batched GPU inference (`collect`), so collection can be measured without the trainer.
-- **`rl.async_collection` (default false).** `AsyncCollection` keeps a generation of jobs queued past the
+- **`rl.async_collection`.** `AsyncCollection` keeps a generation of jobs queued past the
   one being awaited and hands each worker the newest published weights between its own episodes, so no
   worker waits for a generation's slowest episode. `SyncCollection` keeps the old path; both behind
   `GenerationSource`. `asynccheck` holds ordering, staleness and queue-ahead with a fake
   `JobRunner`. Measured on the progress-bar clock (the per-generation wall under-counted async runs, see
   Fixed): in-process 96 x 1 async 15,035/13,964 against process 12 x 8 sync 12,060/11,993 turns/s, ABAB
-  with a game in front. Depth at equal turns over 40 generations: 2.898 async vs 2.876 sync. Still off
-  by default; the in-process async setting is the faster one to run.
+  with a game in front. Depth at equal turns over 40 generations: 2.898 async vs 2.876 sync.
 - **In-process workers (`worker.in_process`).** Each worker is a thread in the trainer with its own
   `IsolatedLoader`, so its game statics are its own; it speaks the same protocol over `java.nio` pipes.
   `com.badlogic.*`, `org.lwjgl.*` and `superintelligence.shared.*` stay shared, so gdx natives load once;

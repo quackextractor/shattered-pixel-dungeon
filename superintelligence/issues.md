@@ -38,3 +38,10 @@ next step is compared. Measured 2.5% of 199 recordings (`out/evidence/rp-proc`, 
 process and in-process workers alike, and `master`'s viewer diverges at the same steps on the same files,
 so it predates `perf/throughput`. Not the holiday: with `Holiday.clearCachedHoliday` disabled the two files
 diverge at the same steps.
+
+Rate climbs with depth (2026-11-04). A 30-minute default run (`out/evidence/leakfix`, the failures copied to
+`out/evidence/div12`): 12 of 257 diverge, all 12 reproduce under `verify`, and they are 10 of the 12 floor-5
+recordings, 2 of 157 floor-4 and 0 of 88 shallower. Most have the viewer one hit high, but `VBN-JGV-SYS` (7 against
+20), `HVM-HXM-XKN` (4 against 15) and `LLT-PTW-ZXR` (engine time 146.0 against 145.5) do not fit that shape, so
+there may be more than one cause. The first three diverge at the same steps with the viewer's parked-actor
+wait reverted.

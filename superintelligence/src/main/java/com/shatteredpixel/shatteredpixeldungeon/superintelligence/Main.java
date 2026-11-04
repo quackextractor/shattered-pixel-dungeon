@@ -86,6 +86,7 @@ public class Main {
 		case "throughputbench": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ThroughputBench.main( rest ); break;
 		case "asynccheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.AsyncCheck.main( rest ); break;
 		case "qoscheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.QosCheck.main( rest ); break;
+		case "inprocesscheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.InProcessCheck.main( rest ); break;
 		case "rewardcheck": RewardCheck.main( rest ); break;
 		case "transitioncheck": TransitionCheck.main( rest ); break;
 		case "travelcheck": TravelCheck.main( rest ); break;

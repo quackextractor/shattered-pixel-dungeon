@@ -37,6 +37,17 @@ public final class ConfigAutoTuneCheck {
 		}
 	}
 
+	public static void checkInProcessWorkersFitTheHeapAndTheInference(){
+		int gpu = TrainOptions.inProcessWorkers( 20, false, 6144 );
+		int cpu = TrainOptions.inProcessWorkers( 20, true, 6144 );
+		int small = TrainOptions.inProcessWorkers( 20, false, 1024 );
+		int starved = TrainOptions.inProcessWorkers( 1, false, 64 );
+		if (gpu != 48 || cpu != 20 || small != 8 || starved != 1){
+			fail( "in-process pools sized " + gpu + "/" + cpu + "/" + small + "/" + starved
+					+ ", expected 48 (gpu batching), 20 (one per core), 8 (heap-bound) and 1 (never zero)" );
+		}
+	}
+
 	public static void checkTheFewestThreadsNearTheBestWin(){
 		int pick = AutoTune.pickThreads( new double[]{ 100, 52, 30, 29.5 } );
 		int flat = AutoTune.pickThreads( new double[]{ 10, 10.2, 10.1 } );
@@ -87,11 +98,11 @@ public final class ConfigAutoTuneCheck {
 		TrainOptions o = TrainOptions.parse(
 				new String[]{ "--auto", "--workers", "3", "--hours", "5.5", "--minibatch", "3" } );
 		o.apply( AutoTune.fixed( 7, 5 ) );
-		if (!o.auto || o.hours != 5.5 || o.workers != 3 || o.episodes != 3 || o.updateThreads != 5
+		if (!o.auto || o.hours != 5.5 || o.workers != 3 || o.episodes != 2 || o.updateThreads != 5
 				|| o.hyper.minibatchSize != 3){
 			fail( "--auto with --workers 3 gave workers " + o.workers + ", episodes " + o.episodes
 					+ ", update threads " + o.updateThreads + ", hours " + o.hours + ", probe minibatch "
-					+ o.hyper.minibatchSize + "; expected 3, 3, 5, 5.5, 3: the probe reads the run's minibatch"
+					+ o.hyper.minibatchSize + "; expected 3, 2, 5, 5.5, 3: the probe reads the run's minibatch"
 					+ " from hyper" );
 		}
 	}

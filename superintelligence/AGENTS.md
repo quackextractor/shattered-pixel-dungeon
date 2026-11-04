@@ -56,7 +56,7 @@ Signed off 2026-10-30: performance-only engine changes (FOV, pathfinding, actor 
 
 ## Training
 
-- **Go wide on serious runs.** Scale workers to the machine: `./gradlew :superintelligence:train --args="--workers N"`. `trainerJvmArgs` pins `-Xmx1536m` per process, so pushing workers past what that heap supports trades throughput for GC thrash. The update runs on the GPU through OpenCL (`rl.device`, default `auto`); collection and worker inference stay on the CPU.
+- **Go wide on serious runs.** The defaults already do: in-process workers, async collection, 2.4 workers per logical core x 2 episodes. Workers share one JVM of `worker.in_process_heap`, so pushing them past 125 MB each trades throughput for GC thrash. `worker.in_process=false` returns to one process of `worker.heap_max` each. The update and batched worker inference run on the GPU through OpenCL (`rl.device`, default `auto`).
 - **The two gates are expensive.** `./gradlew verifyall` and `./gradlew :desktop:viewcheck` run about 40s each. `viewcheck` is *not* part of `verifyall`, so run both before calling anything done. Never run them speculatively.
 - **Smoke runs stay short.** Bound every test training run with `--max-turns` and an external timeout. A run proving a wiring change does not need to finish an episode.
 - **Tune rewards, don't stall.** Every knob lives in `superintelligence/superintelligence.properties`, overridable via `.env` as `SPD_*`. If a value you need is not exposed, expose it — properties file, `.env`, or a CLI flag. Modify the trainer when that is what it takes. Do not ask for input and do not wait to be told. That is the job.

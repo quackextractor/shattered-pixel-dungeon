@@ -34,7 +34,7 @@ public class PpoHyperparameters {
 
 	public boolean overlapCollection = true;
 
-	public boolean asyncCollection = false;
+	public boolean asyncCollection = true;
 
 	public boolean workerHighQos = true;
 
@@ -89,7 +89,9 @@ public class PpoHyperparameters {
 
 	public int workerGcPauseMs = 200;
 
-	public boolean workerInProcess = false;
+	public boolean workerInProcess = true;
+
+	public String workerInProcessHeap = "6g";
 
 	public void validate(){
 		require( gamma > 0f && gamma <= 1f, "rl.gamma must be in (0, 1], was " + gamma );
@@ -137,6 +139,7 @@ public class PpoHyperparameters {
 		require( workerGcPauseMs > 0, "worker.gc_pause_ms must be positive, was " + workerGcPauseMs );
 		require( !workerHeapMin.isBlank(), "worker.heap_min must not be blank" );
 		require( !workerHeapMax.isBlank(), "worker.heap_max must not be blank" );
+		require( !workerInProcessHeap.isBlank(), "worker.in_process_heap must not be blank" );
 	}
 
 	private static void require( boolean condition, String message ){
@@ -192,6 +195,7 @@ public class PpoHyperparameters {
 		p.workerCodeCache = workerCodeCache;
 		p.workerGcPauseMs = workerGcPauseMs;
 		p.workerInProcess = workerInProcess;
+		p.workerInProcessHeap = workerInProcessHeap;
 		return p;
 	}
 

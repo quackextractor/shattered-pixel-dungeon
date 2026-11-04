@@ -74,8 +74,7 @@ def trainerSetting = { String key, String projectProperty, String compiledDefaul
     return System.getenv( envName ) ?: ( project.findProperty( projectProperty )?.toString() ) ?:
             dotEnv[envName] ?: shippedProperties.getProperty( key )?.trim() ?: compiledDefault
 }
-def inProcessJvmArgs = trainerSetting( 'worker.in_process', 'spd.workerInProcess', 'false' ) == 'true' ? ['-XX:-TieredCompilation'] : []
-def trainerJvmArgs = inProcessJvmArgs + [
+def trainerJvmArgs = [
         '-Xms' + trainerSetting( 'worker.heap_min', 'spd.workerHeapMin', '256m' ),
         '-Xmx' + trainerSetting( 'worker.heap_max', 'spd.workerHeapMax', '1536m' ),
         '-XX:+UseParallelGC',
@@ -85,6 +84,15 @@ def trainerJvmArgs = inProcessJvmArgs + [
         '--enable-native-access=ALL-UNNAMED',
         '-Djava.awt.headless=true'
 ]
+def inProcessTraining = trainerSetting( 'worker.in_process', 'spd.workerInProcess', 'true' ) == 'true'
+def inProcessHeap = trainerSetting( 'worker.in_process_heap', 'spd.workerInProcessHeap', '6g' ).toLowerCase()
+def inProcessHeapMb = inProcessHeap[0..-2].toLong() * ( inProcessHeap.endsWith( 'g' ) ? 1024 : 1 )
+def trainingJvmArgs = trainerJvmArgs + ( inProcessTraining ? [
+        '-Xms' + inProcessHeapMb + 'm',
+        '-Xmx' + inProcessHeapMb + 'm',
+        '-Xmn' + ( inProcessHeapMb / 3 as long ) + 'm',
+        '-XX:-TieredCompilation'
+] : [] )
 tasks.register('probeClasspath') {
     group = 'superintelligence'
     description = 'Prints the runtime classpath so the headless entry points can be launched without gradle.'
@@ -99,23 +107,23 @@ def withSubcommand = { task, String command ->
 }
 tasks.register('train', JavaExec) {
     group = 'superintelligence'
-    description = 'Runs the PPO/IMPALA trainer over a pool of worker processes.'
+    description = 'Runs the PPO/IMPALA trainer over a pool of workers.'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = appMainClass
-    jvmArgs trainerJvmArgs
+    jvmArgs trainingJvmArgs
     withSubcommand(delegate, 'train')
     def shippedConfig = file('superintelligence.properties').absolutePath
     doFirst {
         if (!args.contains('--config')) args = args + ['--config', shippedConfig]
     }
 }
-def cliTask = { String taskName, String taskDescription ->
+def cliTask = { String taskName, String taskDescription, jvm = trainerJvmArgs ->
     tasks.register(taskName, JavaExec) {
         group = 'superintelligence'
         description = taskDescription
         classpath = sourceSets.main.runtimeClasspath
         mainClass = appMainClass
-        jvmArgs trainerJvmArgs
+        jvmArgs jvm
         withSubcommand(delegate, taskName)
     }
 }
@@ -215,9 +223,10 @@ cliTask('verifycheck', 'Fails if replay verification cannot detect an altered re
   cliTask('valuescale', "Reports the critic's target range against the range it can reach.")
   cliTask('parallelcheck', "Fails if a parallel update computes a different gradient from the serial one.")
   cliTask('sparsecheck', 'Fails if the sparse observation path packs or clears differently from the full grid.')
-  cliTask('throughputbench', 'Measures env-only, batched-inference and update throughput; results to out/evidence.')
+  cliTask('throughputbench', 'Measures env-only, batched-inference and update throughput; results to out/evidence.', trainingJvmArgs)
   cliTask('asynccheck', 'Fails if async collection loses or reorders episodes, runs stale weights, or idles at a generation tail.')
   cliTask('qoscheck', 'Fails if Windows does not report the process exempt from execution-speed throttling after the opt-out.')
+  cliTask('inprocesscheck', 'Fails if recordings written by in-process workers do not reproduce.')
   cliTask('gpucheck', 'Fails if the OpenCL update computes a different gradient from the CPU one, or is slower.')
   cliTask('rewardcheck', 'Fails if ending an episode can be cheaper than dying.')
 cliTask('transitioncheck', 'Fails if descending ends the episode, or is worth nothing.')
@@ -250,7 +259,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
   cliTask('checkpointcheck', 'Fails if a policy does not survive a trip through disk, or if a bad checkpoint is accepted.')
   cliTask('weightsdiff', 'Reports how far a checkpoint is from a freshly initialised policy.')
 tasks.register('gates') {
-    dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'gpucheck', 'sparsecheck', 'asynccheck', 'qoscheck', 'rewardcheck', 'transitioncheck', 'travelcheck', 'teachercheck', 'fallcheck', 'dialogcheck',
+    dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'gpucheck', 'sparsecheck', 'asynccheck', 'qoscheck', 'inprocesscheck', 'rewardcheck', 'transitioncheck', 'travelcheck', 'teachercheck', 'fallcheck', 'dialogcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
 		'observecheck', 'renderdrawcheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck', 'freeactioncheck', 'bpttcheck', 'pushcheck', 'curriculumcheck', 'samplercheck', 'seedcheck', 'doccheck', 'javaclint'
     group = 'verification'

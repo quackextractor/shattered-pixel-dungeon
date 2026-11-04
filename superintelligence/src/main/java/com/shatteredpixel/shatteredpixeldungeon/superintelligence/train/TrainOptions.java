@@ -9,6 +9,9 @@ import java.io.IOException;
 public class TrainOptions {
 
 
+	static final int IN_PROCESS_WORKERS_PER_FIVE_CORES = 12, IN_PROCESS_EPISODES = 2;
+	static final long IN_PROCESS_WORKER_MB = 125;
+
 	public int workers = 0;
 
 
@@ -185,8 +188,8 @@ public class TrainOptions {
 					}
 			}
 		}
-		o.workers = o.workers > 0 ? o.workers : defaultWorkerCount();
-		o.episodes = o.episodes > 0 ? o.episodes : o.workers;
+		o.workers = o.workers > 0 ? o.workers : defaultWorkerCount( hyper );
+		o.episodes = o.episodes > 0 ? o.episodes : defaultEpisodes( hyper, o.workers );
 		if (o.checkpointEvery < 1) o.checkpointEvery = 1;
 		if (o.recordEvery < 1) o.recordEvery = 1;
 
@@ -214,7 +217,7 @@ public class TrainOptions {
 
 	public void apply( AutoTune tune ){
 		if (!workersGiven) workers = tune.workers;
-		if (!episodesGiven) episodes = workers;
+		if (!episodesGiven) episodes = defaultEpisodes( hyper, workers );
 		if (!updateThreadsGiven) updateThreads = tune.updateThreads;
 	}
 
@@ -233,12 +236,25 @@ public class TrainOptions {
 	}
 
 
-	static int defaultWorkerCount(){
+	static int defaultEpisodes( PpoHyperparameters hyper, int workers ){
+		return hyper.workerInProcess ? IN_PROCESS_EPISODES : workers;
+	}
+
+
+	static int defaultWorkerCount( PpoHyperparameters hyper ){
 		int cores = ResourceStats.availableProcessors();
+		if (hyper.workerInProcess) return inProcessWorkers( cores, hyper.device.equals( "cpu" ),
+				AutoTune.megabytes( hyper.workerInProcessHeap ));
 		long budget = System.getProperty( "os.name" ) == null
 				? Long.MAX_VALUE
 				: AutoTune.availableMemoryBytes() / (1200L * 1024 * 1024);
 		return (int) Math.max( 1, Math.min( cores, budget ) );
+	}
+
+
+	public static int inProcessWorkers( int cores, boolean cpuInference, long heapMb ){
+		int byLoad = cpuInference ? cores : cores * IN_PROCESS_WORKERS_PER_FIVE_CORES / 5;
+		return (int) Math.max( 1, Math.min( byLoad, heapMb / IN_PROCESS_WORKER_MB ));
 	}
 
 
