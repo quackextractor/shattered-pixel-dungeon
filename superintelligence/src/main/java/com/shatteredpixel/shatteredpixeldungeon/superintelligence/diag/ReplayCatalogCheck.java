@@ -6,7 +6,7 @@ import java.nio.file.Files;
 
 public class ReplayCatalogCheck {
 
-	private static final int CHECKS = 30;
+	private static final int CHECKS = 31;
 
 	public static void main( String[] args ){
 		try {
@@ -50,6 +50,7 @@ public class ReplayCatalogCheck {
 			ReplayCatalogViewCheck.checkACollapsedGroupIsOneLineAndUnnumbered();
 			ReplayCatalogViewCheck.checkFiltersNarrowRows();
 			ReplayCatalogViewCheck.checkPlaybackMarksAreListedAndFiltered();
+			ReplayCatalogViewCheck.checkADepthFilterSeesEveryCopyOfASeed();
 			ReplayCatalogViewCheck.checkAViewSurvivesBeingSaved();
 			ReplayCatalogViewCheck.checkABadCommandIsRefusedByName();
 		} finally {

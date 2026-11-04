@@ -45,7 +45,7 @@ public final class CatalogLayout {
 	}
 
 	public static List<Section> sections( ReplayCatalog catalog, CatalogView view ){
-		Map<String, Map<String, List<Entry>>> byTitle = catalog.sections();
+		Map<String, Map<String, List<Entry>>> byTitle = catalog.sections( view.everyCopy() );
 
 		List<String> ids = new ArrayList<>();
 		for (String title : byTitle.keySet()) ids.add( idOf( title ));

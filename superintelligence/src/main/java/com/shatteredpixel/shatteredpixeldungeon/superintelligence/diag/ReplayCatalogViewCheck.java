@@ -138,6 +138,25 @@ public final class ReplayCatalogViewCheck {
 		}
 	}
 
+	public static void checkADepthFilterSeesEveryCopyOfASeed(){
+		File shallow = dir( "copies-a" ), deep = dir( "copies-b" );
+		write( shallow, "COPY-SEED", "WARRIOR", 1.0, 1, 100 );
+		File kept = write( deep, "COPY-SEED", "WARRIOR", 2.0, 5, 100 );
+		try {
+			com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO.stamp( kept, "ok" );
+		} catch (IOException e){
+			fail( "could not stamp a fixture: " + e.getMessage() );
+			return;
+		}
+		ReplayCatalog catalog = new ReplayCatalog().corpus( dir( "copies-corpus" )).scan( List.of( shallow, deep ));
+		int listed = CatalogLayout.numbered( catalog, CatalogView.parse()).size();
+		List<ReplayCatalog.Entry> found = CatalogLayout.numbered( catalog, CatalogView.parse( "depth", "5", "ok" ));
+		if (listed != 1 || found.size() != 1 || !found.get( 0 ).file.equals( kept )){
+			fail( "the default view listed " + listed + " copies of one seed, wanted 1, and 'depth 5 ok' found "
+					+ found.size() + ", wanted the floor-5 copy the listing would otherwise hide" );
+		}
+	}
+
 	private static void check( String command, String... expected ){
 		List<String> got = labels( CatalogView.parse( command ));
 		if (!got.equals( Arrays.asList( expected ))){

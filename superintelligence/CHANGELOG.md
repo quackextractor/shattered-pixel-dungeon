@@ -35,7 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ok`, because reproducing headless is not the claim the viewer makes. `ReplayIO.stamp` changes that one line
   and keeps the file's recorded time. `replays` shows `[OK]`, `[DIV]` in red with the reason, or `[ ? ]`, counts
   them per group, and filters with `ok`, `diverged` and `unchecked`; the viewer's HUD names a recording that
-  diverged. `replaycheck` holds it, 30 cases. The corpus is marked `ok`, 24 of 24.
+  diverged. `replaycheck` holds it, 31 cases. The corpus is marked `ok`, 24 of 24.
+- **Depth and playback filters list every copy of a seed.** The listing keeps one copy per seed and filtered
+  those, so `depth 5 ok` showed 9 of 116. With `depth`, `ok`, `diverged` or `unchecked` set, every copy is its own
+  numbered row, labelled with its run. The default view still shows one copy per seed.
 
 ### Changed
 - **Training defaults to in-process workers, async collection, 48 x 2 here.** `worker.in_process` and

@@ -339,12 +339,21 @@ File canonical = canonical( dir );
 	}
 
 
+	public int copyCount(){
+		return allEntries.size();
+	}
+
 	public Map<String, Map<String, List<Entry>>> sections(){
+		return sections( false );
+	}
+
+	public Map<String, Map<String, List<Entry>>> sections( boolean everyCopy ){
+		List<Entry> listed = everyCopy ? allEntries : entries;
 		Map<String, Map<String, List<Entry>>> sections = new LinkedHashMap<>();
 		sections.put( SECTION_CORPUS, new LinkedHashMap<>() );
 		sections.put( SECTION_TRAINER, new LinkedHashMap<>() );
 
-		List<String> groups = new ArrayList<>( new LinkedHashSet<>( namedGroups() ));
+		List<String> groups = new ArrayList<>( new LinkedHashSet<>( namedGroups( listed ) ));
 		groups.sort( String::compareTo );
 		for (String group : groups) sections.put( GROUP_PREFIX + group, new LinkedHashMap<>() );
 
@@ -352,7 +361,7 @@ File canonical = canonical( dir );
 			for (String hero : CLASS_ORDER) heroes.put( hero, new ArrayList<>() );
 		}
 
-		for (Entry entry : entries){
+		for (Entry entry : listed){
 			String hero = entry.heroClass == null ? "?" : entry.heroClass.toUpperCase();
 			sections.get( sectionOf( entry )).computeIfAbsent( hero, k -> new ArrayList<>() ).add( entry );
 		}
@@ -365,9 +374,9 @@ File canonical = canonical( dir );
 	}
 
 
-	private Set<String> namedGroups(){
+	private Set<String> namedGroups( List<Entry> listed ){
 		Set<String> groups = new LinkedHashSet<>();
-		for (Entry entry : entries){
+		for (Entry entry : listed){
 			if (!entry.inCorpus && !entry.group.isEmpty()) groups.add( entry.group.toUpperCase( Locale.ROOT ));
 		}
 		return groups;

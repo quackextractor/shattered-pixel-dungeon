@@ -52,7 +52,7 @@ public final class ReplayListing {
 					shown++;
 					visible.add( entry );
 
-					String note = note( entry );
+					String note = view.everyCopy() ? copyNote( entry ) : note( entry );
 					if (list.getKey().isEmpty()) note = ( entry.heroClass == null ? "?" : entry.heroClass.toLowerCase( Locale.ROOT )) + ( note.isEmpty() ? "" : "  " + note );
 					if (!note.isEmpty() && !plain) note = Ansi.wrap( note, Ansi.DIM );
 
@@ -76,7 +76,7 @@ public final class ReplayListing {
 			return "  no recordings match the view: " + view + "\n  reset clears it, h lists the commands\n";
 		}
 
-		int total = catalog.entries().size();
+		int total = view.everyCopy() ? catalog.copyCount() : catalog.entries().size();
 		out.append( "\n" );
 		if (view.isDefault()){
 			out.append( shown ).append( " recording" ).append( shown == 1 ? "" : "s" )
@@ -96,7 +96,7 @@ public final class ReplayListing {
 
 		List<Entry> shared = new ArrayList<>();
 		for (Entry entry : visible){
-			if (entry.copies > 1) shared.add( entry );
+			if (entry.copies > 1 && !view.everyCopy()) shared.add( entry );
 		}
 		if (!shared.isEmpty()){
 			out.append( "\n  " ).append( shared.size() ).append( " seed" )
@@ -184,6 +184,14 @@ public final class ReplayListing {
 				+ " of " + entries.size() + ", marked 'not watchable', were written before the"
 				+ " replay wire carried all nine step fields and nothing can recover that"
 				+ " (issues.md 15)";
+	}
+
+	private static String copyNote( Entry entry ){
+		if (entry.diverged()) return entry.playback;
+		File dir = entry.file.getParentFile();
+		String run = dir == null ? "" : dir.getName();
+		if (run.equals( "replays" ) && dir.getParentFile() != null) run = dir.getParentFile().getName();
+		return run + ( entry.generation > 0 ? ", gen " + entry.generation : "" );
 	}
 
 	private static String note( Entry entry ){

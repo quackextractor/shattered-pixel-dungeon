@@ -245,6 +245,10 @@ public final class CatalogView {
 		}
 	}
 
+	public boolean everyCopy(){
+		return minDepth != null || maxDepth != null || playsOk || diverged || unchecked;
+	}
+
 	public boolean isDefault(){
 		return toString().isEmpty();
 	}
