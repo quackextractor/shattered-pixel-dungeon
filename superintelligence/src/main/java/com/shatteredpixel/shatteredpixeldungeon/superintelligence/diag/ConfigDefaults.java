@@ -139,6 +139,7 @@ public final class ConfigDefaults {
 			case "worker.heap_min":           return hyper.workerHeapMin;
 			case "worker.heap_max":           return hyper.workerHeapMax;
 			case "worker.in_process":         return String.valueOf( hyper.workerInProcess );
+			case "worker.high_qos":           return String.valueOf( hyper.workerHighQos );
 			case "worker.gc_pause_ms":        return String.valueOf( hyper.workerGcPauseMs );
 
 			default: return null;
@@ -166,6 +167,7 @@ public final class ConfigDefaults {
 			case "rl.async_collection":
 			case "rl.huber_values":
 			case "worker.in_process":
+			case "worker.high_qos":
 				return true;
 			default:
 				return false;

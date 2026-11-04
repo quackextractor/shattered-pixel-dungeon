@@ -53,7 +53,7 @@ public final class TransitionCodec {
 			return;
 		}
 		out.writeInt( state.length );
-		for (float v : state) out.writeFloat( v );
+		writeFloats( out, state );
 	}
 
 	private static float[] readState( DataInputStream in, int expected ) throws IOException {
@@ -67,7 +67,7 @@ public final class TransitionCodec {
 		}
 
 		float[] state = new float[ length ];
-		for (int i = 0; i < length; i++) state[ i ] = in.readFloat();
+		readFloats( in, state );
 		return state;
 	}
 
@@ -127,11 +127,15 @@ public final class TransitionCodec {
 	}
 
 	private static void writeFloats( DataOutputStream out, float[] values ) throws IOException {
-		for (float v : values) out.writeFloat( v );
+		byte[] bytes = new byte[ 4 * values.length ];
+		java.nio.ByteBuffer.wrap( bytes ).asFloatBuffer().put( values );
+		out.write( bytes );
 	}
 
 	private static void readFloats( DataInputStream in, float[] into ) throws IOException {
-		for (int i = 0; i < into.length; i++) into[ i ] = in.readFloat();
+		byte[] bytes = new byte[ 4 * into.length ];
+		in.readFully( bytes );
+		java.nio.ByteBuffer.wrap( bytes ).asFloatBuffer().get( into );
 	}
 
 	private static void readFully( DataInputStream in, byte[] into ) throws IOException {

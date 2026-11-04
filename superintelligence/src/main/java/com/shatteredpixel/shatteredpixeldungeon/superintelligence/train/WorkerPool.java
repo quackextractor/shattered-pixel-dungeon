@@ -54,6 +54,8 @@ public class WorkerPool {
 
 	public static boolean inProcess = false;
 
+	public static boolean highQos = false;
+
 
 	public void launch( int count, String javaHome, String classpath, ParamWriter params )
 			throws IOException {
@@ -90,7 +92,8 @@ public class WorkerPool {
 		}
 
 		System.out.println( Ansi.wrap( "[OK]", Ansi.GREEN ) + "   started " + workers.size()
-				+ ( inProcess ? " in-process workers, one classloader each" : " worker processes" ));
+				+ ( inProcess ? " in-process workers, one classloader each" : " worker processes" )
+				+ ( highQos ? ", exempt from Windows power throttling" : "" ));
 	}
 
 	public void progress(){
@@ -245,7 +248,7 @@ public static class WorkerHandle {
 					"--enable-native-access=ALL-UNNAMED",
 					"-cp", classpath,
 					"com.shatteredpixel.shatteredpixeldungeon.superintelligence.train.WorkerMain",
-					"--worker",
+					"--worker", "--high-qos=" + highQos,
 
 					"--work-dir", new File( workerDir(), name ).getAbsolutePath() );
 

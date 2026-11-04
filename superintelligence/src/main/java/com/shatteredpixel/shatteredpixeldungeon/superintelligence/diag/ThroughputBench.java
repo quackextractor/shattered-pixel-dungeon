@@ -40,7 +40,7 @@ public final class ThroughputBench {
 	private static int rounds = 4, envs = 16, forwards = 2000, samples = 2048;
 	private static double seconds = 15;
 	private static String label = "current", legs = "env,inference,update";
-	private static boolean batched;
+	private static boolean batched, highQos = true;
 	private static File csv = new File( "out/evidence/throughputbench.csv" );
 	private static final Map< String, List< Double > > results = new HashMap<>();
 
@@ -67,6 +67,7 @@ public final class ThroughputBench {
 			case "--samples": samples = Integer.parseInt( args[ i + 1 ] ); break;
 			case "--label": label = args[ i + 1 ]; break;
 			case "--legs": legs = args[ i + 1 ]; break;
+			case "--high-qos": highQos = Boolean.parseBoolean( args[ i + 1 ] ); break;
 			case "--env-inference": batched = args[ i + 1 ].equals( "batched" ); break;
 			case "--csv": csv = new File( args[ i + 1 ] ); break;
 			case "--kernels":
@@ -75,6 +76,7 @@ public final class ThroughputBench {
 			default: throw new IllegalArgumentException( "unknown option " + args[ i ] );
 			}
 		}
+		if (highQos) com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.ProcessQos.exemptFromThrottling();
 		List< String > chosen = Arrays.asList( legs.split( "," ));
 		EnvLeg env = chosen.contains( "env" ) ? new EnvLeg() : null;
 		for (int round = 0; round < rounds; round++){

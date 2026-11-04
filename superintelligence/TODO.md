@@ -89,21 +89,22 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
   - [ ] **P3 Env CPU 5x (target ~20 us/turn, 60-90K).** Done: travel maps cached per decision (was 23% of
         in-process training samples). Next in the profile: `ObservationEncoder.buildSpatial`,
         `countNewlyExplored`, `levelExplorePercent`, `applyEdges` (~25% together), `PathFinder` in
-        `Travel.frontier`, level saves on floor change (engine). Measure only with no foreground game:
-        Windows power throttling cut the env leg 26.5K -> 7.6K at one commit. Re-profile env-only after the sparse fixes.
+        `Travel.frontier`, level saves on floor change (engine). GPU legs need the GPU free: Control at 98% of the 3D engine halved
+        inference (61.8K -> 30.0K forwards/s) and the update (16 -> 38.5 us). Re-profile env-only after the sparse fixes.
         Candidates: observation built as packed bits directly and windowed on the GPU from level-space
         deltas; travel masks only when TRAVEL could be chosen, cached per game-state version; teacher
         labels only on retained steps, with `lastHp` and `waited` (the only state it carries) updated
         cheaply every step; reward terms incremental. Gate: `sparsecheck`, `teachercheck`, `rewardcheck`
         byte-identical on the corpus.
-  - [ ] **P4 Parallel scaling (16 threads are 2.9x one).** Measured with time-bounded rounds, idle machine:
-        in-process env-only 1/4/12/20/48 envs = 14.5K/47.1K/17.9K/17.7K/11.6K turns/s (20 envs warm to
-        ~23K after 2 min); K separate JVMs x 1 env = 44.0K/42.1K/26.6K/22.2K/15.6K for K = 4/8/12/16/20.
-        Same collapse with separate JVMs, so not class loaders or locks (JFR at zero thresholds: <1 s of
-        monitor wait) and not GC (290 ms). All CPUs read 100% busy at 20 envs, so per-thread work gets
-        ~10x dearer: consistent with every env running its own compiled copy of the game plus ~32 KB
-        allocated a step outgrowing the 24 MB L3. Optimum is 4-8 concurrent env threads (~45K). With GPU
-        inference the collect leg is 12.6K/17.3K/20.4K/27.2K at 8/12/16/24 envs (19K at 48 and 96).
+  - [ ] **P4 Parallel scaling (16 threads are 2.9x one).** Root cause found: Windows power throttling. A
+        background JVM was held to ~7.4 cores however many threads it had, with other processes using ~4 of
+        20. Earlier explanations here (cache thrash, per-env compiled code, optimum 4-8 envs) were wrong;
+        tiered vs non-tiered, which looked like a code-footprint effect, was the same noise (113,974/114,208
+        vs 119,437/101,171 at 12 envs when the cap happened not to apply). `worker.high_qos` opts out with
+        `SetProcessInformation`. Env leg, 12 envs, ABAB with a game running: 19,205/13,127 -> 82,234/77,729
+        turns/s. Curve with it on, game using ~4 cores: 21.9K/64.6K/76.9K/76.1K at 1/4/8/12 envs; 20+ envs
+        need more than 36 s to warm. Every measurement before this fix ran on the capped machine, so
+        conclusions drawn from them need re-measuring.
         Original note: Find why: memory bandwidth, allocation rate,
         per-loader JIT copies (code cache full GCs), E-core placement. Fixes in reach: allocation-free step
         loop, a larger code cache, pinning envs to P-cores. Target 6x on 16 threads.

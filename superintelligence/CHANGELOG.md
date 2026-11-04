@@ -92,6 +92,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is about again.
 
 ### Changed
+- **Training opts out of Windows power throttling (`worker.high_qos`, default true).** Windows held a
+  background JVM to ~7.4 of 20 logical CPUs however many threads it had, which read as a scaling collapse.
+  `ProcessQos` calls `SetProcessInformation( ProcessPowerThrottling )` in the trainer, in worker
+  processes and in `throughputbench`; it changes only these processes, no system setting. Env leg, 12
+  envs, ABAB with a game running: 19,205/13,127 -> 82,234/77,729 turns/s. Training then competes with
+  a foreground game for the fast cores; set the key false to yield them. `qoscheck` holds it.
+- **`TransitionCodec` converts float arrays in bulk.** One `writeFloat` per value was ~9% of training
+  samples; the bytes on the wire are unchanged. `gaecheck` round-trips it; little-endian fails it.
 - **Unsaved headless saves live in memory (`MemorySaves`).** With saving disabled the game still wrote
   every level and run save to a scratch directory, gzip plus write plus rename, and threads blocked in
   Windows file I/O (machine 42% busy, 8-12% kernel time at 20 envs). Save paths now resolve to a

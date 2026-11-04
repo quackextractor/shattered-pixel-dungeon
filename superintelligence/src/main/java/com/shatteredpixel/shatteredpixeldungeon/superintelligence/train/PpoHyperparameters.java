@@ -36,6 +36,8 @@ public class PpoHyperparameters {
 
 	public boolean asyncCollection = false;
 
+	public boolean workerHighQos = true;
+
 	public double sampleRate = 0.25;
 
 	public int maxSampledPerEpisode = 2048;
@@ -161,6 +163,7 @@ public class PpoHyperparameters {
 		p.device = device;
 		p.overlapCollection = overlapCollection;
 		p.asyncCollection = asyncCollection;
+		p.workerHighQos = workerHighQos;
 		p.sampleRate = sampleRate;
 		p.maxSampledPerEpisode = maxSampledPerEpisode;
 		p.maxSamplesPerGeneration = maxSamplesPerGeneration;

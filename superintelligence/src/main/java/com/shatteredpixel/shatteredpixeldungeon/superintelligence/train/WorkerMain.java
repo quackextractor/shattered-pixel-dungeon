@@ -21,6 +21,8 @@ public class WorkerMain {
 			for (int i = 1; i < args.length; i++){
 				if (args[ i ].equals( "--work-dir" ) && i + 1 < args.length){
 					workDir = new File( args[ ++i ] );
+				} else if (args[ i ].equals( "--high-qos=true" )){
+					com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.ProcessQos.exemptFromThrottling();
 				}
 			}
 			serve( workDir );

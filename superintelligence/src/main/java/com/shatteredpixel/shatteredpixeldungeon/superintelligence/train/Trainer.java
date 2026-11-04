@@ -127,6 +127,7 @@ public class Trainer {
 		WorkerPool.heapMax = hyper.workerHeapMax;
 		WorkerPool.gcPauseMs = hyper.workerGcPauseMs;
 		WorkerPool.inProcess = hyper.workerInProcess;
+		WorkerPool.highQos = hyper.workerHighQos && com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.ProcessQos.exemptFromThrottling();
 		if (hyper.workerInProcess && !hyper.device.equals( "cpu" )){
 			System.out.println( Ansi.wrap( "infer", Ansi.DIM ) + "    worker inference " + pool.batchInference() );
 		}
