@@ -604,6 +604,17 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 	private int inFlightFrames;
 
+	private Drain readyOnceMobsLand(){
+		if (inFlightFrames < MAX_PARKED_FRAMES && mobAnimationInFlight()){
+			inFlightFrames++;
+			pendingFrames++;
+			return Drain.PENDING;
+		}
+		inFlightFrames = 0;
+		parkedFrames = 0;
+		return Drain.READY;
+	}
+
 	private boolean mobAnimationInFlight(){
 		if (Dungeon.level == null) return false;
 		for (Mob mob : Dungeon.level.mobs){
@@ -737,23 +748,18 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			//the blocked counter below measures, not which step of the recording this is.
 
 			Actor before = Actor.currentActor();
-			if (before != null && Actor.waitingOnCallback() && parkedFrames < MAX_PARKED_FRAMES && !Actor.all().contains( before )){
+			if (before != null && Actor.waitingOnCallback() && !heroIsReady() && parkedFrames < MAX_PARKED_FRAMES){
 				parkedFrames++;
 				pendingFrames++;
 				return Drain.PENDING;
 			}
+			if (parkedFrames > 0 && heroIsReady()) return readyOnceMobsLand();
 			parkedFrames = 0;
 			countSchedulerCall( before );
 			boolean wantsMore = Actor.headlessStep();
 
 			if (Dungeon.hero.curAction == null && Dungeon.hero.ready && Dungeon.hero.paralysed == 0){
-				if (inFlightFrames < MAX_PARKED_FRAMES && mobAnimationInFlight()){
-					inFlightFrames++;
-					pendingFrames++;
-					return Drain.PENDING;
-				}
-				inFlightFrames = 0;
-				return Drain.READY;
+				return readyOnceMobsLand();
 			}
 
 			//A resting hero with no action is the one genuine one-way door in this loop, and the

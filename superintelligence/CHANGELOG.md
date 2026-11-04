@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The viewer called `act()` again on an actor waiting for its own animation (`issues.md` 40).** `Actor.process`
+  waits for the callback; `Actor.headlessStep` picks the next actor at once, so a mob mid-swing acted again every
+  frame, 26,521 extra scheduler calls on one recording. Goo's second `act()` rolled a new `Random.Int` and pumped up
+  instead of landing its hit, the viewer's HP read one hit high, and floor 5 recordings diverged 10 of 12. The drain
+  now parks on every actor whose `act()` returned `false`, not only one that left `Actor.all()`, and when a parked
+  callback lands it tests the hero before running the scheduler again, as `LevelPipeline` does: a hit that interrupts
+  a hero still flagged ready from the last turn otherwise ran one scheduler step too far (`LLT-PTW-ZXR`, engine
+  time 146.0 against 145.5). All 12 play clean in 147 s against 360 s, and 110 of the 111 floor-5 recordings on disk
+  did. `goo-reselect.replay` and `seal-interrupt.replay` join the corpus, 26 recordings.
+- **Headless knockback did nothing.** `Pushing` resolves through a sprite effect, and a stand-in sprite never updates
+  one, so the callback of `WandOfBlastWave.throwChar`, `Guard` chains and `EtherealChains` never ran: an elastic
+  hit left its target adjacent and a Guard never pulled the hero. Without a scene `Pushing.act` now runs the callback
+  directly. Trained behaviour changes wherever these fire. `mobspritecheck` holds it, and `verify` now agrees with the
+  viewer on `FQV-VQQ-RKR`, 2,815 draws at step 792 against the recording's 2,813. That recording took its floor-5
+  steps in a world the real game never reaches, so it is cut to its 792 true steps and reads floor 4; the original
+  is `out/evidence/FQV-VQQ-RKR.original-before-cut.dat`.
+
 ### Added
 - **Recordings carry their last playback verdict.** A `playback=` header line holds `ok` or `diverged ...` with
   the step and reason; no line means never checked. `viewcheck` writes it as each recording finishes, the
