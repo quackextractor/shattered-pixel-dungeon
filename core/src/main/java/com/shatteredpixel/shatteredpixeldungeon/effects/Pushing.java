@@ -68,6 +68,11 @@ public class Pushing extends Actor {
 	protected boolean act() {
 		Actor.remove( Pushing.this );
 
+		if (GameScene.headlessGameplay()) {
+			if (callback != null) callback.call();
+			return true;
+		}
+
 		if (sprite != null && sprite.parent != null) {
 			if (Dungeon.level.heroFOV[from] || Dungeon.level.heroFOV[to]){
 				sprite.visible = true;

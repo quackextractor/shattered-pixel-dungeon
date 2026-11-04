@@ -24,7 +24,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class MobSpriteCheck {
 
-	private static final int CHECKS = 5 + SpriteCastCases.CHECKS;
+	private static final int CHECKS = 6 + SpriteCastCases.CHECKS;
 
 	public static void main( String[] args ){
 		checkMirrorImageIsUsable();
@@ -32,9 +32,40 @@ public class MobSpriteCheck {
 		checkARenderedGameNeverReachesTheBranch();
 		checkARangedZapCompletesItsTurn();
 		checkADelayedMobWaitsItsDelay();
+		checkAKnockbackMovesItsTarget();
 		SpriteCastCases.run();
 
 		System.exit( GateReport.report( "item-created mobs", CHECKS ));
+	}
+
+	private static void checkAKnockbackMovesItsTarget(){
+		freshRun( "MOBSPROUT-D" );
+		int hero = Dungeon.hero.pos;
+		for (int direction : com.watabou.utils.PathFinder.NEIGHBOURS8){
+			int first = hero + direction, last = first + 2 * direction;
+			boolean clear = true;
+			for (int cell = first; cell != last + direction; cell += direction){
+				clear &= Dungeon.level.passable[ cell ] && Actor.findChar( cell ) == null;
+			}
+			if (!clear) continue;
+
+			Mob target = Dungeon.level.createMob();
+			target.pos = first;
+			GameScene.add( target, 0f );
+			com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfBlastWave.throwChar( target,
+					new Ballistica( first, last, Ballistica.MAGIC_BOLT ), 2, false, false, target );
+			for (int i = 0; i < 20 && target.pos == first; i++) Actor.headlessStep();
+
+			if (target.pos != last){
+				fail( "a knockback left its target at " + target.pos + ", wanted " + last + ". Pushing resolves"
+						+ " through a sprite effect, so headless the callback never ran and a recording"
+						+ " played on against a mob the real game had thrown clear." );
+				return;
+			}
+			System.out.println( "  a knockback moves its target with no scene to animate it" );
+			return;
+		}
+		fail( "the fixture found no clear line beside the hero, so no knockback was tested." );
 	}
 
 	private static void checkMirrorImageIsUsable(){
