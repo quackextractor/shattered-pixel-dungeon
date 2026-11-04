@@ -737,7 +737,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			//the blocked counter below measures, not which step of the recording this is.
 
 			Actor before = Actor.currentActor();
-			if (before != null && parkedFrames < MAX_PARKED_FRAMES && !Actor.all().contains( before )){
+			if (before != null && Actor.waitingOnCallback() && parkedFrames < MAX_PARKED_FRAMES && !Actor.all().contains( before )){
 				parkedFrames++;
 				pendingFrames++;
 				return Drain.PENDING;

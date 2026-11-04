@@ -320,12 +320,21 @@ public abstract class Actor implements Bundlable {
 		now = earliest;
 		current = acting;
 
-		if (acting.act() && (Dungeon.hero == null || !Dungeon.hero.isAlive())){
+		boolean finished = acting.act();
+		waitingOnCallback = !finished;
+
+		if (finished && (Dungeon.hero == null || !Dungeon.hero.isAlive())){
 			current = null;
 			return false;
 		}
 
 		return current != null;
+	}
+
+	private static boolean waitingOnCallback;
+
+	public static boolean waitingOnCallback(){
+		return waitingOnCallback;
 	}
 
 	public static void process() {

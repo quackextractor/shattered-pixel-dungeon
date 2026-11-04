@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The viewer waited 10 s for every actor that destroyed itself.** The dart-trap fix parked the drain
+  on any `Actor.current` no longer in `Actor.all()`, but an actor that removes itself and returns `true`
+  has nothing left to wait for; `Actor.process` moves on at once. Each such actor held the viewer for
+  600 frames, so `NZB-DBC-ZYG`, a Huntress among a flock of sheep, crawled and `viewcheck` killed it
+  as stalled at a different step per timeout (183, 184, 187), while `verify` reproduced all 569 steps.
+  `Actor.waitingOnCallback()` records what `act()` returned and the drain parks only when it was
+  `false`. The recording plays clean in 95 s and is in the corpus as `huntress-sheep.replay`.
+  `viewcheck` also prints the last heartbeat when it reports a stall.
+
 ### Added
 - **`throughputbench --engines N`, and kernel times on the inference leg.** `--kernels true` now reports
   the inference leg as well as the update leg. The env and collect legs print process cores and core time a

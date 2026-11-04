@@ -649,12 +649,14 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 		StringBuilder captured = new StringBuilder();
 		java.util.concurrent.atomic.AtomicLong progressed = new java.util.concurrent.atomic.AtomicLong( System.nanoTime() );
 		java.util.concurrent.atomic.AtomicInteger lastStep = new java.util.concurrent.atomic.AtomicInteger( -1 );
+		java.util.concurrent.atomic.AtomicReference< String > lastBeat = new java.util.concurrent.atomic.AtomicReference<>();
 		Thread reader = new Thread( () -> {
 			try (java.io.BufferedReader in = new java.io.BufferedReader(
 					new java.io.InputStreamReader( child.getInputStream() ))){
 				String line;
 				while ((line = in.readLine()) != null){
 					int step = heartbeatStep( line );
+					if (step >= 0) lastBeat.set( line );
 					if (step < 0){
 						synchronized (captured){ captured.append( line ).append( '\n' ); }
 					} else if (step != lastStep.getAndSet( step )){
@@ -671,7 +673,7 @@ private static int diagnostics( File corpus ) throws IOException, InterruptedExc
 			if (System.nanoTime() - progressed.get() > STALL_MS * 1_000_000L){
 				child.destroyForcibly();
 				System.err.println( "[ERROR]  " + file.getName() + " applied no step for " + ( STALL_MS / 1000 )
-						+ "s after step " + lastStep.get() + "; the viewer stalled" );
+						+ "s after step " + lastStep.get() + "; the viewer stalled: " + lastBeat.get() );
 				return 1;
 			}
 		}
