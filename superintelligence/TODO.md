@@ -41,6 +41,21 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       logical cores. That is the ceiling for env + game on this i5-14600KF whatever the network costs,
       12.7x the 2,197 CPU baseline. In-process workers with batched GPU inference (`worker.in_process`)
       match but do not yet beat process workers end to end (3,605 against 3,754 turns/s, same load).
+- [ ] **Throughput plan 2 (2026-11-04, replaces the estimates below, all made on a throttled machine).**
+      Target unchanged: 220,000 turns/s. Now: env leg 76-114K, best end-to-end ~18-20K (24 in-process envs,
+      async). Inference capacity scales with callers: 36.8K/58.7K/71.0K forwards/s at 48/96/192 with a game
+      holding the GPU at 98%, so collect is not capped by batch throughput. At 48 envs one minute in: env
+      threads 5.6 cores, JIT 4.4, inference threads 0.22; envs mostly wait on the GPU.
+  - [ ] **A. Measure training with the GPU free:** in-process async at 48/96/192 envs, 10+ minutes each,
+        progress-bar clock (`out/evidence/rate.py`). Every GPU leg under a game is half speed.
+  - [ ] **B. JIT load.** N loaders compile N copies; try `-XX:CICompilerCount` so compilers stop taking
+        env cores, and measure how long warm-up lasts in a long run.
+  - [ ] **C. Inference latency.** 11 launches, 4 writes and 3 reads a batch; fuse them, keep LSTM state
+        resident per slot.
+  - [ ] **D. CPU inference that survives a game on the GPU.** Process workers spend most of a step in
+        `Network.forward`; try the Vector API for the dense layers.
+  - [ ] **E. Defaults.** Flip `worker.in_process` and `rl.async_collection` once A wins on a free GPU;
+        depth at equal turns already held over 40 generations (2.898 vs 2.876).
 - [ ] **Throughput plan: 9,343 -> 220,000 turns/s (100x the 2,197 CPU baseline).** Today: 12 process
       workers x 4, GPU update, 9,343 turns/s end to end; collection 2.8 s and update 2.3 s a generation.
       100x means, per trained turn, ~45 us of CPU across ~9 effective cores and 4.5 us of GPU update per
