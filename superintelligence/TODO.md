@@ -44,7 +44,8 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
 - [ ] **Throughput plan 3 (2026-11-04): two walls at ~40K turns/s.** Best run 31,790 turns/s (48 x 2
       in-process async). GPU costs 26.3 us a turn (inference 14.3, update 12.0) against 4.5 us at 220K,
       ceiling 38-44K. Workers cost 341 us of core time a turn against ~64 us, ceiling ~41K on 14 cores.
-      Simulation alone tops out at 76-114K. Each item ends in `CHANGELOG.md` or `REJECTED.md`. Measured
+      Simulation alone tops out at 76-114K. The code cache fix (`CHANGELOG.md`) took workers to 207 us, ceiling
+      ~68K, so the GPU binds now. Each item ends in `CHANGELOG.md` or `REJECTED.md`. Measured
       while the machine is in use: below-normal priority, one job at a time, under 3 minutes, ABAB ratios.
   - [ ] **3. Smaller network.** Pool grid features before the 4,567 x 256 trunk layer. Depth must hold.
   - [ ] **4. Less update work.** Fewer passes, or update every second generation. Depth must hold.

@@ -85,6 +85,8 @@ public class PpoHyperparameters {
 
 	public String workerHeapMax = "1536m";
 
+	public String workerCodeCache = "2g";
+
 	public int workerGcPauseMs = 200;
 
 	public boolean workerInProcess = false;
@@ -187,6 +189,7 @@ public class PpoHyperparameters {
 		p.pushChunkBytes = pushChunkBytes;
 		p.workerHeapMin = workerHeapMin;
 		p.workerHeapMax = workerHeapMax;
+		p.workerCodeCache = workerCodeCache;
 		p.workerGcPauseMs = workerGcPauseMs;
 		p.workerInProcess = workerInProcess;
 		return p;

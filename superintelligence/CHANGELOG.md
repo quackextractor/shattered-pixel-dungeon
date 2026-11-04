@@ -94,6 +94,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `worker.in_process` are refused rather than ignored. `--auto` times the CPU update its thread sweep
   is about again.
 
+### Fixed
+- **48 in-process workers no longer switch the JIT off (`worker.code_cache`, default 2g).** Each worker compiles
+  its own copy of the game, which filled the 240 MB default code cache and made HotSpot disable the
+  compiler for the rest of the run, 92 s into the collect bench and 210 s into training. Every earlier
+  48-env result ran that way. With 2 GB the warning is gone over 6.5 minutes and workers fall from ~280 to 207
+  us of core time a turn at 30.4K turns/s, with the machine in use and training at below-normal priority.
+  Evidence: `out/evidence/cc-train2.log`.
+
 ### Changed
 - **Sample rate backs off to the update cap.** At 48 x 2, 33% of sampled steps were packed and shipped
   only for the reservoir to drop them at `rl.max_samples_per_generation` (4,123 of 12,480 a generation).

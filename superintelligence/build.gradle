@@ -78,6 +78,7 @@ def trainerJvmArgs = [
         '-Xms' + trainerSetting( 'worker.heap_min', 'spd.workerHeapMin', '256m' ),
         '-Xmx' + trainerSetting( 'worker.heap_max', 'spd.workerHeapMax', '1536m' ),
         '-XX:+UseParallelGC',
+        '-XX:ReservedCodeCacheSize=' + trainerSetting( 'worker.code_cache', 'spd.workerCodeCache', '2g' ),
         '-XX:MaxGCPauseMillis=' + trainerSetting( 'worker.gc_pause_ms', 'spd.workerGcPauseMs', '200' ),
         '-XX:+IgnoreUnrecognizedVMOptions',
         '--enable-native-access=ALL-UNNAMED',
