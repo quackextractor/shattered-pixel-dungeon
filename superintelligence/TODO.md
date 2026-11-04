@@ -47,7 +47,6 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       Simulation alone tops out at 76-114K. The code cache fix (`CHANGELOG.md`) took workers to 207 us, ceiling
       ~68K, so the GPU binds now. Each item ends in `CHANGELOG.md` or `REJECTED.md`. Measured
       while the machine is in use: below-normal priority, one job at a time, under 3 minutes, ABAB ratios.
-  - [ ] **3. Smaller network.** Pool grid features before the 4,567 x 256 trunk layer. Depth must hold.
   - [ ] **4. Less update work.** Fewer passes, or update every second generation. Depth must hold.
   - [ ] **5. Reuse encoder output** when the grid is unchanged between steps.
   - [ ] **6. Cache generated floors per seed.** Level generation was 28% of CPU on Oct 30. Replays must
