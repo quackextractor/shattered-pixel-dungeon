@@ -35,6 +35,11 @@ public class ChunkReservoir {
 	}
 
 
+	public double rateScale( double current ){
+		return seen == 0 ? current : Math.min( 1.0, current * capacity / seen );
+	}
+
+
 	public long dropped(){
 		return Math.max( 0, offered - retainedSteps() );
 	}

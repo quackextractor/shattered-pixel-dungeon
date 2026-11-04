@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`throughputbench --engines N`, and kernel times on the inference leg.** `--kernels true` now reports
+  the inference leg as well as the update leg.
 - **`throughputbench`.** Env-only, batched-inference and update throughput in one run, with an idle-CPU
   check before each leg and results appended to `out/evidence/throughputbench.csv`; round 0 warms the JIT
   and is left out of the median. `IsolatedLoader` is public so the bench can build isolated envs. The
@@ -92,6 +94,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is about again.
 
 ### Changed
+- **Sample rate backs off to the update cap.** At 48 x 2, 33% of sampled steps were packed and shipped
+  only for the reservoir to drop them at `rl.max_samples_per_generation` (4,123 of 12,480 a generation).
+  The trainer now scales the rate by capacity over chunks offered and recovers when a generation runs under
+  the cap, so drops fall to 179-680 a generation with the same 8,192-sample update. Defaults sized below
+  the cap are unchanged. No game RNG is touched. `samplercheck` case 9 holds it.
 - **Training opts out of Windows power throttling (`worker.high_qos`, default true).** Windows held a
   background JVM to ~7.4 of 20 logical CPUs however many threads it had, which read as a scaling collapse.
   `ProcessQos` calls `SetProcessInformation( ProcessPowerThrottling )` in the trainer, in worker

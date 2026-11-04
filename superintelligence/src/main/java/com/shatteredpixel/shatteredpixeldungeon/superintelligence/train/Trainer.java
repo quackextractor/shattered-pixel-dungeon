@@ -76,8 +76,10 @@ public class Trainer {
 
 	public double sampleRate = 0.25;
 
+	private double rateScale = 1.0;
+
 	double sampleRate(){
-		return Math.min( 1.0, Math.max( 0.0, sampleRate ) );
+		return Math.min( 1.0, Math.max( 0.0, sampleRate ) ) * rateScale;
 	}
 
 	public double maxSampledPerEpisode = 2048;
@@ -301,6 +303,7 @@ Worker.writeWeights( out, ppo.network );
 			List<com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Transition> retained
 					= reservoir.retained();
 			droppedThisGeneration = (int) Math.min( Integer.MAX_VALUE, reservoir.dropped() );
+			rateScale = reservoir.rateScale( rateScale );
 
 			ppo.clearBuffer();
 			ppo.addAll( retained );

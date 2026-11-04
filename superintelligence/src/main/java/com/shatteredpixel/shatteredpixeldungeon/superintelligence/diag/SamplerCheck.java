@@ -17,7 +17,7 @@ import java.util.Random;
 
 public class SamplerCheck {
 
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 9;
 
 	private static final int CHUNK = 16;
 
@@ -28,6 +28,7 @@ public class SamplerCheck {
 		checkTheRetainedFractionIsTheRequestedRate();
 		checkTheTailIsRetainedWhateverTheRate();
 		checkTheCapIsHonoured();
+		checkTheRateBacksOffToTheCapAndRecovers();
 		checkZeroAndOneAreSettingsRatherThanAnError();
 		checkTheTrunkIsDownsampledBeforeTheDenseMatrix();
 		checkTheCollectorKeepsContiguousRunsAcrossARealEpisode();
@@ -252,6 +253,26 @@ public class SamplerCheck {
 				+ " fill a worker's heap" );
 	}
 
+
+	private static void checkTheRateBacksOffToTheCapAndRecovers(){
+		ChunkReservoir over = new ChunkReservoir( 10, 16, 1L );
+		List< Transition > steps = new ArrayList<>();
+		for (int chunk = 0; chunk < 20; chunk++){
+			steps.clear();
+			for (int s = 0; s < 16; s++){
+				Transition t = new Transition();
+				t.episodeId = chunk;
+				t.stepIndex = s;
+				steps.add( t );
+			}
+			over.offer( steps );
+		}
+		if (Math.abs( over.rateScale( 1.0 ) - 0.5 ) > 1e-9) fail( "double the cap in chunks must halve the rate, got " + over.rateScale( 1.0 ));
+		ChunkReservoir under = new ChunkReservoir( 40, 16, 1L );
+		under.offer( steps );
+		if (Math.abs( under.rateScale( 0.5 ) - 1.0 ) > 1e-9) fail( "a generation under the cap must restore the rate, got " + under.rateScale( 0.5 ));
+		if (new ChunkReservoir( 10, 16, 1L ).rateScale( 0.5 ) != 0.5) fail( "an empty generation is no evidence and must leave the rate alone" );
+	}
 
 	private static void checkZeroAndOneAreSettingsRatherThanAnError(){
 		ContiguousChunkSampler off = new ContiguousChunkSampler();

@@ -67,6 +67,7 @@ public final class ThroughputBench {
 			case "--samples": samples = Integer.parseInt( args[ i + 1 ] ); break;
 			case "--label": label = args[ i + 1 ]; break;
 			case "--legs": legs = args[ i + 1 ]; break;
+			case "--engines": BatchedInference.engineCount = Integer.parseInt( args[ i + 1 ] ); break;
 			case "--high-qos": highQos = Boolean.parseBoolean( args[ i + 1 ] ); break;
 			case "--env-inference": batched = args[ i + 1 ].equals( "batched" ); break;
 			case "--csv": csv = new File( args[ i + 1 ] ); break;
@@ -211,10 +212,13 @@ public final class ThroughputBench {
 					for (int s = 0; s < forwards; s++) net.forward( grid, inventory, hero );
 				} );
 			}
+			KernelProfile.reset();
 			long start = System.nanoTime();
 			for (Thread t : threads) t.start();
 			for (Thread t : threads) t.join();
-			return new Measurement( (double) envs * forwards / ( ( System.nanoTime() - start ) / 1e9 ), load );
+			Measurement m = new Measurement( (double) envs * forwards / ( ( System.nanoTime() - start ) / 1e9 ), load );
+			if (Boolean.getBoolean( "spd.clprofile" )) System.out.print( KernelProfile.report() );
+			return m;
 		} finally {
 			server.close();
 		}
