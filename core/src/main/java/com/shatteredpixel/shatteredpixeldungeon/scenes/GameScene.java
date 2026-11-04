@@ -1555,6 +1555,7 @@ public synchronized void update() {
 	
 	public static void show( Window wnd ) {
 		if (scene == null) {
+			clearHeadlessWindow();
 			headlessPark.add( wnd );
 			headlessWindow = wnd;
 			return;

@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Headless windows leaked until a long run choked.** A window is never hidden headless, so its
+  blocker stayed in `PointerEvent`'s signal, its camera in `Camera.all`, and a superseded window in
+  `GameScene.headlessPark`. 48 workers left 21,000 `WndQuest` every 8 minutes and the live heap rose
+  ~30 MB a minute. `SPDEnv.step` now clears the pointer listeners and cameras with the key listeners,
+  and `GameScene.show` drops the window it supersedes. Live heap between minutes 4 and 10: 1,308 ->
+  1,313 MB, 21 -> 24 `WndQuest`. `resetcheck` holds all three: 51 windows stay parked without the fix,
+  68 listeners and cameras survive without the clears.
+
+### Fixed
 - **The viewer waited 10 s for every actor that destroyed itself.** The dart-trap fix parked the drain
   on any `Actor.current` no longer in `Actor.all()`, but an actor that removes itself and returns `true`
   has nothing left to wait for; `Actor.process` moves on at once. Each such actor held the viewer for

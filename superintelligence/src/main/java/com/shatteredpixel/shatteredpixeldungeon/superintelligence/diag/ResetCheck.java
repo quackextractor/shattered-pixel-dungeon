@@ -55,7 +55,7 @@ public class ResetCheck {
 		checkGuidePagesDoNotSurviveAReset( env, config );
 		checkTheCalendarDoesNotReachTheGame( env );
 		checkUnsavedSavesStayInMemory();
-		checkWindowsDoNotPileUpKeyListeners( env );
+		checkWindowsLeaveNothingBehind( env );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reset isolation: " + CHECKS + " checks passed" );
@@ -204,23 +204,39 @@ public class ResetCheck {
 	}
 
 
-	private static void checkWindowsDoNotPileUpKeyListeners( SPDEnv env ){
+	private static void checkWindowsLeaveNothingBehind( SPDEnv env ){
 		try {
-			java.lang.reflect.Field field = com.watabou.input.KeyEvent.class.getDeclaredField( "keySignal" );
-			field.setAccessible( true );
-			com.watabou.utils.Signal< ? > signal = (com.watabou.utils.Signal< ? >) field.get( null );
+			com.watabou.utils.Signal< ? > keys = staticField( com.watabou.input.KeyEvent.class, "keySignal" );
+			com.watabou.utils.Signal< ? > pointers = staticField( com.watabou.input.PointerEvent.class, "pointerSignal" );
+			java.util.List< ? > cameras = staticField( com.watabou.noosa.Camera.class, "all" );
 			env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
 			com.watabou.input.KeyEvent.addKeyListener( key -> false );
+			com.watabou.input.PointerEvent.addPointerListener( pointer -> false );
+			com.watabou.noosa.Camera.add( new com.watabou.noosa.Camera( 0, 0, 1, 1, 1f ));
+			com.watabou.noosa.Group park = staticField( GameScene.class, "headlessPark" );
+			GameScene.show( new com.shatteredpixel.shatteredpixeldungeon.ui.Window() );
+			GameScene.show( new com.shatteredpixel.shatteredpixeldungeon.ui.Window() );
+			int parked = park.length;
+			GameScene.clearHeadlessWindow();
 			env.step( Action.WAIT, 0 );
-			if (signal.numListeners() != 0){
-				fail( signal.numListeners() + " key listeners survived a step. Headless windows are never hidden,"
-						+ " so each one stays in the list and every later window scans it." );
+			if (keys.numListeners() != 0 || pointers.numListeners() != 0 || cameras.size() != 1 || parked != 1){
+				fail( keys.numListeners() + " key listeners, " + pointers.numListeners() + " pointer listeners, "
+						+ cameras.size() + " cameras survived a step and " + parked + " windows stayed parked, wanted"
+						+ " 0, 0, 1 and 1. Headless windows are never hidden, so each one stays reachable and the"
+						+ " heap fills over a run." );
 				return;
 			}
-			System.out.println( "  a step leaves no key listeners behind" );
+			System.out.println( "  a step leaves no window listeners or cameras behind" );
 		} catch (ReflectiveOperationException e){
-			fail( "could not read KeyEvent.keySignal: " + e );
+			fail( "could not read the window registries: " + e );
 		}
+	}
+
+	@SuppressWarnings( "unchecked" )
+	private static < T > T staticField( Class< ? > owner, String name ) throws ReflectiveOperationException {
+		java.lang.reflect.Field field = owner.getDeclaredField( name );
+		field.setAccessible( true );
+		return (T) field.get( null );
 	}
 
 	private static void checkEveryEpisodeStartsInWorld( SPDEnv env, EnvConfig config ){
