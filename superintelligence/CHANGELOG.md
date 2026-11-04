@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **`throughputbench --engines N`, and kernel times on the inference leg.** `--kernels true` now reports
-  the inference leg as well as the update leg.
+  the inference leg as well as the update leg. The env and collect legs print process cores and core time a
+  turn, the number that decides whether a CPU change worked while the machine is in use.
 - **`throughputbench`.** Env-only, batched-inference and update throughput in one run, with an idle-CPU
   check before each leg and results appended to `out/evidence/throughputbench.csv`; round 0 warms the JIT
   and is left out of the median. `IsolatedLoader` is public so the bench can build isolated envs. The

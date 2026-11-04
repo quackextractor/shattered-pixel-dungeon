@@ -46,7 +46,6 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       ceiling 38-44K. Workers cost 341 us of core time a turn against ~64 us, ceiling ~41K on 14 cores.
       Simulation alone tops out at 76-114K. Each item ends in `CHANGELOG.md` or `REJECTED.md`. Measured
       while the machine is in use: below-normal priority, one job at a time, under 3 minutes, ABAB ratios.
-  - [ ] **2. Virtual-thread envs.** One OS wake-up a turn per env; run envs on ~14 carriers instead.
   - [ ] **3. Smaller network.** Pool grid features before the 4,567 x 256 trunk layer. Depth must hold.
   - [ ] **4. Less update work.** Fewer passes, or update every second generation. Depth must hold.
   - [ ] **5. Reuse encoder output** when the grid is unchanged between steps.

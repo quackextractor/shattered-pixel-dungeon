@@ -14,6 +14,7 @@ Proposals not done, with reason and trigger. Measurements: `CHANGELOG.md`.
 | fp16 weight push | declined | 286 -> 143 MB/gen; barrier small share of wall | transport in profile |
 | IMPALA / async learner (V-trace) beyond one update of lag | declined | `rl.overlap_collection` already hides collection behind the update at one update of lag; more lag needs V-trace | learning stalls on stale data |
 | Workers update locally, send weights | declined | no pooled gradient; N policies drift | - |
+| Virtual-thread envs (`Thread.ofVirtual`, 14 carriers) | declined | 48 envs, batched GPU inference, ABAB: platform 36,501/33,001 turns/s, virtual 36,490/32,579; core time a turn 414 us on both, so OS wake-ups are not the 341 us cost | wake-ups show in a profile |
 | Threads instead of worker processes | impossible | static game state, one env per process | - |
 | Frame-differencing observations | impossible | PPO shuffles minibatches; delta needs sequential access | - |
 | Event-keyed RNG | declined | rewrite of all game randomness | - |

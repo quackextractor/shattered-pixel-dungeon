@@ -97,6 +97,10 @@ public final class ThroughputBench {
 		System.out.println( "  round 0 warms the JIT and is left out of the median; results appended to " + csv.getPath() );
 	}
 
+	private static long cpuNanos(){
+		return ( (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean() ).getProcessCpuTime();
+	}
+
 	private static double idleLoad(){
 		com.sun.management.OperatingSystemMXBean os =
 				(com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -175,7 +179,7 @@ public final class ThroughputBench {
 		Measurement round() throws Exception {
 			double load = idleLoad();
 			List< Future< Long > > out = new ArrayList<>();
-			long start = System.nanoTime(), deadline = start + (long) ( seconds * 1e9 );
+			long cpuStart = cpuNanos(), start = System.nanoTime(), deadline = start + (long) ( seconds * 1e9 );
 			for (int i = 0; i < envs; i++){
 				Method run = runs[ i ];
 				int id = i;
@@ -191,6 +195,8 @@ public final class ThroughputBench {
 			}
 			long turns = 0;
 			for (Future< Long > f : out) turns += f.get();
+			double cores = ( cpuNanos() - cpuStart ) / ( System.nanoTime() - start * 1.0 );
+			System.out.println( String.format( Locale.ROOT, "  process used %.1f cores, %.0f us of core time a turn", cores, cores * seconds * 1e6 / Math.max( 1, turns )));
 			return new Measurement( turns / seconds, load );
 		}
 	}
