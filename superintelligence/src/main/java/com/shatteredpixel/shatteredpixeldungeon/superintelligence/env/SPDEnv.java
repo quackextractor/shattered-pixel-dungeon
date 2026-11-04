@@ -97,6 +97,7 @@ public class SPDEnv {
 	}
 	public double step( Action action, int slot ){
 		if (!running) throw new IllegalStateException( "step() after the episode ended" );
+		com.watabou.input.KeyEvent.clearListeners();
 		GameScene.clearPendingCellListener();
 		if (mode != EnvMode.TARGETING){
 			SlotAction.clearPendingUseItem();

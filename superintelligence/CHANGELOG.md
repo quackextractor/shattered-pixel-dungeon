@@ -95,6 +95,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is about again.
 
 ### Fixed
+- **Headless windows no longer pile up key listeners.** Every refused exit from floor 1 builds a `WndMessage`
+  whose `Window` adds a key listener nobody removes, since a headless window is never hidden. The list grew
+  for the life of a worker and each add scanned it: 7.1% of env CPU, plus the retained windows. `SPDEnv.step`
+  clears the listeners; no game logic changes. `resetcheck` case 10 holds it.
 - **48 in-process workers no longer switch the JIT off (`worker.code_cache`, default 2g).** Each worker compiles
   its own copy of the game, which filled the 240 MB default code cache and made HotSpot disable the
   compiler for the rest of the run, 92 s into the collect bench and 210 s into training. Every earlier

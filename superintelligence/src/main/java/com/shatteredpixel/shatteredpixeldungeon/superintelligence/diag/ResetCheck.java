@@ -24,7 +24,7 @@ import java.util.Random;
 
 public class ResetCheck {
 
-	private static final int CHECKS = 9;
+	private static final int CHECKS = 10;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -55,6 +55,7 @@ public class ResetCheck {
 		checkGuidePagesDoNotSurviveAReset( env, config );
 		checkTheCalendarDoesNotReachTheGame( env );
 		checkUnsavedSavesStayInMemory();
+		checkWindowsDoNotPileUpKeyListeners( env );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reset isolation: " + CHECKS + " checks passed" );
@@ -202,6 +203,25 @@ public class ResetCheck {
 		System.out.println( "  a run following a hero's death inherits none of that hero's remains" );
 	}
 
+
+	private static void checkWindowsDoNotPileUpKeyListeners( SPDEnv env ){
+		try {
+			java.lang.reflect.Field field = com.watabou.input.KeyEvent.class.getDeclaredField( "keySignal" );
+			field.setAccessible( true );
+			com.watabou.utils.Signal< ? > signal = (com.watabou.utils.Signal< ? >) field.get( null );
+			env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+			com.watabou.input.KeyEvent.addKeyListener( key -> false );
+			env.step( Action.WAIT, 0 );
+			if (signal.numListeners() != 0){
+				fail( signal.numListeners() + " key listeners survived a step. Headless windows are never hidden,"
+						+ " so each one stays in the list and every later window scans it." );
+				return;
+			}
+			System.out.println( "  a step leaves no key listeners behind" );
+		} catch (ReflectiveOperationException e){
+			fail( "could not read KeyEvent.keySignal: " + e );
+		}
+	}
 
 	private static void checkEveryEpisodeStartsInWorld( SPDEnv env, EnvConfig config ){
 

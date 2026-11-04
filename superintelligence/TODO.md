@@ -47,8 +47,6 @@ Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferre
       Simulation alone tops out at 76-114K. The code cache fix (`CHANGELOG.md`) took workers to 207 us, ceiling
       ~68K, so the GPU binds now. Each item ends in `CHANGELOG.md` or `REJECTED.md`. Measured
       while the machine is in use: below-normal priority, one job at a time, under 3 minutes, ABAB ratios.
-  - [ ] **6. Cache generated floors per seed.** Level generation was 28% of CPU on Oct 30. Replays must
-        stay bit-identical.
   - [ ] **7. One compiled copy of the game.** Rewrite statics at class load so envs share code.
 - [ ] **Throughput plan 2 (2026-11-04, replaces the estimates below, all made on a throttled machine).**
       Target unchanged: 220,000 turns/s. Now: env leg 76-114K, best end-to-end ~18-20K (24 in-process envs,
