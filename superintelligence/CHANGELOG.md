@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an
   identity, and nothing for what is inside a chest. 23 planes to 30. Old weights do not load.
 
+- **The teacher backs into a hall when it would be surrounded.** A swarm or two hunters in the open now send it to
+  the nearest corridor or doorway within 8 steps, so flies reach it one or two at a time. New gate `tacticscheck`.
+
 ### Fixed
 - **A swarm paid for fighting it in the open.** Every clone a Swarm splits off paid `reward.kill_reward`, though clones
   give no experience: 4.0 kills, about 600 points, per swarm-only fight, in the fight that killed the hero 74 times of

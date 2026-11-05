@@ -228,6 +228,7 @@ cliTask('verifycheck', 'Fails if replay verification cannot detect an altered re
   cliTask('qoscheck', 'Fails if Windows does not report the process exempt from execution-speed throttling after the opt-out.')
   cliTask('inprocesscheck', 'Fails if recordings written by in-process workers do not reproduce.')
   cliTask('aimcheck', 'Fails if a policy cannot fire a bow, staff, wand or thrown item at an enemy at range.')
+  cliTask('tacticscheck', 'Fails if the teacher fights swarms in the open, passes up a door or ignores what Goo telegraphs.')
   cliTask('gpucheck', 'Fails if the OpenCL update computes a different gradient from the CPU one, or is slower.')
   cliTask('rewardcheck', 'Fails if ending an episode can be cheaper than dying.')
 cliTask('transitioncheck', 'Fails if descending ends the episode, or is worth nothing.')
@@ -260,7 +261,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
   cliTask('checkpointcheck', 'Fails if a policy does not survive a trip through disk, or if a bad checkpoint is accepted.')
   cliTask('weightsdiff', 'Reports how far a checkpoint is from a freshly initialised policy.')
 tasks.register('gates') {
-    dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'gpucheck', 'sparsecheck', 'asynccheck', 'qoscheck', 'inprocesscheck', 'aimcheck', 'rewardcheck', 'transitioncheck', 'travelcheck', 'teachercheck', 'fallcheck', 'dialogcheck',
+    dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'gpucheck', 'sparsecheck', 'asynccheck', 'qoscheck', 'inprocesscheck', 'aimcheck', 'tacticscheck', 'rewardcheck', 'transitioncheck', 'travelcheck', 'teachercheck', 'fallcheck', 'dialogcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
 		'observecheck', 'renderdrawcheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck', 'freeactioncheck', 'bpttcheck', 'pushcheck', 'curriculumcheck', 'samplercheck', 'seedcheck', 'doccheck', 'javaclint'
     group = 'verification'

@@ -30,6 +30,8 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy;
 
 public final class DescentBot {
 
+	private final Tactics tactics = new Tactics();
+
 	private int lastHp = -1;
 
 	private int waited = 0;
@@ -39,6 +41,7 @@ public final class DescentBot {
 	private final java.util.Set< Item > tried = java.util.Collections.newSetFromMap( new java.util.IdentityHashMap<>() );
 
 	public void reset(){
+		tactics.reset();
 		lastHp = -1;
 		waited = 0;
 		searched.clear();
@@ -93,6 +96,8 @@ public final class DescentBot {
 		boolean hurt = lastHp >= 0 && hero.HP < lastHp;
 		lastHp = hero.HP;
 		if (dying() && !hero.getVisibleEnemies().isEmpty() && healSlot( env ) >= 0 && legal( mask, Action.USE )) return Action.USE;
+		Action tactic = tactics.act( mask );
+		if (tactic != null) return tactic;
 		Action attack = attack( mask );
 		if (attack != null) return attack;
 		Action escape = escape( mask );
@@ -178,7 +183,7 @@ public final class DescentBot {
 		return best < 0 ? null : toward( mask, hero, PathFinder.getStep( hero, best, open ) );
 	}
 
-	private static Action toward( float[] mask, int hero, int step ){
+	static Action toward( float[] mask, int hero, int step ){
 		int width = Dungeon.level.width();
 		for (Action a : Action.values()){
 			if (a.directional() && step >= 0 && hero + a.dx + a.dy * width == step && legal( mask, a )) return a;

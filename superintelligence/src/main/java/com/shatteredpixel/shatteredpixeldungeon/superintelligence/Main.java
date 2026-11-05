@@ -88,6 +88,7 @@ public class Main {
 		case "qoscheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.QosCheck.main( rest ); break;
 		case "inprocesscheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.InProcessCheck.main( rest ); break;
 		case "aimcheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.AimCheck.main( rest ); break;
+		case "tacticscheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.TacticsCheck.main( rest ); break;
 		case "rewardcheck": RewardCheck.main( rest ); break;
 		case "transitioncheck": TransitionCheck.main( rest ); break;
 		case "travelcheck": TravelCheck.main( rest ); break;
