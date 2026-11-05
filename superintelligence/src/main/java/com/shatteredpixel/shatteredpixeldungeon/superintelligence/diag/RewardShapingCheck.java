@@ -85,6 +85,37 @@ public final class RewardShapingCheck {
 	}
 
 
+	private static Outcome leaveAfter( int exploringSteps ){
+		boolean[] left = { false };
+		return play( new EnvConfig(), exploringSteps + 8, "LEAVEFLOOR", turn -> {
+			SPDEnv env = turn.env;
+			if (env.mode() != EnvMode.WORLD){
+				env.step( Action.CANCEL, 0 );
+			} else if (turn.step < exploringSteps && env.actionMask()[ Action.TRAVEL_EXPLORE.index ] > 0.5f){
+				Dungeon.hero.HP = Dungeon.hero.HT;
+				env.step( Action.TRAVEL_EXPLORE, 0 );
+			} else if (!left[ 0 ] && turn.step >= 2){
+				left[ 0 ] = com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.RewardFixtures.descend( env );
+				env.step( Action.WAIT, 0 );
+			} else {
+				env.step( Action.WAIT, 0 );
+			}
+		} );
+	}
+
+
+	public static void checkLeavingAClearedFloorPaysMore(){
+		double rushed = leaveAfter( 0 ).termTotal( RewardTerm.FLOOR_EXPLORED );
+		double cleared = leaveAfter( 250 ).termTotal( RewardTerm.FLOOR_EXPLORED );
+		if (cleared <= rushed + 50){
+			fail( "leaving floor 1 at once paid " + fmt( rushed ) + " and after exploring it " + fmt( cleared )
+					+ ", so nothing prices the 9-12 turns the hero waits after seeing the stairs" );
+			return;
+		}
+		System.out.println( "  leaving a floor pays " + fmt( rushed ) + " rushed, " + fmt( cleared ) + " explored" );
+	}
+
+
 	public static void checkPickingUpGoldPays(){
 		Outcome outcome = pickup( new com.shatteredpixel.shatteredpixeldungeon.items.Gold( 25 ) );
 

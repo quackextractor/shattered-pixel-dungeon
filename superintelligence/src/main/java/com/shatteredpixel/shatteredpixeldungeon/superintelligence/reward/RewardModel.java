@@ -32,6 +32,7 @@ public class RewardModel {
 	private int prevMeals;
 	private float prevEngineTime;
 	private boolean snapshotValid = false;
+	private com.shatteredpixel.shatteredpixeldungeon.levels.Level prevLevelMap;
 	private final int[] prevLoot = new int[ LOOT_KINDS ];
 	private int deepestPaid = 0;
 	private boolean lastStepAdvancedClock = true;
@@ -74,6 +75,9 @@ public class RewardModel {
 			if (depth > prevDepth && depth > deepestPaid){
 				deepestPaid = depth;
 				ledger.add( RewardTerm.DEPTH_ADVANCE, config.depthReward, false );
+				if (prevLevelMap != null){
+					ledger.add( RewardTerm.FLOOR_EXPLORED, config.floorExploredReward * com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Travel.explored( prevLevelMap ), false );
+				}
 			} else {
 				ledger.add( RewardTerm.DEPTH_ADVANCE, 0, false );
 			}
@@ -239,6 +243,7 @@ public class RewardModel {
 		prevGold = Dungeon.gold;
 		prevStrength = hero.STR();
 		prevDepth = Dungeon.depth;
+		prevLevelMap = Dungeon.level;
 		prevBranch = Dungeon.branch;
 		prevItemValue = inventoryValue();
 		countLoot( hero, prevLoot );

@@ -129,6 +129,8 @@ public class EnvConfig {
 
 	public float exploreReward = 0.05f;
 
+	public float floorExploredReward = 600f;
+
 
 	public float visitReward = 1.5f;
 
@@ -190,6 +192,7 @@ public class EnvConfig {
 		out.writeFloat( turnCost );
 		out.writeFloat( depthReward );
 		out.writeFloat( exploreReward );
+		out.writeFloat( floorExploredReward );
 		out.writeFloat( visitReward );
 		out.writeFloat( stairPotentialWeight );
 		out.writeFloat( shapingGamma );
@@ -250,6 +253,7 @@ public class EnvConfig {
 		turnCost = in.readFloat();
 		depthReward = in.readFloat();
 		exploreReward = in.readFloat();
+		floorExploredReward = in.readFloat();
 		visitReward = in.readFloat();
 		stairPotentialWeight = in.readFloat();
 		shapingGamma = in.readFloat();
@@ -316,6 +320,7 @@ public class EnvConfig {
 		c.turnCost = turnCost;
 		c.depthReward = depthReward;
 		c.exploreReward = exploreReward;
+		c.floorExploredReward = floorExploredReward;
 		c.visitReward = visitReward;
 		c.stairPotentialWeight = stairPotentialWeight;
 		c.shapingGamma = shapingGamma;

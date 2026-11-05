@@ -106,7 +106,7 @@ public class HeroEncoder {
 		out[ F_GOLD_LOG ] = (float) (Math.log( 1 + Dungeon.gold ) / Math.log( 1000 ) );
 
 		if (Dungeon.level != null){
-			out[ F_FLOOR_EXPLORED ] = Dungeon.level.levelExplorePercent( Dungeon.depth );
+			out[ F_FLOOR_EXPLORED ] = com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Travel.explored( Dungeon.level );
 		}
 
 		Hunger hunger = hero.buff( Hunger.class );

@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Floors were left a third unexplored.** After floor 1 the hero left 9-12 turns after seeing the stairs, at 63-76%
+  explored, because a descent paid the same either way. Leaving a floor for the first time now pays
+  `reward.floor_explored_reward` 600 times the share of its walkable cells seen. `F_FLOOR_EXPLORED` read
+  `levelExplorePercent`, a score that drops to 0 at three missed rooms; it now carries that same share, so the
+  policy can see how far along a floor it is.
 - **Food ran out because it was wasted.** 86% of meals came before Hungry, wasting 116 of 300 points a ration, floor
   1 spent 123 of 165 rest turns above 75% health though health returns as fast on the move, and 89% of deaths were
   hungry or starving. `reward.eaten_early_penalty` now charges per point of food wasted, the teacher rests below 90%

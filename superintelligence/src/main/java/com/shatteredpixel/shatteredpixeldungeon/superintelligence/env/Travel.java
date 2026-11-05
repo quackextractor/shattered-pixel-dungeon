@@ -240,6 +240,16 @@ public final class Travel {
 		return false;
 	}
 
+	public static float explored( Level level ){
+		int open = 0, seen = 0;
+		for (int c = 0; c < level.length(); c++){
+			if (!level.passable[ c ]) continue;
+			open++;
+			if (known( level, c )) seen++;
+		}
+		return open == 0 ? 0f : seen / (float) open;
+	}
+
 	public static boolean known( Level level, int cell ){
 		return level.visited[ cell ] || level.mapped[ cell ];
 	}

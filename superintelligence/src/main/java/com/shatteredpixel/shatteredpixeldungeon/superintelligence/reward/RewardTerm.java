@@ -56,6 +56,9 @@ public enum RewardTerm {
 	CRAFTED_MEAT_PIE( Type.SURVIVAL ),
 
 
+	FLOOR_EXPLORED( Type.EXPLORATION ),
+
+
 	KILL( Type.COMBAT ),
 
 
@@ -124,6 +127,7 @@ public enum RewardTerm {
 
 		case EXPLORE:
 			case VISIT:
+			case FLOOR_EXPLORED:
 			case MAX_HP_GAIN:
 			case GOLD_GAIN:
 			case ITEM_PICKUP:
