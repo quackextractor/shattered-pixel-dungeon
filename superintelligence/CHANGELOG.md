@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Food ran out because it was wasted.** 86% of meals came before Hungry, wasting 116 of 300 points a ration, floor
+  1 spent 123 of 165 rest turns above 75% health though health returns as fast on the move, and 89% of deaths were
+  hungry or starving. `reward.eaten_early_penalty` now charges per point of food wasted, the teacher rests below 90%
+  health with food in the pack, below 60% without, and a hungry teacher with no food explores rather than diving.
 - **A hero that could not move was offered moves.** Roots and Charm refuse a move or an attack at no engine time, so
   the mask kept offering it until the episode stalled at -4500; 12 of 14 position stalls in 200 teacher episodes were
   Roots. A rooted hero is now offered no move, a charmed one no attack on its charmer. A Scroll of Lullaby read at low

@@ -159,7 +159,7 @@ public class RewardModel {
 		}
 		int meals = Statistics.foodEaten;
 		if (meals > prevMeals && prevHunger < Hunger.HUNGRY){
-			ledger.add( RewardTerm.EATEN_EARLY, config.eatenEarlyPenalty * (meals - prevMeals), false );
+			ledger.add( RewardTerm.EATEN_EARLY, config.eatenEarlyPenalty * (Hunger.HUNGRY - prevHunger), false );
 		}
 		java.util.BitSet floor = stoodOn.computeIfAbsent( depth * 64 + Dungeon.branch, k -> new java.util.BitSet() );
 		if (!floor.get( hero.pos )){

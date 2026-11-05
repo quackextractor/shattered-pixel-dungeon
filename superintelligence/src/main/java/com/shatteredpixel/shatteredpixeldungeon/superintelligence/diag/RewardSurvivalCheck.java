@@ -44,14 +44,14 @@ public final class RewardSurvivalCheck {
 			return;
 		}
 
-		double expected = config.eatenEarlyPenalty;
+		double wasted = config.eatenEarlyPenalty * (com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger.HUNGRY - 8);
 		if (o.notes( RewardTerm.EATEN_EARLY ) != 1
-				|| Math.abs( o.termTotal( RewardTerm.EATEN_EARLY ) - expected ) > 1e-6){
+				|| o.termTotal( RewardTerm.EATEN_EARLY ) > wasted){
 			fail( "the hero ate a ration on a full stomach and EATEN_EARLY fired "
 					+ o.notes( RewardTerm.EATEN_EARLY ) + " time(s) paying "
-					+ fmt( o.termTotal( RewardTerm.EATEN_EARLY ) ) + " where once at " + fmt( expected )
-					+ " was expected. Hunger.level rises with time and eating lowers it, so a rise is"
-					+ " time passing, not a meal." );
+					+ fmt( o.termTotal( RewardTerm.EATEN_EARLY ) ) + " where once at about " + fmt( wasted )
+					+ " was expected: the charge is per point of food wasted, because a ration eaten at"
+					+ " once loses 300 turns and one eaten when hungry loses none." );
 			return;
 		}
 

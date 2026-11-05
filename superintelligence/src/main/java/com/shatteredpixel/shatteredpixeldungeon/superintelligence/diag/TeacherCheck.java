@@ -25,7 +25,7 @@ import java.util.Random;
 
 public class TeacherCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 8;
 
 	private static final String[] SEEDS = { "TEACHER-A", "TEACHER-B", "TEACHER-C", "TEACHER-D", "TEACHER-E", "TEACHER-F" };
 
@@ -40,6 +40,9 @@ public class TeacherCheck {
 		checkADemonstrationIsImitated();
 		checkEachEpisodeGetsAFreshTeacher();
 		checkTheWeightDecaysToItsFloor();
+		checkTheTeacherHealsOnTheMove();
+		checkTheTeacherRestsWhenHurt();
+		checkAHungryTeacherLooksForFood();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     teacher: " + CHECKS + " checks passed" );
@@ -47,6 +50,39 @@ public class TeacherCheck {
 			System.out.println( "[ERROR]  teacher: " + failures.size() + " of " + CHECKS + " checks failed" );
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
+		}
+	}
+
+	private static Action teacherAtHealth( int percent ){
+		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		Dungeon.hero.belongings.backpack.items.removeIf( i -> i instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.Food );
+		Dungeon.hero.HP = Dungeon.hero.HT * percent / 100;
+		env.step( Action.WAIT, 0 );
+		DescentBot bot = new DescentBot();
+		bot.act( env, new int[ 1 ] );
+		return bot.act( env, new int[ 1 ] );
+	}
+
+	private static void checkTheTeacherHealsOnTheMove(){
+		Action action = teacherAtHealth( 80 );
+		if (action == Action.REST) fail( "at 80% health the teacher rests; health returns as fast on the move, and 123 of 165 rest turns on floor 1 went this way" );
+	}
+
+	private static void checkTheTeacherRestsWhenHurt(){
+		Action action = teacherAtHealth( 40 );
+		if (action != Action.REST) fail( "at 40% health with nothing in view the teacher chose " + action );
+	}
+
+	private static void checkAHungryTeacherLooksForFood(){
+		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		Dungeon.hero.belongings.backpack.items.removeIf( i -> i instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.Food );
+		Dungeon.hero.buff( com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger.class ).affectHunger( -350f );
+		env.step( Action.WAIT, 0 );
+		Action action = new DescentBot().act( env, new int[ 1 ] );
+		if (action != Action.TRAVEL_EXPLORE && action != Action.TRAVEL_ITEM){
+			fail( "a hungry teacher with no food chose " + action + "; every regular floor holds food, so it has to look" );
 		}
 	}
 
