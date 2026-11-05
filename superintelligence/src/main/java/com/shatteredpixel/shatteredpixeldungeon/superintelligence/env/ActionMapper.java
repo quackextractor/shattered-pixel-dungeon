@@ -27,7 +27,15 @@ public class ActionMapper {
 			{ -1, -1 },
 	};
 
-	public static final int TARGET_COUNT = TARGET_OFFSETS.length;
+	public static final int ADJACENT_COUNT = TARGET_OFFSETS.length;
+
+	public static final int ENEMY_TARGETS = 4;
+
+	public static final int TARGET_COUNT = ADJACENT_COUNT + ENEMY_TARGETS;
+
+	public static Action aimAction( int target ){
+		return target == 0 ? Action.CANCEL : Action.USE;
+	}
 
 	private final EnvConfig config;
 
@@ -75,6 +83,13 @@ public class ActionMapper {
 			}
 			int empty = slots.indexOf( null );
 			if (empty >= 0) slots.set( empty, item );
+		}
+
+		Item held = hero().belongings.weapon;
+		if (GameScene.answerableSelector() == null && held != null && held.usesTargeting
+				&& held.actions( hero() ).contains( held.defaultAction() )){
+			int empty = slots.indexOf( null );
+			if (empty >= 0) slots.set( empty, held );
 		}
 	}
 
@@ -161,6 +176,7 @@ public class ActionMapper {
 
 		if (mode == EnvMode.TARGETING){
 			mask[Action.CANCEL.index] = 1f;
+			mask[Action.USE.index] = 1f;
 			return;
 		}
 
@@ -233,6 +249,7 @@ public class ActionMapper {
 	public boolean targetMask( int index ){
 		if (index < 0 || index >= TARGET_COUNT) return false;
 		if (index == 0) return true;
+		if (index >= ADJACENT_COUNT) return Surroundings.enemyTarget( index ) >= 0;
 		return Surroundings.insideMap( Surroundings.targetCell( index ) );
 	}
 
@@ -375,6 +392,8 @@ public class ActionMapper {
 	private boolean resolveTarget( int index ){
 		CellSelector.Listener aim = GameScene.pendingCellListener();
 		GameScene.clearPendingCellListener();
+		if (index < ADJACENT_COUNT) aim = null;
+		else if (aim == null) aim = GameScene.takeCellListener();
 
 		if (aim != null ){
 			aim.onSelect( Surroundings.targetCell( index ) );
@@ -405,7 +424,7 @@ public class ActionMapper {
 	}
 
 	private boolean interact( int direction ){
-		if (direction > 0 && direction < TARGET_COUNT){
+		if (direction > 0 && direction < ADJACENT_COUNT){
 			int cell = Surroundings.targetCell( direction );
 			if (Surroundings.interactive( cell )) return handleCell( cell );
 		}
@@ -418,7 +437,7 @@ public class ActionMapper {
 		if (mask.length == 0) return;
 
 		mask[ 0 ] = 1f;
-		for (int o = 1; o < TARGET_COUNT && o < mask.length; o++){
+		for (int o = 1; o < ADJACENT_COUNT && o < mask.length; o++){
 			if (Surroundings.interactive( Surroundings.targetCell( o ) )) mask[ o ] = 1f;
 		}
 	}

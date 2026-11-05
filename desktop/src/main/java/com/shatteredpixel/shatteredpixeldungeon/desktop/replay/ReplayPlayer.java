@@ -937,11 +937,10 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			return;
 		}
 
-		GameScene.clearPendingCellListener();
 		if (mode != EnvMode.TARGETING){
-		SlotAction.clearPendingUseItem();
-
-	}
+			GameScene.clearPendingCellListener();
+			SlotAction.clearPendingUseItem();
+		}
 
 		mapper.refreshSlots();
 

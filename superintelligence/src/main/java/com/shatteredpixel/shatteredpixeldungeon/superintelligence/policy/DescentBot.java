@@ -13,8 +13,14 @@ import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade;
+import com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.SpiritBow;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MagesStaff;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon;
+import com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Travel;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
@@ -58,6 +64,10 @@ public final class DescentBot {
 				return Action.MENU_SELECT;
 			case MENU:
 				return legal( mask, Action.MENU_SELECT ) ? Action.MENU_SELECT : Action.CANCEL;
+			case TARGETING:
+				if (env.targetMask()[ ActionMapper.ADJACENT_COUNT ] < 0.5f) return Action.CANCEL;
+				secondary[ 0 ] = ActionMapper.ADJACENT_COUNT;
+				return Action.USE;
 			case WORLD:
 				return world( env, mask );
 			default:
@@ -73,6 +83,7 @@ public final class DescentBot {
 			int s = secondary[ 0 ];
 			return s >= 0 && s < env.slotMask().length && env.slotMask()[ s ] > 0.5f && action != Action.CANCEL ? s : -1;
 		}
+		if (liveHead == Policy.HEAD_TARGET) return action == Action.CANCEL ? 0 : secondary[ 0 ];
 		return -1;
 	}
 
@@ -85,6 +96,7 @@ public final class DescentBot {
 		if (attack != null) return attack;
 		Action escape = escape( mask );
 		if (escape != null) return escape;
+		if (rangedSlot( env ) >= 0 && legal( mask, Action.USE )) return Action.USE;
 		if (approaching() && waited < 2 && legal( mask, Action.WAIT )){
 			waited++;
 			return Action.WAIT;
@@ -211,9 +223,35 @@ public final class DescentBot {
 
 	private int useSlot( SPDEnv env ){
 		int pick = dying() ? healSlot( env ) : -1;
+		if (pick < 0) pick = rangedSlot( env );
 		if (pick < 0) pick = improveSlot( env );
 		if (pick < 0) pick = foodSlot( env );
 		return pick;
+	}
+
+	private static int rangedSlot( SPDEnv env ){
+		Mob target = shootable();
+		if (target == null) return -1;
+		float[] mask = env.slotMask();
+		for (int i = 0; i < mask.length; i++){
+			Item item = env.mapper().slot( i );
+			if (mask[ i ] < 0.5f || item == null) continue;
+			if (item instanceof SpiritBow || item instanceof MagesStaff || item instanceof MissileWeapon) return i;
+			if (item instanceof Wand && ((Wand) item).curCharges > 0) return i;
+		}
+		return -1;
+	}
+
+	private static Mob shootable(){
+		Hero hero = Dungeon.hero;
+		Mob best = null;
+		for (Mob mob : hero.getVisibleEnemies()){
+			int range = Dungeon.level.distance( hero.pos, mob.pos );
+			if (!mob.isAlive() || range < 2) continue;
+			if (new Ballistica( hero.pos, mob.pos, Ballistica.PROJECTILE ).collisionPos != mob.pos) continue;
+			if (best == null || range < Dungeon.level.distance( hero.pos, best.pos )) best = mob;
+		}
+		return best;
 	}
 
 	private int improveSlot( SPDEnv env ){

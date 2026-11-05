@@ -1853,6 +1853,13 @@ public static boolean showingWindow(){
 	/** The aiming request the game is waiting on, or null. See {@link #selectCell}. */
 	public static CellSelector.Listener pendingCellListener(){ return pendingCellListener; }
 	public static void clearPendingCellListener(){ pendingCellListener = null; }
+
+	public static CellSelector.Listener takeCellListener(){
+		if (cellSelector == null || cellSelector.listener == null || cellSelector.listener == defaultCellListener) return null;
+		CellSelector.Listener taken = cellSelector.listener;
+		cellSelector.listener = defaultCellListener;
+		return taken;
+	}
 	
 	public static boolean cancelCellSelector() {
 		if (cellSelector == null) {

@@ -94,7 +94,7 @@ case SLOT:
 		int hero = Dungeon.hero.pos;
 		int width = Dungeon.level.width();
 
-		for (int i = 1; i < ActionMapper.TARGET_COUNT; i++){
+		for (int i = 1; i < ActionMapper.ADJACENT_COUNT; i++){
 			if (env.targetMask()[ i ] <= 0.5f ) continue;
 			int cell = hero + ActionMapper.TARGET_OFFSETS[ i ][ 0 ] + ActionMapper.TARGET_OFFSETS[ i ][ 1 ] * width;
 			Char ch = Actor.findChar( cell );
@@ -324,7 +324,7 @@ Action fallback = null;
 		int hero = Dungeon.hero.pos;
 		int width = Dungeon.level.width();
 
-		for (int i = 1; i < ActionMapper.TARGET_COUNT; i++){
+		for (int i = 1; i < ActionMapper.ADJACENT_COUNT; i++){
 			int cell = hero + ActionMapper.TARGET_OFFSETS[ i ][ 0 ] + ActionMapper.TARGET_OFFSETS[ i ][ 1 ] * width;
 			if (cell < 0 || cell >= Dungeon.level.length()) continue;
 			if (Dungeon.level.getTransition( cell ) != null ) return cell;

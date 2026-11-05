@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Nothing aimed ever fired.** Aiming offered only `CANCEL`: 2,006 aims, 2,006 cancels and no shot in 514 recordings.
+  Three more faults sat behind that mask: `SPDEnv.step` cleared the aim listener before resolving it, so a bow fell
+  through to `Item.throwAt` and a wand fizzled; a stand-in sprite never ran a missile or bolt callback; and a held
+  `MagesStaff` was in no slot. The target head now names the 4 nearest visible enemies after the 8 adjacent cells, so
+  a shot reaches past melee range, and target 0 holds fire. Adjacent aim targets stay in the head only so recordings
+  made through `castAt` still play; a policy is never offered them. `DescentBot` shoots and labels the target head. The
+  viewer resolves through its live `CellSelector`. Network shape changes, so old weights do not load.
+  `huntress-bow.replay` and `mage-staff.replay` join the corpus, 28 recordings.
 - **The viewer called `act()` again on an actor waiting for its own animation (`issues.md` 40).** `Actor.process`
   waits for the callback; `Actor.headlessStep` picks the next actor at once, so a mob mid-swing acted again every
   frame, 26,521 extra scheduler calls on one recording. Goo's second `act()` rolled a new `Random.Int` and pumped up

@@ -102,7 +102,7 @@ public final class PressFixture {
 
 
 	private static int grassTarget( SPDEnv env ){
-		for (int o = 1; o < ActionMapper.TARGET_COUNT; o++){
+		for (int o = 1; o < ActionMapper.ADJACENT_COUNT; o++){
 			int cell = env.mapper().targetCell( o );
 			if (cell < 0 || cell >= Dungeon.level.length()) continue;
 			if (Dungeon.level.map[cell] != Terrain.HIGH_GRASS) continue;

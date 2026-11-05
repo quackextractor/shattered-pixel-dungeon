@@ -100,8 +100,8 @@ public class SPDEnv {
 		com.watabou.input.KeyEvent.clearListeners();
 		com.watabou.input.PointerEvent.clearListeners();
 		com.watabou.noosa.Camera.reset( com.watabou.noosa.Camera.main );
-		GameScene.clearPendingCellListener();
 		if (mode != EnvMode.TARGETING){
+			GameScene.clearPendingCellListener();
 			SlotAction.clearPendingUseItem();
 		}
 		mapper.refreshSlots();
@@ -411,6 +411,9 @@ public float[] actionMask(){ return actionMask; }
 			targetMask[ i ] = mapper.targetMask( i ) ? 1f : 0f;
 		}
 		if (mode == EnvMode.WORLD) mapper.interactMask( targetMask );
+		if (mode == EnvMode.TARGETING){
+			for (int i = 1; i < ActionMapper.ADJACENT_COUNT; i++) targetMask[ i ] = 0f;
+		}
 	}
 	public void abandon(){
 		running = false;

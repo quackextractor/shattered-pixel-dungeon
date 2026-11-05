@@ -20,7 +20,7 @@ final class Surroundings {
 			Terrain.HERO_LKD_DR,
 	};
 
-	private static final int TARGET_COUNT = ActionMapper.TARGET_COUNT;
+	private static final int TARGET_COUNT = ActionMapper.ADJACENT_COUNT;
 
 	static int offsetCell( int dx, int dy ){
 		return Dungeon.hero.pos + dx + dy * Dungeon.level.width();
@@ -28,9 +28,24 @@ final class Surroundings {
 
 	static int targetCell( int index ){
 		if (index < 0) index = 0;
-		if (index >= TARGET_COUNT) index = TARGET_COUNT - 1;
+		if (index >= TARGET_COUNT){
+			int enemy = enemyTarget( index );
+			return enemy >= 0 ? enemy : Dungeon.hero.pos;
+		}
 		int[] o = ActionMapper.TARGET_OFFSETS[ index ];
 		return offsetCell( o[0], o[1] );
+	}
+
+	static int enemyTarget( int index ){
+		int hero = Dungeon.hero.pos;
+		java.util.List< Integer > cells = new java.util.ArrayList<>();
+		for (Mob mob : Dungeon.level.mobs){
+			if (mob.alignment == Char.Alignment.ENEMY && mob.isAlive() && mob.invisible == 0
+					&& Dungeon.level.heroFOV[ mob.pos ]) cells.add( mob.pos );
+		}
+		cells.sort( java.util.Comparator.< Integer >comparingInt( c -> Dungeon.level.distance( hero, c ) ).thenComparingInt( c -> c ) );
+		int k = index - TARGET_COUNT;
+		return k < cells.size() ? cells.get( k ) : -1;
 	}
 
 	static boolean insideMap( int cell ){

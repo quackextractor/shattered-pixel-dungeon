@@ -203,6 +203,7 @@ public class EpisodeCollector {
 				if (!record.isRetained( dropped )) dropped.release();
 			}
 
+		if (liveHead == Policy.HEAD_TARGET) actionIndex = ActionMapper.aimAction( targetIndex ).index;
 		Action action = Action.fromIndex( actionIndex );
 		int secondary = (liveHead == Policy.HEAD_TARGET) ? targetIndex : slotIndex;
 

@@ -4,9 +4,13 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM100;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Eye;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Spinner;
+import com.shatteredpixel.shatteredpixeldungeon.effects.MagicMissile;
+import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.MissileSprite;
 import com.watabou.noosa.MovieClip;
 import com.watabou.utils.Callback;
+import com.watabou.utils.PointF;
 
 public class HeadlessSprite extends CharSprite implements HeadlessStandIn {
 
@@ -30,9 +34,35 @@ public class HeadlessSprite extends CharSprite implements HeadlessStandIn {
 
 	private com.watabou.noosa.Group headlessParentStore = null;
 
+	private static final class Stage extends com.watabou.noosa.Group {
+
+		@Override
+		public synchronized com.watabou.noosa.Gizmo recycle( Class< ? extends com.watabou.noosa.Gizmo > c ){
+			if (c == MissileSprite.class) return new InstantMissile();
+			if (c == MagicMissile.class) return new InstantBolt();
+			return super.recycle( c );
+		}
+	}
+
+	private static final class InstantMissile extends MissileSprite {
+
+		@Override
+		public void reset( PointF from, PointF to, Item item, Callback listener ){
+			if (listener != null) listener.call();
+		}
+	}
+
+	private static final class InstantBolt extends MagicMissile {
+
+		@Override
+		public void reset( int type, PointF from, PointF to, Callback callback ){
+			if (callback != null) callback.call();
+		}
+	}
+
 	private com.watabou.noosa.Group headlessParent(){
 		if (headlessParentStore == null){
-			headlessParentStore = new com.watabou.noosa.Group();
+			headlessParentStore = new Stage();
 		}
 		return headlessParentStore;
 	}
