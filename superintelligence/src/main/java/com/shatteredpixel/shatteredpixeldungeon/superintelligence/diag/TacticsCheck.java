@@ -1,12 +1,16 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Crab;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Gnoll;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Swarm;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
@@ -17,7 +21,7 @@ import com.watabou.utils.PathFinder;
 
 public class TacticsCheck {
 
-	private static final int CHECKS = 1;
+	private static final int CHECKS = 3;
 	private static final String[] SEEDS = { "TACT-A", "TACT-B", "TACT-C", "TACT-D", "TACT-E", "TACT-F", "TACT-G", "TACT-H", "TACT-I", "TACT-J" };
 
 	private static SPDEnv env;
@@ -28,8 +32,72 @@ public class TacticsCheck {
 		env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );
 
 		checkASwarmIsFoughtInAHall();
+		checkADoorBuysASurpriseAttack();
+		checkAFastEnemyIsNotDanced();
 
 		System.exit( GateReport.report( "combat tactics", CHECKS ) );
+	}
+
+	private static int[] doorway(){
+		Level level = Dungeon.level;
+		int width = level.width();
+		for (int c = 0; c < level.length(); c++){
+			if (!Tactics.isDoor( level, c ) || !level.insideMap( c )) continue;
+			for (int d : new int[]{ 1, -1, width, -width }){
+				int a = c + d, b = c + 2 * d, m = c + 3 * d, past = c - d;
+				if (past < 0 || m < 0 || m >= level.length()) continue;
+				if (level.passable[ a ] && level.passable[ b ] && level.passable[ m ] && level.passable[ past ]
+						&& Actor.findChar( a ) == null && Actor.findChar( m ) == null && Actor.findChar( past ) == null){
+					return new int[]{ c, a, m, past };
+				}
+			}
+		}
+		return null;
+	}
+
+	private static int[] stage( HeroClass heroClass ){
+		for (String seed : SEEDS){
+			env.reset( seed, heroClass );
+			int[] door = doorway();
+			if (door == null) continue;
+			java.util.Arrays.fill( Dungeon.level.visited, true );
+			Dungeon.hero.belongings.backpack.items.removeIf( i -> i instanceof com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon );
+			Dungeon.hero.pos = door[ 1 ];
+			Dungeon.observe();
+			return door;
+		}
+		GateReport.fail( "no seed of " + SEEDS.length + " has a clear doorway on floor 1" );
+		return null;
+	}
+
+	private static void checkADoorBuysASurpriseAttack(){
+		int[] door = stage( HeroClass.WARRIOR );
+		if (door == null) return;
+		placeHunting( new Gnoll(), door[ 2 ] );
+		int before = Statistics.sneakAttacks;
+		DescentBot bot = new DescentBot();
+		int[] secondary = new int[ 1 ];
+		for (int i = 0; i < 14 && env.running() && Statistics.sneakAttacks == before; i++){
+			Dungeon.hero.HP = Dungeon.hero.HT;
+			env.step( bot.act( env, secondary ), secondary[ 0 ] );
+		}
+		if (Statistics.sneakAttacks == before) GateReport.fail( "a gnoll chased the hero with a door beside it and no surprise attack landed in 14 steps; hero at " + Dungeon.hero.pos + " door " + door[ 0 ] );
+	}
+
+	private static void checkAFastEnemyIsNotDanced(){
+		int[] door = stage( HeroClass.WARRIOR );
+		if (door == null) return;
+		Crab crab = new Crab();
+		placeHunting( crab, door[ 2 ] );
+		Action first = null;
+		DescentBot bot = new DescentBot();
+		int[] secondary = new int[ 1 ];
+		int start = Dungeon.hero.pos;
+		for (int i = 0; i < 6 && env.running() && !Dungeon.level.adjacent( crab.pos, Dungeon.hero.pos ); i++) env.step( bot.act( env, secondary ), secondary[ 0 ] );
+		first = bot.act( env, secondary );
+		if (!first.directional() || crab.pos != Dungeon.hero.pos + first.dx + first.dy * Dungeon.level.width()){
+			GateReport.fail( "a crab moves twice a turn and the teacher chose " + first + " beside it instead of hitting it; hero left " + start );
+		}
 	}
 
 	private static void placeHunting( Mob mob, int cell ){

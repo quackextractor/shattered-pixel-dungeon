@@ -96,7 +96,7 @@ public final class DescentBot {
 		boolean hurt = lastHp >= 0 && hero.HP < lastHp;
 		lastHp = hero.HP;
 		if (dying() && !hero.getVisibleEnemies().isEmpty() && healSlot( env ) >= 0 && legal( mask, Action.USE )) return Action.USE;
-		Action tactic = tactics.act( mask );
+		Action tactic = tactics.act( mask, rangedSlot( env ) >= 0 && legal( mask, Action.USE ) );
 		if (tactic != null) return tactic;
 		Action attack = attack( mask );
 		if (attack != null) return attack;

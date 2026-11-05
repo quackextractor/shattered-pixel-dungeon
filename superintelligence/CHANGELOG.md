@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an
   identity, and nothing for what is inside a chest. 23 planes to 30. Old weights do not load.
 
+- **The teacher runs through doors for surprise attacks.** A closed door hides the hero from a chaser, so the mob
+  enters the doorway without having seen it, and the next hit cannot miss. Facing one hunter that is no faster than the
+  hero and not ranged or flying, it steps through a door within 4 steps, waits on the far side and hits what comes
+  through, once per door. Anything surprised and adjacent is hit first, and it shoots instead if it can.
 - **The teacher backs into a hall when it would be surrounded.** A swarm or two hunters in the open now send it to
   the nearest corridor or doorway within 8 steps, so flies reach it one or two at a time. New gate `tacticscheck`.
 
