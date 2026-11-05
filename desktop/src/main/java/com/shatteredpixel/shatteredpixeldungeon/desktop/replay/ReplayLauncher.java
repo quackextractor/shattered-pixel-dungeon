@@ -172,6 +172,7 @@ private static void describe( Replay replay ){
 		}
 
 		SPDSettings.customSeed( seed );
+		SPDSettings.supportNagged( true );
 
 		String stored = SPDSettings.customSeed();
 		if (!seed.equals( stored )){

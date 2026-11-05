@@ -13,6 +13,10 @@ Floor 1 is solved: `teach-demo-31` reaches depth>=2 in ~90% of episodes, mean de
   episodes over five classes: 2.18 mean depth, 178 die, hero level 1.66, 41 of 92 final fights begun above
   75% HP against ordinary depth 2-3 mobs, 24-27% starving with no food. Teacher now 2.38, 167 die
   (`CHANGELOG.md` Unreleased). Drinking unknown potions when safe: no change.
+- 2026-11-05, 514 recordings: 19% of seen food and 23% of seen Upgrade scrolls were picked up, nothing aimed ever
+  fired, 89% of deaths were hungry or starving, and Goo was never killed in 106 fights. Fixed in `CHANGELOG.md`
+  Unreleased; the teacher went from 2.56 to 3.28 mean depth and floor 6+ from 0 to 22 of 200. A policy trained on
+  these fixes has not been measured over a full run.
 - Stats: Upgrade scrolls could not be used at all headless (item picker, `CHANGELOG.md` Unreleased). Fixed;
   the teacher now reads, upgrades and equips, and explores before descending: 2.56 mean depth, floor 4+ 27
   of 200, 3 stalls. Upgrades stay scarce before death (mean armour +0.16, no tier-2 armour worn: it needs

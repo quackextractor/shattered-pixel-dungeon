@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nearest corridor or doorway within 8 steps, so flies reach it one or two at a time. New gate `tacticscheck`.
 
 ### Fixed
+- **The viewer lost its clock on the Worn Key.** The support prompt saves the game, and a save rebases `Actor` time, so
+  the first Goo kill played in the viewer diverged at the key: 1.0 against 266.0. `ReplayLauncher` marks the prompt
+  seen. `goo-kill.replay`, a teacher run that kills Goo and reaches floor 6, joins the corpus, 30 recordings.
 - **A swarm paid for fighting it in the open.** Every clone a Swarm splits off paid `reward.kill_reward`, though clones
   give no experience: 4.0 kills, about 600 points, per swarm-only fight, in the fight that killed the hero 74 times of
   147. `KILL` now pays only a kill that gave experience.
