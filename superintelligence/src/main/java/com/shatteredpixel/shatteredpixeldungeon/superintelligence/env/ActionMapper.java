@@ -221,7 +221,8 @@ public class ActionMapper {
 				case TRAVEL_STAIRS:
 				case TRAVEL_EXPLORE:
 				case TRAVEL_ITEM:
-					mask[a.index] = Travel.step( a, false ) >= 0 ? 1f : 0f;
+					int step = Travel.step( a, false );
+					mask[a.index] = step >= 0 && (step == hero().pos || !hero().rooted) ? 1f : 0f;
 					break;
 				default:
 

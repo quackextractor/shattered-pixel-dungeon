@@ -19,7 +19,7 @@ import java.util.List;
 
 public class TravelCheck {
 
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 10;
 
 	private static final String[] SEEDS = { "TRAVEL-A", "TRAVEL-B", "TRAVEL-C", "TRAVEL-D", "TRAVEL-E", "TRAVEL-F" };
 
@@ -37,6 +37,8 @@ public class TravelCheck {
 		checkTravelFetchesASeenItem();
 		checkAnItemOutOfSightIsNotATarget();
 		checkTheTeacherCollects();
+		checkARootedHeroIsOfferedNoMove();
+		checkMagicalSleepIsNotAStall();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     travel actions: " + CHECKS + " checks passed" );
@@ -62,6 +64,29 @@ public class TravelCheck {
 			if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.Food) n += item.quantity();
 		}
 		return n;
+	}
+
+	private static void checkARootedHeroIsOfferedNoMove(){
+		SPDEnv env = fresh( SEEDS[ 0 ] );
+		com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect( Dungeon.hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Roots.class, 8f );
+		env.step( Action.WAIT, 0 );
+		for (Action a : Action.values()){
+			boolean moves = a.directional() || a == Action.TRAVEL_EXPLORE || a == Action.TRAVEL_STAIRS || a == Action.TRAVEL_ITEM;
+			if (moves && env.actionMask()[ a.index ] > 0.5f){
+				fail( a + " is offered to a rooted hero, and it spends no time, so an episode stalls on it" );
+				return;
+			}
+		}
+	}
+
+	private static void checkMagicalSleepIsNotAStall(){
+		SPDEnv env = fresh( SEEDS[ 0 ] );
+		Dungeon.hero.HP = 5;
+		com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect( Dungeon.hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.MagicalSleep.class );
+		env.step( Action.WAIT, 0 );
+		if (!env.running() || Dungeon.hero.HP < Dungeon.hero.HT){
+			fail( "a hero put to sleep at 5 HP did not sleep to full: running " + env.running() + " HP " + Dungeon.hero.HP + " end " + env.endReason() );
+		}
 	}
 
 	private static void checkTravelFetchesASeenItem(){

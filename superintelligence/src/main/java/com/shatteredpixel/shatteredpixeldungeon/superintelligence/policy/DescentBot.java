@@ -7,6 +7,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.Waterskin;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.Blandfruit;
 import com.shatteredpixel.shatteredpixeldungeon.items.food.Food;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing;
@@ -293,7 +294,7 @@ public final class DescentBot {
 		float[] mask = env.slotMask();
 		for (int i = 0; i < mask.length; i++){
 			Item item = env.mapper().slot( i );
-			if (mask[ i ] > 0.5f && item instanceof Food) return i;
+			if (mask[ i ] > 0.5f && item instanceof Food && !(item instanceof Blandfruit && ((Blandfruit) item).potionAttrib == null)) return i;
 		}
 		return -1;
 	}

@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A hero that could not move was offered moves.** Roots and Charm refuse a move or an attack at no engine time, so
+  the mask kept offering it until the episode stalled at -4500; 12 of 14 position stalls in 200 teacher episodes were
+  Roots. A rooted hero is now offered no move, a charmed one no attack on its charmer. A Scroll of Lullaby read at low
+  health also stalled: the sleep marks the hero as resting while paralysed, and `LevelPipeline` took that for a stuck
+  rest. The hero sleeps to full, as in the game. The teacher no longer tries to eat a raw Blandfruit.
 - **The hero walked past 80% of the loot it saw.** A pickup paid 0.5 and a turn costs 1, so a detour for an Upgrade
   scroll lost reward, `TRAVEL_EXPLORE` only heads for unknown cells, and `DescentBot` had no item logic. Food, Upgrade
   and Strength now pay `reward.pickup_food` 200 and `reward.pickup_power` 300, other potions and scrolls 75, gear 100,

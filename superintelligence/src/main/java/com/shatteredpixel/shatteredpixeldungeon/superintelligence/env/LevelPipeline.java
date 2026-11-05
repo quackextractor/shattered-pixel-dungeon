@@ -162,7 +162,7 @@ public class LevelPipeline {
 				return Outcome.READY;
 			}
 
-			if (!wantsMore && steps > 8 && Dungeon.hero.resting){
+			if (!wantsMore && steps > 8 && Dungeon.hero.resting && Dungeon.hero.paralysed == 0){
 				return Outcome.STALLED;
 			}
 		}

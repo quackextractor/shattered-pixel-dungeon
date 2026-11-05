@@ -144,7 +144,8 @@ final class Surroundings {
 		if (!insideMap( cell )) return false;
 
 		Char ch = Actor.findChar( cell );
-		if (ch instanceof Mob) return Dungeon.hero.canAttack( (Mob)ch );
+		if (ch instanceof Mob) return Dungeon.hero.canAttack( (Mob)ch ) && !Dungeon.hero.isCharmedBy( ch );
+		if (Dungeon.hero.rooted) return false;
 		if (Dungeon.level.heaps.get( cell ) != null) return true;
 		return Dungeon.level.passable[ cell ];
 	}
