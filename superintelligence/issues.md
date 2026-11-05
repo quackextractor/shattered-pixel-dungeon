@@ -15,13 +15,23 @@ Floor 1 is solved: `teach-demo-31` reaches depth>=2 in ~90% of episodes, mean de
   (`CHANGELOG.md` Unreleased). Drinking unknown potions when safe: no change.
 - 2026-11-05, 514 recordings: 19% of seen food and 23% of seen Upgrade scrolls were picked up, nothing aimed ever
   fired, 89% of deaths were hungry or starving, and Goo was never killed in 106 fights. Fixed in `CHANGELOG.md`
-  Unreleased; the teacher went from 2.56 to 3.28 mean depth and floor 6+ from 0 to 22 of 200. A policy trained on
-  these fixes has not been measured over a full run.
+  Unreleased; the teacher went from 2.56 to 3.28 mean depth and floor 6+ from 0 to 22 of 200. The policy has not caught
+  up: at generations 150-220 it reads 2.17 against `flip-long`'s 2.60, with entropy 0.80 against 0.39. Dropping
+  `reward.sneak_attack_reward` from 300 to 160 changed nothing (2.19 against 2.17), so that is not the cause, and no
+  run has yet passed generation 302. `out/evidence/tactics-menu`, `tactics-long2`, `tactics-sneak160`.
 - Stats: Upgrade scrolls could not be used at all headless (item picker, `CHANGELOG.md` Unreleased). Fixed;
   the teacher now reads, upgrades and equips, and explores before descending: 2.56 mean depth, floor 4+ 27
   of 200, 3 stalls. Upgrades stay scarce before death (mean armour +0.16, no tier-2 armour worn: it needs
   11 strength). Remaining gap is combat: 197 of 200 still die to ordinary depth 2-3 mobs, swarms of flies
   the largest single group, hero level ~2.3.
+
+## 41. GPU reads stall a long run - OPEN
+
+Two of two full runs on the 30-plane network died about 20 minutes in: generation time climbs from about 2 s to 14-23 s
+from minute 5 to 9, with workers parked in `clEnqueueReadBuffer`, the machine about 20% busy and 27 s of GC in 20
+minutes, then the watchdog fires with no worker progress for 180 s and for 900 s. No driver reset is logged. Discord
+held 72-75% of the GPU's video engine throughout, so it is a suspect and not a cause. A 7-minute run did not reach it.
+`flip-long`, on 23 planes, ran 30 minutes without it.
 
 ## 39. Wild Magic wand level draws gameplay RNG on the render thread - OPEN
 
