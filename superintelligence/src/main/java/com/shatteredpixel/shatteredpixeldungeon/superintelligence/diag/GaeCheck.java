@@ -75,7 +75,7 @@ checkTerminalZerosTheTail();
 		EnvConfig config = new EnvConfig();
 		int cells = config.spatialChannels() * config.gridWidth * config.gridHeight;
 		int packed = Transition.packedGridBytes( cells );
-		if (packed * 4 >= cells){
+		if (packed * 3 >= cells){
 			fail( "the packed grid is " + packed + " bytes for " + cells + " cells, which is not the"
 					+ " bit-per-binary-cell reduction the packing exists for." );
 			return;

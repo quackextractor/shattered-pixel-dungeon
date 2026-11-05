@@ -53,6 +53,12 @@ public class ObserveCheck {
 		check( () -> ObserveLeakCheck.checkAnUnseenFloorEncodesToNothing( encoder ) );
 		check( () -> ObserveLeakCheck.checkTheWindowIsCentredOnTheHero( encoder ) );
 		check( ObserveCheck::checkTheExitBeaconSurvivesTheWindowEdge );
+		check( () -> ObserveFoeCheck.checkAnEnemyShowsItsState( encoder ) );
+		check( () -> ObserveFoeCheck.checkAnEnemyShowsItsHealth( encoder ) );
+		check( () -> ObserveFoeCheck.checkEnemiesCanBeToldApart( encoder ) );
+		check( () -> ObserveFoeCheck.checkDoorsAndWaterAreDrawn( encoder ) );
+		check( () -> ObserveFoeCheck.checkASeenItemIsRemembered( encoder ) );
+		check( () -> ObserveFoeCheck.checkItemKindHidesIdentity( encoder ) );
 		check( SceneGateCheck::checkTramplingInViewRefreshesTheFieldOfView );
 		check( SceneGateCheck::checkLandingFromLevitationPressesTheCell );
 		check( SceneGateCheck::checkADisguiseRollsItsClassHeadlessly );

@@ -70,6 +70,27 @@ public enum GridChannel {
 	THREATENING( Kind.VISIBLE ),
 
 
+	ENEMY_HP( Kind.VISIBLE, true ),
+
+
+	ENEMY_KIND( Kind.VISIBLE, true ),
+
+
+	ENEMY_ASLEEP( Kind.VISIBLE ),
+
+
+	ENEMY_HUNTING( Kind.VISIBLE ),
+
+
+	WATER( Kind.MEMORY ),
+
+
+	DOOR( Kind.MEMORY ),
+
+
+	ITEM_KIND( Kind.MEMORY, true ),
+
+
 	DEPTH_BIAS( Kind.SCALAR );
 
 	public enum Kind {

@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
+  hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
+  `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an
+  identity, and nothing for what is inside a chest. 23 planes to 30. Old weights do not load.
+
 ### Fixed
 - **A swarm paid for fighting it in the open.** Every clone a Swarm splits off paid `reward.kill_reward`, though clones
   give no experience: 4.0 kills, about 600 points, per swarm-only fight, in the fight that killed the hero 74 times of

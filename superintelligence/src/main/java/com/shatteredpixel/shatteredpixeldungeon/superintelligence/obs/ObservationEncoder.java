@@ -209,6 +209,14 @@ public class ObservationEncoder {
 		put( GridChannel.VISIBLE, p, visible );
 		put( GridChannel.EXPLORED, p, explored );
 		put( GridChannel.FOGGED, p, explored && !visible );
+		if (known){
+			put( GridChannel.WATER, p, level.water[ cell ] );
+			put( GridChannel.DOOR, p, terrain == Terrain.DOOR || terrain == Terrain.OPEN_DOOR );
+			Heap remembered = level.heaps.get( cell );
+			if (remembered != null && !remembered.isEmpty() && remembered.seen){
+				put( GridChannel.ITEM_KIND, p, GridChannel.quantise( itemKind( remembered ) ) );
+			}
+		}
 
 		if (visible){
 			put( GridChannel.HIGH_GRASS, p, terrain == Terrain.HIGH_GRASS
@@ -253,12 +261,30 @@ public class ObservationEncoder {
 						break;
 				}
 				if (isThreatening( (Mob) ch )) put( GridChannel.THREATENING, p, 1f );
+				if (ch.alignment == Char.Alignment.ENEMY){
+					Mob mob = (Mob) ch;
+					put( GridChannel.ENEMY_HP, p, GridChannel.quantise( ch.HT > 0 ? (float) ch.HP / ch.HT : 0f ) );
+					put( GridChannel.ENEMY_KIND, p, GridChannel.quantise( (1 + Math.floorMod( ch.getClass().getSimpleName().hashCode(), 63 )) / 64f ) );
+					put( GridChannel.ENEMY_ASLEEP, p, mob.state == mob.SLEEPING );
+					put( GridChannel.ENEMY_HUNTING, p, mob.state == mob.HUNTING );
+				}
 			}
 
 			if (cell == hero.pos) put( GridChannel.HERO, p, 1f );
 		}
 	}
 
+
+	private static float itemKind( Heap heap ){
+		if (heap.type != Heap.Type.HEAP) return 6 / 7f;
+		Item top = heap.peek();
+		if (top instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.Food) return 1 / 7f;
+		if (top instanceof com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll) return 2 / 7f;
+		if (top instanceof com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion) return 3 / 7f;
+		if (top instanceof com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem) return 4 / 7f;
+		if (top instanceof com.shatteredpixel.shatteredpixeldungeon.items.Gold) return 5 / 7f;
+		return 6 / 7f;
+	}
 
 	private boolean heapSeen( Heap heap ){
 		return heap.seen;
