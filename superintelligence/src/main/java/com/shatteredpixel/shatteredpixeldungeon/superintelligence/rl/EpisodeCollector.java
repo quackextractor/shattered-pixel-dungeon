@@ -170,7 +170,7 @@ public class EpisodeCollector {
 			Transition snapshot = snapshot( env );
 			network.forward( env.grid(), env.gridTouched(), env.gridTouchedCount(), env.inventory(), env.heroFeatures() );
 
-			int liveHead = headFor( env.mode() );
+			int liveHead = headFor( env );
 			if (teacher != null) snapshot.teacherIndex = teacher.label( env, liveHead );
 			int actionIndex = Policy.sample( network.actionLogits(), env.actionMask(), rng );
 			int slotIndex = Policy.sample( network.slotLogits(), env.slotMask(), rng );
@@ -203,7 +203,9 @@ public class EpisodeCollector {
 				if (!record.isRetained( dropped )) dropped.release();
 			}
 
-		if (liveHead == Policy.HEAD_TARGET) actionIndex = ActionMapper.aimAction( targetIndex ).index;
+		if (liveHead != Policy.HEAD_ACTION){
+			actionIndex = subModeAction( env, liveHead == Policy.HEAD_TARGET ? targetIndex : slotIndex ).index;
+		}
 		Action action = Action.fromIndex( actionIndex );
 		int secondary = (liveHead == Policy.HEAD_TARGET) ? targetIndex : slotIndex;
 
@@ -251,10 +253,11 @@ public class EpisodeCollector {
 			Action action = Action.valueOf( step.action );
 			Transition t = snapshot( env );
 			network.forward( env.grid(), env.gridTouched(), env.gridTouchedCount(), env.inventory(), env.heroFeatures() );
-			t.liveHead = headFor( env.mode() );
+			t.liveHead = headFor( env );
 			t.actionIndex = action.index;
 			t.slotIndex = step.slot;
-			t.teacherIndex = t.liveHead == Policy.HEAD_ACTION ? action.index : step.slot;
+			t.teacherIndex = t.liveHead == Policy.HEAD_ACTION ? action.index
+					: t.liveHead == Policy.HEAD_SLOT && env.slotMask()[ step.slot ] < 0.5f ? -1 : step.slot;
 			t.demonstration = true;
 			t.episodeId = episodeId;
 			t.stepIndex = i;
@@ -308,11 +311,35 @@ public class EpisodeCollector {
 		}
 	}
 
-	private static int headFor( EnvMode mode ){
-		switch (mode) {
+	public static Action subModeAction( SPDEnv env, int chosen ){
+		float[] mask = env.actionMask();
+		switch (env.mode()) {
+			case TARGETING:
+				return ActionMapper.aimAction( chosen );
+			case SLOT:
+			case INVENTORY:
+				return mask[ Action.USE.index ] > 0.5f ? Action.USE : Action.CANCEL;
+			case TALENT:
+			case ALCHEMY:
+			case MENU:
+				return mask[ Action.MENU_SELECT.index ] > 0.5f ? Action.MENU_SELECT : Action.CANCEL;
+			default:
+				return null;
+		}
+	}
+
+	private static boolean anyOffered( float[] mask ){
+		for (float m : mask) if (m > 0.5f) return true;
+		return false;
+	}
+
+	private static int headFor( SPDEnv env ){
+		switch (env.mode()) {
 			case SLOT:
 			case INVENTORY:
 			case TALENT: return Policy.HEAD_SLOT;
+			case ALCHEMY:
+			case MENU: return anyOffered( env.slotMask() ) ? Policy.HEAD_SLOT : Policy.HEAD_ACTION;
 			case TARGETING: return Policy.HEAD_TARGET;
 			default:        return Policy.HEAD_ACTION;
 		}

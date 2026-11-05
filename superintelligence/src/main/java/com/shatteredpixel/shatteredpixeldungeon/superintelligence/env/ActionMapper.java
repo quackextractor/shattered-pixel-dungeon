@@ -266,6 +266,11 @@ public class ActionMapper {
 
 
 	public void slotMask( EnvMode mode, float[] mask ){
+		if (mode == EnvMode.MENU){
+			for (int i = 0; i < mask.length; i++) mask[ i ] = i < WindowBridge.optionCount() && WindowBridge.optionSelectable( i ) ? 1f : 0f;
+			return;
+		}
+
 		if (mode == EnvMode.ALCHEMY ){
 			for (int i = 0; i < mask.length; i++) mask[ i ] = 0f;
 			int options = alchemyChoices().size();

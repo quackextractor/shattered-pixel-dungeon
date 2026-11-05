@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nearest corridor or doorway within 8 steps, so flies reach it one or two at a time. New gate `tacticscheck`.
 
 ### Fixed
+- **A policy answered menus with the wrong head.** In a dialog the option came from the slot head, sampled over item
+  indices and untrained there, so 54 answers an episode were refused and the hero went back and forth over the upgrade
+  dialog: 5,595 armour picks against 333 Upgrade scrolls read. In the item list the use, drop or cancel came from the
+  action head, untrained there too. No-time steps went from 5% to 25% of every episode once the hero carried scrolls.
+  A dialog's options are now the slot mask and the live head, and each sub-mode's action follows from the choice.
 - **Brewing a Trinket Catalyst ended a training run.** Its recipe opens a window on a scene a worker does not have, so
   the first hero to carry one to a pot killed the run at generation 199. It is no longer offered. `aimcheck` now also
   uses every item kind through the real mask, so the next such path fails a gate rather than a run.

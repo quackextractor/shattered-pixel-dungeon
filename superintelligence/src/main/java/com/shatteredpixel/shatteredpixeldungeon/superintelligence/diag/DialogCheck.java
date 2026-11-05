@@ -15,7 +15,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class DialogCheck {
 
-	private static final int CHECKS = 4;
+	private static final int CHECKS = 5;
 
 	private static final String[] SEEDS = {
 			"DIALOGCHECK-A", "DIALOGCHECK-B", "DIALOGCHECK-C", "DIALOGCHECK-D", "DIALOGCHECK-E"
@@ -29,8 +29,41 @@ public class DialogCheck {
 		checkADialogClosesWhenTheGameClosesIt();
 		checkAnOpenDialogCanBeAnswered();
 		checkUpgradeScrollsUpgradeThePickedArmour();
+		checkAMenuIsAnsweredOnTheLiveHead();
 
 		System.exit( GateReport.report( "dialog answers", CHECKS ));
+	}
+
+	private static void checkAMenuIsAnsweredOnTheLiveHead(){
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv env =
+				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv(
+						new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig(),
+						com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame.install() );
+		env.reset( "MENU-HEAD", com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass.WARRIOR );
+		new com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade().collect();
+		env.step( Action.USE, 0 );
+		if (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector.subModeAction( env, 0 ) != Action.USE){
+			fail( "choosing an item takes its use or drop from the action head, which is not trained there, so items were dropped at random" );
+		}
+		env.step( Action.USE, slotOf( env, com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade.class ) );
+		com.shatteredpixel.shatteredpixeldungeon.items.Item armour = Dungeon.hero.belongings.armor();
+		env.mapper().refreshSlots();
+		env.step( Action.USE, env.mapper().slots().indexOf( armour ) );
+		if (env.mode() != com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode.MENU){
+			fail( "reading Upgrade on the armour reached " + env.mode() + ", not the dialog, so the menu was not tested" );
+			return;
+		}
+		float offered = 0f;
+		for (float m : env.slotMask()) offered += m;
+		if (offered != com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.optionCount()){
+			fail( "a dialog with " + com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.optionCount() + " options offers " + offered + " slots, so its answer is an item index and 54 answers an episode were refused" );
+		}
+		for (int i = 0; i < com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.optionCount(); i++){
+			if (env.slotMask()[ i ] < 0.5f) fail( "dialog option " + i + " is masked" );
+		}
+		if (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector.subModeAction( env, 0 ) != Action.MENU_SELECT){
+			fail( "a dialog answer does not come from the live head" );
+		}
 	}
 
 	private static void checkTheGamesOwnDialogIsAgedAndAnswered(){
