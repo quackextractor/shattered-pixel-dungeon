@@ -26,7 +26,7 @@ import java.util.function.Predicate;
 
 public class AimCheck {
 
-	private static final int CHECKS = 9;
+	private static final int CHECKS = 11;
 	private static final int NEAREST = 9;
 	private static final String[] SEEDS = { "AIM-A", "AIM-B", "AIM-C", "AIM-D", "AIM-E", "AIM-F", "AIM-G", "AIM-H" };
 
@@ -46,6 +46,8 @@ public class AimCheck {
 		checkAWandZapSpendsACharge();
 		checkTheTeacherShoots();
 		checkEveryWandFires();
+		checkACatalystIsNeverBrewed();
+		checkEveryItemCanBeUsed();
 
 		System.exit( GateReport.report( "aimed items", CHECKS ) );
 	}
@@ -174,6 +176,55 @@ public class AimCheck {
 		}
 		Mob rat = placeRatAtRange( HeroClass.MAGE );
 		if (rat != null && !hits( rat, 2, i -> i instanceof MagesStaff )) GateReport.fail( "2 staff zaps at a rat did not hurt it" );
+	}
+
+	private static void checkACatalystIsNeverBrewed(){
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		Dungeon.energy = 50;
+		new com.shatteredpixel.shatteredpixeldungeon.items.trinkets.TrinketCatalyst().collect();
+		for (com.shatteredpixel.shatteredpixeldungeon.items.Recipe recipe : com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.AlchemyAction.recipes( Dungeon.hero )){
+			if (recipe instanceof com.shatteredpixel.shatteredpixeldungeon.items.trinkets.TrinketCatalyst.Recipe){
+				GateReport.fail( "a Trinket Catalyst is offered as a recipe, and brewing it opens a window on a scene that does not exist headless" );
+			}
+		}
+		Dungeon.energy = 0;
+	}
+
+	private static void checkEveryItemCanBeUsed(){
+		com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category[] kinds = {
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.POTION,
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.SCROLL,
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.STONE,
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.SEED,
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.FOOD,
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.RING,
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.ARTIFACT,
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.TRINKET,
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.ARMOR,
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.MISSILE,
+				com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.WEP_T1 };
+		int used = 0;
+		for (com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category kind : kinds){
+			for (Class< ? > type : kind.classes){
+				Mob rat = placeRatAtRange( HeroClass.WARRIOR );
+				if (rat == null) return;
+				try {
+					Item item = (Item) type.getDeclaredConstructor().newInstance();
+					item.identify();
+					item.collect();
+					Dungeon.hero.HP = Dungeon.hero.HT;
+					aim( slotOf( i -> i == item ) );
+					for (int i = 0; i < 6 && env.running() && env.mode() != EnvMode.WORLD; i++){
+						env.step( env.mode() == EnvMode.TARGETING ? Action.USE : Action.CANCEL, NEAREST );
+					}
+					used++;
+				} catch (ReflectiveOperationException | RuntimeException e){
+					StackTraceElement[] at = e.getStackTrace();
+					GateReport.fail( type.getSimpleName() + " crashed the episode: " + e + " at " + (at.length > 0 ? at[ 0 ] : null) + " " + (at.length > 1 ? at[ 1 ] : null) );
+				}
+			}
+		}
+		System.out.println( "  " + used + " item kinds used through the real mask without a crash" );
 	}
 
 	private static void checkEveryWandFires(){

@@ -57,6 +57,7 @@ public final class AlchemyAction {
 
 		for (ArrayList< Item > ingredients : ingredientSets( hero )){
 			for (Recipe recipe : Recipe.findRecipes( new ArrayList<>( ingredients ))){
+				if (recipe instanceof com.shatteredpixel.shatteredpixeldungeon.items.trinkets.TrinketCatalyst.Recipe) continue;
 				if (recipe.cost( new ArrayList<>( ingredients )) > Dungeon.energy ) continue;
 				if (!out.contains( recipe )) out.add( recipe );
 			}

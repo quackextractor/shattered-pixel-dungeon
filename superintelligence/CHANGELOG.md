@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nearest corridor or doorway within 8 steps, so flies reach it one or two at a time. New gate `tacticscheck`.
 
 ### Fixed
+- **Brewing a Trinket Catalyst ended a training run.** Its recipe opens a window on a scene a worker does not have, so
+  the first hero to carry one to a pot killed the run at generation 199. It is no longer offered. `aimcheck` now also
+  uses every item kind through the real mask, so the next such path fails a gate rather than a run.
 - **The viewer lost its clock on the Worn Key.** The support prompt saves the game, and a save rebases `Actor` time, so
   the first Goo kill played in the viewer diverged at the key: 1.0 against 266.0. `ReplayLauncher` marks the prompt
   seen. `goo-kill.replay`, a teacher run that kills Goo and reaches floor 6, joins the corpus, 30 recordings.
