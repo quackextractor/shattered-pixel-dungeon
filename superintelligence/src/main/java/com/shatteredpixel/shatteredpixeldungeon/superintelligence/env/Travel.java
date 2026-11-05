@@ -15,6 +15,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.StenchGas;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.ToxicGas;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.NPC;
+import com.shatteredpixel.shatteredpixeldungeon.items.Dewdrop;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
@@ -40,8 +41,10 @@ public final class Travel {
 	private static float cachedNow;
 	private static Level cachedLevel;
 	private static boolean[] cached, cachedPass;
-	private static final int[] steps = new int[ 2 ];
-	private static final boolean[] stepKnown = new boolean[ 2 ];
+	private static final int[] steps = new int[ 3 ];
+	private static final boolean[] stepKnown = new boolean[ 3 ];
+	private static Level leftLevel;
+	private static final java.util.BitSet left = new java.util.BitSet();
 	private static boolean frontierEarly;
 	private static int frontierBest;
 
@@ -49,27 +52,31 @@ public final class Travel {
 
 	public static int target( Action action, boolean commit ){
 		if (Dungeon.level == null || Dungeon.hero == null) return -1;
+		if (action == Action.TRAVEL_ITEM) return item();
 		return action == Action.TRAVEL_STAIRS ? stairs() : frontier( commit );
 	}
 
 	public static int step( Action action, boolean commit ){
 		if (Dungeon.level == null || Dungeon.hero == null) return -1;
 		cachedWalkable( Dungeon.level );
-		int i = action == Action.TRAVEL_STAIRS ? 0 : 1;
+		int i = action == Action.TRAVEL_STAIRS ? 0 : action == Action.TRAVEL_EXPLORE ? 1 : 2;
 		if (stepKnown[ i ]){
 			if (commit && i == 1 && !frontierEarly){
 				committedLevel = Dungeon.level;
 				committed = frontierBest;
 			}
+			if (commit && i == 2 && steps[ i ] == Dungeon.hero.pos) left.set( steps[ i ] );
 			return steps[ i ];
 		}
 		steps[ i ] = freshStep( action, commit );
 		stepKnown[ i ] = true;
+		if (commit && i == 2 && steps[ i ] == Dungeon.hero.pos) left.set( steps[ i ] );
 		return steps[ i ];
 	}
 
 	private static int freshStep( Action action, boolean commit ){
 		int target = target( action, commit );
+		if (action == Action.TRAVEL_ITEM && target == Dungeon.hero.pos) return target;
 		if (target < 0 || target == Dungeon.hero.pos) return -1;
 		boolean[] base = cachedWalkable( Dungeon.level );
 		boolean[] walk = cachedPass.clone();
@@ -92,7 +99,7 @@ public final class Travel {
 				|| cachedNow != Actor.now()){
 			cached = walkable( level );
 			cachedPass = passThrough( level, cached.clone() );
-			stepKnown[ 0 ] = stepKnown[ 1 ] = false;
+			stepKnown[ 0 ] = stepKnown[ 1 ] = stepKnown[ 2 ] = false;
 			cachedVersion = version;
 			cachedLevel = level;
 			cachedPos = Dungeon.hero.pos;
@@ -118,6 +125,34 @@ public final class Travel {
 		Level level = Dungeon.level;
 		int exit = StairPotential.exitCell( level );
 		return exit >= 0 && known( level, exit ) ? exit : -1;
+	}
+
+	private static boolean collectable( Heap heap ){
+		if (heap.type != Heap.Type.HEAP && heap.type != Heap.Type.CHEST && heap.type != Heap.Type.SKELETON
+				&& heap.type != Heap.Type.REMAINS) return false;
+		return !(heap.peek() instanceof Dewdrop);
+	}
+
+	private static int item(){
+		Level level = Dungeon.level;
+		int hero = Dungeon.hero.pos;
+		if (leftLevel != level){
+			leftLevel = level;
+			left.clear();
+		}
+		boolean built = false;
+		int best = -1;
+		for (Heap heap : level.heaps.valueList()){
+			if (!level.visited[ heap.pos ] || !collectable( heap ) || left.get( heap.pos )) continue;
+			if (heap.pos == hero) return hero;
+			if (!built){
+				PathFinder.buildDistanceMap( hero, passThrough( level ) );
+				built = true;
+			}
+			if (PathFinder.distance[ heap.pos ] == Integer.MAX_VALUE) continue;
+			if (best < 0 || PathFinder.distance[ heap.pos ] < PathFinder.distance[ best ]) best = heap.pos;
+		}
+		return best;
 	}
 
 	private static int frontier( boolean commit ){

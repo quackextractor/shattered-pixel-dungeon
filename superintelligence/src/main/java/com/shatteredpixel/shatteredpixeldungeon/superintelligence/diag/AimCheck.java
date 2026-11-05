@@ -26,7 +26,7 @@ import java.util.function.Predicate;
 
 public class AimCheck {
 
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 9;
 	private static final int NEAREST = 9;
 	private static final String[] SEEDS = { "AIM-A", "AIM-B", "AIM-C", "AIM-D", "AIM-E", "AIM-F", "AIM-G", "AIM-H" };
 
@@ -45,6 +45,7 @@ public class AimCheck {
 		checkAStaffZapHits();
 		checkAWandZapSpendsACharge();
 		checkTheTeacherShoots();
+		checkEveryWandFires();
 
 		System.exit( GateReport.report( "aimed items", CHECKS ) );
 	}
@@ -173,6 +174,29 @@ public class AimCheck {
 		}
 		Mob rat = placeRatAtRange( HeroClass.MAGE );
 		if (rat != null && !hits( rat, 2, i -> i instanceof MagesStaff )) GateReport.fail( "2 staff zaps at a rat did not hurt it" );
+	}
+
+	private static void checkEveryWandFires(){
+		Class< ? >[] wands = com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.WAND.classes;
+		for (int round = 0; round < 60; round++){
+			for (Class< ? > type : wands){
+				Mob rat = placeRatAtRange( HeroClass.WARRIOR );
+				if (rat == null) return;
+				try {
+					Wand wand = (Wand) type.getDeclaredConstructor().newInstance();
+					wand.identify();
+					wand.cursed = round % 2 == 0;
+					wand.collect();
+					Dungeon.hero.HP = Dungeon.hero.HT;
+					aim( slotOf( i -> i == wand ) );
+					if (env.mode() == EnvMode.TARGETING) env.step( Action.USE, NEAREST );
+				} catch (ReflectiveOperationException | RuntimeException e){
+					StackTraceElement at = e.getStackTrace().length > 0 ? e.getStackTrace()[ 0 ] : null;
+					GateReport.fail( type.getSimpleName() + " cursed=" + (round % 2 == 0) + " crashed: " + e + " at " + at );
+					return;
+				}
+			}
+		}
 	}
 
 	private static void checkTheTeacherShoots(){

@@ -100,6 +100,14 @@ public class EnvConfig {
 
 	public float itemValueOther = 0.5f;
 
+	public float pickupFood = 200f;
+
+	public float pickupPower = 300f;
+
+	public float pickupConsumable = 75f;
+
+	public float pickupGear = 100f;
+
 
 	public float bossSlainFactor = 2f;
 
@@ -211,6 +219,10 @@ public class EnvConfig {
 		out.writeFloat( itemValueEquipBase );
 		out.writeFloat( itemValueEquipLevel );
 		out.writeFloat( itemValueOther );
+		out.writeFloat( pickupFood );
+		out.writeFloat( pickupPower );
+		out.writeFloat( pickupConsumable );
+		out.writeFloat( pickupGear );
 		out.writeFloat( bossSlainFactor );
 		out.writeFloat( maxHpGainCap );
 		out.writeInt( curriculumFadeStartDepth );
@@ -267,6 +279,10 @@ public class EnvConfig {
 		itemValueEquipBase = in.readFloat();
 		itemValueEquipLevel = in.readFloat();
 		itemValueOther = in.readFloat();
+		pickupFood = in.readFloat();
+		pickupPower = in.readFloat();
+		pickupConsumable = in.readFloat();
+		pickupGear = in.readFloat();
 		bossSlainFactor = in.readFloat();
 		maxHpGainCap = in.readFloat();
 		curriculumFadeStartDepth = in.readInt();
@@ -330,6 +346,10 @@ public class EnvConfig {
 		c.itemValueEquipBase = itemValueEquipBase;
 		c.itemValueEquipLevel = itemValueEquipLevel;
 		c.itemValueOther = itemValueOther;
+		c.pickupFood = pickupFood;
+		c.pickupPower = pickupPower;
+		c.pickupConsumable = pickupConsumable;
+		c.pickupGear = pickupGear;
 		c.bossSlainFactor = bossSlainFactor;
 		c.maxHpGainCap = maxHpGainCap;
 		c.curriculumFadeStartDepth = curriculumFadeStartDepth;

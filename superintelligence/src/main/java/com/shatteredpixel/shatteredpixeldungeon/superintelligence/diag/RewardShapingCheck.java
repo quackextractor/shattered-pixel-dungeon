@@ -45,6 +45,46 @@ public final class RewardShapingCheck {
 	}
 
 
+	public static void checkLootIsWorthTheWalk(){
+		EnvConfig config = new EnvConfig();
+		double food = pickup( new com.shatteredpixel.shatteredpixeldungeon.items.food.Food() ).termTotal( RewardTerm.ITEM_PICKUP );
+		double upgrade = pickup( new com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade() ).termTotal( RewardTerm.ITEM_PICKUP );
+		if (food < 50 * config.turnCost || upgrade < food){
+			fail( "a ration pays " + fmt( food ) + " and an Upgrade scroll " + fmt( upgrade ) + " at " + fmt( config.turnCost )
+					+ " a turn, so a detour for either loses reward and the hero walks past them" );
+			return;
+		}
+		System.out.println( "  a ration pays " + fmt( food ) + ", an Upgrade scroll " + fmt( upgrade ) );
+	}
+
+
+	public static void checkLootPaysOnce(){
+		double[] once = { 0 };
+		Outcome outcome = play( new EnvConfig(), 16, "LOOTONCE", turn -> {
+			SPDEnv env = turn.env;
+			com.shatteredpixel.shatteredpixeldungeon.items.Item food = Dungeon.hero.belongings.getItem( com.shatteredpixel.shatteredpixeldungeon.items.food.Food.class );
+			if (turn.step == 2){
+				Dungeon.level.drop( new com.shatteredpixel.shatteredpixeldungeon.items.food.Food(), cellBesideHero() );
+				Dungeon.observe();
+				env.step( Action.INTERACT, 0 );
+			} else if (turn.step == 4){
+				once[ 0 ] = env.ledger().termTotal( RewardTerm.ITEM_PICKUP );
+				env.step( Action.OPEN_INVENTORY, 0 );
+			} else if (turn.step == 5){
+				env.step( Action.DROP, env.mapper().slots().indexOf( food ) );
+			} else if (turn.step == 6){
+				env.step( Action.INTERACT, 0 );
+			} else {
+				env.step( Action.WAIT, 0 );
+			}
+		} );
+		double total = outcome.termTotal( RewardTerm.ITEM_PICKUP ) + outcome.termTotal( RewardTerm.ITEM_DROPPED );
+		if (once[ 0 ] < 10 || total > once[ 0 ] + 1){
+			fail( "a dropped ration taken up again paid " + fmt( total ) + " after " + fmt( once[ 0 ] ) + " the first time, so a hero can farm its own food" );
+		}
+	}
+
+
 	public static void checkPickingUpGoldPays(){
 		Outcome outcome = pickup( new com.shatteredpixel.shatteredpixeldungeon.items.Gold( 25 ) );
 

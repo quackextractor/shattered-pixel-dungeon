@@ -107,6 +107,7 @@ public final class DescentBot {
 			return Action.USE;
 		}
 		if (hero.getVisibleEnemies().isEmpty() && improveSlot( env ) >= 0 && legal( mask, Action.USE )) return Action.USE;
+		if (legal( mask, Action.TRAVEL_ITEM )) return Action.TRAVEL_ITEM;
 		boolean famished = hunger != null && hunger.hunger() >= Hunger.HUNGRY;
 		if (!hurt && !famished && hero.HP < hero.HT && hero.getVisibleEnemies().isEmpty() && legal( mask, Action.REST )) return Action.REST;
 		if (!famished && legal( mask, Action.TRAVEL_EXPLORE )) return Action.TRAVEL_EXPLORE;

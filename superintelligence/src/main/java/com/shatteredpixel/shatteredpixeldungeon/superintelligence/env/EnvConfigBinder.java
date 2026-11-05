@@ -65,6 +65,10 @@ public class EnvConfigBinder {
 			"reward.item_value_equip_base",
 			"reward.item_value_equip_level",
 			"reward.item_value_other",
+			"reward.pickup_food",
+			"reward.pickup_power",
+			"reward.pickup_consumable",
+			"reward.pickup_gear",
 			"reward.boss_slain_factor",
 			"reward.craft_reward",
 			"reward.craft_meat_pie_reward",
@@ -313,6 +317,14 @@ public class EnvConfigBinder {
 				config.itemValueEquipLevel = decimal( key, value, origin ); break;
 			case "reward.item_value_other":
 				config.itemValueOther = decimal( key, value, origin ); break;
+			case "reward.pickup_food":
+				config.pickupFood = decimal( key, value, origin ); break;
+			case "reward.pickup_power":
+				config.pickupPower = decimal( key, value, origin ); break;
+			case "reward.pickup_consumable":
+				config.pickupConsumable = decimal( key, value, origin ); break;
+			case "reward.pickup_gear":
+				config.pickupGear = decimal( key, value, origin ); break;
 			case "reward.boss_slain_factor":
 				config.bossSlainFactor = decimal( key, value, origin ); break;
 			case "reward.craft_reward":

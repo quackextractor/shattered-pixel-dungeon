@@ -19,7 +19,7 @@ import java.util.List;
 
 public class TravelCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 8;
 
 	private static final String[] SEEDS = { "TRAVEL-A", "TRAVEL-B", "TRAVEL-C", "TRAVEL-D", "TRAVEL-E", "TRAVEL-F" };
 
@@ -34,6 +34,9 @@ public class TravelCheck {
 		checkTravellingAloneDescends();
 		checkTravelNeverCrossesTheUpstairs();
 		checkCachedTravelMatchesFresh();
+		checkTravelFetchesASeenItem();
+		checkAnItemOutOfSightIsNotATarget();
+		checkTheTeacherCollects();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     travel actions: " + CHECKS + " checks passed" );
@@ -42,6 +45,67 @@ public class TravelCheck {
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}
+	}
+
+	private static int seenCellAway( int least ){
+		int hero = Dungeon.hero.pos;
+		for (int c = 0; c < Dungeon.level.length(); c++){
+			if (Dungeon.level.heroFOV[ c ] && Dungeon.level.passable[ c ] && !Dungeon.level.avoid[ c ]
+					&& Dungeon.level.distance( hero, c ) >= least && Dungeon.level.heaps.get( c ) == null) return c;
+		}
+		return -1;
+	}
+
+	private static int rations(){
+		int n = 0;
+		for (com.shatteredpixel.shatteredpixeldungeon.items.Item item : Dungeon.hero.belongings.backpack.items){
+			if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.Food) n += item.quantity();
+		}
+		return n;
+	}
+
+	private static void checkTravelFetchesASeenItem(){
+		SPDEnv env = fresh( SEEDS[ 0 ] );
+		int cell = seenCellAway( 3 );
+		if (cell < 0){
+			fail( "no seen cell 3 away, so no fetch could be tested" );
+			return;
+		}
+		Dungeon.level.drop( new com.shatteredpixel.shatteredpixeldungeon.items.food.Food(), cell );
+		Dungeon.observe();
+		int before = rations();
+		for (int i = 0; i < 30 && env.running() && rations() == before; i++){
+			env.step( env.actionMask()[ Action.TRAVEL_ITEM.index ] > 0.5f ? Action.TRAVEL_ITEM : Action.WAIT, 0 );
+		}
+		if (rations() <= before) fail( "TRAVEL_ITEM never fetched a ration lying in view " + cell );
+	}
+
+	private static void checkAnItemOutOfSightIsNotATarget(){
+		for (String seed : SEEDS){
+			SPDEnv env = fresh( seed );
+			if (env.actionMask()[ Action.TRAVEL_ITEM.index ] < 0.5f) continue;
+			com.shatteredpixel.shatteredpixeldungeon.items.Heap near = null;
+			for (com.shatteredpixel.shatteredpixeldungeon.items.Heap heap : Dungeon.level.heaps.valueList()){
+				if (Dungeon.level.visited[ heap.pos ]) near = heap;
+			}
+			if (near == null) fail( seed + ": TRAVEL_ITEM is offered with no item seen, so the mask hands over where loot is" );
+		}
+	}
+
+	private static void checkTheTeacherCollects(){
+		SPDEnv env = fresh( SEEDS[ 0 ] );
+		int cell = seenCellAway( 3 );
+		if (cell < 0){
+			fail( "no seen cell 3 away, so the teacher could not be tested" );
+			return;
+		}
+		Dungeon.level.drop( new com.shatteredpixel.shatteredpixeldungeon.items.food.Food(), cell );
+		Dungeon.observe();
+		int before = rations();
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.DescentBot bot = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.DescentBot();
+		int[] secondary = new int[ 1 ];
+		for (int i = 0; i < 30 && env.running() && rations() == before; i++) env.step( bot.act( env, secondary ), secondary[ 0 ] );
+		if (rations() <= before) fail( "DescentBot walked past a ration in view" );
 	}
 
 	private static void checkUnseenStairsAreNotATarget(){

@@ -49,7 +49,7 @@ public class WornKey extends Key {
 
 	@Override
 	public boolean doPickUp(Hero hero, int pos) {
-		if(!SPDSettings.supportNagged()){
+		if(!SPDSettings.supportNagged() && ShatteredPixelDungeon.scene() != null){
 			try {
 				Dungeon.saveAll();
 				Game.runOnRenderThread(new Callback() {

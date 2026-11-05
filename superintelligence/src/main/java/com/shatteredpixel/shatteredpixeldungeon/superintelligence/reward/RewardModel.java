@@ -32,6 +32,7 @@ public class RewardModel {
 	private int prevMeals;
 	private float prevEngineTime;
 	private boolean snapshotValid = false;
+	private final int[] prevLoot = new int[ LOOT_KINDS ];
 	private int deepestPaid = 0;
 	private boolean lastStepAdvancedClock = true;
 	private final java.util.Map<Integer, java.util.BitSet> stoodOn = new java.util.HashMap<>();
@@ -108,7 +109,7 @@ public class RewardModel {
 		} else if (gold < prevGold){
 			ledger.add( RewardTerm.GOLD_LOST, -config.goldReward * config.goldLostFactor * (prevGold - gold), false );
 		}
-		float carried = inventoryValue();
+		float carried = inventoryValue() + lootChange( hero );
 		if (carried > prevItemValue){
 			ledger.add( RewardTerm.ITEM_PICKUP, carried - prevItemValue, false );
 		} else if (carried < prevItemValue){
@@ -240,6 +241,7 @@ public class RewardModel {
 		prevDepth = Dungeon.depth;
 		prevBranch = Dungeon.branch;
 		prevItemValue = inventoryValue();
+		countLoot( hero, prevLoot );
 		prevIdentified = countIdentified();
 		prevCursedEquipped = countCursedEquipped();
 		prevCarried = countCarried();
@@ -263,6 +265,49 @@ public class RewardModel {
 		TURN_LIMIT,
 		OTHER
 	}
+	private static final int LOOT_FOOD = 0, LOOT_POWER = 1, LOOT_CONSUMABLE = 2, LOOT_GEAR = 3, LOOT_KINDS = 4;
+
+	private static int lootKind( Item item ){
+		if (item instanceof Food) return LOOT_FOOD;
+		if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade
+				|| item instanceof com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength) return LOOT_POWER;
+		if (item instanceof Potion || item instanceof Scroll) return LOOT_CONSUMABLE;
+		if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor
+				|| item instanceof com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand
+				|| item instanceof com.shatteredpixel.shatteredpixeldungeon.items.rings.Ring
+				|| item instanceof com.shatteredpixel.shatteredpixeldungeon.items.artifacts.Artifact) return LOOT_GEAR;
+		return -1;
+	}
+
+	private static void countLoot( Hero hero, int[] out ){
+		java.util.Arrays.fill( out, 0 );
+		for (Item item : hero.belongings){
+			int kind = item == null ? -1 : lootKind( item );
+			if (kind >= 0) out[ kind ] += item.quantity();
+		}
+	}
+
+	private float lootValue( int kind ){
+		switch (kind) {
+			case LOOT_FOOD: return config.pickupFood;
+			case LOOT_POWER: return config.pickupPower;
+			case LOOT_CONSUMABLE: return config.pickupConsumable;
+			default: return config.pickupGear;
+		}
+	}
+
+	private float lootChange( Hero hero ){
+		int[] now = new int[ LOOT_KINDS ];
+		countLoot( hero, now );
+		boolean droppedHere = Dungeon.level.heaps.get( hero.pos ) != null;
+		float change = 0f;
+		for (int kind = 0; kind < LOOT_KINDS; kind++){
+			int gained = now[ kind ] - prevLoot[ kind ];
+			if (gained > 0 || droppedHere) change += lootValue( kind ) * gained;
+		}
+		return change;
+	}
+
 	private float inventoryValue(){
 		float value = 0f;
 		for (Item item : Dungeon.hero.belongings){

@@ -220,6 +220,7 @@ public class ActionMapper {
 					break;
 				case TRAVEL_STAIRS:
 				case TRAVEL_EXPLORE:
+				case TRAVEL_ITEM:
 					mask[a.index] = Travel.step( a, false ) >= 0 ? 1f : 0f;
 					break;
 				default:
@@ -337,6 +338,7 @@ public class ActionMapper {
 
 			case TRAVEL_STAIRS:
 			case TRAVEL_EXPLORE:
+			case TRAVEL_ITEM:
 				int step = Travel.step( action, true );
 				return step >= 0 && handleCell( step );
 

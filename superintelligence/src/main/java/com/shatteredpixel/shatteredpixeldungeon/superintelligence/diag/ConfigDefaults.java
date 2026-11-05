@@ -84,6 +84,14 @@ public final class ConfigDefaults {
 				return String.valueOf( config.itemValueEquipLevel );
 			case "reward.item_value_other":
 				return String.valueOf( config.itemValueOther );
+			case "reward.pickup_food":
+				return String.valueOf( config.pickupFood );
+			case "reward.pickup_power":
+				return String.valueOf( config.pickupPower );
+			case "reward.pickup_consumable":
+				return String.valueOf( config.pickupConsumable );
+			case "reward.pickup_gear":
+				return String.valueOf( config.pickupGear );
 			case "reward.boss_slain_factor":
 				return String.valueOf( config.bossSlainFactor );
 			case "reward.craft_reward":
@@ -224,6 +232,10 @@ public final class ConfigDefaults {
 			case "reward.item_value_equip_base": return "1.5";
 			case "reward.item_value_equip_level": return "0.25";
 			case "reward.item_value_other": return "0.75";
+			case "reward.pickup_food": return "210";
+			case "reward.pickup_power": return "310";
+			case "reward.pickup_consumable": return "80";
+			case "reward.pickup_gear": return "110";
 			case "reward.boss_slain_factor": return "3.5";
 			case "reward.craft_reward": return "3.5";
 			case "reward.craft_meat_pie_reward": return "3.5";

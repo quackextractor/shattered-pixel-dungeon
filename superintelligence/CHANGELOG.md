@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The hero walked past 80% of the loot it saw.** A pickup paid 0.5 and a turn costs 1, so a detour for an Upgrade
+  scroll lost reward, `TRAVEL_EXPLORE` only heads for unknown cells, and `DescentBot` had no item logic. Food, Upgrade
+  and Strength now pay `reward.pickup_food` 200 and `reward.pickup_power` 300, other potions and scrolls 75, gear 100,
+  charged back if the hero drops the item so the pair nets nothing. New action `TRAVEL_ITEM` walks to the nearest seen
+  item, picking up underfoot where enemies stopped the walk-on pickup, and the teacher takes it. Teacher over 200
+  episodes: mean depth 2.57 to 3.08, level 2.47 to 3.46, armour upgrades 0.15 to 1.12, floor 5 or deeper 1 to 37.
+  Headless boss kills crashed on the slain banner and the Worn Key support prompt; both are skipped without a scene,
+  and a cursed wand's polymorph no longer needs the health indicator. `aimcheck` fires every wand, cursed and clean.
 - **Nothing aimed ever fired.** Aiming offered only `CANCEL`: 2,006 aims, 2,006 cancels and no shot in 514 recordings.
   Three more faults sat behind that mask: `SPDEnv.step` cleared the aim listener before resolving it, so a bow fell
   through to `Item.throwAt` and a wand fizzled; a stand-in sprite never ran a missile or bolt callback; and a held

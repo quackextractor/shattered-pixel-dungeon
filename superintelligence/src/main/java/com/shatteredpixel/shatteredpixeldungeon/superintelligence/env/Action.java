@@ -49,7 +49,10 @@ public enum Action {
 	TRAVEL_STAIRS ( Kind.WORLD, 0, 0 ),
 
 
-	TRAVEL_EXPLORE ( Kind.WORLD, 0, 0 );
+	TRAVEL_EXPLORE ( Kind.WORLD, 0, 0 ),
+
+
+	TRAVEL_ITEM ( Kind.WORLD, 0, 0 );
 
 	public enum Kind {
 
