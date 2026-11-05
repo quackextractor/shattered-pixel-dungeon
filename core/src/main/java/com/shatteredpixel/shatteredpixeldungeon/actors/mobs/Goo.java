@@ -64,6 +64,10 @@ public class Goo extends Mob {
 	private int pumpedUp = 0;
 	private int healInc = 1;
 
+	public int pumpedUp() {
+		return pumpedUp;
+	}
+
 	@Override
 	public int damageRoll() {
 		int min = 1;

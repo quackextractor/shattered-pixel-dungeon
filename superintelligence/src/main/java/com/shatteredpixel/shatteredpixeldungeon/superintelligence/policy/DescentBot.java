@@ -119,7 +119,7 @@ public final class DescentBot {
 		if (calm && hero.HP * 10 < hero.HT * (fed ? 9 : 6)) return Action.REST;
 		if (legal( mask, Action.TRAVEL_ITEM )) return Action.TRAVEL_ITEM;
 		if (legal( mask, Action.TRAVEL_EXPLORE )) return Action.TRAVEL_EXPLORE;
-		if (calm && hero.HP * 4 < hero.HT * 3) return Action.REST;
+		if (calm && hero.HP * 4 < hero.HT * (Dungeon.bossLevel( Dungeon.depth + 1 ) ? 4 : 3)) return Action.REST;
 		if (legal( mask, Action.TRAVEL_STAIRS )) return Action.TRAVEL_STAIRS;
 		return hunt( mask );
 	}

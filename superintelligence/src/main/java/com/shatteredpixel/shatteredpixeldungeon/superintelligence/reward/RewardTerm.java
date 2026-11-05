@@ -59,6 +59,9 @@ public enum RewardTerm {
 	FLOOR_EXPLORED( Type.EXPLORATION ),
 
 
+	BOSS_DAMAGE( Type.COMBAT ),
+
+
 	KILL( Type.COMBAT ),
 
 
@@ -141,6 +144,7 @@ public enum RewardTerm {
 			case CRAFTED:
 			case CRAFTED_MEAT_PIE:
 			case KILL:
+			case BOSS_DAMAGE:
 			case SNEAK_ATTACK:
 				return true;
 			default:

@@ -55,6 +55,7 @@ public class ObserveCheck {
 		check( ObserveCheck::checkTheExitBeaconSurvivesTheWindowEdge );
 		check( () -> ObserveFoeCheck.checkAnEnemyShowsItsState( encoder ) );
 		check( () -> ObserveFoeCheck.checkAnEnemyShowsItsHealth( encoder ) );
+		check( () -> ObserveFoeCheck.checkAChargingBossIsDrawn( encoder ) );
 		check( () -> ObserveFoeCheck.checkEnemiesCanBeToldApart( encoder ) );
 		check( () -> ObserveFoeCheck.checkDoorsAndWaterAreDrawn( encoder ) );
 		check( () -> ObserveFoeCheck.checkASeenItemIsRemembered( encoder ) );

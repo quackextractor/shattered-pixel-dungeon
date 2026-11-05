@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM100;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Eye;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.GnollTrickster;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Necromancer;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Piranha;
@@ -31,13 +32,16 @@ public final class Tactics {
 	private static final int DOOR_REACH = 4;
 	private static final int DOOR_WAIT = 4;
 	private static final int ENGAGE_RANGE = 6;
+	private static final int CHARGE_REACH = 2;
+	private static final int LURE_STEPS = 12;
 
 	private Level danceLevel;
 	private final BitSet usedDoors = new BitSet();
-	private int door = -1, past = -1, waited;
+	private int door = -1, past = -1, waited, lures;
 
 	public void reset(){
 		danceLevel = null;
+		lures = 0;
 		usedDoors.clear();
 		endDance();
 	}
@@ -145,12 +149,53 @@ public final class Tactics {
 		return step;
 	}
 
+	private static Goo goo(){
+		for (Mob mob : Dungeon.hero.getVisibleEnemies()){
+			if (mob instanceof Goo && mob.isAlive() && mob.state == mob.HUNTING) return (Goo) mob;
+		}
+		return null;
+	}
+
+	private static Action awayFrom( float[] mask, Hero hero, Level level, int from, boolean dryOnly ){
+		boolean[] walk = walkable( level );
+		int here = level.distance( hero.pos, from );
+		int best = -1, bestScore = Integer.MIN_VALUE;
+		for (int d : PathFinder.NEIGHBOURS8){
+			int cell = hero.pos + d;
+			if (cell < 0 || cell >= level.length() || !walk[ cell ]) continue;
+			int score = 10 * level.distance( cell, from ) - (level.water[ cell ] ? 5 : 0);
+			if (level.distance( cell, from ) <= here || (dryOnly && level.water[ cell ])) continue;
+			if (score > bestScore){
+				bestScore = score;
+				best = cell;
+			}
+		}
+		return best < 0 ? null : DescentBot.toward( mask, hero.pos, best );
+	}
+
+	private Action fightGoo( float[] mask, Hero hero, Level level, Goo goo ){
+		if (hero.rooted) return null;
+		int range = level.distance( hero.pos, goo.pos );
+		if (goo.pumpedUp() > 0 && range <= CHARGE_REACH) return awayFrom( mask, hero, level, goo.pos, false );
+		if (level.water[ goo.pos ] && goo.HP < goo.HT && range <= 2 && lures < LURE_STEPS){
+			Action lure = awayFrom( mask, hero, level, goo.pos, true );
+			if (lure != null) lures++;
+			return lure;
+		}
+		return null;
+	}
+
 	public Action act( float[] mask, boolean canShoot ){
 		Hero hero = Dungeon.hero;
 		Level level = Dungeon.level;
 		if (danceLevel != level){
 			reset();
 			danceLevel = level;
+		}
+		Goo boss = goo();
+		if (boss != null){
+			Action dodge = fightGoo( mask, hero, level, boss );
+			if (dodge != null) return dodge;
 		}
 		for (Mob mob : Dungeon.hero.getVisibleEnemies()){
 			if (mob.isAlive() && level.adjacent( mob.pos, hero.pos ) && mob.surprisedBy( hero )){

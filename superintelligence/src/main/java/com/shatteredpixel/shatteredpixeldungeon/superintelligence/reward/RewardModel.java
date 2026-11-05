@@ -33,6 +33,7 @@ public class RewardModel {
 	private int prevMeals;
 	private float prevEngineTime;
 	private boolean snapshotValid = false;
+	private final java.util.Map< com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob, Integer > bossLowest = new java.util.IdentityHashMap<>();
 	private com.shatteredpixel.shatteredpixeldungeon.levels.Level prevLevelMap;
 	private final int[] prevLoot = new int[ LOOT_KINDS ];
 	private int deepestPaid = 0;
@@ -45,6 +46,7 @@ public class RewardModel {
 	}
 	public void resetSnapshot(){
 		snapshotValid = false;
+		bossLowest.clear();
 		deepestPaid = 0;
 		stoodOn.clear();
 		stairPotential.reset();
@@ -135,6 +137,7 @@ public class RewardModel {
 			ledger.add( RewardTerm.KILL, config.killReward * n, false );
 			ledger.countKill();
 		}
+		payBossDamage();
 		int sneaks = sneaks();
 		if (sneaks > prevSneaks){
 			ledger.add( RewardTerm.SNEAK_ATTACK,
@@ -188,6 +191,17 @@ public class RewardModel {
 		snapshot();
 		return reward;
 	}
+	private void payBossDamage(){
+		for (com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob mob : Dungeon.level.mobs){
+			if (!mob.properties().contains( com.shatteredpixel.shatteredpixeldungeon.actors.Char.Property.BOSS )) continue;
+			int low = bossLowest.computeIfAbsent( mob, m -> m.HT );
+			if (mob.HP < low){
+				ledger.add( RewardTerm.BOSS_DAMAGE, config.bossDamageReward * (low - mob.HP), false );
+				bossLowest.put( mob, mob.HP );
+			}
+		}
+	}
+
 	private float stairShaping( Hero hero ){
 		if (config.stairPotentialWeight == 0f) return 0f;
 		if (Dungeon.depth != prevDepth || Dungeon.branch != prevBranch) return 0f;

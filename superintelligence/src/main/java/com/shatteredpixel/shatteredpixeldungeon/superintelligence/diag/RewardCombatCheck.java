@@ -52,6 +52,33 @@ public final class RewardCombatCheck {
 		}
 	}
 
+	public static void checkHurtingABossPaysOnlyNewGround( EnvConfig config ){
+		com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo goo = new com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo();
+		final double[] first = { 0 };
+		Outcome o = play( config, 12, "BOSSDAMAGE", turn -> {
+			SPDEnv env = turn.env;
+			Dungeon.hero.HP = Dungeon.hero.HT;
+			if (turn.step == 1){
+				goo.pos = Dungeon.hero.pos + 2 * Dungeon.level.width();
+				goo.state = goo.SLEEPING;
+				com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.add( goo, 0f );
+			}
+			if (turn.step == 3) goo.HP = goo.HT - 10;
+			if (turn.step == 5){
+				first[ 0 ] = env.ledger().termTotal( RewardTerm.BOSS_DAMAGE );
+				goo.HP = goo.HT;
+			}
+			if (turn.step == 7) goo.HP = goo.HT - 10;
+			env.step( Action.WAIT, 0 );
+		} );
+		double expected = 8 * config.bossDamageReward;
+		if (first[ 0 ] < expected){
+			fail( "10 damage to a boss paid " + fmt( first[ 0 ] ) + " against at least " + fmt( expected ) + "; a boss gave no signal before it died, so 106 fights taught nothing" );
+		} else if (o.termTotal( RewardTerm.BOSS_DAMAGE ) > first[ 0 ] + 1e-3){
+			fail( "healing a boss on water and hitting it again paid twice: " + fmt( o.termTotal( RewardTerm.BOSS_DAMAGE ) ) );
+		}
+	}
+
 	public static void checkKillingIsWorthDoing( EnvConfig config ){
 		final boolean[] placed = { false };
 		final int[] lastMobHp = { -1 };

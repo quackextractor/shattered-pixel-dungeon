@@ -63,6 +63,20 @@ final class ObserveFoeCheck {
 		if (place( encoder, hunting, GridChannel.ENEMY_HUNTING ) <= 0f) ObserveCheck.fail( "a hunting gnoll lit no ENEMY_HUNTING" );
 	}
 
+	static void checkAChargingBossIsDrawn( ObservationEncoder encoder ){
+		com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo goo = new com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo();
+		try {
+			java.lang.reflect.Field pumped = com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo.class.getDeclaredField( "pumpedUp" );
+			pumped.setAccessible( true );
+			pumped.setInt( goo, 1 );
+		} catch (ReflectiveOperationException e){
+			ObserveCheck.fail( "pumpedUp could not be set: " + e );
+			return;
+		}
+		goo.state = goo.HUNTING;
+		if (place( encoder, goo, GridChannel.ENEMY_CHARGING ) <= 0f) ObserveCheck.fail( "a charging Goo lit no ENEMY_CHARGING, and it is the whole telegraph of a triple-damage hit" );
+	}
+
 	static void checkAnEnemyShowsItsHealth( ObservationEncoder encoder ){
 		Gnoll whole = new Gnoll();
 		float full = place( encoder, whole, GridChannel.ENEMY_HP );

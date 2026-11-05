@@ -82,6 +82,9 @@ public enum GridChannel {
 	ENEMY_HUNTING( Kind.VISIBLE ),
 
 
+	ENEMY_CHARGING( Kind.VISIBLE ),
+
+
 	WATER( Kind.MEMORY ),
 
 

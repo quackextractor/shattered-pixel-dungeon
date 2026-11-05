@@ -267,6 +267,8 @@ public class ObservationEncoder {
 					put( GridChannel.ENEMY_KIND, p, GridChannel.quantise( (1 + Math.floorMod( ch.getClass().getSimpleName().hashCode(), 63 )) / 64f ) );
 					put( GridChannel.ENEMY_ASLEEP, p, mob.state == mob.SLEEPING );
 					put( GridChannel.ENEMY_HUNTING, p, mob.state == mob.HUNTING );
+					put( GridChannel.ENEMY_CHARGING, p, mob instanceof com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo
+							&& ((com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo) mob).pumpedUp() > 0 );
 				}
 			}
 

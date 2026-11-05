@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an
   identity, and nothing for what is inside a chest. 23 planes to 30. Old weights do not load.
 
+- **Goo has a strategy.** In 106 recorded fights the hero answered 101 charge-ups with 206 attacks and never stepped
+  clear, fought Goo on water for 83% of the fight, and arrived at 38% health. The teacher now steps out of a charge's
+  2-cell reach when Goo shows `Goo.pumpedUp()`, which makes Goo move and so drops the charge, draws Goo off water for up
+  to 12 steps, and rests to full before the stairs above a boss. `ENEMY_CHARGING` shows the charge to the policy, and
+  `reward.boss_damage_reward` pays 30 per point a boss falls below its lowest yet, so a boss gives a signal before it
+  dies and water healing cannot be farmed.
 - **The teacher runs through doors for surprise attacks.** A closed door hides the hero from a chaser, so the mob
   enters the doorway without having seen it, and the next hit cannot miss. Facing one hunter that is no faster than the
   hero and not ranged or flying, it steps through a door within 4 steps, waits on the far side and hits what comes

@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Crab;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Gnoll;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Swarm;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
@@ -21,7 +22,7 @@ import com.watabou.utils.PathFinder;
 
 public class TacticsCheck {
 
-	private static final int CHECKS = 3;
+	private static final int CHECKS = 6;
 	private static final String[] SEEDS = { "TACT-A", "TACT-B", "TACT-C", "TACT-D", "TACT-E", "TACT-F", "TACT-G", "TACT-H", "TACT-I", "TACT-J" };
 
 	private static SPDEnv env;
@@ -34,6 +35,9 @@ public class TacticsCheck {
 		checkASwarmIsFoughtInAHall();
 		checkADoorBuysASurpriseAttack();
 		checkAFastEnemyIsNotDanced();
+		checkAChargeIsDodged();
+		checkGooIsLuredOffWater();
+		checkTheTeacherRestsBeforeABoss();
 
 		System.exit( GateReport.report( "combat tactics", CHECKS ) );
 	}
@@ -124,6 +128,81 @@ public class TacticsCheck {
 			if (PathFinder.distance[ c ] <= steps && level.visited[ c ] && Tactics.isHall( level, c )) return c;
 		}
 		return -1;
+	}
+
+	private static Goo gooBesideHero( int cellsAway ){
+		for (String seed : SEEDS){
+			env.reset( seed, HeroClass.WARRIOR );
+			Dungeon.hero.belongings.backpack.items.removeIf( i -> i instanceof com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon );
+			int hero = Dungeon.hero.pos;
+			for (int c = 0; c < Dungeon.level.length(); c++){
+				if (Dungeon.level.heroFOV[ c ] && Dungeon.level.passable[ c ] && Actor.findChar( c ) == null
+						&& Dungeon.level.distance( hero, c ) == cellsAway && !Tactics.isDoor( Dungeon.level, c )){
+					Goo goo = new Goo();
+					placeHunting( goo, c );
+					return goo;
+				}
+			}
+		}
+		GateReport.fail( "no seed has a free cell " + cellsAway + " from the hero, so Goo was not tested" );
+		return null;
+	}
+
+	private static void checkAChargeIsDodged(){
+		Goo goo = gooBesideHero( 1 );
+		if (goo == null) return;
+		try {
+			java.lang.reflect.Field pumped = Goo.class.getDeclaredField( "pumpedUp" );
+			pumped.setAccessible( true );
+			pumped.setInt( goo, 1 );
+		} catch (ReflectiveOperationException e){
+			GateReport.fail( "pumpedUp could not be set: " + e );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+		if (goo.pumpedUp() == 0) return;
+		int before = Dungeon.level.distance( goo.pos, Dungeon.hero.pos );
+		Action action = new DescentBot().act( env, new int[ 1 ] );
+		int target = Dungeon.hero.pos + action.dx + action.dy * Dungeon.level.width();
+		if (!action.directional() || target == goo.pos || Dungeon.level.distance( goo.pos, target ) <= before){
+			GateReport.fail( "Goo is charging a triple-damage hit and the teacher chose " + action + " at distance " + before );
+		}
+	}
+
+	private static void checkGooIsLuredOffWater(){
+		Goo goo = gooBesideHero( 1 );
+		if (goo == null) return;
+		Dungeon.level.water[ goo.pos ] = true;
+		goo.HP = goo.HT - 20;
+		env.step( Action.WAIT, 0 );
+		Action action = new DescentBot().act( env, new int[ 1 ] );
+		Dungeon.level.water[ goo.pos ] = false;
+		int target = Dungeon.hero.pos + action.dx + action.dy * Dungeon.level.width();
+		if (!action.directional() || target == goo.pos){
+			GateReport.fail( "Goo stands on water healing 1 HP a turn and the teacher chose " + action + " instead of drawing it off" );
+		}
+	}
+
+	private static Action teacherAt( int depth ){
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		Dungeon.hero.belongings.backpack.items.removeIf( i -> i instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.Food );
+		java.util.Arrays.fill( Dungeon.level.visited, true );
+		for (int c = 0; c < Dungeon.level.length(); c++) Dungeon.level.mapped[ c ] = true;
+		Dungeon.level.heaps.clear();
+		Dungeon.hero.HP = Dungeon.hero.HT * 8 / 10;
+		int was = Dungeon.depth;
+		env.step( Action.WAIT, 0 );
+		Dungeon.depth = depth;
+		Action action = new DescentBot().act( env, new int[ 1 ] );
+		Dungeon.depth = was;
+		return action;
+	}
+
+	private static void checkTheTeacherRestsBeforeABoss(){
+		Action ordinary = teacherAt( 1 );
+		Action boss = teacherAt( 4 );
+		if (ordinary == Action.REST) GateReport.fail( "at 80% health on an ordinary floor the teacher rested with the stairs known" );
+		if (boss != Action.REST) GateReport.fail( "at 80% health with Goo below the teacher chose " + boss + "; the floor seals once Goo wakes" );
 	}
 
 	private static void checkASwarmIsFoughtInAHall(){
