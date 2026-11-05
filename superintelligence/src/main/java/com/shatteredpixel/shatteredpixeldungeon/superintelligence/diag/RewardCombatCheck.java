@@ -22,6 +22,36 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Re
 public final class RewardCombatCheck {
 	private static final int MAX_HEAP_TRIES = 12;
 	private RewardCombatCheck(){}
+	public static void checkAKillWorthNoExperiencePaysNothing( EnvConfig config ){
+		final boolean[] placed = { false };
+		final int[] slain = { com.shatteredpixel.shatteredpixeldungeon.Statistics.enemiesSlain };
+		Outcome o = play( config, 200, "KILLCHECK", turn -> {
+			SPDEnv env = turn.env;
+			if (env.mode() != EnvMode.WORLD){
+				env.step( Action.CANCEL, 0 );
+				return;
+			}
+			Dungeon.hero.lvl = 9;
+			Dungeon.hero.HP = Dungeon.hero.HT;
+			if (!placed[ 0 ] && placeMobBesideHero( env )){
+				placed[ 0 ] = true;
+				slain[ 0 ] = com.shatteredpixel.shatteredpixeldungeon.Statistics.enemiesSlain;
+			}
+			Mob target = adjacentEnemy();
+			if (target == null){
+				env.step( Action.SEARCH, 0 );
+				return;
+			}
+			env.step( directionToTarget( env, target ), 0 );
+		} );
+		if (com.shatteredpixel.shatteredpixeldungeon.Statistics.enemiesSlain <= slain[ 0 ]){
+			fail( "no mob died, so a kill worth no experience was never tested" );
+		} else if (o.termTotal( RewardTerm.KILL ) != 0){
+			fail( "a mob worth no experience paid KILL " + fmt( o.termTotal( RewardTerm.KILL ) )
+					+ "; swarm clones are worth none, and paying them made the fight that killed the hero half the time pay 600" );
+		}
+	}
+
 	public static void checkKillingIsWorthDoing( EnvConfig config ){
 		final boolean[] placed = { false };
 		final int[] lastMobHp = { -1 };

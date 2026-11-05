@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A swarm paid for fighting it in the open.** Every clone a Swarm splits off paid `reward.kill_reward`, though clones
+  give no experience: 4.0 kills, about 600 points, per swarm-only fight, in the fight that killed the hero 74 times of
+  147. `KILL` now pays only a kill that gave experience.
 - **Floors were left a third unexplored.** After floor 1 the hero left 9-12 turns after seeing the stairs, at 63-76%
   explored, because a descent paid the same either way. Leaving a floor for the first time now pays
   `reward.floor_explored_reward` 600 times the share of its walkable cells seen. `F_FLOOR_EXPLORED` read

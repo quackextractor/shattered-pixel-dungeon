@@ -4,7 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 
 public class RewardCheck {
 
-	private static final int CHECKS = 51;
+	private static final int CHECKS = 52;
 
 	public static void main( String[] args ){
 		EnvConfig config = new EnvConfig();
@@ -38,6 +38,7 @@ public class RewardCheck {
 		RewardDescentCheck.checkDepthOnlyKeepsTheFourNegatives();
 
 		RewardCombatCheck.checkKillingIsWorthDoing( config );
+		RewardCombatCheck.checkAKillWorthNoExperiencePaysNothing( config );
 		RewardCombatCheck.checkPickingUpAndDroppingIsNotProfitable( config );
 		RewardCombatCheck.checkSpendingATalentIsWorthALot( config );
 		RewardCombatCheck.checkRemovingACursePays( config );

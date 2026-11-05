@@ -16,6 +16,7 @@ public class RewardModel {
 	private final EnvConfig config;
 	private final RewardLedger ledger;
 	private final Curriculum curriculum;
+	private int prevExp;
 	private int prevHp, prevMaxHp, prevLevel, prevGold, prevStrength, prevDepth, prevBranch;
 	private float prevItemValue;
 	private int prevIdentified;
@@ -129,7 +130,7 @@ public class RewardModel {
 			ledger.add( RewardTerm.CURED_DEBUFF, config.curedDebuffReward * (prevDebuffCount - debuffs), false );
 		}
 		int kills = kills();
-		if (kills > prevKills){
+		if (kills > prevKills && (hero.exp != prevExp || hero.lvl != prevLevel)){
 			int n = kills - prevKills;
 			ledger.add( RewardTerm.KILL, config.killReward * n, false );
 			ledger.countKill();
@@ -240,6 +241,7 @@ public class RewardModel {
 		prevHp = hero.HP;
 		prevMaxHp = hero.HT;
 		prevLevel = hero.lvl;
+		prevExp = hero.exp;
 		prevGold = Dungeon.gold;
 		prevStrength = hero.STR();
 		prevDepth = Dungeon.depth;
