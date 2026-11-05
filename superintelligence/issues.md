@@ -29,9 +29,14 @@ Floor 1 is solved: `teach-demo-31` reaches depth>=2 in ~90% of episodes, mean de
 
 Two of two full runs on the 30-plane network died about 20 minutes in: generation time climbs from about 2 s to 14-23 s
 from minute 5 to 9, with workers parked in `clEnqueueReadBuffer`, the machine about 20% busy and 27 s of GC in 20
-minutes, then the watchdog fires with no worker progress for 180 s and for 900 s. No driver reset is logged. Discord
-held 72-75% of the GPU's video engine throughout, so it is a suspect and not a cause. A 7-minute run did not reach it.
-`flip-long`, on 23 planes, ran 30 minutes without it.
+minutes, then the watchdog fires with no worker progress for 180 s and for 900 s. No driver reset is logged. A 7-minute
+run did not reach it, and `flip-long`, on 23 planes, ran 30 minutes without it.
+
+`out/analysis/gpu/GpuSoak.java` drives `BatchedInference` alone with Discord and video open: 48 threads hold 71,700
+forwards/s for 90 s, worst 2.9 ms after warm-up; the weights from the stalled run hold 66,000-70,000; 5 threads hold 10,000
+and adding a live PPO update holds 49,000, worst 28 ms. So GPU capacity, those weights and Discord are not the cause, and
+the stall needs something only real collection does. On a stall the log does not say what the inference threads were
+reading, so the watchdog should record that.
 
 ## 39. Wild Magic wand level draws gameplay RNG on the render thread - OPEN
 
