@@ -2,9 +2,12 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
+import com.shatteredpixel.shatteredpixeldungeon.items.wands.CursedWand;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Document;
 import com.shatteredpixel.shatteredpixeldungeon.utils.Holiday;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
+import com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica;
+import com.shatteredpixel.shatteredpixeldungeon.mechanics.ConeAOE;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.CellSelector;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
@@ -24,7 +27,7 @@ import java.util.Random;
 
 public class ResetCheck {
 
-	private static final int CHECKS = 10;
+	private static final int CHECKS = 11;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -56,6 +59,7 @@ public class ResetCheck {
 		checkTheCalendarDoesNotReachTheGame( env );
 		checkUnsavedSavesStayInMemory();
 		checkWindowsLeaveNothingBehind( env );
+		checkACurseEffectForgetsItsCone( env );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reset isolation: " + CHECKS + " checks passed" );
@@ -67,6 +71,29 @@ public class ResetCheck {
 		}
 	}
 
+
+	private static void checkACurseEffectForgetsItsCone( SPDEnv env ){
+		try {
+			env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+			java.lang.reflect.Field effects = CursedWand.class.getDeclaredField( "RARE_EFFECTS" );
+			effects.setAccessible( true );
+			java.lang.reflect.Field cone = CursedWand.ConeOfColors.class.getDeclaredField( "cone" );
+			cone.setAccessible( true );
+			Object effect = null;
+			for (Object candidate : (List< ? >) effects.get( null )){
+				if (candidate instanceof CursedWand.ConeOfColors) effect = candidate;
+			}
+			int from = Dungeon.hero.pos;
+			Ballistica ray = new Ballistica( from, from + 1, Ballistica.STOP_SOLID );
+			cone.set( effect, new ConeAOE( ray, 8, 90, Ballistica.STOP_SOLID ) );
+			env.reset( SEEDS[ 1 ], HeroClass.WARRIOR );
+			if (cone.get( effect ) != null){
+				failures.add( "a cursed zap's cone survived a reset, so a Wondrous proc in the next run reads the old run's cells" );
+			}
+		} catch (ReflectiveOperationException e){
+			failures.add( "the cursed effect could not be inspected: " + e );
+		}
+	}
 
 	private static void checkUnsavedSavesStayInMemory(){
 		String name = "game9/memorycheck.dat";

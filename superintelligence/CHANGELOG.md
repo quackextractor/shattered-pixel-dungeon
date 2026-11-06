@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A cursed zap leaked into the next run.** `CursedWand.ConeOfColors` is one shared object that keeps the cone of its last zap, and a
+  `Wondrous` proc calls `effect` without aiming, so it read the previous run's cells and hit nothing. `MMC-VNK-XMH` played clean alone
+  and diverged at step 914 after `GSZ-BTQ-YPJ` in one JVM, and a trainer env could record the same leak. A reset now clears it, with
+  `RandomWand`'s held wand, through `CursedWand.forgetEffectAims`, which the game never calls. `clear-long` headless: 257 of 257.
 - **Playback now compares the gameplay RNG on every step.** `ReplayPlayer` checked position, health, time and inventory, so a
   stream that had parted stayed invisible until something it moved showed up. It now holds `baseDraws` and `baseFingerprint` to the
   recording, armed where the recorder resets them, in `playbackcheck`, `viewcheck` and the viewer alike. The 33 committed recordings

@@ -45,11 +45,9 @@ diagnostics now log the next stall. A stall under normal use remains a trainer b
 
 ## 42. Trained recordings diverge on playback - OPEN
 
-Of 257 `clear-long` recordings, 22 diverged headless. Three viewer bugs are fixed: dialogs were not aged, the `Travel` step cache was
-not refreshed, and the drain stepped past a shot in flight. Now 256 of 257 reproduce headless.
-
-Still failing headless: `MMC-VNK-XMH` at step 918, HP 26 against 30, three steps after a kill by a thrown weapon. Playback does not
-compare the recorded `baseDraws` and `baseFingerprint`, so the first real difference may be earlier.
+Of 257 `clear-long` recordings, 22 diverged headless. Four bugs are fixed: dialogs were not aged, the `Travel` step cache was not
+refreshed, the drain stepped past a shot in flight, and a cursed zap's cone survived a reset. Now 257 of 257 reproduce headless, with
+the RNG compared on every step.
 
 Still failing in the viewer, 11 of 99 played on the current build, with 7 more cut off by a 15-minute cap and the other 151 last
 played before these fixes: `BJW-XJJ-MNW`, `FGC-QHQ-ZGZ`, `GSZ-BTQ-YPJ`, `HFY-ZTM-LVM`, `HMH-RQF-GSJ`, `SPW-YJZ-BGR`, `SWQ-KLM-YFY`,

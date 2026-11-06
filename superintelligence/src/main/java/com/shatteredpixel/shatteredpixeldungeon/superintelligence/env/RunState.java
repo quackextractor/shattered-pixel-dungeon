@@ -24,6 +24,8 @@ public class RunState {
 
 		com.shatteredpixel.shatteredpixeldungeon.journal.Document.resetPages();
 
+		com.shatteredpixel.shatteredpixeldungeon.items.wands.CursedWand.forgetEffectAims();
+
 		com.shatteredpixel.shatteredpixeldungeon.utils.Holiday.pin( com.shatteredpixel.shatteredpixeldungeon.utils.Holiday.NONE );
 
 		forgetPreviousRemains();

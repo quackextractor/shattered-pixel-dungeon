@@ -8,7 +8,6 @@ Every open item from `issues.md` and the sections below, in working order: fidel
 because a long run is only worth reading if its recordings play. Each ships as its own commit with a `CHANGELOG.md`
 entry and leaves this list, or moves to `REJECTED.md`.
 
-- [ ] **`MMC-VNK-XMH` headless divergence** (`issues.md` 42): HP 26 against 30 at step 918.
 - [ ] **11 viewer divergences** (`issues.md` 42): `BJW-XJJ-MNW`, `FGC-QHQ-ZGZ`, `GSZ-BTQ-YPJ`, `HFY-ZTM-LVM`, `HMH-RQF-GSJ`,
       `SPW-YJZ-BGR`, `SWQ-KLM-YFY`, `TXN-JCX-KRB`, `WDX-PYW-LTX`, `XDG-KSL-RCF`, `XPJ-GXJ-JRV`.
 - [ ] **Wild Magic draws gameplay RNG on the render thread** (`issues.md` 39).

@@ -141,6 +141,15 @@ public class CursedWand {
 
 	//*** Cursed Effects ***
 
+	public static void forgetEffectAims(){
+		for (CursedEffect effect : COMMON_EFFECTS){
+			if (effect instanceof RandomWand) ((RandomWand) effect).wand = null;
+		}
+		for (CursedEffect effect : RARE_EFFECTS){
+			if (effect instanceof ConeOfColors) ((ConeOfColors) effect).cone = null;
+		}
+	}
+
 	public static abstract class CursedEffect {
 
 		public boolean valid(Item origin, Char user, Ballistica bolt, boolean positiveOnly){
