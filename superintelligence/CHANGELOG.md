@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A long ward bolt killed the run.** `WandOfWarding.fx` sets the bolt's speed past 10 cells, and the headless bolt has no destination,
+  so a Wand of Warding zapped that far threw a null pointer out of the step. The headless bolt now ignores it, and `aimcheck` holds it.
 - **A wand on a slot no longer spends gameplay RNG.** Under Wild Magic `Wand.buffedLvl` rolls its bonus, and `ItemSlot` reads it on the
   render thread every refresh, so the viewer spent gameplay values the trainer did not, at a frame-dependent point. The level read for
   display now rolls on `PRandom`, and the roll for a zap is unchanged. `observecheck` holds both.

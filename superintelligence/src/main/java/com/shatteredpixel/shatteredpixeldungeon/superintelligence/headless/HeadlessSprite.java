@@ -58,6 +58,9 @@ public class HeadlessSprite extends CharSprite implements HeadlessStandIn {
 		public void reset( int type, PointF from, PointF to, Callback callback ){
 			if (callback != null) callback.call();
 		}
+
+		@Override
+		public void setSpeed( float newSpeed ){}
 	}
 
 	private com.watabou.noosa.Group headlessParent(){

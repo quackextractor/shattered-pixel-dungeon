@@ -26,7 +26,7 @@ import java.util.function.Predicate;
 
 public class AimCheck {
 
-	private static final int CHECKS = 12;
+	private static final int CHECKS = 13;
 	private static final int NEAREST = 9;
 	private static final String[] SEEDS = { "AIM-A", "AIM-B", "AIM-C", "AIM-D", "AIM-E", "AIM-F", "AIM-G", "AIM-H" };
 
@@ -48,6 +48,7 @@ public class AimCheck {
 		checkEveryWandFires();
 		checkACatalystIsNeverBrewed();
 		checkAnEmptyStaffIsNotAimed();
+		checkALongWardZapHasABolt();
 		checkEveryItemCanBeUsed();
 
 		System.exit( GateReport.report( "aimed items", CHECKS ) );
@@ -177,6 +178,18 @@ public class AimCheck {
 		}
 		Mob rat = placeRatAtRange( HeroClass.MAGE );
 		if (rat != null && !hits( rat, 2, i -> i instanceof MagesStaff )) GateReport.fail( "2 staff zaps at a rat did not hurt it" );
+	}
+
+	private static void checkALongWardZapHasABolt(){
+		env.reset( SEEDS[ 0 ], HeroClass.MAGE );
+		try {
+			com.shatteredpixel.shatteredpixeldungeon.effects.MagicMissile bolt =
+					(com.shatteredpixel.shatteredpixeldungeon.effects.MagicMissile) Dungeon.hero.sprite.parent.recycle(
+							com.shatteredpixel.shatteredpixeldungeon.effects.MagicMissile.class );
+			bolt.setSpeed( 220f );
+		} catch (NullPointerException e){
+			GateReport.fail( "a ward bolt longer than 10 cells sets its speed and killed the run: " + e );
+		}
 	}
 
 	private static void checkAnEmptyStaffIsNotAimed(){
