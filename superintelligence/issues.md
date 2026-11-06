@@ -19,6 +19,9 @@ Floor 1 is solved: `teach-demo-31` reaches depth>=2 in ~90% of episodes, mean de
   up: at generations 150-220 it reads 2.17 against `flip-long`'s 2.60, with entropy 0.80 against 0.39. Dropping
   `reward.sneak_attack_reward` from 300 to 160 changed nothing (2.19 against 2.17), so that is not the cause, and no
   run has yet passed generation 302. `out/evidence/tactics-menu`, `tactics-long2`, `tactics-sneak160`.
+- 2026-11-06: the policy's 2.29 was a gap in what it could learn, not in rewards. The teacher's plans were invisible to it, and macro actions took
+  evaluated depth from 2.07-2.11 to 2.81 in 30 minutes, floor 6+ from 0 to 24 of 500. Next: the policy still sits below its teacher's 3.28, measured on
+  other seeds, and training depth reads 3.1 against 2.81 evaluated. `macro3` predates the sell-window fix, so its deepest runs were cut short.
 - Stats: Upgrade scrolls could not be used at all headless (item picker, `CHANGELOG.md` Unreleased). Fixed;
   the teacher now reads, upgrades and equips, and explores before descending: 2.56 mean depth, floor 4+ 27
   of 200, 3 stalls. Upgrades stay scarce before death (mean armour +0.16, no tier-2 armour worn: it needs

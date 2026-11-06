@@ -12,6 +12,8 @@ import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfToxicGas;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.GridChannel;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.HeroEncoder;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.LocalView;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.obs.ObservationEncoder;
 
 final class ObserveFoeCheck {
@@ -52,6 +54,35 @@ final class ObserveFoeCheck {
 		float lit = sum( encoder, channel );
 		mob.destroy();
 		return lit;
+	}
+
+	static void checkTheLocalViewNamesTheSideOfAnEnemy( ObservationEncoder encoder ){
+		int width = Dungeon.level.width();
+		int cell = -1;
+		for (int d : com.watabou.utils.PathFinder.NEIGHBOURS8){
+			int c = Dungeon.hero.pos + d;
+			if (cell < 0 && Dungeon.level.passable[ c ] && Actor.findChar( c ) == null) cell = c;
+		}
+		if (cell < 0){
+			ObserveCheck.fail( "no free cell beside the hero" );
+			return;
+		}
+		Dungeon.level.heroFOV[ cell ] = true;
+		Gnoll gnoll = new Gnoll();
+		gnoll.pos = cell;
+		GameScene.add( gnoll, 0f );
+		Dungeon.level.occupyCell( gnoll );
+		encoder.encode();
+		int dx = cell % width - Dungeon.hero.pos % width, dy = cell / width - Dungeon.hero.pos / width;
+		int enemies = 0;
+		for (int i = 0; i < LocalView.CELLS; i++){
+			if (encoder.hero()[ HeroEncoder.BASE_FEATURES + i * LocalView.PER_CELL + LocalView.ENEMY ] > 0f) enemies++;
+		}
+		float seen = encoder.hero()[ HeroEncoder.BASE_FEATURES + LocalView.slot( dx, dy ) + LocalView.ENEMY ];
+		gnoll.destroy();
+		if (seen != 1f || enemies != 1){
+			ObserveCheck.fail( "a gnoll at " + dx + "," + dy + " lit " + seen + " on its own side and " + enemies + " cells in all" );
+		}
 	}
 
 	static void checkAnEnemyShowsItsState( ObservationEncoder encoder ){

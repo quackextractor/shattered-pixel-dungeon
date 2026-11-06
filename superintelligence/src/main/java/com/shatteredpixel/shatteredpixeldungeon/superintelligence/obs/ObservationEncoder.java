@@ -97,6 +97,7 @@ public class ObservationEncoder {
 		buildSpatial( level, hero );
 		InventoryEncoder.encode( mapper.slots(), inventory, config.maxSlots );
 		HeroEncoder.encode( hero, heroFeatures );
+		LocalView.encode( level, hero, heroFeatures, HeroEncoder.BASE_FEATURES );
 
 		return newlyExplored;
 	}

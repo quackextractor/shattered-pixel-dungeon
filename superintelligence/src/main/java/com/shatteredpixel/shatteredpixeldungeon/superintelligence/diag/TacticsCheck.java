@@ -22,7 +22,7 @@ import com.watabou.utils.PathFinder;
 
 public class TacticsCheck {
 
-	private static final int CHECKS = 6;
+	private static final int CHECKS = 8;
 	private static final String[] SEEDS = { "TACT-A", "TACT-B", "TACT-C", "TACT-D", "TACT-E", "TACT-F", "TACT-G", "TACT-H", "TACT-I", "TACT-J" };
 
 	private static SPDEnv env;
@@ -39,6 +39,8 @@ public class TacticsCheck {
 		checkGooIsLuredOffWater();
 		checkTheTeacherRestsBeforeABoss();
 
+		checkAPlanIsOfferedAsAMacro();
+		checkAnItemIsOfferedAsAMacro();
 		System.exit( GateReport.report( "combat tactics", CHECKS ) );
 	}
 
@@ -86,6 +88,36 @@ public class TacticsCheck {
 			env.step( bot.act( env, secondary ), secondary[ 0 ] );
 		}
 		if (Statistics.sneakAttacks == before) GateReport.fail( "a gnoll chased the hero with a door beside it and no surprise attack landed in 14 steps; hero at " + Dungeon.hero.pos + " door " + door[ 0 ] );
+	}
+
+	private static void checkAPlanIsOfferedAsAMacro(){
+		int[] door = stage( HeroClass.WARRIOR );
+		if (door == null) return;
+		placeHunting( new Gnoll(), door[ 2 ] );
+		DescentBot bot = new DescentBot();
+		env.step( Action.WAIT, 0 );
+		int label = bot.label( env, com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy.HEAD_ACTION );
+		float[] mask = env.actionMask().clone();
+		bot.offerMacros( mask );
+		Action step = bot.primitive( Action.TACTIC );
+		if (label != Action.TACTIC.index || mask[ Action.TACTIC.index ] < 0.5f || mask[ Action.HUNT.index ] > 0.5f || step == null || !step.directional()){
+			GateReport.fail( "a door dance was labelled " + label + " with step " + step + " and TACTIC offered " + mask[ Action.TACTIC.index ] );
+		}
+	}
+
+	private static void checkAnItemIsOfferedAsAMacro(){
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		Dungeon.hero.HP = 1;
+		placeHunting( new Gnoll(), openCellInView( 3 ) );
+		env.step( Action.WAIT, 0 );
+		Dungeon.hero.HP = 1;
+		DescentBot bot = new DescentBot();
+		int label = bot.label( env, com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy.HEAD_ACTION );
+		float[] mask = env.actionMask().clone();
+		bot.offerMacros( mask );
+		if (label != Action.ITEM.index || mask[ Action.ITEM.index ] < 0.5f || bot.primitive( Action.ITEM ) != Action.USE){
+			GateReport.fail( "a dying hero with a waterskin was labelled " + label + " and ITEM offered " + mask[ Action.ITEM.index ] );
+		}
 	}
 
 	private static void checkAFastEnemyIsNotDanced(){

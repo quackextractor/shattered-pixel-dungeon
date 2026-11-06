@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
@@ -42,10 +43,25 @@ public final class EvalCommand {
 		}
 	}
 
+	private static void printRow( long[][] confusion, int teacher ){
+		long total = 0;
+		for (long count : confusion[ teacher ]) total += count;
+		if (total == 0) return;
+		StringBuilder row = new StringBuilder( String.format( "  teacher %-16s %8d:", Action.fromIndex( teacher ), total ));
+		for (int taken = 0; taken < confusion.length; taken++){
+			if (confusion[ teacher ][ taken ] * 20 >= total){
+				row.append( String.format( " %s %.0f%%", Action.fromIndex( taken ), 100.0 * confusion[ teacher ][ taken ] / total ));
+			}
+		}
+		System.out.println( row );
+	}
+
 	private static void evaluate( SPDEnv env, EnvConfig config, Network network, int episodes, float temperature ){
 		EpisodeCollector collector = new EpisodeCollector( config, network, new Random( 2L ), new Random( 3L ), 0.99f, 0.95f, 0f );
 		collector.teacher( new DescentBot() );
 		collector.temperature( temperature );
+		long[][] confusion = new long[ Action.size() ][ Action.size() ];
+		collector.confusion( confusion );
 		long start = System.nanoTime();
 		int deepest = 0, floor4 = 0, floor6 = 0, turns = 0;
 		for (int e = 0; e < episodes; e++){
@@ -59,5 +75,8 @@ public final class EvalCommand {
 		System.out.printf( "[OK]     temperature %.2f: depth %.3f, floor 4+ %d, floor 6+ %d, turns %d, teacher agreement %.3f, %d episodes in %.0f s%n",
 				temperature, deepest / (double) episodes, floor4, floor6, turns / episodes, collector.teacherAgreement(), episodes,
 				( System.nanoTime() - start ) / 1e9 );
+		for (int t = 0; t < confusion.length; t++){
+			printRow( confusion, t );
+		}
 	}
 }

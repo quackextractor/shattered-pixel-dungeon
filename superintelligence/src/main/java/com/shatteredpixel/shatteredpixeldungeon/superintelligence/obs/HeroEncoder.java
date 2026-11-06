@@ -21,7 +21,9 @@ import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.RoundShield;
 
 public class HeroEncoder {
 
-	public static final int FEATURES = 23;
+	public static final int BASE_FEATURES = 23;
+
+	public static final int FEATURES = BASE_FEATURES + LocalView.SIZE;
 
 	public static final int F_HP_FRACTION     = 0;
 	public static final int F_HP_ABSOLUTE     = 1;

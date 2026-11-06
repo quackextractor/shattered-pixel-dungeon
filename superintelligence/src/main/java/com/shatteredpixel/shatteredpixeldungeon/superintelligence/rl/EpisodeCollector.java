@@ -112,9 +112,19 @@ public class EpisodeCollector {
 		this.teacher = teacher;
 	}
 
+	private static final int ITEM_FOLLOW_STEPS = 3;
+
+	private int followingItem;
+
 	private float temperature = 1f;
 
 	private long labelled, agreed;
+
+	private long[][] confusion;
+
+	public void confusion( long[][] counts ){
+		confusion = counts;
+	}
 
 	public void temperature( float temperature ){
 		this.temperature = temperature;
@@ -172,6 +182,7 @@ public class EpisodeCollector {
 		env.reset( seed, heroClass );
 		network.resetState();
 		if (teacher != null) teacher.reset();
+		followingItem = 0;
 		record.episode( ++episodes );
 
 		if (listener != null){
@@ -179,14 +190,23 @@ public class EpisodeCollector {
 		}
 
 		while (env.running()){
+			int liveHead = headFor( env );
+			int taught = -1;
+			if (teacher != null){
+				taught = teacher.label( env, liveHead );
+				teacher.offerMacros( env.actionMask() );
+			}
 			Transition snapshot = snapshot( env );
+			snapshot.teacherIndex = taught;
 			network.forward( env.grid(), env.gridTouched(), env.gridTouchedCount(), env.inventory(), env.heroFeatures() );
 
-			int liveHead = headFor( env );
-			if (teacher != null) snapshot.teacherIndex = teacher.label( env, liveHead );
 			int actionIndex = Policy.sample( network.actionLogits(), env.actionMask(), rng, temperature );
 			int slotIndex = Policy.sample( network.slotLogits(), env.slotMask(), rng, temperature );
 			int targetIndex = Policy.sample( network.targetLogits(), env.targetMask(), rng, temperature );
+			if (followingItem > 0 && taught >= 0){
+				if (liveHead == Policy.HEAD_SLOT) slotIndex = taught;
+				else if (liveHead == Policy.HEAD_TARGET) targetIndex = taught;
+			}
 
 			int chosen;
 			switch (liveHead) {
@@ -207,6 +227,7 @@ public class EpisodeCollector {
 			if (snapshot.teacherIndex >= 0){
 				labelled++;
 				if (snapshot.teacherIndex == chosen) agreed++;
+				if (confusion != null && liveHead == Policy.HEAD_ACTION) confusion[ snapshot.teacherIndex ][ chosen ]++;
 			}
 
 			int stepIndex = record.stepCount();
@@ -223,6 +244,8 @@ public class EpisodeCollector {
 			actionIndex = subModeAction( env, liveHead == Policy.HEAD_TARGET ? targetIndex : slotIndex ).index;
 		}
 		Action action = Action.fromIndex( actionIndex );
+		followingItem = action == Action.ITEM ? ITEM_FOLLOW_STEPS : liveHead == Policy.HEAD_ACTION ? 0 : Math.max( 0, followingItem - 1 );
+		if (action.kind == Action.Kind.MACRO) action = teacher.primitive( action );
 		int secondary = (liveHead == Policy.HEAD_TARGET) ? targetIndex : slotIndex;
 
 		EnvMode mode = env.mode();

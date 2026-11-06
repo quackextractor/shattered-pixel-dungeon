@@ -60,6 +60,7 @@ public class ObserveCheck {
 		check( () -> ObserveLeakCheck.checkTheWindowIsCentredOnTheHero( encoder ) );
 		check( ObserveCheck::checkTheExitBeaconSurvivesTheWindowEdge );
 		check( () -> ObserveFoeCheck.checkAnEnemyShowsItsState( encoder ) );
+		check( () -> ObserveFoeCheck.checkTheLocalViewNamesTheSideOfAnEnemy( encoder ) );
 		check( () -> ObserveFoeCheck.checkAnEnemyShowsItsHealth( encoder ) );
 		check( () -> ObserveFoeCheck.checkAChargingBossIsDrawn( encoder ) );
 		check( () -> ObserveFoeCheck.checkEnemiesCanBeToldApart( encoder ) );

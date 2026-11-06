@@ -52,7 +52,16 @@ public enum Action {
 	TRAVEL_EXPLORE ( Kind.WORLD, 0, 0 ),
 
 
-	TRAVEL_ITEM ( Kind.WORLD, 0, 0 );
+	TRAVEL_ITEM ( Kind.WORLD, 0, 0 ),
+
+
+	TACTIC ( Kind.MACRO, 0, 0 ),
+
+
+	HUNT ( Kind.MACRO, 0, 0 ),
+
+
+	ITEM ( Kind.MACRO, 0, 0 );
 
 	public enum Kind {
 
@@ -62,7 +71,9 @@ public enum Action {
 
 		ITEM,
 
-		MENU
+		MENU,
+
+		MACRO
 	}
 
 	public final Kind kind;

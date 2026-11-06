@@ -15,7 +15,7 @@ entry and leaves this list, or moves to `REJECTED.md`.
 - [ ] **Engine hot paths** (P5): `ShadowCaster`, `PathFinder`, scheduling; bit-identical only.
 - [ ] **Learning loop** (P6): bigger minibatches with a scaled learning rate; depth at equal turns must hold.
 - [ ] **GPU stall under normal use** (`issues.md` 41): an hours-long run with the new diagnostics.
-- [ ] **Policy below its teacher** (`issues.md` 20): 2.29 against a 2.78 baseline and a 3.28 teacher.
+- [ ] **Policy below its teacher** (`issues.md` 20): 2.81 evaluated with macro actions against a 3.28 teacher; re-measure on one seed set.
 - [ ] **Survive floors 2-4, beat Goo** (`issues.md` 20): the goal; the sections below are its history.
 
 ## Notes

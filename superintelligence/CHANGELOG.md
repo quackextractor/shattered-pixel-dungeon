@@ -30,11 +30,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nearest corridor or doorway within 8 steps, so flies reach it one or two at a time. New gate `tacticscheck`.
 
 ### Added
-- **The policy can use the teacher's plans.** It agreed with its teacher 47% of the time, and evaluating the teacher's moves showed why: of
-  19,764 directional labels in 100 episodes only 3,342 were attacks, taken 66% of the time, and the other 83% were door dances, hall retreats and
-  hidden-door searches, taken 15%. Each is a many-step plan the network cannot see. `TACTIC` and `HUNT` are now macro actions, offered when the
-  teacher has a plan, and resolved to the primitive step before it reaches the env, so a recording is unchanged. 30 minutes from fresh weights,
-  500 evaluation episodes: agreement 0.47 -> 0.73, directional moves 24% -> 70-89%, floor 4+ 27-34 -> 44, floor 6+ 0 -> 2, depth 2.07-2.11 -> 2.24.
+- **The policy can use the teacher's plans.** It agreed with its teacher 47% of the time, and breaking the labels down showed why: of 19,764
+  directional labels in 100 episodes only 3,342 were attacks, taken 66% of the time, and the other 83% were door dances, hall retreats and hidden-door
+  searches, taken 15%. `USE` was taken 31%. These are plans the network cannot see, so `TACTIC`, `HUNT` and `ITEM` are now macro actions, offered
+  when the teacher has one. The policy chooses when; the teacher chooses how, and picks the item and target for the next 3 steps. Each resolves to
+  primitive steps before it reaches the env, so a recording is ordinary moves. 30 minutes from fresh weights, 500 evaluation episodes:
+
+  | | agreement | depth | floor 4+ | floor 6+ |
+  | --- | --- | --- | --- | --- |
+  | before | 0.47 | 2.07-2.11 | 27-34 | 0 |
+  | `TACTIC`, `HUNT` | 0.73 | 2.24 | 44 | 2 |
+  | and `ITEM` | 0.84 | 2.81 | 128 | 24 |
+
 - **A hero-centred local view.** The grid is resampled and strided, so the network could not tell which neighbouring cell held an enemy. A 7x7 crop
   of walkable, door, hazard and enemy state joins the hero features. Old weights do not load.
 - **`evaluate` plays a checkpoint on fixed seeds.** Every depth so far came from a training run. It reports depth, floors reached, turns and

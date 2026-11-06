@@ -52,7 +52,25 @@ public final class DescentBot {
 		return lastHp < 0 && searched.isEmpty();
 	}
 
+	private Action tacticStep, huntStep;
+
+	private boolean itemStep;
+
+	public void offerMacros( float[] mask ){
+		mask[ Action.TACTIC.index ] = tacticStep != null ? 1f : 0f;
+		mask[ Action.HUNT.index ] = huntStep != null ? 1f : 0f;
+		mask[ Action.ITEM.index ] = itemStep ? 1f : 0f;
+	}
+
+	public Action primitive( Action macro ){
+		if (macro == Action.ITEM) return Action.USE;
+		return macro == Action.TACTIC ? tacticStep : huntStep;
+	}
+
 	public Action act( SPDEnv env, int[] secondary ){
+		tacticStep = null;
+		huntStep = null;
+		itemStep = false;
 		secondary[ 0 ] = 0;
 		float[] mask = env.actionMask();
 		switch (env.mode()){
@@ -82,7 +100,15 @@ public final class DescentBot {
 	public int label( SPDEnv env, int liveHead ){
 		int[] secondary = new int[ 1 ];
 		Action action = act( env, secondary );
-		if (liveHead == Policy.HEAD_ACTION) return legal( env.actionMask(), action ) ? action.index : -1;
+		if (liveHead == Policy.HEAD_ACTION){
+			if (action == tacticStep) return Action.TACTIC.index;
+			if (action == huntStep) return Action.HUNT.index;
+			if (action == Action.USE && env.mode() == com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode.WORLD){
+				itemStep = true;
+				return Action.ITEM.index;
+			}
+			return legal( env.actionMask(), action ) ? action.index : -1;
+		}
 		if (liveHead == Policy.HEAD_SLOT){
 			int s = secondary[ 0 ];
 			return s >= 0 && s < env.slotMask().length && env.slotMask()[ s ] > 0.5f && action != Action.CANCEL ? s : -1;
@@ -97,6 +123,7 @@ public final class DescentBot {
 		lastHp = hero.HP;
 		if (dying() && !hero.getVisibleEnemies().isEmpty() && healSlot( env ) >= 0 && legal( mask, Action.USE )) return Action.USE;
 		Action tactic = tactics.act( mask, rangedSlot( env ) >= 0 && legal( mask, Action.USE ) );
+		tacticStep = tactic;
 		if (tactic != null) return tactic;
 		Action attack = attack( mask );
 		if (attack != null) return attack;
@@ -121,7 +148,8 @@ public final class DescentBot {
 		if (legal( mask, Action.TRAVEL_EXPLORE )) return Action.TRAVEL_EXPLORE;
 		if (calm && hero.HP * 4 < hero.HT * (Dungeon.bossLevel( Dungeon.depth + 1 ) ? 4 : 3)) return Action.REST;
 		if (legal( mask, Action.TRAVEL_STAIRS )) return Action.TRAVEL_STAIRS;
-		return hunt( mask );
+		huntStep = hunt( mask );
+		return huntStep;
 	}
 
 	private Action hunt( float[] mask ){
