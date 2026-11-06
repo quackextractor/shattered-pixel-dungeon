@@ -70,6 +70,7 @@ import com.watabou.utils.Bundle;
 import com.watabou.utils.Callback;
 import com.watabou.utils.PRandom;
 import com.watabou.utils.PointF;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
@@ -386,6 +387,19 @@ public abstract class Wand extends Item {
 		return this;
 	}
 
+	//the level shown on a slot is read on the render thread, so its roll must not spend gameplay RNG
+	private static final ThreadLocal<Boolean> READ_FOR_DISPLAY = ThreadLocal.withInitial(() -> false);
+
+	@Override
+	public int buffedVisiblyUpgraded() {
+		READ_FOR_DISPLAY.set(true);
+		try {
+			return super.buffedVisiblyUpgraded();
+		} finally {
+			READ_FOR_DISPLAY.set(false);
+		}
+	}
+
 	@Override
 	public int buffedLvl() {
 		int lvl = super.buffedLvl();
@@ -409,7 +423,7 @@ public abstract class Wand extends Item {
 
 			if (charger.target.buff(WildMagic.WildMagicTracker.class) != null){
 				int bonus = 4 + ((Hero)charger.target).pointsInTalent(Talent.WILD_POWER);
-				if (Random.Int(2) == 0) bonus++;
+				if ((READ_FOR_DISPLAY.get() ? PRandom.Int(2) : Random.Int(2)) == 0) bonus++;
 				bonus /= 2; // +2/+2.5/+3/+3.5/+4 at 0/1/2/3/4 talent points
 
 				int maxBonusLevel = 3 + ((Hero)charger.target).pointsInTalent(Talent.WILD_POWER);

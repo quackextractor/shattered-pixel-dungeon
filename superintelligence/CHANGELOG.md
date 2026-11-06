@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A wand on a slot no longer spends gameplay RNG.** Under Wild Magic `Wand.buffedLvl` rolls its bonus, and `ItemSlot` reads it on the
+  render thread every refresh, so the viewer spent gameplay values the trainer did not, at a frame-dependent point. The level read for
+  display now rolls on `PRandom`, and the roll for a zap is unchanged. `observecheck` holds both.
 - **A cursed zap leaked into the next run.** `CursedWand.ConeOfColors` is one shared object that keeps the cone of its last zap, and a
   `Wondrous` proc calls `effect` without aiming, so it read the previous run's cells and hit nothing. `MMC-VNK-XMH` played clean alone
   and diverged at step 914 after `GSZ-BTQ-YPJ` in one JVM, and a trainer env could record the same leak. A reset now clears it, with

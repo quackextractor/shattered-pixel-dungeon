@@ -1,5 +1,10 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.mage.WildMagic;
+import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfMagicMissile;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
@@ -48,6 +53,7 @@ public class ObserveCheck {
 		check( ObserveCheck::checkTheGeneratorLogIsInertWhenOff );
 		check( ObserveCheck::checkAStandInEmitterSpendsNoGameplayDraw );
 		check( ObserveCheck::checkTheCameraShakeSpendsNoGameplayDraw );
+		check( ObserveCheck::checkAWandShownOnASlotSpendsNoGameplayDraw );
 		check( ObserveLeakCheck::checkInventoryShowsOnlyWhatThePlayerSees );
 		check( ObserveLeakCheck::checkHeroFeaturesHideAnUnknownLevel );
 		check( () -> ObserveLeakCheck.checkAnUnseenFloorEncodesToNothing( encoder ) );
@@ -76,6 +82,28 @@ public class ObserveCheck {
 			System.exit( 1 );
 		}
 	}
+	private static void checkAWandShownOnASlotSpendsNoGameplayDraw(){
+		Hero hero = Dungeon.hero;
+		WandOfMagicMissile wand = new WandOfMagicMissile();
+		wand.identify();
+		wand.charge( hero );
+		WildMagic.WildMagicTracker tracker = Buff.affect( hero, WildMagic.WildMagicTracker.class, 0f );
+		RandomTrace.enable();
+		RandomTrace.reset();
+		wand.buffedVisiblyUpgraded();
+		long shown = RandomTrace.baseDraws();
+		wand.buffedLvl();
+		long rolled = RandomTrace.baseDraws() - shown;
+		RandomTrace.reset();
+		RandomTrace.disable();
+		tracker.detach();
+		wand.stopCharging();
+		if (shown != 0 || rolled != 1){
+			fail( "a Wild Magic wand's level drew " + shown + " on a slot and " + rolled + " on a zap. The slot reads it"
+					+ " on the render thread, so a draw there moves gameplay at a frame-dependent point." );
+		}
+	}
+
 	private static void checkTheInstrumentIsLive(){
 		RandomTrace.enable();
 		RandomTrace.reset();

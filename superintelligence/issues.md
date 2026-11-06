@@ -57,11 +57,3 @@ staff or a floor change, and `HMH-RQF-GSJ` is suspected of throwing its staff un
 Copy the `.dat` files to `.replay` and run `:desktop:playbackcheck -PspdReplayDir=...`: all 257 take 30 s. Its four corpus-shape
 cases fail on such a directory, which is expected. For the viewer, cap the run with `timeout`, then read the `playback=` stamps,
 which now carry the reason from the parallel pass, and stop any child JVM left behind. Lists in `out/evidence/`.
-
-## 39. Wild Magic wand level draws gameplay RNG on the render thread - OPEN
-
-`Wand.buffedLvl` rolls `Random.Int(2)` while `WildMagicTracker` is attached, and `ItemSlot` calls it through
-`buffedVisiblyUpgraded` on every toolbar refresh, on the render thread. The viewer spends gameplay values the
-trainer does not, at a frame-dependent point. Not moved to `PRandom`: the roll sets wand power, so it would
-desync gameplay. Not wrapped in a pushed generator: the stack is shared with the actor thread. Unreachable
-by the trainer today (Battlemage armour ability, after Tengu).

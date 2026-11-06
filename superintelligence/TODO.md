@@ -10,7 +10,6 @@ entry and leaves this list, or moves to `REJECTED.md`.
 
 - [ ] **11 viewer divergences** (`issues.md` 42): `BJW-XJJ-MNW`, `FGC-QHQ-ZGZ`, `GSZ-BTQ-YPJ`, `HFY-ZTM-LVM`, `HMH-RQF-GSJ`,
       `SPW-YJZ-BGR`, `SWQ-KLM-YFY`, `TXN-JCX-KRB`, `WDX-PYW-LTX`, `XDG-KSL-RCF`, `XPJ-GXJ-JRV`.
-- [ ] **Wild Magic draws gameplay RNG on the render thread** (`issues.md` 39).
 - [ ] **Measure training with the GPU free** (plan 2 A): 48/96/192 envs, 10+ minutes each.
 - [ ] **JIT load** (plan 2 B): `-XX:CICompilerCount`, warm-up length in a long run.
 - [ ] **Inference latency** (plan 2 C, P1 b): fuse launches, LSTM state resident per slot.

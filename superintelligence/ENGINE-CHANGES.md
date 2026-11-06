@@ -129,6 +129,8 @@ which is what that one cause looks like from the outside.
 
 Twenty-six more of the same kind - `InterlevelScene.update` during a fall, the caves and halls level visuals, `CityLevel` smoke, `CavesBossLevel` sparks, every `staffFx` override and `MagesStaff.StaffParticle.shuffleXY`, and seven sprites - moved to `PRandom` in the same shape; `renderdrawcheck` reads the bytecode so the next one fails a gate. See `CHANGELOG.md` Unreleased.
 
+`Wand.buffedVisiblyUpgraded` is the one case where the same roll is both: on a slot it is presentation and rolls on `PRandom`, on a zap it sets wand power and stays on `Random`. A `ThreadLocal` tells them apart, because the render and actor threads read the same wand. `observecheck` requires 0 draws on the slot and 1 on the zap.
+
 ### Left alone deliberately
 
 - **`DungeonTileSheet.setupVariance`** draws 962 times during generation, and the viewer makes it while
