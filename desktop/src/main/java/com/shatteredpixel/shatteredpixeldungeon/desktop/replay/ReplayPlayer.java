@@ -616,11 +616,17 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		if (inFlightFrames < MAX_PARKED_FRAMES && mobAnimationInFlight()){
 			inFlightFrames++;
 			pendingFrames++;
+			parkedFrames = Math.max( parkedFrames, 1 );
 			return Drain.PENDING;
 		}
 		inFlightFrames = 0;
 		parkedFrames = 0;
 		return Drain.READY;
+	}
+
+	private void finishHeroAnimation(){
+		Hero hero = Dungeon.hero;
+		if (hero != null && hero.isAlive() && hero.sprite != null && !Actor.waitingOnCallback()) hero.sprite.finishAnimation();
 	}
 
 	private boolean heroShotInFlight(){
@@ -770,6 +776,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 				pendingFrames++;
 				return Drain.PENDING;
 			}
+			finishHeroAnimation();
 			if (heroShotInFlight() && parkedFrames < MAX_PARKED_FRAMES){
 				parkedFrames++;
 				pendingFrames++;
@@ -779,6 +786,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			parkedFrames = 0;
 			countSchedulerCall( before );
 			boolean wantsMore = Actor.headlessStep();
+			finishHeroAnimation();
 
 			if (Dungeon.hero.curAction == null && Dungeon.hero.ready && Dungeon.hero.paralysed == 0){
 				return readyOnceMobsLand();

@@ -8,12 +8,8 @@ Every open item from `issues.md` and the sections below, in working order: fidel
 because a long run is only worth reading if its recordings play. Each ships as its own commit with a `CHANGELOG.md`
 entry and leaves this list, or moves to `REJECTED.md`.
 
-- [ ] **11 viewer divergences** (`issues.md` 42): `BJW-XJJ-MNW`, `FGC-QHQ-ZGZ`, `GSZ-BTQ-YPJ`, `HFY-ZTM-LVM`, `HMH-RQF-GSJ`,
-      `SPW-YJZ-BGR`, `SWQ-KLM-YFY`, `TXN-JCX-KRB`, `WDX-PYW-LTX`, `XDG-KSL-RCF`, `XPJ-GXJ-JRV`.
-- [ ] **Measure training with the GPU free** (plan 2 A): 48/96/192 envs, 10+ minutes each.
 - [ ] **JIT load** (plan 2 B): `-XX:CICompilerCount`, warm-up length in a long run.
 - [ ] **Inference latency** (plan 2 C, P1 b): fuse launches, LSTM state resident per slot.
-- [ ] **CPU inference under a game** (plan 2 D): Vector API for the dense layers.
 - [ ] **Update leftovers** (P2): im2col/col2im, packed kernels, fused LSTM, slice sum.
 - [ ] **Env CPU** (P3): `buildSpatial`, `countNewlyExplored`, `levelExplorePercent`, `applyEdges`, `Travel.frontier`.
 - [ ] **Engine hot paths** (P5): `ShadowCaster`, `PathFinder`, scheduling; bit-identical only.
@@ -73,14 +69,10 @@ entry and leaves this list, or moves to `REJECTED.md`.
       async). Inference capacity scales with callers: 36.8K/58.7K/71.0K forwards/s at 48/96/192 with a game
       holding the GPU at 98%, so collect is not capped by batch throughput. At 48 envs one minute in: env
       threads 5.6 cores, JIT 4.4, inference threads 0.22; envs mostly wait on the GPU.
-  - [ ] **A. Measure training with the GPU free:** in-process async at 48/96/192 envs, 10+ minutes each,
-        progress-bar clock (`out/evidence/rate.py`). Every GPU leg under a game is half speed.
   - [ ] **B. JIT load.** N loaders compile N copies; try `-XX:CICompilerCount` so compilers stop taking
         env cores, and measure how long warm-up lasts in a long run.
   - [ ] **C. Inference latency.** 11 launches, 4 writes and 3 reads a batch; fuse them, keep LSTM state
         resident per slot.
-  - [ ] **D. CPU inference that survives a game on the GPU.** Process workers spend most of a step in
-        `Network.forward`; try the Vector API for the dense layers.
 - [ ] **Throughput plan: 9,343 -> 220,000 turns/s (100x the 2,197 CPU baseline).** Today: 12 process
       workers x 4, GPU update, 9,343 turns/s end to end; collection 2.8 s and update 2.3 s a generation.
       100x means, per trained turn, ~45 us of CPU across ~9 effective cores and 4.5 us of GPU update per

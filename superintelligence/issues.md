@@ -49,10 +49,9 @@ Of 257 `clear-long` recordings, 22 diverged headless. Four bugs are fixed: dialo
 refreshed, the drain stepped past a shot in flight, and a cursed zap's cone survived a reset. Now 257 of 257 reproduce headless, with
 the RNG compared on every step.
 
-Still failing in the viewer, 11 of 99 played on the current build, with 7 more cut off by a 15-minute cap and the other 151 last
-played before these fixes: `BJW-XJJ-MNW`, `FGC-QHQ-ZGZ`, `GSZ-BTQ-YPJ`, `HFY-ZTM-LVM`, `HMH-RQF-GSJ`, `SPW-YJZ-BGR`, `SWQ-KLM-YFY`,
-`TXN-JCX-KRB`, `WDX-PYW-LTX`, `XDG-KSL-RCF`, `XPJ-GXJ-JRV`. No single cause is shown. Six are aimed steps, some after a zero-charge
-staff or a floor change, and `HMH-RQF-GSJ` is suspected of throwing its staff under the old rule.
+In the viewer, `a48`'s 257 fresh recordings, made on the current build, played 173 of 177 clean before a 25-minute cap, and the three real
+failures are fixed; see the changelog. The 11 `clear-long` failures remain on old recordings, most of them from the empty-staff rule since removed, and
+are not a measure of this build. The other 80 fresh recordings are the next sweep.
 
 Copy the `.dat` files to `.replay` and run `:desktop:playbackcheck -PspdReplayDir=...`: all 257 take 30 s. Its four corpus-shape
 cases fail on such a directory, which is expected. For the viewer, cap the run with `timeout`, then read the `playback=` stamps,

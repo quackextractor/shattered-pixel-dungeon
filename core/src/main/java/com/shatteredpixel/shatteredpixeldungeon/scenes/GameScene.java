@@ -1653,7 +1653,8 @@ public static boolean showingWindow(){
 	public static Window topWindow(){
 		if (scene == null) return null;
 
-		for (Gizmo g : scene.members){
+		for (int i = scene.members.size() - 1; i >= 0; i--){
+			Gizmo g = scene.members.get( i );
 			if (g instanceof Window) return (Window) g;
 		}
 

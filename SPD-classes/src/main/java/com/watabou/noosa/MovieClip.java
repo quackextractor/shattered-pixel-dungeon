@@ -70,6 +70,12 @@ public class MovieClip extends Image {
 		return curAnim != null && !curAnim.looped && !finished;
 	}
 	
+	public synchronized void finishAnimation(){
+		if (!animationInFlight()) return;
+		finished = true;
+		if (listener != null) listener.onComplete( curAnim );
+	}
+
 	protected synchronized void updateAnimation() {
 		if (curAnim != null && curAnim.delay > 0 && (curAnim.looped || !finished)) {
 			

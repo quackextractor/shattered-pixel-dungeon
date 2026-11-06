@@ -35,11 +35,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plus the stacks of the inference and busy worker threads. `issues.md` 41 could not be diagnosed without this.
 
 ### Changed
+- **48 x 2 stays the default, measured on a free GPU.** Ten minutes each from `clear-long` weights: 48 x 2 38,146 turns/s, 96 x 1 34,242 at
+  equal depth, and 192 does not fit in 32 GB. Plan 2 D, the Vector API for CPU inference, is declined. `REJECTED.md` has both.
 - **`viewcheck` refuses a broken build.** It now runs `corpusplayback`, the headless check of the
   committed corpus, before it starts a viewer, whatever `-PspdReplayDir` says. A build that fails it stops in seconds instead of
   replaying a recording set for an hour.
 
 ### Fixed
+- **Three frame-timed paths in the viewer.** Fresh recordings played clean 173 of 177 before these; of the four failures one was load
+  alone, and three were real. A `read` or `operate` animation ending late ran `Hero.onOperateComplete` in the middle of the next walk
+  and cleared it, where the trainer completes it at once; the drain now finishes the hero's animation as the trainer does.
+  `GameScene.topWindow` returned the bottom window, so a left-over dialog hid a Stylus picker. And a ready hero waiting for a mob's
+  animation took one more scheduler step on the next frame, so an armour swap ended half a turn late. `late-read-walk.replay`,
+  `stylus-over-window.replay` and `armour-swap-landing.replay` join the corpus, 36 recordings.
 - **A long ward bolt killed the run.** `WandOfWarding.fx` sets the bolt's speed past 10 cells, and the headless bolt has no destination,
   so a Wand of Warding zapped that far threw a null pointer out of the step. The headless bolt now ignores it, and `aimcheck` holds it.
 - **A wand on a slot no longer spends gameplay RNG.** Under Wild Magic `Wand.buffedLvl` rolls its bonus, and `ItemSlot` reads it on the

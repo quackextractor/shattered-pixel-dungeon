@@ -1,0 +1,684 @@
+SPD-REPLAY
+version=5
+seed=TCN-TRM-NPL
+hero=HUNTRESS
+challenges=0
+generation=1609
+score=7039.956856451929
+depth=3
+turns=597
+turn_limit=1500
+max_slots=96
+allow_equipping=true
+turn_limit_total=40000
+stall_limit=120
+free_step_budget=250
+actor_step_limit=20000
+termination=DEATH
+reward_profile=default
+group=
+steps=663
+playback=ok
+TRAVEL_ITEM 0 WORLD 410 2.779998779296875  20 1.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 1 2565181979116803489 1
+TRAVEL_ITEM 1 WORLD 411 2.760000228881836  20 2.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 2 -3984603082030636493 1
+TRAVEL_EXPLORE 0 WORLD 412 1.739999771118164  20 4.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 3 -6331026099586889529 1
+TRAVEL_EXPLORE 0 WORLD 444 6.419999122619629  20 5.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 6 6560247155840356939 1
+USE 2 WORLD 444 -0.2800006866455078  20 5.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 6 6560247155840356939 1
+USE 2 SLOT 444 0.0 Waterskin:1@1,SpiritBow:0@2 20 5.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 6 6560247155840356939 1
+USE 9 TARGETING 444 299.2200012207031  20 6.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 17 607017804150735926 1
+MOVE_SE 0 WORLD 444 -40.779998779296875  19 6.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 38 1974829064317412401 1
+MOVE_NW 2 WORLD 412 -2.760000228881836  19 7.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 39 2041688912770370147 1
+MOVE_SE 0 WORLD 412 449.239990234375  19 8.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 50 5504860273635030513 1
+TRAVEL_ITEM 2 WORLD 444 1.2199993133544922  19 9.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 51 -475350080171212443 1
+MOVE_SE 2 WORLD 444 -40.779998779296875  18 9.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 72 2952290040431628568 1
+MOVE_SE 2 WORLD 444 -0.7800006866455078  18 10.0 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 82 2486229864159035229 1
+MOVE_SE 2 WORLD 444 149.22000122070312  18 10.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 93 -8337914605185967383 1
+MOVE_E 2 WORLD 445 2.0699992179870605  18 11.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 94 1681933037517454743 1
+USE 2 WORLD 445 -0.2800006866455078  18 11.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 94 1681933037517454743 1
+USE 2 SLOT 445 0.0 Waterskin:1@1,SpiritBow:0@2 18 11.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 94 1681933037517454743 1
+CANCEL 0 TARGETING 445 -0.2800006866455078  18 11.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 94 1681933037517454743 1
+REST 2 WORLD 445 -0.7800006866455078  18 12.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 94 1681933037517454743 1
+TRAVEL_ITEM 2 WORLD 446 3.700000762939453  18 13.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 95 70393800036172797 1
+REST 0 WORLD 446 -0.7999992370605469  18 14.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 95 70393800036172797 1
+REST 0 WORLD 446 -0.7999992370605469  18 15.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 95 70393800036172797 1
+REST 1 WORLD 446 -0.2999992370605469  19 16.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 95 70393800036172797 1
+TRAVEL_ITEM 0 WORLD 478 -0.48000067472457886  19 17.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 96 8317231754625282175 1
+TRAVEL_ITEM 2 WORLD 479 1.1199992895126343  19 18.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 97 -5842679121593553199 1
+TRAVEL_ITEM 1 WORLD 511 -1.0600001811981201  19 19.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 98 -6756676059764820029 1
+TRAVEL_ITEM 0 WORLD 543 -1.1399997472763062  19 20.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 99 1043250024595987569 1
+USE 2 WORLD 543 -0.23999977111816406  19 20.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 99 1043250024595987569 1
+USE 2 SLOT 543 0.0 Waterskin:1@1,SpiritBow:0@2 19 20.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 99 1043250024595987569 1
+USE 9 TARGETING 543 299.30999755859375  19 21.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 109 -6255424227555673012 1
+USE 2 WORLD 543 -0.23999977111816406  19 21.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 109 -6255424227555673012 1
+USE 2 SLOT 543 0.0 Waterskin:1@1,SpiritBow:0@2 19 21.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 109 -6255424227555673012 1
+USE 9 TARGETING 543 449.260009765625  19 22.5 Food:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 118 -3362521703292940693 1
+TRAVEL_ITEM 2 WORLD 574 298.2799987792969  19 24.5 Food:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 119 -8274388745729285345 1
+TRAVEL_ITEM 2 WORLD 606 -1.2000007629394531  19 25.5 Food:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 120 -2519531580423095995 1
+TRAVEL_ITEM 0 WORLD 607 1.2999992370605469  20 26.5 Food:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 121 -5513090202922531425 1
+TRAVEL_ITEM 0 WORLD 608 0.7999992370605469  20 27.5 Food:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 122 4170489146589966821 1
+TRAVEL_ITEM 0 WORLD 609 0.7999992370605469  20 28.5 Food:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 123 8840509460204648531 1
+TRAVEL_ITEM 0 WORLD 610 75.30000305175781  20 30.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 124 839718061709440345 1
+TRAVEL_EXPLORE 0 WORLD 611 -0.6300002932548523  20 31.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 125 6251754943761135087 1
+TRAVEL_EXPLORE 0 WORLD 581 -1.1099998950958252  20 32.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 126 3938653555232341865 1
+TRAVEL_EXPLORE 0 WORLD 551 1.0400002002716064  20 33.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 127 -8936599502695244195 1
+TRAVEL_EXPLORE 0 WORLD 521 5.619999885559082  20 34.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 129 -2881616180866479535 1
+USE 4 WORLD 521 -0.18000030517578125  20 34.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 129 -2881616180866479535 1
+USE 4 SLOT 521 0.0 Waterskin:1@1,SpiritBow:0@4 20 34.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 129 -2881616180866479535 1
+USE 9 TARGETING 521 299.32000732421875  20 35.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 137 -7326477407213955249 1
+USE 4 WORLD 521 -0.18000030517578125  20 35.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 137 -7326477407213955249 1
+USE 5 SLOT 521 -0.18000030517578125 Waterskin:1@1,SpiritBow:0@4 20 35.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 137 -7326477407213955249 1
+WAIT 5 WORLD 521 -0.6800003051757812  20 36.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 137 -7326477407213955249 1
+MOVE_S 0 WORLD 552 -1.1599998474121094  20 37.5 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 138 8528504811882127047 1
+MOVE_N 0 WORLD 552 449.3399963378906  20 38.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,SpiritBow:1,VelvetPouch():1,Waterskin:1 148 -1290796665270815862 1
+TRAVEL_ITEM 0 WORLD 521 0.8199996948242188  20 40.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 149 -761618124965821141 1
+MOVE_SW 4 WORLD 551 -2.6599998474121094  20 41.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 150 -4322137234490802843 1
+TRAVEL_ITEM 1 WORLD 521 1.3199996948242188  20 42.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 151 -2480878027486712737 1
+MOVE_SW 4 WORLD 551 -2.6599998474121094  20 43.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 152 5188430284910489628 1
+TRAVEL_ITEM 1 WORLD 521 1.3199996948242188  20 44.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 153 4215931176822136840 1
+MOVE_SW 4 WORLD 551 -2.6599998474121094  20 45.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 154 -748868227107056746 1
+TRAVEL_ITEM 0 WORLD 521 1.3199996948242188  20 46.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 155 -8444221892873562412 1
+TRAVEL_ITEM 4 WORLD 491 2.4499993324279785  20 48.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 156 -1093477548475314116 1
+TRAVEL_ITEM 2 WORLD 460 2.8799986839294434  20 49.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 157 2587604030055230028 1
+TRAVEL_ITEM 4 WORLD 429 2.760000228881836  20 50.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 158 1848010556530545388 1
+TRAVEL_ITEM 0 WORLD 398 2.739999771118164  20 51.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 159 -5126416446319765326 1
+USE 4 WORLD 398 -0.26000022888183594  20 51.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 159 -5126416446319765326 1
+USE 4 SLOT 398 0.0 Waterskin:1@1,SpiritBow:0@4 20 51.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 159 -5126416446319765326 1
+CANCEL 0 TARGETING 398 -0.26000022888183594  20 51.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,Waterskin:1 159 -5126416446319765326 1
+TRAVEL_ITEM 4 WORLD 366 2.219999313354492  20 53.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,Waterskin:1 160 -7483761951825958882 1
+USE 0 WORLD 366 -0.2800006866455078  20 53.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,Waterskin:1 160 -7483761951825958882 1
+USE 1 SLOT 366 -0.2800006866455078 Waterskin:1@1,SpiritBow:0@5 20 53.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,Waterskin:1 160 -7483761951825958882 1
+TRAVEL_ITEM 0 WORLD 336 1.7000007629394531  20 55.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,Waterskin:1 161 5956843806320359600 1
+USE 1 WORLD 336 -0.2999992370605469  20 55.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,Waterskin:1 161 5956843806320359600 1
+USE 0 SLOT 336 -248.3000030517578 Waterskin:1@1,SpiritBow:0@5 20 58.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,Waterskin:1 161 5956843806320359600 1
+USE 4 WORLD 336 -0.2999992370605469  20 58.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,Waterskin:1 161 5956843806320359600 1
+USE 4 SLOT 336 0.0 Waterskin:1@0,SpiritBow:0@4 20 58.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,Waterskin:1 161 5956843806320359600 1
+CANCEL 0 TARGETING 336 -0.2999992370605469  20 58.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,Waterskin:1 161 5956843806320359600 1
+TRAVEL_ITEM 4 WORLD 306 98.22000122070312  20 60.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 162 7885906835439666352 1
+USE 1 WORLD 306 -0.2800006866455078  20 60.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 162 7885906835439666352 1
+USE 4 SLOT 306 0.0 Waterskin:1@1,SpiritBow:0@5 20 60.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,Stylus:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 162 7885906835439666352 1
+USE 1 INVENTORY 306 -2.280000686645508 Waterskin:1@1,SpiritBow:0@5 20 62.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 164 4419596198767639778 1
+USE 0 WORLD 306 -0.2800006866455078  20 62.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 164 4419596198767639778 1
+USE 1 SLOT 306 -0.2800006866455078 Waterskin:1@1,SpiritBow:0@4 20 62.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 164 4419596198767639778 1
+TRAVEL_ITEM 0 WORLD 275 200.22000122070312  20 64.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+USE 0 WORLD 275 -0.2800006866455078  20 64.0 Food:1,PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+USE 4 SLOT 275 0.0 Waterskin:1@2,SpiritBow:0@5 20 64.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+USE 1 INVENTORY 275 0.0 Waterskin:1@2,SpiritBow:0@4 20 64.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+MENU_SELECT 1 MENU 275 0.0  20 64.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+USE 0 INVENTORY 275 0.0 Waterskin:1@2,SpiritBow:0@4 20 64.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+MENU_SELECT 1 MENU 275 0.0  20 64.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+USE 0 INVENTORY 275 0.0 Waterskin:1@2,SpiritBow:0@4 20 64.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+MENU_SELECT 1 MENU 275 0.0  20 64.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+USE 0 INVENTORY 275 0.0 Waterskin:1@2,SpiritBow:0@4 20 64.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+MENU_SELECT 1 MENU 275 0.0  20 64.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+USE 0 INVENTORY 275 0.0 Waterskin:1@2,SpiritBow:0@4 20 64.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 165 -7390803853695289244 1
+MENU_SELECT 0 MENU 275 -0.7800006866455078  20 65.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 166 -6561755478442705730 1
+USE 0 WORLD 275 -0.2800006866455078  20 65.0 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 166 -6561755478442705730 1
+USE 1 SLOT 275 -293.2799987792969 Waterskin:1@2,SpiritBow:0@4 20 68.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 166 -6561755478442705730 1
+USE 0 WORLD 275 -0.2800006866455078  20 68.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 166 -6561755478442705730 1
+USE 0 SLOT 275 0.0 Waterskin:1@1,SpiritBow:0@3 20 68.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 166 -6561755478442705730 1
+CANCEL 0 TARGETING 275 -0.2800006866455078  20 68.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 166 -6561755478442705730 1
+TRAVEL_EXPLORE 0 WORLD 305 2.700000762939453  20 69.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 167 4611677735224471158 1
+USE 3 WORLD 305 -0.2999992370605469  20 69.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 167 4611677735224471158 1
+USE 3 SLOT 305 0.0 Waterskin:1@1,SpiritBow:0@3 20 69.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 167 4611677735224471158 1
+CANCEL 0 TARGETING 305 -0.2999992370605469  20 69.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 167 4611677735224471158 1
+TRAVEL_EXPLORE 3 WORLD 335 0.7000007629394531  20 70.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 168 -7812045754018712747 1
+TRAVEL_EXPLORE 3 WORLD 303 2.6800003051757812  20 71.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 169 3007177482654226149 1
+TRAVEL_EXPLORE 3 WORLD 272 2.6599998474121094  20 72.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 170 7291372546590991590 1
+MOVE_N 3 WORLD 241 3.1399993896484375  20 73.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 171 8440412375354389186 1
+TRAVEL_EXPLORE 3 WORLD 209 2.669999837875366  20 74.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 172 -5295940183124578086 1
+TRAVEL_EXPLORE 3 WORLD 177 3.4000003337860107  20 75.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 173 -2858447558628596274 1
+TRAVEL_ITEM 3 WORLD 207 3.2300000190734863  20 76.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 175 7780931752141975828 1
+TRAVEL_ITEM 3 WORLD 238 0.7799999117851257  20 77.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 177 3335909119659212401 1
+USE 3 WORLD 238 -0.4200000762939453  20 77.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 177 3335909119659212401 1
+USE 3 SLOT 238 0.0 Waterskin:1@1,SpiritBow:0@3 20 77.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 177 3335909119659212401 1
+USE 9 TARGETING 238 -0.9200000762939453  20 78.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 187 3713636699359970868 1
+USE 3 WORLD 238 -0.4200000762939453  20 78.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 187 3713636699359970868 1
+USE 3 SLOT 238 0.0 Waterskin:1@1,SpiritBow:0@3 20 78.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 187 3713636699359970868 1
+USE 9 TARGETING 238 -0.9200000762939453  20 79.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 197 -4899693268886161413 1
+USE 3 WORLD 238 -0.4200000762939453  20 79.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 197 -4899693268886161413 1
+USE 4 SLOT 238 -0.4200000762939453 Waterskin:1@1,SpiritBow:0@3 20 79.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 197 -4899693268886161413 1
+TRAVEL_ITEM 3 WORLD 268 0.7299998998641968  20 80.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 198 -8143599010959033385 1
+USE 3 WORLD 268 -0.4200000762939453  20 80.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 198 -8143599010959033385 1
+USE 3 SLOT 268 0.0 Waterskin:1@1,SpiritBow:0@3 20 80.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 198 -8143599010959033385 1
+USE 9 TARGETING 268 149.0800018310547  20 81.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 209 7689398833012243727 1
+TRAVEL_ITEM 3 WORLD 268 -0.9200000762939453  20 82.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 209 7689398833012243727 1
+USE 3 WORLD 268 -0.4200000762939453  20 82.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 209 7689398833012243727 1
+USE 0 SLOT 268 0.0 Waterskin:1@1,SpiritBow:0@3 20 82.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 209 7689398833012243727 1
+CANCEL 0 TARGETING 268 -0.4200000762939453  20 82.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 209 7689398833012243727 1
+TRAVEL_EXPLORE 0 WORLD 237 2.559999942779541  20 83.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 210 8106093279839402597 1
+TRAVEL_EXPLORE 0 WORLD 205 2.5399999618530273  20 84.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 211 5110273006000876009 1
+MOVE_NW 3 WORLD 173 2.5199999809265137  20 85.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 212 273026217940787099 1
+MOVE_E 3 WORLD 174 -1.4600000381469727  20 86.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 213 3411885901545438596 1
+TRAVEL_EXPLORE 3 WORLD 173 1.0199999809265137  20 87.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 214 -2253891303541964708 1
+TRAVEL_EXPLORE 3 WORLD 906 2204.771240234375  20 0.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 215 216082225904353642 1
+TRAVEL_ITEM 0 WORLD 905 0.5  20 1.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 216 -3468160008977770986 1
+TRAVEL_ITEM 3 WORLD 904 0.5  20 2.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 217 -7787275036126197664 1
+TRAVEL_ITEM 3 WORLD 868 -0.5  20 4.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 218 -5171350464637984263 1
+MOVE_NW 3 WORLD 832 0.5  20 5.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 219 3500867288532953034 1
+MOVE_NW 3 WORLD 796 0.5  20 6.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 220 8155635138848314638 1
+MOVE_NE 3 WORLD 762 0.5  20 7.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 222 -5927839208779154111 1
+SEARCH 3 WORLD 762 -1.5400009155273438  20 9.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 223 6944310463014113287 1
+TRAVEL_EXPLORE 3 WORLD 726 3.7399985790252686  20 10.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 224 7487928879810262317 1
+TRAVEL_EXPLORE 4 WORLD 691 2.9699981212615967  20 11.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 225 -4421885496406450586 1
+TRAVEL_EXPLORE 3 WORLD 656 2.9000015258789062  20 12.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 226 -8240561127575501524 1
+TRAVEL_EXPLORE 0 WORLD 620 2.8800010681152344  20 13.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 227 -595040254409152158 1
+TRAVEL_EXPLORE 0 WORLD 619 5.710000991821289  20 14.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 230 3959942993758375913 1
+USE 3 WORLD 619 -0.1399993896484375  20 14.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 230 3959942993758375913 1
+USE 3 SLOT 619 0.0 Waterskin:1@1,SpiritBow:0@3 20 14.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 230 3959942993758375913 1
+USE 9 TARGETING 619 -0.6399993896484375  20 15.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 240 7569789743771804918 1
+USE 3 WORLD 619 -0.1399993896484375  20 15.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 240 7569789743771804918 1
+USE 3 SLOT 619 0.0 Waterskin:1@1,SpiritBow:0@3 20 15.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 240 7569789743771804918 1
+USE 9 TARGETING 619 -0.6399993896484375  20 16.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 250 -5499464076937281944 1
+USE 3 WORLD 619 -0.1399993896484375  20 16.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 250 -5499464076937281944 1
+USE 3 SLOT 619 0.0 Waterskin:1@1,SpiritBow:0@3 20 16.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 250 -5499464076937281944 1
+USE 9 TARGETING 619 -0.6399993896484375  20 17.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 258 -3555539387373641576 1
+MOVE_E 2 WORLD 620 -2.5699989795684814  20 18.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 259 5944819438683756284 1
+MOVE_W 3 WORLD 620 449.3800048828125  20 18.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 271 -1384766606966805270 1
+MOVE_W 2 WORLD 620 -0.6199989318847656  20 19.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 273 4032155634005549736 1
+MOVE_W 3 WORLD 620 163.8800048828125  25 19.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 287 3918996332277537610 1
+TRAVEL_EXPLORE 0 WORLD 619 1.3600006103515625  25 20.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 288 6681312772880991154 1
+TRAVEL_EXPLORE 3 WORLD 583 3.940000057220459  25 21.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 289 233640767589456238 1
+TRAVEL_ITEM 3 WORLD 582 2.9699997901916504  25 22.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 290 -8816169273749677062 1
+TRAVEL_ITEM 3 WORLD 581 2.799999237060547  25 23.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 291 6803587174909592338 1
+MOVE_NW 3 WORLD 545 3.529998779296875  25 24.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 293 2293626614041850126 1
+TRAVEL_ITEM 3 WORLD 544 2.9600002765655518  25 25.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 294 -7873482612016833196 1
+USE 3 WORLD 544 -0.23999977111816406  25 25.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 294 -7873482612016833196 1
+USE 3 SLOT 544 0.0 Waterskin:1@1,SpiritBow:0@3 25 25.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 294 -7873482612016833196 1
+USE 9 TARGETING 544 -0.7399997711181641  25 26.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 304 -7078592181076997833 1
+USE 3 WORLD 544 -0.23999977111816406  25 26.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 304 -7078592181076997833 1
+USE 3 SLOT 544 0.0 Waterskin:1@1,SpiritBow:0@3 25 26.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 304 -7078592181076997833 1
+USE 9 TARGETING 544 -0.7399997711181641  25 27.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 314 -4052516258111136930 1
+USE 3 WORLD 544 -0.23999977111816406  25 27.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 314 -4052516258111136930 1
+USE 3 SLOT 544 0.0 Waterskin:1@1,SpiritBow:0@3 25 27.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 314 -4052516258111136930 1
+USE 9 TARGETING 544 -0.7399997711181641  25 28.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 316 1597540366736532054 1
+USE 3 WORLD 544 -0.23999977111816406  25 28.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 316 1597540366736532054 1
+USE 3 SLOT 544 0.0 Waterskin:1@1,SpiritBow:0@3 25 28.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 316 1597540366736532054 1
+USE 9 TARGETING 544 -0.7399997711181641  25 29.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 326 4478552722921849768 1
+USE 3 WORLD 544 -0.23999977111816406  25 29.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 326 4478552722921849768 1
+USE 3 SLOT 544 0.0 Waterskin:1@1,SpiritBow:0@3 25 29.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 326 4478552722921849768 1
+USE 9 TARGETING 544 -0.7399997711181641  25 30.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 336 -6734564579254064691 1
+MOVE_NW 3 WORLD 544 -0.7399997711181641  25 31.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 338 1626458914479664780 1
+MOVE_NW 3 WORLD 544 -40.73999786376953  24 31.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 351 7291635086463472364 1
+MOVE_NW 3 WORLD 544 149.25999450683594  24 32.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 366 -1662039851626343421 1
+TRAVEL_ITEM 2 WORLD 508 -35.36000061035156  23 34.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 367 -847319785702026942 1
+TRAVEL_ITEM 3 WORLD 507 2.719999313354492  23 35.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 368 7835444862383013228 1
+TRAVEL_ITEM 1 WORLD 471 302.20001220703125  23 37.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 369 1003866152191315130 1
+MOVE_E 3 WORLD 472 -1.2800006866455078  23 38.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 370 -635262762494983310 1
+USE 3 WORLD 472 -0.2800006866455078  23 38.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 370 -635262762494983310 1
+USE 3 SLOT 472 0.0 Waterskin:1@1,SpiritBow:0@4 23 38.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 370 -635262762494983310 1
+USE 0 INVENTORY 472 0.0 Waterskin:1@1,SpiritBow:0@4 23 38.0 PotionOfToxicGas:1,ScrollOfUpgrade:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 370 -635262762494983310 1
+MENU_SELECT 0 MENU 472 -0.7800006866455078  23 39.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 371 3465338761677583218 1
+TRAVEL_EXPLORE 3 WORLD 437 1.2699992656707764  23 40.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 372 -6646753353111798218 1
+MOVE_SE 3 WORLD 473 -1.260000228881836  23 41.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 373 -1361097415814299824 1
+TRAVEL_EXPLORE 3 WORLD 437 1.7199993133544922  24 42.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 374 4513455307505140920 1
+TRAVEL_EXPLORE 3 WORLD 402 -1.160000205039978  24 43.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 375 8205851804368741234 1
+TRAVEL_EXPLORE 3 WORLD 366 -0.7399997711181641  24 44.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 376 -8490215642590681418 1
+TRAVEL_EXPLORE 3 WORLD 367 0.8100002408027649  24 45.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 379 3291917646139951129 1
+TRAVEL_EXPLORE 3 WORLD 331 -1.220001220703125  24 46.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 380 -8092418724239551523 1
+TRAVEL_EXPLORE 3 WORLD 296 -1.2000007629394531  24 47.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 381 161598096916647223 1
+TRAVEL_EXPLORE 3 WORLD 261 3.1799988746643066  24 48.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 382 -8224182602225457547 1
+TRAVEL_EXPLORE 3 WORLD 225 2.9100003242492676  24 49.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 383 4060298406267422679 1
+TRAVEL_EXPLORE 3 WORLD 189 2.8899998664855957  24 50.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 384 5230624632224989434 1
+TRAVEL_EXPLORE 3 WORLD 153 3.3199992179870605  24 51.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 428 -3024100807136327684 1
+TRAVEL_EXPLORE 3 WORLD 152 3.3000006675720215  25 52.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 429 -6272007684899510135 1
+TRAVEL_EXPLORE 3 WORLD 151 2.7800002098083496  25 53.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 433 7790966990800928648 1
+TRAVEL_EXPLORE 3 WORLD 185 2.809999942779541  25 54.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 434 -4177646304912551009 1
+USE 3 WORLD 185 -0.3400001525878906  25 54.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 434 -4177646304912551009 1
+USE 3 SLOT 185 0.0 Waterskin:1@1,SpiritBow:0@3 25 54.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 434 -4177646304912551009 1
+CANCEL 0 TARGETING 185 -0.3400001525878906  25 54.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 434 -4177646304912551009 1
+WAIT 3 WORLD 185 -0.8400001525878906  25 55.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 434 -4177646304912551009 1
+MOVE_N 3 WORLD 153 -23.780000686645508  25 73.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 471 -7841345326173427498 1
+USE 3 WORLD 153 -0.2800006866455078  25 73.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 471 -7841345326173427498 1
+USE 3 SLOT 153 0.0 Waterskin:1@1,SpiritBow:0@3 25 73.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 471 -7841345326173427498 1
+USE 9 TARGETING 153 -0.7800006866455078  25 74.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 481 2692910767207112655 1
+MOVE_SE 0 WORLD 153 -40.779998779296875  24 74.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 505 -6121308219730575619 1
+MOVE_SE 0 WORLD 153 149.22000122070312  24 75.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 520 3363446775933633620 1
+MOVE_W 3 WORLD 152 -38.79999923706055  23 76.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 522 8093499134694069755 1
+MOVE_E 3 WORLD 150 -0.3400001525878906  23 82.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 534 5811732529911084952 1
+MOVE_E 3 WORLD 183 1.1399993896484375  24 85.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 540 4833386761490389090 1
+MOVE_S 3 WORLD 218 4.369999885559082  24 87.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 545 8963378015070027593 1
+USE 3 WORLD 218 -0.38000011444091797  24 87.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 545 8963378015070027593 1
+USE 3 SLOT 218 0.0 Waterskin:1@1,SpiritBow:0@3 24 87.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 545 8963378015070027593 1
+USE 9 TARGETING 218 299.1199951171875  24 88.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 555 -8992530416037854529 1
+MOVE_SW 2 WORLD 218 -0.880000114440918  24 88.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 569 2261945370531452169 1
+MOVE_SW 3 WORLD 218 149.1199951171875  24 89.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 583 8429263787666559159 1
+MOVE_N 2 WORLD 183 -13.360000610351562  25 101.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 637 7592746628920528481 1
+MOVE_E 3 WORLD 184 0.6399993896484375  25 102.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 640 716997319256663139 1
+MOVE_E 3 WORLD 185 -2.8400001525878906  25 103.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 641 4985428207037301821 1
+MOVE_NE 3 WORLD 151 -2.8199996948242188  25 104.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 642 -157049639085027481 1
+MOVE_E 3 WORLD 152 -2.799999237060547  25 105.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 643 2239614336665411507 1
+MOVE_E 3 WORLD 153 -2.780000686645508  25 106.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 644 -3610558001576296091 1
+MOVE_SE 2 WORLD 189 -0.46000027656555176  25 108.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 645 -8146789535449575965 1
+TRAVEL_ITEM 3 WORLD 225 -2.739999771118164  25 109.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 646 9161134003075177958 1
+TRAVEL_ITEM 4 WORLD 261 -2.720001220703125  25 110.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 647 1982651287395600776 1
+TRAVEL_ITEM 3 WORLD 296 -2.700000762939453  25 111.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 648 4526473829742210888 1
+TRAVEL_ITEM 3 WORLD 331 1.279998779296875  25 112.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 649 -5738079008931090778 1
+TRAVEL_ITEM 3 WORLD 366 1.260000228881836  25 113.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 650 7270326685900292382 1
+TRAVEL_ITEM 3 WORLD 402 1.239999771118164  25 114.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 651 -2392602719354553166 1
+TRAVEL_EXPLORE 3 WORLD 437 1.2199993133544922  25 115.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 652 6862482013076377112 1
+TRAVEL_ITEM 3 WORLD 471 1.2000007629394531  25 116.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 657 2380880433406389566 1
+TRAVEL_EXPLORE 3 WORLD 470 2.7800002098083496  25 117.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 660 -3819229372884358178 1
+TRAVEL_ITEM 3 WORLD 469 2.6599998474121094  25 118.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 661 5625803532083368871 1
+TRAVEL_ITEM 3 WORLD 468 2.739999294281006  25 119.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 664 -5549023432329550273 1
+TRAVEL_ITEM 3 WORLD 467 2.619999885559082  25 120.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 665 -4326866339704187938 1
+TRAVEL_ITEM 3 WORLD 501 3.450000286102295  25 121.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 668 4730052997736478012 1
+USE 3 WORLD 501 -0.39999961853027344  25 121.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 668 4730052997736478012 1
+USE 3 SLOT 501 0.0 Waterskin:1@1,SpiritBow:0@3 25 121.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 668 4730052997736478012 1
+USE 9 TARGETING 501 -0.8999996185302734  25 122.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 668 4730052997736478012 1
+MOVE_W 3 WORLD 501 -0.8999996185302734  25 122.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 683 -3396687261974731024 1
+MOVE_E 3 WORLD 502 -1.380000114440918  25 123.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 684 9008030139993531040 1
+MOVE_S 1 WORLD 537 -39.380001068115234  24 124.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 696 -2007402297193960937 1
+MOVE_NE 1 WORLD 503 -41.36000061035156  23 125.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 697 -705935556624135662 1
+MOVE_SE 1 WORLD 539 -1.3400001525878906  23 126.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 698 6061728064027339372 1
+MOVE_E 0 WORLD 540 -1.3199996948242188  23 127.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 699 5362872249996083066 1
+MOVE_E 1 WORLD 541 -1.2999992370605469  23 128.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 700 -8964232838727400938 1
+MOVE_E 2 WORLD 542 -1.2800006866455078  23 129.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 701 -597973979714796286 1
+MOVE_NE 0 WORLD 508 -2.760000228881836  23 130.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 702 -1617918718223899146 1
+MOVE_SW 2 WORLD 508 149.24000549316406  23 131.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 716 4581872330006672261 1
+WAIT 3 WORLD 508 -0.7600002288818359  23 132.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 716 4581872330006672261 1
+MOVE_SW 2 WORLD 508 -0.7600002288818359  23 132.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 741 7157806948486640964 1
+MOVE_SW 2 WORLD 508 -0.7600002288818359  23 133.0 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 754 -6956078696658879063 1
+MOVE_SW 2 WORLD 508 109.23999786376953  22 133.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 769 -969703452698820913 1
+TRAVEL_ITEM 3 WORLD 542 4.069999694824219  23 135.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 770 -857513108797111667 1
+TRAVEL_ITEM 3 WORLD 541 1.2000007629394531  23 136.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 771 6625660489593020982 1
+TRAVEL_ITEM 3 WORLD 540 1.1800003051757812  23 137.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 772 -2322428995623074130 1
+TRAVEL_ITEM 3 WORLD 539 1.1599998474121094  23 138.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 773 -4075017673842689030 1
+TRAVEL_ITEM 3 WORLD 538 2.6399993896484375  23 139.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 774 -546043800871013246 1
+TRAVEL_ITEM 3 WORLD 537 1.119999885559082  23 140.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 775 8577359934097226029 1
+TRAVEL_EXPLORE 3 WORLD 501 1.1000003814697266  23 141.5 PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 776 9082844425489167103 1
+TRAVEL_ITEM 3 WORLD 500 203.17999267578125  23 143.5 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 777 566143971758090061 1
+TRAVEL_ITEM 3 WORLD 464 4.009999752044678  24 144.5 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 778 -2365747489891255375 1
+USE 4 WORLD 464 -0.440000057220459  24 144.5 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 778 -2365747489891255375 1
+USE 4 SLOT 464 0.0 Waterskin:1@2,SpiritBow:0@4 24 144.5 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 778 -2365747489891255375 1
+CANCEL 0 TARGETING 464 -0.440000057220459  24 144.5 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 778 -2365747489891255375 1
+TRAVEL_ITEM 4 WORLD 428 2.7899999618530273  24 145.5 Food:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 779 -489721005903559827 1
+TRAVEL_ITEM 4 WORLD 462 77.12000274658203  24 147.5 Food:1,PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 780 7782419637127906357 1
+REST 1 WORLD 462 -0.9800000190734863  24 148.5 Food:1,PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 780 7782419637127906357 1
+USE 1 WORLD 462 -0.48000001907348633  24 148.5 Food:1,PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 780 7782419637127906357 1
+USE 0 SLOT 462 0.0 Waterskin:1@2,SpiritBow:0@5 24 148.5 Food:1,PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 780 7782419637127906357 1
+CANCEL 0 TARGETING 462 -0.48000001907348633  24 148.5 Food:1,PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 780 7782419637127906357 1
+TRAVEL_ITEM 5 WORLD 461 0.5699999928474426  24 149.5 Food:1,PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 781 -617813405376019369 1
+TRAVEL_ITEM 5 WORLD 460 300.0199890136719  24 151.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 877 -6546435144849508822 1
+TRAVEL_EXPLORE 4 WORLD 496 -1.4600000381469727  24 152.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 880 -1899219562028957644 1
+REST 1 WORLD 496 -0.9600000381469727  24 153.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 880 -1899219562028957644 1
+USE 1 WORLD 496 -0.46000003814697266  24 153.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 880 -1899219562028957644 1
+USE 6 SLOT 496 0.0 Waterskin:1@2,SpiritBow:0@6 24 153.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 880 -1899219562028957644 1
+CANCEL 0 TARGETING 496 -0.46000003814697266  24 153.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 880 -1899219562028957644 1
+TRAVEL_STAIRS 6 WORLD 461 1.5199999809265137  25 154.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 881 2269618073848396132 1
+TRAVEL_EXPLORE 1 WORLD 496 -2.9600000381469727  25 155.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 882 -3462173673139274650 1
+TRAVEL_STAIRS 1 WORLD 461 1.0199999809265137  25 156.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 883 -389579788220058294 1
+MOVE_S 1 WORLD 496 -2.9600000381469727  25 157.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 884 265955602542071663 1
+REST 4 WORLD 496 -0.9600000381469727  25 158.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 884 265955602542071663 1
+TRAVEL_STAIRS 1 WORLD 461 1.0199999809265137  25 159.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 885 -7101044138331193479 1
+USE 1 WORLD 461 -0.48000001907348633  25 159.5 Food:1,PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 885 -7101044138331193479 1
+USE 1 SLOT 461 -116.4800033569336 Waterskin:1@2,SpiritBow:0@6 25 162.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 885 -7101044138331193479 1
+TRAVEL_EXPLORE 0 WORLD 496 -2.9600000381469727  25 163.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 886 -7491863543664345441 1
+MOVE_S 0 WORLD 531 -1.440000057220459  25 164.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 887 -6668333538790027667 1
+TRAVEL_EXPLORE 5 WORLD 566 -1.4200000762939453  25 165.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 888 -6861174524011166562 1
+MOVE_E 6 WORLD 567 0.5799999237060547  25 166.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 889 -8615635293273292398 1
+TRAVEL_EXPLORE 5 WORLD 602 -1.3999996185302734  25 167.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 890 4223199253892907241 1
+MOVE_W 5 WORLD 601 0.6000003814697266  25 168.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 891 -3914152864925966997 1
+TRAVEL_EXPLORE 2 WORLD 636 0.06999993324279785  25 169.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 896 2325823746989537704 1
+TRAVEL_ITEM 5 WORLD 671 -1.3600006103515625  25 170.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 897 -3349974988904278408 1
+TRAVEL_ITEM 5 WORLD 706 -1.2900002002716064  25 171.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 900 4845657270758653410 1
+TRAVEL_EXPLORE 5 WORLD 671 1.1399993896484375  25 172.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 901 -1972956432287703826 1
+TRAVEL_ITEM 5 WORLD 706 -2.8400001525878906  25 173.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 902 5327104264987121632 1
+TRAVEL_ITEM 4 WORLD 741 1.330000400543213  25 175.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 903 -8927182583196137786 1
+MOVE_E 5 WORLD 742 0.6800003051757812  25 176.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 904 6761122784663245254 1
+TRAVEL_EXPLORE 1 WORLD 707 2.6599998474121094  25 177.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 905 246017801550284544 1
+MOVE_E 5 WORLD 708 0.6599998474121094  25 178.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 906 -7987938774489146329 1
+TRAVEL_EXPLORE 5 WORLD 672 2.6399993896484375  25 179.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 907 -8808902668990795203 1
+TRAVEL_EXPLORE 4 WORLD 636 1.119999885559082  25 180.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 908 5711518385982461629 1
+MOVE_N 4 WORLD 601 1.1000003814697266  25 181.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 910 -6125737051658880239 1
+USE 5 WORLD 601 -0.39999961853027344  25 181.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 910 -6125737051658880239 1
+USE 5 SLOT 601 0.0 Waterskin:1@1,SpiritBow:0@5 25 181.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 910 -6125737051658880239 1
+USE 9 TARGETING 601 149.10000610351562  25 182.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 919 -3999281283232859133 1
+USE 5 WORLD 601 -0.39999961853027344  25 182.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 919 -3999281283232859133 1
+USE 5 SLOT 601 0.0 Waterskin:1@1,SpiritBow:0@5 25 182.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 919 -3999281283232859133 1
+CANCEL 0 TARGETING 601 -0.39999961853027344  25 182.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 919 -3999281283232859133 1
+TRAVEL_EXPLORE 5 WORLD 566 1.0799999237060547  25 183.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 920 -6019371180059770341 1
+MOVE_S 4 WORLD 601 -2.8999996185302734  25 184.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 921 -2734839419555427477 1
+MOVE_S 5 WORLD 636 -2.880000114440918  25 185.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 922 5040870824225666489 1
+TRAVEL_EXPLORE 4 WORLD 601 1.1000003814697266  25 186.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 923 -6605387924836805974 1
+MOVE_NE 5 WORLD 567 1.0799999237060547  25 187.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 924 8448662132411665648 1
+MOVE_NE 5 WORLD 533 -1.3999996185302734  25 188.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 925 -4321751973411068740 1
+USE 4 WORLD 533 -0.39999961853027344  25 188.5 PotionOfHealing:1,PotionOfStrength:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 925 -4321751973411068740 1
+USE 4 SLOT 533 -0.39999961853027344 Waterskin:1@1,SpiritBow:0@5 25 189.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 926 7451178136292011264 1
+TRAVEL_EXPLORE 4 WORLD 499 2.5799999237060547  25 190.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 927 -6836865772111306854 1
+TRAVEL_EXPLORE 4 WORLD 464 1.059999942779541  25 191.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 928 -2500261664549853534 1
+TRAVEL_EXPLORE 4 WORLD 428 1.0399999618530273  25 192.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 929 -3972769102903825582 1
+TRAVEL_EXPLORE 4 WORLD 392 2.5199999809265137  25 193.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 930 4981214129747615684 1
+TRAVEL_EXPLORE 4 WORLD 356 -1.4600000381469727  25 194.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 931 -6352363286090090080 1
+TRAVEL_EXPLORE 4 WORLD 321 -1.440000057220459  25 195.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 932 3173010986785828124 1
+TRAVEL_EXPLORE 4 WORLD 285 -1.4200000762939453  25 196.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 934 624016348926204616 1
+TRAVEL_EXPLORE 4 WORLD 284 -1.3999996185302734  25 197.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 935 7290803136993901887 1
+TRAVEL_EXPLORE 4 WORLD 283 -1.380000114440918  25 198.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 936 -2516687857901093133 1
+MOVE_S 0 WORLD 318 2.6000003814697266  25 199.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 937 -3396538538179994195 1
+TRAVEL_EXPLORE 4 WORLD 283 -2.880000114440918  25 200.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 955 7886596107748537294 1
+TRAVEL_EXPLORE 0 WORLD 247 -1.3100006580352783  25 201.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 956 -2218457633873609814 1
+TRAVEL_EXPLORE 4 WORLD 283 1.119999885559082  25 202.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 957 -7665607149372319502 1
+TRAVEL_EXPLORE 0 WORLD 284 1.1000003814697266  25 203.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 958 4195860068883308626 1
+TRAVEL_EXPLORE 0 WORLD 285 1.0799999237060547  25 204.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 960 -649722152248232565 1
+TRAVEL_EXPLORE 4 WORLD 321 1.059999942779541  25 205.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 961 7801833392835960828 1
+TRAVEL_EXPLORE 4 WORLD 356 1.0399999618530273  25 206.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 963 2990328884590457756 1
+USE 4 WORLD 356 -0.46000003814697266  25 206.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 963 2990328884590457756 1
+USE 4 SLOT 356 0.0 Waterskin:1@1,SpiritBow:0@4 25 206.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 963 2990328884590457756 1
+USE 9 TARGETING 356 299.0400085449219  25 207.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 976 2287618391899406453 1
+USE 4 WORLD 356 -0.46000003814697266  25 207.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 976 2287618391899406453 1
+USE 4 SLOT 356 0.0 Waterskin:1@1,SpiritBow:0@4 25 207.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 976 2287618391899406453 1
+USE 9 TARGETING 356 149.0399932861328  25 208.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 990 3845743600419108173 1
+TRAVEL_EXPLORE 4 WORLD 392 1.0199999809265137  25 209.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 991 566476970667488396 1
+TRAVEL_EXPLORE 0 WORLD 428 -2.9600000381469727  25 210.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 992 -2719212902278875784 1
+TRAVEL_STAIRS 0 WORLD 427 2.5199999809265137  25 211.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 993 1014106098293631936 1
+TRAVEL_EXPLORE 2 WORLD 428 -2.9600000381469727  25 212.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 994 -3718502376408832552 1
+TRAVEL_EXPLORE 0 WORLD 429 -1.440000057220459  25 213.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 995 -973300825271415421 1
+TRAVEL_EXPLORE 4 WORLD 465 -1.4200000762939453  25 214.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 996 -7238877328060462775 1
+TRAVEL_EXPLORE 4 WORLD 501 -2.8999996185302734  25 215.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 997 -1295385068156456285 1
+TRAVEL_EXPLORE 0 WORLD 502 -2.880000114440918  25 216.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 998 -7525294218391334928 1
+TRAVEL_EXPLORE 4 WORLD 503 -2.8600006103515625  25 217.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 999 -4085606372644875256 1
+TRAVEL_EXPLORE 6 WORLD 504 -1.3400001525878906  25 218.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1000 -1505255307012012045 1
+TRAVEL_EXPLORE 0 WORLD 505 -1.3199996948242188  25 219.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1001 -6993434511872954891 1
+TRAVEL_EXPLORE 4 WORLD 506 -1.2999992370605469  25 220.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1002 -1738448793738482608 1
+TRAVEL_EXPLORE 0 WORLD 507 -2.780000686645508  25 221.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1003 1874267299386202192 1
+TRAVEL_EXPLORE 2 WORLD 508 -2.760000228881836  25 222.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1004 -8488703220124521488 1
+TRAVEL_EXPLORE 4 WORLD 509 -1.239999771118164  25 223.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1005 -7051405456097570013 1
+TRAVEL_EXPLORE 4 WORLD 545 -2.720001220703125  25 224.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1006 -3882079727323756303 1
+TRAVEL_EXPLORE 3 WORLD 581 -2.700000762939453  25 225.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1007 -3401170523926838366 1
+TRAVEL_EXPLORE 3 WORLD 616 -1.1800003051757812  25 226.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1008 -6880077363747037545 1
+TRAVEL_EXPLORE 2 WORLD 650 -0.9599998593330383  25 227.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1009 -8253184425562218207 1
+TRAVEL_EXPLORE 0 WORLD 685 -1.1399993896484375  25 228.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1010 5939854861674322272 1
+TRAVEL_EXPLORE 2 WORLD 719 -1.1199989318847656  25 229.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1011 4892550442399285030 1
+TRAVEL_EXPLORE 4 WORLD 753 0.9500014781951904  25 230.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1013 -1694668111458731818 1
+MOVE_NW 4 WORLD 717 0.9000015258789062  25 231.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1014 4930775605785794850 1
+TRAVEL_EXPLORE 4 WORLD 753 -0.5999984741210938  25 232.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1016 -3692193306126088679 1
+USE 4 WORLD 753 -0.09999847412109375  25 232.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1016 -3692193306126088679 1
+USE 4 SLOT 753 0.0 Waterskin:1@1,SpiritBow:0@4 25 232.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1016 -3692193306126088679 1
+USE 9 TARGETING 753 -0.5999984741210938  25 233.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1029 -1439038695083638369 1
+TRAVEL_ITEM 4 WORLD 788 -0.9800018072128296  25 234.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1030 166097780009430435 1
+USE 5 WORLD 788 -0.0800018310546875  25 234.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1030 166097780009430435 1
+USE 5 SLOT 788 -0.0800018310546875 Waterskin:1@1,SpiritBow:0@4 25 234.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1030 166097780009430435 1
+WAIT 5 WORLD 788 -0.5800018310546875  25 235.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1030 166097780009430435 1
+MOVE_N 4 WORLD 753 1.4000015258789062  25 236.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1031 2127920553831241225 1
+MOVE_S 4 WORLD 753 -0.5999984741210938  25 237.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1044 -5678521621189008335 1
+MOVE_N 4 WORLD 718 2.8800010681152344  25 238.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1045 7860563609592349949 1
+MOVE_S 4 WORLD 718 299.3800048828125  25 238.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1070 5409319897895808308 1
+MOVE_N 4 WORLD 683 0.8800010681152344  25 239.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1071 7666454471819074712 1
+MOVE_N 4 WORLD 648 0.8800010681152344  25 240.5 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1072 -1415652649070136648 1
+MOVE_S 0 WORLD 648 149.3800048828125  25 241.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1086 2253994959755058128 1
+MOVE_SE 4 WORLD 684 2.8600006103515625  25 242.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1087 7393004478771796952 1
+TRAVEL_ITEM 6 WORLD 719 -2.6199989318847656  25 243.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1088 -8141472681858884272 1
+TRAVEL_EXPLORE 1 WORLD 753 -2.5999984741210938  25 244.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1089 -9166684673394336624 1
+MOVE_N 4 WORLD 718 1.3800010681152344  25 245.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1090 -6043620856696062534 1
+TRAVEL_ITEM 4 WORLD 753 -2.5999984741210938  25 246.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1091 -4946563051433084543 1
+TRAVEL_EXPLORE 4 WORLD 788 -2.5800018310546875  25 247.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1092 4145184217843830819 1
+TRAVEL_ITEM 4 WORLD 823 -2.0600013732910156  25 249.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1093 8841002526503390713 1
+TRAVEL_ITEM 4 WORLD 859 -2.0400009155273438  25 251.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1120 5095652772350672950 1
+TRAVEL_EXPLORE 4 WORLD 860 1.5599991083145142  25 252.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1121 -7525304387593407426 1
+MOVE_SW 4 WORLD 894 -1.0200004577636719  25 253.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1122 -1365724012349733454 1
+MOVE_NE 4 WORLD 860 1.4599990844726562  25 254.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1123 -1447218754003405820 1
+MOVE_E 1 WORLD 861 -1.0200004577636719  25 255.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1124 -3512749054950253268 1
+TRAVEL_STAIRS 4 WORLD 860 1.4599990844726562  25 256.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1125 -386406057404527440 1
+MOVE_NW 4 WORLD 824 2.9399986267089844  25 257.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1126 6313440652580942795 1
+TRAVEL_STAIRS 2 WORLD 788 1.4199981689453125  25 258.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1127 3952675514002733169 1
+MOVE_SE 0 WORLD 824 -2.5600013732910156  25 259.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1128 -523109593421988861 1
+MOVE_W 4 WORLD 823 -0.5600013732910156  25 260.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1129 4598789063040086775 1
+MOVE_S 5 WORLD 858 -1.0400009155273438  25 261.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1130 -5653341139538056609 1
+MOVE_SE 4 WORLD 894 -2.520000457763672  25 262.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1131 -4757751931336524601 1
+MOVE_NE 4 WORLD 860 1.4599990844726562  25 263.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1132 -8578806437025166703 1
+MOVE_E 4 WORLD 861 -2.520000457763672  25 264.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1135 -2576116016430391712 1
+TRAVEL_STAIRS 4 WORLD 860 1.4599990844726562  25 265.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1138 -1895854974894684038 1
+MOVE_E 0 WORLD 861 -2.520000457763672  25 266.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1141 540635221517321165 1
+MOVE_W 4 WORLD 860 1.4599990844726562  25 267.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1142 -6144194860345510441 1
+TRAVEL_STAIRS 0 WORLD 824 1.4399986267089844  25 268.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1143 -8625500027106697774 1
+TRAVEL_STAIRS 4 WORLD 788 1.4199981689453125  25 269.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1144 -7292309621377661307 1
+MOVE_N 4 WORLD 753 1.4000015258789062  25 270.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1145 -2824678902344262941 1
+TRAVEL_STAIRS 0 WORLD 718 1.3800010681152344  25 271.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1146 7205546682488352152 1
+MOVE_E 5 WORLD 719 -0.6199989318847656  25 272.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1147 -6691343293489344682 1
+USE 4 WORLD 719 -0.11999893188476562  25 272.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1147 -6691343293489344682 1
+USE 4 SLOT 719 0.0 Waterskin:1@1,SpiritBow:0@4 25 272.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1147 -6691343293489344682 1
+USE 9 TARGETING 719 299.3800048828125  25 273.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1158 4965100561230636826 1
+USE 4 WORLD 719 -0.11999893188476562  25 273.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1158 4965100561230636826 1
+USE 4 SLOT 719 0.0 Waterskin:1@1,SpiritBow:0@4 25 273.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1158 4965100561230636826 1
+USE 9 TARGETING 719 163.8800048828125  30 274.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1170 -4033020428614657189 1
+TRAVEL_STAIRS 4 WORLD 684 1.3600006103515625  30 275.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1171 -6445826535405804795 1
+MOVE_S 4 WORLD 719 -2.6199989318847656  30 276.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1172 417884887233360705 1
+MOVE_W 4 WORLD 718 -0.6199989318847656  30 277.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1173 7232324589205615931 1
+TRAVEL_STAIRS 2 WORLD 684 1.3600006103515625  30 278.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1174 5211227915707909025 1
+TRAVEL_STAIRS 4 WORLD 650 1.3400001525878906  30 279.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1175 4329300653853352578 1
+TRAVEL_STAIRS 4 WORLD 616 1.3199996948242188  30 280.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1176 1144474285174938730 1
+MOVE_E 4 WORLD 617 0.8199996948242188  30 281.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1177 6916428007191082410 1
+TRAVEL_STAIRS 0 WORLD 581 1.2999992370605469  30 282.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1178 749177298813843550 1
+TRAVEL_STAIRS 4 WORLD 545 1.279998779296875  30 283.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1179 5802348029404379204 1
+TRAVEL_STAIRS 4 WORLD 544 1.260000228881836  30 284.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1180 763887749480577508 1
+MOVE_W 4 WORLD 543 2.739999771118164  30 285.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1181 1125210988545890654 1
+TRAVEL_STAIRS 4 WORLD 542 1.2199993133544922  30 286.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1182 8875271973106291150 1
+TRAVEL_STAIRS 4 WORLD 541 1.2000007629394531  30 287.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1183 4046216964240153959 1
+TRAVEL_STAIRS 6 WORLD 540 1.1800003051757812  30 288.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1184 8653260525986503877 1
+TRAVEL_STAIRS 4 WORLD 539 1.1599998474121094  30 289.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1185 6277652076590786540 1
+TRAVEL_STAIRS 4 WORLD 538 1.1399993896484375  30 290.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1186 -95449819427093208 1
+TRAVEL_STAIRS 4 WORLD 537 1.119999885559082  30 291.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1187 -6847057619288917372 1
+TRAVEL_STAIRS 1 WORLD 501 1.1000003814697266  30 292.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1188 -7653079125375846612 1
+TRAVEL_STAIRS 4 WORLD 500 1.0799999237060547  30 293.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1189 -4319381473179658086 1
+TRAVEL_STAIRS 0 WORLD 464 1.059999942779541  30 294.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1190 1460106570976169805 1
+MOVE_SE 0 WORLD 500 -2.9200000762939453  30 295.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1191 -7939086982114342095 1
+MOVE_SW 4 WORLD 534 -1.3999996185302734  30 296.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1192 -4756368755674402829 1
+TRAVEL_STAIRS 4 WORLD 499 1.0799999237060547  30 297.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1193 2489174798863115421 1
+MOVE_E 4 WORLD 500 -0.9200000762939453  30 298.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1194 3461867189603727898 1
+USE 4 WORLD 500 -0.4200000762939453  30 298.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1194 3461867189603727898 1
+USE 4 SLOT 500 0.0 Waterskin:1@1,SpiritBow:0@4 30 298.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1194 3461867189603727898 1
+CANCEL 0 TARGETING 500 -0.4200000762939453  30 298.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1194 3461867189603727898 1
+MOVE_E 4 WORLD 501 -2.8999996185302734  30 299.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1195 5512111061655356724 1
+TRAVEL_STAIRS 0 WORLD 500 1.0799999237060547  30 300.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1196 7473637459549683998 1
+TRAVEL_STAIRS 4 WORLD 464 1.059999942779541  30 301.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1225 -4027125741167085818 1
+MOVE_S 0 WORLD 499 -2.9200000762939453  30 302.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1226 1918725527181556714 1
+USE 0 WORLD 499 -0.4200000762939453  30 302.0 PotionOfHealing:1,PotionOfToxicGas:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1226 1918725527181556714 1
+USE 2 SLOT 499 -41.41999816894531 Waterskin:1@1,SpiritBow:0@4 29 303.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1227 2649529010842680158 1
+MOVE_S 2 WORLD 534 -42.900001525878906  28 304.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1228 -8580054824873375934 1
+MOVE_S 2 WORLD 569 -41.380001068115234  27 305.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1229 8787037995600394710 1
+USE 0 WORLD 569 -0.38000011444091797  27 305.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1229 8787037995600394710 1
+USE 2 SLOT 569 -0.38000011444091797 Waterskin:1@1,SpiritBow:0@3 29 306.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1230 -4817192195947283779 1
+MOVE_NW 2 WORLD 533 1.1000003814697266  29 307.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1231 6727401183900890955 1
+MOVE_E 2 WORLD 534 -0.8999996185302734  29 308.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1232 -9038852619630918523 1
+USE 2 WORLD 534 -0.39999961853027344  29 308.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1232 -9038852619630918523 1
+USE 2 SLOT 534 0.0 Waterskin:1@1,SpiritBow:0@2 29 308.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1232 -9038852619630918523 1
+CANCEL 0 TARGETING 534 -0.39999961853027344  29 308.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1232 -9038852619630918523 1
+MOVE_S 3 WORLD 569 -2.880000114440918  29 309.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1233 8766003663076225911 1
+SEARCH 2 WORLD 569 -1.880000114440918  29 311.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1233 8766003663076225911 1
+USE 0 WORLD 569 -0.38000011444091797  29 311.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1233 8766003663076225911 1
+USE 2 SLOT 569 0.0 Waterskin:1@1,SpiritBow:0@2 29 311.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1233 8766003663076225911 1
+CANCEL 0 TARGETING 569 -0.38000011444091797  29 311.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1233 8766003663076225911 1
+MOVE_N 0 WORLD 534 1.1000003814697266  29 312.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1234 -4211191221808907487 1
+MOVE_NE 2 WORLD 500 1.0799999237060547  29 313.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1235 5032816484975456215 1
+MOVE_E 3 WORLD 501 -2.3999996185302734  30 314.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1236 -1079753588888120709 1
+USE 2 WORLD 501 -0.39999961853027344  30 314.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1236 -1079753588888120709 1
+USE 2 SLOT 501 0.0 Waterskin:1@1,SpiritBow:0@2 30 314.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1236 -1079753588888120709 1
+USE 9 TARGETING 501 259.1000061035156  29 315.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1249 6871561512421953296 1
+USE 2 WORLD 501 -0.39999961853027344  29 315.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1249 6871561512421953296 1
+USE 2 SLOT 501 0.0 Waterskin:1@1,SpiritBow:0@2 29 315.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1249 6871561512421953296 1
+USE 9 TARGETING 501 149.10000610351562  29 316.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1263 -4169406660092193428 1
+USE 2 WORLD 501 -0.39999961853027344  29 316.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1263 -4169406660092193428 1
+USE 1 SLOT 501 -0.39999961853027344 Waterskin:1@1,SpiritBow:0@2 29 316.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1263 -4169406660092193428 1
+MOVE_E 2 WORLD 502 -2.880000114440918  29 317.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1264 6731668367425510108 1
+USE 2 WORLD 502 -0.38000011444091797  29 317.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1264 6731668367425510108 1
+USE 2 SLOT 502 0.0 Waterskin:1@1,SpiritBow:0@2 29 317.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1264 6731668367425510108 1
+CANCEL 0 TARGETING 502 -0.38000011444091797  29 317.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1264 6731668367425510108 1
+MOVE_N 2 WORLD 467 -40.880001068115234  28 318.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1265 -3253089012915355158 1
+MOVE_E 2 WORLD 468 -2.8600006103515625  28 319.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1266 8372754630111925027 1
+MOVE_E 2 WORLD 469 -2.8400001525878906  28 320.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1267 -7566346365385489791 1
+MOVE_E 2 WORLD 470 -2.8199996948242188  28 321.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1268 -8590817578399774303 1
+MOVE_E 3 WORLD 471 -2.799999237060547  28 322.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1269 1809192113799846957 1
+MOVE_W 0 WORLD 470 1.1800003051757812  28 323.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1270 595955479784918519 1
+MOVE_W 2 WORLD 469 1.6599998474121094  29 324.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1271 -690501441701941970 1
+USE 0 WORLD 469 -0.3400001525878906  29 324.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1271 -690501441701941970 1
+USE 2 SLOT 469 0.0 Waterskin:1@1,SpiritBow:0@2 29 324.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1271 -690501441701941970 1
+CANCEL 0 TARGETING 469 -0.3400001525878906  29 324.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1271 -690501441701941970 1
+MOVE_W 2 WORLD 468 1.1399993896484375  29 325.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1272 1018389385438919680 1
+MOVE_E 2 WORLD 469 -2.8400001525878906  29 326.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1273 982650572305906324 1
+MOVE_E 2 WORLD 470 -2.8199996948242188  29 327.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1274 -7222351673606310448 1
+MOVE_W 0 WORLD 469 1.1599998474121094  29 328.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1275 2606956376205916776 1
+USE 3 WORLD 469 -0.3400001525878906  29 328.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1275 2606956376205916776 1
+USE 0 SLOT 469 0.0 Waterskin:1@1,SpiritBow:0@2 29 328.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1275 2606956376205916776 1
+CANCEL 0 TARGETING 469 -0.3400001525878906  29 328.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1275 2606956376205916776 1
+MOVE_W 2 WORLD 468 1.1399993896484375  29 329.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1276 7345986105550797265 1
+MOVE_W 3 WORLD 467 1.119999885559082  29 330.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1277 -4999648650559278621 1
+MOVE_E 3 WORLD 468 -2.8600006103515625  29 331.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1278 -6538287656235646546 1
+MOVE_E 2 WORLD 469 -2.8400001525878906  29 332.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1279 7301148512825295118 1
+MOVE_W 2 WORLD 468 1.1399993896484375  29 333.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1280 -5661310888666368704 1
+MOVE_W 2 WORLD 467 1.619999885559082  30 334.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1281 3941841167622653416 1
+USE 2 WORLD 467 -0.38000011444091797  30 334.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1281 3941841167622653416 1
+USE 2 SLOT 467 0.0 Waterskin:1@1,SpiritBow:0@2 30 334.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1281 3941841167622653416 1
+CANCEL 0 TARGETING 467 -0.38000011444091797  30 334.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1281 3941841167622653416 1
+MOVE_E 2 WORLD 468 -2.8600006103515625  30 335.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1282 -8704549341623158572 1
+MOVE_E 3 WORLD 469 -2.8400001525878906  30 336.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1283 -1065318580874655326 1
+MOVE_W 2 WORLD 468 1.1399993896484375  30 337.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1284 5101814044361189501 1
+MOVE_E 2 WORLD 469 -2.8400001525878906  30 338.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1285 5164472105921211463 1
+USE 2 WORLD 469 -0.3400001525878906  30 338.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1285 5164472105921211463 1
+USE 2 SLOT 469 0.0 Waterskin:1@1,SpiritBow:0@2 30 338.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1285 5164472105921211463 1
+CANCEL 0 TARGETING 469 -0.3400001525878906  30 338.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1285 5164472105921211463 1
+SEARCH 0 WORLD 469 -1.8400001525878906  30 340.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1285 5164472105921211463 1
+MOVE_W 3 WORLD 468 1.1399993896484375  30 341.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1286 -5910137799839599617 1
+MOVE_W 0 WORLD 467 1.119999885559082  30 342.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1287 -778545704090330341 1
+MOVE_E 2 WORLD 468 -2.8600006103515625  30 343.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1288 8811347792963874973 1
+MOVE_SE 2 WORLD 504 -2.8400001525878906  30 344.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1289 1528387171005519732 1
+MOVE_N 2 WORLD 469 -0.8400001525878906  30 345.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1290 7921007377392588109 1
+MOVE_W 0 WORLD 468 1.1399993896484375  30 346.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1291 1377253387346878439 1
+MOVE_W 2 WORLD 467 1.119999885559082  30 347.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1292 -1189150961823102283 1
+TRAVEL_STAIRS 2 WORLD 501 1.1000003814697266  30 348.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1293 -674242902245956363 1
+TRAVEL_STAIRS 2 WORLD 500 1.0799999237060547  30 349.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1294 -7339820608064257727 1
+TRAVEL_STAIRS 0 WORLD 464 1.059999942779541  30 350.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1295 1485813962904542160 1
+TRAVEL_STAIRS 2 WORLD 428 1.0399999618530273  30 351.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1313 -1852745396535966783 1
+TRAVEL_STAIRS 0 WORLD 427 1.0199999809265137  30 352.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1314 7307699787088659107 1
+TRAVEL_STAIRS 0 WORLD 1366 2318.835693359375  30 0.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1315 -3683714725739490383 1
+TRAVEL_EXPLORE 3 WORLD 1412 -0.8099991083145142  30 1.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1328 886367984867267265 1
+TRAVEL_EXPLORE 2 WORLD 1368 3.020000457763672  30 2.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1333 1367303653668274233 1
+TRAVEL_ITEM 0 WORLD 1368 0.020000457763671875  30 3.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1333 1367303653668274233 1
+TRAVEL_EXPLORE 2 WORLD 1324 3.200000047683716  30 4.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1342 -5699578505133793369 1
+TRAVEL_EXPLORE 3 WORLD 1369 -0.9799995422363281  30 5.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1345 5595465435673103368 1
+TRAVEL_EXPLORE 3 WORLD 1414 -0.9099990725517273  30 6.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1348 8211696672500076828 1
+TRAVEL_EXPLORE 2 WORLD 1415 1.090000867843628  30 7.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1351 3116944985258120471 1
+TRAVEL_EXPLORE 0 WORLD 1459 -0.5900024175643921  30 8.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1352 6551331272347074288 1
+TRAVEL_EXPLORE 2 WORLD 1503 -0.7200019955635071  30 9.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1355 7666263215804540186 1
+TRAVEL_EXPLORE 0 WORLD 1548 -0.9000015258789062  30 10.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1356 7460542412891084541 1
+TRAVEL_EXPLORE 2 WORLD 1593 -0.3300010561943054  30 11.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1359 -3938423272257106942 1
+TRAVEL_EXPLORE 0 WORLD 1639 -0.8100005984306335  30 12.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1360 -2199267303158252794 1
+MOVE_NW 0 WORLD 1593 1.6199989318847656  30 13.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1361 3797166711559191096 1
+TRAVEL_EXPLORE 2 WORLD 1639 -2.3600006103515625  30 14.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1362 -5500491692923552116 1
+TRAVEL_EXPLORE 3 WORLD 1640 -0.3900039494037628  30 15.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1365 3243515233473636564 1
+TRAVEL_EXPLORE 2 WORLD 1685 1.1599960327148438  30 16.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1366 3634347258075796194 1
+TRAVEL_EXPLORE 0 WORLD 1730 -0.7199996709823608  30 17.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1367 -2190136514987561403 1
+TRAVEL_EXPLORE 2 WORLD 1776 -0.6000030636787415  30 18.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1368 605008755280331439 1
+TRAVEL_EXPLORE 3 WORLD 1777 -0.779998779296875  30 19.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1369 -1758353434745414995 1
+TRAVEL_EXPLORE 2 WORLD 1778 2.5399978160858154  30 20.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1372 7679738128023587769 1
+TRAVEL_EXPLORE 3 WORLD 1734 1.2100021839141846  30 21.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1378 -7285432952283852601 1
+USE 2 WORLD 1734 0.26000213623046875  30 21.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1378 -7285432952283852601 1
+USE 3 SLOT 1734 0.26000213623046875 Waterskin:1@1,SpiritBow:0@2 30 21.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1378 -7285432952283852601 1
+MOVE_SW 2 WORLD 1778 1.7399978637695312  30 22.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1381 7123808347000611707 1
+TRAVEL_EXPLORE 2 WORLD 1779 -0.5399978756904602  30 23.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1384 -8042879710164798111 1
+MOVE_W 0 WORLD 1778 1.7399978637695312  30 24.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1386 8576971912006287846 1
+USE 2 WORLD 1778 0.23999786376953125  30 24.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1386 8576971912006287846 1
+USE 2 SLOT 1778 0.0 Waterskin:1@1,SpiritBow:0@2 30 24.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1386 8576971912006287846 1
+USE 9 TARGETING 1778 -0.26000213623046875  30 25.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1399 5249869106257404311 1
+USE 2 WORLD 1778 0.23999786376953125  30 25.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1399 5249869106257404311 1
+USE 2 SLOT 1778 0.0 Waterskin:1@1,SpiritBow:0@2 30 25.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1399 5249869106257404311 1
+USE 9 TARGETING 1778 -0.26000213623046875  30 26.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1412 -6808721988336405192 1
+USE 4 WORLD 1778 0.23999786376953125  30 26.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1412 -6808721988336405192 1
+USE 4 SLOT 1778 0.0 Waterskin:1@1,SpiritBow:0@2 30 26.0 Seed:2,SpiritBow:1,VelvetPouch(Seed+Seed):1,WandOfWarding:1,Waterskin:1 1412 -6808721988336405192 1
+USE 9 TARGETING 1778 -0.7600021362304688  30 27.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1413 -320892695466941760 1
+MOVE_E 1 WORLD 1778 -0.26000213623046875  30 27.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1429 -3702052594114969354 1
+MOVE_E 2 WORLD 1778 149.739990234375  30 28.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1442 8249255018397545877 1
+MOVE_SE 3 WORLD 1824 -0.7399978637695312  30 29.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1448 5771744453636303127 1
+MOVE_E 2 WORLD 1824 -200.239990234375  25 29.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1496 -2373953088812660452 1
+MOVE_S 2 WORLD 1869 -80.72000122070312  23 30.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1520 7579674033709032122 1
+MOVE_N 0 WORLD 1869 -80.22000122070312  21 31.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1533 8918701213408255625 1
+MOVE_N 2 WORLD 1869 -40.220001220703125  20 31.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1570 2552599941009840552 1
+MOVE_N 1 WORLD 1869 -0.220001220703125  20 32.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1595 -2880034814819101194 1
+MOVE_E 0 WORLD 1869 -40.220001220703125  19 32.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1609 -8790362974087959265 1
+MOVE_N 0 WORLD 1869 -0.220001220703125  19 33.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1624 4246231530219750505 1
+MOVE_N 0 WORLD 1869 109.77999877929688  18 33.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1650 -5098831713856189626 1
+MOVE_N 0 WORLD 1869 -0.220001220703125  18 34.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1662 3032794140831690636 1
+MOVE_N 0 WORLD 1869 -80.22000122070312  16 34.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1679 -2613873729642462750 1
+MOVE_E 2 WORLD 1869 -0.220001220703125  16 35.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1681 -6224553586599838853 1
+MOVE_E 2 WORLD 1869 -40.220001220703125  15 35.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1717 1089077117657857618 1
+MOVE_NE 1 WORLD 1869 -0.220001220703125  15 36.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1719 2212775387855243036 1
+MOVE_E 2 WORLD 1870 -38.62000274658203  14 37.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1725 -6569749977892970611 1
+MOVE_W 1 WORLD 1869 -0.220001220703125  14 38.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1748 498533144906407291 1
+MOVE_S 2 WORLD 1914 -0.6999969482421875  14 39.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1761 1752665599977808424 1
+MOVE_N 1 WORLD 1914 -0.1999969482421875  14 39.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1777 3841005727491052876 1
+MOVE_N 0 WORLD 1914 -0.1999969482421875  14 40.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1789 -7120325013463981596 1
+MOVE_N 1 WORLD 1869 -38.220001220703125  13 41.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1815 8071792012074293115 1
+MOVE_E 0 WORLD 1869 -40.220001220703125  12 41.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1853 -2643968870893608379 1
+MOVE_S 1 WORLD 1914 -2.1999969482421875  12 42.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1866 763405910881519823 1
+MOVE_N 0 WORLD 1914 -0.1999969482421875  12 43.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1868 -5787452828066234135 1
+MOVE_N 0 WORLD 1914 -40.19999694824219  11 43.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1894 4511247627628697754 1
+MOVE_N 1 WORLD 1914 -0.1999969482421875  11 44.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1906 -7514824704124000702 1
+MOVE_NE 1 WORLD 1914 -40.19999694824219  10 44.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1918 6515987899045172126 1
+MOVE_N 0 WORLD 1914 -0.1999969482421875  10 45.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1930 -4160925894494109707 1
+MOVE_NE 0 WORLD 1914 -0.1999969482421875  10 45.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1942 95138867072866633 1
+REST 3 WORLD 1914 -0.1999969482421875  10 46.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1942 95138867072866633 1
+REST 2 WORLD 1914 -0.1999969482421875  10 47.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1942 95138867072866633 1
+TRAVEL_EXPLORE 0 WORLD 1870 1.779998779296875  10 48.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1944 5232376976586636386 1
+REST 1 WORLD 1870 0.279998779296875  11 49.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1945 3192673054896163894 1
+MOVE_NW 1 WORLD 1824 1.7600021362304688  11 50.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1964 1515136779577311658 1
+USE 2 WORLD 1824 0.26000213623046875  11 50.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1964 1515136779577311658 1
+USE 0 SLOT 1824 0.0 Waterskin:1@1,SpiritBow:0@2 11 50.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1964 1515136779577311658 1
+USE 9 TARGETING 1824 -40.23999786376953  10 51.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1967 -3662688906932658246 1
+MOVE_S 1 WORLD 1869 -2.220001220703125  10 52.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1968 779493062696507992 1
+TRAVEL_ITEM 0 WORLD 1824 1.7600021362304688  10 53.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1969 4988820704329524683 1
+USE 1 WORLD 1824 0.26000213623046875  10 53.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1969 4988820704329524683 1
+USE 1 SLOT 1824 0.26000213623046875 Waterskin:1@1,SpiritBow:0@2 10 53.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1969 4988820704329524683 1
+TRAVEL_ITEM 2 WORLD 1779 -0.23999786376953125  10 54.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1972 -298201595791929173 1
+USE 0 WORLD 1779 0.26000213623046875  10 54.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1972 -298201595791929173 1
+USE 2 SLOT 1779 0.0 Waterskin:1@1,SpiritBow:0@2 10 54.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1972 -298201595791929173 1
+USE 9 TARGETING 1779 -0.23999786376953125  10 55.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1985 7218784710081355915 1
+USE 1 WORLD 1779 0.26000213623046875  10 55.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1985 7218784710081355915 1
+USE 2 SLOT 1779 0.0 Waterskin:1@1,SpiritBow:0@2 10 55.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1985 7218784710081355915 1
+USE 9 TARGETING 1779 -0.23999786376953125  10 56.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 1998 3541778056099729079 1
+MOVE_N 2 WORLD 1734 -0.23999786376953125  10 57.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2005 8862126539752518643 1
+MOVE_SW 2 WORLD 1778 1.7399978637695312  10 58.5 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2010 2228963721663233535 1
+MOVE_E 3 WORLD 1778 149.739990234375  10 59.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2024 -5508174588513778231 1
+REST 4 WORLD 1778 0.23999786376953125  11 60.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2028 2690884510099199303 1
+MOVE_NE 3 WORLD 1734 -2.2399978637695312  11 61.0 Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2029 -1724950344943115847 1
+TRAVEL_ITEM 2 WORLD 1779 74.26000213623047  11 63.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2030 2343821298761135605 1
+MOVE_N 0 WORLD 1734 -0.23999786376953125  11 64.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2031 -4975249212347691011 1
+REST 1 WORLD 1734 -0.23999786376953125  11 65.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2031 -4975249212347691011 1
+MOVE_N 1 WORLD 1689 -0.520001232624054  11 66.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2032 7978027622540500901 1
+MOVE_S 1 WORLD 1734 1.7600021362304688  11 67.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2039 4586051612522350082 1
+REST 0 WORLD 1734 -0.23999786376953125  11 68.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2041 1358643390999170685 1
+REST 1 WORLD 1734 -0.23999786376953125  11 69.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2041 1358643390999170685 1
+TRAVEL_EXPLORE 2 WORLD 1779 0.26000213623046875  12 70.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2042 6726142260196798531 1
+MOVE_W 0 WORLD 1778 1.7399978637695312  12 71.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2045 -4239669831429400236 1
+MOVE_W 1 WORLD 1777 1.720001220703125  12 72.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2048 3492560363742013168 1
+MOVE_W 1 WORLD 1776 1.6999969482421875  12 73.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2051 4068549675229072267 1
+REST 3 WORLD 1776 -0.3000030517578125  12 74.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2051 4068549675229072267 1
+USE 3 WORLD 1776 0.1999969482421875  12 74.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2051 4068549675229072267 1
+USE 3 SLOT 1776 0.0 Waterskin:1@1,SpiritBow:0@3 12 74.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2051 4068549675229072267 1
+CANCEL 0 TARGETING 1776 0.1999969482421875  12 74.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2051 4068549675229072267 1
+REST 3 WORLD 1776 -0.3000030517578125  12 75.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2051 4068549675229072267 1
+REST 4 WORLD 1776 -0.3000030517578125  12 76.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2051 4068549675229072267 1
+TRAVEL_EXPLORE 2 WORLD 1777 -2.279998779296875  12 77.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2052 2462683390386904005 1
+REST 3 WORLD 1777 -0.279998779296875  12 78.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2054 8140659887991669873 1
+REST 3 WORLD 1777 -0.279998779296875  12 79.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2054 8140659887991669873 1
+REST 3 WORLD 1777 0.220001220703125  13 80.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2054 8140659887991669873 1
+REST 2 WORLD 1777 -0.279998779296875  13 81.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2054 8140659887991669873 1
+REST 1 WORLD 1777 -0.279998779296875  13 82.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2054 8140659887991669873 1
+REST 3 WORLD 1777 -0.279998779296875  13 83.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2054 8140659887991669873 1
+REST 2 WORLD 1777 -0.279998779296875  13 84.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2054 8140659887991669873 1
+SEARCH 3 WORLD 1777 -41.279998779296875  12 86.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2066 18858819823588568 1
+MOVE_W 3 WORLD 1777 -40.279998779296875  11 86.5 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2080 711138613368852442 1
+MOVE_W 3 WORLD 1777 -0.279998779296875  11 87.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2092 8168487852952172133 1
+MOVE_E 1 WORLD 1778 -2.2600021362304688  11 88.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2093 5271644759075040139 1
+MOVE_SE 1 WORLD 1824 -2.2399978637695312  11 89.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2096 4647735259882204765 1
+MOVE_NW 1 WORLD 1824 300.260009765625  12 89.5 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2120 -728461828168196988 1
+MOVE_N 0 WORLD 1824 299.760009765625  12 90.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2132 2518485098238254839 1
+MOVE_SE 1 WORLD 1870 -42.220001220703125  11 91.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2133 1049970857526374672 1
+MOVE_NW 1 WORLD 1870 -0.220001220703125  11 91.5 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2147 -9144950301364192515 1
+MOVE_E 3 WORLD 1871 -80.5999984741211  9 92.5 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2159 -4340756954269996746 1
+MOVE_N 1 WORLD 1826 -38.599998474121094  8 93.5 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2196 1197783389671740215 1
+USE 3 WORLD 1826 0.3000030517578125  8 93.5 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2196 1197783389671740215 1
+USE 0 SLOT 1826 0.0 Waterskin:1@1,SpiritBow:0@3 8 93.5 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2196 1197783389671740215 1
+USE 9 TARGETING 1826 -120.19999694824219  5 94.5 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2224 1530488454533094324 1
+MOVE_NW 2 WORLD 1826 -0.1999969482421875  5 95.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2236 782385960064959712 1
+MOVE_SW 1 WORLD 1826 69.80000305175781  3 95.5 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2271 4710902842853476628 1
+MOVE_NW 0 WORLD 1826 -0.1999969482421875  3 96.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2274 -4695070632632370171 1
+MOVE_W 0 WORLD 1825 -76.72000122070312  1 97.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 2288 -8185088193525314701 1
+MOVE_W 0 WORLD 1824 -3875.0  0 0.0 PotionOfHealing:1,Seed:1,SpiritBow:1,VelvetPouch(Seed):1,WandOfWarding:1,Waterskin:1 -1 0 1
