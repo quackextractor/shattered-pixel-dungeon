@@ -8,6 +8,7 @@ Every open item from `issues.md` and the sections below, in working order: fidel
 because a long run is only worth reading if its recordings play. Each ships as its own commit with a `CHANGELOG.md`
 entry and leaves this list, or moves to `REJECTED.md`.
 
+- [ ] **Guard pull in the viewer** (`issues.md` 43): `FTL-NQD-YXC` step 1302.
 - [ ] **JIT load** (plan 2 B): `-XX:CICompilerCount`, warm-up length in a long run.
 - [ ] **Inference latency** (plan 2 C, P1 b): fuse launches, LSTM state resident per slot.
 - [ ] **Update leftovers** (P2): im2col/col2im, packed kernels, fused LSTM, slice sum.

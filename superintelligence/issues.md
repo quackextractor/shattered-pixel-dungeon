@@ -45,3 +45,11 @@ reading, so the watchdog should record that.
 episode over 8 s after the PC was cleared. Two runs with apps open had died. This does not rule the apps out and contradicts the
 Discord line above, which only covers inference alone. The cause is still unknown; `TrainerWorkers.reportSlowest` and the watchdog
 diagnostics now log the next stall. A stall under normal use remains a trainer bug.
+
+## 43. A Guard's pull may leave the viewer's hero on the wrong cell - OPEN
+
+`macro3` is the first policy deep enough to meet Guards. 15 of its shorter item-using recordings played in the viewer and 14 were clean. `FTL-NQD-YXC`
+diverges at step 1302, alone as well as under load: hero at 944, recording says 984, while a hunting Guard stands on 944 at that step headless. It plays
+clean headless. Suspected and not tested: `Guard.chain` pulls through an animated `Pushing`, which the viewer resolves on a different frame. Next: world
+trace of the viewer at that step, and a corpus recording of a chain. The 22 `macro3` recordings hit by the sell-window leak cannot reproduce and are not
+evidence either way. The 37-recording corpus has not been replayed in the viewer since `b89b5d427`; the hook's headless playback has.
