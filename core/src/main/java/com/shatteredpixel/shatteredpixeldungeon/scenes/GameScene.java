@@ -1854,6 +1854,11 @@ public static boolean showingWindow(){
 	public static CellSelector.Listener pendingCellListener(){ return pendingCellListener; }
 	public static void clearPendingCellListener(){ pendingCellListener = null; }
 
+	public static boolean aimPending(){
+		return pendingCellListener != null
+				|| (cellSelector != null && cellSelector.listener != null && cellSelector.listener != defaultCellListener);
+	}
+
 	public static CellSelector.Listener takeCellListener(){
 		if (cellSelector == null || cellSelector.listener == null || cellSelector.listener == defaultCellListener) return null;
 		CellSelector.Listener taken = cellSelector.listener;

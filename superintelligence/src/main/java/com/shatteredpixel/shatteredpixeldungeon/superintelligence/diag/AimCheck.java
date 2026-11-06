@@ -26,7 +26,7 @@ import java.util.function.Predicate;
 
 public class AimCheck {
 
-	private static final int CHECKS = 11;
+	private static final int CHECKS = 12;
 	private static final int NEAREST = 9;
 	private static final String[] SEEDS = { "AIM-A", "AIM-B", "AIM-C", "AIM-D", "AIM-E", "AIM-F", "AIM-G", "AIM-H" };
 
@@ -47,6 +47,7 @@ public class AimCheck {
 		checkTheTeacherShoots();
 		checkEveryWandFires();
 		checkACatalystIsNeverBrewed();
+		checkAnEmptyStaffIsNotAimed();
 		checkEveryItemCanBeUsed();
 
 		System.exit( GateReport.report( "aimed items", CHECKS ) );
@@ -176,6 +177,31 @@ public class AimCheck {
 		}
 		Mob rat = placeRatAtRange( HeroClass.MAGE );
 		if (rat != null && !hits( rat, 2, i -> i instanceof MagesStaff )) GateReport.fail( "2 staff zaps at a rat did not hurt it" );
+	}
+
+	private static void checkAnEmptyStaffIsNotAimed(){
+		env.reset( SEEDS[ 0 ], HeroClass.MAGE );
+		MagesStaff staff = (MagesStaff) Dungeon.hero.belongings.weapon();
+		com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Quarterstaff other = new com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Quarterstaff();
+		other.identify();
+		other.collect();
+		other.doEquip( Dungeon.hero );
+		try {
+			java.lang.reflect.Field wand = MagesStaff.class.getDeclaredField( "wand" );
+			wand.setAccessible( true );
+			((Wand) wand.get( staff )).curCharges = 0;
+		} catch (ReflectiveOperationException e){
+			GateReport.fail( "the staff's wand could not be emptied: " + e );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+		if (Dungeon.hero.belongings.weapon() != other || !Dungeon.hero.belongings.backpack.items.contains( staff )){
+			GateReport.fail( "the fixture could not put the staff in the pack" );
+			return;
+		}
+		env.step( Action.USE, 0 );
+		env.step( Action.USE, slotOf( i -> i == staff ) );
+		if (env.mode() == EnvMode.TARGETING) GateReport.fail( "equipping a staff from the pack asks for a target, and the next step throws the staff at the enemy" );
 	}
 
 	private static void checkACatalystIsNeverBrewed(){

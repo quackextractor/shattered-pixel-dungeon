@@ -583,7 +583,8 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		if (next == null) return false;
 		EnvMode mode = modeOf( next.mode );
 		if (mode == EnvMode.MENU) return Dungeon.hero.ready;
-		return mode == EnvMode.TARGETING || (mode == EnvMode.INVENTORY && GameScene.answerableSelector() != null);
+		return (mode == EnvMode.TARGETING && GameScene.aimPending())
+				|| (mode == EnvMode.INVENTORY && GameScene.answerableSelector() != null);
 	}
 
 	/** True when the hero can be given input now. Tests only; advances nothing. */
@@ -794,9 +795,11 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			//one drain and never yields, so the two only agree if this counts the same way.
 			if (!wantsMore && drainSteps > RESTING_STALL_STEPS && Dungeon.hero.resting){
 				if (recordingEndsHere()) return endWhereRecordingEnds();
-				playback.finish();
-				halt( "run ended - the hero is resting and nothing is resolving it" );
-				return Drain.STALLED;
+				if (Dungeon.hero.paralysed == 0){
+					playback.finish();
+					halt( "run ended - the hero is resting and nothing is resolving it" );
+					return Drain.STALLED;
+				}
 			}
 
 			//No time spent and the hero still on the action it was given: nothing this loop does can

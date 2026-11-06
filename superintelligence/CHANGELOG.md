@@ -35,6 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plus the stacks of the inference and busy worker threads. `issues.md` 41 could not be diagnosed without this.
 
 ### Fixed
+- **Viewer gaps on real trained runs.** A thrown seed, a staff equipped from the pack, and magical sleep all played
+  differently in the viewer. A seed aims without `usesTargeting`, so the viewer's live selector was missed; the
+  viewer took a recorded `TARGETING` to mean no turn was owed even when nothing was aimed; and its rest guard ended
+  a sleeping hero's run mid-recording. `GameScene.aimPending()` now answers both sides.
+- **An empty staff could be thrown away.** Equipping a `MagesStaff` from the pack asked for a target because the item
+  uses targeting, and the next step threw it. A staff from the pack now aims only if the game asked for an aim.
 - **A policy answered menus with the wrong head.** In a dialog the option came from the slot head, sampled over item
   indices and untrained there, so 54 answers an episode were refused and the hero went back and forth over the upgrade
   dialog: 5,595 armour picks against 333 Upgrade scrolls read. In the item list the use, drop or cancel came from the

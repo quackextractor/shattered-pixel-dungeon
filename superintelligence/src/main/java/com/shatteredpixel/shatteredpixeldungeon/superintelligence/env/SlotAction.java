@@ -5,6 +5,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MagesStaff;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndBag;
 
@@ -73,7 +74,7 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 		item.setCurrent( hero );
 		item.execute( hero, action );
 
-		if (item.usesTargeting || GameScene.pendingCellListener() != null ){
+		if (GameScene.aimPending() || (item.usesTargeting && !(item instanceof MagesStaff))){
 			pendingUseItem = item;
 			return true;
 		}
