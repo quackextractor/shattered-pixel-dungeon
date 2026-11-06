@@ -30,6 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nearest corridor or doorway within 8 steps, so flies reach it one or two at a time. New gate `tacticscheck`.
 
 ### Added
+- **The policy can use the teacher's plans.** It agreed with its teacher 47% of the time, and evaluating the teacher's moves showed why: of
+  19,764 directional labels in 100 episodes only 3,342 were attacks, taken 66% of the time, and the other 83% were door dances, hall retreats and
+  hidden-door searches, taken 15%. Each is a many-step plan the network cannot see. `TACTIC` and `HUNT` are now macro actions, offered when the
+  teacher has a plan, and resolved to the primitive step before it reaches the env, so a recording is unchanged. 30 minutes from fresh weights,
+  500 evaluation episodes: agreement 0.47 -> 0.73, directional moves 24% -> 70-89%, floor 4+ 27-34 -> 44, floor 6+ 0 -> 2, depth 2.07-2.11 -> 2.24.
+- **A hero-centred local view.** The grid is resampled and strided, so the network could not tell which neighbouring cell held an enemy. A 7x7 crop
+  of walkable, door, hazard and enemy state joins the hero features. Old weights do not load.
 - **`evaluate` plays a checkpoint on fixed seeds.** Every depth so far came from a training run. It reports depth, floors reached, turns and
   agreement with the teacher at each temperature; 500 episodes take 150 s. On `clear-long`'s policy it found that sampling costs nothing, with
   depth 2.11 at 1.0, 2.16 at 0.7 and 2.13 at 0.5, and that the policy agrees with its teacher 47-49% of the time.
@@ -45,6 +52,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A sell window from one episode trapped the hero in the next.** `WndInfoItem.INSTANCE` is a static, and a new window hides the old one. A sell
+  window left by an earlier episode was hidden by the next purchase, and its `hide` opens the sell picker, which reopens on every pick. 22 of 257
+  `macro3` recordings hit it, all from runs that reached floors 6-8, 20 of them ending `STALLED` with a -5,993 penalty after 250 no-time steps,
+  and none could reproduce, because a fresh replay has no old window. A reset now clears the static, and a picker that reopens itself closes after
+  one pick. `resetcheck` and `dialogcheck` hold both.
+- **A window could hold a generation for ever.** `SPDEnv.settle` leaves early with a dialog or picker open, before any step budget is counted, so a
+  dialog that never closes ran until the watchdog ended the training run at generation 57. `env.free_step_budget` now also bounds consecutive steps
+  that spend no time, on every path.
 - **A recorded brew played down the wrong branch.** `ReplayPlayer` sent every mode but its listed sub-modes to the world handler, and `ALCHEMY`
   was not listed, so the first policy to brew anything left the recording. `alchemy-brew.replay` joins the corpus, 37 recordings clean in the viewer.
 - **Issue 42 closed: all 257 fresh recordings play to their end in the real viewer.** 173 played before the three fixes below, and the 80 not yet reached played clean after them (820.8 s), with the RNG compared on every step.

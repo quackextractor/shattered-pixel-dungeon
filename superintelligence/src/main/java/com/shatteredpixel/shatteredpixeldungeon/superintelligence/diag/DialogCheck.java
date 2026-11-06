@@ -15,7 +15,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class DialogCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 7;
 
 	private static final String[] SEEDS = {
 			"DIALOGCHECK-A", "DIALOGCHECK-B", "DIALOGCHECK-C", "DIALOGCHECK-D", "DIALOGCHECK-E"
@@ -30,8 +30,39 @@ public class DialogCheck {
 		checkAnOpenDialogCanBeAnswered();
 		checkUpgradeScrollsUpgradeThePickedArmour();
 		checkAMenuIsAnsweredOnTheLiveHead();
+		checkADialogThatNeverClosesEndsTheRun();
+		checkAPickerThatReopensItselfCloses();
 
 		System.exit( GateReport.report( "dialog answers", CHECKS ));
+	}
+
+	private static void checkAPickerThatReopensItselfCloses(){
+		SPDEnv env = env();
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		com.shatteredpixel.shatteredpixeldungeon.windows.WndBag.ItemSelector picker = new com.shatteredpixel.shatteredpixeldungeon.windows.WndBag.ItemSelector(){
+			@Override public String textPrompt(){ return ""; }
+			@Override public boolean itemSelectable( com.shatteredpixel.shatteredpixeldungeon.items.Item item ){ return true; }
+			@Override public void onSelect( com.shatteredpixel.shatteredpixeldungeon.items.Item item ){
+				com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.selectItem( this );
+			}
+		};
+		com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.selectItem( picker );
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SlotAction.pick( null );
+		if (com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.answerableSelector() != null) fail( "a sell picker reopens itself on every pick, so the hero stays in it until the free-step budget ends the run" );
+	}
+
+	private static void checkADialogThatNeverClosesEndsTheRun(){
+		SPDEnv env = env();
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.show( new com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions( "stay", "open", "never" ){
+			@Override
+			protected void onSelect( int index ){}
+			@Override
+			public void hide(){}
+		} );
+		env.step( Action.WAIT, 0 );
+		for (int i = 0; i < 400 && env.running(); i++) env.step( Action.MENU_SELECT, 0 );
+		if (env.running()) fail( "400 answers to a dialog that never closes spent no time and the run is still going, so one episode can hold up a generation for ever" );
 	}
 
 	private static void checkAMenuIsAnsweredOnTheLiveHead(){

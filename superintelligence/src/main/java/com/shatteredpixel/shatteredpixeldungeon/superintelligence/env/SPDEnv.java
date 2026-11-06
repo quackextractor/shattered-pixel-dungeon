@@ -30,6 +30,7 @@ public class SPDEnv {
 	private int lastBranch = 0;
 	private int stallCount;
 	private int freeStepsThisFloor;
+	private int stillSteps;
 	private int lastStallPos = -1;
 	private float lastStallHp;
 	private StallCause stallCause = StallCause.NONE;
@@ -79,6 +80,7 @@ public class SPDEnv {
 		lastBranch = 0;
 		stallCount = 0;
 		freeStepsThisFloor = 0;
+		stillSteps = 0;
 		lastStallPos = -1;
 		lastStallHp = Dungeon.hero.HP;
 		terminated = false;
@@ -177,6 +179,11 @@ if (mode == EnvMode.WORLD){
 			reward.noteEvent( RewardTerm.INVALID_ACTION );
 		}
 		double accumulated = settle();
+		stillSteps = Actor.now() > stepClock ? 0 : stillSteps + 1;
+		if (running && stillSteps >= config.freeStepBudget){
+			stallCause = StallCause.FREE_STEP;
+			accumulated += terminate( RewardModel.TerminateReason.STALLED );
+		}
 		return accumulated;
 	}
 	private void refreshMasksAfterDrain(){

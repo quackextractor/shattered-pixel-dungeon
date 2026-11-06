@@ -27,7 +27,7 @@ import java.util.Random;
 
 public class ResetCheck {
 
-	private static final int CHECKS = 11;
+	private static final int CHECKS = 12;
 
 	private static final List< String > failures = new ArrayList<>();
 
@@ -60,6 +60,7 @@ public class ResetCheck {
 		checkUnsavedSavesStayInMemory();
 		checkWindowsLeaveNothingBehind( env );
 		checkACurseEffectForgetsItsCone( env );
+		checkAnInfoWindowDoesNotSurviveAReset( env );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     reset isolation: " + CHECKS + " checks passed" );
@@ -71,6 +72,21 @@ public class ResetCheck {
 		}
 	}
 
+
+	private static void checkAnInfoWindowDoesNotSurviveAReset( SPDEnv env ){
+		try {
+			java.lang.reflect.Field instance = com.shatteredpixel.shatteredpixeldungeon.windows.WndInfoItem.class.getDeclaredField( "INSTANCE" );
+			instance.setAccessible( true );
+			env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+			instance.set( null, new com.shatteredpixel.shatteredpixeldungeon.windows.WndInfoItem( new com.shatteredpixel.shatteredpixeldungeon.items.food.Food() ) );
+			env.reset( SEEDS[ 1 ], HeroClass.WARRIOR );
+			if (instance.get( null ) != null){
+				failures.add( "an info window survived a reset, so the next run's first shop purchase hides it and a stale sell picker opens" );
+			}
+		} catch (ReflectiveOperationException e){
+			failures.add( "the info window could not be inspected: " + e );
+		}
+	}
 
 	private static void checkACurseEffectForgetsItsCone( SPDEnv env ){
 		try {

@@ -38,6 +38,10 @@ public class WndInfoItem extends Window {
 	//only one WndInfoItem can appear at a time
 	private static WndInfoItem INSTANCE;
 
+	public static void forgetInstance(){
+		INSTANCE = null;
+	}
+
 	public WndInfoItem( Heap heap ) {
 
 		super();

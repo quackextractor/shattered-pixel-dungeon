@@ -97,6 +97,7 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 		if (item != null && !selector.itemSelectable( item )) return false;
 		GameScene.clearSelector();
 		selector.onSelect( item );
+		if (GameScene.answerableSelector() == selector) GameScene.clearSelector();
 		return true;
 	}
 

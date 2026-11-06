@@ -26,6 +26,8 @@ public class RunState {
 
 		com.shatteredpixel.shatteredpixeldungeon.items.wands.CursedWand.forgetEffectAims();
 
+		com.shatteredpixel.shatteredpixeldungeon.windows.WndInfoItem.forgetInstance();
+
 		com.shatteredpixel.shatteredpixeldungeon.utils.Holiday.pin( com.shatteredpixel.shatteredpixeldungeon.utils.Holiday.NONE );
 
 		forgetPreviousRemains();
