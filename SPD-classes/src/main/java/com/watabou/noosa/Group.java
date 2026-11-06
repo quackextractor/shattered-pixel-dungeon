@@ -245,12 +245,13 @@ public class Group extends Gizmo {
 		return null;
 	}
 	
-	public synchronized boolean hasLiving( Class<?> type ) {
+	public synchronized <T extends Gizmo> ArrayList<T> living( Class<T> type ) {
+		ArrayList<T> found = new ArrayList<>();
 		for (int i=0; i < length; i++) {
 			Gizmo g = members.get( i );
-			if (g != null && g.alive && type.isInstance( g )) return true;
+			if (g != null && g.alive && type.isInstance( g )) found.add( type.cast( g ) );
 		}
-		return false;
+		return found;
 	}
 
 	public synchronized int countLiving() {

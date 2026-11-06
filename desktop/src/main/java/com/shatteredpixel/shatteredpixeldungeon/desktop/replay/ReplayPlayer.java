@@ -625,7 +625,10 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 	private boolean heroShotInFlight(){
 		Hero hero = Dungeon.hero;
 		if (hero == null || hero.ready || hero.curAction != null || hero.sprite == null || hero.sprite.parent == null) return false;
-		return hero.sprite.parent.hasLiving( MissileSprite.class ) || hero.sprite.parent.hasLiving( MagicMissile.class );
+		for (MagicMissile bolt : hero.sprite.parent.living( MagicMissile.class )){
+			if (bolt.on) return true;
+		}
+		return !hero.sprite.parent.living( MissileSprite.class ).isEmpty();
 	}
 
 	private boolean mobAnimationInFlight(){

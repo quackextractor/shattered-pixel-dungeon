@@ -50,7 +50,7 @@
 repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root" || exit 1
 
-echo "[INFO] running :desktop:viewcheck (the rendered viewer; needs a GL context, checks the corpus headless first, takes ~5 min)"
+echo "[INFO] running :desktop:viewcheck (the rendered viewer; needs a GL context, checks the corpus headless first, takes ~7 min)"
 echo "[INFO] green is the expected result. Reporting only - this hook does not block the push."
 
 if ./gradlew --quiet :desktop:viewcheck; then

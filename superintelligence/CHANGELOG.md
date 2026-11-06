@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   player now does both, and `upgrade-menu.replay` and `pickup-travel.replay` join the corpus.
 - **The viewer moved on before a shot landed.** A shot spends its turn in the missile's callback. The game's scheduler stops until
   then, but the viewer's kept stepping, so with the hero's clock ahead of game time, as after an armour swap, the hero read as ready
-  with the shot in the air and the turn landed a step late. The drain now waits for it, through `Group.hasLiving`.
+  with the shot in the air and the turn landed a step late. The drain now waits for it, through `Group.living`.
   `shot-after-armour.replay` joins the corpus.
 - **Viewer gaps on real trained runs.** A thrown seed, a staff equipped from the pack, and magical sleep all played
   differently in the viewer. A seed aims without `usesTargeting`, so the viewer's live selector was missed; the
