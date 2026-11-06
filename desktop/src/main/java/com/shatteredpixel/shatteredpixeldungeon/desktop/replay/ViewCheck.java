@@ -217,8 +217,9 @@ public class ViewCheck {
 			pool.submit( () -> {
 				AtomicInteger outcome = new AtomicInteger( 1 );
 				try {
-					outcome.set( runChild( file, new LinkedHashMap<>(), new StringBuilder(), true ));
-					if (outcome.get() == 0) mark( file, "ok" );
+					StringBuilder said = new StringBuilder();
+					outcome.set( runChild( file, new LinkedHashMap<>(), said, true ));
+					mark( file, outcome.get() == 0 ? "ok" : verdict( said.toString(), outcome.get() ));
 				} catch (IOException | InterruptedException e){
 					System.out.println( "        " + file.getName() + " could not be run ("
 							+ e.getClass().getSimpleName() + ")" );
