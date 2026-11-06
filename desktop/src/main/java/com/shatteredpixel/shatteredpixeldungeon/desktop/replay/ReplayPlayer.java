@@ -986,7 +986,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		boolean acted;
 
 		if (mode == EnvMode.SLOT || mode == EnvMode.INVENTORY || mode == EnvMode.MENU
-				|| mode == EnvMode.TALENT){
+				|| mode == EnvMode.TALENT || mode == EnvMode.ALCHEMY){
 			acted = mapper.applySecondary( mode, action, step.slot );
 		} else if (mode == EnvMode.TARGETING){
 			acted = mapper.applySecondary( mode, action, step.slot );

@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A recorded brew played down the wrong branch.** `ReplayPlayer` sent every mode but its listed sub-modes to the world handler, and `ALCHEMY`
+  was not listed, so the first policy to brew anything left the recording. `alchemy-brew.replay` joins the corpus, 37 recordings clean in the viewer.
 - **Issue 42 closed: all 257 fresh recordings play to their end in the real viewer.** 173 played before the three fixes below, and the 80 not yet reached played clean after them (820.8 s), with the RNG compared on every step.
 - **Three frame-timed paths in the viewer.** Fresh recordings played clean 173 of 177 before these; of the four failures one was load
   alone, and three were real. A `read` or `operate` animation ending late ran `Hero.onOperateComplete` in the middle of the next walk
