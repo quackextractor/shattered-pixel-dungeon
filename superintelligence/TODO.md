@@ -2,6 +2,31 @@
 
 Open work only. Done: `CHANGELOG.md`. Findings: `issues.md`. Declined or deferred: `REJECTED.md`.
 
+## Worklist (2026-11-06)
+
+Every open item from `issues.md` and the sections below, in working order: fidelity first, then speed, then depth,
+because a long run is only worth reading if its recordings play. Each ships as its own commit with a `CHANGELOG.md`
+entry and leaves this list, or moves to `REJECTED.md`.
+
+- [ ] **Playback compares the RNG fingerprint** (`issues.md` 42): the first real difference, not the first visible one.
+- [ ] **`MMC-VNK-XMH` headless divergence** (`issues.md` 42): HP 26 against 30 at step 918.
+- [ ] **11 viewer divergences** (`issues.md` 42): `BJW-XJJ-MNW`, `FGC-QHQ-ZGZ`, `GSZ-BTQ-YPJ`, `HFY-ZTM-LVM`, `HMH-RQF-GSJ`,
+      `SPW-YJZ-BGR`, `SWQ-KLM-YFY`, `TXN-JCX-KRB`, `WDX-PYW-LTX`, `XDG-KSL-RCF`, `XPJ-GXJ-JRV`.
+- [ ] **Wild Magic draws gameplay RNG on the render thread** (`issues.md` 39).
+- [ ] **Measure training with the GPU free** (plan 2 A): 48/96/192 envs, 10+ minutes each.
+- [ ] **JIT load** (plan 2 B): `-XX:CICompilerCount`, warm-up length in a long run.
+- [ ] **Inference latency** (plan 2 C, P1 b): fuse launches, LSTM state resident per slot.
+- [ ] **CPU inference under a game** (plan 2 D): Vector API for the dense layers.
+- [ ] **Update leftovers** (P2): im2col/col2im, packed kernels, fused LSTM, slice sum.
+- [ ] **Env CPU** (P3): `buildSpatial`, `countNewlyExplored`, `levelExplorePercent`, `applyEdges`, `Travel.frontier`.
+- [ ] **Engine hot paths** (P5): `ShadowCaster`, `PathFinder`, scheduling; bit-identical only.
+- [ ] **Learning loop** (P6): bigger minibatches with a scaled learning rate; depth at equal turns must hold.
+- [ ] **GPU stall under normal use** (`issues.md` 41): an hours-long run with the new diagnostics.
+- [ ] **Policy below its teacher** (`issues.md` 20): 2.29 against a 2.78 baseline and a 3.28 teacher.
+- [ ] **Survive floors 2-4, beat Goo** (`issues.md` 20): the goal; the sections below are its history.
+
+## Notes
+
 - [ ] **Survive floors 2-4** (`issues.md` 20). Plateau depth 2.5-2.9, best 4; every death is melee to
       0 HP with no retreat or potion. `server-14h` stopped at generation 360 and regressed: depth 1.66 ->
       1.15, floor 2+ 57% -> 14%, clip fraction ~0.7, teacher weight already ~0 at resume (decay uses the
