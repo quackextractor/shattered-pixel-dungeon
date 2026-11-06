@@ -406,6 +406,9 @@ something.
 # replay a recorded run and confirm it still reproduces
 ./gradlew :superintelligence:verify --args="run.dat"
 
+# play a checkpoint at each temperature on fixed seeds: depth, floors reached, agreement with the teacher
+./gradlew :superintelligence:evaluate --args="out/run/weights.bin 500 1,0.5 --config superintelligence/superintelligence.properties"
+
 # check the network's analytic gradients against central differences
 ./gradlew :superintelligence:gradcheck
 

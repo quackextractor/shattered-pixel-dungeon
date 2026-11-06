@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nearest corridor or doorway within 8 steps, so flies reach it one or two at a time. New gate `tacticscheck`.
 
 ### Added
+- **`evaluate` plays a checkpoint on fixed seeds.** Every depth so far came from a training run. It reports depth, floors reached, turns and
+  agreement with the teacher at each temperature; 500 episodes take 150 s. On `clear-long`'s policy it found that sampling costs nothing, with
+  depth 2.11 at 1.0, 2.16 at 0.7 and 2.13 at 0.5, and that the policy agrees with its teacher 47-49% of the time.
 - **A stall says what it was doing.** Each update now warns about the slowest GPU forward (over 500 ms) and the slowest
   episode (over 8 s) since the last one, and the watchdog prints every inference engine's stage, rows and elapsed time
   plus the stacks of the inference and busy worker threads. `issues.md` 41 could not be diagnosed without this.
@@ -42,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **Issue 42 closed: all 257 fresh recordings play to their end in the real viewer.** 173 played before the three fixes below, and the 80 not yet reached played clean after them (820.8 s), with the RNG compared on every step.
 - **Three frame-timed paths in the viewer.** Fresh recordings played clean 173 of 177 before these; of the four failures one was load
   alone, and three were real. A `read` or `operate` animation ending late ran `Hero.onOperateComplete` in the middle of the next walk
   and cleared it, where the trainer completes it at once; the drain now finishes the hero's animation as the trainer does.

@@ -23,7 +23,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class ActionCheck {
 
-	private static final int CHECKS = 5;
+	private static final int CHECKS = 6;
 
 
 	private static final String[] SEEDS = {
@@ -39,10 +39,23 @@ public class ActionCheck {
 		checkTheActionSpaceIsStillComplete();
 		checkAQuantityRecipeBrewsFromOneStack();
 		checkAThrowCostsWhatTheGameCharges();
+		checkTemperatureZeroTakesTheBestLegalAction();
 
 		System.exit( GateReport.report( "action semantics", CHECKS ));
 	}
 
+
+	private static void checkTemperatureZeroTakesTheBestLegalAction(){
+		float[] logits = { 5f, 2f, 1.9f };
+		float[] mask = { 0f, 1f, 1f };
+		java.util.Random rng = new java.util.Random( 1L );
+		for (int i = 0; i < 200; i++){
+			if (com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy.sample( logits, mask, rng, 0f ) != 1){
+				fail( "temperature 0 took something other than the best legal action" );
+				return;
+			}
+		}
+	}
 
 	private static void checkAThrowCostsWhatTheGameCharges(){
 		SPDEnv env = new SPDEnv( new EnvConfig(), HeadlessGame.install() );

@@ -42,17 +42,3 @@ reading, so the watchdog should record that.
 episode over 8 s after the PC was cleared. Two runs with apps open had died. This does not rule the apps out and contradicts the
 Discord line above, which only covers inference alone. The cause is still unknown; `TrainerWorkers.reportSlowest` and the watchdog
 diagnostics now log the next stall. A stall under normal use remains a trainer bug.
-
-## 42. Trained recordings diverge on playback - OPEN
-
-Of 257 `clear-long` recordings, 22 diverged headless. Four bugs are fixed: dialogs were not aged, the `Travel` step cache was not
-refreshed, the drain stepped past a shot in flight, and a cursed zap's cone survived a reset. Now 257 of 257 reproduce headless, with
-the RNG compared on every step.
-
-In the viewer, `a48`'s 257 fresh recordings, made on the current build, played 173 of 177 clean before a 25-minute cap, and the three real
-failures are fixed; see the changelog. The 11 `clear-long` failures remain on old recordings, most of them from the empty-staff rule since removed, and
-are not a measure of this build. The other 80 fresh recordings are the next sweep.
-
-Copy the `.dat` files to `.replay` and run `:desktop:playbackcheck -PspdReplayDir=...`: all 257 take 30 s. Its four corpus-shape
-cases fail on such a directory, which is expected. For the viewer, cap the run with `timeout`, then read the `playback=` stamps,
-which now carry the reason from the parallel pass, and stop any child JVM left behind. Lists in `out/evidence/`.

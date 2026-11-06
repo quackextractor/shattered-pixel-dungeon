@@ -112,6 +112,18 @@ public class EpisodeCollector {
 		this.teacher = teacher;
 	}
 
+	private float temperature = 1f;
+
+	private long labelled, agreed;
+
+	public void temperature( float temperature ){
+		this.temperature = temperature;
+	}
+
+	public double teacherAgreement(){
+		return labelled == 0 ? 0 : (double) agreed / labelled;
+	}
+
 	public EpisodeCollector( EnvConfig config, PolicyNetwork network, Random rng, Random samplingRng,
 			float gamma, float lambda, float sampleRate ){
 		this( config, network, rng, samplingRng, gamma, lambda, sampleRate, DEFAULT_MAX_SAMPLED );
@@ -172,9 +184,9 @@ public class EpisodeCollector {
 
 			int liveHead = headFor( env );
 			if (teacher != null) snapshot.teacherIndex = teacher.label( env, liveHead );
-			int actionIndex = Policy.sample( network.actionLogits(), env.actionMask(), rng );
-			int slotIndex = Policy.sample( network.slotLogits(), env.slotMask(), rng );
-			int targetIndex = Policy.sample( network.targetLogits(), env.targetMask(), rng );
+			int actionIndex = Policy.sample( network.actionLogits(), env.actionMask(), rng, temperature );
+			int slotIndex = Policy.sample( network.slotLogits(), env.slotMask(), rng, temperature );
+			int targetIndex = Policy.sample( network.targetLogits(), env.targetMask(), rng, temperature );
 
 			int chosen;
 			switch (liveHead) {
@@ -192,6 +204,10 @@ public class EpisodeCollector {
 					break;
 			}
 			float logProbability = Policy.logProbability( probabilitiesFor( liveHead ), chosen );
+			if (snapshot.teacherIndex >= 0){
+				labelled++;
+				if (snapshot.teacherIndex == chosen) agreed++;
+			}
 
 			int stepIndex = record.stepCount();
 

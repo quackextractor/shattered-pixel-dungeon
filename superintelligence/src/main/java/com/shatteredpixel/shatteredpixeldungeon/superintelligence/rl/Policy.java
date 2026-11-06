@@ -45,6 +45,15 @@ public class Policy {
 	}
 
 
+	public static int sample( float[] logits, float[] mask, Random rng, float temperature ){
+		if (temperature == 1f) return sample( logits, mask, rng );
+		float[] scaled = new float[ logits.length ];
+		float scale = temperature > 0f ? 1f / temperature : 1e6f;
+		for (int i = 0; i < logits.length; i++) scaled[ i ] = logits[ i ] * scale;
+		return sample( scaled, mask, rng );
+	}
+
+
 	public static void probabilities( float[] logits, float[] mask, float[] out ){
 		float max = Float.NEGATIVE_INFINITY;
 		for (int i = 0; i < logits.length; i++){

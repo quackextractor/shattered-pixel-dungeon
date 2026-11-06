@@ -5,6 +5,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.FixtureCom
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.RngTraceCommand;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.RunCommand;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.VerifyCommand;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.EvalCommand;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.ActionCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.BpttCheck;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.CheckpointCheck;
@@ -59,6 +60,7 @@ public class Main {
 		switch (command) {
 		case "rollout":  RunCommand.main( rest );  break;
 		case "verify":    VerifyCommand.main( rest );    break;
+		case "evaluate":  EvalCommand.main( rest );      break;
 		case "rngtrace": RngTraceCommand.main( rest ); break;
 		case "gradcheck": System.exit( Cli.gradcheck( rest ) ); break;
 		case "modecheck": ModeCoverageCheck.main( rest ); break;
