@@ -38,6 +38,24 @@ and adding a live PPO update holds 49,000, worst 28 ms. So GPU capacity, those w
 the stall needs something only real collection does. On a stall the log does not say what the inference threads were
 reading, so the watchdog should record that.
 
+`clear-long`, 1250 generations in 32 minutes at 39K turns/s on the same network, ran with no stall, no forward over 500 ms and no
+episode over 8 s after the PC was cleared. Two runs with apps open had died. This does not rule the apps out and contradicts the
+Discord line above, which only covers inference alone. The cause is still unknown; `TrainerWorkers.reportSlowest` and the watchdog
+diagnostics now log the next stall. A stall under normal use remains a trainer bug.
+
+## 42. Trained recordings diverge on playback - OPEN
+
+`clear-long` recordings, written after the last code they depend on, do not all reproduce. Headless, 22 of 257 diverge: 12 at
+`MENU_SELECT` in MENU (time one turn off), 9 at `TRAVEL_ITEM` (hero one cell off or HP off), 1 at `TRAVEL_EXPLORE`. In the viewer, 21
+of the first 247 by name diverged on the stale build at b61c7ad0c's parent, mostly `USE/9` in TARGETING (aimed at the first enemy).
+Nine recordings fail both ways, but at different steps, so headless and viewer are not one bug. Re-run on the fixed build, 5 of the
+first 6 of the viewer's 21 still diverge at the same step. `HMH-RQF-GSJ` threw a staff under the old rule and cannot replay.
+
+Copy the `.dat` files to `.replay` and run `:desktop:playbackcheck -PspdReplayDir=...`: all 257 take 30 s. Its four corpus-shape
+cases fail on such a directory, which is expected. Do not sweep this set with `viewcheck`: its parallel pass took 47 minutes and
+its serial re-run adds about 2.6 minutes per failure, with no overall limit. Lists in `out/evidence/clear-headless.txt` and
+`clear-view-stale-build.log`.
+
 ## 39. Wild Magic wand level draws gameplay RNG on the render thread - OPEN
 
 `Wand.buffedLvl` rolls `Random.Int(2)` while `WildMagicTracker` is attached, and `ItemSlot` calls it through
