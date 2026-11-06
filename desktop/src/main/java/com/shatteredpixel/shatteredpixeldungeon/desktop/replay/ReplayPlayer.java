@@ -28,6 +28,8 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroAction;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.watabou.noosa.Game;
+import com.shatteredpixel.shatteredpixeldungeon.effects.MagicMissile;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.MissileSprite;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -620,6 +622,12 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		return Drain.READY;
 	}
 
+	private boolean heroShotInFlight(){
+		Hero hero = Dungeon.hero;
+		if (hero == null || hero.ready || hero.curAction != null || hero.sprite == null || hero.sprite.parent == null) return false;
+		return hero.sprite.parent.hasLiving( MissileSprite.class ) || hero.sprite.parent.hasLiving( MagicMissile.class );
+	}
+
 	private boolean mobAnimationInFlight(){
 		if (Dungeon.level == null) return false;
 		for (Mob mob : Dungeon.level.mobs){
@@ -754,6 +762,11 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 			Actor before = Actor.currentActor();
 			if (before != null && Actor.waitingOnCallback() && !heroIsReady() && parkedFrames < MAX_PARKED_FRAMES){
+				parkedFrames++;
+				pendingFrames++;
+				return Drain.PENDING;
+			}
+			if (heroShotInFlight() && parkedFrames < MAX_PARKED_FRAMES){
 				parkedFrames++;
 				pendingFrames++;
 				return Drain.PENDING;

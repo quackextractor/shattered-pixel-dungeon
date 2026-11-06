@@ -245,6 +245,14 @@ public class Group extends Gizmo {
 		return null;
 	}
 	
+	public synchronized boolean hasLiving( Class<?> type ) {
+		for (int i=0; i < length; i++) {
+			Gizmo g = members.get( i );
+			if (g != null && g.alive && type.isInstance( g )) return true;
+		}
+		return false;
+	}
+
 	public synchronized int countLiving() {
 		
 		int count = 0;
