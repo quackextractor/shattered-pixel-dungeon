@@ -123,6 +123,12 @@ public class WorkerPool {
 		beforeHalt = action;
 	}
 
+	private java.util.function.Supplier< String > diagnostics;
+
+	public void diagnostics( java.util.function.Supplier< String > source ){
+		diagnostics = source;
+	}
+
 	public void startWatchdog(){
 		Thread watchdog = new Thread( () -> {
 			while (true){
@@ -147,13 +153,15 @@ public class WorkerPool {
 			System.err.println( "  " + worker.name + " " + worker.describe() );
 		}
 
-		for (Thread t : Thread.getAllStackTraces().keySet()){
-			if (t.getName().startsWith( "dispatch-" )){
-				System.err.println( "  " + t.getName() + " " + t.getState() );
-				for (StackTraceElement el : t.getStackTrace()){
-					System.err.println( "      at " + el );
-				}
-			}
+		if (diagnostics != null) System.err.println( diagnostics.get() );
+
+		for (java.util.Map.Entry< Thread, StackTraceElement[] > e : Thread.getAllStackTraces().entrySet()){
+			Thread t = e.getKey();
+			if (!t.getName().startsWith( "dispatch-" ) && !t.getName().startsWith( "inference" ) && !t.getName().startsWith( "worker" )) continue;
+			StackTraceElement[] stack = e.getValue();
+			if (stack.length > 0 && stack[ 0 ].getMethodName().startsWith( "read0" )) continue;
+			System.err.println( "  " + t.getName() + " " + t.getState() );
+			for (int i = 0; i < Math.min( stack.length, 14 ); i++) System.err.println( "      at " + stack[ i ] );
 		}
 
 		try {

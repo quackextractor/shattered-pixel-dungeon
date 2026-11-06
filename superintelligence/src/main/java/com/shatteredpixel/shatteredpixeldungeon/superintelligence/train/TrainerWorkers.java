@@ -37,6 +37,7 @@ public class TrainerWorkers implements JobRunner {
 		try {
 			inference = new com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.BatchedInference( ppo.network );
 			com.shatteredpixel.shatteredpixeldungeon.superintelligence.shared.InferenceBroker.install( inference );
+			pool.diagnostics( inference::health );
 			return "batched on " + inference.deviceName() + " (OpenCL)";
 		} catch (RuntimeException | LinkageError e){
 			return "per worker on the cpu (no OpenCL GPU: " + e.getMessage() + ")";
@@ -143,7 +144,20 @@ public class TrainerWorkers implements JobRunner {
 		return new ArrayList<>( java.util.Arrays.asList( results ));
 	}
 
+	private static final long SLOW_FORWARD_MS = 500L;
+	private static final long SLOW_JOB_MS = 8000L;
+
+	private final java.util.concurrent.atomic.AtomicReference< long[] > slowestJob = new java.util.concurrent.atomic.AtomicReference<>( new long[ 2 ] );
+
+	private void reportSlowest(){
+		String forward = inference == null ? null : inference.takeSlowest( SLOW_FORWARD_MS );
+		if (forward != null) System.out.println( "[WARN] slowest GPU forward since the last update: " + forward );
+		long[] job = slowestJob.getAndSet( new long[ 2 ] );
+		if (job[ 0 ] >= SLOW_JOB_MS) System.out.println( "[WARN] slowest episode since the last update: " + job[ 0 ] + " ms, " + job[ 1 ] + " steps" );
+	}
+
 	Episode runOne( WorkerHandle worker, Job job ) throws IOException {
+		long jobStart = System.nanoTime();
 		DataOutputStream out = worker.dataOut;
 		DataInputStream in = worker.dataIn;
 
@@ -170,6 +184,9 @@ public class TrainerWorkers implements JobRunner {
 		if (job.wantReplay) episode.replay = ReplayCodec.read( in, steps );
 
 		episode.transitions = Episode.readTransitions( in, config, ppo.network.stateSize() );
+
+		long jobMs = ( System.nanoTime() - jobStart ) / 1_000_000;
+		slowestJob.accumulateAndGet( new long[]{ jobMs, steps }, (a, b) -> a[ 0 ] >= b[ 0 ] ? a : b );
 
 		pool.progress();
 
@@ -204,6 +221,7 @@ public class TrainerWorkers implements JobRunner {
 	@Override
 	public List<byte[]> publish() throws IOException {
 		if (inference != null) inference.load( ppo.network );
+		reportSlowest();
 		List<byte[]> payloads = new ArrayList<>();
 		for (int i = 0; i < pool.size(); i++){
 			ByteArrayOutputStream buffer = new ByteArrayOutputStream();

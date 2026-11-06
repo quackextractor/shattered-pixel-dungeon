@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The teacher backs into a hall when it would be surrounded.** A swarm or two hunters in the open now send it to
   the nearest corridor or doorway within 8 steps, so flies reach it one or two at a time. New gate `tacticscheck`.
 
+### Added
+- **A stall says what it was doing.** Each update now warns about the slowest GPU forward (over 500 ms) and the slowest
+  episode (over 8 s) since the last one, and the watchdog prints every inference engine's stage, rows and elapsed time
+  plus the stacks of the inference and busy worker threads. `issues.md` 41 could not be diagnosed without this.
+
 ### Fixed
 - **A policy answered menus with the wrong head.** In a dialog the option came from the slot head, sampled over item
   indices and untrained there, so 54 answers an episode were refused and the hero went back and forth over the upgrade

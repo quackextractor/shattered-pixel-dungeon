@@ -41,6 +41,12 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 		RuntimeException failure;
 	}
 
+	private static final class Slowest {
+		long nanos;
+		int rows;
+		String stage = "";
+	}
+
 	private final class Engine {
 		final ClDevice cl = new ClDevice( "encoder.cl", "recurrent.cl", "params.cl" );
 		final Network local = new Network( weights.config, new Random( 1L ));
@@ -49,6 +55,10 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 		final ClRecurrent recurrent = new ClRecurrent( cl, local, params );
 		final float[] extrasRow = new float[ encoder.extra ];
 		final Thread thread = new Thread( this::dispatch, "inference" );
+		final Slowest slow = new Slowest();
+		volatile long started;
+		volatile int rows;
+		volatile String stage = "";
 
 		void load(){
 			synchronized (this){
@@ -75,7 +85,7 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 				RuntimeException failure = null;
 				try {
 					synchronized (this){
-						run( batch );
+						timed( batch );
 					}
 				} catch (RuntimeException e){
 					failure = e;
@@ -90,7 +100,44 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 			}
 		}
 
+		void timed( List< Request > batch ){
+			rows = batch.size();
+			stage = "stage";
+			long start = System.nanoTime();
+			started = start;
+			try {
+				run( batch );
+			} finally {
+				long nanos = System.nanoTime() - start;
+				started = 0L;
+				synchronized (slow){
+					if (nanos > slow.nanos){
+						slow.nanos = nanos;
+						slow.rows = rows;
+						slow.stage = slowest;
+					}
+				}
+			}
+		}
+
+		private String slowest = "";
+		private long stageStart;
+
+		private void enter( String next ){
+			long now = System.nanoTime();
+			if (now - stageStart >= longestStage) {
+				longestStage = now - stageStart;
+				slowest = stage;
+			}
+			stageStart = now;
+			stage = next;
+		}
+
+		private long longestStage;
+
 		void run( List< Request > batch ){
+			stageStart = System.nanoTime();
+			longestStage = 0L;
 			int rows = batch.size();
 			ByteBuffer packed = encoder.packedStage( rows );
 			FloatBuffer extras = encoder.extrasStage( rows );
@@ -104,9 +151,12 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 				extras.put( extrasRow );
 				System.arraycopy( states.get( r.slot ), 0, state0, i * stateSize, stateSize );
 			}
+			enter( "encoder" );
 			encoder.forwardInference( rows );
 			float[] next = new float[ rows * stateSize ];
+			enter( "recurrent" );
 			float[] logits = recurrent.forward( 1, rows, state0, encoder.hiddenOut, next );
+			enter( "done" );
 			int K = recurrent.K;
 			for (int i = 0; i < rows; i++){
 				Request r = batch.get( i );
@@ -141,6 +191,39 @@ public final class BatchedInference implements InferenceBroker.Server, AutoClose
 
 	public int slots(){
 		return open;
+	}
+
+	public String takeSlowest( long atLeastMs ){
+		Engine worst = null;
+		long worstNanos = 0;
+		int rows = 0;
+		String stage = "";
+		for (Engine engine : engines){
+			synchronized (engine.slow){
+				if (engine.slow.nanos >= worstNanos && engine.slow.nanos > 0){
+					worst = engine;
+					worstNanos = engine.slow.nanos;
+					rows = engine.slow.rows;
+					stage = engine.slow.stage;
+				}
+				engine.slow.nanos = 0;
+			}
+		}
+		if (worst == null || worstNanos / 1_000_000 < atLeastMs) return null;
+		return String.format( "%.0f ms, %d rows, in %s", worstNanos / 1e6, rows, stage );
+	}
+
+	public String health(){
+		StringBuilder out = new StringBuilder( "inference: " + pending.get() + " waiting, " + queue.size() + " queued, " + open + " slots" );
+		for (int i = 0; i < engines.size(); i++){
+			Engine engine = engines.get( i );
+			long started = engine.started;
+			out.append( "\n  engine " ).append( i ).append( ' ' );
+			if (started == 0L) out.append( "idle" );
+			else out.append( engine.stage ).append( ", " ).append( engine.rows ).append( " rows, " )
+					.append( ( System.nanoTime() - started ) / 1_000_000 ).append( " ms" );
+		}
+		return out.toString();
 	}
 
 	public String deviceName(){

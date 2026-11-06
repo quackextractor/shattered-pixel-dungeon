@@ -16,7 +16,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class GpuCheck {
 
-	private static final int CHECKS = 6;
+	private static final int CHECKS = 7;
 
 	private static final double TOLERANCE = 1e-4;
 
@@ -168,6 +168,10 @@ public class GpuCheck {
 						+ server.slots() + " slots for " + envs + " envs, so batches can never fill" );
 				return;
 			}
+			String slowest = server.takeSlowest( 0L );
+			if (slowest == null || !slowest.contains( "row" )) fail( "the slowest GPU forward was not reported: " + slowest );
+			if (server.takeSlowest( 0L ) != null) fail( "the slowest GPU forward was reported twice" );
+			if (!server.health().contains( "idle" )) fail( "an idle inference engine does not say so: " + server.health() );
 			double max = 0;
 			for (double w : worst) max = Math.max( max, w );
 			if (max > 1e-4){
