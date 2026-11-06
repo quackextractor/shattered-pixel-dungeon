@@ -40,6 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **Recordings that left the trainer's rules at playback.** 22 of 257 `clear-long` recordings diverged headless, and 21 now
+  reproduce. The trainer ages a dialog before answering it and `ReplayPlayer` did not, so the Upgrade button stayed disabled and
+  the recorded choice was refused (12 runs). A pickup spends no time, so `Travel` kept a stale step cached by position and time
+  where the trainer invalidates it every step, and the next `TRAVEL_ITEM` stood still (9 runs and 1 moved on from a menu). The
+  player now does both, and `upgrade-menu.replay` and `pickup-travel.replay` join the corpus.
 - **Viewer gaps on real trained runs.** A thrown seed, a staff equipped from the pack, and magical sleep all played
   differently in the viewer. A seed aims without `usesTargeting`, so the viewer's live selector was missed; the
   viewer took a recorded `TARGETING` to mean no turn was owed even when nothing was aimed; and its rest guard ended

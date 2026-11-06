@@ -33,6 +33,8 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapp
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SlotAction;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Travel;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
@@ -88,6 +90,7 @@ public class ReplayPlayer {
 
 	private final ReplayPlayback playback;
 	private final ActionMapper mapper;
+	private final EnvConfig config;
 
 	private float sinceStep = 0;
 	private float speed = FAST_SPEED;
@@ -173,6 +176,7 @@ public class ReplayPlayer {
 	public ReplayPlayer( Replay replay, EnvConfig config ){
 		this.playback = new ReplayPlayback( replay );
 		this.mapper = new ActionMapper( config );
+		this.config = config;
 		Actor.manualScheduling = true;
 
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.RunState.clearRunStatics();
@@ -946,6 +950,8 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		}
 
 		mapper.refreshSlots();
+		if (mode == EnvMode.MENU) WindowBridge.age( config );
+		Travel.invalidate();
 
 		boolean acted;
 
