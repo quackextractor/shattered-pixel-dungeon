@@ -62,17 +62,22 @@ tasks.register('replaycp') {
     }
 }
 
- tasks.register('playbackcheck', JavaExec) {
-    group = 'verification'
-    description = 'Fails if the replay viewer cannot play a recording headlessly, or cannot detect an altered one.'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.PlaybackCheck'
-    jvmArgs '-Djava.awt.headless=true', '--enable-native-access=ALL-UNNAMED'
+def committedCorpus = "${rootProject.projectDir}/superintelligence/test-replays"
 
-    systemProperty 'spd.replayDir', project.findProperty('spdReplayDir') ?: "${rootProject.projectDir}/superintelligence/test-replays"
- }
+['playbackcheck': project.findProperty('spdReplayDir') ?: committedCorpus, 'corpusplayback': committedCorpus].each { name, replayDir ->
+    tasks.register(name, JavaExec) {
+        group = 'verification'
+        description = 'Fails if the replay viewer cannot play a recording headlessly, or cannot detect an altered one.'
+        classpath = sourceSets.main.runtimeClasspath
+        mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.PlaybackCheck'
+        jvmArgs '-Djava.awt.headless=true', '--enable-native-access=ALL-UNNAMED'
+
+        systemProperty 'spd.replayDir', replayDir
+    }
+}
 
 tasks.register('viewcheck', JavaExec) {
+    dependsOn 'corpusplayback'
     group = 'verification'
     description = 'Fails if any committed recording diverges when played in the real viewer.'
     classpath = sourceSets.main.runtimeClasspath

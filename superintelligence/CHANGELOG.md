@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   episode (over 8 s) since the last one, and the watchdog prints every inference engine's stage, rows and elapsed time
   plus the stacks of the inference and busy worker threads. `issues.md` 41 could not be diagnosed without this.
 
+### Changed
+- **`viewcheck` refuses a broken build.** It now runs `corpusplayback`, the headless check of the
+  committed corpus, before it starts a viewer, whatever `-PspdReplayDir` says. A build that fails it stops in seconds instead of
+  replaying a recording set for an hour.
+
 ### Fixed
 - **Viewer gaps on real trained runs.** A thrown seed, a staff equipped from the pack, and magical sleep all played
   differently in the viewer. A seed aims without `usesTargeting`, so the viewer's live selector was missed; the
