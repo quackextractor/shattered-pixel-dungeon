@@ -47,9 +47,10 @@ diagnostics now log the next stall. A stall under normal use remains a trainer b
 
 `clear-long` recordings, written after the last code they depend on, do not all reproduce. Headless, 22 of 257 diverge: 12 at
 `MENU_SELECT` in MENU (time one turn off), 9 at `TRAVEL_ITEM` (hero one cell off or HP off), 1 at `TRAVEL_EXPLORE`. In the viewer, 21
-of the first 247 by name diverged on the stale build at b61c7ad0c's parent, mostly `USE/9` in TARGETING (aimed at the first enemy).
-Nine recordings fail both ways, but at different steps, so headless and viewer are not one bug. Re-run on the fixed build, 5 of the
-first 6 of the viewer's 21 still diverge at the same step. `HMH-RQF-GSJ` threw a staff under the old rule and cannot replay.
+diverged on a build with a known fault, mostly `USE/9` in TARGETING (aimed at the first enemy). That sweep was stopped during its
+re-run, so the viewer total is unknown and at least 21. Nine fail both ways, and the two that were compared did so at different
+steps, so headless and viewer may be separate bugs. On the fixed build the first 6 of the 21 were played: 5 diverge at the same
+step and `GMR-CVQ-YTR` is clean. `HMH-RQF-GSJ` is suspected of throwing its staff under the old rule, not yet replayed on the fix.
 
 Copy the `.dat` files to `.replay` and run `:desktop:playbackcheck -PspdReplayDir=...`: all 257 take 30 s. Its four corpus-shape
 cases fail on such a directory, which is expected. Do not sweep this set with `viewcheck`: its parallel pass took 47 minutes and
