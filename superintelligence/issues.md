@@ -45,17 +45,20 @@ diagnostics now log the next stall. A stall under normal use remains a trainer b
 
 ## 42. Trained recordings diverge on playback - OPEN
 
-`clear-long` recordings, written after the last code they depend on, do not all reproduce. Headless, 22 of 257 diverge: 12 at
-`MENU_SELECT` in MENU (time one turn off), 9 at `TRAVEL_ITEM` (hero one cell off or HP off), 1 at `TRAVEL_EXPLORE`. In the viewer, 21
-diverged on a build with a known fault, mostly `USE/9` in TARGETING (aimed at the first enemy). That sweep was stopped during its
-re-run, so the viewer total is unknown and at least 21. Nine fail both ways, and the two that were compared did so at different
-steps, so headless and viewer may be separate bugs. On the fixed build the first 6 of the 21 were played: 5 diverge at the same
-step and `GMR-CVQ-YTR` is clean. `HMH-RQF-GSJ` is suspected of throwing its staff under the old rule, not yet replayed on the fix.
+Of 257 `clear-long` recordings, 22 diverged headless. Three viewer bugs are fixed: dialogs were not aged, the `Travel` step cache was
+not refreshed, and the drain stepped past a shot in flight. Now 256 of 257 reproduce headless.
+
+Still failing headless: `MMC-VNK-XMH` at step 918, HP 26 against 30, three steps after a kill by a thrown weapon. Playback does not
+compare the recorded `baseDraws` and `baseFingerprint`, so the first real difference may be earlier.
+
+Still failing in the viewer, 11 of 99 played on the current build, with 7 more cut off by a 15-minute cap and the other 151 last
+played before these fixes: `BJW-XJJ-MNW`, `FGC-QHQ-ZGZ`, `GSZ-BTQ-YPJ`, `HFY-ZTM-LVM`, `HMH-RQF-GSJ`, `SPW-YJZ-BGR`, `SWQ-KLM-YFY`,
+`TXN-JCX-KRB`, `WDX-PYW-LTX`, `XDG-KSL-RCF`, `XPJ-GXJ-JRV`. No single cause is shown. Six are aimed steps, some after a zero-charge
+staff or a floor change, and `HMH-RQF-GSJ` is suspected of throwing its staff under the old rule.
 
 Copy the `.dat` files to `.replay` and run `:desktop:playbackcheck -PspdReplayDir=...`: all 257 take 30 s. Its four corpus-shape
-cases fail on such a directory, which is expected. Do not sweep this set with `viewcheck`: its parallel pass took 47 minutes and
-its serial re-run adds about 2.6 minutes per failure, with no overall limit. Lists in `out/evidence/clear-headless.txt` and
-`clear-view-stale-build.log`.
+cases fail on such a directory, which is expected. For the viewer, cap the run with `timeout`, then read the `playback=` stamps,
+which now carry the reason from the parallel pass, and stop any child JVM left behind. Lists in `out/evidence/`.
 
 ## 39. Wild Magic wand level draws gameplay RNG on the render thread - OPEN
 
