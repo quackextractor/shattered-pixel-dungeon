@@ -63,7 +63,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 26;
+	private static final int CHECKS = 27;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -106,6 +106,7 @@ public class PlaybackCheck {
 		check( () -> checkAlteredHealthIsCaught( good, 30 ) );
 		check( () -> checkAlteredTurnIsCaught( good, 30 ) );
 		check( () -> checkAlteredInventoryIsCaught( good, 30 ) );
+		check( () -> checkAlteredRngIsCaught( good, 30 ) );
 		check( () -> checkAlteredQuickslotsAreCaught( good ) );
 		check( () -> checkAStalledPlayerFailsInsteadOfHanging() );
 		check( () -> checkARecordingWithNothingBoundStillPlays() );
@@ -445,6 +446,17 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		step.turn = saved;
 
 		requireDivergence( outcome, at, "engine time", "turn", replay );
+	}
+
+	private static void checkAlteredRngIsCaught( Replay replay, int at ){
+		Replay.Step step = stepAt( replay, at );
+		long saved = step.baseFingerprint;
+		step.baseFingerprint = saved + 1;
+
+		Outcome outcome = play( replay );
+		step.baseFingerprint = saved;
+
+		requireDivergence( outcome, at, "rng baseFingerprint", "baseFingerprint", replay );
 	}
 
 	private static void checkAlteredInventoryIsCaught( Replay replay, int at ){

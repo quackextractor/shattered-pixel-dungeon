@@ -223,6 +223,7 @@ public class ReplayPlayer {
 	private final com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngTrace rngTrace;
 	private final String rngTracePath;
 	private boolean rngTraceArmed = false;
+	private boolean rngArmed = false;
 
 	/**
 	 * Per-frame record of the world, and per-step alongside it, including the cells.
@@ -952,6 +953,11 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			rngTrace.onReset();
 			rngTraceArmed = true;
 		}
+		if (!rngArmed){
+			com.watabou.utils.RandomTrace.reset();
+			com.watabou.utils.RandomTrace.enable();
+			rngArmed = true;
+		}
 
 		String unresolvable = Quickslots.prepare( step, playback.cursor(),
 				playback.replay().wireDroppedStepFields() );
@@ -1023,7 +1029,9 @@ awaitingSettle = true;
 			settledPosition = Dungeon.hero.pos;
 			trace( settledPosition );
 			if (!playback.checkPosition( settledPosition )
-					|| !playback.checkState( Dungeon.hero.HP, Actor.now(), ReplayRecorder.inventory() )){
+					|| !playback.checkState( Dungeon.hero.HP, Actor.now(), ReplayRecorder.inventory() )
+					|| !playback.checkRng( com.watabou.utils.RandomTrace.baseDraws(),
+							com.watabou.utils.RandomTrace.baseFingerprint() )){
 				if (CONTINUE_ON_DIVERGE){
 					if (!diverged) reportDivergence();
 					diverged = true;

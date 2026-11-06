@@ -8,7 +8,6 @@ Every open item from `issues.md` and the sections below, in working order: fidel
 because a long run is only worth reading if its recordings play. Each ships as its own commit with a `CHANGELOG.md`
 entry and leaves this list, or moves to `REJECTED.md`.
 
-- [ ] **Playback compares the RNG fingerprint** (`issues.md` 42): the first real difference, not the first visible one.
 - [ ] **`MMC-VNK-XMH` headless divergence** (`issues.md` 42): HP 26 against 30 at step 918.
 - [ ] **11 viewer divergences** (`issues.md` 42): `BJW-XJJ-MNW`, `FGC-QHQ-ZGZ`, `GSZ-BTQ-YPJ`, `HFY-ZTM-LVM`, `HMH-RQF-GSJ`,
       `SPW-YJZ-BGR`, `SWQ-KLM-YFY`, `TXN-JCX-KRB`, `WDX-PYW-LTX`, `XDG-KSL-RCF`, `XPJ-GXJ-JRV`.

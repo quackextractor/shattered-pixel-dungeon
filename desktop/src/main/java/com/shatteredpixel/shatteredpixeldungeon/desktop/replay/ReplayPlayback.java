@@ -22,6 +22,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.StepRngAssertion;
 
 /**
  * Playback state for a replay being watched in the rendered game.
@@ -219,6 +220,24 @@ public class ReplayPlayback {
 		}
 
 		return true;
+	}
+
+	public boolean checkRng( long baseDraws, long baseFingerprint ){
+		if (divergedAt >= 0) return false;
+
+		Replay.Step step = currentStep();
+		if (step == null) return true;
+
+		String mismatch = StepRngAssertion.checkRngParity( cursor, step.baseDraws, baseDraws );
+		if (mismatch == null){
+			mismatch = StepRngAssertion.checkFingerprintParity( cursor, step.baseDraws,
+					step.baseFingerprint, baseFingerprint );
+		}
+		if (mismatch == null) return true;
+
+		divergedAt = cursor;
+		reason = mismatch;
+		return false;
 	}
 
 	private Replay.Step currentStep(){

@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **Playback now compares the gameplay RNG on every step.** `ReplayPlayer` checked position, health, time and inventory, so a
+  stream that had parted stayed invisible until something it moved showed up. It now holds `baseDraws` and `baseFingerprint` to the
+  recording, armed where the recorder resets them, in `playbackcheck`, `viewcheck` and the viewer alike. The 33 committed recordings
+  pass in the real viewer (269.6 s), 257 of 257 `clear-long` recordings pass headless, and a fingerprint altered by one fails it.
 - **Recordings that left the trainer's rules at playback.** 22 of 257 `clear-long` recordings diverged headless, and 21 now
   reproduce. The trainer ages a dialog before answering it and `ReplayPlayer` did not, so the Upgrade button stayed disabled and
   the recorded choice was refused (12 runs). A pickup spends no time, so `Travel` kept a stale step cached by position and time
