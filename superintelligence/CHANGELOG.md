@@ -36,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ParalyticDart`, all 13 wands and `potion-throw`, each aimed at a rat through the real mask; every one is reachable by
   the policy and plays clean in the real viewer. Red with `InstantBolt` removed from the headless stage (9 wands) and
   with the held-weapon slot removed from `ActionMapper.refreshSlots` (`staff`).
+- **Picker and brewing scenarios.** `picker.Upgrade/Identify/RemoveCurse/Transmutation/Enchantment` answer the item
+  picker (and the upgrade or enchantment window after it), `picker-cancel` backs out of one (G2), and
+  `brew.seeds/exotic-potion/exotic-scroll/meat-pie` brew at a pot through `ALCHEMY`. All play clean in the real
+  viewer. Red with `GameScene`'s headless selector removed (6 pickers) and with `ReplayPlayer`'s `ALCHEMY` branch of
+  d8f73f170 reverted (4 brews diverge at step 2 in `scenarioplayback`).
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an

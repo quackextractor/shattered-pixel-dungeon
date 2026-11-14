@@ -17,6 +17,7 @@ public final class ReachExpectations {
 		for (String mode : new String[]{ "SLOT", "INVENTORY", "TALENT", "ALCHEMY", "MENU" }){
 			EXPECTED.put( "cancel." + mode, "G2" );
 		}
+		EXPECTED.put( "picker-cancel", "G2" );
 		EXPECTED.put( "aim-empty", "G3" );
 		EXPECTED.put( "aim-no-enemy", "G3" );
 		EXPECTED.put( "interact-direction", "G4" );

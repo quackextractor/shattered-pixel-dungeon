@@ -1,0 +1,155 @@
+package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
+
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.Statistics;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.armor.ClothArmor;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.Food;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.MeatPie;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.MysteryMeat;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.Pasty;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.exotic.ExoticPotion;
+import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfAccuracy;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfIdentify;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfRemoveCurse;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTransmutation;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.exotic.ExoticScroll;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.exotic.ScrollOfEnchantment;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Dagger;
+import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
+import com.shatteredpixel.shatteredpixeldungeon.plants.Firebloom;
+import com.shatteredpixel.shatteredpixeldungeon.plants.Sorrowmoss;
+import com.shatteredpixel.shatteredpixeldungeon.plants.Sungrass;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Predicate;
+
+final class CraftScenarios {
+
+	private CraftScenarios(){}
+
+	static List< Scenario > all(){
+		List< Scenario > all = new ArrayList<>();
+		all.add( picker( "picker.Upgrade", new ScrollOfUpgrade(), null, ClothArmor.class,
+				item -> item.level() == 1, "the armour is not +1" ));
+		all.add( picker( "picker.Identify", new ScrollOfIdentify(), new RingOfAccuracy(), RingOfAccuracy.class,
+				Item::isIdentified, "the ring is not identified" ));
+		all.add( picker( "picker.RemoveCurse", new ScrollOfRemoveCurse(), cursedDagger(), Dagger.class,
+				item -> !item.cursed, "the dagger is still cursed" ));
+		all.add( picker( "picker.Transmutation", new ScrollOfTransmutation(), new Dagger(), Dagger.class,
+				item -> !Dungeon.hero.belongings.contains( item ), "the dagger is still carried" ));
+		all.add( picker( "picker.Enchantment", new ScrollOfEnchantment(), new Dagger(), Dagger.class,
+				item -> ((Dagger) item).enchantment != null, "the dagger has no enchantment" ));
+		all.add( pickerCancel() );
+		all.add( brew( "brew.seeds", Potion.class, new Sungrass.Seed(), new Firebloom.Seed(), new Sorrowmoss.Seed() ));
+		all.add( brew( "brew.exotic-potion", ExoticPotion.class, new PotionOfHealing() ));
+		all.add( brew( "brew.exotic-scroll", ExoticScroll.class, new ScrollOfIdentify() ));
+		all.add( brew( "brew.meat-pie", MeatPie.class, new Pasty(), new Food(), new MysteryMeat() ));
+		return all;
+	}
+
+	private static Dagger cursedDagger(){
+		Dagger dagger = new Dagger();
+		dagger.cursed = true;
+		return dagger;
+	}
+
+	private static Scenario picker( String id, Item scroll, Item target, Class< ? extends Item > pick,
+			Predicate< Item > done, String failure ){
+		return new Scenario( id, "pick a target for " + scroll.getClass().getSimpleName(), HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.give( copy( scroll ));
+					if (target != null){
+						Item made = copy( target );
+						if (target.cursed){
+							made.cursed = true;
+							kit.giveUnknown( made );
+						} else if (target.isIdentified() || !(target instanceof RingOfAccuracy)){
+							kit.give( made );
+						} else {
+							kit.giveUnknown( made );
+						}
+					}
+				},
+				d -> {
+					d.use( scroll.getClass() );
+					d.require( d.env().mode() == EnvMode.INVENTORY, scroll.getClass().getSimpleName()
+							+ " offered no picker: " + d.env().mode() );
+					Item chosen = d.env().mapper().slot( d.slotOf( pick ));
+					d.pick( pick );
+					if (d.env().mode() == EnvMode.MENU) d.menu( 0 );
+					d.expect( done.test( chosen ), failure );
+				} );
+	}
+
+	private static Item copy( Item item ){
+		return com.watabou.utils.Reflection.newInstance( item.getClass() );
+	}
+
+	private static Scenario pickerCancel(){
+		return new Scenario( "picker-cancel", "back out of a picker", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.give( new ScrollOfUpgrade() );
+				},
+				d -> {
+					d.use( ScrollOfUpgrade.class );
+					d.require( d.env().mode() == EnvMode.INVENTORY, "the scroll offered no picker: " + d.env().mode() );
+					d.cancel();
+					d.expect( d.env().mode() == EnvMode.WORLD, "cancelling the picker left " + d.env().mode() );
+					d.expect( Dungeon.hero.belongings.getItem( ScrollOfUpgrade.class ) != null, "cancelling the picker"
+							+ " spent the scroll" );
+				} );
+	}
+
+	private static Scenario brew( String id, Class< ? extends Item > product, Item... ingredients ){
+		return new Scenario( id, "brew " + product.getSimpleName() + " at a pot", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.emptyPack().energy( 20 );
+					for (Item ingredient : ingredients){
+						Item made = copy( ingredient ).quantity( ingredient.quantity() );
+						kit.give( made );
+					}
+					world.terrain( world.adjacentFree(), Terrain.ALCHEMY );
+				},
+				d -> {
+					int crafted = Statistics.itemsCrafted;
+					d.act( Action.ALCHEMY );
+					d.require( d.env().mode() == EnvMode.ALCHEMY, "ALCHEMY entered " + d.env().mode() );
+					int choice = -1;
+					List< com.shatteredpixel.shatteredpixeldungeon.items.Recipe > recipes = d.env().mapper().alchemyChoices();
+					for (int i = 0; i < recipes.size() && choice < 0; i++){
+						if (yields( recipes.get( i ), product )) choice = i;
+					}
+					d.require( choice >= 0, "no offered recipe makes " + product.getSimpleName() + " from " + recipes );
+					d.menu( choice );
+					d.expect( Statistics.itemsCrafted == crafted + 1, "itemsCrafted moved by " + (Statistics.itemsCrafted - crafted) );
+					d.expect( carries( product ), "no " + product.getSimpleName() + " in the pack after brewing" );
+				} );
+	}
+
+	private static boolean yields( com.shatteredpixel.shatteredpixeldungeon.items.Recipe recipe, Class< ? extends Item > product ){
+		for (java.util.ArrayList< Item > ingredients : com.shatteredpixel.shatteredpixeldungeon.superintelligence.env
+				.AlchemyAction.ingredientSets( Dungeon.hero )){
+			if (!recipe.testIngredients( new java.util.ArrayList<>( ingredients ))) continue;
+			Item out = recipe.sampleOutput( new java.util.ArrayList<>( ingredients ));
+			Class< ? > maker = recipe.getClass().getEnclosingClass();
+			if (product.isInstance( out ) || (maker != null && product.isAssignableFrom( maker ))) return true;
+		}
+		return false;
+	}
+
+	private static boolean carries( Class< ? extends Item > product ){
+		for (Item item : Dungeon.hero.belongings.backpack) if (product.isInstance( item )) return true;
+		return false;
+	}
+}
