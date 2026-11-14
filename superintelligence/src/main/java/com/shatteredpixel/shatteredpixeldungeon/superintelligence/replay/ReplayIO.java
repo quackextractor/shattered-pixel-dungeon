@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioSetup;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -73,6 +74,14 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
   			out.newLine();
 			if (!replay.playback.isEmpty()){
 				out.write( "playback=" + replay.playback );
+				out.newLine();
+			}
+			if (!replay.scenario.isEmpty()){
+				out.write( "scenario=" + replay.scenario );
+				out.newLine();
+			}
+			if (!replay.worldEnd.isEmpty()){
+				out.write( "world_end=" + replay.worldEnd );
 				out.newLine();
 			}
  			out.write( "steps=" + replay.steps.size() );
@@ -281,6 +290,8 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 
 				case "group":      replay.group = value; break;
 				case "playback":   replay.playback = value; break;
+				case "scenario":   replay.scenario = value; break;
+				case "world_end":  replay.worldEnd = value; break;
 				default: break;
 			}
 		}
@@ -350,6 +361,13 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			result.unwatchableAt = 0;
 			result.unwatchable = "hero class " + replay.heroClass + " is not one this build knows, so the"
 					+ " run cannot be rebuilt";
+			return result;
+		}
+
+		if (!replay.scenario.isEmpty() && !ScenarioSetup.known( replay.scenario )){
+			result.unwatchableAt = 0;
+			result.unwatchable = "scenario " + replay.scenario + " is not one this build knows, so its world"
+					+ " cannot be rebuilt";
 			return result;
 		}
 

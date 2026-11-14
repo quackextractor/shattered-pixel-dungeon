@@ -21,6 +21,7 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioSetup;
 import com.badlogic.gdx.Files;
   import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
   import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
@@ -168,6 +169,13 @@ private static void describe( Replay replay ){
 			System.err.println( "[ERROR] this recording's hero class \"" + replay.heroClass
 					+ "\" is not one this game has." );
 			System.err.println( "        Refusing to play it as another class." );
+			return false;
+		}
+
+		if (!replay.scenario.isEmpty() && !ScenarioSetup.known( replay.scenario )){
+			System.err.println( "[ERROR] this recording's scenario \"" + replay.scenario
+					+ "\" is not one this build knows." );
+			System.err.println( "        Refusing to play it on a world without its setup." );
 			return false;
 		}
 

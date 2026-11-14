@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Scenario recordings.** A recording may name a `scenario=<id>`, a world set up in Java after the hero is ready
+  and before step 0, and a `world_end=` digest. Both keys are written only when set, travel on the worker wire
+  (`ReplayCodec` version 7), and an id this build does not know is refused at step 0 by `verify` and by the viewer,
+  as an unknown hero class is. `verifycheck` 17 cases, `playbackcheck` 28.
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an

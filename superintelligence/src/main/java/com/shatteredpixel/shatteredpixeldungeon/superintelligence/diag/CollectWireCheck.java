@@ -107,6 +107,8 @@ public final class CollectWireCheck {
 		sample.termination = "DEATH";
 
 		sample.rewardProfile = RewardProfile.DEPTH_ONLY;
+		sample.scenario = "melee";
+		sample.worldEnd = "hero:1a2b,mobs:3c4d";
 
 		Replay.Step s = new Replay.Step();
 		s.action = "USE";
@@ -198,6 +200,13 @@ public final class CollectWireCheck {
 					+ back.rewardProfile + ". A recording written under a profile and read back as the"
 					+ " default reports a score and a reward column that never matched the run, and says"
 					+ " nothing about the trajectory." );
+			return;
+		}
+
+		if (!sample.scenario.equals( back.scenario ) || !sample.worldEnd.equals( back.worldEnd )){
+			fail( "the header lost the scenario or its world digest: '" + sample.scenario + "'/'"
+					+ sample.worldEnd + "' -> '" + back.scenario + "'/'" + back.worldEnd + "'. A scenario"
+					+ " recording read back without them replays its actions on a world that was never set up." );
 			return;
 		}
 

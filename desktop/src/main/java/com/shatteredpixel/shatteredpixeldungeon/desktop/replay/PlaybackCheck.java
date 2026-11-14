@@ -63,7 +63,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 27;
+	private static final int CHECKS = 28;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -129,6 +129,7 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		check( PlaybackCheck::checkTheFrameDeltaPinReachesTheEngine );
 		check( PlaybackCheck::checkPlaybackSpeedIsNotCapped );
 		check( PlaybackCheck::checkAnUnknownHeroClassIsRefused );
+		check( PlaybackCheck::checkAnUnknownScenarioIsRefused );
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
@@ -153,6 +154,15 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		if ( ReplayLauncher.startRun( replay ) ){
 			fail( "the viewer started a recording of hero BARBARIAN; it must refuse rather than play"
 					+ " another class's run against this one's actions" );
+		}
+	}
+
+	private static void checkAnUnknownScenarioIsRefused(){
+		Replay replay = recordAShortRun();
+		replay.scenario = "no-such-scenario";
+		if ( ReplayLauncher.startRun( replay ) ){
+			fail( "the viewer started a recording of scenario no-such-scenario; it must refuse rather than"
+					+ " play the scenario's actions on a world without its setup" );
 		}
 	}
 

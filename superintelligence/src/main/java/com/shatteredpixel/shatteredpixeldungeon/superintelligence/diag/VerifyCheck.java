@@ -16,7 +16,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class VerifyCheck {
 
-	private static final int CHECKS = 15;
+	private static final int CHECKS = 17;
 
 	public static void main( String[] args ){
 		HeadlessServices.install( Scratch.dir( "verifycheck" ));
@@ -39,6 +39,8 @@ public class VerifyCheck {
 		checkTheHeaderCarriesTheRunLimits( good );
 		VerifyStreamCheck.checkVerifyLeavesACallersTraceOn( good );
 		checkAnUnknownHeroIsRefused( good );
+		checkTheHeaderCarriesTheScenario( good );
+		checkAnUnknownScenarioIsRefused( good );
 
 		System.exit( GateReport.report( "verification detects divergence", CHECKS ));
 	}
@@ -276,6 +278,37 @@ public class VerifyCheck {
 		if (result.unwatchableAt != 0){
 			fail( "an unknown hero class is refused", "a recording of hero BARBARIAN was "
 					+ ( result.diverged ? "replayed as a Warrior and diverged at step " + result.divergedAt
+							: "replayed without complaint" ) );
+		}
+	}
+
+	private static void checkTheHeaderCarriesTheScenario( Replay source ){
+		Replay copy = copyOf( source );
+		copy.scenario = "melee";
+		copy.worldEnd = "hero:1a2b,mobs:3c4d";
+		Replay read;
+		try {
+			File file = File.createTempFile( "spd-verifycheck", ".replay" );
+			file.deleteOnExit();
+			ReplayIO.write( copy, file );
+			read = ReplayIO.read( file );
+		} catch (java.io.IOException e){
+			fail( "the header carries the scenario", "round trip failed: " + e.getMessage() );
+			return;
+		}
+		if (!"melee".equals( read.scenario ) || !copy.worldEnd.equals( read.worldEnd )){
+			fail( "the header carries the scenario", "wrote melee/" + copy.worldEnd + ", read back "
+					+ read.scenario + "/" + read.worldEnd );
+		}
+	}
+
+	private static void checkAnUnknownScenarioIsRefused( Replay source ){
+		Replay copy = copyOf( source );
+		copy.scenario = "no-such-scenario";
+		ReplayIO.Verification result = verify( copy );
+		if (result.unwatchableAt != 0){
+			fail( "an unknown scenario is refused", "a recording of scenario no-such-scenario was "
+					+ ( result.diverged ? "replayed on a bare world and diverged at step " + result.divergedAt
 							: "replayed without complaint" ) );
 		}
 	}

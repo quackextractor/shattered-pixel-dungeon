@@ -10,7 +10,7 @@ public final class ReplayCodec {
 
 	private ReplayCodec() {}
 
-	public static final int VERSION = 6;
+	public static final int VERSION = 7;
 
 	public static final int LEGACY_4_FIELD_VERSION = 1;
 
@@ -32,6 +32,8 @@ public final class ReplayCodec {
 		out.writeInt( replay.actorStepLimit );
 		out.writeUTF( replay.termination );
 		out.writeUTF( replay.rewardProfile.key() );
+		out.writeUTF( replay.scenario );
+		out.writeUTF( replay.worldEnd );
 
 		out.writeInt( replay.steps.size() );
 		for (Replay.Step step : replay.steps){
@@ -81,6 +83,8 @@ public final class ReplayCodec {
 		replay.rewardProfile =
 				com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardProfile
 						.parse( in.readUTF() );
+		replay.scenario = in.readUTF();
+		replay.worldEnd = in.readUTF();
 
 		int declared = in.readInt();
 		if (declared != steps ){

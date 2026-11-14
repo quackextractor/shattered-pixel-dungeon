@@ -128,6 +128,10 @@ public class Replay {
 
 	public String playback = "";
 
+	public String scenario = "";
+
+	public String worldEnd = "";
+
 	public void captureOutcome( double score, int depth, int turns, int generation, String termination ){
 		this.score = score;
 		this.depth = depth;
