@@ -19,7 +19,7 @@ final class DepthScenarios {
 	private DepthScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( depthJump(), searchAfterJump(), stairs(), gooFight(), futileTarget(),
+		return Arrays.asList( depthJump(), searchAfterJump(), stairs(), gooFight(), futileTarget(), labelsAreNotShots(),
 				bossFight( "boss.tengu10", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Tengu.class, 10, true ),
 				bossFight( "boss.dm300-15", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM300.class, 15, false ),
 				bossFight( "boss.king20", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DwarfKing.class, 20, false ));
@@ -45,23 +45,7 @@ final class DepthScenarios {
 
 	private static Scenario futileTarget(){
 		return new Scenario( "teacher.futile-target", "the teacher stops throwing at a piranha it cannot hurt", HeroClass.WARRIOR,
-				( world, kit ) -> {
-					world.clearMobs();
-					kit.sturdy();
-					com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.HeavyBoomerang boomerang =
-							new com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.HeavyBoomerang();
-					boomerang.enchant( new com.shatteredpixel.shatteredpixeldungeon.items.weapon.curses.Wayward() );
-					kit.give( boomerang ).quantity( 3 );
-					int pool = world.cellAtRange( 4, true );
-					for (int offset : com.watabou.utils.PathFinder.NEIGHBOURS8){
-						if (world.free( pool + offset )) world.terrain( pool + offset, Terrain.CHASM );
-					}
-					world.terrain( pool, Terrain.WATER );
-					com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Piranha piranha = world.hunting(
-							new com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Piranha(), pool );
-					piranha.HP = piranha.HT = 100000;
-					piranha.defenseSkill = 100000;
-				},
+				DepthScenarios::unhurtablePiranha,
 				d -> {
 					DescentBot bot = new DescentBot();
 					int[] secondary = new int[ 1 ];
@@ -73,6 +57,44 @@ final class DepthScenarios {
 					}
 					d.expect( aims <= 6, "the teacher aimed " + aims + " times in 30 steps at a target it never hurt" );
 				} ).botDriven( 30 );
+	}
+
+	private static void unhurtablePiranha( World world, HeroKit kit ){
+		world.clearMobs();
+		kit.sturdy();
+		com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.HeavyBoomerang boomerang =
+				new com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.HeavyBoomerang();
+		boomerang.enchant( new com.shatteredpixel.shatteredpixeldungeon.items.weapon.curses.Wayward() );
+		kit.give( boomerang ).quantity( 3 );
+		int pool = world.cellAtRange( 4, true );
+		for (int offset : com.watabou.utils.PathFinder.NEIGHBOURS8){
+			if (world.free( pool + offset )) world.terrain( pool + offset, Terrain.CHASM );
+		}
+		world.terrain( pool, Terrain.WATER );
+		com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Piranha piranha = world.hunting(
+				new com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Piranha(), pool );
+		piranha.HP = piranha.HT = 100000;
+		piranha.defenseSkill = 100000;
+	}
+
+	private static Scenario labelsAreNotShots(){
+		return new Scenario( "teacher.labels-not-shots", "labelling an aim the learner never takes does not count as a shot", HeroClass.WARRIOR,
+				DepthScenarios::unhurtablePiranha,
+				d -> {
+					DescentBot bot = new DescentBot();
+					int[] secondary = new int[ 1 ];
+					d.until( () -> d.env().mode() == com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode.TARGETING, 10, () -> {
+						Action action = bot.act( d.env(), secondary );
+						d.step( action.kind == Action.Kind.MACRO ? bot.primitive( action ) : action, secondary[ 0 ] );
+					});
+					d.require( d.env().mode() == com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode.TARGETING,
+							"ten teacher steps never aimed at the piranha" );
+					com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Piranha piranha =
+							d.world().find( com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Piranha.class );
+					for (int i = 0; i < 5; i++) bot.label( d.env(), com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy.HEAD_TARGET );
+					d.expect( !bot.futile( piranha ), "five labels with no throw marked the piranha futile" );
+					d.cancel();
+				} ).botDriven( 12 );
 	}
 
 	private static Scenario stairs(){

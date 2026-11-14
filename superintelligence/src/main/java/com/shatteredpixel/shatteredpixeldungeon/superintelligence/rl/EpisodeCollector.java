@@ -251,6 +251,7 @@ public class EpisodeCollector {
 		EnvMode mode = env.mode();
 
 		if ( listener != null ) listener.onDecision( mode, action, secondary );
+		if (teacher != null) teacher.executed( env, action, secondary );
 
 		float reward = (float) env.step( action, secondary );
 

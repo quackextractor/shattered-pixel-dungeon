@@ -175,6 +175,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **The teacher counts throws, not labels, toward a futile target.** `DescentBot` noted a shot inside `act()`, which
+  `label()` calls on every learner step, so a learner that aimed and cancelled four times at a mob made the teacher mark
+  it futile with nothing thrown, and its labels stopped offering that target. `label()` no longer notes shots;
+  `EpisodeCollector` reports each executed aim through `DescentBot.executed`. New scenario `teacher.labels-not-shots`
+  fails without it.
 - **Throwing an item and picking it back up no longer pays.** The loot term charged a lost item only when a heap lay
   under the hero, which a drop leaves and `THROW` does not: a ration thrown one cell away and collected with `INTERACT`
   paid +200 each round trip (food 200, gear 100, scroll 75). A loss is now charged for as many items of a kind as the

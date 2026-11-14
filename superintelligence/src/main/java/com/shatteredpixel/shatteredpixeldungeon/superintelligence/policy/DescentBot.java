@@ -44,6 +44,7 @@ public final class DescentBot {
 
 	private final java.util.Map< Integer, Integer > hpWhenShot = new java.util.HashMap<>();
 	private final java.util.Map< Integer, Integer > shotsWithoutDamage = new java.util.HashMap<>();
+	private boolean labelling;
 
 	public void reset(){
 		hpWhenShot.clear();
@@ -95,8 +96,7 @@ public final class DescentBot {
 				return legal( mask, Action.MENU_SELECT ) ? Action.MENU_SELECT : Action.CANCEL;
 			case TARGETING:
 				if (env.targetMask()[ ActionMapper.ADJACENT_COUNT ] < 0.5f) return Action.CANCEL;
-				noteShot( com.shatteredpixel.shatteredpixeldungeon.actors.Actor.findChar(
-						env.mapper().targetCell( ActionMapper.ADJACENT_COUNT )));
+				if (!labelling) executed( env, Action.USE, ActionMapper.ADJACENT_COUNT );
 				secondary[ 0 ] = ActionMapper.ADJACENT_COUNT;
 				return Action.USE;
 			case WORLD:
@@ -108,7 +108,13 @@ public final class DescentBot {
 
 	public int label( SPDEnv env, int liveHead ){
 		int[] secondary = new int[ 1 ];
-		Action action = act( env, secondary );
+		labelling = true;
+		Action action;
+		try {
+			action = act( env, secondary );
+		} finally {
+			labelling = false;
+		}
 		if (liveHead == Policy.HEAD_ACTION){
 			if (action == tacticStep) return Action.TACTIC.index;
 			if (action == huntStep) return Action.HUNT.index;
@@ -275,13 +281,17 @@ public final class DescentBot {
 		return pick;
 	}
 
-	private void noteShot( com.shatteredpixel.shatteredpixeldungeon.actors.Char aimed ){
+	public void executed( SPDEnv env, Action action, int secondary ){
+		if (env.mode() != com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode.TARGETING
+				|| action != Action.USE || secondary < ActionMapper.ADJACENT_COUNT) return;
+		com.shatteredpixel.shatteredpixeldungeon.actors.Char aimed = com.shatteredpixel.shatteredpixeldungeon.actors.Actor.findChar(
+				env.mapper().targetCell( secondary ));
 		if (aimed == null) return;
 		Integer before = hpWhenShot.put( aimed.id(), aimed.HP );
 		shotsWithoutDamage.merge( aimed.id(), before != null && before == aimed.HP ? 1 : -shotsWithoutDamage.getOrDefault( aimed.id(), 0 ), Integer::sum );
 	}
 
-	private boolean futile( Mob mob ){
+	public boolean futile( Mob mob ){
 		return shotsWithoutDamage.getOrDefault( mob.id(), 0 ) >= FUTILE_SHOTS && hpWhenShot.getOrDefault( mob.id(), -1 ) == mob.HP;
 	}
 
