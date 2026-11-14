@@ -24,6 +24,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( EffectScenarios.all() );
 		ALL.addAll( LeakScenarios.all() );
 		ALL.addAll( DepthScenarios.all() );
+		ALL.addAll( CreatureScenarios.all() );
 		ALL.addAll( NpcScenarios.all() );
 	}
 

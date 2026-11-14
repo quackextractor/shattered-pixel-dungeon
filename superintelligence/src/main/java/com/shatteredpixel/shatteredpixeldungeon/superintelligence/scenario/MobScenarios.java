@@ -58,7 +58,7 @@ final class MobScenarios {
 		return all;
 	}
 
-	private static int count( Class< ? extends Mob > type ){
+	static int count( Class< ? extends Mob > type ){
 		int n = 0;
 		for (Mob mob : Dungeon.level.mobs) if (type.isInstance( mob )) n++;
 		return n;
@@ -81,7 +81,7 @@ final class MobScenarios {
 		return false;
 	}
 
-	private static Scenario watch( String id, Class< ? extends Mob > type, int range, int waits, BooleanSupplier effect,
+	static Scenario watch( String id, Class< ? extends Mob > type, int range, int waits, BooleanSupplier effect,
 			String failure ){
 		return new Scenario( id, type.getSimpleName() + " acts on the hero", HeroClass.WARRIOR,
 				( world, kit ) -> {

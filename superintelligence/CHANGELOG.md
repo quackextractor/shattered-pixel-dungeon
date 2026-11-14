@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Scenarios for the remaining mob mechanics and allies.** `mob.Brute` (a felled brute rages), `mob.Ripper` (leaps from 4
+  cells), `mob.Golem`, `mob.DM200` (vents gas or hits), `mob.Statue` (fights with its weapon, built by `Statue.random`),
+  `mob.Ghoul` (a felled ghoul stays beside its partner), `ally.LivingEarth` (zaps form an Earth Guardian), `ally.Corruption`
+  (a weakened rat turns ally) and `ally.Ward`. All play clean in the viewer.
 - **`THROW`: the policy can throw anything throwable (gap G8). Old weights do not load.** `USE` runs an item's
   default action and never `AC_THROW`, so an unidentified potion was always drunk and a pack of throwing stones alone
   offered nothing. `THROW`, a new action at the end of the action head, opens a slot choice of the items whose actions
