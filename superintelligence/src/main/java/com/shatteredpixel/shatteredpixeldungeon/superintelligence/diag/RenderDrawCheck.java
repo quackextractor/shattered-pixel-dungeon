@@ -87,7 +87,8 @@ public class RenderDrawCheck {
 	static boolean isPresentation( String name, ClassLoader loader ){
 		try {
 			Class< ? > c = Class.forName( name, false, loader );
-			return Gizmo.class.isAssignableFrom( c ) || Emitter.Factory.class.isAssignableFrom( c );
+			return Gizmo.class.isAssignableFrom( c ) || Emitter.Factory.class.isAssignableFrom( c )
+					|| com.shatteredpixel.shatteredpixeldungeon.tiles.CustomTilemap.class.isAssignableFrom( c );
 		} catch (Throwable notLoadable){
 			return false;
 		}

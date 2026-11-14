@@ -132,7 +132,7 @@ which is what that one cause looks like from the outside.
 
 `gradle :desktop:viewcheck`: **14 of 17 diverged → 0 of 17.**
 
-Twenty-six more of the same kind - `InterlevelScene.update` during a fall, the caves and halls level visuals, `CityLevel` smoke, `CavesBossLevel` sparks, every `staffFx` override and `MagesStaff.StaffParticle.shuffleXY`, and seven sprites - moved to `PRandom` in the same shape; `renderdrawcheck` reads the bytecode so the next one fails a gate. See `CHANGELOG.md` Unreleased.
+Twenty-six more of the same kind - `InterlevelScene.update` during a fall, the caves and halls level visuals, `CityLevel` smoke, `CavesBossLevel` sparks, every `staffFx` override and `MagesStaff.StaffParticle.shuffleXY`, and seven sprites - moved to `PRandom` in the same shape; `renderdrawcheck` reads the bytecode so the next one fails a gate. See `CHANGELOG.md` Unreleased. `AmbitiousImpRoom.WallBanners.create` followed (five banner draws, a `CustomTilemap`, which the gate did not count as presentation until then).
 
 `Wand.buffedVisiblyUpgraded` is the one case where the same roll is both: on a slot it is presentation and rolls on `PRandom`, on a zap it sets wand power and stays on `Random`. A `ThreadLocal` tells them apart, because the render and actor threads read the same wand. `observecheck` requires 0 draws on the slot and 1 on the zap.
 

@@ -38,6 +38,7 @@ import com.watabou.noosa.NoosaScript;
 import com.watabou.noosa.TextureFilm;
 import com.watabou.noosa.Tilemap;
 import com.watabou.utils.Point;
+import com.watabou.utils.PRandom;
 import com.watabou.utils.Random;
 
 public class AmbitiousImpRoom extends SpecialRoom {
@@ -206,31 +207,31 @@ public class AmbitiousImpRoom extends SpecialRoom {
 			int cell = tileX + Dungeon.level.width()*tileY;
 
 			if (!Dungeon.level.passable[cell+1]){
-				data[1] = BANNER_1 + Random.Int(2);
+				data[1] = BANNER_1 + PRandom.Int(2);
 				data[1+tileW] = BANNER__BOTTOM;
 			}
 
 			if (!Dungeon.level.passable[cell+3]) {
-				data[3] = BANNER_1 + Random.Int(2);
+				data[3] = BANNER_1 + PRandom.Int(2);
 				if (Dungeon.level.map[cell+3+Dungeon.level.width()] != Terrain.PEDESTAL) {
 					data[3 + tileW] = BANNER__BOTTOM;
 				}
 			}
 
 			if (!Dungeon.level.passable[cell+5]) {
-				data[5] = BANNER_1 + Random.Int(2);
+				data[5] = BANNER_1 + PRandom.Int(2);
 				data[5 + tileW] = BANNER__BOTTOM;
 			}
 
 			cell += Dungeon.level.width();
 
 			if (!Dungeon.level.passable[cell]) {
-				data[7] = BANNER_1 + Random.Int(2);
+				data[7] = BANNER_1 + PRandom.Int(2);
 				data[7 + tileW] = BANNER__BOTTOM;
 			}
 
 			if (!Dungeon.level.passable[cell+6]) {
-				data[13] = BANNER_1 + Random.Int(2);
+				data[13] = BANNER_1 + PRandom.Int(2);
 				data[13 + tileW] = BANNER__BOTTOM;
 			}
 
