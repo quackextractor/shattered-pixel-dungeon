@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Boss scenarios for Tengu, DM-300 and the Dwarf King.** Each lands on its floor (10, 15, 20) and lets the teacher play until
+  the boss appears and is hit. Tengu waits behind a locked cell door, so its scenario adds the floor's key to the journal and
+  walks to the door with the new `Driver.walkTo`. All four bosses, Goo included, play clean in the viewer.
 - **Scenarios for the buffs and the Ankh.** `buff.Levitation` (the hero floats over a chasm and falls to depth 2 when it ends),
   `buff.Invisibility` (an adjacent hunting rat never hits), `buff.Slow` (a step takes two turns), `buff.Charm` (no move
   into the charmer is offered) and `ankh` (a blessed Ankh revives the hero and the episode runs on).

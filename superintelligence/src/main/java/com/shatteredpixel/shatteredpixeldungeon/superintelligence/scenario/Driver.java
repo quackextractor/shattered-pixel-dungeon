@@ -92,6 +92,17 @@ public final class Driver {
 		throw new Stop( "no move leads from " + Dungeon.hero.pos + " toward " + cell );
 	}
 
+	public void walkTo( int cell, int max ){
+		boolean[] open = new boolean[ Dungeon.level.length() ];
+		for (int i = 0; i < open.length; i++) open[ i ] = Dungeon.level.passable[ i ] || Dungeon.level.avoid[ i ];
+		open[ cell ] = true;
+		for (int i = 0; i < max && env.running() && !Dungeon.level.adjacent( Dungeon.hero.pos, cell ); i++){
+			int next = com.watabou.utils.PathFinder.getStep( Dungeon.hero.pos, cell, open );
+			if (next < 0) throw new Stop( "no path from " + Dungeon.hero.pos + " to " + cell );
+			move( next );
+		}
+	}
+
 	public int direction( int cell ){
 		for (int o = 1; o < ActionMapper.ADJACENT_COUNT; o++) if (env.mapper().targetCell( o ) == cell) return o;
 		throw new Stop( "cell " + cell + " is not beside the hero" );

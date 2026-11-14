@@ -4,7 +4,9 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
+import com.shatteredpixel.shatteredpixeldungeon.items.keys.IronKey;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation;
+import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.policy.DescentBot;
@@ -17,7 +19,10 @@ final class DepthScenarios {
 	private DepthScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( depthJump(), stairs(), gooFight() );
+		return Arrays.asList( depthJump(), stairs(), gooFight(),
+				bossFight( "boss.tengu10", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Tengu.class, 10, true ),
+				bossFight( "boss.dm300-15", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM300.class, 15, false ),
+				bossFight( "boss.king20", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DwarfKing.class, 20, false ));
 	}
 
 	private static Scenario depthJump(){
@@ -75,5 +80,46 @@ final class DepthScenarios {
 					d.expect( goo.HP < goo.HT || !goo.isAlive(), "80 teacher steps beside Goo left it untouched" );
 					d.expect( d.env().running(), "the fight ended the episode: " + d.env().endReason() );
 				} ).depth( 5 ).botDriven( 80 );
+	}
+
+	private static Scenario bossFight( String id, Class< ? extends Mob > type, int depth, boolean behindLockedDoor ){
+		return new Scenario( id, "find and fight the " + type.getSimpleName() + " on floor " + depth, HeroClass.WARRIOR,
+				( world, kit ) -> {
+					kit.sturdy();
+					if (behindLockedDoor && lockedDoor() >= 0) com.shatteredpixel.shatteredpixeldungeon.journal.Notes.add( new IronKey( Dungeon.depth ));
+				},
+				d -> {
+					DescentBot bot = new DescentBot();
+					int[] secondary = new int[ 1 ];
+					Runnable teacherStep = () -> {
+						Action action = bot.act( d.env(), secondary );
+						d.step( action.kind == Action.Kind.MACRO ? bot.primitive( action ) : action, secondary[ 0 ] );
+					};
+					int door = behindLockedDoor ? lockedDoor() : -1;
+					if (door >= 0){
+						d.walkTo( door, 80 );
+						d.step( Action.INTERACT, d.direction( door ));
+						d.waitFor( () -> Dungeon.level.map[ door ] != Terrain.LOCKED_DOOR, 3 );
+						int outside = Dungeon.hero.pos;
+						d.move( door );
+						d.move( door + (door - outside) );
+					}
+					d.until( () -> boss( type ) != null, 150, teacherStep );
+					Mob boss = boss( type );
+					d.require( boss != null, "150 teacher steps on floor " + depth + " never woke the " + type.getSimpleName() );
+					d.until( () -> boss.HP < boss.HT || !boss.isAlive(), 100, teacherStep );
+					d.expect( boss.HP < boss.HT || !boss.isAlive(), "100 teacher steps left the " + type.getSimpleName() + " untouched" );
+					d.expect( d.env().running(), "the fight ended the episode: " + d.env().endReason() );
+				} ).depth( depth ).botDriven( 260 );
+	}
+
+	private static int lockedDoor(){
+		for (int cell = 0; cell < Dungeon.level.length(); cell++) if (Dungeon.level.map[ cell ] == Terrain.LOCKED_DOOR) return cell;
+		return -1;
+	}
+
+	private static Mob boss( Class< ? extends Mob > type ){
+		for (Mob mob : Dungeon.level.mobs) if (type.isInstance( mob )) return mob;
+		return null;
 	}
 }
