@@ -175,6 +175,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **The viewer compares a chasm answer before the fall, as the trainer does (`issues.md` 49, closed).** The wait for queued
+  render-thread callbacks let a pending fall finish before the answer step was compared, so `sweep.huntress.d3.1` and
+  `sweep.warrior.d1.1` reported the landing cell where the recording holds the cell beside the chasm. The wait now stands
+  aside while a scene switch is in progress. 72 of 72 sweep worlds and 161 scenarios play clean in the viewer.
 - **An action after a chasm jump happens on the floor below, as in the viewer (`issues.md` 49).** The answer to the "jump?"
   prompt leaves the fall pending as a scene switch. The viewer finishes the switch before it applies the next recorded step;
   the trainer applied that step on the old floor first, so a move half-started there carried over and `sweep.rogue.d1.1`

@@ -1073,7 +1073,7 @@ awaitingSettle = true;
 
 	private void settle(){
 		if (Dungeon.hero == null) return;
-		if (RenderQueue.gamePending() && renderWaitFrames < MAX_PARKED_FRAMES){
+		if (RenderQueue.gamePending() && !com.watabou.noosa.Game.switchingScene() && renderWaitFrames < MAX_PARKED_FRAMES){
 			renderWaitFrames++;
 			awaitingSettle = true;
 			return;
