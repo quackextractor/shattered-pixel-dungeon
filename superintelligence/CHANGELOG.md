@@ -80,6 +80,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **An aim no longer walks the hero.** With no scene, `GameScene.ready()` parks the hero's default cell listener in
+  `pendingCellListener`, and a `TARGETING` step after a step that spent a turn resolved through it: `USE` on unequipped
+  Ethereal Chains equipped them, and the aim at a rat 4 cells away walked the hero 3 cells to it. The viewer stood
+  still, so scenario `artifact.EtherealChains` diverged at step 3 in `scenarioview`. `ActionMapper.resolveTarget`
+  now ignores the default listener (`GameScene.isDefaultCellListener`, a getter); the scenario is red without it.
 - **A Guard's chain pulls headless too (`issues.md` 43).** `Guard.chain` resolves its pull through a `Chains` effect's
   callback, and the headless sprite stage held the effect without ever updating it, so the pull never ran and the Guard
   acted again and walked onto the cell it would have pulled the hero to. The viewer pulled, so `FTL-NQD-YXC` diverged at

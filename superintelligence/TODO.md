@@ -20,7 +20,6 @@ entry and leaves this list, or moves to `REJECTED.md`.
 
 ## Scenario suite (design: `out/evidence/mechanics-suite/design.md`)
 
-- [ ] **G6**: the Ethereal Chains scenario diverges in the viewer (headless the aim walks the hero).
 - [ ] **Families**: items, pickers and brew, world, mob effects and allies, state, leaks.
 - [ ] **`WorldDigest`**, the depth jump with `stairs` and `boss.*`, `WorldSweep` with `coverage.csv`.
 

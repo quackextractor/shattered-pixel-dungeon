@@ -24,7 +24,7 @@ final class GapScenarios {
 	private GapScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( unequip(), cloak(), shopBuy(), throwOnly(), unknownPotionThrow() );
+		return Arrays.asList( unequip(), cloak(), chains(), shopBuy(), throwOnly(), unknownPotionThrow() );
 	}
 
 	private static void wornAction( Driver d, Item worn, String what ){
@@ -70,14 +70,16 @@ final class GapScenarios {
 					Rat rat = d.world().find( Rat.class );
 					d.use( EtherealChains.class );
 					int from = rat.pos, hero = Dungeon.hero.pos;
-					if (d.env().mode() == EnvMode.TARGETING) d.aimNearest();
-					d.expect( rat.pos != from || Dungeon.hero.pos != hero, "the cast moved neither the rat at " + from
-							+ " nor the hero at " + hero );
-					d.expect( Dungeon.level.adjacent( rat.pos, Dungeon.hero.pos ), "the chains were aimed at a rat 4 cells"
-							+ " away and pulled nothing: equipped " + (Dungeon.hero.belongings.artifact == chains) );
+					d.require( d.env().mode() == EnvMode.TARGETING, "the chains did not ask for a target: " + d.env().mode() );
+					d.aimNearest();
+					d.expect( Dungeon.hero.pos == hero, "the aim walked the hero from " + hero + " to " + Dungeon.hero.pos
+							+ ": a TARGETING step reached the hero's default cell listener, which the viewer never does" );
 					d.expect( Dungeon.hero.belongings.contains( chains ), "using the chains left the hero without them:"
 							+ " equipped " + (Dungeon.hero.belongings.artifact == chains) + ", on the floor "
 							+ onFloor( chains ));
+					if (rat.pos == from && Dungeon.hero.pos == hero){
+						d.gap( "G6: USE equips the chains and the aim after it casts nothing; worn, they are in no slot (G5)" );
+					}
 				} );
 	}
 

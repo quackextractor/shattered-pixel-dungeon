@@ -22,6 +22,7 @@ public final class ReachExpectations {
 		EXPECTED.put( "interact-direction", "G4" );
 		EXPECTED.put( "unequip", "G5" );
 		EXPECTED.put( "artifact.Cloak", "G5" );
+		EXPECTED.put( "artifact.EtherealChains", "G6" );
 		EXPECTED.put( "shop-buy", "G7" );
 		EXPECTED.put( "throw-only", "G8" );
 		EXPECTED.put( "potion-unknown-throw", "G8" );

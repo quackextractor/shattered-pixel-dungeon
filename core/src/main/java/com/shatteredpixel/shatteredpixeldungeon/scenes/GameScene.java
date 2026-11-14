@@ -1860,6 +1860,10 @@ public static boolean showingWindow(){
 				|| (cellSelector != null && cellSelector.listener != null && cellSelector.listener != defaultCellListener);
 	}
 
+	public static boolean isDefaultCellListener( CellSelector.Listener listener ){
+		return listener == defaultCellListener;
+	}
+
 	public static CellSelector.Listener takeCellListener(){
 		if (cellSelector == null || cellSelector.listener == null || cellSelector.listener == defaultCellListener) return null;
 		CellSelector.Listener taken = cellSelector.listener;
