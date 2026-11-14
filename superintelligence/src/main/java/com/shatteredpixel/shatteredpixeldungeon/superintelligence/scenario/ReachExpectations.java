@@ -13,12 +13,6 @@ public final class ReachExpectations {
 	private static final Map< String, String > KNOWN_FAILURES = new HashMap<>();
 
 	static {
-		EXPECTED.put( "drop-pickup", "G1" );
-		for (String mode : new String[]{ "SLOT", "INVENTORY", "TALENT", "ALCHEMY", "MENU" }){
-			EXPECTED.put( "cancel." + mode, "G2" );
-		}
-		EXPECTED.put( "picker-cancel", "G2" );
-		EXPECTED.put( "interact-direction", "G4" );
 		EXPECTED.put( "unequip", "G5" );
 		EXPECTED.put( "artifact.Cloak", "G5" );
 		EXPECTED.put( "artifact.EtherealChains", "G6" );

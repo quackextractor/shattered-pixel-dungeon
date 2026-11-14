@@ -4,6 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
@@ -137,7 +138,8 @@ public final class Driver {
 	}
 
 	public void cancel(){
-		act( Action.CANCEL );
+		boolean slotHead = EpisodeCollector.headFor( env ) == com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy.HEAD_SLOT;
+		step( Action.CANCEL, slotHead ? ActionMapper.cancelSlot( env.slotMask().length ) : 0 );
 	}
 
 	public boolean until( BooleanSupplier done, int max, Runnable action ){

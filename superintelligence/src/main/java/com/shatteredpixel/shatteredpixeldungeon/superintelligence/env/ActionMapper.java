@@ -57,7 +57,11 @@ public class ActionMapper {
 
 	public ActionMapper( EnvConfig config ){
 		this.config = config;
-		for (int i = 0; i < config.maxSlots; i++) slots.add( null );
+		for (int i = 0; i < config.maxSlots - 1; i++) slots.add( null );
+	}
+
+	public static int cancelSlot( int maxSlots ){
+		return maxSlots - 1;
 	}
 
 	private Hero hero(){

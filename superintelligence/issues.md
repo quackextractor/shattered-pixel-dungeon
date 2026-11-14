@@ -56,9 +56,6 @@ the viewer. Confirmed 2026-11-14:
 
 | gap | scenario | first unreachable step |
 | --- | --- | --- |
-| G1 no drop | `drop-pickup` | `in SLOT the collector emits USE/1, never DROP` |
-| G2 no cancel while anything is usable | `cancel.SLOT`, `.INVENTORY`, `.TALENT`, `.ALCHEMY`, `.MENU` | `in SLOT the collector emits USE/0, never CANCEL`; `MENU_SELECT/0, never CANCEL` in the other three |
-| G4 INTERACT's direction comes from the slot head | `interact-direction` | `INTERACT/8 reaches cell 708 only through slot 8, which the slot head does not offer` |
 | G5 worn items are in no slot | `unequip`, `artifact.Cloak` | `the worn ClothArmor is in no slot`; `the worn CloakOfShadows is in no slot` |
 | G6 Ethereal Chains cannot be cast | `artifact.EtherealChains` | `USE equips the chains and the aim after it casts nothing; worn, they are in no slot (G5)` |
 | G7 shop windows cannot be answered | `shop-buy` | `buying opened WndTradeItem, which WindowBridge cannot answer` |

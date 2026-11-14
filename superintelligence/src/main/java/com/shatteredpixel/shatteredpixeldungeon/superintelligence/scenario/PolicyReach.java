@@ -30,13 +30,8 @@ public final class PolicyReach {
 	}
 
 	private static String interactReach( SPDEnv env, int secondary ){
-		int wanted = ActionMapper.interactCell( secondary );
-		float[] slots = env.slotMask();
-		for (int s = 0; s < slots.length; s++){
-			if (sampleable( slots, s ) && ActionMapper.interactCell( s ) == wanted) return null;
-		}
-		return "INTERACT/" + secondary + " reaches cell " + wanted + " only through slot " + secondary
-				+ ", which the slot head does not offer: its direction comes from the slot head";
+		if (sampleable( env.targetMask(), secondary )) return null;
+		return "INTERACT/" + secondary + " is masked in the target head";
 	}
 
 	private static boolean sampleable( float[] mask, int index ){

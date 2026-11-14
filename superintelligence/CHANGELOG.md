@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The policy can drop, cancel and pick what it interacts with (gaps G1, G2, G4).** In a slot choice the collector
+  emitted `USE` whenever `USE` was offered, so a `DROP` from the world became a use; `SPDEnv` now remembers the verb
+  that opened the choice and the collector emits it. The slot head gained a cancel: its last index
+  (`ActionMapper.cancelSlot`, `env.max_slots` - 1) is never an item and is offered in every slot-head mode where
+  `CANCEL` is legal, so an item choice, a picker, a talent, a recipe or a dialog can be backed out of. `INTERACT` took
+  its direction from the slot head; it now takes it from the target head, whose mask was built for it. Head sizes are
+  unchanged. Scenarios `drop-pickup`, `cancel.*`, `picker-cancel` and `interact-direction` pass with no gap;
+  `drop-pickup` goes red with the verb forced back to `USE`.
 - **`worldsweep`: generated worlds next to the hand-built scenarios.** Every hero class lands on depths 1, 3, 7, 12, 17
   and 22 on two seeds (72 worlds) at a hero level matching the depth, and the teacher plays up to 150 steps. Each
   recording must verify twice; `out/sweep/coverage.csv` counts which actions, modes, items used, mobs in view, hero buffs

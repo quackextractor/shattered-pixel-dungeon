@@ -99,7 +99,8 @@ public final class ScenarioRunner {
 
 	private void tail( Driver driver ){
 		for (int i = 0; i < TAIL_STEPS && driver.env().running(); i++){
-			driver.act( driver.env().mode() == EnvMode.WORLD ? Action.WAIT : Action.CANCEL );
+			if (driver.env().mode() == EnvMode.WORLD) driver.act( Action.WAIT );
+			else driver.cancel();
 		}
 	}
 

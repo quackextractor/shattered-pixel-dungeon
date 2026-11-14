@@ -24,6 +24,7 @@ public class SPDEnv {
 	private final float[] slotMask;
 	private final float[] targetMask = new float[ ActionMapper.TARGET_COUNT ];
 	private EnvMode mode = EnvMode.WORLD;
+	private Action slotVerb = Action.USE;
 	private int turnsThisFloor;
 	private final java.util.HashMap< Integer, Integer > turnsByFloor = new java.util.HashMap<>();
 	private int turnsTotal;
@@ -77,6 +78,7 @@ public class SPDEnv {
 					.DungeonSeedCodes.encode( LevelPipeline.currentSeed() );
 		}
 		mode = EnvMode.WORLD;
+		slotVerb = Action.USE;
 		turnsThisFloor = 0;
 		turnsByFloor.clear();
 		turnsTotal = 0;
@@ -131,6 +133,7 @@ if (mode == EnvMode.WORLD){
 				mode = EnvMode.ALCHEMY;
 				acted = true;
 			} else if (action == Action.USE || action == Action.DROP ){
+				slotVerb = action;
 				mode = EnvMode.SLOT;
 				if (WindowBridge.open()) mode = EnvMode.MENU;
 				acted = true;
@@ -385,6 +388,7 @@ public float[] actionMask(){ return actionMask; }
 	public boolean lastStepAdvancedClock(){ return reward.lastStepAdvancedClock(); }
 	public float[] slotMask(){ return slotMask; }
 	public float[] targetMask(){ return targetMask; }
+	public Action slotVerb(){ return slotVerb; }
 	private boolean menuNoop(){
 		return stepEntered != EnvMode.WORLD && mode == stepEntered && Actor.now() <= stepClock;
 	}
@@ -427,6 +431,7 @@ public float[] actionMask(){ return actionMask; }
 			targetMask[ i ] = mapper.targetMask( i ) ? 1f : 0f;
 		}
 		if (mode == EnvMode.WORLD) mapper.interactMask( targetMask );
+		else if (mode != EnvMode.TARGETING) slotMask[ ActionMapper.cancelSlot( slotMask.length ) ] = actionMask[ Action.CANCEL.index ];
 	}
 	public void abandon(){
 		running = false;

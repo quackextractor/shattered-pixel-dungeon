@@ -246,7 +246,7 @@ public class EpisodeCollector {
 		Action action = Action.fromIndex( actionIndex );
 		followingItem = action == Action.ITEM ? ITEM_FOLLOW_STEPS : liveHead == Policy.HEAD_ACTION ? 0 : Math.max( 0, followingItem - 1 );
 		if (action.kind == Action.Kind.MACRO) action = teacher.primitive( action );
-		int secondary = (liveHead == Policy.HEAD_TARGET) ? targetIndex : slotIndex;
+		int secondary = (liveHead == Policy.HEAD_TARGET || action == Action.INTERACT) ? targetIndex : slotIndex;
 
 		EnvMode mode = env.mode();
 
@@ -352,10 +352,13 @@ public class EpisodeCollector {
 
 	public static Action subModeAction( SPDEnv env, int chosen ){
 		float[] mask = env.actionMask();
+		if (env.mode() != EnvMode.TARGETING && chosen == ActionMapper.cancelSlot( env.slotMask().length )) return Action.CANCEL;
 		switch (env.mode()) {
 			case TARGETING:
 				return ActionMapper.aimAction( chosen );
 			case SLOT:
+				Action verb = env.slotVerb();
+				return mask[ verb.index ] > 0.5f ? verb : Action.CANCEL;
 			case INVENTORY:
 				return mask[ Action.USE.index ] > 0.5f ? Action.USE : Action.CANCEL;
 			case TALENT:

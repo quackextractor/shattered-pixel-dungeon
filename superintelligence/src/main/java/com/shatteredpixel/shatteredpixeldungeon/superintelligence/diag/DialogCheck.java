@@ -85,7 +85,10 @@ public class DialogCheck {
 			return;
 		}
 		float offered = 0f;
-		for (float m : env.slotMask()) offered += m;
+		float[] slotMask = env.slotMask();
+		int cancel = com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.cancelSlot( slotMask.length );
+		for (int i = 0; i < slotMask.length; i++) if (i != cancel) offered += slotMask[ i ];
+		if (slotMask[ cancel ] < 0.5f) fail( "a dialog that can be cancelled does not offer the slot head's cancel" );
 		if (offered != com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.optionCount()){
 			fail( "a dialog with " + com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.optionCount() + " options offers " + offered + " slots, so its answer is an item index and 54 answers an episode were refused" );
 		}
