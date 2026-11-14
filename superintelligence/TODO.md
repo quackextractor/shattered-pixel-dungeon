@@ -8,6 +8,9 @@ Every open item from `issues.md` and the sections below, in working order: fidel
 because a long run is only worth reading if its recordings play. Each ships as its own commit with a `CHANGELOG.md`
 entry and leaves this list, or moves to `REJECTED.md`.
 
+- [ ] **Depth on the widened action space** (`issues.md` 20): drop, slot-head cancel, adjacent aims, worn items, the trade
+      window, traps/wells/chasms and `THROW` (`29f7da70a`..`53c5b547d`) have never been trained on; checkpoints from before
+      them do not load. Train 30 minutes on defaults, then `evaluate` against `macro3`'s 2.81.
 - [ ] **JIT load** (plan 2 B): `-XX:CICompilerCount`, warm-up length in a long run.
 - [ ] **Inference latency** (plan 2 C, P1 b): fuse launches, LSTM state resident per slot.
 - [ ] **Update leftovers** (P2): im2col/col2im, packed kernels, fused LSTM, slice sum.
@@ -20,6 +23,13 @@ entry and leaves this list, or moves to `REJECTED.md`.
 
 ## Scenario suite (design: `out/evidence/mechanics-suite/design.md`)
 
+- [ ] **Sweep in the viewer after the gap fixes**: `worldsweep` recordings were last played in the viewer before
+      `29f7da70a`.
+- [ ] **Scenarios the design listed and the suite lacks**: NPCs (Ghost, Wandmaker, Blacksmith, Imp); bosses Tengu, DM-300
+      and the Dwarf King; mobs Brute, Ripper, Golem, Ghoul, DM-200, Statue; allies Living Earth, Corruption, Ward; buffs
+      Levitation over a chasm, Invisibility, Slow, Charm; the Ankh.
+- [ ] **Scenario section in the replay list**: `CatalogLayout` has no section for `group=scenario` recordings, and no
+      `replaycheck` case holds one.
 - [ ] **Sweep coverage**: `worldsweep` never reaches `ALCHEMY`, `TALENT`, `INTERACT`, `DROP`, `CANCEL` or the inventory; the teacher never uses them on a fresh floor.
 
 ## Notes
