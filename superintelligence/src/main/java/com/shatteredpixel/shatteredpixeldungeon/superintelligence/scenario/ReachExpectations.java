@@ -13,8 +13,6 @@ public final class ReachExpectations {
 	private static final Map< String, String > KNOWN_FAILURES = new HashMap<>();
 
 	static {
-		EXPECTED.put( "throw-only", "G8" );
-		EXPECTED.put( "potion-unknown-throw", "G8" );
 	}
 
 	public static String knownFailure( String id ){

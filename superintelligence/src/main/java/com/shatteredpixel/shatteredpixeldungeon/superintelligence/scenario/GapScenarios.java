@@ -135,7 +135,7 @@ final class GapScenarios {
 				},
 				d -> {
 					ThrowingStone stones = Dungeon.hero.belongings.getItem( ThrowingStone.class );
-					d.use( ThrowingStone.class );
+					d.throwItem( ThrowingStone.class );
 					d.require( d.env().mode() == EnvMode.TARGETING, "the stone did not ask for a target: " + d.env().mode() );
 					d.aimNearest();
 					d.expect( stones.quantity() == 2, "3 stones and a throw left " + stones.quantity() );
@@ -151,9 +151,12 @@ final class GapScenarios {
 					world.mob( new Rat(), world.cellAtRange( 3, true ));
 				},
 				d -> {
-					d.use( PotionOfToxicGas.class );
-					if (d.env().mode() == EnvMode.TARGETING) d.aimNearest();
-					else d.gap( "G8: an unidentified PotionOfToxicGas was drunk; USE never offers a throw" );
+					d.throwItem( PotionOfToxicGas.class );
+					d.require( d.env().mode() == EnvMode.TARGETING, "the potion did not ask for a target: " + d.env().mode() );
+					d.aimNearest();
+					d.expect( Dungeon.hero.belongings.getItem( PotionOfToxicGas.class ) == null, "the potion is still carried" );
+					d.expect( Dungeon.level.blobs.get( com.shatteredpixel.shatteredpixeldungeon.actors.blobs.ToxicGas.class ) != null,
+							"the thrown potion released no gas" );
 				} );
 	}
 }

@@ -162,6 +162,7 @@ public class ActionMapper {
 			mask[Action.CANCEL.index] = 1f;
 			if (hasUsableItem()) mask[Action.USE.index] = 1f;
 			if (hasDroppableItem()) mask[Action.DROP.index] = 1f;
+			if (SlotAction.anyThrowable( hero(), slots )) mask[Action.THROW.index] = 1f;
 			return;
 		}
 
@@ -203,6 +204,9 @@ public class ActionMapper {
 					break;
 				case DROP:
 					mask[a.index] = hasDroppableItem() ? 1f : 0f;
+					break;
+				case THROW:
+					mask[a.index] = SlotAction.anyThrowable( hero(), slots ) ? 1f : 0f;
 					break;
 				case INTERACT:
 					mask[a.index] = interactable ? 1f : 0f;
@@ -323,6 +327,7 @@ public class ActionMapper {
 
 			case USE:
 			case DROP:
+			case THROW:
 
 				SlotAction.clearPendingUseItem();
 				return false;

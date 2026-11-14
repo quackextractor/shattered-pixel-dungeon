@@ -132,7 +132,7 @@ if (mode == EnvMode.WORLD){
 			} else if (action == Action.ALCHEMY ){
 				mode = EnvMode.ALCHEMY;
 				acted = true;
-			} else if (action == Action.USE || action == Action.DROP ){
+			} else if (action == Action.USE || action == Action.DROP || action == Action.THROW ){
 				slotVerb = action;
 				mode = EnvMode.SLOT;
 				if (WindowBridge.open()) mode = EnvMode.MENU;
@@ -153,7 +153,9 @@ if (mode == EnvMode.WORLD){
 			}
 		} else if (mode == EnvMode.SLOT){
 			boolean needsTarget = false;
-			if (action == Action.USE){
+			if (action == Action.THROW){
+				needsTarget = SlotAction.throwItem( Dungeon.hero, mapper.slot( slot ));
+			} else if (action == Action.USE){
 				com.shatteredpixel.shatteredpixeldungeon.items.Item item = mapper.slot( slot );
 				if (item != null){
 					needsTarget = SlotAction.use( Dungeon.hero, item, config.allowEquipping );
@@ -432,10 +434,12 @@ public float[] actionMask(){ return actionMask; }
 		}
 		if (mode == EnvMode.WORLD) mapper.interactMask( targetMask );
 		else if (mode != EnvMode.TARGETING) slotMask[ ActionMapper.cancelSlot( slotMask.length ) ] = actionMask[ Action.CANCEL.index ];
-		if (mode == EnvMode.SLOT && slotVerb == Action.DROP){
+		if (mode == EnvMode.SLOT && slotVerb != Action.USE){
 			for (int i = 0; i < slotMask.length; i++){
 				com.shatteredpixel.shatteredpixeldungeon.items.Item item = mapper.slot( i );
-				if (item != null && item.isEquipped( Dungeon.hero )) slotMask[ i ] = 0f;
+				if (item == null) continue;
+				boolean allowed = slotVerb == Action.THROW ? SlotAction.throwable( Dungeon.hero, item ) : !item.isEquipped( Dungeon.hero );
+				if (!allowed) slotMask[ i ] = 0f;
 			}
 		}
 	}

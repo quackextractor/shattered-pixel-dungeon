@@ -41,6 +41,7 @@ public static void clearPendingUseItem(){
 		}
 		if (item == null) return false;
 		if (action == Action.DROP) return drop( hero, item );
+		if (action == Action.THROW) return throwItem( hero, item );
 		return use( hero, item, allowEquipping );
 	}
 
@@ -101,6 +102,25 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 		GameScene.clearSelector();
 		selector.onSelect( item );
 		if (GameScene.answerableSelector() == selector) GameScene.clearSelector();
+		return true;
+	}
+
+	public static boolean throwable( Hero hero, Item item ){
+		return item != null && !item.isEquipped( hero ) && item.actions( hero ).contains( Item.AC_THROW );
+	}
+
+	static boolean anyThrowable( Hero hero, java.util.List< Item > items ){
+		for (Item item : items) if (throwable( hero, item )) return true;
+		return false;
+	}
+
+	public static boolean throwItem( Hero hero, Item item ){
+		if (!throwable( hero, item )) return false;
+		GameScene.clearPendingCellListener();
+		item.setCurrent( hero );
+		item.execute( hero, Item.AC_THROW );
+		if (!GameScene.aimPending()) return false;
+		pendingUseItem = item;
 		return true;
 	}
 

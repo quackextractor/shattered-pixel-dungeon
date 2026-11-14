@@ -121,6 +121,13 @@ public final class Driver {
 		step( Action.DROP, slot );
 	}
 
+	public void throwItem( Class< ? extends Item > type ){
+		act( Action.THROW );
+		int slot = slotOf( type );
+		if (slot < 0) throw new Stop( "no " + type.getSimpleName() + " in the slot list" );
+		step( Action.THROW, slot );
+	}
+
 	public void aimNearest(){
 		require( env.mode() == EnvMode.TARGETING, "aim outside TARGETING (" + env.mode() + ")" );
 		step( Action.USE, AIM_NEAREST );

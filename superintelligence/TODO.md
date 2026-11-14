@@ -20,7 +20,6 @@ entry and leaves this list, or moves to `REJECTED.md`.
 
 ## Scenario suite (design: `out/evidence/mechanics-suite/design.md`)
 
-- [ ] **Close the reach gaps** (`issues.md` 45, G1-G9) and the two faults the suite found (`issues.md` 44, 46); each closes by flipping one line in `scenario.ReachExpectations`.
 - [ ] **Sweep coverage**: `worldsweep` never reaches `ALCHEMY`, `TALENT`, `INTERACT`, `DROP`, `CANCEL` or the inventory; the teacher never uses them on a fresh floor.
 
 ## Notes

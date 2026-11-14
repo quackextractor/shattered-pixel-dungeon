@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`THROW`: the policy can throw anything throwable (gap G8). Old weights do not load.** `USE` runs an item's
+  default action and never `AC_THROW`, so an unidentified potion was always drunk and a pack of throwing stones alone
+  offered nothing. `THROW`, a new action at the end of the action head, opens a slot choice of the items whose actions
+  include `AC_THROW` and aims through the game's own thrower. The action head grows from 27 to 28, so checkpoints from
+  before this do not load. `throw-only` and `potion-unknown-throw` pass with no gap: no scenario now needs a step the
+  policy cannot emit, and `issues.md` 45 is closed.
 - **The shop's trade window can be answered (gap G7).** Buying or selling opens `WndTradeItem`, a plain `Window`
   `WindowBridge` could not answer, so the env stayed in the world with a window open. Its active buttons are now its
   options, pressed through the game's own `Button.press`, so `INTERACT` on a for-sale item reaches `MENU` and the

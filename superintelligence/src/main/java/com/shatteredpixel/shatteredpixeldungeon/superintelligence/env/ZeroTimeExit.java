@@ -4,7 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 
 final class ZeroTimeExit {
 
-	private static final Action[] REOPENERS = { Action.OPEN_INVENTORY, Action.USE, Action.DROP };
+	private static final Action[] REOPENERS = { Action.OPEN_INVENTORY, Action.USE, Action.DROP, Action.THROW };
 
 	private ZeroTimeExit(){}
 

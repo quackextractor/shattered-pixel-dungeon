@@ -45,21 +45,3 @@ reading, so the watchdog should record that.
 episode over 8 s after the PC was cleared. Two runs with apps open had died. This does not rule the apps out and contradicts the
 Discord line above, which only covers inference alone. The cause is still unknown; `TrainerWorkers.reportSlowest` and the watchdog
 diagnostics now log the next stall. A stall under normal use remains a trainer bug.
-
-## 45. Mechanics the policy cannot reach - OPEN
-
-`scenariocheck` drives each mechanic through `SPDEnv.step` and asks `scenario.PolicyReach`, which calls
-`EpisodeCollector.headFor` and `subModeAction`, whether the collector could have emitted every step. A scenario whose
-steps it could not is `GAP`, and `scenario.ReachExpectations` lists which ones must be, so closing a gap is a one-line
-change there. These are action-space limits, not fidelity faults; every one of these recordings verifies and plays in
-the viewer. Confirmed 2026-11-14:
-
-| gap | scenario | first unreachable step |
-| --- | --- | --- |
-| G8 no throw from a pack of throwables, unknown potions always drunk | `throw-only`, `potion-unknown-throw` | `USE is masked in WORLD`; `an unidentified PotionOfToxicGas was drunk` |
-
-Three corrections to the design's reading. G6 is not a lost artifact: `throwAt` finds the worn chains in no bag and
-detaches nothing, so the aim spends a turn and casts nothing. Before the fix in `CHANGELOG.md` it walked the hero
-headlessly, a fidelity fault the viewer exposed. Second, G7 is partly wrong: talking to a Shopkeeper opens a `WndOptions`, which is
-answerable; only the buy window is a plain `Window`. Third, G4 is reachable when the hero happens to carry an item in the slot
-whose index equals the direction, which is exactly why it is a fault rather than a limit.

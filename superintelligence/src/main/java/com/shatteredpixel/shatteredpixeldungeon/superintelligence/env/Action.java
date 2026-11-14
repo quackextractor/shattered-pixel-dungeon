@@ -61,7 +61,10 @@ public enum Action {
 	HUNT ( Kind.MACRO, 0, 0 ),
 
 
-	ITEM ( Kind.MACRO, 0, 0 );
+	ITEM ( Kind.MACRO, 0, 0 ),
+
+
+	THROW ( Kind.ITEM, 0, 0 );
 
 	public enum Kind {
 
