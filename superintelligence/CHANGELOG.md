@@ -46,6 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plus `trap-search`; `trap.Pitfall` drops the hero to depth 2 through the pipeline. Stepping onto a known trap, a well
   or a chasm is gap G9 (`issues.md` 45). The chasm's jump answer is accepted on a different step in the viewer
   (`issues.md` 46), so `chasm` records the prompt only. 76 scenarios, all clean in the real viewer.
+- **Mob effect and ally scenarios.** Eleven ranged casters (`zap.*`: three Shamans, Warlock, DM-100, Scorpio, Gnoll
+  Trickster, three Elementals, Spinner), `eye-beam`, `mob.Bat`, `goo-pump`, `necro-summon`, `mob.Succubus` (charm),
+  `mob.Thief` (steal), `mob.Swarm` (split) and `ally.MirrorImage`. 95 scenarios play clean in the real viewer (43.4s).
+  Families name their game classes rather than build samples: the viewer loads the catalogue on its first step, after
+  the floor is built, and three mob constructors draw from the generator, which put `aim-cancel` one value off in
+  `scenarioplayback`. A self-test now requires loading the catalogue to draw nothing.
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an

@@ -26,10 +26,12 @@ import com.shatteredpixel.shatteredpixeldungeon.plants.Sorrowmoss;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Sungrass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
+import com.watabou.utils.Reflection;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 final class CraftScenarios {
 
@@ -37,21 +39,21 @@ final class CraftScenarios {
 
 	static List< Scenario > all(){
 		List< Scenario > all = new ArrayList<>();
-		all.add( picker( "picker.Upgrade", new ScrollOfUpgrade(), null, ClothArmor.class,
+		all.add( picker( "picker.Upgrade", ScrollOfUpgrade.class, null, false, ClothArmor.class,
 				item -> item.level() == 1, "the armour is not +1" ));
-		all.add( picker( "picker.Identify", new ScrollOfIdentify(), new RingOfAccuracy(), RingOfAccuracy.class,
+		all.add( picker( "picker.Identify", ScrollOfIdentify.class, RingOfAccuracy::new, true, RingOfAccuracy.class,
 				Item::isIdentified, "the ring is not identified" ));
-		all.add( picker( "picker.RemoveCurse", new ScrollOfRemoveCurse(), cursedDagger(), Dagger.class,
+		all.add( picker( "picker.RemoveCurse", ScrollOfRemoveCurse.class, CraftScenarios::cursedDagger, true, Dagger.class,
 				item -> !item.cursed, "the dagger is still cursed" ));
-		all.add( picker( "picker.Transmutation", new ScrollOfTransmutation(), new Dagger(), Dagger.class,
+		all.add( picker( "picker.Transmutation", ScrollOfTransmutation.class, Dagger::new, false, Dagger.class,
 				item -> !Dungeon.hero.belongings.contains( item ), "the dagger is still carried" ));
-		all.add( picker( "picker.Enchantment", new ScrollOfEnchantment(), new Dagger(), Dagger.class,
+		all.add( picker( "picker.Enchantment", ScrollOfEnchantment.class, Dagger::new, false, Dagger.class,
 				item -> ((Dagger) item).enchantment != null, "the dagger has no enchantment" ));
 		all.add( pickerCancel() );
-		all.add( brew( "brew.seeds", Potion.class, new Sungrass.Seed(), new Firebloom.Seed(), new Sorrowmoss.Seed() ));
-		all.add( brew( "brew.exotic-potion", ExoticPotion.class, new PotionOfHealing() ));
-		all.add( brew( "brew.exotic-scroll", ExoticScroll.class, new ScrollOfIdentify() ));
-		all.add( brew( "brew.meat-pie", MeatPie.class, new Pasty(), new Food(), new MysteryMeat() ));
+		all.add( brew( "brew.seeds", Potion.class, Sungrass.Seed::new, Firebloom.Seed::new, Sorrowmoss.Seed::new ));
+		all.add( brew( "brew.exotic-potion", ExoticPotion.class, PotionOfHealing::new ));
+		all.add( brew( "brew.exotic-scroll", ExoticScroll.class, ScrollOfIdentify::new ));
+		all.add( brew( "brew.meat-pie", MeatPie.class, Pasty::new, Food::new, MysteryMeat::new ));
 		return all;
 	}
 
@@ -61,37 +63,23 @@ final class CraftScenarios {
 		return dagger;
 	}
 
-	private static Scenario picker( String id, Item scroll, Item target, Class< ? extends Item > pick,
-			Predicate< Item > done, String failure ){
-		return new Scenario( id, "pick a target for " + scroll.getClass().getSimpleName(), HeroClass.WARRIOR,
+	private static Scenario picker( String id, Class< ? extends Item > scroll, Supplier< Item > target, boolean unknown,
+			Class< ? extends Item > pick, Predicate< Item > done, String failure ){
+		return new Scenario( id, "pick a target for " + scroll.getSimpleName(), HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();
-					kit.give( copy( scroll ));
-					if (target != null){
-						Item made = copy( target );
-						if (target.cursed){
-							made.cursed = true;
-							kit.giveUnknown( made );
-						} else if (target.isIdentified() || !(target instanceof RingOfAccuracy)){
-							kit.give( made );
-						} else {
-							kit.giveUnknown( made );
-						}
-					}
+					kit.give( Reflection.newInstance( scroll ));
+					if (target != null && unknown) kit.giveUnknown( target.get() );
+					else if (target != null) kit.give( target.get() );
 				},
 				d -> {
-					d.use( scroll.getClass() );
-					d.require( d.env().mode() == EnvMode.INVENTORY, scroll.getClass().getSimpleName()
-							+ " offered no picker: " + d.env().mode() );
+					d.use( scroll );
+					d.require( d.env().mode() == EnvMode.INVENTORY, scroll.getSimpleName() + " offered no picker: " + d.env().mode() );
 					Item chosen = d.env().mapper().slot( d.slotOf( pick ));
 					d.pick( pick );
 					if (d.env().mode() == EnvMode.MENU) d.menu( 0 );
 					d.expect( done.test( chosen ), failure );
 				} );
-	}
-
-	private static Item copy( Item item ){
-		return com.watabou.utils.Reflection.newInstance( item.getClass() );
 	}
 
 	private static Scenario pickerCancel(){
@@ -110,15 +98,13 @@ final class CraftScenarios {
 				} );
 	}
 
-	private static Scenario brew( String id, Class< ? extends Item > product, Item... ingredients ){
+	@SafeVarargs
+	private static Scenario brew( String id, Class< ? extends Item > product, Supplier< Item >... ingredients ){
 		return new Scenario( id, "brew " + product.getSimpleName() + " at a pot", HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();
 					kit.emptyPack().energy( 20 );
-					for (Item ingredient : ingredients){
-						Item made = copy( ingredient ).quantity( ingredient.quantity() );
-						kit.give( made );
-					}
+					for (Supplier< Item > ingredient : ingredients) kit.give( ingredient.get() );
 					world.terrain( world.adjacentFree(), Terrain.ALCHEMY );
 				},
 				d -> {

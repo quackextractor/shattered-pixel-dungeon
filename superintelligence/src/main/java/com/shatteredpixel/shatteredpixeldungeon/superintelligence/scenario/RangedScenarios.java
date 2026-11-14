@@ -29,6 +29,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.ThrowingSt
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.darts.Dart;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.darts.ParalyticDart;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
+import com.watabou.utils.Reflection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,18 +43,17 @@ final class RangedScenarios {
 		List< Scenario > all = new ArrayList<>();
 		all.add( shoot( "bow", HeroClass.HUNTRESS, SpiritBow.class, null ));
 		all.add( shoot( "staff", HeroClass.MAGE, MagesStaff.class, null ));
-		all.add( thrown( "thrown.ThrowingKnife", ThrowingKnife::new ));
-		all.add( thrown( "thrown.Dart", Dart::new ));
-		all.add( thrown( "thrown.ThrowingStone", ThrowingStone::new ));
-		all.add( thrown( "thrown.ParalyticDart", ParalyticDart::new ));
-		List< Supplier< Wand > > wands = List.of( WandOfMagicMissile::new, WandOfFireblast::new, WandOfFrost::new,
-				WandOfLightning::new, WandOfDisintegration::new, WandOfCorrosion::new, WandOfBlastWave::new,
-				WandOfLivingEarth::new, WandOfPrismaticLight::new, WandOfRegrowth::new, WandOfTransfusion::new,
-				WandOfWarding::new, WandOfCorruption::new );
-		for (Supplier< Wand > wand : wands){
-			Wand sample = wand.get();
-			all.add( shoot( "wand." + sample.getClass().getSimpleName().replace( "WandOf", "" ), HeroClass.WARRIOR,
-					sample.getClass(), wand::get ));
+		all.add( thrown( "thrown.ThrowingKnife", ThrowingKnife.class ));
+		all.add( thrown( "thrown.Dart", Dart.class ));
+		all.add( thrown( "thrown.ThrowingStone", ThrowingStone.class ));
+		all.add( thrown( "thrown.ParalyticDart", ParalyticDart.class ));
+		List< Class< ? extends Wand > > wands = List.of( WandOfMagicMissile.class, WandOfFireblast.class, WandOfFrost.class,
+				WandOfLightning.class, WandOfDisintegration.class, WandOfCorrosion.class, WandOfBlastWave.class,
+				WandOfLivingEarth.class, WandOfPrismaticLight.class, WandOfRegrowth.class, WandOfTransfusion.class,
+				WandOfWarding.class, WandOfCorruption.class );
+		for (Class< ? extends Wand > wand : wands){
+			all.add( shoot( "wand." + wand.getSimpleName().replace( "WandOf", "" ), HeroClass.WARRIOR, wand,
+					() -> Reflection.newInstance( wand )));
 		}
 		all.add( potionThrow() );
 		return all;
@@ -96,13 +96,12 @@ final class RangedScenarios {
 				} );
 	}
 
-	private static Scenario thrown( String id, Supplier< Item > make ){
-		Class< ? extends Item > type = make.get().getClass();
+	private static Scenario thrown( String id, Class< ? extends Item > type ){
 		return new Scenario( id, "throw " + type.getSimpleName() + " at an enemy", HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();
 					kit.sturdy();
-					kit.give( make.get().quantity( 3 ));
+					kit.give( Reflection.newInstance( type ).quantity( 3 ));
 					target( world, 3 );
 				},
 				d -> {

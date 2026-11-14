@@ -19,6 +19,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( WorldScenarios.all() );
 		ALL.addAll( FeatureScenarios.all() );
 		ALL.addAll( TrapScenarios.all() );
+		ALL.addAll( MobScenarios.all() );
 	}
 
 	public static List< Scenario > all(){

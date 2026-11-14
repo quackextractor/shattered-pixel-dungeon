@@ -31,6 +31,7 @@ public class ScenarioCheck {
 		HeadlessServices.install( Scratch.dir( "scenariocheck" ));
 		HeadlessServices.disableSaving( true );
 		watchdog( budget );
+		checkLoadingTheCatalogDrawsNothing();
 
 		List< Scenario > chosen = new ArrayList<>();
 		for (Scenario scenario : ScenarioCatalog.all()){
@@ -57,6 +58,22 @@ public class ScenarioCheck {
 		ScenarioReport.write( out, results );
 
 		System.exit( ScenarioReport.print( results, GateReport.failures() ));
+	}
+
+	private static void checkLoadingTheCatalogDrawsNothing(){
+		boolean wasOn = RandomTrace.enabled();
+		RandomTrace.reset();
+		RandomTrace.enable();
+		int scenarios = ScenarioCatalog.all().size();
+		long draws = RandomTrace.draws();
+		if (!wasOn) RandomTrace.disable();
+		if (draws != 0){
+			GateReport.fail( "self-test: loading the catalogue of " + scenarios + " scenarios drew " + draws + " values. The"
+					+ " viewer loads it on its first step, after the floor is built, so a game object made at load time"
+					+ " moves the viewer's stream and not the trainer's" );
+		} else {
+			System.out.println( "  loading the catalogue of " + scenarios + " scenarios draws nothing" );
+		}
 	}
 
 	private static void checkASetupLeavesTheGameplayStreamAlone(){
