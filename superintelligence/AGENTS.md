@@ -98,3 +98,54 @@ not copied out afterwards on the assumption someone will remember.
 - No preamble or postamble. Start with the answer, stop when the facts are delivered.
 - Action first. Explain only when asked.
 - Keep technical data exact and code blocks unchanged.
+
+## Memory (imported from Claude Code, 2026-11-08)
+
+Source: `~/.claude/projects/C--Users-Soul-Documents-GitHub-shattered-pixel-dungeon/memory/`. Bodies are verbatim.
+
+### Training machine (project)
+
+Updated 2026-10-29.
+
+Training machine: i5-14600KF (6 P-cores + 8 E-cores, 20 logical), 32 GB RAM, AMD RX 6900 XT (OpenCL device name `gfx1030`). Desktop apps hold ~8-12 GB, so expect ~12-20 GB free for workers.
+
+2026-11-04: **48 x 2 in-process async is now the shipped default** (no overrides needed): 43K turns/s steady on an idle machine, ~34K with the machine in use, against 19K for 12 x 8 processes. Longest in-process run so far: 30 minutes.
+
+The user uses this PC during runs: start commands at below-normal priority (children inherit it), one job at a time, say how long a run takes, and compare ratios or core time a turn, not absolute speed.
+
+Claude Code's background-shell memory reaper killed a 2026-10-20 run; it acts on system-wide free memory. Check free memory first (`Get-CimInstance Win32_OperatingSystem`), ~1.8 GB per worker. jstack/jcmd/jfr live in `C:\Program Files\Java\jdk-24\bin\` (not on PATH). Worker stdout is the protocol pipe: profiling with JFR needs `-Xlog:jfr+startup=off`, and workers are killed at the end, so dump them live with `jcmd <pid> JFR.dump`.
+
+192 in-process envs need a 20 GB heap and left 1.7 GB of commit free on 2026-11-06; Claude Code's reaper then killed a background shell. Do not repeat that.
+
+**How to apply:** run training on plain defaults; running `viewcheck` alongside a training run can starve its diagnostic child and fail it falsely.
+
+### Agent failure analysis (project)
+
+Updated 2026-11-05.
+
+Replay analysis of 2026-11-05 lives in `superintelligence/out/evidence/failure-analysis/`, rebuilt by `out/analysis/fp/FloorProbe.java` and agg*.py. Fixed in 14 commits, 7615608fe..HEAD, unpushed that day.
+
+State late on 2026-11-06: the policy-teacher gap was unlearnable plans, not rewards. `TACTIC`, `HUNT` and `ITEM` macro actions took evaluated depth from 2.07-2.11 to 2.81, floor 6+ from 0 to 24 of 500, in 30 minutes (`out/evidence/macro3`). Teacher 3.28 was measured on other seeds. Issues 39 and 42 are closed. Issue 41 (stall) is untested on the new code and issue 43 (Guard pull in the viewer) is open. Old weights do not load after the action and hero-feature changes.
+
+**Why:** user wants floors 2-4 survived and Goo beaten, see `issues.md` 20.
+**How to apply:** do not claim apps are ruled out of the stall. `goo-kill.replay` is the scripted teacher; AI runs have since passed Goo on their own. Use `:superintelligence:evaluate` for depth, not training metrics, which read about 0.3 higher. A failure seen in `verify` and training but never in `evaluate` means a leak from an earlier episode in the process. See training machine.
+
+### Keep apps open during training (feedback)
+
+Updated 2026-11-05.
+
+Do not ask the user to close Discord, YouTube or other apps so training can run.
+
+**Why:** they use the computer during training, and said so plainly when asked to close them on 2026-11-05.
+**How to apply:** debug and test with their normal apps open. Treat a stall under normal use as a trainer bug. See training machine and agent failure analysis.
+
+### Tests short and self-contained (feedback)
+
+Updated 2026-11-05.
+
+Tests should be self-contained and short-lived. Do not propose a 20-minute training run as a test.
+
+**Why:** the user said so directly on 2026-11-05 when a long diagnostic run was offered.
+**How to apply:** isolate the suspect part and exercise it directly in about a minute, as `out/analysis/gpu/GpuSoak.java` does for GPU inference. Keep long runs for measuring learning, not for debugging. See agent failure analysis.
+
+Applies to gate sweeps too: on 2026-11-06 a `viewcheck` over 257 trained recordings ran 1h40 with no limit and the user had to stop it. Sweep large sets with `:desktop:playbackcheck` on `.replay` copies (257 in 30 s), cap every run, and kill leftover child JVMs by PID, since TaskStop leaves them running.
