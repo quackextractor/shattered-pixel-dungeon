@@ -91,6 +91,7 @@ public class FallCheck {
 
 			Dungeon.hero.HP = 1;
 			Double paid = dropScored( env );
+			for (int i = 0; i < 3 && paid != null && env.running(); i++) paid = env.step( Action.WAIT, 0 );
 			if (paid == null || env.endReason() != com.shatteredpixel.shatteredpixeldungeon.superintelligence
 					.reward.RewardModel.TerminateReason.DEATH) continue;
 
@@ -107,7 +108,7 @@ public class FallCheck {
 			return;
 		}
 
-		fail( "no seed produced a fall that killed a 1-health hero, so this case measured nothing." );
+		fail( "no seed produced a fall that killed a 1-health hero within three steps of landing, so this case measured nothing." );
 	}
 
 

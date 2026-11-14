@@ -117,6 +117,8 @@ public class SPDEnv {
 			GameScene.clearPendingCellListener();
 			SlotAction.clearPendingUseItem();
 		}
+		double landed = pipeline.game().switchRequested() ? settle() : 0;
+		if (!running) return landed;
 		mapper.refreshSlots();
 		boolean acted = false;
 		stepEntered = mode;
@@ -192,7 +194,7 @@ if (mode == EnvMode.WORLD){
 		if (!acted){
 			reward.noteEvent( RewardTerm.INVALID_ACTION );
 		}
-		double accumulated = settle();
+		double accumulated = landed + settle();
 		stillSteps = Actor.now() > stepClock ? 0 : stillSteps + 1;
 		if (running && stillSteps >= config.freeStepBudget){
 			stallCause = StallCause.FREE_STEP;

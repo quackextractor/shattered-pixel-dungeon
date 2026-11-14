@@ -26,6 +26,7 @@ final class FeatureScenarios {
 		all.add( well( "well.Health", WaterOfHealth.class ));
 		all.add( well( "well.Awareness", WaterOfAwareness.class ));
 		all.add( chasm() );
+		all.add( chasmThenMove() );
 		all.add( grass() );
 		all.add( plant( "plant.Sungrass", Sungrass.Seed::new ));
 		all.add( plant( "plant.Firebloom", Firebloom.Seed::new ));
@@ -67,6 +68,24 @@ final class FeatureScenarios {
 					d.menu( 0 );
 					d.act( Action.WAIT );
 					d.expect( Dungeon.depth == 2, "answering yes left the hero on depth " + Dungeon.depth + " at " + Dungeon.hero.pos );
+				} );
+	}
+
+	private static Scenario chasmThenMove(){
+		return new Scenario( "chasm-then-move", "jump into a chasm and act at once on the floor below", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					world.terrain( world.adjacentFreeStraight(), Terrain.CHASM );
+				},
+				d -> {
+					int chasm = d.world().beside( Terrain.CHASM );
+					d.move( chasm );
+					d.require( d.env().mode() == EnvMode.MENU, "stepping at the chasm asked nothing: " + d.env().mode() );
+					d.menu( 0 );
+					d.move( d.world().adjacentFree() );
+					d.act( Action.WAIT );
+					d.act( Action.WAIT );
+					d.expect( Dungeon.depth == 2, "the jump left the hero on depth " + Dungeon.depth );
 				} );
 	}
 

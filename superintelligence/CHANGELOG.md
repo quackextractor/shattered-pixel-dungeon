@@ -175,6 +175,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **An action after a chasm jump happens on the floor below, as in the viewer (`issues.md` 49).** The answer to the "jump?"
+  prompt leaves the fall pending as a scene switch. The viewer finishes the switch before it applies the next recorded step;
+  the trainer applied that step on the old floor first, so a move half-started there carried over and `sweep.rogue.d1.1`
+  and `sweep.rogue.d3.1` diverged right after landing. `SPDEnv.step` now settles a pending switch before applying an action.
+  New scenario `chasm-then-move` acts at once after a jump.
 - **A search straight after a scenario's depth jump no longer crashes the viewer (`issues.md` 49).** The trainer's hero acts
   on landing and so sizes its field of view to the new floor; the viewer builds the scenario and applies step 0 without
   that, and `Hero.search`, unlike `Hero.handle`, reads the array without resizing it: `ArrayIndexOutOfBoundsException:
