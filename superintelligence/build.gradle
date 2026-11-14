@@ -238,6 +238,8 @@ cliTask('teachercheck', 'Fails if the scripted teacher cannot descend, or imitat
 cliTask('goexplore', 'Go-Explore on fixed seeds: writes the deepest trajectory per seed as a recording.')
   cliTask('fallcheck', 'Fails if a chasm fall is dropped, or inherits an earlier episode.')
   cliTask('presscheck', 'Fails if a dropped item does not press the cell it landed on.')
+cliTask('scenariocheck', 'Fails if a scripted scenario does not reach its mechanic, or its recording does not verify.')
+tasks.named('scenariocheck') { args '--out', "${projectDir}/out/scenarios" }
   cliTask('mobspritecheck', 'Fails if an item that creates a mob leaves it unusable with no renderer.')
   cliTask('dialogcheck', 'Fails if an answer cannot reach a dialog the game opened.')
 cliTask('statecheck', 'Fails if a sampled observation does not replay to the value the rollout saw.')
@@ -264,7 +266,7 @@ cliTask('replaycheck', 'Fails if the replay catalog misgroups, misranks or misre
 tasks.register('gates') {
     dependsOn 'gradcheck', 'gaecheck', 'stallcausecheck', 'collectcheck', 'checkpointcheck', 'statecheck', 'parallelcheck', 'gpucheck', 'sparsecheck', 'asynccheck', 'qoscheck', 'inprocesscheck', 'aimcheck', 'tacticscheck', 'rewardcheck', 'transitioncheck', 'travelcheck', 'teachercheck', 'fallcheck', 'dialogcheck',
 		'replaycheck', 'rolloutcheck', 'modecheck', 'restartcheck', 'resetcheck', 'graphcheck', 'actioncheck', 'slotcheck', 'verifycheck',
-		'observecheck', 'renderdrawcheck', 'configcheck', 'paritycheck', 'presscheck', 'mobspritecheck', 'freeactioncheck', 'bpttcheck', 'pushcheck', 'curriculumcheck', 'samplercheck', 'seedcheck', 'doccheck', 'javaclint'
+		'observecheck', 'renderdrawcheck', 'configcheck', 'paritycheck', 'presscheck', 'scenariocheck', 'mobspritecheck', 'freeactioncheck', 'bpttcheck', 'pushcheck', 'curriculumcheck', 'samplercheck', 'seedcheck', 'doccheck', 'javaclint'
     group = 'verification'
     description = 'Runs every correctness gate in one invocation.'
     doLast { println "all gates passed" }

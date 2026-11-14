@@ -10,6 +10,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.Curricu
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardLedger;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardModel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.reward.RewardTerm;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioSetup;
 public class SPDEnv {
 	private final EnvConfig config;
 	private final HeadlessGame game;
@@ -59,6 +60,9 @@ public class SPDEnv {
 		return pipeline;
 	}
 	public double reset( String seed, HeroClass heroClass ){
+		return reset( seed, heroClass, null );
+	}
+	public double reset( String seed, HeroClass heroClass, ScenarioSetup.Hook hook ){
 		double previous = ledger.total();
 		ledger.reset();
 		curriculum.reset();
@@ -92,6 +96,11 @@ public class SPDEnv {
 		encoder.resetExplored();
 		mapper.refreshSlots();
 		settle();
+		if (hook != null && running){
+			if (hook.jump()) settle();
+			hook.build();
+			mapper.refreshSlots();
+		}
 		ledger.beginFloor( Dungeon.depth, Dungeon.branch );
 		encoder.encode();
 		refreshMasks();

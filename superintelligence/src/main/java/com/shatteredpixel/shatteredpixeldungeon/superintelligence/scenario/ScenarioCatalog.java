@@ -8,13 +8,18 @@ public final class ScenarioCatalog {
 
 	private ScenarioCatalog(){}
 
-	private static final List< String > IDS = new ArrayList<>();
+	private static final List< Scenario > ALL = new ArrayList<>();
 
-	public static List< String > ids(){
-		return Collections.unmodifiableList( IDS );
+	static {
+		ALL.addAll( CombatScenarios.all() );
 	}
 
-	public static String find( String id ){
-		return IDS.contains( id ) ? id : null;
+	public static List< Scenario > all(){
+		return Collections.unmodifiableList( ALL );
+	}
+
+	public static Scenario find( String id ){
+		for (Scenario scenario : ALL) if (scenario.id.equals( id )) return scenario;
+		return null;
 	}
 }

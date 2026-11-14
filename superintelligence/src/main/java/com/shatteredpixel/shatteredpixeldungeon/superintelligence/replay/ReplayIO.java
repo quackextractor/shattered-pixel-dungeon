@@ -364,7 +364,8 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 			return result;
 		}
 
-		if (!replay.scenario.isEmpty() && !ScenarioSetup.known( replay.scenario )){
+		ScenarioSetup.Hook hook = ScenarioSetup.hookFor( replay.scenario );
+		if (!replay.scenario.isEmpty() && hook == null){
 			result.unwatchableAt = 0;
 			result.unwatchable = "scenario " + replay.scenario + " is not one this build knows, so its world"
 					+ " cannot be rebuilt";
@@ -379,7 +380,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 		env.config().stallLimit = replayed.stallLimit;
 		env.config().freeStepBudget = replayed.freeStepBudget;
 		env.config().actorStepLimit = replayed.actorStepLimit;
-		env.reset( replay.seedText, heroClass );
+		env.reset( replay.seedText, heroClass, hook );
 		if (observer != null) observer.onReset();
 
 		if (replay.recordsRngFingerprint()){

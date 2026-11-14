@@ -18,6 +18,13 @@ entry and leaves this list, or moves to `REJECTED.md`.
 - [ ] **Policy below its teacher** (`issues.md` 20): 2.81 evaluated with macro actions against a 3.28 teacher; re-measure on one seed set.
 - [ ] **Survive floors 2-4, beat Goo** (`issues.md` 20): the goal; the sections below are its history.
 
+## Scenario suite (design: `out/evidence/mechanics-suite/design.md`)
+
+- [ ] **Viewer half**: `ReplayPlayer` applies the setup, `scenarioplayback` in `verifyall`, `scenarioview` outside it.
+- [ ] **Reach**: `PolicyReach`, `ReachExpectations`, `cancel.*`, `drop-pickup`; confirm or refute G1-G8.
+- [ ] **Families**: items, pickers and brew, world, mob effects and allies, state, leaks.
+- [ ] **`WorldDigest`**, the depth jump with `stairs` and `boss.*`, `WorldSweep` with `coverage.csv`.
+
 ## Notes
 
 - [ ] **Survive floors 2-4** (`issues.md` 20). Plateau depth 2.5-2.9, best 4; every death is melee to

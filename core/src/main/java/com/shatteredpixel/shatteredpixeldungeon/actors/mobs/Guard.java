@@ -45,6 +45,10 @@ public class Guard extends Mob {
 	//they can only use their chains once
 	private boolean chainsUsed = false;
 
+	public boolean chainsUsed(){
+		return chainsUsed;
+	}
+
 	{
 		spriteClass = GuardSprite.class;
 

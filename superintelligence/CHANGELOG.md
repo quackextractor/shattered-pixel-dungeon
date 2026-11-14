@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and before step 0, and a `world_end=` digest. Both keys are written only when set, travel on the worker wire
   (`ReplayCodec` version 7), and an id this build does not know is refused at step 0 by `verify` and by the viewer,
   as an unknown hero class is. `verifycheck` 17 cases, `playbackcheck` 28.
+- **Scenario suite, gate `scenariocheck`.** `scenario.World` and `scenario.HeroKit` build a world with in-play engine
+  calls (`GameScene.add`, `Level.drop`, `Level.set`) after the hero is ready, inside a pushed generator, through
+  `SPDEnv.reset(seed, hero, hook)`; `verify` passes the same hook. `scenario.Driver` acts only through `SPDEnv.step` and
+  `ReplayRecorder`. Each scenario is recorded, verified, written to `out/scenarios/<id>.replay` with `report.csv`, and
+  verified again after the whole catalogue. First scenarios: `melee` and `guard-chain`, the second red with the
+  `finish(Chains)` fix of issue 43 reverted. `Guard.chainsUsed()` is a new getter. 44 gates.
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an
