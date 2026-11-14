@@ -175,6 +175,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A window whose back press does nothing closes the same way in the trainer and the viewer.** `WindowBridge.dismissUnanswerable`
+  fell back to dropping the parked slot when `onBackPressed` left the window up (`WndBlacksmith`'s reward, `WndResurrect`).
+  Headless that closed it; in the viewer the window stayed on the scene and was reported on every later settle. It now
+  calls the window's own `hide()`, which removes it in both. New `dialogcheck` case, red without it.
 - **A first action on a floor of the same size reads that floor's view.** `LevelPipeline.sizeHeroView` replaced the hero's
   field of view only when its length differed, so after a fall onto a floor with as many cells it still held the floor
   above, and a search found nothing. It now points it at `Dungeon.level.heroFOV`, as `Hero.act` does. New scenario

@@ -78,7 +78,7 @@ public static boolean selectOption( int index ){
 		Window w = window();
 		if (w == null || open() || GameScene.answerableSelector() != null) return;
 		w.onBackPressed();
-		if (window() == w) GameScene.clearHeadlessWindow();
+		if (window() == w) w.hide();
 	}
 
 	public static boolean close(){

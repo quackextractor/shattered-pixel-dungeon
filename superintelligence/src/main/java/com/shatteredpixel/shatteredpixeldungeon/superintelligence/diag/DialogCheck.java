@@ -15,7 +15,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class DialogCheck {
 
-	private static final int CHECKS = 7;
+	private static final int CHECKS = 8;
 
 	private static final String[] SEEDS = {
 			"DIALOGCHECK-A", "DIALOGCHECK-B", "DIALOGCHECK-C", "DIALOGCHECK-D", "DIALOGCHECK-E"
@@ -32,8 +32,32 @@ public class DialogCheck {
 		checkAMenuIsAnsweredOnTheLiveHead();
 		checkADialogThatNeverClosesEndsTheRun();
 		checkAPickerThatReopensItselfCloses();
+		checkAWindowThatIgnoresBackIsHidden();
 
 		System.exit( GateReport.report( "dialog answers", CHECKS ));
+	}
+
+	private static void checkAWindowThatIgnoresBackIsHidden(){
+		SPDEnv env = env();
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		final boolean[] hidden = { false };
+		GameScene.show( new com.shatteredpixel.shatteredpixeldungeon.ui.Window(){
+			@Override public void onBackPressed(){ }
+			@Override public void hide(){
+				hidden[ 0 ] = true;
+				super.hide();
+			}
+		} );
+		WindowBridge.dismissUnanswerable();
+		if (!hidden[ 0 ]){
+			fail( "a window that ignores back, like the Blacksmith's reward, was dropped from the parked slot without hide(), so the viewer keeps it on its scene and the two diverge" );
+			return;
+		}
+		if (GameScene.answerableWindow() != null){
+			fail( "a window that ignores back is still open after it was dismissed" );
+			return;
+		}
+		System.out.println( "  a window that ignores back is hidden, as the viewer closes it" );
 	}
 
 	private static void checkAPickerThatReopensItselfCloses(){
