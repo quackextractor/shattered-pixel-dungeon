@@ -175,6 +175,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A search straight after a scenario's depth jump no longer crashes the viewer (`issues.md` 49).** The trainer's hero acts
+  on landing and so sizes its field of view to the new floor; the viewer builds the scenario and applies step 0 without
+  that, and `Hero.search`, unlike `Hero.handle`, reads the array without resizing it: `ArrayIndexOutOfBoundsException:
+  Index 1768 out of bounds for length 950` on `sweep.mage.d22.1`. `ScenarioSetup.build` now sizes the hero's view as the
+  game does, a no-op where it already fits. New scenario `search-after-jump` crashes the viewer without it.
 - **A message window the agent cannot answer is closed, as the viewer closes it (`issues.md` 48).** The viewer dismisses any
   window `WindowBridge` cannot answer through `onBackPressed`; the trainer left it parked. The Blacksmith and the Imp give
   their quests, and the Blacksmith his pickaxe, only when their `WndQuest` hides, so in the trainer neither quest ever

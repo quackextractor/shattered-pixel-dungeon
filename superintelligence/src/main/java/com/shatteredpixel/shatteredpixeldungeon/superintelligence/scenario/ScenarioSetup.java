@@ -45,6 +45,10 @@ public final class ScenarioSetup {
 					Random.popGenerator();
 				}
 				LevelPipeline.attachBlobEmitters();
+				if (Dungeon.hero.fieldOfView == null || Dungeon.hero.fieldOfView.length != Dungeon.level.length()){
+					Dungeon.hero.fieldOfView = new boolean[ Dungeon.level.length() ];
+					Dungeon.level.updateFieldOfView( Dungeon.hero, Dungeon.hero.fieldOfView );
+				}
 				Dungeon.observe();
 			}
 		};

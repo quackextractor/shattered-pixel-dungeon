@@ -19,7 +19,7 @@ final class DepthScenarios {
 	private DepthScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( depthJump(), stairs(), gooFight(),
+		return Arrays.asList( depthJump(), searchAfterJump(), stairs(), gooFight(),
 				bossFight( "boss.tengu10", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Tengu.class, 10, true ),
 				bossFight( "boss.dm300-15", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM300.class, 15, false ),
 				bossFight( "boss.king20", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DwarfKing.class, 20, false ));
@@ -32,6 +32,15 @@ final class DepthScenarios {
 					d.expect( Dungeon.depth == 3, "the jump landed on depth " + Dungeon.depth );
 					d.act( Action.WAIT );
 				} ).depth( 3 );
+	}
+
+	private static Scenario searchAfterJump(){
+		return new Scenario( "search-after-jump", "search first thing on a floor reached by a jump", HeroClass.WARRIOR,
+				( world, kit ) -> world.clearMobs(),
+				d -> {
+					d.act( Action.SEARCH );
+					d.expect( Dungeon.depth == 22, "the jump landed on depth " + Dungeon.depth );
+				} ).depth( 22 ).seeds( "SWEEP-1" );
 	}
 
 	private static Scenario stairs(){

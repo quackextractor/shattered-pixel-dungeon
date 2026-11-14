@@ -65,5 +65,4 @@ can emit. 72 of 72 worlds verify twice headless; in the viewer 5 diverge, each a
 | `sweep.warrior.d1.1` | 55 `MENU_SELECT/0` | hero at 591, recording 132 |
 | `sweep.rogue.d1.1` | 67 `TRAVEL_ITEM` | hero at 246, recording 291 |
 | `sweep.rogue.d3.1` | 8 `TRAVEL_ITEM` | hp 8, recording 10 |
-| `sweep.mage.d22.1` | - | `ArrayIndexOutOfBoundsException: Index 1768 out of bounds for length 950` |
 
