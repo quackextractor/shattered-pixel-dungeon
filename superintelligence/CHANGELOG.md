@@ -52,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Families name their game classes rather than build samples: the viewer loads the catalogue on its first step, after
   the floor is built, and three mob constructors draw from the generator, which put `aim-cancel` one value off in
   `scenarioplayback`. A self-test now requires loading the catalogue to draw nothing.
+- **State and effect scenarios.** Seven known potions and an unknown one drunk, six scrolls read, `eat`, `starve`,
+  `equip` (Mage), `equip-cursed`, `talent`, `levelup`, `death`, four buffs (`Paralysis`, `Blindness`, `Vertigo` run out,
+  `Roots` masks every move), `Burning` and `Poison` hurting, and seven blobs. 129 scenarios play clean in the real
+  viewer (54.5s). `scroll.Recharging` diverges there at step 2 with `HeadlessSprite$Inert.start` drawing from the
+  gameplay stream again, the fault `issues.md` 26 was.
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an
