@@ -240,6 +240,8 @@ cliTask('goexplore', 'Go-Explore on fixed seeds: writes the deepest trajectory p
   cliTask('presscheck', 'Fails if a dropped item does not press the cell it landed on.')
 cliTask('scenariocheck', 'Fails if a scripted scenario does not reach its mechanic, or its recording does not verify.')
 tasks.named('scenariocheck') { args '--out', "${projectDir}/out/scenarios" }
+cliTask('worldsweep', 'Teacher plays every hero class on six depths; fails if a recording does not verify twice.')
+tasks.named('worldsweep') { args '--out', "${projectDir}/out/sweep" }
   cliTask('mobspritecheck', 'Fails if an item that creates a mob leaves it unusable with no renderer.')
   cliTask('dialogcheck', 'Fails if an answer cannot reach a dialog the game opened.')
 cliTask('statecheck', 'Fails if a sampled observation does not replay to the value the rollout saw.')

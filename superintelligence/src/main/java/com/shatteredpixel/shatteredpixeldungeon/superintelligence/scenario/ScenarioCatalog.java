@@ -32,6 +32,6 @@ public final class ScenarioCatalog {
 
 	public static Scenario find( String id ){
 		for (Scenario scenario : ALL) if (scenario.id.equals( id )) return scenario;
-		return null;
+		return WorldSweep.find( id );
 	}
 }

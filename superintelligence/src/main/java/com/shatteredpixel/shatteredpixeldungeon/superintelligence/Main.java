@@ -101,6 +101,8 @@ public class Main {
 		case "presscheck": PressCheck.main( rest ); break;
 		case "scenariocheck": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag
 				.ScenarioCheck.main( rest ); break;
+		case "worldsweep": com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag
+				.WorldSweepCheck.main( rest ); break;
 		case "mobspritecheck": MobSpriteCheck.main( rest ); break;
 		case "rolloutcheck": RolloutCheck.main( rest ); break;
 		case "pushcheck": PushCheck.main( rest ); break;
@@ -154,6 +156,7 @@ public class Main {
 		System.out.println( "  dialogcheck              fail if an answer cannot reach a dialog the game opened" );
 		System.out.println( "  presscheck              fail if a dropped item does not press the cell it landed on" );
 		System.out.println( "  scenariocheck           fail if a scripted scenario misses its mechanic or does not verify" );
+		System.out.println( "  worldsweep              teacher plays every hero class on six depths; recordings must verify twice" );
 		System.out.println( "  replayprobe               report how far a shuffled replay drifts" );
 		System.out.println( "  valuescale                report the critic's targets against what it can reach" );
 		System.out.println( "  replays [--dir d]...     list recordings, grouped by hero class and ranked" );

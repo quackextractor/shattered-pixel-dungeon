@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`worldsweep`: generated worlds next to the hand-built scenarios.** Every hero class lands on depths 1, 3, 7, 12, 17
+  and 22 on two seeds (72 worlds) at a hero level matching the depth, and the teacher plays up to 150 steps. Each
+  recording must verify twice; `out/sweep/coverage.csv` counts which actions, modes, items used, mobs in view, hero buffs
+  and `Statistics` deltas the sweep reached, with every action and mode listed even at zero. 4.2 s headless; not in
+  `gates`. Sweep ids resolve through `ScenarioCatalog.find`, so `verify` and the viewer rebuild them like any scenario,
+  and `viewcheck -PspdReplayDir=superintelligence/out/sweep` plays them.
 - **Scenario recordings.** A recording may name a `scenario=<id>`, a world set up in Java after the hero is ready
   and before step 0, and a `world_end=` digest. Both keys are written only when set, travel on the worker wire
   (`ReplayCodec` version 7), and an id this build does not know is refused at step 0 by `verify` and by the viewer,
@@ -120,6 +126,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **The Imp's quest room no longer moves the viewer's gameplay stream.** `AmbitiousImpRoom.WallBanners.create`, a
+  tilemap only the rendered game builds, chose each banner with `Random`, so on a floor with the Imp's room the viewer
+  spent up to five gameplay values the trainer never spends. Found by `worldsweep`: `sweep.duelist.d17.0` diverged at
+  step 1 on `rng baseFingerprint` with equal draw counts, and `reprocheck cross` named the five draws as the viewer's
+  last before step 0. The banners roll on `PRandom`, and `renderdrawcheck` now treats every `CustomTilemap` as
+  presentation, red on this site before the change. 72 of 72 sweep worlds, 138 scenarios and the 37-recording corpus
+  play clean in the viewer.
 - **A Well of Awareness no longer crashes a headless run.** `WaterOfAwareness.affectHero` adds its effect to
   `emitter.parent`, and a headless blob's emitter had none, so drinking from one threw a `NullPointerException` in the
   trainer and in `verify`. `LevelPipeline.attachBlobEmitters` now gives each emitter a parent group, and a scenario's
