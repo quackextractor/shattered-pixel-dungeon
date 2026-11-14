@@ -31,9 +31,9 @@ public final class ScenarioReport {
 
 	public static void write( File out, List< ScenarioRunner.Result > results ){
 		List< String > lines = new ArrayList<>();
-		lines.add( "id,mechanic,status,seed,steps,ms,failure" );
+		lines.add( "id,mechanic,status,reach,seed,steps,ms,failure" );
 		for (ScenarioRunner.Result r : results){
-			lines.add( String.join( ",", r.scenario.id, csv( r.scenario.mechanic ), r.status, r.seed,
+			lines.add( String.join( ",", r.scenario.id, csv( r.scenario.mechanic ), r.status, csv( r.reach ), r.seed,
 					Integer.toString( r.steps ), Long.toString( r.ms ), csv( r.failure )));
 		}
 		try {
@@ -49,20 +49,25 @@ public final class ScenarioReport {
 		long ms = 0;
 		for (ScenarioRunner.Result r : results){
 			ms += r.ms;
-			boolean ok = "OK".equals( r.status );
+			boolean ok = "OK".equals( r.status ) || "GAP".equals( r.status ) || "KNOWN".equals( r.status );
 			if (!ok) failed++;
 			System.out.println( (ok ? "  [OK]    " : "  [ERROR] ") + r.scenario.id + "  " + r.status
-					+ "  " + r.steps + " steps, " + r.ms + " ms" + (r.failure.isEmpty() ? "" : "  " + r.failure ));
+					+ "  " + r.steps + " steps, " + r.ms + " ms" + ("POLICY".equals( r.reach ) ? "" : "  " + r.reach )
+					+ (r.failure.isEmpty() ? "" : "  " + r.failure ));
 		}
 		for (String f : selfTests) System.out.println( "  [ERROR] " + f );
 		if (failed == 0 && selfTests.isEmpty()){
-			System.out.println( "[OK]     scenarios: " + results.size() + " recorded, verified twice and written ("
-					+ ms + " ms)" );
+			System.out.println( "[OK]     scenarios: " + results.size() + " recorded, verified twice and written, "
+					+ count( results, "GAP" ) + " expected reach gaps, " + count( results, "KNOWN" ) + " known failures (" + ms + " ms)" );
 			return 0;
 		}
 		System.out.println( "[ERROR]  scenarios: " + failed + " of " + results.size() + " failed, "
 				+ selfTests.size() + " self-test(s) failed" );
 		return 1;
+	}
+
+	private static long count( List< ScenarioRunner.Result > results, String status ){
+		return results.stream().filter( r -> status.equals( r.status )).count();
 	}
 
 	private static String csv( String text ){

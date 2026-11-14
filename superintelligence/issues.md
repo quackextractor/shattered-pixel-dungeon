@@ -45,3 +45,35 @@ reading, so the watchdog should record that.
 episode over 8 s after the PC was cleared. Two runs with apps open had died. This does not rule the apps out and contradicts the
 Discord line above, which only covers inference alone. The cause is still unknown; `TrainerWorkers.reportSlowest` and the watchdog
 diagnostics now log the next stall. A stall under normal use remains a trainer bug.
+
+## 44. An adjacent aim index throws the aimed item itself - OPEN
+
+`ActionMapper.resolveTarget` drops the cell listener for target indices 1-8 and calls `SlotAction.castAt`, which is
+`Item.throwAt`. For a thrown weapon that is a throw; for a wand it throws the wand. Scenario `aim-no-enemy` zaps a
+Wand of Magic Missile at an empty adjacent cell: `a zap at cell 708 left 3 of 3 charges, wand still carried false`.
+The viewer runs the same code, so it is not a fidelity fault. The policy cannot emit 1-8 in `TARGETING` (gap G3 in 45),
+so no training run reaches it; scripted recordings can (`duelist-throw.replay`, scenario `aim-empty`). Listed in
+`scenario.ReachExpectations` as a known failure, so the gate goes red when it is fixed.
+
+## 45. Mechanics the policy cannot reach - OPEN
+
+`scenariocheck` drives each mechanic through `SPDEnv.step` and asks `scenario.PolicyReach`, which calls
+`EpisodeCollector.headFor` and `subModeAction`, whether the collector could have emitted every step. A scenario whose
+steps it could not is `GAP`, and `scenario.ReachExpectations` lists which ones must be, so closing a gap is a one-line
+change there. These are action-space limits, not fidelity faults; every one of these recordings verifies and plays in
+the viewer. Confirmed 2026-11-14:
+
+| gap | scenario | first unreachable step |
+| --- | --- | --- |
+| G1 no drop | `drop-pickup` | `in SLOT the collector emits USE/1, never DROP` |
+| G2 no cancel while anything is usable | `cancel.SLOT`, `.INVENTORY`, `.TALENT`, `.ALCHEMY`, `.MENU` | `in SLOT the collector emits USE/0, never CANCEL`; `MENU_SELECT/0, never CANCEL` in the other three |
+| G3 aim only at the four nearest enemies | `aim-empty`, `aim-no-enemy` | `target 8 is masked in TARGETING` |
+| G4 INTERACT's direction comes from the slot head | `interact-direction` | `INTERACT/8 reaches cell 708 only through slot 8, which the slot head does not offer` |
+| G5 worn items are in no slot | `unequip`, `artifact.Cloak` | `the worn ClothArmor is in no slot`; `the worn CloakOfShadows is in no slot` |
+| G7 shop windows cannot be answered | `shop-buy` | `buying opened WndTradeItem, which WindowBridge cannot answer` |
+| G8 no throw from a pack of throwables, unknown potions always drunk | `throw-only`, `potion-unknown-throw` | `USE is masked in WORLD`; `an unidentified PotionOfToxicGas was drunk` |
+
+Two corrections to the design's reading. G7 is partly wrong: talking to a Shopkeeper opens a `WndOptions`, which is
+answerable; only the buy window is a plain `Window`. G4 is reachable when the hero happens to carry an item in the slot
+whose index equals the direction, which is exactly why it is a fault rather than a limit.
+

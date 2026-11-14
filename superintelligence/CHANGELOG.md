@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`PlaybackCheck --corpus-only` over `out/scenarios`) is in `verifyall`; `:desktop:scenarioview` plays the same
   recordings in the real viewer, hidden, outside it. Measured: `[OK] rendered playback: 2 recordings played clean in
   the real viewer (2 at a time, 6.2s)`. With the player's build skipped, both diverge at step 1 on position.
+- **Policy reach.** `scenario.PolicyReach` asks `EpisodeCollector.headFor` (now public) and `subModeAction` whether the
+  collector could have emitted each scripted step; `ActionMapper.interactCell` is the one place INTERACT resolves its
+  cell. `scenario.ReachExpectations` lists the scenarios that must be `GAP` and the known failures, and a mismatch either
+  way fails. 16 new scenarios: `cancel.SLOT/INVENTORY/TALENT/ALCHEMY/MENU`, `drop-pickup`, `aim-cancel`, `aim-empty`,
+  `aim-no-enemy`, `interact-direction`, `unequip`, `artifact.Cloak`, `shop-buy`, `throw-only`, `potion-unknown-throw`.
+  G1-G5, G7 and G8 of the design are confirmed (`issues.md` 45); an adjacent aim throws a wand (`issues.md` 44).
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an

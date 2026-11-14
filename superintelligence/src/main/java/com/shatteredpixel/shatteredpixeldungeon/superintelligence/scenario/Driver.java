@@ -29,6 +29,7 @@ public final class Driver {
 	private final SPDEnv env;
 	private final ReplayRecorder recorder;
 	private final List< String > failures = new ArrayList<>();
+	private final List< String > gaps = new ArrayList<>();
 
 	Driver( SPDEnv env, ReplayRecorder recorder ){
 		this.env = env;
@@ -47,6 +48,14 @@ public final class Driver {
 		return failures;
 	}
 
+	List< String > gaps(){
+		return gaps;
+	}
+
+	public void gap( String why ){
+		gaps.add( "step " + steps() + ": " + why );
+	}
+
 	public int steps(){
 		return recorder.replay().length();
 	}
@@ -54,6 +63,8 @@ public final class Driver {
 	public void step( Action action, int secondary ){
 		if (!env.running()) throw new Stop( "the episode ended (" + env.endReason() + ") before " + action );
 		if (steps() >= MAX_STEPS) throw new Stop( "the script passed " + MAX_STEPS + " steps" );
+		String unreachable = PolicyReach.check( env, action, secondary );
+		if (unreachable != null) gap( unreachable );
 		recorder.record( action, secondary, env.mode() );
 		float reward = (float) env.step( action, secondary );
 		recorder.afterStep( env.heroPosition(), reward, env.lastStepActed() ? 1 : 0 );
@@ -75,6 +86,11 @@ public final class Driver {
 			}
 		}
 		throw new Stop( "no move leads from " + Dungeon.hero.pos + " toward " + cell );
+	}
+
+	public int direction( int cell ){
+		for (int o = 1; o < ActionMapper.ADJACENT_COUNT; o++) if (env.mapper().targetCell( o ) == cell) return o;
+		throw new Stop( "cell " + cell + " is not beside the hero" );
 	}
 
 	public int slotOf( Class< ? extends Item > type ){

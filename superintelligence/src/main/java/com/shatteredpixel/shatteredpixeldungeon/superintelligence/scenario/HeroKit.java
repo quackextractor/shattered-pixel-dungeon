@@ -51,6 +51,17 @@ public final class HeroKit {
 		return this;
 	}
 
+	public HeroKit level( int lvl ){
+		hero().lvl = lvl;
+		return this;
+	}
+
+	public HeroKit emptyPack(){
+		hero().belongings.backpack.items.clear();
+		Dungeon.quickslot.reset();
+		return this;
+	}
+
 	public HeroKit strength( int str ){
 		hero().STR = str;
 		return this;

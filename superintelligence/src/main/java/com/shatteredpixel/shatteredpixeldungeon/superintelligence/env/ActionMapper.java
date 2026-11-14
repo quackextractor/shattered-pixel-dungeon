@@ -432,11 +432,12 @@ public class ActionMapper {
 	}
 
 	private boolean interact( int direction ){
-		if (direction > 0 && direction < ADJACENT_COUNT){
-			int cell = Surroundings.targetCell( direction );
-			if (Surroundings.interactive( cell )) return handleCell( cell );
-		}
-		return handleCell( Surroundings.pickInteractCell() );
+		return handleCell( interactCell( direction ));
+	}
+
+	public static int interactCell( int direction ){
+		int cell = direction > 0 && direction < ADJACENT_COUNT ? Surroundings.targetCell( direction ) : -1;
+		return cell >= 0 && Surroundings.interactive( cell ) ? cell : Surroundings.pickInteractCell();
 	}
 
 

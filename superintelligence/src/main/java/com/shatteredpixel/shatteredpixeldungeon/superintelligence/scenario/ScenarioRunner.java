@@ -22,6 +22,7 @@ public final class ScenarioRunner {
 		public String status = "NOFIXTURE";
 		public String failure = "";
 		public String seed = "";
+		public String reach = "POLICY";
 		public int steps;
 		public long ms;
 		public Replay replay;
@@ -82,6 +83,7 @@ public final class ScenarioRunner {
 		if (stopped != null) fail( result, stopped );
 		else if (!driver.failures().isEmpty()) fail( result, String.join( "; ", driver.failures() ));
 		else result.status = "OK";
+		ReachExpectations.judge( result, driver.gaps(), stopped == null && !driver.failures().isEmpty() );
 
 		ReplayIO.Verification verified = verify( replay );
 		if (!verified.passed()){

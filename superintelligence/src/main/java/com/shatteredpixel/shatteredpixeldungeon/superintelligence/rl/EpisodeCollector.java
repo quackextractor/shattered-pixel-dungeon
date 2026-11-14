@@ -372,7 +372,7 @@ public class EpisodeCollector {
 		return false;
 	}
 
-	private static int headFor( SPDEnv env ){
+	public static int headFor( SPDEnv env ){
 		switch (env.mode()) {
 			case SLOT:
 			case INVENTORY:

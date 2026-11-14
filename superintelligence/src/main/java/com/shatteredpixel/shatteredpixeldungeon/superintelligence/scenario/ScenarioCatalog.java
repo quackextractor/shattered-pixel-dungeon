@@ -12,6 +12,8 @@ public final class ScenarioCatalog {
 
 	static {
 		ALL.addAll( CombatScenarios.all() );
+		ALL.addAll( ModeScenarios.all() );
+		ALL.addAll( GapScenarios.all() );
 	}
 
 	public static List< Scenario > all(){
