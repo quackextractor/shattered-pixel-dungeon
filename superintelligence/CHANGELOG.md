@@ -145,6 +145,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plus the stacks of the inference and busy worker threads. `issues.md` 41 could not be diagnosed without this.
 
 ### Changed
+- **The widened action space trains to the same depth.** 30 minutes on defaults from fresh weights after the gap fixes
+  (`29f7da70a`..`53c5b547d`), 805 generations, then `evaluate` on 500 fixed seeds: depth 2.744 at temperature 1.0 and
+  2.812 at 0.7, floor 4+ 117/131 and floor 6+ 20/27, against `macro3`'s 2.81 before them. Training depth by thirds 2.53,
+  2.94, 3.00 against `macro3`'s 2.79, 3.05, 3.10; stalls 2.2 a generation against 1.3 in the last two thirds
+  (`issues.md` 47). The PC was in use, at about 24K turns/s. `out/evidence/widened`.
 - **48 x 2 stays the default, measured on a free GPU.** Ten minutes each from `clear-long` weights: 48 x 2 38,146 turns/s, 96 x 1 34,242 at
   equal depth, and 192 does not fit in 32 GB. Plan 2 D, the Vector API for CPU inference, is declined. `REJECTED.md` has both.
 - **`viewcheck` refuses a broken build.** It now runs `corpusplayback`, the headless check of the

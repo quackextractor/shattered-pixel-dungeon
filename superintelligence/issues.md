@@ -45,3 +45,11 @@ reading, so the watchdog should record that.
 episode over 8 s after the PC was cleared. Two runs with apps open had died. This does not rule the apps out and contradicts the
 Discord line above, which only covers inference alone. The cause is still unknown; `TrainerWorkers.reportSlowest` and the watchdog
 diagnostics now log the next stall. A stall under normal use remains a trainer bug.
+
+## 47. The teacher throws a returning weapon at a piranha until the run stalls - OPEN
+
+`widened` (30 minutes, defaults, `out/evidence/widened`) ended 2 of its 257 kept recordings on the position guard. `LZS-FFF-SGC`
+ends on 120 turns of the same three steps, `USE` in the world, a cursed `HeavyBoomerang` from the slot list and the nearest
+enemy as target: a `Piranha` at 11/40 in water. The boomerang circles back every throw, the hero never moves and its HP never
+changes, so the teacher's `ITEM` plan repeats until `StallCause.POSITION` ends the episode at -5,845. The policy imitates it.
+
