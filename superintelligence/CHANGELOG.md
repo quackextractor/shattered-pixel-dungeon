@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The sweep's second driver samples what the policy can emit.** Odd sweep worlds are now played by `scenario.UniformPolicy`,
+  which picks uniformly from the head `EpisodeCollector.headFor` chooses and maps it through `subModeAction`, as an
+  untrained policy does. `coverage.csv` drops the macro actions, which resolve before they reach the env, and reaches
+  every action and mode but `ALCHEMY`, which needs a pot beside the hero (the `brew.*` scenarios hold it). Its first
+  viewer run found five divergences (`issues.md` 49).
 - **Boss scenarios for Tengu, DM-300 and the Dwarf King.** Each lands on its floor (10, 15, 20) and lets the teacher play until
   the boss appears and is hit. Tengu waits behind a locked cell door, so its scenario adds the floor's key to the journal and
   walks to the door with the new `Driver.walkTo`. All four bosses, Goo included, play clean in the viewer.

@@ -24,7 +24,7 @@ public final class MechanicLedger {
 	private int[] statsAtStart;
 
 	public MechanicLedger(){
-		for (Action action : Action.values()) counts.put( "action:" + action.name(), 0 );
+		for (Action action : Action.values()) if (action.kind != Action.Kind.MACRO) counts.put( "action:" + action.name(), 0 );
 		for (EnvMode mode : EnvMode.values()) counts.put( "mode:" + mode.name(), 0 );
 	}
 

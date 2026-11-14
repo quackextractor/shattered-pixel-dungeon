@@ -33,19 +33,21 @@ public final class WorldSweep {
 
 	private static Scenario sweep( HeroClass hero, int depth, int k, MechanicLedger ledger ){
 		String id = "sweep." + hero.name().toLowerCase() + ".d" + depth + "." + k;
-		Scenario scenario = new Scenario( id, "teacher plays floor " + depth, hero,
+		boolean teacher = k % 2 == 0;
+		Scenario scenario = new Scenario( id, (teacher ? "teacher" : "uniform policy") + " plays floor " + depth, hero,
 				( world, kit ) -> kit.level( Math.max( 1, depth ) ),
-				d -> play( d, ledger ) ).seeds( "SWEEP-" + k ).botDriven( STEPS );
+				d -> play( d, ledger, teacher, id.hashCode() ) ).seeds( "SWEEP-" + k ).botDriven( STEPS );
 		return depth > 1 ? scenario.depth( depth ) : scenario;
 	}
 
-	private static void play( Driver d, MechanicLedger ledger ){
+	private static void play( Driver d, MechanicLedger ledger, boolean teacher, long seed ){
 		DescentBot bot = new DescentBot();
+		UniformPolicy uniform = new UniformPolicy( seed );
 		int[] secondary = new int[ 1 ];
 		ledger.begin();
 		try {
 			for (int i = 0; i < STEPS && d.env().running(); i++){
-				Action action = bot.act( d.env(), secondary );
+				Action action = teacher ? bot.act( d.env(), secondary ) : uniform.choose( d.env(), secondary );
 				Action primitive = action.kind == Action.Kind.MACRO ? bot.primitive( action ) : action;
 				ledger.before( d.env(), primitive, secondary[ 0 ] );
 				d.step( primitive, secondary[ 0 ] );

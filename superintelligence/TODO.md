@@ -20,14 +20,8 @@ entry and leaves this list, or moves to `REJECTED.md`.
 
 ## Scenario suite (design: `out/evidence/mechanics-suite/design.md`)
 
-- [ ] **Sweep in the viewer after the gap fixes**: `worldsweep` recordings were last played in the viewer before
-      `29f7da70a`.
-- [ ] **Scenarios the design listed and the suite lacks**: NPCs (Ghost, Wandmaker, Blacksmith, Imp); bosses Tengu, DM-300
-      and the Dwarf King; mobs Brute, Ripper, Golem, Ghoul, DM-200, Statue; allies Living Earth, Corruption, Ward; buffs
-      Levitation over a chasm, Invisibility, Slow, Charm; the Ankh.
 - [ ] **Scenario section in the replay list**: `CatalogLayout` has no section for `group=scenario` recordings, and no
       `replaycheck` case holds one.
-- [ ] **Sweep coverage**: `worldsweep` never reaches `ALCHEMY`, `TALENT`, `INTERACT`, `DROP`, `CANCEL` or the inventory; the teacher never uses them on a fresh floor.
 
 ## Notes
 

@@ -53,3 +53,17 @@ ends on 120 turns of the same three steps, `USE` in the world, a cursed `HeavyBo
 enemy as target: a `Piranha` at 11/40 in water. The boomerang circles back every throw, the hero never moves and its HP never
 changes, so the teacher's `ITEM` plan repeats until `StallCause.POSITION` ends the episode at -5,845. The policy imitates it.
 
+## 49. Uniform-policy worlds diverge in the viewer - OPEN
+
+`worldsweep` now drives every odd world with `scenario.UniformPolicy`, which samples uniformly from exactly what the collector
+can emit. 72 of 72 worlds verify twice headless; in the viewer 5 diverge, each again when replayed alone
+(`out/evidence/issue49`):
+
+| recording | step | viewer says |
+| --- | --- | --- |
+| `sweep.huntress.d3.1` | 34 `MENU_SELECT/0` | hero at 1056, recording 220 |
+| `sweep.warrior.d1.1` | 55 `MENU_SELECT/0` | hero at 591, recording 132 |
+| `sweep.rogue.d1.1` | 67 `TRAVEL_ITEM` | hero at 246, recording 291 |
+| `sweep.rogue.d3.1` | 8 `TRAVEL_ITEM` | hp 8, recording 10 |
+| `sweep.mage.d22.1` | - | `ArrayIndexOutOfBoundsException: Index 1768 out of bounds for length 950` |
+
