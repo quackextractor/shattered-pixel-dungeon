@@ -422,6 +422,11 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			return;
 		}
 
+		if (awaitsWindow()){
+			frameBoundary( false, elapsed, null );
+			return;
+		}
+
 		Actor holding = Actor.currentActor();
 		if (holding != null && holding != Dungeon.hero) stepsAppliedMidTurn++;
 
@@ -599,6 +604,20 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 	 * of the fault, not of the cause. The trainer's own flag is cleared as the aim is consumed; the next
 	 * recorded step's mode says the same thing, and the viewer has the recording.
 	 */
+	private int windowWaitFrames = 0;
+
+	private boolean awaitsWindow(){
+		int cursor = playback.cursor();
+		Replay.Step next = cursor < playback.total() ? playback.replay().steps.get( cursor ) : null;
+		if (next == null || modeOf( next.mode ) != EnvMode.MENU || WindowBridge.open()
+				|| windowWaitFrames >= MAX_PARKED_FRAMES){
+			windowWaitFrames = 0;
+			return false;
+		}
+		windowWaitFrames++;
+		return true;
+	}
+
 	private boolean owesNoTurn(){
 		Replay.Step next = playback.peekNext();
 		if (next == null) return false;

@@ -25,12 +25,18 @@ public class WindowBridge {
 	public static void age( EnvConfig config ){
 		Window w = window();
 		if (w == null) return;
-		ageSeconds = (config == null) ? 0.2f : config.dialogAgeSeconds;
-		w.update();
+		ageSeconds = (config == null) ? 0.25f : config.dialogAgeSeconds;
+		float elapsed = com.watabou.noosa.Game.elapsed;
+		com.watabou.noosa.Game.elapsed = ageSeconds;
+		try {
+			w.update();
+		} finally {
+			com.watabou.noosa.Game.elapsed = elapsed;
+		}
 	}
 
 
-	public static float ageSeconds = 0.2f;
+	public static float ageSeconds = 0.25f;
 
 
 	public static int optionCount(){

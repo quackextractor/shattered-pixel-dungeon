@@ -179,7 +179,7 @@ public class EnvConfig {
 
 
 
-	public float dialogAgeSeconds = 0.2f;
+	public float dialogAgeSeconds = 0.25f;
 
 
 	public void writeTo( DataOutputStream out ) throws IOException {

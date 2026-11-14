@@ -147,7 +147,7 @@ final class Surroundings {
 		if (ch instanceof Mob) return Dungeon.hero.canAttack( (Mob)ch ) && !Dungeon.hero.isCharmedBy( ch );
 		if (Dungeon.hero.rooted) return false;
 		if (Dungeon.level.heaps.get( cell ) != null) return true;
-		return Dungeon.level.passable[ cell ];
+		return Dungeon.level.passable[ cell ] || Dungeon.level.avoid[ cell ];
 	}
 
 	static boolean adjacentMob(){

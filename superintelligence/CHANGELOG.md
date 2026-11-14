@@ -126,6 +126,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **The policy can step onto a known trap, a well or a chasm, and a chasm jump plays the same in the viewer (gap G9,
+  `issues.md` 46).** `Surroundings.moveLegal` required `passable`, and `TRAP`, `WELL` and `CHASM` are `AVOID` terrain,
+  which `Hero.handle` walks onto; a move is now legal onto `avoid` cells too. The chasm's "jump?" dialog accepts an
+  answer only once its own clock, summed from `Game.elapsed`, passes 0.2 s: headlessly the window was aged by one
+  frame a step and the viewer by every rendered frame, so the two accepted different presses. `WindowBridge.age`
+  now advances the window by `env.dialog_age_seconds` (0.25, past every such gate) on both sides, so the first answer
+  is the accepted one. And the viewer applied the answer on the frame after the move, before the game's
+  `runOnRenderThread` had shown the window, so it was refused; `ReplayPlayer` now holds a recorded `MENU` step until a
+  window is open, up to 600 frames. Scenarios `chasm` (now a real jump to depth 2), `well.*` and the 11 `trap.*` pass
+  with no gap, and `trap.WornDart` diverges in the viewer with the drain's callback yield disabled (`hp is 1000,
+  recording says 994`), so it holds what `duelist-dart-trap.replay` held.
+  Stepping at a chasm and cancelling its prompt costs no time, so after a zero-time menu exit a move into a pit is
+  masked for one step, like the inventory actions already were (`freeactioncheck` saw a 47-step free loop without it).
 - **An aim at a cell beside the hero does what the game does (`issues.md` 44, gap G3).** Target indices 0-8 in
   `TARGETING` skipped the item's own cell listener and called `SlotAction.castAt`, which is `Item.throwAt`: a wand
   aimed at an adjacent cell was thrown away, a Spirit Bow too, and a thrown weapon spent one gameplay value fewer

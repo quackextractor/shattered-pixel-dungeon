@@ -236,14 +236,7 @@ public class ActionMapper {
 
 		if (zeroTimeModeExit){
 			zeroTimeModeExit = false;
-			mask[Action.OPEN_INVENTORY.index] = 0f;
-			mask[Action.USE.index] = 0f;
-			mask[Action.DROP.index] = 0f;
-			if (!any){
-				mask[Action.OPEN_INVENTORY.index] = 1f;
-				mask[Action.USE.index] = 1f;
-				mask[Action.DROP.index] = 1f;
-			}
+			ZeroTimeExit.mask( mask, any );
 		}
 	}
 

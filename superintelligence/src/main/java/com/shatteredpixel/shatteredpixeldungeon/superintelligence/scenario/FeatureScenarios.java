@@ -10,6 +10,7 @@ import com.shatteredpixel.shatteredpixeldungeon.plants.Firebloom;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Plant;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Sorrowmoss;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Sungrass;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 
 import java.util.ArrayList;
@@ -52,7 +53,7 @@ final class FeatureScenarios {
 	}
 
 	private static Scenario chasm(){
-		return new Scenario( "chasm", "be asked before a chasm", HeroClass.WARRIOR,
+		return new Scenario( "chasm", "jump into a chasm", HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();
 					kit.sturdy();
@@ -63,6 +64,9 @@ final class FeatureScenarios {
 					d.move( chasm );
 					d.require( d.env().mode() == EnvMode.MENU, "stepping at the chasm asked nothing: " + d.env().mode() );
 					d.expect( Dungeon.hero.pos != chasm, "the hero entered the chasm without being asked" );
+					d.menu( 0 );
+					d.act( Action.WAIT );
+					d.expect( Dungeon.depth == 2, "answering yes left the hero on depth " + Dungeon.depth + " at " + Dungeon.hero.pos );
 				} );
 	}
 
