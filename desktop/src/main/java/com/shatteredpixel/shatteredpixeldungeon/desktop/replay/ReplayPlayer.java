@@ -1025,6 +1025,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			SlotAction.clearPendingUseItem();
 		}
 
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline.sizeHeroView();
 		mapper.refreshSlots();
 		if (mode == EnvMode.MENU) WindowBridge.age( config );
 		Travel.invalidate();

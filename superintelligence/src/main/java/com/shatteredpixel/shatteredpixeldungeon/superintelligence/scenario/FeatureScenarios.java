@@ -27,6 +27,7 @@ final class FeatureScenarios {
 		all.add( well( "well.Awareness", WaterOfAwareness.class ));
 		all.add( chasm() );
 		all.add( chasmThenMove() );
+		all.add( searchAfterFall() );
 		all.add( grass() );
 		all.add( plant( "plant.Sungrass", Sungrass.Seed::new ));
 		all.add( plant( "plant.Firebloom", Firebloom.Seed::new ));
@@ -85,6 +86,22 @@ final class FeatureScenarios {
 					d.move( d.world().adjacentFree() );
 					d.act( Action.WAIT );
 					d.act( Action.WAIT );
+					d.expect( Dungeon.depth == 2, "the jump left the hero on depth " + Dungeon.depth );
+				} );
+	}
+
+	private static Scenario searchAfterFall(){
+		return new Scenario( "search-after-fall", "search first thing on the floor below a chasm", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.sturdy();
+					world.terrain( world.adjacentFreeStraight(), Terrain.CHASM );
+				},
+				d -> {
+					d.move( d.world().beside( Terrain.CHASM ));
+					d.require( d.env().mode() == EnvMode.MENU, "stepping at the chasm asked nothing: " + d.env().mode() );
+					d.menu( 0 );
+					d.act( Action.SEARCH );
 					d.expect( Dungeon.depth == 2, "the jump left the hero on depth " + Dungeon.depth );
 				} );
 	}

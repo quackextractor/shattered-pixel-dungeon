@@ -36,6 +36,13 @@ public class LevelPipeline {
 	private static final int MAX_SEED_TEXT_LENGTH = 20;
 
 
+	public static void sizeHeroView(){
+		if (Dungeon.hero.fieldOfView == null || Dungeon.hero.fieldOfView.length != Dungeon.level.length()){
+			Dungeon.hero.fieldOfView = new boolean[ Dungeon.level.length() ];
+			Dungeon.level.updateFieldOfView( Dungeon.hero, Dungeon.hero.fieldOfView );
+		}
+	}
+
 	public LevelPipeline( HeadlessGame game ){
 		this.game = game;
 	}

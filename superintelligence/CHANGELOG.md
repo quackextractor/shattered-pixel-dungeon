@@ -175,6 +175,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A search as the first action below a chasm no longer crashes the trainer.** Settling a pending fall before the next
+  action (`5d3df3703`) let that action reach the new floor before the hero had acted there, and `Hero.search` read a field
+  of view sized for the floor above: `throughputbench`'s uniform policy hit `ArrayIndexOutOfBoundsException` in all four
+  runs. `LevelPipeline.sizeHeroView` sizes it as `Char.act` would and runs after the early settle, in scenario setup and
+  before `ReplayPlayer` applies a step, whose headless playback hit the same crash.
+  New scenario `search-after-fall` throws without it.
 - **The teacher gives up on a target it cannot hurt (`issues.md` 47).** It always aimed at the nearest shootable enemy, so a
   piranha its cursed boomerangs never hit held it in place until the position guard ended the run (`LZS-FFF-SGC`). After
   three shots that leave a target's HP unchanged it skips that target until its HP moves. New scenario

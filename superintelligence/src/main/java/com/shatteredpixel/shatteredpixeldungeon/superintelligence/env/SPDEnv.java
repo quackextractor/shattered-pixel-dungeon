@@ -119,6 +119,7 @@ public class SPDEnv {
 		}
 		double landed = pipeline.game().switchRequested() ? settle() : 0;
 		if (!running) return landed;
+		LevelPipeline.sizeHeroView();
 		mapper.refreshSlots();
 		boolean acted = false;
 		stepEntered = mode;
