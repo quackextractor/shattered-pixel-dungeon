@@ -26,6 +26,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( DepthScenarios.all() );
 		ALL.addAll( CreatureScenarios.all() );
 		ALL.addAll( NpcScenarios.all() );
+		ALL.addAll( ConditionScenarios.all() );
 	}
 
 	public static List< Scenario > all(){

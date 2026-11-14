@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Scenarios for the buffs and the Ankh.** `buff.Levitation` (the hero floats over a chasm and falls to depth 2 when it ends),
+  `buff.Invisibility` (an adjacent hunting rat never hits), `buff.Slow` (a step takes two turns), `buff.Charm` (no move
+  into the charmer is offered) and `ankh` (a blessed Ankh revives the hero and the episode runs on).
 - **Scenarios for the remaining mob mechanics and allies.** `mob.Brute` (a felled brute rages), `mob.Ripper` (leaps from 4
   cells), `mob.Golem`, `mob.DM200` (vents gas or hits), `mob.Statue` (fights with its weapon, built by `Statue.random`),
   `mob.Ghoul` (a felled ghoul stays beside its partner), `ally.LivingEarth` (zaps form an Earth Guardian), `ally.Corruption`
