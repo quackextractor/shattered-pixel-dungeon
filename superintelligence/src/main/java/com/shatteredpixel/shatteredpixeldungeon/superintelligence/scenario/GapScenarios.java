@@ -109,9 +109,10 @@ final class GapScenarios {
 						d.gap( "G7: buying opened " + GameScene.answerableWindow().getClass().getSimpleName()
 								+ ", which WindowBridge cannot answer" );
 					}
-					d.waitFor( () -> d.env().mode() == EnvMode.WORLD, 5 );
+					d.require( d.env().mode() == EnvMode.MENU, "the trade window did not reach the agent: " + d.env().mode() );
+					d.menu( 0 );
 					d.expect( d.env().mode() == EnvMode.WORLD, "the shop left the env in " + d.env().mode() );
-					d.expect( Dungeon.gold == gold, "gold moved from " + gold + " to " + Dungeon.gold );
+					d.expect( Dungeon.gold < gold, "buying left gold at " + Dungeon.gold );
 				} );
 	}
 

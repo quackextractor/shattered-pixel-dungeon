@@ -56,7 +56,6 @@ the viewer. Confirmed 2026-11-14:
 
 | gap | scenario | first unreachable step |
 | --- | --- | --- |
-| G7 shop windows cannot be answered | `shop-buy` | `buying opened WndTradeItem, which WindowBridge cannot answer` |
 | G8 no throw from a pack of throwables, unknown potions always drunk | `throw-only`, `potion-unknown-throw` | `USE is masked in WORLD`; `an unidentified PotionOfToxicGas was drunk` |
 
 Three corrections to the design's reading. G6 is not a lost artifact: `throwAt` finds the worn chains in no bag and

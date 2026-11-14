@@ -622,7 +622,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		Replay.Step next = playback.peekNext();
 		if (next == null) return false;
 		EnvMode mode = modeOf( next.mode );
-		if (mode == EnvMode.MENU) return Dungeon.hero.ready;
+		if (mode == EnvMode.MENU) return Dungeon.hero.ready && WindowBridge.open();
 		return (mode == EnvMode.TARGETING && GameScene.aimPending())
 				|| (mode == EnvMode.INVENTORY && GameScene.answerableSelector() != null);
 	}

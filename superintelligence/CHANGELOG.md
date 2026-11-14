@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The shop's trade window can be answered (gap G7).** Buying or selling opens `WndTradeItem`, a plain `Window`
+  `WindowBridge` could not answer, so the env stayed in the world with a window open. Its active buttons are now its
+  options, pressed through the game's own `Button.press`, so `INTERACT` on a for-sale item reaches `MENU` and the
+  first option buys. `shop-buy` passes with no gap and spends gold.
+  The viewer skipped the drain before any recorded `MENU` step, assuming the step that opened it cost no turn; the
+  hero walks onto the heap before the window opens, so it now skips only while a window is already open.
 - **Worn items can be used (gaps G5, G6).** Outside a picker, worn items were in no slot except a held weapon that
   aims, so the policy could not take armour off, activate an equipped artifact (the Rogue's cloak and the Cleric's tome
   start equipped) or cast Ethereal Chains. Every worn item now follows the backpack in the slot list; `USE` on one runs

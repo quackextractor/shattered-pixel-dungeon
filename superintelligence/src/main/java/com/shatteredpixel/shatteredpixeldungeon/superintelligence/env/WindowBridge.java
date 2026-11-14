@@ -2,7 +2,9 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.env;
 
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
+import com.shatteredpixel.shatteredpixeldungeon.ui.RedButton;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndTradeItem;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndUpgrade;
 
 
@@ -18,7 +20,14 @@ public class WindowBridge {
 
 	public static boolean open(){
 		Window w = window();
-		return w instanceof WndOptions || w instanceof WndUpgrade;
+		return w instanceof WndOptions || w instanceof WndUpgrade || !tradeButtons( w ).isEmpty();
+	}
+
+	private static java.util.List< RedButton > tradeButtons( Window w ){
+		java.util.List< RedButton > buttons = new java.util.ArrayList<>();
+		if (!(w instanceof WndTradeItem)) return buttons;
+		for (RedButton button : w.living( RedButton.class )) if (button.active && button.visible) buttons.add( button );
+		return buttons;
 	}
 
 
@@ -42,18 +51,24 @@ public class WindowBridge {
 	public static int optionCount(){
 		Window w = window();
 		if (w instanceof WndUpgrade) return 2;
+		if (w instanceof WndTradeItem) return tradeButtons( w ).size();
 		return (w instanceof WndOptions) ? ((WndOptions) w).optionCount() : 0;
 	}
 
 	public static boolean optionSelectable( int index ){
 		Window w = window();
 		if (w instanceof WndUpgrade) return ((WndUpgrade) w).optionSelectable( index );
+		if (w instanceof WndTradeItem) return index >= 0 && index < tradeButtons( w ).size();
 		return (w instanceof WndOptions) && ((WndOptions) w).optionSelectable( index );
 	}
 
 public static boolean selectOption( int index ){
 		Window w = window();
 		if (w instanceof WndUpgrade) return ((WndUpgrade) w).selectOption( index );
+		if (w instanceof WndTradeItem){
+			java.util.List< RedButton > buttons = tradeButtons( w );
+			return index >= 0 && index < buttons.size() && buttons.get( index ).press();
+		}
 		if (!(w instanceof WndOptions)) return false;
 		return ((WndOptions) w).selectOption( index );
 	}
