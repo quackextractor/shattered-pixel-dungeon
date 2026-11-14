@@ -40,6 +40,21 @@ public final class World {
 		throw new NoFixture( "no free cell beside the hero" );
 	}
 
+	public int adjacentFreeStraight(){
+		int width = level().width();
+		for (int offset : new int[]{ -width, 1, width, -1 }){
+			if (free( hero() + offset )) return hero() + offset;
+		}
+		throw new NoFixture( "no free cell straight beside the hero" );
+	}
+
+	public int beside( int terrain ){
+		for (int offset : PathFinder.NEIGHBOURS8){
+			if (level().map[ hero() + offset ] == terrain) return hero() + offset;
+		}
+		throw new Driver.Stop( "no terrain " + terrain + " beside the hero" );
+	}
+
 	public int adjacentFreeWithRoomBehind( int behind ){
 		for (int offset : PathFinder.NEIGHBOURS8){
 			boolean clear = true;

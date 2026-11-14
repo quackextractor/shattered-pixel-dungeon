@@ -27,6 +27,11 @@ public final class ReachExpectations {
 		EXPECTED.put( "shop-buy", "G7" );
 		EXPECTED.put( "throw-only", "G8" );
 		EXPECTED.put( "potion-unknown-throw", "G8" );
+		for (String avoided : new String[]{ "well.Health", "well.Awareness", "chasm", "trap.WornDart", "trap.PoisonDart",
+				"trap.Burning", "trap.Toxic", "trap.Teleportation", "trap.Summoning", "trap.Alarm", "trap.Gripping",
+				"trap.Disintegration", "trap.Rockfall", "trap.Pitfall" }){
+			EXPECTED.put( avoided, "G9" );
+		}
 		KNOWN_FAILURES.put( "aim-no-enemy", "issues.md 44, an adjacent aim index throws the aimed item itself" );
 	}
 

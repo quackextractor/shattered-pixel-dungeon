@@ -115,7 +115,14 @@ public final class ScenarioRunner {
 	}
 
 	public static ReplayIO.Verification verify( Replay replay ){
-		return ReplayIO.verify( replay, new SPDEnv( ReplayIO.configFor( replay ), HeadlessGame.install() ));
+		try {
+			return ReplayIO.verify( replay, new SPDEnv( ReplayIO.configFor( replay ), HeadlessGame.install() ));
+		} catch (RuntimeException e){
+			ReplayIO.Verification threw = new ReplayIO.Verification();
+			threw.diverged = true;
+			threw.divergence = "threw " + e + " at " + topFrame( e );
+			return threw;
+		}
 	}
 
 	public static String describe( ReplayIO.Verification verified ){

@@ -16,6 +16,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( GapScenarios.all() );
 		ALL.addAll( RangedScenarios.all() );
 		ALL.addAll( CraftScenarios.all() );
+		ALL.addAll( FeatureScenarios.all() );
 	}
 
 	public static List< Scenario > all(){

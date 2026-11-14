@@ -89,6 +89,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A Well of Awareness no longer crashes a headless run.** `WaterOfAwareness.affectHero` adds its effect to
+  `emitter.parent`, and a headless blob's emitter had none, so drinking from one threw a `NullPointerException` in the
+  trainer and in `verify`. `LevelPipeline.attachBlobEmitters` now gives each emitter a parent group, and a scenario's
+  setup attaches emitters to the blobs it seeds. Found by scenario `well.Awareness`, red without it.
 - **An aim no longer walks the hero.** With no scene, `GameScene.ready()` parks the hero's default cell listener in
   `pendingCellListener`, and a `TARGETING` step after a step that spent a turn resolved through it: `USE` on unequipped
   Ethereal Chains equipped them, and the aim at a rat 4 cells away walked the hero 3 cells to it. The viewer stood

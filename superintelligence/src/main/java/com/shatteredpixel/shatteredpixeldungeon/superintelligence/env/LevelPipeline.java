@@ -113,7 +113,7 @@ public class LevelPipeline {
 		if (Dungeon.level == null) return;
 		for (com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob blob : Dungeon.level.blobs.values()){
 			if (blob.emitter == null){
-				new com.shatteredpixel.shatteredpixeldungeon.effects.BlobEmitter( blob );
+				new com.watabou.noosa.Group().add( new com.shatteredpixel.shatteredpixeldungeon.effects.BlobEmitter( blob ));
 			}
 		}
 	}

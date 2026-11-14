@@ -73,6 +73,7 @@ the viewer. Confirmed 2026-11-14:
 | G6 Ethereal Chains cannot be cast | `artifact.EtherealChains` | `USE equips the chains and the aim after it casts nothing; worn, they are in no slot (G5)` |
 | G7 shop windows cannot be answered | `shop-buy` | `buying opened WndTradeItem, which WindowBridge cannot answer` |
 | G8 no throw from a pack of throwables, unknown potions always drunk | `throw-only`, `potion-unknown-throw` | `USE is masked in WORLD`; `an unidentified PotionOfToxicGas was drunk` |
+| G9 known traps, wells and chasms cannot be stepped on | `well.*`, `trap.*` (11), `chasm` | `MOVE_N is masked in WORLD`: `Surroundings.moveLegal` requires `passable`, and `TRAP`, `WELL` and `CHASM` are `AVOID` terrain, which `Hero.handle` walks onto. A well is never drunk and a chasm never jumped by the policy. Found by the suite, not in the design. |
 
 Three corrections to the design's reading. G6 is not a lost artifact: `throwAt` finds the worn chains in no bag and
 detaches nothing, so the aim spends a turn and casts nothing. Before the fix in `CHANGELOG.md` it walked the hero

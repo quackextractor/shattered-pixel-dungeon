@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline;
 import com.watabou.utils.Random;
 
 public final class ScenarioSetup {
@@ -34,6 +35,7 @@ public final class ScenarioSetup {
 				} finally {
 					Random.popGenerator();
 				}
+				LevelPipeline.attachBlobEmitters();
 				Dungeon.observe();
 			}
 		};
