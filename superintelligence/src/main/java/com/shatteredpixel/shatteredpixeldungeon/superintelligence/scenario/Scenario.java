@@ -21,6 +21,7 @@ public final class Scenario {
 	public final Script script;
 	public String[] seeds = DEFAULT_SEEDS;
 	public int depth = 0;
+	public boolean dirtyEnd = false;
 
 	public Scenario( String id, String mechanic, HeroClass hero, Setup setup, Script script ){
 		this.id = id;
@@ -32,6 +33,11 @@ public final class Scenario {
 
 	public Scenario seeds( String... seeds ){
 		this.seeds = seeds;
+		return this;
+	}
+
+	public Scenario dirty(){
+		this.dirtyEnd = true;
 		return this;
 	}
 

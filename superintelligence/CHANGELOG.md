@@ -57,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Roots` masks every move), `Burning` and `Poison` hurting, and seven blobs. 129 scenarios play clean in the real
   viewer (54.5s). `scroll.Recharging` diverges there at step 2 with `HeadlessSprite$Inert.start` drawing from the
   gameplay stream again, the fault `issues.md` 26 was.
+- **Leak scenarios.** `leak.aim`, `.picker`, `.menu`, `.sell` and `.death` end their episode mid-aim, in a picker, a
+  window, the shop's sell picker, or dead, with no tail; every recording made before them must verify again right after.
+  With `RunState`'s selector and window clears removed, `leak.picker` leaves `melee` replaying in `INVENTORY`.
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an

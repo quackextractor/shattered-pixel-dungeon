@@ -22,6 +22,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( MobScenarios.all() );
 		ALL.addAll( StateScenarios.all() );
 		ALL.addAll( EffectScenarios.all() );
+		ALL.addAll( LeakScenarios.all() );
 	}
 
 	public static List< Scenario > all(){

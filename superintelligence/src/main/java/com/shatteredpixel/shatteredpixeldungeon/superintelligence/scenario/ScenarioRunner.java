@@ -61,7 +61,7 @@ public final class ScenarioRunner {
 			env.reset( seed, scenario.hero, ScenarioSetup.hookFor( scenario ));
 			recorder.begin( env.seedText(), scenario.hero.name(), 0, config.turnLimitPerFloor, config );
 			scenario.script.run( driver );
-			tail( driver );
+			if (!scenario.dirtyEnd) tail( driver );
 		} catch (NoFixture e){
 			missing.append( ' ' ).append( seed ).append( '=' ).append( e.getMessage() );
 			return false;

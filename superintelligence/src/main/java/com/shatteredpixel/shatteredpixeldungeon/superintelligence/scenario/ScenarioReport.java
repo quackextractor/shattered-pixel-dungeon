@@ -29,6 +29,18 @@ public final class ScenarioReport {
 		}
 	}
 
+	public static void leakCheck( ScenarioRunner.Result leak, List< ScenarioRunner.Result > earlier ){
+		for (ScenarioRunner.Result result : earlier){
+			if (result == leak || result.replay == null || result.failure.contains( "verify: " )) continue;
+			ReplayIO.Verification again = ScenarioRunner.verify( result.replay );
+			if (!again.passed()){
+				ScenarioRunner.fail( leak, "after it, " + result.scenario.id + " no longer verifies: "
+						+ ScenarioRunner.describe( again ));
+				return;
+			}
+		}
+	}
+
 	public static void write( File out, List< ScenarioRunner.Result > results ){
 		List< String > lines = new ArrayList<>();
 		lines.add( "id,mechanic,status,reach,seed,steps,ms,failure" );

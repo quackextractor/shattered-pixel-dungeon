@@ -50,6 +50,7 @@ public class ScenarioCheck {
 		for (Scenario scenario : chosen){
 			inFlight = scenario.id;
 			results.add( runner.run( scenario ));
+			if (scenario.dirtyEnd) ScenarioReport.leakCheck( results.get( results.size() - 1 ), results );
 		}
 		inFlight = "re-verification";
 
