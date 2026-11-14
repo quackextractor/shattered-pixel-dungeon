@@ -36,6 +36,7 @@ public class RewardModel {
 	private final java.util.Map< com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob, Integer > bossLowest = new java.util.IdentityHashMap<>();
 	private com.shatteredpixel.shatteredpixeldungeon.levels.Level prevLevelMap;
 	private final int[] prevLoot = new int[ LOOT_KINDS ];
+	private final int[] prevHeapLoot = new int[ LOOT_KINDS ];
 	private int deepestPaid = 0;
 	private boolean lastStepAdvancedClock = true;
 	private final java.util.Map<Integer, java.util.BitSet> stoodOn = new java.util.HashMap<>();
@@ -263,6 +264,7 @@ public class RewardModel {
 		prevBranch = Dungeon.branch;
 		prevItemValue = inventoryValue();
 		countLoot( hero, prevLoot );
+		countHeapLoot( prevHeapLoot );
 		prevIdentified = countIdentified();
 		prevCursedEquipped = countCursedEquipped();
 		prevCarried = countCarried();
@@ -317,14 +319,27 @@ public class RewardModel {
 		}
 	}
 
+	private static void countHeapLoot( int[] out ){
+		java.util.Arrays.fill( out, 0 );
+		for (com.shatteredpixel.shatteredpixeldungeon.items.Heap heap : Dungeon.level.heaps.values()){
+			for (Item item : heap.items){
+				int kind = lootKind( item );
+				if (kind >= 0) out[ kind ] += item.quantity();
+			}
+		}
+	}
+
 	private float lootChange( Hero hero ){
 		int[] now = new int[ LOOT_KINDS ];
 		countLoot( hero, now );
-		boolean droppedHere = Dungeon.level.heaps.get( hero.pos ) != null;
+		int[] onFloor = new int[ LOOT_KINDS ];
+		countHeapLoot( onFloor );
+		boolean sameFloor = Dungeon.level == prevLevelMap;
 		float change = 0f;
 		for (int kind = 0; kind < LOOT_KINDS; kind++){
 			int gained = now[ kind ] - prevLoot[ kind ];
-			if (gained > 0 || droppedHere) change += lootValue( kind ) * gained;
+			if (gained > 0) change += lootValue( kind ) * gained;
+			else if (gained < 0 && sameFloor) change -= lootValue( kind ) * Math.min( -gained, Math.max( 0, onFloor[ kind ] - prevHeapLoot[ kind ] ));
 		}
 		return change;
 	}

@@ -175,6 +175,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **Throwing an item and picking it back up no longer pays.** The loot term charged a lost item only when a heap lay
+  under the hero, which a drop leaves and `THROW` does not: a ration thrown one cell away and collected with `INTERACT`
+  paid +200 each round trip (food 200, gear 100, scroll 75). A loss is now charged for as many items of a kind as the
+  floor's heaps gained that step, so a drop or a throw is charged and eating, reading or a shattered potion is not, and
+  reading a scroll while standing on a heap is no longer charged as a drop. New `rewardcheck` case, red at +200 without it.
 - **A window whose back press does nothing closes the same way in the trainer and the viewer.** `WindowBridge.dismissUnanswerable`
   fell back to dropping the parked slot when `onBackPressed` left the window up (`WndBlacksmith`'s reward, `WndResurrect`).
   Headless that closed it; in the viewer the window stayed on the scene and was reported on every later settle. It now
