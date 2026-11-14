@@ -71,10 +71,12 @@ public final class ScenarioRunner {
 			stopped = "threw " + e + " at " + topFrame( e );
 		}
 
+		String worldEnd = env.running() ? WorldDigest.capture() : "";
 		recorder.end( env.ledger().total(), Dungeon.depth, env.turnsTotal(), 0,
 				env.running() ? "" : env.endReason().name() );
 		Replay replay = recorder.replay();
 		replay.scenario = scenario.id;
+		replay.worldEnd = worldEnd;
 		replay.group = "scenario";
 		result.replay = replay;
 		result.seed = env.seedText();

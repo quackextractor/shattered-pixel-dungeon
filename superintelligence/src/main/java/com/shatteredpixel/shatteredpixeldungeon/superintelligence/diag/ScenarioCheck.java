@@ -105,6 +105,16 @@ public class ScenarioCheck {
 		for (ScenarioRunner.Result result : results){
 			if (!"melee".equals( result.scenario.id ) || result.replay == null) continue;
 			Replay replay = result.replay;
+			String digest = replay.worldEnd;
+			replay.worldEnd = digest.replaceFirst( "mobs:[0-9a-f]+", "mobs:0" );
+			ReplayIO.Verification tampered = ScenarioRunner.verify( replay );
+			replay.worldEnd = digest;
+			if (tampered.passed() || !tampered.divergence.contains( "section mobs" )){
+				GateReport.fail( "self-test: melee verified with its world_end mobs digest altered: "
+						+ (tampered.passed() ? "passed" : tampered.divergence) );
+			} else {
+				System.out.println( "  melee with an altered world_end does not verify: " + tampered.divergence );
+			}
 			replay.scenario = "";
 			ReplayIO.Verification verified = ScenarioRunner.verify( replay );
 			replay.scenario = "melee";

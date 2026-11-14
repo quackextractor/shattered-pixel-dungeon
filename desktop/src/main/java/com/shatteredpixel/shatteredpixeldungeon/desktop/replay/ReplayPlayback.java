@@ -21,6 +21,7 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.WorldDigest;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.StepRngAssertion;
 
@@ -237,6 +238,15 @@ public class ReplayPlayback {
 
 		divergedAt = cursor;
 		reason = mismatch;
+		return false;
+	}
+
+	public boolean checkWorld( String live ){
+		if (divergedAt >= 0 || cursor != replay.steps.size() - 1) return divergedAt < 0;
+		String mismatch = WorldDigest.difference( replay.worldEnd, live );
+		if (mismatch == null) return true;
+		divergedAt = cursor;
+		reason = "world_end: " + mismatch;
 		return false;
 	}
 

@@ -56,6 +56,7 @@ final class RangedScenarios {
 					() -> Reflection.newInstance( wand )));
 		}
 		all.add( potionThrow() );
+		all.add( knockback() );
 		return all;
 	}
 
@@ -122,6 +123,25 @@ final class RangedScenarios {
 					if (type == ParalyticDart.class && rat.HP < hp){
 						d.expect( rat.buff( Paralysis.class ) != null, "a paralytic dart hit and did not paralyse" );
 					}
+				} );
+	}
+
+	private static Scenario knockback(){
+		return new Scenario( "knockback", "a blast wave throws a rat back", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.sturdy();
+					kit.give( new WandOfBlastWave() );
+					Rat rat = world.mob( new Rat(), world.adjacentFreeWithRoomBehind( 2 ));
+					rat.HP = rat.HT = 100;
+				},
+				d -> {
+					Rat rat = d.world().find( Rat.class );
+					d.use( WandOfBlastWave.class );
+					d.require( d.env().mode() == EnvMode.TARGETING, "the wand did not ask for a target: " + d.env().mode() );
+					d.aimNearest();
+					d.expect( Dungeon.level.distance( rat.pos, Dungeon.hero.pos ) >= 2, "the rat stayed at distance "
+							+ Dungeon.level.distance( rat.pos, Dungeon.hero.pos ));
 				} );
 	}
 

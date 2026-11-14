@@ -60,6 +60,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Leak scenarios.** `leak.aim`, `.picker`, `.menu`, `.sell` and `.death` end their episode mid-aim, in a picker, a
   window, the shop's sell picker, or dead, with no tail; every recording made before them must verify again right after.
   With `RunState`'s selector and window clears removed, `leak.picker` leaves `melee` replaying in `INVENTORY`.
+- **`world_end`, compared on both sides.** `scenario.WorldDigest` hashes six sections at the end of a scenario (hero,
+  mobs, heaps, terrain, traps, blobs: positions, health, alignment, buff classes, items, trap state, blob volume) and the
+  runner writes it as `world_end=`. `verify` and `ReplayPlayer` compare it after the last step and name the section that
+  differs, so an effect on a mob that never touches the hero is still checked. With the mobs hash altered, `verify`
+  reports `world_end: section mobs differs` (a self-test) and so does headless playback. New scenario `knockback`.
+  135 scenarios play clean in the real viewer with the digest checked (56.6s).
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an

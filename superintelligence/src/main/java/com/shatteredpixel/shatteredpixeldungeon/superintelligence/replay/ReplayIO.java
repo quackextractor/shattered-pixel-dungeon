@@ -7,6 +7,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioSetup;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.WorldDigest;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -469,6 +470,14 @@ boolean heroAlive = Dungeon.hero.isAlive();
 			}
 
 			if (observer != null) observer.onStep( i, step, true );
+		}
+
+		String world = result.diverged || result.unwatchableAt >= 0 || result.stepsVerified < replay.steps.size()
+				|| !env.running() ? null : WorldDigest.difference( replay.worldEnd, WorldDigest.capture() );
+		if (world != null){
+			result.diverged = true;
+			result.divergedAt = replay.steps.size() - 1;
+			result.divergence = "world_end: " + world;
 		}
 
 		if (!result.diverged && result.unwatchableAt < 0 && result.stepsVerified < replay.steps.size()){

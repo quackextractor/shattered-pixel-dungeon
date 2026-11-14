@@ -42,6 +42,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioSetup;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.WorldDigest;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 
 /**
@@ -1038,7 +1039,8 @@ awaitingSettle = true;
 			if (!playback.checkPosition( settledPosition )
 					|| !playback.checkState( Dungeon.hero.HP, Actor.now(), ReplayRecorder.inventory() )
 					|| !playback.checkRng( com.watabou.utils.RandomTrace.baseDraws(),
-							com.watabou.utils.RandomTrace.baseFingerprint() )){
+							com.watabou.utils.RandomTrace.baseFingerprint() )
+					|| (playback.cursor() == playback.total() - 1 && !playback.checkWorld( WorldDigest.capture() ))){
 				if (CONTINUE_ON_DIVERGE){
 					if (!diverged) reportDivergence();
 					diverged = true;
