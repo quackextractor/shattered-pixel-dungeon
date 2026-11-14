@@ -18,6 +18,7 @@ termination=DEATH
 reward_profile=default
 group=
 steps=83
+playback=ok
 USE 0 WORLD 1376 1.7399978637695312  20 0.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 1 SLOT 1376 0.0 ThrowingKnife:1@0,Waterskin:2@2 20 0.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 0 TARGETING 1376 -0.26000213623046875  20 1.0 Food:1,ThrowingKnife:1,VelvetPouch():1,Waterskin:1 1 1099511628211 1

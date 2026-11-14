@@ -18,6 +18,7 @@ termination=DEATH
 reward_profile=default
 group=
 steps=44
+playback=ok
 USE 0 WORLD 1485 1.6999969482421875  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 1 SLOT 1485 0.0 ThrowingSpike:1@0,Waterskin:2@2 20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 0 0 1
 USE 0 TARGETING 1485 -0.3000030517578125  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 1 0 1
