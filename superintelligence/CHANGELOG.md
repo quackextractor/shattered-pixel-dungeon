@@ -32,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   way fails. 16 new scenarios: `cancel.SLOT/INVENTORY/TALENT/ALCHEMY/MENU`, `drop-pickup`, `aim-cancel`, `aim-empty`,
   `aim-no-enemy`, `interact-direction`, `unequip`, `artifact.Cloak`, `shop-buy`, `throw-only`, `potion-unknown-throw`.
   G1-G5, G7 and G8 of the design are confirmed (`issues.md` 45); an adjacent aim throws a wand (`issues.md` 44).
+- **Shooting and throwing scenarios.** `bow` (Huntress), `staff` (Mage), `thrown.ThrowingKnife/Dart/ThrowingStone/
+  ParalyticDart`, all 13 wands and `potion-throw`, each aimed at a rat through the real mask; every one is reachable by
+  the policy and plays clean in the real viewer. Red with `InstantBolt` removed from the headless stage (9 wands) and
+  with the held-weapon slot removed from `ActionMapper.refreshSlots` (`staff`).
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an
