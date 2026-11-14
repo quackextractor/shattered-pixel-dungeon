@@ -332,6 +332,20 @@ File dropped = write( dir, "DROPPED", "DUELIST", -2.0, 1, 3 );
 	}
 
 
+	public static void checkScenarioRecordingsAreListed(){
+		List< File > dirs = com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayCatalog.defaultDirectories();
+		for (String dir : new String[]{ "scenarios", "sweep" }){
+			boolean listed = false;
+			for (File d : dirs) listed |= d.getPath().replace( File.separatorChar, '/' ).endsWith( "superintelligence/out/" + dir );
+			if (!listed){
+				fail( "the replay list does not read superintelligence/out/" + dir + ", so its recordings, group "
+						+ "scenario, are never shown" );
+				return;
+			}
+		}
+		System.out.println( "  out/scenarios and out/sweep are listed, each recording under its group" );
+	}
+
 	public static void checkAGroupIsItsOwnSection(){
 		File corpus = dir( "group-corpus" );
 		File trainer = dir( "group-trainer" );

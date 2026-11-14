@@ -6,7 +6,7 @@ import java.nio.file.Files;
 
 public class ReplayCatalogCheck {
 
-	private static final int CHECKS = 31;
+	private static final int CHECKS = 32;
 
 	public static void main( String[] args ){
 		try {
@@ -43,6 +43,7 @@ public class ReplayCatalogCheck {
 			ReplayCatalogGroupingCheck.checkTheSameDirectoryUnderTwoSpellingsIsOneDirectory();
 			ReplayCatalogGroupingCheck.checkASharedSeedResolvesByFileName();
 			ReplayCatalogGroupingCheck.checkAGroupIsItsOwnSection();
+			ReplayCatalogGroupingCheck.checkScenarioRecordingsAreListed();
 			ReplayCatalogGroupingCheck.checkSubdirectoriesAreScannedAndRejectedIsNot();
 
 			ReplayCatalogViewCheck.checkNumbersFollowTheView();

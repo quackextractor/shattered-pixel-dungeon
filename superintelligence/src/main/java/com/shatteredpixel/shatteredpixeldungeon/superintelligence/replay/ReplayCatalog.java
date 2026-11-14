@@ -145,7 +145,7 @@ public class ReplayCatalog {
 	}
 
 
-	static List<File> defaultDirectories(){
+	public static List<File> defaultDirectories(){
 
 		LinkedHashSet<File> dirs = new LinkedHashSet<>();
 
@@ -153,6 +153,8 @@ public class ReplayCatalog {
 		if (repo != null){
 			dirs.add( corpusDirectory() );
 			dirs.add( canonical( new File( repo, "superintelligence/trainer-replays" )));
+			dirs.add( canonical( new File( repo, "superintelligence/out/scenarios" )));
+			dirs.add( canonical( new File( repo, "superintelligence/out/sweep" )));
 		}
 
 		for (File dir : ReplayIndex.read()) dirs.add( canonical( dir ));

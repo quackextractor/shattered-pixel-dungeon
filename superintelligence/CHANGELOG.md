@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The replay list shows scenario and sweep recordings.** `ReplayCatalog` now also reads `superintelligence/out/scenarios`
+  and `superintelligence/out/sweep`, so every recording the suite writes lists under its own group (`scenario`) and can be
+  picked from the viewer's list. `replaycheck` requires both directories; removing one fails it.
 - **The sweep's second driver samples what the policy can emit.** Odd sweep worlds are now played by `scenario.UniformPolicy`,
   which picks uniformly from the head `EpisodeCollector.headFor` chooses and maps it through `subModeAction`, as an
   untrained policy does. `coverage.csv` drops the macro actions, which resolve before they reach the env, and reaches
