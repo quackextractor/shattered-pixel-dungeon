@@ -224,6 +224,10 @@ public class Wandmaker extends NPC {
 		private static boolean spawned;
 		
 		private static boolean given;
+
+		public static boolean given(){
+			return given;
+		}
 		
 		public static Wand wand1;
 		public static Wand wand2;

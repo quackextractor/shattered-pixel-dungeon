@@ -1069,8 +1069,17 @@ awaitingSettle = true;
 	 * REST resolves after the single turn the trainer also spends on it. An earlier version forced the
 	 * flag clear, which made REST cost zero turns and stopped matching the trainer.
 	 */
+	private int renderWaitFrames = 0;
+
 	private void settle(){
 		if (Dungeon.hero == null) return;
+		if (RenderQueue.gamePending() && renderWaitFrames < MAX_PARKED_FRAMES){
+			renderWaitFrames++;
+			awaitingSettle = true;
+			return;
+		}
+		renderWaitFrames = 0;
+		WindowBridge.dismissUnanswerable();
 
 		if (Dungeon.level != null) playback.gridWidth( Dungeon.level.width() );
 

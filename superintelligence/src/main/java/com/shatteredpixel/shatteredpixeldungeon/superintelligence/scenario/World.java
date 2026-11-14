@@ -82,8 +82,9 @@ public final class World {
 		return true;
 	}
 
-	public void clearMobs(){
+	public void clearMobs( Mob... keep ){
 		for (Mob mob : new ArrayList<>( level().mobs )){
+			if (java.util.Arrays.asList( keep ).contains( mob )) continue;
 			Actor.remove( mob );
 			level().mobs.remove( mob );
 			if (mob.sprite != null) mob.sprite.killAndErase();

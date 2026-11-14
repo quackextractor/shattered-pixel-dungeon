@@ -216,6 +216,7 @@ if (mode == EnvMode.WORLD){
 				accumulated += terminate( RewardModel.TerminateReason.STALLED );
 				break;
 			}
+			WindowBridge.dismissUnanswerable();
 			if (WindowBridge.open() && Dungeon.hero.ready){
 				WindowBridge.age( config );
 				mode = EnvMode.MENU;
@@ -262,6 +263,7 @@ if (mode == EnvMode.WORLD){
 			accumulated += checkFloorLimits();
 			if (!running) break;
 			mapper.refreshSlots();
+			WindowBridge.dismissUnanswerable();
 			refreshMasksAfterDrain();
 			if (WindowBridge.open()){
 				WindowBridge.age( config );

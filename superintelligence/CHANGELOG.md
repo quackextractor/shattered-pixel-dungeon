@@ -157,6 +157,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A message window the agent cannot answer is closed, as the viewer closes it (`issues.md` 48).** The viewer dismisses any
+  window `WindowBridge` cannot answer through `onBackPressed`; the trainer left it parked. The Blacksmith and the Imp give
+  their quests, and the Blacksmith his pickaxe, only when their `WndQuest` hides, so in the trainer neither quest ever
+  started and a recording diverged in the viewer on the pickaxe. `SPDEnv.settle` now dismisses such a window before and
+  after the drain, and `ReplayPlayer.settle` does the same; the rendered viewer also waits, up to 600 frames, while a
+  `Game.runOnRenderThread` callback is still queued, since the game shows these windows one frame late. New scenarios
+  `npc.Ghost`, `npc.Wandmaker`, `npc.Blacksmith` and `npc.Imp` take each quest on its floor (4, 9, 14, 19); the last two
+  fail without the fix. `Ghost.Quest.given()` and `Wandmaker.Quest.given()` are new getters.
 - **The policy can step onto a known trap, a well or a chasm, and a chasm jump plays the same in the viewer (gap G9,
   `issues.md` 46).** `Surroundings.moveLegal` required `passable`, and `TRAP`, `WELL` and `CHASM` are `AVOID` terrain,
   which `Hero.handle` walks onto; a move is now legal onto `avoid` cells too. The chasm's "jump?" dialog accepts an

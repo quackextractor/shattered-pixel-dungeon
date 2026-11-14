@@ -74,6 +74,13 @@ public static boolean selectOption( int index ){
 	}
 
 
+	public static void dismissUnanswerable(){
+		Window w = window();
+		if (w == null || open() || GameScene.answerableSelector() != null) return;
+		w.onBackPressed();
+		if (window() == w) GameScene.clearHeadlessWindow();
+	}
+
 	public static boolean close(){
 		if (!open()) return false;
 		GameScene.clearHeadlessWindow();
