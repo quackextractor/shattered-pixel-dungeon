@@ -10,7 +10,7 @@ entry and leaves this list, or moves to `REJECTED.md`.
 
 - [ ] **Inference latency** (plan 2 C, P1 b): fuse launches, LSTM state resident per slot.
 - [ ] **Update leftovers** (P2): im2col/col2im, packed kernels, fused LSTM, slice sum.
-- [ ] **Env CPU** (P3): `buildSpatial`, `countNewlyExplored`, `levelExplorePercent`, `applyEdges`, `Travel.frontier`.
+- [ ] **Env CPU** (P3): structural only now (packed observation, travel masks per state version, incremental reward); point fixes measured as noise.
 - [ ] **Engine hot paths** (P5): `ShadowCaster`, `PathFinder`, scheduling; bit-identical only.
 - [ ] **Learning loop** (P6): bigger minibatches with a scaled learning rate; depth at equal turns must hold.
 - [ ] **GPU stall under normal use** (`issues.md` 41): an hours-long run with the new diagnostics.
@@ -116,10 +116,15 @@ entry and leaves this list, or moves to `REJECTED.md`.
         backward pass, fewer and fused launches (~100 a minibatch today). Gate: `gpucheck` against the CPU
         update to 1e-4, parameters to 1e-2 of the step.
   - [ ] **P3 Env CPU 5x (target ~20 us/turn, 60-90K).** Done: travel maps cached per decision (was 23% of
-        in-process training samples). Next in the profile: `ObservationEncoder.buildSpatial`,
-        `countNewlyExplored`, `levelExplorePercent`, `applyEdges` (~25% together), `PathFinder` in
-        `Travel.frontier`, level saves on floor change (engine). GPU legs need the GPU free: Control at 98% of the 3D engine halved
-        inference (61.8K -> 30.0K forwards/s) and the update (16 -> 38.5 us). Re-profile env-only after the sparse fixes.
+        in-process training samples). Re-profiled 2026-11-14 (env leg, 48 envs, JFR, last 52 s, 1,796
+        samples; `out/evidence/env-cpu/`): engine `runToHeroReady` 28%, `ObservationEncoder.encode` 18.7%
+        (`buildSpatial` 11.5%, of it `writeCell` 5.4%; `countNewlyExplored` 0.8%), `actionMask` 12.8%
+        (`Travel.step` 10.1%: walkable map 4.5%, targets 4.0%, `getStep` 1.2%), `RewardModel.step` 7.7%,
+        `Transition.packGrid` 5.6%, reset 4.8%, `DescentBot.label` 3.9%. `levelExplorePercent` and `applyEdges`
+        are gone from the profile. Env threads use ~12 of ~17 process cores, C2 ~4, and the leg still climbs at
+        round 5 (35K -> 94K), so a cut under ~3% does not show: two identical-output ones at ~1-2% each measured
+        as noise (`REJECTED.md`). What is left needs whole-structure changes. GPU legs need the GPU free: Control at 98% of the 3D engine halved
+        inference (61.8K -> 30.0K forwards/s) and the update (16 -> 38.5 us).
         Candidates: observation built as packed bits directly and windowed on the GPU from level-space
         deltas; travel masks only when TRAVEL could be chosen, cached per game-state version; teacher
         labels only on retained steps, with `lastHp` and `waited` (the only state it carries) updated
