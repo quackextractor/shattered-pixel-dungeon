@@ -31,9 +31,12 @@ public final class Driver {
 	private final List< String > failures = new ArrayList<>();
 	private final List< String > gaps = new ArrayList<>();
 
-	Driver( SPDEnv env, ReplayRecorder recorder ){
+	private final int maxSteps;
+
+	Driver( SPDEnv env, ReplayRecorder recorder, int maxSteps ){
 		this.env = env;
 		this.recorder = recorder;
+		this.maxSteps = maxSteps;
 	}
 
 	public SPDEnv env(){
@@ -62,7 +65,7 @@ public final class Driver {
 
 	public void step( Action action, int secondary ){
 		if (!env.running()) throw new Stop( "the episode ended (" + env.endReason() + ") before " + action );
-		if (steps() >= MAX_STEPS) throw new Stop( "the script passed " + MAX_STEPS + " steps" );
+		if (steps() >= maxSteps) throw new Stop( "the script passed " + maxSteps + " steps" );
 		String unreachable = PolicyReach.check( env, action, secondary );
 		if (unreachable != null) gap( unreachable );
 		recorder.record( action, secondary, env.mode() );

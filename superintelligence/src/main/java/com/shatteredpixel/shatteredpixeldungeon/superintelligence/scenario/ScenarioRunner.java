@@ -55,7 +55,7 @@ public final class ScenarioRunner {
 	private boolean attempt( Scenario scenario, String seed, Result result, StringBuilder missing ){
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		ReplayRecorder recorder = new ReplayRecorder();
-		Driver driver = new Driver( env, recorder );
+		Driver driver = new Driver( env, recorder, scenario.maxSteps + TAIL_STEPS );
 		String stopped = null;
 		try {
 			env.reset( seed, scenario.hero, ScenarioSetup.hookFor( scenario ));
@@ -85,7 +85,8 @@ public final class ScenarioRunner {
 		if (stopped != null) fail( result, stopped );
 		else if (!driver.failures().isEmpty()) fail( result, String.join( "; ", driver.failures() ));
 		else result.status = "OK";
-		ReachExpectations.judge( result, driver.gaps(), stopped == null && !driver.failures().isEmpty() );
+		ReachExpectations.judge( result, scenario.judgeReach ? driver.gaps() : java.util.List.of(),
+				stopped == null && !driver.failures().isEmpty() );
 
 		ReplayIO.Verification verified = verify( replay );
 		if (!verified.passed()){

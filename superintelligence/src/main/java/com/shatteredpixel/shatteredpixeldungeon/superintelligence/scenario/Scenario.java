@@ -22,6 +22,8 @@ public final class Scenario {
 	public String[] seeds = DEFAULT_SEEDS;
 	public int depth = 0;
 	public boolean dirtyEnd = false;
+	public boolean judgeReach = true;
+	public int maxSteps = Driver.MAX_STEPS;
 
 	public Scenario( String id, String mechanic, HeroClass hero, Setup setup, Script script ){
 		this.id = id;
@@ -38,6 +40,12 @@ public final class Scenario {
 
 	public Scenario dirty(){
 		this.dirtyEnd = true;
+		return this;
+	}
+
+	public Scenario botDriven( int maxSteps ){
+		this.judgeReach = false;
+		this.maxSteps = maxSteps;
 		return this;
 	}
 

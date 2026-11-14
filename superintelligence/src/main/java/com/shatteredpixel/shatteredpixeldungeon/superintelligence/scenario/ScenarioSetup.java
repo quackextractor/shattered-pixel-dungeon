@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline;
 import com.watabou.utils.Random;
 
@@ -10,6 +11,7 @@ public final class ScenarioSetup {
 
 	public interface Hook {
 		boolean jump();
+		boolean landed();
 		void build();
 	}
 
@@ -25,7 +27,14 @@ public final class ScenarioSetup {
 	public static Hook hookFor( Scenario scenario ){
 		return new Hook() {
 			@Override public boolean jump(){
-				return false;
+				if (landed()) return false;
+				com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.clearPendingCellListener();
+				return Dungeon.level.activateTransition( Dungeon.hero, new LevelTransition( Dungeon.level, Dungeon.hero.pos,
+						LevelTransition.Type.REGULAR_EXIT, scenario.depth, 0, LevelTransition.Type.REGULAR_ENTRANCE ));
+			}
+
+			@Override public boolean landed(){
+				return scenario.depth <= 0 || (Dungeon.depth == scenario.depth && Dungeon.hero != null);
 			}
 
 			@Override public void build(){

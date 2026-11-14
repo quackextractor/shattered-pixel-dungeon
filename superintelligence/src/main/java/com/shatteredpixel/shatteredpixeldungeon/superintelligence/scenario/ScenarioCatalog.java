@@ -23,6 +23,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( StateScenarios.all() );
 		ALL.addAll( EffectScenarios.all() );
 		ALL.addAll( LeakScenarios.all() );
+		ALL.addAll( DepthScenarios.all() );
 	}
 
 	public static List< Scenario > all(){

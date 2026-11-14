@@ -27,6 +27,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroAction;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
+import com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene;
 import com.watabou.noosa.Game;
 import com.shatteredpixel.shatteredpixeldungeon.effects.MagicMissile;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.MissileSprite;
@@ -226,7 +227,7 @@ public class ReplayPlayer {
 	private final String rngTracePath;
 	private boolean rngTraceArmed = false;
 	private boolean rngArmed = false;
-	private boolean scenarioBuilt = false;
+	private int scenarioPhase = 0;
 
 	/**
 	 * Per-frame record of the world, and per-step alongside it, including the cells.
@@ -389,6 +390,11 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			}
 		}
 
+		if (scenarioPhase == 1 && !landed()){
+			frameBoundary( false, elapsed, null );
+			return;
+		}
+
 		sinceStep += elapsed;
 
 		if (sinceStep < BASE_STEP_SECONDS / speed){
@@ -407,6 +413,11 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		}
 
 		if (!readyToAct() && driveToHeroReady() != Drain.READY){
+			frameBoundary( false, elapsed, null );
+			return;
+		}
+
+		if (scenarioPhase < 2 && !scenarioReady()){
 			frameBoundary( false, elapsed, null );
 			return;
 		}
@@ -928,6 +939,27 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		return Dungeon.hero.ready;
 	}
 
+	private boolean scenarioReady(){
+		ScenarioSetup.Hook hook = ScenarioSetup.hookFor( playback.replay().scenario );
+		if (hook == null){
+			scenarioPhase = 2;
+			return true;
+		}
+		if (scenarioPhase == 0){
+			scenarioPhase = 1;
+			if (hook.jump()) return false;
+		}
+		if (!landed()) return false;
+		hook.build();
+		scenarioPhase = 2;
+		return true;
+	}
+
+	private boolean landed(){
+		ScenarioSetup.Hook hook = ScenarioSetup.hookFor( playback.replay().scenario );
+		return hook == null || (hook.landed() && !(Game.scene() instanceof InterlevelScene));
+	}
+
 	private void applyNextStep(){
 		Replay.Step step = playback.peek();
 		if (step == null){
@@ -955,11 +987,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			flushDrawSites( ".gen" );
 			rngTrace.onReset();
 			rngTraceArmed = true;
-		}
-		if (!scenarioBuilt){
-			ScenarioSetup.Hook hook = ScenarioSetup.hookFor( playback.replay().scenario );
-			if (hook != null) hook.build();
-			scenarioBuilt = true;
 		}
 		if (!rngArmed){
 			com.watabou.utils.RandomTrace.reset();
@@ -1211,7 +1238,7 @@ awaitingSettle = true;
 		haltReason = "";
 		diverged = false;
 		rebuilding = true;
-		scenarioBuilt = false;
+		scenarioPhase = 0;
 		playback.rewind();
 	}
 

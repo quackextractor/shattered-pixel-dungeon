@@ -66,6 +66,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   differs, so an effect on a mob that never touches the hero is still checked. With the mobs hash altered, `verify`
   reports `world_end: section mobs differs` (a self-test) and so does headless playback. New scenario `knockback`.
   135 scenarios play clean in the real viewer with the digest checked (56.6s).
+- **Scenarios on any floor.** A scenario with a depth asks for a synthetic `LevelTransition` to that floor after the hero
+  is ready; the trainer lands through its own pipeline, the viewer through the game's `InterlevelScene`, and the setup is
+  built only once the new floor is up (`ReplayPlayer` waits in a phase of its own). `depth-jump` (floor 3), `stairs`
+  (down by `TRAVEL_STAIRS`, back up onto the entrance, floor 1 unchanged) and `boss.goo5` (the teacher fights Goo on floor
+  5) play clean in the real viewer; 138 in all (52.8s). With the player's jump skipped, `depth-jump` and `boss.goo5` stop
+  at step 0 in `scenarioplayback`.
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an
