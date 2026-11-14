@@ -225,6 +225,8 @@ public class SlotCheck {
 		String where = "a use that does nothing is not offered";
 
 		java.util.ArrayList< Item > carried = new java.util.ArrayList<>( Dungeon.hero.belongings.backpack.items );
+		com.shatteredpixel.shatteredpixeldungeon.items.KindOfWeapon weapon = Dungeon.hero.belongings.weapon;
+		Dungeon.hero.belongings.weapon = null;
 		Dungeon.hero.belongings.backpack.items.clear();
 		Dungeon.hero.belongings.backpack.items.add( new Waterskin() );
 		Dungeon.hero.belongings.backpack.items.add( new VelvetPouch() );
@@ -241,6 +243,13 @@ public class SlotCheck {
 		boolean offeredForFood = mask[ Action.USE.index ] > 0.5f;
 
 		Dungeon.hero.belongings.backpack.items.clear();
+		Dungeon.hero.belongings.backpack.items.add( new Waterskin() );
+		Dungeon.hero.belongings.weapon = weapon;
+		mapper.refreshSlots();
+		mapper.actionMask( EnvMode.WORLD, mask );
+		boolean offeredForAbility = mask[ Action.USE.index ] > 0.5f;
+
+		Dungeon.hero.belongings.backpack.items.clear();
 		Dungeon.hero.belongings.backpack.items.addAll( carried );
 
 		if (offeredForNothing){
@@ -249,6 +258,9 @@ public class SlotCheck {
 		}
 		if (!offeredForFood){
 			fail( where, "USE stayed masked with Food carried, so the case proves nothing" );
+		}
+		if (!offeredForAbility){
+			fail( where, "USE stayed masked with the Duelist's worn weapon and its two charges, so its ability is reachable only while something else is carried" );
 		}
 	}
 

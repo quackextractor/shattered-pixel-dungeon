@@ -24,7 +24,7 @@ final class GapScenarios {
 	private GapScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( unequip(), cloak(), chains(), shopBuy(), throwOnly(), unknownPotionThrow() );
+		return Arrays.asList( unequip(), cloak(), cloakAlone(), chains(), shopBuy(), throwOnly(), unknownPotionThrow() );
 	}
 
 	private static void wornAction( Driver d, Item worn, String what ){
@@ -57,6 +57,20 @@ final class GapScenarios {
 					wornAction( d, cloak, "activate it" );
 					d.expect( Dungeon.hero.belongings.artifact == cloak && Dungeon.hero.invisible > 0,
 							"using the worn cloak did not hide the hero: worn " + (Dungeon.hero.belongings.artifact == cloak) );
+				} );
+	}
+
+	private static Scenario cloakAlone(){
+		return new Scenario( "artifact.Cloak-alone", "activate the worn cloak with nothing else to use", HeroClass.ROGUE,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.emptyPack();
+				},
+				d -> {
+					CloakOfShadows cloak = (CloakOfShadows) Dungeon.hero.belongings.artifact;
+					d.require( cloak != null, "the Rogue wears no cloak" );
+					wornAction( d, cloak, "activate it" );
+					d.expect( Dungeon.hero.invisible > 0, "using the worn cloak with an empty pack did not hide the hero" );
 				} );
 	}
 

@@ -49,7 +49,12 @@ public static void clearPendingUseItem(){
 public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEquipping ){
 		if (item == null) return false;
 		if (!(allowEquipping && item instanceof EquipableItem)) return false;
-		return !item.usesTargeting;
+		return !item.usesTargeting && !activates( hero, item, resolveAction( hero, item ));
+	}
+
+	private static boolean activates( Hero hero, Item item, String action ){
+		return item.isEquipped( hero ) && action != null
+				&& !action.equals( EquipableItem.AC_UNEQUIP ) && !action.equals( EquipableItem.AC_EQUIP );
 	}
 
 
@@ -58,8 +63,7 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 		boolean equippable = allowEquipping && item instanceof EquipableItem;
 
 		String action = resolveAction( hero, item );
-		boolean activates = item.isEquipped( hero ) && action != null
-				&& !action.equals( EquipableItem.AC_UNEQUIP ) && !action.equals( EquipableItem.AC_EQUIP );
+		boolean activates = activates( hero, item, action );
 
 		if (equippable && !item.usesTargeting && !activates){
 			toggleEquip( hero, (EquipableItem) item );

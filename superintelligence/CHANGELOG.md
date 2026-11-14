@@ -175,6 +175,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A worn artifact with its own action stays usable when nothing else is.** `SlotAction.isBareEquipToggle` called
+  every worn non-targeting item a bare equip toggle, while `use()` activates a worn item whose action is neither equip nor
+  unequip. With `env.sub_mode_progress_only` on, the Rogue's cloak was therefore skipped as a progress item, and once the
+  pack held nothing else `USE` and `OPEN_INVENTORY` were masked and the cloak could not be activated. Both now share one
+  test. The Duelist's weapon ability (two charges at the start) was masked the same way. New scenario
+  `artifact.Cloak-alone` (empty pack) reports a gap without it, and `slotcheck` now also requires the ability offered.
 - **The teacher counts throws, not labels, toward a futile target.** `DescentBot` noted a shot inside `act()`, which
   `label()` calls on every learner step, so a learner that aimed and cancelled four times at a mob made the teacher mark
   it futile with nothing thrown, and its labels stopped offering that target. `label()` no longer notes shots;
