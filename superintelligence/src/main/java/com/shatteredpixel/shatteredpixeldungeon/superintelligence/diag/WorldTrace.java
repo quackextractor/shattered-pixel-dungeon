@@ -50,7 +50,8 @@ public class WorldTrace {
 		} catch (IllegalArgumentException e){
 			heroClass = HeroClass.WARRIOR;
 		}
-		env.reset( replay.seedText, heroClass );
+		env.reset( replay.seedText, heroClass,
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioSetup.hookFor( replay.scenario ));
 		snapshot.dungeonSeed( com.shatteredpixel.shatteredpixeldungeon.Dungeon.seed );
 		int replayed = 0;
 		for (int i = 0; i < replay.steps.size() && i < limit; i++){
