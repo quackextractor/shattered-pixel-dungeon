@@ -56,12 +56,15 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 
 		boolean equippable = allowEquipping && item instanceof EquipableItem;
 
-		if (equippable && !item.usesTargeting){
+		String action = resolveAction( hero, item );
+		boolean activates = item.isEquipped( hero ) && action != null
+				&& !action.equals( EquipableItem.AC_UNEQUIP ) && !action.equals( EquipableItem.AC_EQUIP );
+
+		if (equippable && !item.usesTargeting && !activates){
 			toggleEquip( hero, (EquipableItem) item );
 			return false;
 		}
 
-		String action = resolveAction( hero, item );
 		if (action == null){
 
 			if (equippable) toggleEquip( hero, (EquipableItem) item );
@@ -74,7 +77,7 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 		item.setCurrent( hero );
 		item.execute( hero, action );
 
-		if (GameScene.aimPending() || (item.usesTargeting && !(item instanceof MagesStaff))){
+		if (GameScene.aimPending() || (item.usesTargeting && !(item instanceof MagesStaff) && !action.equals( EquipableItem.AC_EQUIP ))){
 			pendingUseItem = item;
 			return true;
 		}

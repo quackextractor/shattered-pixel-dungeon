@@ -432,6 +432,12 @@ public float[] actionMask(){ return actionMask; }
 		}
 		if (mode == EnvMode.WORLD) mapper.interactMask( targetMask );
 		else if (mode != EnvMode.TARGETING) slotMask[ ActionMapper.cancelSlot( slotMask.length ) ] = actionMask[ Action.CANCEL.index ];
+		if (mode == EnvMode.SLOT && slotVerb == Action.DROP){
+			for (int i = 0; i < slotMask.length; i++){
+				com.shatteredpixel.shatteredpixeldungeon.items.Item item = mapper.slot( i );
+				if (item != null && item.isEquipped( Dungeon.hero )) slotMask[ i ] = 0f;
+			}
+		}
 	}
 	public void abandon(){
 		running = false;

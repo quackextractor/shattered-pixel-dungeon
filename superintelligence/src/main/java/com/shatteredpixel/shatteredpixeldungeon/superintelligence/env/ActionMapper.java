@@ -89,11 +89,10 @@ public class ActionMapper {
 			if (empty >= 0) slots.set( empty, item );
 		}
 
-		Item held = hero().belongings.weapon;
-		if (GameScene.answerableSelector() == null && held != null && held.usesTargeting
-				&& held.actions( hero() ).contains( held.defaultAction() )){
+		if (GameScene.answerableSelector() != null) return;
+		for (Item worn : worn()){
 			int empty = slots.indexOf( null );
-			if (empty >= 0) slots.set( empty, held );
+			if (empty >= 0 && !slots.contains( worn )) slots.set( empty, worn );
 		}
 	}
 

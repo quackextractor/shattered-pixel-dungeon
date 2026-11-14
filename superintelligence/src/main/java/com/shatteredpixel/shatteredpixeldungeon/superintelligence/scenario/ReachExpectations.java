@@ -13,9 +13,6 @@ public final class ReachExpectations {
 	private static final Map< String, String > KNOWN_FAILURES = new HashMap<>();
 
 	static {
-		EXPECTED.put( "unequip", "G5" );
-		EXPECTED.put( "artifact.Cloak", "G5" );
-		EXPECTED.put( "artifact.EtherealChains", "G6" );
 		EXPECTED.put( "shop-buy", "G7" );
 		EXPECTED.put( "throw-only", "G8" );
 		EXPECTED.put( "potion-unknown-throw", "G8" );

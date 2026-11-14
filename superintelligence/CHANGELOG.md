@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Worn items can be used (gaps G5, G6).** Outside a picker, worn items were in no slot except a held weapon that
+  aims, so the policy could not take armour off, activate an equipped artifact (the Rogue's cloak and the Cleric's tome
+  start equipped) or cast Ethereal Chains. Every worn item now follows the backpack in the slot list; `USE` on one runs
+  its action when it has one other than equip or unequip (the cloak hides the hero, the chains ask for a target) and
+  takes it off otherwise. A `DROP` choice masks worn items. Equipping an item that aims, such as the chains, no longer
+  opens an aim the equip never asked for. `unequip`, `artifact.Cloak` and `artifact.EtherealChains` pass with no gap.
 - **The policy can drop, cancel and pick what it interacts with (gaps G1, G2, G4).** In a slot choice the collector
   emitted `USE` whenever `USE` was offered, so a `DROP` from the world became a use; `SPDEnv` now remembers the verb
   that opened the choice and the collector emits it. The slot head gained a cancel: its last index

@@ -56,8 +56,6 @@ the viewer. Confirmed 2026-11-14:
 
 | gap | scenario | first unreachable step |
 | --- | --- | --- |
-| G5 worn items are in no slot | `unequip`, `artifact.Cloak` | `the worn ClothArmor is in no slot`; `the worn CloakOfShadows is in no slot` |
-| G6 Ethereal Chains cannot be cast | `artifact.EtherealChains` | `USE equips the chains and the aim after it casts nothing; worn, they are in no slot (G5)` |
 | G7 shop windows cannot be answered | `shop-buy` | `buying opened WndTradeItem, which WindowBridge cannot answer` |
 | G8 no throw from a pack of throwables, unknown potions always drunk | `throw-only`, `potion-unknown-throw` | `USE is masked in WORLD`; `an unidentified PotionOfToxicGas was drunk` |
 

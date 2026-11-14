@@ -43,7 +43,8 @@ final class GapScenarios {
 				d -> {
 					Item armor = Dungeon.hero.belongings.armor;
 					wornAction( d, armor, "take it off" );
-					d.expect( Dungeon.hero.belongings.armor == armor, "the armour changed without being used" );
+					d.expect( Dungeon.hero.belongings.armor == null && Dungeon.hero.belongings.contains( armor ),
+							"using the worn armour left it " + (Dungeon.hero.belongings.armor == armor ? "worn" : "gone") );
 				} );
 	}
 
@@ -54,6 +55,8 @@ final class GapScenarios {
 					CloakOfShadows cloak = (CloakOfShadows) Dungeon.hero.belongings.artifact;
 					d.require( cloak != null, "the Rogue wears no cloak" );
 					wornAction( d, cloak, "activate it" );
+					d.expect( Dungeon.hero.belongings.artifact == cloak && Dungeon.hero.invisible > 0,
+							"using the worn cloak did not hide the hero: worn " + (Dungeon.hero.belongings.artifact == cloak) );
 				} );
 	}
 
@@ -69,17 +72,14 @@ final class GapScenarios {
 					EtherealChains chains = Dungeon.hero.belongings.getItem( EtherealChains.class );
 					Rat rat = d.world().find( Rat.class );
 					d.use( EtherealChains.class );
+					d.require( Dungeon.hero.belongings.artifact == chains, "USE did not equip the chains" );
+					d.require( d.env().mode() == EnvMode.WORLD, "equipping the chains asked for a target: " + d.env().mode() );
 					int from = rat.pos, hero = Dungeon.hero.pos;
-					d.require( d.env().mode() == EnvMode.TARGETING, "the chains did not ask for a target: " + d.env().mode() );
+					d.use( EtherealChains.class );
+					d.require( d.env().mode() == EnvMode.TARGETING, "the worn chains did not ask for a target: " + d.env().mode() );
 					d.aimNearest();
-					d.expect( Dungeon.hero.pos == hero, "the aim walked the hero from " + hero + " to " + Dungeon.hero.pos
-							+ ": a TARGETING step reached the hero's default cell listener, which the viewer never does" );
-					d.expect( Dungeon.hero.belongings.contains( chains ), "using the chains left the hero without them:"
-							+ " equipped " + (Dungeon.hero.belongings.artifact == chains) + ", on the floor "
-							+ onFloor( chains ));
-					if (rat.pos == from && Dungeon.hero.pos == hero){
-						d.gap( "G6: USE equips the chains and the aim after it casts nothing; worn, they are in no slot (G5)" );
-					}
+					d.expect( Dungeon.hero.belongings.contains( chains ), "casting the chains left the hero without them" );
+					d.expect( rat.pos != from || Dungeon.hero.pos != hero, "casting the worn chains at the rat moved nothing" );
 				} );
 	}
 
