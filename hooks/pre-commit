@@ -128,7 +128,7 @@ set_badge superintelligence/README.md 'version' "$si_readme_version" "$si_change
 root_si_version=$(read_badge README.md 'superintelligence')
 set_badge README.md 'superintelligence' "$root_si_version" "$si_changelog_version"
 
-echo "[INFO] running verifyall (:superintelligence:gates + :desktop:playbackcheck) on the staged tree"
+echo "[INFO] running verifyall (:superintelligence:gates + :desktop:playbackcheck + :desktop:scenarioplayback) on the staged tree"
 
 if ! ./gradlew --quiet verifyall; then
     echo ""

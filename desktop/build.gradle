@@ -93,6 +93,34 @@ tasks.register('viewcheck', JavaExec) {
     if (project.hasProperty('viewcheckStallSeconds')) { systemProperty 'viewcheckStallSeconds', project.property('viewcheckStallSeconds') }
 }
 
+def scenarioDir = "${rootProject.projectDir}/superintelligence/out/scenarios"
+
+tasks.register('scenarioplayback', JavaExec) {
+    dependsOn ':superintelligence:scenariocheck'
+    group = 'verification'
+    description = 'Fails if the replay viewer cannot play every scenario recording headlessly to its last step.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.PlaybackCheck'
+    jvmArgs '-Djava.awt.headless=true', '--enable-native-access=ALL-UNNAMED'
+    systemProperty 'spd.replayDir', scenarioDir
+    args '--corpus-only'
+}
+
+tasks.register('scenarioview', JavaExec) {
+    dependsOn 'scenarioplayback'
+    group = 'verification'
+    description = 'Fails if any scenario recording diverges when played in the real viewer.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.desktop.replay.ViewCheck'
+    workingDir = rootProject.projectDir
+    systemProperty 'spd.replayDir', scenarioDir
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    args '--no-diagnostics'
+    if (project.hasProperty('scenarioOnly')) { args '--only', project.property('scenarioOnly') }
+    if (project.hasProperty('viewcheckJobs')) { systemProperty 'viewcheckJobs', project.property('viewcheckJobs') }
+    if (project.hasProperty('viewcheckStallSeconds')) { systemProperty 'viewcheckStallSeconds', project.property('viewcheckStallSeconds') }
+}
+
 tasks.register('debug', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     ignoreExitValue = true

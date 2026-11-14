@@ -20,7 +20,6 @@ entry and leaves this list, or moves to `REJECTED.md`.
 
 ## Scenario suite (design: `out/evidence/mechanics-suite/design.md`)
 
-- [ ] **Viewer half**: `ReplayPlayer` applies the setup, `scenarioplayback` in `verifyall`, `scenarioview` outside it.
 - [ ] **Reach**: `PolicyReach`, `ReachExpectations`, `cancel.*`, `drop-pickup`; confirm or refute G1-G8.
 - [ ] **Families**: items, pickers and brew, world, mob effects and allies, state, leaks.
 - [ ] **`WorldDigest`**, the depth jump with `stairs` and `boss.*`, `WorldSweep` with `coverage.csv`.

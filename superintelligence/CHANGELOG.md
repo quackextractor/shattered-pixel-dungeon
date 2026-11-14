@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ReplayRecorder`. Each scenario is recorded, verified, written to `out/scenarios/<id>.replay` with `report.csv`, and
   verified again after the whole catalogue. First scenarios: `melee` and `guard-chain`, the second red with the
   `finish(Chains)` fix of issue 43 reverted. `Guard.chainsUsed()` is a new getter. 44 gates.
+- **The viewer rebuilds a scenario's world.** `ReplayPlayer` runs the recording's `ScenarioSetup` hook just before its
+  first step, before its RNG counters are armed, and again after a restart. `:desktop:scenarioplayback`
+  (`PlaybackCheck --corpus-only` over `out/scenarios`) is in `verifyall`; `:desktop:scenarioview` plays the same
+  recordings in the real viewer, hidden, outside it. Measured: `[OK] rendered playback: 2 recordings played clean in
+  the real viewer (2 at a time, 6.2s)`. With the player's build skipped, both diverge at step 1 on position.
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an

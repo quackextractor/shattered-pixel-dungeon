@@ -53,8 +53,8 @@ repositories {
 tasks.register('verifyall') {
     group = 'verification'
     description = 'Builds what the gates need and runs every correctness gate in one invocation.'
-    dependsOn ':superintelligence:gates', ':desktop:playbackcheck'
+    dependsOn ':superintelligence:gates', ':desktop:playbackcheck', ':desktop:scenarioplayback'
     doLast {
-        println "all gates passed: :superintelligence/gates and :desktop/playbackcheck"
+        println "all gates passed: :superintelligence/gates, :desktop/playbackcheck and :desktop/scenarioplayback"
     }
 }

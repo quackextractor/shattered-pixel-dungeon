@@ -122,8 +122,16 @@ public class ViewCheck {
 				? parsed.get( dir + 1 )
 				: System.getProperty( "spd.replayDir", "replays" ) );
 
+		int only = parsed.indexOf( "--only" );
+		onlyRecording = only >= 0 && only + 1 < parsed.size() ? parsed.get( only + 1 ) : null;
+		runDiagnostics = !parsed.contains( "--no-diagnostics" );
+
 		supervise( corpus );
 	}
+
+	private static String onlyRecording;
+
+	private static boolean runDiagnostics = true;
 
 	/**
 	 * Removes a child's scratch directory, and says so when it cannot.
@@ -168,7 +176,8 @@ public class ViewCheck {
 	 * produced it.
 	 */
 	private static File[] recordings( File dir ){
-		return dir.listFiles( ( d, name ) -> name.endsWith( ".replay" ) || name.endsWith( ".dat" ) );
+		return dir.listFiles( ( d, name ) -> (name.endsWith( ".replay" ) || name.endsWith( ".dat" ))
+				&& (onlyRecording == null || name.equals( onlyRecording ) || name.equals( onlyRecording + ".replay" )) );
 	}
 
 	private static void mark( File file, String playback ){
@@ -262,7 +271,7 @@ public class ViewCheck {
 
 		double total = (System.nanoTime() - started) / 1e9;
 
-		int diagnosticsFailed = diagnostics( corpus );
+		int diagnosticsFailed = runDiagnostics ? diagnostics( corpus ) : 0;
 
 		if (confirmed.isEmpty()){
 			System.out.println( "[OK]     rendered playback: " + files.length

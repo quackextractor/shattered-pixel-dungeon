@@ -70,7 +70,8 @@ public final class ScenarioRunner {
 			stopped = "threw " + e + " at " + topFrame( e );
 		}
 
-		recorder.end( env.ledger().total(), Dungeon.depth, env.turnsTotal(), 0, env.endReason().name() );
+		recorder.end( env.ledger().total(), Dungeon.depth, env.turnsTotal(), 0,
+				env.running() ? "" : env.endReason().name() );
 		Replay replay = recorder.replay();
 		replay.scenario = scenario.id;
 		replay.group = "scenario";

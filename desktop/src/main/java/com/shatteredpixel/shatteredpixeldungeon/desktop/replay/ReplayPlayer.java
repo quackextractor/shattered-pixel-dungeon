@@ -41,6 +41,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quicksl
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioSetup;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 
 /**
@@ -224,6 +225,7 @@ public class ReplayPlayer {
 	private final String rngTracePath;
 	private boolean rngTraceArmed = false;
 	private boolean rngArmed = false;
+	private boolean scenarioBuilt = false;
 
 	/**
 	 * Per-frame record of the world, and per-step alongside it, including the cells.
@@ -925,14 +927,6 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		return Dungeon.hero.ready;
 	}
 
-	/**
-	 * Applies one recorded step.
-	 *
-	 * A step can need two calls: the first action may open a menu, a slot choice, or a targeting
-	 * prompt, and the recording stores the follow-up on the next step. The recording's own
-	 * {@code mode} field says which case this is, so the recorded mode is used rather than the live
-	 * one - if they disagree the recording is already wrong and the divergence check will say so.
-	 */
 	private void applyNextStep(){
 		Replay.Step step = playback.peek();
 		if (step == null){
@@ -960,6 +954,11 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			flushDrawSites( ".gen" );
 			rngTrace.onReset();
 			rngTraceArmed = true;
+		}
+		if (!scenarioBuilt){
+			ScenarioSetup.Hook hook = ScenarioSetup.hookFor( playback.replay().scenario );
+			if (hook != null) hook.build();
+			scenarioBuilt = true;
 		}
 		if (!rngArmed){
 			com.watabou.utils.RandomTrace.reset();
@@ -1203,12 +1202,6 @@ awaitingSettle = true;
 		return !playing && haltReason != null && !haltReason.isEmpty();
 	}
 
-/**
-	 * Resets to the first step, leaving the live game where it is.
-	 *
-	 * Only the playback half of a restart. The game half is the caller's, because it has to rebuild
-	 * the level, and only the caller knows how the viewer was started.
-	 */
 	public void restart(){
 		playing = true;
 		sinceStep = 0;
@@ -1216,6 +1209,7 @@ awaitingSettle = true;
 		haltReason = "";
 		diverged = false;
 		rebuilding = true;
+		scenarioBuilt = false;
 		playback.rewind();
 	}
 

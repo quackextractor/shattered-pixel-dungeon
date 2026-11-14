@@ -99,6 +99,12 @@ public class PlaybackCheck {
 		config.turnLimitPerFloor = 200;
 		env = new SPDEnv( config, HeadlessGame.install() );
 
+		if (java.util.Arrays.asList( args ).contains( "--corpus-only" )){
+			checkTheCommittedCorpusPlaysClean();
+			report( "headless playback of " + corpusDir().getName(), 1 );
+			return;
+		}
+
 		Replay good = recordAShortRun();
 
 		check( () -> checkAFaithfulReplayPlaysClean( good ) );
@@ -131,11 +137,15 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		check( PlaybackCheck::checkAnUnknownHeroClassIsRefused );
 		check( PlaybackCheck::checkAnUnknownScenarioIsRefused );
 
+		report( "headless playback", CHECKS );
+	}
+
+	private static void report( String label, int checks ){
 		if (failures.isEmpty()){
-			System.out.println( "[OK]     headless playback: " + CHECKS + " checks passed" );
+			System.out.println( "[OK]     " + label + ": " + checks + " checks passed" );
 		} else {
-			System.out.println( "[ERROR]  headless playback: " + checksFailed
-					+ " of " + CHECKS + " checks failed, " + failures.size() + " assertions" );
+			System.out.println( "[ERROR]  " + label + ": " + Math.max( 1, checksFailed )
+					+ " of " + checks + " checks failed, " + failures.size() + " assertions" );
 			for (String f : failures) System.out.println( "        " + f );
 			System.exit( 1 );
 		}
