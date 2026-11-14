@@ -24,6 +24,11 @@ final class FeatureScenarios {
 		List< Scenario > all = new ArrayList<>();
 		all.add( well( "well.Health", WaterOfHealth.class ));
 		all.add( well( "well.Awareness", WaterOfAwareness.class ));
+		all.add( chasm() );
+		all.add( grass() );
+		all.add( plant( "plant.Sungrass", Sungrass.Seed::new ));
+		all.add( plant( "plant.Firebloom", Firebloom.Seed::new ));
+		all.add( plant( "plant.Sorrowmoss", Sorrowmoss.Seed::new ));
 		return all;
 	}
 

@@ -41,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `brew.seeds/exotic-potion/exotic-scroll/meat-pie` brew at a pot through `ALCHEMY`. All play clean in the real
   viewer. Red with `GameScene`'s headless selector removed (6 pickers) and with `ReplayPlayer`'s `ALCHEMY` branch of
   d8f73f170 reverted (4 brews diverge at step 2 in `scenarioplayback`).
+- **World scenarios.** `door`, `secret-door`, `locked-door`, `chest.CHEST/LOCKED_CHEST/CRYSTAL_CHEST/SKELETON`,
+  `chest.Mimic`, `travel-item`, `grass`, `plant.Sungrass/Firebloom/Sorrowmoss`, `chasm`, and eleven `trap.*` stepped on
+  plus `trap-search`; `trap.Pitfall` drops the hero to depth 2 through the pipeline. Stepping onto a known trap, a well
+  or a chasm is gap G9 (`issues.md` 45). The chasm's jump answer is accepted on a different step in the viewer
+  (`issues.md` 46), so `chasm` records the prompt only. 76 scenarios, all clean in the real viewer.
 - **The policy can see what it fights and what it left.** An enemy was one bit: no kind, no health, no sleeping or
   hunting unless adjacent. New planes `ENEMY_HP`, `ENEMY_KIND`, `ENEMY_ASLEEP`, `ENEMY_HUNTING`, `WATER`, `DOOR` and
   `ITEM_KIND`, the last a memory plane, so a seen item survives leaving the room, and it shows a category, never an

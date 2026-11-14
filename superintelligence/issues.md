@@ -81,3 +81,15 @@ headlessly, a fidelity fault the viewer exposed. Second, G7 is partly wrong: tal
 answerable; only the buy window is a plain `Window`. Third, G4 is reachable when the hero happens to carry an item in the slot
 whose index equals the direction, which is exactly why it is a fault rather than a limit.
 
+## 46. The chasm's "jump?" answer lands on a different step in the viewer - OPEN
+
+`Chasm.heroJump`'s `WndOptions` accepts an answer only once its own `elapsed`, summed from `Game.elapsed` in
+`update()`, passes 0.2 s. Headlessly the window is updated once per step at 1/60 s (`WindowBridge.age`; the
+`ageSeconds` it sets is read by nothing), so the trainer's 13th `MENU_SELECT` is the first one accepted. The viewer also
+updates the window every rendered frame, so it accepted the 11th: a scripted jump diverged at step 11, `hero at (27, 44)
+pos 1743, recording says (6, 19) pos 747`. After the accepted answer the viewer's hero resumed into the chasm at once,
+while the trainer's needed another `MOVE`. The `accepted` flag cannot tell the two presses apart, since `selectOption`
+returns true for a declined press. The policy cannot reach it while G9 masks the move, so scenario `chasm` records the
+prompt and backs out, and plays clean; the jump itself has no recording. A fix makes the answer step-deterministic on
+both sides, for instance by having `WindowBridge.age` advance the window by more than the gate.
+
