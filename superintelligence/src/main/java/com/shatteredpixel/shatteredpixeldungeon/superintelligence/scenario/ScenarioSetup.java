@@ -45,7 +45,6 @@ public final class ScenarioSetup {
 					Random.popGenerator();
 				}
 				LevelPipeline.attachBlobEmitters();
-				LevelPipeline.sizeHeroView();
 				Dungeon.observe();
 			}
 		};
