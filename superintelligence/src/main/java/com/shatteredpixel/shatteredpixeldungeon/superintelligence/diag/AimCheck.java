@@ -120,7 +120,8 @@ public class AimCheck {
 		if (env.mapper().targetCell( NEAREST ) != rat.pos) GateReport.fail( "target " + NEAREST + " is not the rat" );
 		if (env.targetMask()[ NEAREST + 1 ] > 0.5f) GateReport.fail( "a second enemy target is offered with one enemy in view" );
 		for (int i = 1; i < NEAREST; i++){
-			if (env.targetMask()[ i ] > 0.5f) GateReport.fail( "adjacent target " + i + " is offered, and it throws the held item away" );
+			boolean inside = com.shatteredpixel.shatteredpixeldungeon.Dungeon.level.insideMap( env.mapper().targetCell( i ));
+			if (inside && env.targetMask()[ i ] < 0.5f) GateReport.fail( "adjacent target " + i + " is masked, so nothing can be aimed at a cell beside the hero" );
 		}
 	}
 

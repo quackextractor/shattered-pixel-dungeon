@@ -18,8 +18,6 @@ public final class ReachExpectations {
 			EXPECTED.put( "cancel." + mode, "G2" );
 		}
 		EXPECTED.put( "picker-cancel", "G2" );
-		EXPECTED.put( "aim-empty", "G3" );
-		EXPECTED.put( "aim-no-enemy", "G3" );
 		EXPECTED.put( "interact-direction", "G4" );
 		EXPECTED.put( "unequip", "G5" );
 		EXPECTED.put( "artifact.Cloak", "G5" );
@@ -32,7 +30,6 @@ public final class ReachExpectations {
 				"trap.Disintegration", "trap.Rockfall", "trap.Pitfall" }){
 			EXPECTED.put( avoided, "G9" );
 		}
-		KNOWN_FAILURES.put( "aim-no-enemy", "issues.md 44, an adjacent aim index throws the aimed item itself" );
 	}
 
 	public static String knownFailure( String id ){

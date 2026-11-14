@@ -126,6 +126,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **An aim at a cell beside the hero does what the game does (`issues.md` 44, gap G3).** Target indices 0-8 in
+  `TARGETING` skipped the item's own cell listener and called `SlotAction.castAt`, which is `Item.throwAt`: a wand
+  aimed at an adjacent cell was thrown away, a Spirit Bow too, and a thrown weapon spent one gameplay value fewer
+  than the game's `Item.cast`. Every index now resolves through the pending listener, as a tap does, and `castAt`
+  stays only for an item with no listener. The cells beside the hero are no longer masked while aiming, so the policy
+  can aim at an empty cell, a door or an ally. Fifteen corpus recordings had recorded the old throw and were
+  re-recorded with their own commands; `duelist-dart-trap.replay` came from a training run and cannot be, so it is
+  gone; its dart trap moves to scenario `trap.WornDart` once the policy can step onto a known trap (gap G9). `deathfixture` now takes the first
+  dying seed from `DUELIST-LONG-16` on (18); no dying seed refuses a step any more, since the refusals were this
+  fault. `playbackcheck`'s nothing-bound case blanks only bindings that already sit in backpack order, the one
+  case in which blanking them changes nothing.
 - **The Imp's quest room no longer moves the viewer's gameplay stream.** `AmbitiousImpRoom.WallBanners.create`, a
   tilemap only the rendered game builds, chose each banner with `Random`, so on a floor with the Imp's room the viewer
   spent up to five gameplay values the trainer never spends. Found by `worldsweep`: `sweep.duelist.d17.0` diverged at

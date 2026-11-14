@@ -126,4 +126,12 @@ public class Quickslots {
 			return null;
 		}
 	}
+
+	public static boolean boundInBackpackOrder( String quickslots ){
+		for (String binding : quickslots.split( "," )){
+			int colon = binding.lastIndexOf( ':' ), at = binding.lastIndexOf( '@' );
+			if (colon < 0 || at < colon || !binding.substring( colon + 1, at ).equals( binding.substring( at + 1 ))) return false;
+		}
+		return true;
+	}
 }

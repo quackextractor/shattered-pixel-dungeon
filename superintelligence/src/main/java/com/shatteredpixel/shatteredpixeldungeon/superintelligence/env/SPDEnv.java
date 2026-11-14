@@ -427,9 +427,6 @@ public float[] actionMask(){ return actionMask; }
 			targetMask[ i ] = mapper.targetMask( i ) ? 1f : 0f;
 		}
 		if (mode == EnvMode.WORLD) mapper.interactMask( targetMask );
-		if (mode == EnvMode.TARGETING){
-			for (int i = 1; i < ActionMapper.ADJACENT_COUNT; i++) targetMask[ i ] = 0f;
-		}
 	}
 	public void abandon(){
 		running = false;

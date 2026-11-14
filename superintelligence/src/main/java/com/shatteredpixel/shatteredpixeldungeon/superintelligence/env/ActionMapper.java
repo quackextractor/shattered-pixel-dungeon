@@ -400,8 +400,8 @@ public class ActionMapper {
 	private boolean resolveTarget( int index ){
 		CellSelector.Listener aim = GameScene.pendingCellListener();
 		GameScene.clearPendingCellListener();
-		if (index < ADJACENT_COUNT || GameScene.isDefaultCellListener( aim )) aim = null;
-		if (aim == null && index >= ADJACENT_COUNT) aim = GameScene.takeCellListener();
+		if (GameScene.isDefaultCellListener( aim )) aim = null;
+		if (aim == null) aim = GameScene.takeCellListener();
 
 		if (aim != null ){
 			aim.onSelect( Surroundings.targetCell( index ) );

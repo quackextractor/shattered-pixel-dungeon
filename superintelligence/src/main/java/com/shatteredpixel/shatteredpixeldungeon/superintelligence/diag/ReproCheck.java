@@ -78,20 +78,26 @@ public class ReproCheck {
 
 
 private static void recordDeathFixture( EnvConfig config ) throws java.io.IOException {
-		String seed = "DUELIST-LONG-16";
-
-		ScriptedEpisode.Result episode = ScriptedEpisode.record( config, seed, HeroClass.DUELIST,
-				0, seed.hashCode() );
-		Replay replay = episode.replay;
-
-		int accepted = 0;
-		int refused = 0;
-		for (Replay.Step step : replay.steps){
-			if (step.accepted == 1) accepted++;
-			else if (step.accepted == 0) refused++;
+		Replay replay = null;
+		for (int n = 16; n < 48; n++){
+			String seed = "DUELIST-LONG-" + n;
+			Replay candidate = ScriptedEpisode.record( config, seed, HeroClass.DUELIST, 0, seed.hashCode() ).replay;
+			if (!"DEATH".equals( candidate.termination )) continue;
+			if (replay == null) replay = candidate;
+			if (refusals( candidate ) > 0){
+				replay = candidate;
+				break;
+			}
 		}
+		if (replay == null){
+			System.err.println( "[ERROR] no seed from DUELIST-LONG-16 to 47 died, so there is no death recording" );
+			System.exit( 1 );
+			return;
+		}
+		int refused = refusals( replay );
+		int accepted = replay.length() - refused;
 
-		System.out.println( "recorded " + replay.length() + " steps, ends " + replay.termination
+		System.out.println( "recorded " + replay.seedText + " in " + replay.length() + " steps, ends " + replay.termination
 				+ ", depth " + replay.depth + ", score " + replay.score
 				+ ", accepted " + accepted + ", refused " + refused );
 
@@ -101,12 +107,7 @@ private static void recordDeathFixture( EnvConfig config ) throws java.io.IOExce
 			System.exit( 1 );
 			return;
 		}
-		if (refused == 0){
-			System.err.println( "[ERROR] the fixture refused nothing, so it cannot say whether the two"
-					+ " environments agree about a refusal" );
-			System.exit( 1 );
-			return;
-		}
+		if (refused == 0) System.out.println( "[WARN]   no dying seed refused a step, so the fixture holds no refusal" );
 
 		ReplayIO.Verification check = ReplayIO.verify( replay,
 				new com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv(
@@ -123,6 +124,12 @@ private static void recordDeathFixture( EnvConfig config ) throws java.io.IOExce
 		ReplayIO.write( replay, out );
 		System.out.println( "verified headlessly in " + check.stepsVerified + " steps and wrote "
 				+ out.getAbsolutePath() );
+	}
+
+private static int refusals( Replay replay ){
+		int refused = 0;
+		for (Replay.Step step : replay.steps) if (step.accepted == 0) refused++;
+		return refused;
 	}
 
 private static final String SAVED =

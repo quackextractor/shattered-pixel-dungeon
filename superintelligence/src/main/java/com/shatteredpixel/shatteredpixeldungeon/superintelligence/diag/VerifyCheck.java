@@ -171,7 +171,7 @@ public class VerifyCheck {
 		for (int i = first + 1; i < copy.steps.size(); i++){
 			Replay.Step step = copy.steps.get( i );
 			if (!step.mode.equals( "SLOT" ) && !step.mode.equals( "INVENTORY" )) continue;
-			if (step.quickslots.isEmpty()) continue;
+			if (step.quickslots.isEmpty() || !com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots.boundInBackpackOrder( step.quickslots )) continue;
 			step.quickslots = "";
 			blanked++;
 		}
@@ -342,5 +342,7 @@ s.inventory = step.inventory;
 		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
 		return ReplayIO.verify( replay, env );
 	}
+
+
 
 }

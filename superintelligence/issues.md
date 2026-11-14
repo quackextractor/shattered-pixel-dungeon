@@ -46,15 +46,6 @@ episode over 8 s after the PC was cleared. Two runs with apps open had died. Thi
 Discord line above, which only covers inference alone. The cause is still unknown; `TrainerWorkers.reportSlowest` and the watchdog
 diagnostics now log the next stall. A stall under normal use remains a trainer bug.
 
-## 44. An adjacent aim index throws the aimed item itself - OPEN
-
-`ActionMapper.resolveTarget` drops the cell listener for target indices 1-8 and calls `SlotAction.castAt`, which is
-`Item.throwAt`. For a thrown weapon that is a throw; for a wand it throws the wand. Scenario `aim-no-enemy` zaps a
-Wand of Magic Missile at an empty adjacent cell: `a zap at cell 708 left 3 of 3 charges, wand still carried false`.
-The viewer runs the same code, so it is not a fidelity fault. The policy cannot emit 1-8 in `TARGETING` (gap G3 in 45),
-so no training run reaches it; scripted recordings can (`duelist-throw.replay`, scenario `aim-empty`). Listed in
-`scenario.ReachExpectations` as a known failure, so the gate goes red when it is fixed.
-
 ## 45. Mechanics the policy cannot reach - OPEN
 
 `scenariocheck` drives each mechanic through `SPDEnv.step` and asks `scenario.PolicyReach`, which calls
@@ -67,7 +58,6 @@ the viewer. Confirmed 2026-11-14:
 | --- | --- | --- |
 | G1 no drop | `drop-pickup` | `in SLOT the collector emits USE/1, never DROP` |
 | G2 no cancel while anything is usable | `cancel.SLOT`, `.INVENTORY`, `.TALENT`, `.ALCHEMY`, `.MENU` | `in SLOT the collector emits USE/0, never CANCEL`; `MENU_SELECT/0, never CANCEL` in the other three |
-| G3 aim only at the four nearest enemies | `aim-empty`, `aim-no-enemy` | `target 8 is masked in TARGETING` |
 | G4 INTERACT's direction comes from the slot head | `interact-direction` | `INTERACT/8 reaches cell 708 only through slot 8, which the slot head does not offer` |
 | G5 worn items are in no slot | `unequip`, `artifact.Cloak` | `the worn ClothArmor is in no slot`; `the worn CloakOfShadows is in no slot` |
 | G6 Ethereal Chains cannot be cast | `artifact.EtherealChains` | `USE equips the chains and the aim after it casts nothing; worn, they are in no slot (G5)` |

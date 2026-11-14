@@ -594,12 +594,14 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 	 * refuses such a recording refuses a working one. This is the same false positive that made
 	 * {@code rolloutcheck} fail intermittently, caught here at the player's own level.
 	 */
+
+
 	private static void checkARecordingWithNothingBoundStillPlays(){
 		Replay unbound = recordAShortRun();
 		int blanked = 0;
 		for (Replay.Step step : unbound.steps){
 			if (!step.mode.equals( "SLOT" ) && !step.mode.equals( "INVENTORY" )) continue;
-			if (step.quickslots.isEmpty()) continue;
+			if (step.quickslots.isEmpty() || !com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots.boundInBackpackOrder( step.quickslots )) continue;
 			step.quickslots = "";
 			blanked++;
 		}
@@ -1543,4 +1545,3 @@ private static void checkADivergenceMessageNamesCoordinates(){
 		failures.add( message );
 	}
 }
-
