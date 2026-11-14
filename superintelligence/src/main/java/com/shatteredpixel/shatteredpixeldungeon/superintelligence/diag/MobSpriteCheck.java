@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Guard;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Shaman;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.MirrorImage;
@@ -24,7 +25,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class MobSpriteCheck {
 
-	private static final int CHECKS = 6 + SpriteCastCases.CHECKS;
+	private static final int CHECKS = 7 + SpriteCastCases.CHECKS;
 
 	public static void main( String[] args ){
 		checkMirrorImageIsUsable();
@@ -33,6 +34,7 @@ public class MobSpriteCheck {
 		checkARangedZapCompletesItsTurn();
 		checkADelayedMobWaitsItsDelay();
 		checkAKnockbackMovesItsTarget();
+		checkAGuardPullsItsTarget();
 		SpriteCastCases.run();
 
 		System.exit( GateReport.report( "item-created mobs", CHECKS ));
@@ -66,6 +68,39 @@ public class MobSpriteCheck {
 			return;
 		}
 		fail( "the fixture found no clear line beside the hero, so no knockback was tested." );
+	}
+
+	private static void checkAGuardPullsItsTarget(){
+		SPDEnv env = freshRun( "MOBSPROUT-D" );
+		int hero = Dungeon.hero.pos;
+		int cell = -1;
+		for (int c = 0; c < Dungeon.level.length() && cell < 0; c++){
+			Ballistica line = new Ballistica( c, hero, Ballistica.PROJECTILE );
+			if (Dungeon.level.passable[ c ] && Dungeon.level.heroFOV[ c ] && Actor.findChar( c ) == null
+					&& Dungeon.level.distance( c, hero ) == 3 && line.collisionPos == hero
+					&& !Dungeon.level.pit[ line.path.get( 1 ) ]) cell = c;
+		}
+		if (cell < 0){
+			fail( "no cell 3 from the hero has a clear chain line, so the Guard's pull was never reached." );
+			return;
+		}
+
+		Guard guard = new Guard();
+		guard.pos = cell;
+		GameScene.add( guard );
+		guard.aggro( Dungeon.hero );
+		guard.state = guard.HUNTING;
+		Dungeon.hero.HP = Dungeon.hero.HT = 1000;
+
+		env.step( Action.WAIT, 0 );
+
+		if (!Dungeon.level.adjacent( Dungeon.hero.pos, guard.pos )){
+			fail( "a Guard 3 cells away left the hero at " + Dungeon.hero.pos + ", guard at " + guard.pos
+					+ ". Its chain resolves through a Chains effect, so headless the pull never ran and the"
+					+ " Guard walked instead, which the viewer does not do (issues.md 43)." );
+			return;
+		}
+		System.out.println( "  a Guard's chain pulls the hero beside it with no scene to animate it" );
 	}
 
 	private static void checkMirrorImageIsUsable(){

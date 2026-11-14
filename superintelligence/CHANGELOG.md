@@ -59,6 +59,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A Guard's chain pulls headless too (`issues.md` 43).** `Guard.chain` resolves its pull through a `Chains` effect's
+  callback, and the headless sprite stage held the effect without ever updating it, so the pull never ran and the Guard
+  acted again and walked onto the cell it would have pulled the hero to. The viewer pulled, so `FTL-NQD-YXC` diverged at
+  step 1302 with the hero on the Guard's headless cell. The stage now finishes a `Chains` effect when it is added, which
+  also covers `EtherealChains`. `mobspritecheck` has a Guard pull case, red with the fix reverted. Recordings with a pull
+  made before this no longer reproduce. `WorldSnapshot.writeTo` streams lines, since a viewer world trace of 1300 steps
+  (27.5M records) overflowed a single string.
 - **A sell window from one episode trapped the hero in the next.** `WndInfoItem.INSTANCE` is a static, and a new window hides the old one. A sell
   window left by an earlier episode was hidden by the next purchase, and its `hide` opens the sell picker, which reopens on every pick. 22 of 257
   `macro3` recordings hit it, all from runs that reached floors 6-8, 20 of them ending `STALLED` with a -5,993 penalty after 250 no-time steps,

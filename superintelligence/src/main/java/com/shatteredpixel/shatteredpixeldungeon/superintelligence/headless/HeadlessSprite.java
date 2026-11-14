@@ -4,6 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM100;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Eye;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Spinner;
+import com.shatteredpixel.shatteredpixeldungeon.effects.Chains;
 import com.shatteredpixel.shatteredpixeldungeon.effects.MagicMissile;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
@@ -41,6 +42,23 @@ public class HeadlessSprite extends CharSprite implements HeadlessStandIn {
 			if (c == MissileSprite.class) return new InstantMissile();
 			if (c == MagicMissile.class) return new InstantBolt();
 			return super.recycle( c );
+		}
+
+		@Override
+		public synchronized com.watabou.noosa.Gizmo add( com.watabou.noosa.Gizmo g ){
+			com.watabou.noosa.Gizmo added = super.add( g );
+			if (g instanceof Chains) finish( g );
+			return added;
+		}
+
+		private static void finish( com.watabou.noosa.Gizmo effect ){
+			float elapsed = com.watabou.noosa.Game.elapsed;
+			com.watabou.noosa.Game.elapsed = Float.MAX_VALUE;
+			try {
+				effect.update();
+			} finally {
+				com.watabou.noosa.Game.elapsed = elapsed;
+			}
 		}
 	}
 

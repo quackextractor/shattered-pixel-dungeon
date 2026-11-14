@@ -278,11 +278,8 @@ public class WorldSnapshot {
 	public List< String > lines(){
 		return lines;
 	}
-	public String render(){
-		return String.join( "\n", lines ) + "\n";
-	}
 	public void writeTo( Path path ) throws IOException {
-		Files.write( path, render().getBytes( StandardCharsets.UTF_8 ) );
+		Files.write( path, lines, StandardCharsets.UTF_8 );
 	}
 	public static Map< String, Map< String, List< String > > > parse( List< String > raw ){
 		Map< String, Map< String, List< String > > > out = new LinkedHashMap<>();
