@@ -24,6 +24,7 @@ final class WorldScenarios {
 		List< Scenario > all = new ArrayList<>();
 		all.add( door() );
 		all.add( secretDoor() );
+		all.add( searchStaleView() );
 		all.add( lockedDoor() );
 		all.add( chest( Heap.Type.CHEST, null ));
 		all.add( chest( Heap.Type.LOCKED_CHEST, () -> new GoldenKey( Dungeon.depth )));
@@ -58,6 +59,21 @@ final class WorldScenarios {
 					int door = d.world().beside( Terrain.SECRET_DOOR );
 					d.until( () -> Dungeon.level.map[ door ] != Terrain.SECRET_DOOR, 5, () -> d.act( Action.SEARCH ));
 					d.expect( Dungeon.level.map[ door ] == Terrain.DOOR, "five searches beside a secret door left terrain "
+							+ Dungeon.level.map[ door ] );
+				} );
+	}
+
+	private static Scenario searchStaleView(){
+		return new Scenario( "search-stale-view", "search with a view array left over from a floor of the same size", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					world.terrain( world.adjacentFreeStraight(), Terrain.SECRET_DOOR );
+				},
+				d -> {
+					int door = d.world().beside( Terrain.SECRET_DOOR );
+					Dungeon.hero.fieldOfView = new boolean[ Dungeon.level.length() ];
+					d.act( Action.SEARCH );
+					d.expect( Dungeon.level.map[ door ] == Terrain.DOOR, "a search with a stale view left terrain "
 							+ Dungeon.level.map[ door ] );
 				} );
 	}

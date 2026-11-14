@@ -175,6 +175,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **A first action on a floor of the same size reads that floor's view.** `LevelPipeline.sizeHeroView` replaced the hero's
+  field of view only when its length differed, so after a fall onto a floor with as many cells it still held the floor
+  above, and a search found nothing. It now points it at `Dungeon.level.heroFOV`, as `Hero.act` does. New scenario
+  `search-stale-view` fails without it.
 - **A search as the first action below a chasm no longer crashes the trainer.** Settling a pending fall before the next
   action (`5d3df3703`) let that action reach the new floor before the hero had acted there, and `Hero.search` read a field
   of view sized for the floor above: `throughputbench`'s uniform policy hit `ArrayIndexOutOfBoundsException` in all four
