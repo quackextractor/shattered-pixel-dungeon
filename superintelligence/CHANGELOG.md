@@ -175,6 +175,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **The teacher gives up on a target it cannot hurt (`issues.md` 47).** It always aimed at the nearest shootable enemy, so a
+  piranha its cursed boomerangs never hit held it in place until the position guard ended the run (`LZS-FFF-SGC`). After
+  three shots that leave a target's HP unchanged it skips that target until its HP moves. New scenario
+  `teacher.futile-target`, a piranha behind a chasm ring that nothing hits: 9 aims in 30 steps without the change, 4 with it.
 - **The viewer compares a chasm answer before the fall, as the trainer does (`issues.md` 49, closed).** The wait for queued
   render-thread callbacks let a pending fall finish before the answer step was compared, so `sweep.huntress.d3.1` and
   `sweep.warrior.d1.1` reported the landing cell where the recording holds the cell beside the chasm. The wait now stands

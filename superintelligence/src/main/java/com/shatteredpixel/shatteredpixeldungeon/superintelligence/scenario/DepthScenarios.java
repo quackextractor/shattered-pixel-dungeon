@@ -19,7 +19,7 @@ final class DepthScenarios {
 	private DepthScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( depthJump(), searchAfterJump(), stairs(), gooFight(),
+		return Arrays.asList( depthJump(), searchAfterJump(), stairs(), gooFight(), futileTarget(),
 				bossFight( "boss.tengu10", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Tengu.class, 10, true ),
 				bossFight( "boss.dm300-15", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM300.class, 15, false ),
 				bossFight( "boss.king20", com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DwarfKing.class, 20, false ));
@@ -41,6 +41,38 @@ final class DepthScenarios {
 					d.act( Action.SEARCH );
 					d.expect( Dungeon.depth == 22, "the jump landed on depth " + Dungeon.depth );
 				} ).depth( 22 ).seeds( "SWEEP-1" );
+	}
+
+	private static Scenario futileTarget(){
+		return new Scenario( "teacher.futile-target", "the teacher stops throwing at a piranha it cannot hurt", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.sturdy();
+					com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.HeavyBoomerang boomerang =
+							new com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.HeavyBoomerang();
+					boomerang.enchant( new com.shatteredpixel.shatteredpixeldungeon.items.weapon.curses.Wayward() );
+					kit.give( boomerang ).quantity( 3 );
+					int pool = world.cellAtRange( 4, true );
+					for (int offset : com.watabou.utils.PathFinder.NEIGHBOURS8){
+						if (world.free( pool + offset )) world.terrain( pool + offset, Terrain.CHASM );
+					}
+					world.terrain( pool, Terrain.WATER );
+					com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Piranha piranha = world.hunting(
+							new com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Piranha(), pool );
+					piranha.HP = piranha.HT = 100000;
+					piranha.defenseSkill = 100000;
+				},
+				d -> {
+					DescentBot bot = new DescentBot();
+					int[] secondary = new int[ 1 ];
+					int aims = 0;
+					for (int i = 0; i < 30 && d.env().running(); i++){
+						if (d.env().mode() == com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode.TARGETING) aims++;
+						Action action = bot.act( d.env(), secondary );
+						d.step( action.kind == Action.Kind.MACRO ? bot.primitive( action ) : action, secondary[ 0 ] );
+					}
+					d.expect( aims <= 6, "the teacher aimed " + aims + " times in 30 steps at a target it never hurt" );
+				} ).botDriven( 30 );
 	}
 
 	private static Scenario stairs(){

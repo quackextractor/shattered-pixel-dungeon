@@ -40,7 +40,14 @@ public final class DescentBot {
 
 	private final java.util.Set< Item > tried = java.util.Collections.newSetFromMap( new java.util.IdentityHashMap<>() );
 
+	private static final int FUTILE_SHOTS = 3;
+
+	private final java.util.Map< Integer, Integer > hpWhenShot = new java.util.HashMap<>();
+	private final java.util.Map< Integer, Integer > shotsWithoutDamage = new java.util.HashMap<>();
+
 	public void reset(){
+		hpWhenShot.clear();
+		shotsWithoutDamage.clear();
 		tactics.reset();
 		lastHp = -1;
 		waited = 0;
@@ -88,6 +95,8 @@ public final class DescentBot {
 				return legal( mask, Action.MENU_SELECT ) ? Action.MENU_SELECT : Action.CANCEL;
 			case TARGETING:
 				if (env.targetMask()[ ActionMapper.ADJACENT_COUNT ] < 0.5f) return Action.CANCEL;
+				noteShot( com.shatteredpixel.shatteredpixeldungeon.actors.Actor.findChar(
+						env.mapper().targetCell( ActionMapper.ADJACENT_COUNT )));
 				secondary[ 0 ] = ActionMapper.ADJACENT_COUNT;
 				return Action.USE;
 			case WORLD:
@@ -266,7 +275,17 @@ public final class DescentBot {
 		return pick;
 	}
 
-	private static int rangedSlot( SPDEnv env ){
+	private void noteShot( com.shatteredpixel.shatteredpixeldungeon.actors.Char aimed ){
+		if (aimed == null) return;
+		Integer before = hpWhenShot.put( aimed.id(), aimed.HP );
+		shotsWithoutDamage.merge( aimed.id(), before != null && before == aimed.HP ? 1 : -shotsWithoutDamage.getOrDefault( aimed.id(), 0 ), Integer::sum );
+	}
+
+	private boolean futile( Mob mob ){
+		return shotsWithoutDamage.getOrDefault( mob.id(), 0 ) >= FUTILE_SHOTS && hpWhenShot.getOrDefault( mob.id(), -1 ) == mob.HP;
+	}
+
+	private int rangedSlot( SPDEnv env ){
 		Mob target = shootable();
 		if (target == null) return -1;
 		float[] mask = env.slotMask();
@@ -279,12 +298,12 @@ public final class DescentBot {
 		return -1;
 	}
 
-	private static Mob shootable(){
+	private Mob shootable(){
 		Hero hero = Dungeon.hero;
 		Mob best = null;
 		for (Mob mob : hero.getVisibleEnemies()){
 			int range = Dungeon.level.distance( hero.pos, mob.pos );
-			if (!mob.isAlive() || range < 2) continue;
+			if (!mob.isAlive() || range < 2 || futile( mob )) continue;
 			if (new Ballistica( hero.pos, mob.pos, Ballistica.PROJECTILE ).collisionPos != mob.pos) continue;
 			if (best == null || range < Dungeon.level.distance( hero.pos, best.pos )) best = mob;
 		}
