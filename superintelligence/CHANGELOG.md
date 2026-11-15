@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Quest rewards and class choices can be answered.** `WindowBridge` now answers the button windows of the Ghost,
+  Wandmaker, Imp and Blacksmith and the subclass and armour-ability choices (and the confirm windows they open), as it
+  answers the shop's trade window: each active button, and each item button, is an option. They were dismissed before,
+  so the agent could never take a quest reward or a subclass. Headless, showing a confirm used to drop its parent from
+  the parked slot with no parent at all, so the subclass confirm's `parent != null` test failed and a cancelled confirm
+  left nothing open, while the viewer kept the parent on its scene. The parent is now held and parked again when the
+  confirm closes without it. New scenarios `reward.Ghost` (cancel the weapon's confirm, return to the choice, take the
+  armour) and `reward.subclass`; removing the restore or the hold fails them.
 - **`freeactioncheck` covers `THROW` and the chasm step.** The zero-time exit case now requires `THROW` masked too, and a
   new case turns a cell beside the hero into a chasm and requires the step into it masked after a free menu exit. Both
   masks were added without a deterministic gate; removing either now fails it.

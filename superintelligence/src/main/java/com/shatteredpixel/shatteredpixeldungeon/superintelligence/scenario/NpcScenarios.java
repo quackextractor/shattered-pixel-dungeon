@@ -24,7 +24,61 @@ final class NpcScenarios {
 				quest( "npc.Ghost", Ghost.class, 4, Ghost.Quest::given ),
 				quest( "npc.Wandmaker", Wandmaker.class, 9, Wandmaker.Quest::given ),
 				quest( "npc.Blacksmith", Blacksmith.class, 14, Blacksmith.Quest::given ),
-				quest( "npc.Imp", Imp.class, 19, Imp.Quest::given ));
+				quest( "npc.Imp", Imp.class, 19, Imp.Quest::given ),
+				ghostReward(), subclass() );
+	}
+
+	private static Scenario ghostReward(){
+		return new Scenario( "reward.Ghost", "take the Ghost's reward after a cancelled first pick", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					kit.sturdy();
+					Mob ghost = world.find( Ghost.class );
+					if (ghost == null || Ghost.Quest.weapon == null) throw new NoFixture( "floor 4 has no Ghost" );
+					world.clearMobs( ghost );
+					ScrollOfTeleportation.appear( ghost, world.adjacentFree() );
+					com.watabou.utils.Bundle bundle = new com.watabou.utils.Bundle();
+					Ghost.Quest.storeInBundle( bundle );
+					com.watabou.utils.Bundle node = bundle.getBundle( "sadGhost" );
+					node.put( "given", true );
+					node.put( "processed", true );
+					node.put( "depth", Dungeon.depth );
+					Ghost.Quest.restoreFromBundle( bundle );
+				},
+				d -> {
+					Mob ghost = d.world().find( Ghost.class );
+					d.move( ghost.pos );
+					d.require( d.env().mode() == EnvMode.MENU, "talking to the Ghost after its quest opened " + d.env().mode() );
+					d.require( com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.optionCount() == 2,
+							"the Ghost's reward offers " + com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.optionCount() + " options, not its weapon and armour" );
+					d.menu( 0 );
+					d.require( d.env().mode() == EnvMode.MENU, "picking the weapon opened no confirm: " + d.env().mode() );
+					d.menu( 1 );
+					d.expect( d.env().mode() == EnvMode.MENU && com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.optionCount() == 2,
+							"cancelling the confirm did not return to the reward choice: " + d.env().mode() );
+					d.menu( 1 );
+					d.menu( 0 );
+					d.expect( Ghost.Quest.completed(), "confirming the armour did not complete the quest" );
+					d.expect( d.env().mode() == EnvMode.WORLD, "the reward left the env in " + d.env().mode() );
+					d.act( Action.WAIT );
+				} ).depth( 4 ).seeds( "SCN-A", "SCN-B", "SCN-C", "SCN-D", "SCN-E", "SCN-F", "SCN-G", "SCN-H" );
+	}
+
+	private static Scenario subclass(){
+		return new Scenario( "reward.subclass", "choose a subclass with Tengu's mask", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.give( new com.shatteredpixel.shatteredpixeldungeon.items.TengusMask() );
+				},
+				d -> {
+					d.use( com.shatteredpixel.shatteredpixeldungeon.items.TengusMask.class );
+					d.require( d.env().mode() == EnvMode.MENU, "wearing the mask opened " + d.env().mode() );
+					d.menu( 0 );
+					d.require( d.env().mode() == EnvMode.MENU, "picking a subclass opened no confirm: " + d.env().mode() );
+					d.menu( 0 );
+					d.expect( Dungeon.hero.subClass != com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroSubClass.NONE,
+							"confirming left the hero without a subclass" );
+					d.expect( d.env().mode() == EnvMode.WORLD, "the choice left the env in " + d.env().mode() );
+				} );
 	}
 
 	private static Scenario quest( String id, Class< ? extends Mob > type, int depth, BooleanSupplier given ){

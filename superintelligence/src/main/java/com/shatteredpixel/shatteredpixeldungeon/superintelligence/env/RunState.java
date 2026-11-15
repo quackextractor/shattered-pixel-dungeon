@@ -14,6 +14,8 @@ public class RunState {
 
 		GameScene.clearHeadlessWindow();
 
+		WindowBridge.forgetParents();
+
 		GameScene.clearSelector();
 
 		SlotAction.clearPendingUseItem();
