@@ -51,6 +51,7 @@ import com.watabou.utils.Reflection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 final class PotionScenarios {
@@ -257,11 +258,15 @@ final class PotionScenarios {
 		return s;
 	}
 
-	private static float meanDr(){
+	static float meanDr(){
+		return mean( Dungeon.hero::drRoll );
+	}
+
+	static float mean( IntSupplier roll ){
 		Random.pushGenerator( DR_SAMPLE_SEED );
 		try {
 			int total = 0;
-			for (int i = 0; i < DR_SAMPLES; i++) total += Dungeon.hero.drRoll();
+			for (int i = 0; i < DR_SAMPLES; i++) total += roll.getAsInt();
 			return total / (float) DR_SAMPLES;
 		} finally {
 			Random.popGenerator();
