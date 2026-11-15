@@ -237,13 +237,9 @@ public class ActionMapper {
 			}
 		}
 
-		boolean any = false;
-		for (float f : mask) if (f != 0f){ any = true; break; }
-		if (!any) mask[Action.WAIT.index] = 1f;
-
 		if (zeroTimeModeExit){
 			zeroTimeModeExit = false;
-			ZeroTimeExit.mask( mask, any );
+			ZeroTimeExit.mask( mask );
 		}
 	}
 

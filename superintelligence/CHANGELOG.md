@@ -168,6 +168,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plus the stacks of the inference and busy worker threads. `issues.md` 41 could not be diagnosed without this.
 
 ### Changed
+- **The zero-time exit mask lost two branches that never ran.** `WAIT`, `REST` and `SEARCH` are always offered in
+  `WORLD`, so the "nothing offered" fallback in `ActionMapper.actionMask` and the `anyOffered`/`left` paths in
+  `ZeroTimeExit` could not fire. Masks are unchanged.
 - **The widened action space trains to the same depth.** 30 minutes on defaults from fresh weights after the gap fixes
   (`29f7da70a`..`53c5b547d`), 805 generations, then `evaluate` on 500 fixed seeds: depth 2.744 at temperature 1.0 and
   2.812 at 0.7, floor 4+ 117/131 and floor 6+ 20/27, against `macro3`'s 2.81 before them. Training depth by thirds 2.53,

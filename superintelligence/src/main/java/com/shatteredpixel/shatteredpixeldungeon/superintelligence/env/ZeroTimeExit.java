@@ -8,15 +8,12 @@ final class ZeroTimeExit {
 
 	private ZeroTimeExit(){}
 
-	static void mask( float[] mask, boolean anyOffered ){
-		for (Action reopener : REOPENERS) mask[ reopener.index ] = anyOffered ? 0f : 1f;
+	static void mask( float[] mask ){
+		for (Action reopener : REOPENERS) mask[ reopener.index ] = 0f;
 		for (Action move : Action.values()){
 			if (move.kind != Action.Kind.WORLD || (move.dx == 0 && move.dy == 0)) continue;
 			int cell = Surroundings.offsetCell( move.dx, move.dy );
 			if (Surroundings.insideMap( cell ) && Dungeon.level.pit[ cell ] && !Dungeon.level.solid[ cell ]) mask[ move.index ] = 0f;
 		}
-		boolean left = false;
-		for (float m : mask) left |= m > 0.5f;
-		if (!left) mask[ Action.WAIT.index ] = 1f;
 	}
 }
