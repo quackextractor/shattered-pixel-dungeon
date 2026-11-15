@@ -183,6 +183,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **`worldtrace` refuses a recording whose scenario this build does not know.** It traced the bare floor instead,
+  which is the wrong world with no message; `verify` and the viewer already refuse such a recording. Checked on a copy of
+  `melee.replay` renamed to `no-such-scenario` (`out/evidence/worldtrace-unknown/`).
 - **Cursed worn equipment is not offered to `USE`.** Using a worn cursed item toggles it off, and `doUnequip` refuses
   without spending a turn, so each pick was a free no-op. `SPDEnv` now masks such an item in the `USE` slot list and the
   inventory (not in a picker, where Remove Curse or Upgrade may want it); the curse is already known once worn. New

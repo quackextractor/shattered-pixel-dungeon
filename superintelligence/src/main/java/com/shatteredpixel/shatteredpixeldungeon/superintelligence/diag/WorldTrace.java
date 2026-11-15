@@ -50,8 +50,15 @@ public class WorldTrace {
 		} catch (IllegalArgumentException e){
 			heroClass = HeroClass.WARRIOR;
 		}
-		env.reset( replay.seedText, heroClass,
-				com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioSetup.hookFor( replay.scenario ));
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioSetup.Hook hook =
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioSetup.hookFor( replay.scenario );
+		if (hook == null && replay.scenario != null && !replay.scenario.isEmpty()){
+			System.err.println( "[ERROR] " + file.getName() + " names scenario \"" + replay.scenario
+					+ "\", which this build does not know, so its world cannot be rebuilt" );
+			System.exit( 1 );
+			return;
+		}
+		env.reset( replay.seedText, heroClass, hook );
 		snapshot.dungeonSeed( com.shatteredpixel.shatteredpixeldungeon.Dungeon.seed );
 		int replayed = 0;
 		for (int i = 0; i < replay.steps.size() && i < limit; i++){
