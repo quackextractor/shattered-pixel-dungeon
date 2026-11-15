@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Scenario family `StoneScenarios` (`stone.*`, 13 scenarios) covers every runestone (Aggression, Augmentation, Blast, Blink,
+  Clairvoyance, DeepSleep, DetectMagic, Enchantment, Fear, Flock, Intuition, Shock), `Scroll$ScrollToStone`, `MagicalSleep` and
+  `Sheep`: coverage 272 of 968. Each effect is compared with a capture taken just before the stone is used: Aggression turns a
+  Gnoll on the marked rat and then wears off, Shock charges an empty wand by 1 + hits, Blink moves the hero beside the rat, Flock's
+  sheep appear and vanish, and Intuition identifies the guessed potion.
+  Gaps closed: `WindowBridge.CHOICE_WINDOWS` gains `WndAugment` and `WndGuess`. `buttons()` collects visible, active `IconButton`s,
+  but only in the windows in the new `ICON_WINDOWS` (`WndGuess`), so `WndChooseSubclass` and `WndChooseAbility` keep their option lists.
+  Mutation: with the teleport in `StoneOfBlink.activate` skipped, the run gives
+  `[ERROR] stone.Blink  FAIL  9 steps, 26 ms  the blink did not land the hero beside the rat`.
+  With `ICON_WINDOWS` emptied: `[ERROR] stone.Intuition  FAIL  3 steps, 22 ms  expected WndGuess, saw WORLD none`.
 - **Every potion and scroll is covered, exotics included.** New `scenario.PotionScenarios` (prefix `potion.`, 15 scenarios) and `scenario.ScrollScenarios` (prefix `scroll.`, 12) give a `sturdy()` warrior the item. Each scenario captures the effect's baseline and requires it false. It then USEs the item, THROWs it at the nearest foe, or USEs it and aims (Dragon's Breath, Siren's Song), and WAITs until the effect holds. Keys: `PotionOfFrost`, `PotionOfPurity`, the 12 exotic potions, `ScrollOfRetribution`, the 11 exotic scrolls, `PrismaticImage`, `BlobImmunity`, `MagicalSight`, `Stamina`, `Barrier`, `Barkskin`, `MagicImmune`, `Dread`, `Foresight`, `ArtifactRecharge`, `PrismaticGuard`, `SmokeScreen`, `StormCloud`. `PotionOfParalyticGas` moves from `drink.unknown-ParalyticGas`, which only checked that the gas existed, to `potion.ParalyticGas`: the gas must paralyse a rat. Effects, each measured against a capture taken just before the trigger:
   - Frost: a rooted rat is chilled into Frost.
   - Purity: the hero loses HP in toxic gas before drinking and none under `BlobImmunity`. A second Purity, thrown, clears the gas beside him. The immunity wears off.

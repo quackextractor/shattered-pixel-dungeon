@@ -208,7 +208,7 @@ final class ScrollScenarios {
 		return Potion.getUnknown().size() + Scroll.getUnknown().size() + Ring.getUnknown().size();
 	}
 
-	private static int mapped(){
+	static int mapped(){
 		int cells = 0;
 		for (boolean m : Dungeon.level.mapped) if (m) cells++;
 		return cells;

@@ -102,7 +102,7 @@ final class CraftScenarios {
 	}
 
 	@SafeVarargs
-	private static Scenario brew( String id, Class< ? extends Item > product, Supplier< Item >... ingredients ){
+	static Scenario brew( String id, Class< ? extends Item > product, Supplier< Item >... ingredients ){
 		return new Scenario( id, "brew " + product.getSimpleName() + " at a pot", HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();

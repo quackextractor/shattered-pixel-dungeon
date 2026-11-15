@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.env;
 
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
+import com.shatteredpixel.shatteredpixeldungeon.ui.IconButton;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.shatteredpixel.shatteredpixeldungeon.ui.RedButton;
 import com.shatteredpixel.shatteredpixeldungeon.ui.TalentButton;
@@ -26,15 +27,21 @@ public class WindowBridge {
 	}
 
 	private static final java.util.Set< String > CHOICE_WINDOWS = java.util.Set.of( "WndSadGhost", "WndWandmaker", "WndImpOld",
-			"WndBlacksmith", "WndChooseSubclass", "WndChooseAbility", "WndMetamorphChoose", "WndMetamorphReplace", "WndInfoTalent" );
+			"WndBlacksmith", "WndChooseSubclass", "WndChooseAbility", "WndMetamorphChoose", "WndMetamorphReplace", "WndInfoTalent", "WndAugment", "WndGuess" );
+
+	private static final java.util.Set< String > ICON_WINDOWS = java.util.Set.of( "WndGuess" );
 
 	private static final java.util.ArrayDeque< Window > parents = new java.util.ArrayDeque<>();
 
 	private static final com.watabou.noosa.Group holding = new com.watabou.noosa.Group();
 
 	private static boolean choice( Window w ){
+		return named( w, CHOICE_WINDOWS );
+	}
+
+	private static boolean named( Window w, java.util.Set< String > names ){
 		for (Class< ? > c = w.getClass(); c != null && c != Window.class; c = c.getEnclosingClass() != null ? c.getEnclosingClass() : c.getSuperclass()){
-			if (CHOICE_WINDOWS.contains( c.getSimpleName() )) return true;
+			if (names.contains( c.getSimpleName() )) return true;
 		}
 		return false;
 	}
@@ -49,16 +56,17 @@ public class WindowBridge {
 				buttons.add( ((com.shatteredpixel.shatteredpixeldungeon.ui.ItemButton) g).slot() );
 			}
 		}
-		talentButtons( w, buttons );
+		nestedButtons( w, buttons, named( w, ICON_WINDOWS ));
 		return buttons;
 	}
 
-	private static void talentButtons( com.watabou.noosa.Group group, java.util.List< com.shatteredpixel.shatteredpixeldungeon.ui.Button > buttons ){
+	private static void nestedButtons( com.watabou.noosa.Group group, java.util.List< com.shatteredpixel.shatteredpixeldungeon.ui.Button > buttons, boolean icons ){
 		for (com.watabou.noosa.Gizmo g : group.living( com.watabou.noosa.Gizmo.class )){
-			if (g instanceof TalentButton){
-				if (g.visible && ((TalentButton) g).active) buttons.add( (TalentButton) g );
+			if (g instanceof TalentButton || (icons && g instanceof IconButton)){
+				com.shatteredpixel.shatteredpixeldungeon.ui.Button button = (com.shatteredpixel.shatteredpixeldungeon.ui.Button) g;
+				if (g.visible && button.active) buttons.add( button );
 			} else if (g instanceof com.watabou.noosa.Group){
-				talentButtons( (com.watabou.noosa.Group) g, buttons );
+				nestedButtons( (com.watabou.noosa.Group) g, buttons, icons );
 			}
 		}
 	}

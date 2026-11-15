@@ -27,7 +27,6 @@ actors.buffs.Invulnerability
 actors.buffs.LifeLink
 actors.buffs.Light
 actors.buffs.LostInventory
-actors.buffs.MagicalSleep
 actors.buffs.Momentum
 actors.buffs.MonkEnergy
 actors.buffs.PhysicalEmpower
@@ -148,7 +147,6 @@ actors.mobs.YogFist$RustedFist
 actors.mobs.YogFist$SoiledFist
 actors.mobs.npcs.ImpShopkeeper
 actors.mobs.npcs.RatKing
-actors.mobs.npcs.Sheep
 actors.mobs.npcs.VaultLaser
 actors.mobs.npcs.VaultMirror
 actors.mobs.npcs.VaultSentry
@@ -313,7 +311,6 @@ items.rings.RingOfMight
 items.rings.RingOfSharpshooting
 items.rings.RingOfTenacity
 items.rings.RingOfWealth
-items.scrolls.Scroll$ScrollToStone
 items.spells.Alchemize
 items.spells.Alchemize$Recipe
 items.spells.BeaconOfReturning
@@ -336,18 +333,6 @@ items.spells.UnstableSpell
 items.spells.UnstableSpell$Recipe
 items.spells.WildEnergy
 items.spells.WildEnergy$Recipe
-items.stones.StoneOfAggression
-items.stones.StoneOfAugmentation
-items.stones.StoneOfBlast
-items.stones.StoneOfBlink
-items.stones.StoneOfClairvoyance
-items.stones.StoneOfDeepSleep
-items.stones.StoneOfDetectMagic
-items.stones.StoneOfEnchantment
-items.stones.StoneOfFear
-items.stones.StoneOfFlock
-items.stones.StoneOfIntuition
-items.stones.StoneOfShock
 items.trinkets.ChaoticCenser
 items.trinkets.CrackedSpyglass
 items.trinkets.DimensionalSundial
