@@ -119,7 +119,7 @@ fi
 
 echo "[INFO]  post-commit: checking javac lint (about 5s, advisory)"
 set +e
-timeout 120 ./gradlew --quiet :superintelligence:javaclint 2>&1 | grep -c 'warning' | \
+timeout 120 ./gradlew --quiet :superintelligence:javaclint 2>&1 | grep -c 'warning:' | \
     { read n; echo "[INFO]  post-commit: javac lint reports $n warning line(s). Advisory only."; }
 set -e
 
