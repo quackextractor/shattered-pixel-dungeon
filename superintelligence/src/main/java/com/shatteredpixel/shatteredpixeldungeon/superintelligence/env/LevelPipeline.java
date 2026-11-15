@@ -211,6 +211,10 @@ public class LevelPipeline {
 			return Transition.FALL;
 		}
 
+		if (mode == com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.Mode.RETURN){
+			return handleReturn();
+		}
+
 		if (transition == null){
 			clearSwitchRequest();
 			return Transition.NONE;
@@ -249,6 +253,26 @@ public class LevelPipeline {
 		return result;
 	}
 
+
+	private Transition handleReturn(){
+		Transition result = com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.returnDepth > Dungeon.depth
+				? Transition.DESCEND : Transition.ASCEND;
+		com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob.holdAllies( Dungeon.level );
+		saveAll();
+
+		Dungeon.depth  = com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.returnDepth;
+		Dungeon.branch = com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.returnBranch;
+		Level level = loadOrGenerate();
+		Dungeon.switchLevel( level, com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene.returnPos );
+
+		attachSprites();
+		placeDroppedItems();
+		dropStaleTarget();
+		PathFinder.setMapSize( level.width(), level.height() );
+
+		clearSwitchRequest();
+		return result;
+	}
 
 	public void handleFall(){
 		fixTimeBeforeSwitching();

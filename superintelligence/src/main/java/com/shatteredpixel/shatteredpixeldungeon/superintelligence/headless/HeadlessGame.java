@@ -157,6 +157,29 @@ public class HeadlessGame extends Game {
 	}
 
 
+	public static boolean pressOffScene( com.shatteredpixel.shatteredpixeldungeon.ui.Button button ){
+		if (!(Game.instance instanceof HeadlessGame)) return button.press();
+		HeadlessGame game = (HeadlessGame) Game.instance;
+		java.util.List< com.watabou.noosa.Gizmo > shown = new java.util.ArrayList<>();
+		Scene was = game.scene;
+		game.scene = new Scene(){
+			@Override
+			public synchronized com.watabou.noosa.Gizmo addToFront( com.watabou.noosa.Gizmo g ){
+				shown.add( g );
+				return g;
+			}
+		};
+		try {
+			return button.press();
+		} finally {
+			game.scene = was;
+			for (com.watabou.noosa.Gizmo g : shown){
+				if (g instanceof com.shatteredpixel.shatteredpixeldungeon.ui.Window) GameScene.show( (com.shatteredpixel.shatteredpixeldungeon.ui.Window) g );
+			}
+		}
+	}
+
+
 	public static class HeadlessScene extends Scene {
 		@Override public void create() { }
 	}

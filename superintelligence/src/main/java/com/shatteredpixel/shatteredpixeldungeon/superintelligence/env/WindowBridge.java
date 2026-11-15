@@ -3,6 +3,8 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.env;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.shatteredpixel.shatteredpixeldungeon.ui.RedButton;
+import com.shatteredpixel.shatteredpixeldungeon.ui.TalentButton;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndTradeItem;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndUpgrade;
@@ -24,7 +26,7 @@ public class WindowBridge {
 	}
 
 	private static final java.util.Set< String > CHOICE_WINDOWS = java.util.Set.of( "WndSadGhost", "WndWandmaker", "WndImpOld",
-			"WndBlacksmith", "WndChooseSubclass", "WndChooseAbility" );
+			"WndBlacksmith", "WndChooseSubclass", "WndChooseAbility", "WndMetamorphChoose", "WndMetamorphReplace", "WndInfoTalent" );
 
 	private static final java.util.ArrayDeque< Window > parents = new java.util.ArrayDeque<>();
 
@@ -47,7 +49,18 @@ public class WindowBridge {
 				buttons.add( ((com.shatteredpixel.shatteredpixeldungeon.ui.ItemButton) g).slot() );
 			}
 		}
+		talentButtons( w, buttons );
 		return buttons;
+	}
+
+	private static void talentButtons( com.watabou.noosa.Group group, java.util.List< com.shatteredpixel.shatteredpixeldungeon.ui.Button > buttons ){
+		for (com.watabou.noosa.Gizmo g : group.living( com.watabou.noosa.Gizmo.class )){
+			if (g instanceof TalentButton){
+				if (g.visible && ((TalentButton) g).active) buttons.add( (TalentButton) g );
+			} else if (g instanceof com.watabou.noosa.Group){
+				talentButtons( (com.watabou.noosa.Group) g, buttons );
+			}
+		}
 	}
 
 
@@ -87,13 +100,17 @@ public static boolean selectOption( int index ){
 		if (w instanceof WndOptions) return ((WndOptions) w).selectOption( index );
 		java.util.List< com.shatteredpixel.shatteredpixeldungeon.ui.Button > buttons = buttons( w );
 		boolean parked = w != null && w == GameScene.headlessWindow();
-		if (index < 0 || index >= buttons.size() || !buttons.get( index ).press()) return false;
+		if (index < 0 || index >= buttons.size() || !press( buttons.get( index ))) return false;
 		Window shown = GameScene.headlessWindow();
 		if (parked && shown != null && shown != w && !destroyed( w )){
 			holding.add( w );
 			parents.push( w );
 		}
 		return true;
+	}
+
+	private static boolean press( com.shatteredpixel.shatteredpixeldungeon.ui.Button button ){
+		return button instanceof TalentButton ? HeadlessGame.pressOffScene( button ) : button.press();
 	}
 
 	private static boolean destroyed( Window w ){

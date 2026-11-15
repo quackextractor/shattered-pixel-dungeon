@@ -31,6 +31,8 @@ public final class ScenarioCatalog {
 		ALL.addAll( ConditionScenarios.all() );
 		ALL.addAll( SewerScenarios.all() );
 		ALL.addAll( PlantScenarios.all() );
+		ALL.addAll( PotionScenarios.all() );
+		ALL.addAll( ScrollScenarios.all() );
 	}
 
 	public static List< Scenario > all(){
