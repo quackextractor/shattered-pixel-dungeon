@@ -4,6 +4,8 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.FlavourBuff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroSubClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 
 public final class HeroKit {
@@ -64,6 +66,12 @@ public final class HeroKit {
 
 	public HeroKit strength( int str ){
 		hero().STR = str;
+		return this;
+	}
+
+	public HeroKit subclass( HeroSubClass subClass ){
+		hero().subClass = subClass;
+		Talent.initSubclassTalents( hero() );
 		return this;
 	}
 }

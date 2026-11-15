@@ -30,6 +30,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( NpcScenarios.all() );
 		ALL.addAll( ConditionScenarios.all() );
 		ALL.addAll( SewerScenarios.all() );
+		ALL.addAll( PlantScenarios.all() );
 	}
 
 	public static List< Scenario > all(){
