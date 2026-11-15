@@ -12,7 +12,6 @@ entry and leaves this list, or moves to `REJECTED.md`.
 - [ ] **Update leftovers** (P2): im2col/col2im, packed kernels, fused LSTM, slice sum.
 - [ ] **Env CPU** (P3): structural only now (packed observation, travel masks per state version, incremental reward); point fixes measured as noise.
 - [ ] **Engine hot paths** (P5): `ShadowCaster`, `PathFinder`, scheduling; bit-identical only.
-- [ ] **Learning loop** (P6): bigger minibatches with a scaled learning rate; depth at equal turns must hold.
 - [ ] **GPU stall under normal use** (`issues.md` 41): an hours-long run with the new diagnostics; 30 minutes on 2026-11-15 did not stall.
 - [ ] **Policy below its teacher** (`issues.md` 20): 2.780 against a 3.106 teacher on one seed set (2026-11-15, `evaluate teacher`).
 - [ ] **Survive floors 2-4, beat Goo** (`issues.md` 20): the goal; the sections below are its history.
