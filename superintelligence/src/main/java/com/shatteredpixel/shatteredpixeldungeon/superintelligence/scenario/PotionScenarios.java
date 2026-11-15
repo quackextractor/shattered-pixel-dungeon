@@ -328,12 +328,12 @@ final class PotionScenarios {
 		target( world, 100 );
 	}
 
-	private static void watcher( World world, HeroKit kit ){
+	static void watcher( World world, HeroKit kit ){
 		Rat rat = target( world, 100 );
 		rat.state = rat.PASSIVE;
 	}
 
-	private static boolean frozen( Mob rat ){
+	static boolean frozen( Mob rat ){
 		return rat.buff( Frost.class ) != null && rat.paralysed > 0;
 	}
 

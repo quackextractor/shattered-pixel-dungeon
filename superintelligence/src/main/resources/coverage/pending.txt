@@ -2,7 +2,6 @@ actors.blobs.Alchemy
 actors.blobs.Blizzard
 actors.blobs.Foliage
 actors.blobs.Inferno
-actors.blobs.Regrowth
 actors.blobs.SacrificialFire
 actors.blobs.VaultFlameTraps
 actors.buffs.Adrenaline
@@ -101,7 +100,6 @@ actors.mobs.Acidic
 actors.mobs.ArmoredBrute
 actors.mobs.ArmoredStatue
 actors.mobs.Bandit
-actors.mobs.Bee
 actors.mobs.CrystalGuardian
 actors.mobs.CrystalSpire
 actors.mobs.CrystalWisp
@@ -171,7 +169,6 @@ items.BrokenSeal
 items.Dewdrop
 items.EnergyCrystal
 items.Gold
-items.Honeypot
 items.KingsCrown
 items.LiquidMetal
 items.LiquidMetal$Recipe
@@ -227,18 +224,6 @@ items.bags.MagicalHolster
 items.bags.PotionBandolier
 items.bags.ScrollHolder
 items.bags.VelvetPouch
-items.bombs.ArcaneBomb
-items.bombs.Bomb
-items.bombs.Bomb$EnhanceBomb
-items.bombs.Firebomb
-items.bombs.FlashBangBomb
-items.bombs.FrostBomb
-items.bombs.HolyBomb
-items.bombs.Noisemaker
-items.bombs.RegrowthBomb
-items.bombs.ShrapnelBomb
-items.bombs.SmokeBomb
-items.bombs.WoollyBomb
 items.food.Berry
 items.food.Blandfruit
 items.food.Blandfruit$CookFruit

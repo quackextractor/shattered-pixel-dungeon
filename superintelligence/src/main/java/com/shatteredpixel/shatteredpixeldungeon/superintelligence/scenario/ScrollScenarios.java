@@ -182,7 +182,7 @@ final class ScrollScenarios {
 		return null;
 	}
 
-	private static void sleeperOutOfSight( World world, HeroKit kit ){
+	static void sleeperOutOfSight( World world, HeroKit kit ){
 		for (int cell = 0; cell < world.level().length(); cell++){
 			if (world.free( cell ) && !world.level().heroFOV[ cell ] && world.level().distance( cell, world.hero() ) > 8){
 				Rat rat = world.mob( new Rat(), cell );
