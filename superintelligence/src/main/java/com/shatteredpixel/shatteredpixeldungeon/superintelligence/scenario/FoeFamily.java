@@ -54,7 +54,7 @@ final class FoeFamily {
 		};
 	}
 
-	private static Mob brawl( Driver d, Class< ? extends Mob > type, int steps, Supplier< BooleanSupplier > arm, String failure ){
+	static Mob brawl( Driver d, Class< ? extends Mob > type, int steps, Supplier< BooleanSupplier > arm, String failure ){
 		Mob mob = d.world().find( type );
 		Hero hero = Dungeon.hero;
 		int heroHp = hero.HP;

@@ -22,6 +22,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Sheep;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.KindOfWeapon;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Greatsword;
 import com.shatteredpixel.shatteredpixeldungeon.levels.traps.BlazingTrap;
 import com.shatteredpixel.shatteredpixeldungeon.levels.traps.ChillingTrap;
@@ -67,7 +68,7 @@ final class TrapEffects {
 	}
 
 	static final class Effect {
-		final Body body;
+		Body body;
 		final Class< ? >[] covers;
 		Scenario.Setup arena = ( world, kit ) -> {};
 		int depth = 0;
@@ -86,12 +87,23 @@ final class TrapEffects {
 			this.depth = depth;
 			return this;
 		}
+
+		Effect expires( int waits, String failure, BooleanSupplier gone ){
+			Body effect = body;
+			body = ( d, trap, trigger ) -> {
+				effect.run( d, trap, trigger );
+				d.expect( d.until( gone, waits, () -> d.act( Action.WAIT )), failure );
+			};
+			return this;
+		}
 	}
 
 	static Map< Class< ? extends Trap >, Effect > all(){
 		Map< Class< ? extends Trap >, Effect > all = new LinkedHashMap<>();
 		all.put( BlazingTrap.class, armed( 3, "no fire burned around the blazing trap", trap -> () -> volume( Fire.class ) > 0 ));
-		all.put( ChillingTrap.class, new Effect( TrapEffects::chillSlows, Chill.class ));
+		all.put( ChillingTrap.class, new Effect( TrapEffects::chillSlows, Chill.class )
+				.expires( 15, "the chill never wore off the hero away from the frost", () -> Dungeon.hero.buff( Chill.class ) == null )
+				.arena( ( world, kit ) -> kit.give( new ScrollOfTeleportation() )));
 		all.put( ConfusionTrap.class, armed( 3, "the confusion trap released no gas", trap -> () -> volume( ConfusionGas.class ) > 0 ));
 		all.put( CorrosionTrap.class, new Effect( watch( 4, "the corrosive gas never corroded the hero's health", trap -> {
 			int hp = Dungeon.hero.HP;
@@ -117,7 +129,8 @@ final class TrapEffects {
 		all.put( FrostTrap.class, armed( 12, "the frost never froze the rat beside the trap", trap -> {
 			Mob rat = new World().find( Rat.class );
 			return () -> rat.buff( Frost.class ) != null && rat.paralysed > 0;
-		}, Frost.class ).arena( ( world, kit ) -> {
+		}, Frost.class ).expires( 60, "the rat never thawed", () -> new World().find( Rat.class ).buff( Frost.class ) == null )
+				.arena( ( world, kit ) -> {
 			kit.buff( FrostImbue.class, 100f );
 			world.mob( new Rat(), besideTrap( world ));
 		}));
@@ -131,12 +144,13 @@ final class TrapEffects {
 		}).arena( ( world, kit ) -> Buff.affect( world.mob( new Rat(), besideTrap( world )), Paralysis.class, 50f )));
 		all.put( GnollRockfallTrap.class, armed( 1, "the falling rocks never hurt the hero", trap -> hurt() ));
 		all.put( GrimTrap.class, armed( 2, "the grim trap never struck the hero", trap -> hurt() ));
-		all.put( GuardianTrap.class, new Effect( TrapEffects::guardianHunts, GuardianTrap.Guardian.class ).depth( 12 ));
+		all.put( GuardianTrap.class, new Effect( TrapEffects::guardianHunts, GuardianTrap.Guardian.class ).depth( 12 )
+				.arena( ( world, kit ) -> greatsword( kit )));
 		all.put( OozeTrap.class, armed( 3, "the ooze never ate at the hero's health", trap -> {
 			int hp = Dungeon.hero.HP;
 			return () -> Dungeon.hero.buff( Ooze.class ) != null && Dungeon.hero.HP < hp;
 		}));
-		all.put( ShockingTrap.class, armed( 1, "the electricity neither held nor hurt the hero", trap -> {
+		all.put( ShockingTrap.class, armed( 1, "the electricity neither held the hero over 3 turns through the trigger and settle nor hurt him", trap -> {
 			float start = Actor.now();
 			int hp = Dungeon.hero.HP;
 			return () -> Actor.now() - start > 3f && Dungeon.hero.HP < hp;
@@ -145,22 +159,31 @@ final class TrapEffects {
 			Mob rat = new World().find( Rat.class );
 			int hp = rat.HP;
 			return () -> rat.HP < hp;
-		}).arena( ( world, kit ) -> world.mob( new Rat(), twoFromTrap( world )).HP = 100 ));
+		}).arena( ( world, kit ) -> {
+			Mob rat = world.mob( new Rat(), twoFromTrap( world ));
+			rat.HP = rat.HT = 100;
+			Buff.affect( rat, Paralysis.class, 50f );
+		}));
 		all.put( TenguDartTrap.class, armed( 2, "the dart never poisoned the hero", trap -> () -> Dungeon.hero.buff( Poison.class ) != null ));
 		all.put( WarpingTrap.class, armed( 1, "the warp neither moved the hero nor wiped his map", trap -> {
 			boolean[] visited = Dungeon.level.visited.clone();
 			return () -> away( trap ) && forgot( visited );
 		}));
-		all.put( WeakeningTrap.class, new Effect( TrapEffects::weakens, Weakness.class ).arena( ( world, kit ) -> {
-			Greatsword sword = new Greatsword();
-			sword.identify();
-			kit.hero().belongings.weapon = sword;
-			kit.strength( sword.STRReq() );
+		all.put( WeakeningTrap.class, new Effect( TrapEffects::weakens, Weakness.class )
+				.expires( 60, "the weakness never wore off the hero", () -> Dungeon.hero.buff( Weakness.class ) == null ).arena( ( world, kit ) -> {
+			greatsword( kit );
 			Mob rat = world.mob( new Rat(), besideBoth( world ));
 			rat.HP = rat.HT = 1000;
 			Buff.affect( rat, Paralysis.class, 100f );
 		}));
 		return all;
+	}
+
+	private static void greatsword( HeroKit kit ){
+		Greatsword sword = new Greatsword();
+		sword.identify();
+		kit.hero().belongings.weapon = sword;
+		kit.strength( sword.STRReq() );
 	}
 
 	private static Effect armed( int waits, String failure, Arm arm, Class< ? >... covers ){
@@ -183,6 +206,8 @@ final class TrapEffects {
 		d.require( Dungeon.hero.buff( Chill.class ) != null && Dungeon.hero.buff( Frost.class ) == null, "the hero was never chilled, or froze outright" );
 		float chilled = cost( () -> d.move( start ));
 		d.expect( chilled > base + 0.1f && chilled <= 2.01f, "a chilled step cost " + chilled + " turns against " + base + " before the chill" );
+		d.use( ScrollOfTeleportation.class );
+		d.require( Dungeon.hero.buff( Chill.class ) != null && Dungeon.hero.buff( Frost.class ) == null, "the hero lost the chill or froze before leaving the frost" );
 	}
 
 	private static float cost( Runnable action ){
@@ -199,6 +224,7 @@ final class TrapEffects {
 		if (guardian == null) return;
 		boolean hunts = d.until( () -> guardian.state == guardian.HUNTING, 30, () -> d.act( Action.WAIT ));
 		d.expect( hunts, "the guardian never hunted the hero, " + guardian.state.getClass().getSimpleName() + " at " + guardian.pos );
+		if (hunts) FoeFamily.brawl( d, GuardianTrap.Guardian.class, 40, null, "the guardian never hurt the hero" );
 	}
 
 	private static GuardianTrap.Guardian guardian(){
