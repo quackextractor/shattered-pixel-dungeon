@@ -4,9 +4,12 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.duelist.ElementalStrike;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.NPC;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
+import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfForce;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.RunicBlade;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 
 final class Surroundings {
@@ -94,6 +97,8 @@ final class Surroundings {
 				return cell;
 			}
 		}
+		int reach = reachableEnemy();
+		if (reach >= 0) return reach;
 		for (int o = 1; o < TARGET_COUNT; o++){
 			int cell = targetCell( o );
 			Heap h = insideMap( cell ) ? Dungeon.level.heaps.get( cell ) : null;
@@ -136,6 +141,26 @@ final class Surroundings {
 		}
 		if (dbg != null) System.err.println( "[interact] found nothing" + dbg );
 		return Dungeon.hero.pos;
+	}
+
+	static int reachableEnemy(){
+		Hero hero = Dungeon.hero;
+		if (reachMutatesState( hero )) return -1;
+		int best = -1;
+		for (Mob mob : Dungeon.level.mobs){
+			if (Dungeon.level.adjacent( hero.pos, mob.pos ) || !Dungeon.level.heroFOV[ mob.pos ] || mob.invisible > 0 || mob.heroShouldInteract()
+					|| hero.isCharmedBy( mob ) || !hero.canAttack( mob )) continue;
+			int distance = Dungeon.level.distance( hero.pos, mob.pos );
+			int bestDistance = best < 0 ? Integer.MAX_VALUE : Dungeon.level.distance( hero.pos, best );
+			if (distance < bestDistance || (distance == bestDistance && mob.pos < best)) best = mob.pos;
+		}
+		return best;
+	}
+
+	private static boolean reachMutatesState( Hero hero ){
+		RingOfForce.BrawlersStance stance = hero.buff( RingOfForce.BrawlersStance.class );
+		return hero.buff( RunicBlade.RunicSlashTracker.class ) != null || hero.buff( ElementalStrike.DirectedPowerTracker.class ) != null
+				|| (stance != null && stance.active && hero.buff( RingOfForce.Force.class ) == null);
 	}
 
 	static boolean moveLegal( Action action ){

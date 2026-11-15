@@ -41,6 +41,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( RingScenarios.all() );
 		ALL.addAll( MeleeScenarios.all() );
 		ALL.addAll( WeaponAbilityScenarios.all() );
+		ALL.addAll( EnchantScenarios.all() );
 	}
 
 	public static List< Scenario > all(){

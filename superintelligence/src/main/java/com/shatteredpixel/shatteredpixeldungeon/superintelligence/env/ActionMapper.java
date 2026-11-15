@@ -190,7 +190,8 @@ public class ActionMapper {
 				|| Surroundings.adjacentDoor()
 				|| Surroundings.adjacentTransition()
 				|| Surroundings.adjacentNpc()
-				|| Surroundings.adjacentAlchemy();
+				|| Surroundings.adjacentAlchemy()
+				|| Surroundings.reachableEnemy() >= 0;
 
 		for (Action a : Action.values()){
 			switch (a) {
@@ -419,7 +420,7 @@ public class ActionMapper {
 
 		Hero hero = hero();
 
-		if (cell != hero.pos && !Dungeon.level.adjacent( hero.pos, cell )) return false;
+		if (cell != hero.pos && !Dungeon.level.adjacent( hero.pos, cell ) && cell != Surroundings.reachableEnemy()) return false;
 
 		if (hero.handle( cell )) {
 			hero.next();

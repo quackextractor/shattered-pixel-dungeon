@@ -669,6 +669,8 @@ into attack / loot / unlock / stairs / talk. Exposing that as a single action le
 intent rather than rediscovering which `HeroAction` subtype a tile implies. The policy always sends `INTERACT` with direction 0,
 which picks the cell itself; to choose a particular neighbour it moves into it, since a move runs the same
 `Hero.handle` and the action head that picks it is trained. Locked doors are therefore legal moves.
+With no attackable neighbour, `INTERACT` attacks the nearest visible enemy the hero's weapon reaches (a
+reach weapon, `Projecting`), as tapping that enemy does in the game; a move can only step toward it.
 
 **Targeting and inventory are separate heads.** The environment pauses for them. Predicting a target
 on the 95% of turns that are not aiming wastes capacity and invites spurious correlations, and

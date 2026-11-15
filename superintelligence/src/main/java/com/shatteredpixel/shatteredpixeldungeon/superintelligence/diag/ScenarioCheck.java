@@ -1,8 +1,13 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.duelist.ElementalStrike;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Bat;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Projecting;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.RunicBlade;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
@@ -51,6 +56,7 @@ public class ScenarioCheck {
 
 		checkASetupLeavesTheGameplayStreamAlone();
 		checkAnUnwitnessedCoverFails();
+		checkTheMaskChangesNoHeroState();
 
 		ScenarioRunner runner = new ScenarioRunner( new EnvConfig(), out );
 		List< ScenarioRunner.Result > results = new ArrayList<>();
@@ -136,6 +142,34 @@ public class ScenarioCheck {
 			GateReport.fail( "self-test: a scenario that spawns a Rat and declares Rat ended " + rat.status + ": " + rat.failure );
 		} else {
 			System.out.println( "  a declared cover the run never saw fails: " + bat.failure );
+		}
+	}
+
+	private static void checkTheMaskChangesNoHeroState(){
+		Scenario scenario = new Scenario( "selftest.mask", "self-test", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.sturdy();
+					Weapon weapon = (Weapon) kit.hero().belongings.weapon;
+					weapon.level( 30 );
+					weapon.enchant( new Projecting() );
+					Rat rat = world.mob( new Rat(), world.cellAtRange( 2, true ));
+					rat.state = rat.PASSIVE;
+					kit.buff( RunicBlade.RunicSlashTracker.class, 100f );
+					kit.buff( ElementalStrike.DirectedPowerTracker.class, 100f );
+				},
+				d -> {
+					d.env().mapper().actionMask( d.env().mode(), new float[ Action.size() ] );
+					d.expect( Dungeon.hero.buff( RunicBlade.RunicSlashTracker.class ) != null
+							&& Dungeon.hero.buff( ElementalStrike.DirectedPowerTracker.class ) != null,
+							"building the action mask beside a Projecting reach target detached an ability tracker" );
+				} );
+		ScenarioCatalog.registerSelfTest( scenario );
+		ScenarioRunner.Result result = new ScenarioRunner( new EnvConfig(), null ).run( scenario );
+		if (!"OK".equals( result.status )){
+			GateReport.fail( "self-test: " + result.failure );
+		} else {
+			System.out.println( "  building the action mask with a Projecting reach target keeps the ability trackers" );
 		}
 	}
 
