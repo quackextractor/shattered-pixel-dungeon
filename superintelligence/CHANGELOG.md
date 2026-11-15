@@ -183,6 +183,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **The viewer says when it cannot wait for a window posted to the render thread.** `RenderQueue` read libGDX's
+  private `runnables` queue by reflection and returned false on any failure, so a libGDX bump or another backend would
+  silently bring back issue 48's late Blacksmith window. It now warns once, naming the application class.
 - **`worldtrace` refuses a recording whose scenario this build does not know.** It traced the bare floor instead,
   which is the wrong world with no message; `verify` and the viewer already refuse such a recording. Checked on a copy of
   `melee.replay` renamed to `no-such-scenario` (`out/evidence/worldtrace-unknown/`).
