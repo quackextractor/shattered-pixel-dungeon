@@ -34,6 +34,7 @@ final class TrapScenarios {
 		for (Class< ? extends Trap > trap : traps){
 			all.add( trap == GrippingTrap.class ? stepOn( trap ).covers( trap, Cripple.class ) : stepOn( trap ).covers( trap ));
 		}
+		TrapEffects.all().forEach( ( trap, effect ) -> all.add( effect( trap, effect ).covers( trap ).covers( effect.covers )));
 		all.add( search() );
 		return all;
 	}
@@ -58,7 +59,27 @@ final class TrapScenarios {
 				} );
 	}
 
-	private static Trap adjacentTrap(){
+	private static Scenario effect( Class< ? extends Trap > type, TrapEffects.Effect effect ){
+		String name = type.getSimpleName().replace( "Trap", "" );
+		return new Scenario( "trap." + name, "a " + name + " trap does what it says", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.sturdy();
+					world.trap( Reflection.newInstance( type ), world.adjacentFreeStraight(), Terrain.TRAP );
+					effect.arena.build( world, kit );
+				},
+				d -> {
+					Trap trap = adjacentTrap();
+					int cell = trap.pos;
+					d.act( Action.WAIT );
+					effect.body.run( d, trap, () -> {
+						d.move( cell );
+						d.expect( trap.active != trap.disarmedByActivation, "the " + name + " trap at " + cell + " did not fire, hero at " + Dungeon.hero.pos );
+					});
+				} ).depth( effect.depth );
+	}
+
+	static Trap adjacentTrap(){
 		for (int offset : com.watabou.utils.PathFinder.NEIGHBOURS8){
 			Trap trap = Dungeon.level.traps.get( Dungeon.hero.pos + offset );
 			if (trap != null) return trap;
