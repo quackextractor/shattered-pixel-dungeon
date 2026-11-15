@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`evaluate teacher` plays the `DescentBot` teacher on the policy's seeds.** Passing `teacher` in place of a weights
+  file plays the same EVAL-0..N seeds and hero rotation as a checkpoint evaluation, so the gap between policy and teacher
+  is measured on one seed set; the 3.28 quoted in `issues.md` 20 came from other seeds. Measured on 500: policy 2.780
+  after a 30-minute run, teacher 3.106.
 - **Quest rewards and class choices can be answered.** `WindowBridge` now answers the button windows of the Ghost,
   Wandmaker, Imp and Blacksmith and the subclass and armour-ability choices (and the confirm windows they open), as it
   answers the shop's trade window: each active button, and each item button, is an option. They were dismissed before,

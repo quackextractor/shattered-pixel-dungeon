@@ -23,12 +23,16 @@ public final class EvalCommand {
 	private EvalCommand(){}
 
 	public static void main( String[] args ){
-		File weights = CliOptions.resolve( new File( args[ 0 ] ) );
 		int episodes = Integer.parseInt( args[ 1 ] );
 		String[] temperatures = args[ 2 ].split( "," );
 		CliOptions options = CliOptions.parse( java.util.Arrays.copyOfRange( args, 3, args.length ));
 		Cli.boot( options );
 		EnvConfig config = Cli.configFor( options );
+		if (args[ 0 ].equals( "teacher" )){
+			evaluateTeacher( new SPDEnv( config, HeadlessGame.install() ), episodes );
+			return;
+		}
+		File weights = CliOptions.resolve( new File( args[ 0 ] ) );
 		Network network = new Network( config, new Random( 1L ));
 		try {
 			Checkpoint.load( weights, network, config );
@@ -41,6 +45,24 @@ public final class EvalCommand {
 		for (String temperature : temperatures){
 			evaluate( env, config, network, episodes, Float.parseFloat( temperature ));
 		}
+	}
+
+	private static void evaluateTeacher( SPDEnv env, int episodes ){
+		long start = System.nanoTime();
+		int deepest = 0, floor4 = 0, floor6 = 0, turns = 0;
+		int[] secondary = new int[ 1 ];
+		for (int e = 0; e < episodes; e++){
+			env.reset( "EVAL-" + e, HEROES[ e % HEROES.length ] );
+			DescentBot bot = new DescentBot();
+			while (env.running()) env.step( bot.act( env, secondary ), secondary[ 0 ] );
+			int depth = Statistics.deepestFloor;
+			deepest += depth;
+			if (depth >= 4) floor4++;
+			if (depth >= 6) floor6++;
+			turns += env.turnsTotal();
+		}
+		System.out.printf( "[OK]     teacher: depth %.3f, floor 4+ %d, floor 6+ %d, turns %d, %d episodes in %.0f s%n",
+				deepest / (double) episodes, floor4, floor6, turns / episodes, episodes, ( System.nanoTime() - start ) / 1e9 );
 	}
 
 	private static void printRow( long[][] confusion, int teacher ){

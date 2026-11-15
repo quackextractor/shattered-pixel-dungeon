@@ -22,6 +22,9 @@ Floor 1 is solved: `teach-demo-31` reaches depth>=2 in ~90% of episodes, mean de
 - 2026-11-06: the policy's 2.29 was a gap in what it could learn, not in rewards. The teacher's plans were invisible to it, and macro actions took
   evaluated depth from 2.07-2.11 to 2.81 in 30 minutes, floor 6+ from 0 to 24 of 500. Next: the policy still sits below its teacher's 3.28, measured on
   other seeds, and training depth reads 3.1 against 2.81 evaluated. `macro3` predates the sell-window fix, so its deepest runs were cut short.
+- 2026-11-15, one seed set (`evaluate`, EVAL-0..499, all six heroes): the policy after 785 generations (30 minutes, `post-review2`)
+  reads 2.780, floor 4+ 122, floor 6+ 21; the teacher on the same seeds (`evaluate teacher`) reads 3.106, floor 4+ 161, floor 6+ 40.
+  The gap is 0.33, not 0.47. Agreement with the teacher is 0.847. `out/evidence/post-review2.eval`, `teacher.eval`.
 - Stats: Upgrade scrolls could not be used at all headless (item picker, `CHANGELOG.md` Unreleased). Fixed;
   the teacher now reads, upgrades and equips, and explores before descending: 2.56 mean depth, floor 4+ 27
   of 200, 3 stalls. Upgrades stay scarce before death (mean armour +0.16, no tier-2 armour worn: it needs
@@ -45,3 +48,6 @@ reading, so the watchdog should record that.
 episode over 8 s after the PC was cleared. Two runs with apps open had died. This does not rule the apps out and contradicts the
 Discord line above, which only covers inference alone. The cause is still unknown; `TrainerWorkers.reportSlowest` and the watchdog
 diagnostics now log the next stall. A stall under normal use remains a trainer bug.
+
+2026-11-15: 30 minutes with apps open (100 generations, then 685 resumed, 48 x 2 in-process) ran with no stall at 21-25K turns/s;
+`out/evidence/post-review.log`, `post-review2.log`. One run past the 20-minute mark is not proof; an hours-long run is still owed.
