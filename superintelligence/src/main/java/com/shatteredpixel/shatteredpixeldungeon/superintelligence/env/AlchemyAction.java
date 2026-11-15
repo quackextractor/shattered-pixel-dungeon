@@ -4,11 +4,14 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.LiquidMetal;
 import com.shatteredpixel.shatteredpixeldungeon.items.Recipe;
 import com.shatteredpixel.shatteredpixeldungeon.items.food.MeatPie;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public final class AlchemyAction {
@@ -46,6 +49,11 @@ public final class AlchemyAction {
 		if (everything.size() > 1 ) sets.add( new ArrayList<>( everything.subList( 0, 1 )));
 		if (everything.size() > 2 ) sets.add( new ArrayList<>( everything.subList( 0, 2 )));
 		if (everything.size() > MAX_INPUTS ) sets.add( new ArrayList<>( everything.subList( 0, MAX_INPUTS )));
+
+		for (Item item : everything){
+			if (item instanceof LiquidMetal || item instanceof MissileWeapon) continue;
+			for (int copies = 2; copies <= MAX_INPUTS && copies <= item.quantity(); copies++) sets.add( new ArrayList<>( Collections.nCopies( copies, item )));
+		}
 
 		return sets;
 	}
