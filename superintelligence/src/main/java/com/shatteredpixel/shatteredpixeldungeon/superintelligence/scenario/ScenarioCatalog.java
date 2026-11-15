@@ -43,6 +43,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( WeaponAbilityScenarios.all() );
 		ALL.addAll( EnchantScenarios.all() );
 		ALL.addAll( TalentTier1.all() );
+		ALL.addAll( ClericScenarios.all() );
 	}
 
 	public static List< Scenario > all(){

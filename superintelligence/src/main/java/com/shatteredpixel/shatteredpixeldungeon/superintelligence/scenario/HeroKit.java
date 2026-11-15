@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.FlavourBuff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroSubClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.ArmorAbility;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 
 public final class HeroKit {
@@ -72,6 +73,18 @@ public final class HeroKit {
 	public HeroKit subclass( HeroSubClass subClass ){
 		hero().subClass = subClass;
 		Talent.initSubclassTalents( hero() );
+		return this;
+	}
+
+	public HeroKit ability( ArmorAbility ability ){
+		hero().armorAbility = ability;
+		Talent.initArmorTalents( hero() );
+		return this;
+	}
+
+	public HeroKit talent( Talent talent, int points ){
+		for (int i = hero().pointsInTalent( talent ); i < points; i++) hero().upgradeTalent( talent );
+		if (hero().pointsInTalent( talent ) != points) throw new NoFixture( "the hero cannot hold " + points + " points of " + talent );
 		return this;
 	}
 }

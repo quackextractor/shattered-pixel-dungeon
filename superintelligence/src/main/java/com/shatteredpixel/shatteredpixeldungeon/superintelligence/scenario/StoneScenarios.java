@@ -137,7 +137,7 @@ final class StoneScenarios {
 				() -> () -> !Potion.getUnknown().contains( PotionOfLiquidFlame.class )).covers();
 	}
 
-	private static void answer( Driver d, String window, int option ){
+	static void answer( Driver d, String window, int option ){
 		d.require( d.env().mode() == EnvMode.MENU && WindowBridge.describe().startsWith( window + "(" ),
 				"expected " + window + ", saw " + d.env().mode() + " " + WindowBridge.describe() );
 		d.menu( option );
