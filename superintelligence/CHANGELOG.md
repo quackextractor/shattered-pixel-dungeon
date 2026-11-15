@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`freeactioncheck` covers `THROW` and the chasm step.** The zero-time exit case now requires `THROW` masked too, and a
+  new case turns a cell beside the hero into a chasm and requires the step into it masked after a free menu exit. Both
+  masks were added without a deterministic gate; removing either now fails it.
 - **Scenario `worn.not-dropped`.** `DROP` and `THROW` must not offer worn armour, which the game refuses without spending
   a turn, and must offer cancel. Nothing guarded the verb masks in `SPDEnv.refreshMasks` before; removing them fails it.
 - **The replay list shows scenario and sweep recordings.** `ReplayCatalog` now also reads `superintelligence/out/scenarios`

@@ -23,7 +23,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class FreeActionCheck {
 
-	private static final int CHECKS = 8;
+	private static final int CHECKS = 9;
 
 	private static final String[] SEEDS = {
 		"FREEACTION-A", "FREEACTION-B", "FREEACTION-C", "FREEACTION-D"
@@ -40,6 +40,7 @@ public class FreeActionCheck {
 		checkWaitingIgnoresSlow( config );
 		checkOpeningAMenuCostsNoTurn( config );
 		checkAZeroTimeModeExitIsMaskedOut( config );
+		checkAZeroTimeExitMasksAStepIntoAPit( config );
 		checkTheRefusalLastsExactlyOneStep( config );
 		checkTheMenuLoopCannotOutrunTheBudget( config );
 		checkTalentIsOfferedOnlyWithAPointToSpend( config );
@@ -135,7 +136,7 @@ public class FreeActionCheck {
 
 		float[] mask = env.actionMask();
 
-		for (Action a : new Action[]{ Action.OPEN_INVENTORY, Action.USE, Action.DROP }){
+		for (Action a : new Action[]{ Action.OPEN_INVENTORY, Action.USE, Action.DROP, Action.THROW }){
 			if (mask[ a.index ] != 0f ){
 				fail( a + " is still offered immediately after a menu was opened and cancelled"
 						+ " at no cost to engine time. That pair is the loop: both halves are free, so"
@@ -145,7 +146,37 @@ public class FreeActionCheck {
 			}
 		}
 
-		System.out.println( "  a zero-time menu exit masks OPEN_INVENTORY, USE and DROP" );
+		System.out.println( "  a zero-time menu exit masks OPEN_INVENTORY, USE, DROP and THROW" );
+	}
+
+	private static void checkAZeroTimeExitMasksAStepIntoAPit( EnvConfig config ){
+		SPDEnv env = new SPDEnv( config, HeadlessGame.install() );
+		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
+		Action into = null;
+		for (Action a : new Action[]{ Action.MOVE_N, Action.MOVE_E, Action.MOVE_S, Action.MOVE_W }){
+			int cell = Dungeon.hero.pos + a.dx + a.dy * Dungeon.level.width();
+			if (into == null && Dungeon.level.passable[ cell ] && Actor.findChar( cell ) == null && Dungeon.level.heaps.get( cell ) == null){
+				com.shatteredpixel.shatteredpixeldungeon.levels.Level.set( cell, com.shatteredpixel.shatteredpixeldungeon.levels.Terrain.CHASM );
+				into = a;
+			}
+		}
+		if (into == null){
+			fail( "no free cell beside the hero on " + SEEDS[ 0 ] + " to turn into a chasm, so the pit mask was not tested." );
+			return;
+		}
+		env.step( Action.WAIT, 0 );
+		if (env.actionMask()[ into.index ] < 0.5f){
+			fail( into + " into a known chasm is not offered at all, so masking it after a menu exit proves nothing." );
+			return;
+		}
+		env.step( Action.OPEN_INVENTORY, 0 );
+		env.step( Action.CANCEL, 0 );
+		if (env.actionMask()[ into.index ] != 0f){
+			fail( into + " into a chasm is offered straight after a free menu exit. It opens the free \"jump?\" prompt,"
+					+ " whose cancel is free too, so the pair loops for the whole free-step budget." );
+			return;
+		}
+		System.out.println( "  a zero-time menu exit masks a step into a chasm" );
 	}
 
 	private static void checkTheRefusalLastsExactlyOneStep( EnvConfig config ){
