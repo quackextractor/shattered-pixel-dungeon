@@ -1,0 +1,45 @@
+SPD-REPLAY
+version=5
+seed=SWEEP-1
+hero=DUELIST
+challenges=0
+generation=0
+score=-2903.5
+depth=22
+turns=24
+turn_limit=1500
+max_slots=96
+allow_equipping=true
+turn_limit_total=40000
+stall_limit=120
+free_step_budget=250
+actor_step_limit=20000
+termination=DEATH
+reward_profile=default
+group=scenario
+scenario=sweep.duelist.d22.1
+steps=23
+playback=ok
+MOVE_N 0 WORLD 1769 -1.0  20 1.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 2 4416672763248560218 1
+REST 0 WORLD 1769 -1.0  20 2.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 4 -6404703270908822650 1
+OPEN_INVENTORY 0 WORLD 1769 -0.5  20 2.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 4 -6404703270908822650 1
+USE 3 INVENTORY 1769 -0.5 ThrowingSpike:1@0,Waterskin:2@2 20 2.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 4 -6404703270908822650 1
+INTERACT 0 WORLD 400 -1.0  20 0.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 5 -4695082184927372937 1
+SEARCH 0 WORLD 400 -2.0  20 2.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 16 8030997276232983015 1
+REST 0 WORLD 400 -1.0  20 3.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 16 8030997276232983015 1
+DROP 0 WORLD 400 -0.5  20 3.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 16 8030997276232983015 1
+CANCEL 95 SLOT 400 -0.5 ThrowingSpike:1@0,Waterskin:2@2 20 3.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 16 8030997276232983015 1
+MOVE_E 0 WORLD 401 -1.0  20 4.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 19 -2135747252071425011 1
+USE 0 WORLD 401 -0.5  20 4.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 19 -2135747252071425011 1
+USE 3 SLOT 401 -0.5 ThrowingSpike:1@0,Waterskin:2@2 20 4.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 19 -2135747252071425011 1
+MOVE_NE 0 WORLD 366 -1.0  20 5.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 22 1975374633488899035 1
+USE 0 WORLD 366 -0.5  20 5.0 Food:1,ThrowingSpike:1,VelvetPouch():1,Waterskin:1 22 1975374633488899035 1
+USE 0 SLOT 366 -291.0 ThrowingSpike:1@0,Waterskin:2@2 20 8.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1 26 3937611563877383968 1
+OPEN_INVENTORY 0 WORLD 366 -0.5  20 8.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1 26 3937611563877383968 1
+USE 3 INVENTORY 366 0.0 ThrowingSpike:1@0,Waterskin:2@1 20 8.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1 26 3937611563877383968 1
+USE 7 TARGETING 366 -0.5  20 8.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1 26 3937611563877383968 1
+MOVE_S 0 WORLD 402 -1.0  20 9.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1 29 -3810906578875598508 1
+TRAVEL_ITEM 0 WORLD 437 -1.0  20 10.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1 30 9214822433888537206 1
+MOVE_S 0 WORLD 437 -0.5  20 10.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1 30 9214822433888537206 1
+MENU_SELECT 0 MENU 437 -0.5  20 10.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1 30 9214822433888537206 1
+MOVE_W 0 WORLD 446 -4395.0  0 0.0 ThrowingSpike:1,VelvetPouch():1,Waterskin:1 -1 0 1

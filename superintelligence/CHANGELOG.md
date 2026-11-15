@@ -198,6 +198,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **The viewer drains the scheduler on a new floor before the next step (issue 50).** A fall leaves `Hero.ready` set
+  from the floor above, so the viewer applied the next recorded step before any actor had run. `Chasm.Falling` acts at
+  `VFX_PRIO` ahead of the hero, so the landing then damaged the hero, the damage interrupted the queued move, and the
+  hero stayed put; the trainer settles a pending switch at the start of the step (`SPDEnv.settle`) and the game runs its
+  actor thread before input, so both land first. `sweep.duelist.d22.1` diverged at its last step (pos 447 against 446).
+  The viewer now drives to hero-ready whenever the floor differs from the one it last settled on. It joins the corpus as
+  `fall-landing.replay`, 37 recordings; removing the drain fails `viewcheck` on it.
 - **The viewer says when it cannot wait for a window posted to the render thread.** `RenderQueue` read libGDX's
   private `runnables` queue by reflection and returned false on any failure, so a libGDX bump or another backend would
   silently bring back issue 48's late Blacksmith window. It now warns once, naming the application class. Headless

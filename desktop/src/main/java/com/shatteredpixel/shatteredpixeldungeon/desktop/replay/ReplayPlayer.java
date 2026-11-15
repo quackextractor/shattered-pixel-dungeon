@@ -228,6 +228,7 @@ public class ReplayPlayer {
 	private boolean rngTraceArmed = false;
 	private boolean rngArmed = false;
 	private int scenarioPhase = 0;
+	private com.shatteredpixel.shatteredpixeldungeon.levels.Level settledLevel = null;
 
 	/**
 	 * Per-frame record of the world, and per-step alongside it, including the cells.
@@ -412,7 +413,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			return;
 		}
 
-		if (!readyToAct() && driveToHeroReady() != Drain.READY){
+		if ((!readyToAct() || landedUnsettled()) && driveToHeroReady() != Drain.READY){
 			frameBoundary( false, elapsed, null );
 			return;
 		}
@@ -958,6 +959,10 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 		return Dungeon.hero.ready;
 	}
 
+	private boolean landedUnsettled(){
+		return settledLevel != null && Dungeon.level != settledLevel;
+	}
+
 	private boolean scenarioReady(){
 		ScenarioSetup.Hook hook = ScenarioSetup.hookFor( playback.replay().scenario );
 		if (hook == null){
@@ -1089,6 +1094,7 @@ awaitingSettle = true;
 			return;
 		}
 
+		settledLevel = Dungeon.level;
 		if (Dungeon.hero.isAlive()){
 			settledPosition = Dungeon.hero.pos;
 			trace( settledPosition );
@@ -1268,6 +1274,7 @@ awaitingSettle = true;
 		diverged = false;
 		rebuilding = true;
 		scenarioPhase = 0;
+		settledLevel = null;
 		playback.rewind();
 	}
 

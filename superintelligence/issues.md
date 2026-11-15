@@ -45,18 +45,3 @@ reading, so the watchdog should record that.
 episode over 8 s after the PC was cleared. Two runs with apps open had died. This does not rule the apps out and contradicts the
 Discord line above, which only covers inference alone. The cause is still unknown; `TrainerWorkers.reportSlowest` and the watchdog
 diagnostics now log the next stall. A stall under normal use remains a trainer bug.
-
-## 50. A sweep world that climbs out of its jumped floor and falls back diverges in the viewer - OPEN
-
-`sweep.duelist.d22.1` (uniform policy, seed `SWEEP-1`, scenario jump to depth 22) diverges in the real viewer at step 23
-of 23: `MOVE_W/0 in WORLD: hero at (18, 11) pos 447, recording says (17, 11) pos 446`. The other 71 sweep worlds, all 171
-scenarios and the 36 corpus recordings play clean (`out/evidence/review-fixes/`). The hero takes the entrance up to
-depth 21 at step 4, walks onto a chasm there at step 20, answers the jump prompt at step 21, and the trainer settles the
-fall into depth 22 at the start of step 22, where the hero is at 446 with 0 of 20 HP and the episode ends as `DEATH`.
-The viewer has the hero at 447.
-
-It is not from the 2026-11-15 review fixes: the recording verifies headlessly at `b6577e7ab`, before them, and the viewer
-at `b6577e7ab` diverges at the same step and cell. The fixes only changed the uniform policy's path so the sweep reaches
-it. Not yet known: why the hero dies on landing from full HP, and where the viewer's hero lands. The viewer's world
-trace (`-PspdWorldTrace`) stops before a scenario's depth jump, so `viewdiff` cannot compare this recording; extending
-the viewer trace past the jump is the next step.
