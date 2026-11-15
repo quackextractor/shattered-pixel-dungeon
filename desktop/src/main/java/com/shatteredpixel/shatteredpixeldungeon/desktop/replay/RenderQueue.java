@@ -13,7 +13,7 @@ final class RenderQueue {
 
 	@SuppressWarnings( "unchecked" )
 	static boolean gamePending(){
-		if (Gdx.app == null) return false;
+		if (Gdx.app == null || Gdx.app.getType() != com.badlogic.gdx.Application.ApplicationType.Desktop) return false;
 		try {
 			java.lang.reflect.Field field = Gdx.app.getClass().getDeclaredField( "runnables" );
 			field.setAccessible( true );
