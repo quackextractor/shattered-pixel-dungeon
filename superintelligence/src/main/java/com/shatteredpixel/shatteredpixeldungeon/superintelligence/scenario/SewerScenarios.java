@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.StenchGas;
@@ -40,7 +41,9 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.watabou.utils.PathFinder;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 final class SewerScenarios {
 
@@ -48,30 +51,41 @@ final class SewerScenarios {
 
 	static List< Scenario > all(){
 		List< Scenario > all = new ArrayList<>();
-		all.add( FoeFamily.fight( "sewer.Albino", Albino.class, 1, 12, () -> Dungeon.hero.buff( Bleeding.class ) != null,
-				"the Albino never made the hero bleed" ).covers( Bleeding.class ));
+		all.add( FoeFamily.dot( "sewer.Albino", Albino.class, Bleeding.class, "the Albino never made the hero bleed",
+				"the bleeding never hurt the hero out of the Albino's reach" ));
 		all.add( FoeFamily.fight( "sewer.Gnoll", Gnoll.class, 1, 12, null, "the Gnoll never hurt the hero" ));
 		all.add( FoeFamily.fight( "sewer.Snake", Snake.class, 1, 12, null, "the Snake never hurt the hero" ));
 		all.add( FoeFamily.fight( "sewer.Crab", Crab.class, 1, 12, null, "the Crab never hurt the hero" ));
 		all.add( FoeFamily.fight( "sewer.Slime", Slime.class, 1, 12, null, "the Slime never hurt the hero" ));
 		all.add( FoeFamily.fight( "sewer.HermitCrab", HermitCrab.class, 1, 12, null, "the Hermit Crab never hurt the hero" ));
-		all.add( FoeFamily.fight( "sewer.CausticSlime", CausticSlime.class, 1, 12, () -> Dungeon.hero.buff( Ooze.class ) != null,
-				"the Caustic Slime never oozed the hero" ).covers( Ooze.class ));
-		all.add( FoeFamily.fight( "sewer.FetidRat", FetidRat.class, 1, 12, SewerScenarios::stenchBesideHero,
-				"the Fetid Rat released no stench beside the hero" ).covers( StenchGas.class ));
+		all.add( FoeFamily.dot( "sewer.CausticSlime", CausticSlime.class, Ooze.class, "the Caustic Slime never oozed the hero",
+				"the ooze never hurt the hero out of the Caustic Slime's reach" ));
+		all.add( FoeFamily.armedFight( "sewer.FetidRat", FetidRat.class, 1, 12, SewerScenarios::stenchParalyses,
+				"the Fetid Rat's stench beside the hero never cost him a turn", ( world, kit ) -> {} ).covers( StenchGas.class ));
 		all.add( greatCrab().covers( GreatCrab.class ));
 		all.add( FoeFamily.fight( "sewer.Piranha", Piranha.class, 1, 12, null, "the Piranha never bit the hero in the water",
 				( world, kit ) -> wade( world )));
 		all.add( phantomPiranha().covers( PhantomPiranha.class ));
 		all.add( mimic( "sewer.GoldenMimic", GoldenMimic.class ));
 		all.add( mimic( "sewer.EbonyMimic", EbonyMimic.class ));
-		all.add( FoeFamily.passive( "sewer.CrystalMimic", CrystalMimic.class, d -> d.move( d.world().find( CrystalMimic.class ).pos ),
-				SewerScenarios::crystalStole, "stepping into the crystal chest neither revealed the mimic nor let it steal" ));
+		all.add( FoeFamily.armedPassive( "sewer.CrystalMimic", CrystalMimic.class, d -> d.move( d.world().find( CrystalMimic.class ).pos ),
+				SewerScenarios::crystalSteals, "stepping into the crystal chest neither revealed the mimic nor let it steal" ));
 		all.add( gooKill().covers( GooBlob.class, WornKey.class, LockedFloor.class, SewerBossLevel.class ));
 		all.add( wornKey().covers( WornKey.class ));
 		all.add( descend().covers( SewerLevel.class ));
 		all.add( regen().covers( Regeneration.class ));
 		return all;
+	}
+
+	private static BooleanSupplier stenchParalyses(){
+		float[] since = { Actor.now() };
+		boolean[] inGas = { stenchBesideHero() };
+		return () -> {
+			boolean lostTurns = inGas[ 0 ] && Actor.now() - since[ 0 ] > 1.5f;
+			since[ 0 ] = Actor.now();
+			inGas[ 0 ] = stenchBesideHero();
+			return lostTurns;
+		};
 	}
 
 	private static boolean stenchBesideHero(){
@@ -140,21 +154,18 @@ final class SewerScenarios {
 	}
 
 	private static Scenario mimic( String id, Class< ? extends Mimic > type ){
-		return FoeFamily.passive( id, type, d -> d.move( d.world().find( type ).pos ), () -> {
-			Mimic mimic = Dungeon.level.mobs.stream().filter( type::isInstance ).map( type::cast ).findFirst().orElse( null );
-			return mimic != null && mimic.alignment == Char.Alignment.ENEMY && mimic.state == mimic.HUNTING
-					&& Dungeon.hero.HP < Dungeon.hero.HT;
+		return FoeFamily.armedPassive( id, type, d -> d.move( d.world().find( type ).pos ), () -> {
+			Mimic mimic = Dungeon.level.mobs.stream().filter( type::isInstance ).map( type::cast ).findFirst().orElseThrow();
+			int hp = Dungeon.hero.HP;
+			return () -> mimic.alignment == Char.Alignment.ENEMY && mimic.state == mimic.HUNTING && Dungeon.hero.HP < hp;
 		}, "stepping into the disguised " + type.getSimpleName() + " did not reveal it and draw its attack" );
 	}
 
-	private static boolean crystalStole(){
-		for (Mob mob : Dungeon.level.mobs){
-			if (mob instanceof CrystalMimic){
-				CrystalMimic mimic = (CrystalMimic) mob;
-				return mimic.alignment == Char.Alignment.ENEMY && mimic.state == mimic.FLEEING && !mimic.items.isEmpty();
-			}
-		}
-		return false;
+	private static BooleanSupplier crystalSteals(){
+		CrystalMimic mimic = Dungeon.level.mobs.stream().filter( CrystalMimic.class::isInstance ).map( CrystalMimic.class::cast )
+				.findFirst().orElseThrow();
+		int held = mimic.items.size();
+		return () -> mimic.alignment == Char.Alignment.ENEMY && mimic.state == mimic.FLEEING && mimic.items.size() > held;
 	}
 
 	private static Scenario gooKill(){
@@ -228,7 +239,7 @@ final class SewerScenarios {
 				( world, kit ) -> {
 					world.clearMobs();
 					kit.sturdy();
-					java.util.Arrays.fill( world.level().mapped, true );
+					Arrays.fill( world.level().mapped, true );
 				},
 				d -> {
 					d.require( Dungeon.level instanceof SewerLevel, "depth 3 is a " + Dungeon.level.getClass().getSimpleName() );
