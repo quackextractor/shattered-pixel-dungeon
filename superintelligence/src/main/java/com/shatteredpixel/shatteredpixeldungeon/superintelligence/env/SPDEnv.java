@@ -439,11 +439,13 @@ public float[] actionMask(){ return actionMask; }
 		}
 		if (mode == EnvMode.WORLD) mapper.interactMask( targetMask );
 		else if (mode != EnvMode.TARGETING) slotMask[ ActionMapper.cancelSlot( slotMask.length ) ] = actionMask[ Action.CANCEL.index ];
-		if (mode == EnvMode.SLOT && slotVerb != Action.USE){
+		boolean slotUse = mode == EnvMode.INVENTORY || (mode == EnvMode.SLOT && slotVerb == Action.USE);
+		if ((mode == EnvMode.SLOT || slotUse) && GameScene.answerableSelector() == null){
 			for (int i = 0; i < slotMask.length; i++){
 				com.shatteredpixel.shatteredpixeldungeon.items.Item item = mapper.slot( i );
 				if (item == null) continue;
-				boolean allowed = slotVerb == Action.THROW ? SlotAction.throwable( Dungeon.hero, item ) : !item.isEquipped( Dungeon.hero );
+				boolean allowed = slotUse ? !SlotAction.stuckOn( Dungeon.hero, item, config.allowEquipping )
+						: slotVerb == Action.THROW ? SlotAction.throwable( Dungeon.hero, item ) : !item.isEquipped( Dungeon.hero );
 				if (!allowed) slotMask[ i ] = 0f;
 			}
 		}

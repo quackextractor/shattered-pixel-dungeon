@@ -24,7 +24,7 @@ final class GapScenarios {
 	private GapScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( unequip(), cloak(), cloakAlone(), chains(), shopBuy(), throwOnly(), unknownPotionThrow() );
+		return Arrays.asList( unequip(), cursedUnequip(), cloak(), cloakAlone(), chains(), shopBuy(), throwOnly(), unknownPotionThrow() );
 	}
 
 	private static void wornAction( Driver d, Item worn, String what ){
@@ -45,6 +45,29 @@ final class GapScenarios {
 					wornAction( d, armor, "take it off" );
 					d.expect( Dungeon.hero.belongings.armor == null && Dungeon.hero.belongings.contains( armor ),
 							"using the worn armour left it " + (Dungeon.hero.belongings.armor == armor ? "worn" : "gone") );
+				} );
+	}
+
+	private static Scenario cursedUnequip(){
+		return new Scenario( "unequip.cursed", "cursed worn armour is not offered to USE", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					Dungeon.hero.belongings.armor.cursed = true;
+					Dungeon.hero.belongings.armor.cursedKnown = true;
+				},
+				d -> {
+					Item armor = Dungeon.hero.belongings.armor;
+					int slot = d.slotOf( armor.getClass() );
+					d.require( slot >= 0, "the worn armour is in no slot" );
+					d.act( Action.USE );
+					d.require( d.env().mode() == EnvMode.SLOT, "USE reached " + d.env().mode() );
+					d.expect( d.env().slotMask()[ slot ] < 0.5f, "USE offers cursed worn armour, whose unequip is refused and spends no turn" );
+					d.cancel();
+					d.act( Action.WAIT );
+					d.act( Action.OPEN_INVENTORY );
+					d.require( d.env().mode() == EnvMode.INVENTORY, "OPEN_INVENTORY reached " + d.env().mode() );
+					d.expect( d.env().slotMask()[ slot ] < 0.5f, "the inventory offers cursed worn armour, whose unequip is refused and spends no turn" );
+					d.cancel();
 				} );
 	}
 

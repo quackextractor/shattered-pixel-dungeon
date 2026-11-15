@@ -175,6 +175,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaying a recording set for an hour.
 
 ### Fixed
+- **Cursed worn equipment is not offered to `USE`.** Using a worn cursed item toggles it off, and `doUnequip` refuses
+  without spending a turn, so each pick was a free no-op. `SPDEnv` now masks such an item in the `USE` slot list and the
+  inventory (not in a picker, where Remove Curse or Upgrade may want it); the curse is already known once worn. New
+  scenario `unequip.cursed` fails without it.
 - **A worn artifact with its own action stays usable when nothing else is.** `SlotAction.isBareEquipToggle` called
   every worn non-targeting item a bare equip toggle, while `use()` activates a worn item whose action is neither equip nor
   unequip. With `env.sub_mode_progress_only` on, the Rogue's cloak was therefore skipped as a progress item, and once the

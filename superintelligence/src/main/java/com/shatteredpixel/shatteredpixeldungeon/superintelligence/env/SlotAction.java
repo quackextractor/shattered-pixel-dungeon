@@ -52,6 +52,12 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 		return !item.usesTargeting && !activates( hero, item, resolveAction( hero, item ));
 	}
 
+	public static boolean stuckOn( Hero hero, Item item, boolean allowEquipping ){
+		return item.isEquipped( hero ) && item.cursed && isBareEquipToggle( hero, item, allowEquipping )
+				&& hero.buff( com.shatteredpixel.shatteredpixeldungeon.actors.buffs.MagicImmune.class ) == null
+				&& (!hero.belongings.lostInventory() || item.keptThroughLostInventory());
+	}
+
 	private static boolean activates( Hero hero, Item item, String action ){
 		return item.isEquipped( hero ) && action != null
 				&& !action.equals( EquipableItem.AC_UNEQUIP ) && !action.equals( EquipableItem.AC_EQUIP );
