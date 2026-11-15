@@ -39,7 +39,7 @@ final class NpcScenarios {
 				d -> {
 					Mob npc = d.world().find( type );
 					d.require( npc != null && Dungeon.level.adjacent( npc.pos, Dungeon.hero.pos ), "the NPC is not beside the hero" );
-					d.step( Action.INTERACT, d.direction( npc.pos ));
+					d.move( npc.pos );
 					for (int i = 0; i < 3 && d.env().mode() == EnvMode.MENU; i++) d.menu( 0 );
 					d.expect( given.getAsBoolean(), "talking to the " + type.getSimpleName() + " gave no quest" );
 					d.expect( d.env().mode() == EnvMode.WORLD, "the quest left the env in " + d.env().mode() );

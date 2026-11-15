@@ -663,7 +663,9 @@ a policy that actually picks items, is that reachable at all.
 
 **Interaction is one action.** `Hero.handle(cell)` already resolves "the right thing to do here"
 into attack / loot / unlock / stairs / talk. Exposing that as a single action lets the policy learn
-intent rather than rediscovering which `HeroAction` subtype a tile implies.
+intent rather than rediscovering which `HeroAction` subtype a tile implies. The policy always sends `INTERACT` with direction 0,
+which picks the cell itself; to choose a particular neighbour it moves into it, since a move runs the same
+`Hero.handle` and the action head that picks it is trained. Locked doors are therefore legal moves.
 
 **Targeting and inventory are separate heads.** The environment pauses for them. Predicting a target
 on the 95% of turns that are not aiming wastes capacity and invites spurious correlations, and

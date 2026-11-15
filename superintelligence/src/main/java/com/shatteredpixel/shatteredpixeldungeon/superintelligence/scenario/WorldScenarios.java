@@ -26,6 +26,7 @@ final class WorldScenarios {
 		all.add( secretDoor() );
 		all.add( searchStaleView() );
 		all.add( lockedDoor() );
+		all.add( lockedDoorByMove() );
 		all.add( chest( Heap.Type.CHEST, null ));
 		all.add( chest( Heap.Type.LOCKED_CHEST, () -> new GoldenKey( Dungeon.depth )));
 		all.add( chest( Heap.Type.CRYSTAL_CHEST, () -> new CrystalKey( Dungeon.depth )));
@@ -90,6 +91,21 @@ final class WorldScenarios {
 					fetchKey( d, IronKey.class );
 					d.step( Action.INTERACT, 0 );
 					d.expect( Dungeon.level.map[ door ] != Terrain.LOCKED_DOOR, "the key did not unlock the door" );
+				} );
+	}
+
+	private static Scenario lockedDoorByMove(){
+		return new Scenario( "locked-door.move", "unlock a door by moving into it", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					world.terrain( world.adjacentFreeStraight(), Terrain.LOCKED_DOOR );
+					world.drop( new IronKey( Dungeon.depth ), world.adjacentFree() );
+				},
+				d -> {
+					int door = d.world().beside( Terrain.LOCKED_DOOR );
+					fetchKey( d, IronKey.class );
+					d.move( door );
+					d.expect( Dungeon.level.map[ door ] != Terrain.LOCKED_DOOR, "moving into the door with its key did not unlock it" );
 				} );
 	}
 

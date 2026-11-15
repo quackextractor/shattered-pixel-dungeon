@@ -30,8 +30,7 @@ public final class PolicyReach {
 	}
 
 	private static String interactReach( SPDEnv env, int secondary ){
-		if (sampleable( env.targetMask(), secondary )) return null;
-		return "INTERACT/" + secondary + " is masked in the target head";
+		return secondary == 0 ? null : "INTERACT/" + secondary + " names a direction; the collector always sends 0 and a MOVE picks the cell";
 	}
 
 	private static boolean sampleable( float[] mask, int index ){

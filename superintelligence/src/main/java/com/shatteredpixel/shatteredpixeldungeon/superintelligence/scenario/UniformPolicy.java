@@ -25,7 +25,7 @@ final class UniformPolicy {
 		float[] mask = env.actionMask().clone();
 		for (Action action : Action.values()) if (action.kind == Action.Kind.MACRO) mask[ action.index ] = 0f;
 		Action action = Action.fromIndex( pick( mask ));
-		secondary[ 0 ] = action == Action.INTERACT && env.mode() == EnvMode.WORLD ? pick( env.targetMask() ) : 0;
+		secondary[ 0 ] = 0;
 		return action;
 	}
 

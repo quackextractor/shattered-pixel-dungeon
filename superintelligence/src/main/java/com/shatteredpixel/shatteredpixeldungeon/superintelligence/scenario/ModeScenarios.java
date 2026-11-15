@@ -128,7 +128,7 @@ final class ModeScenarios {
 	}
 
 	private static Scenario interactDirection(){
-		return new Scenario( "interact-direction", "interact with the second of two heaps", HeroClass.WARRIOR,
+		return new Scenario( "interact-direction", "pick the second of two heaps by moving onto it", HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();
 					int[] cells = twoFreeDirections( world );
@@ -144,9 +144,9 @@ final class ModeScenarios {
 					}
 					d.require( far > 0, "the second heap is not beside the hero" );
 					int cell = d.env().mapper().targetCell( far );
-					d.step( Action.INTERACT, far );
+					d.move( cell );
 					d.expect( Dungeon.hero.pos == cell || Dungeon.level.heaps.get( cell ) == null,
-							"INTERACT toward direction " + far + " did not reach cell " + cell );
+							"a move toward direction " + far + " did not reach cell " + cell );
 				} );
 	}
 

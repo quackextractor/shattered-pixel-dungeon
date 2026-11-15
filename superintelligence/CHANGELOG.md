@@ -168,6 +168,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plus the stacks of the inference and busy worker threads. `issues.md` 41 could not be diagnosed without this.
 
 ### Changed
+- **`INTERACT` no longer carries an untrained direction.** The collector sampled its direction from the target head, but
+  the transition is trained on the action head only, so with a mob and a heap both beside the hero the choice stayed at
+  its initial distribution. The collector now always sends 0 (the cell `Surroundings.pickInteractCell` picks), and a
+  move into a neighbour, which runs the same `Hero.handle` and is trained, chooses a particular one; moves into locked
+  doors are now legal for that (NPCs and heaps already were). Recordings with a direction still replay. `PolicyReach`
+  counts only direction 0 as reachable; the door, NPC, shop and two-heap scenarios move instead, and new scenario
+  `locked-door.move` reports a gap without the door move. The target mask in `WORLD` is no longer filled.
 - **The zero-time exit mask lost two branches that never ran.** `WAIT`, `REST` and `SEARCH` are always offered in
   `WORLD`, so the "nothing offered" fallback in `ActionMapper.actionMask` and the `anyOffered`/`left` paths in
   `ZeroTimeExit` could not fire. Masks are unchanged.

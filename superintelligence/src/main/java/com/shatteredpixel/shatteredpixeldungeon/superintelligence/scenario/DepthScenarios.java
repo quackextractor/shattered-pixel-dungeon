@@ -161,7 +161,7 @@ final class DepthScenarios {
 					int door = behindLockedDoor ? lockedDoor() : -1;
 					if (door >= 0){
 						d.walkTo( door, 80 );
-						d.step( Action.INTERACT, d.direction( door ));
+						d.move( door );
 						d.waitFor( () -> Dungeon.level.map[ door ] != Terrain.LOCKED_DOOR, 3 );
 						int outside = Dungeon.hero.pos;
 						d.move( door );

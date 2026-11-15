@@ -246,7 +246,7 @@ public class EpisodeCollector {
 		Action action = Action.fromIndex( actionIndex );
 		followingItem = action == Action.ITEM ? ITEM_FOLLOW_STEPS : liveHead == Policy.HEAD_ACTION ? 0 : Math.max( 0, followingItem - 1 );
 		if (action.kind == Action.Kind.MACRO) action = teacher.primitive( action );
-		int secondary = (liveHead == Policy.HEAD_TARGET || action == Action.INTERACT) ? targetIndex : slotIndex;
+		int secondary = liveHead == Policy.HEAD_TARGET ? targetIndex : action == Action.INTERACT ? 0 : slotIndex;
 
 		EnvMode mode = env.mode();
 

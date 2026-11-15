@@ -437,8 +437,7 @@ public float[] actionMask(){ return actionMask; }
 		for (int i = 0; i < targetMask.length; i++){
 			targetMask[ i ] = mapper.targetMask( i ) ? 1f : 0f;
 		}
-		if (mode == EnvMode.WORLD) mapper.interactMask( targetMask );
-		else if (mode != EnvMode.TARGETING) slotMask[ ActionMapper.cancelSlot( slotMask.length ) ] = actionMask[ Action.CANCEL.index ];
+		if (mode != EnvMode.WORLD && mode != EnvMode.TARGETING) slotMask[ ActionMapper.cancelSlot( slotMask.length ) ] = actionMask[ Action.CANCEL.index ];
 		boolean slotUse = mode == EnvMode.INVENTORY || (mode == EnvMode.SLOT && slotVerb == Action.USE);
 		if ((mode == EnvMode.SLOT || slotUse) && GameScene.answerableSelector() == null){
 			for (int i = 0; i < slotMask.length; i++){

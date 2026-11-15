@@ -160,7 +160,7 @@ final class GapScenarios {
 						if (h != null && h.type == Heap.Type.FOR_SALE) heap = o;
 					}
 					d.require( heap > 0, "no item for sale beside the hero" );
-					d.step( Action.INTERACT, heap );
+					d.move( d.env().mapper().targetCell( heap ));
 					if (GameScene.answerableWindow() != null && !WindowBridge.open()){
 						d.gap( "G7: buying opened " + GameScene.answerableWindow().getClass().getSimpleName()
 								+ ", which WindowBridge cannot answer" );

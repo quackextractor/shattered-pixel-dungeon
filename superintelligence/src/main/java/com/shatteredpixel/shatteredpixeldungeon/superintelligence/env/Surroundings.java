@@ -145,6 +145,8 @@ final class Surroundings {
 
 		Char ch = Actor.findChar( cell );
 		if (ch instanceof Mob) return Dungeon.hero.canAttack( (Mob)ch ) && !Dungeon.hero.isCharmedBy( ch );
+		int terrain = Dungeon.level.map[ cell ];
+		for (int t : LOCKED_DOOR_TERRAINS) if (terrain == t) return true;
 		if (Dungeon.hero.rooted) return false;
 		if (Dungeon.level.heaps.get( cell ) != null) return true;
 		return Dungeon.level.passable[ cell ] || Dungeon.level.avoid[ cell ];

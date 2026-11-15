@@ -438,16 +438,6 @@ public class ActionMapper {
 	}
 
 
-	public void interactMask( float[] mask ){
-		for (int i = 0; i < mask.length; i++) mask[ i ] = 0f;
-		if (mask.length == 0) return;
-
-		mask[ 0 ] = 1f;
-		for (int o = 1; o < ADJACENT_COUNT && o < mask.length; o++){
-			if (Surroundings.interactive( Surroundings.targetCell( o ) )) mask[ o ] = 1f;
-		}
-	}
-
 	private boolean hasUsableItem(){
 		for (Item item : slots){
 			if (usable( item )) return true;
