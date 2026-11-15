@@ -37,6 +37,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBrid
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.PotionScenarios.AIM;
 import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.PotionScenarios.USE;
@@ -85,7 +86,7 @@ final class ScrollScenarios {
 		all.add( prismaticImage() );
 		all.add( effect( "scroll.PsionicBlast", ScrollOfPsionicBlast.class, USE, ( world, kit ) -> target( world, 100 ), 0,
 				"the psionic blast spared the rat or left the hero unhurt, sighted or strong", () -> {
-			java.util.function.BooleanSupplier hurt = ratHurt();
+			BooleanSupplier hurt = ratHurt();
 			int hp = Dungeon.hero.HP;
 			return () -> hurt.getAsBoolean() && Dungeon.hero.HP < hp
 					&& Dungeon.hero.buff( Weakness.class ) != null && Dungeon.hero.buff( Blindness.class ) != null;
@@ -98,7 +99,7 @@ final class ScrollScenarios {
 		return all;
 	}
 
-	private static java.util.function.BooleanSupplier ratHurt(){
+	private static BooleanSupplier ratHurt(){
 		Mob rat = rat();
 		int hp = rat.HP;
 		return () -> !rat.isAlive() || rat.HP < hp;
@@ -114,7 +115,6 @@ final class ScrollScenarios {
 					int unknown = unknown();
 					d.require( unknown >= 4, "only " + unknown + " unknown item types to divine" );
 					d.use( ScrollOfDivination.class );
-					if (d.env().mode() == EnvMode.MENU) d.cancel();
 					d.expect( unknown() == unknown - 4, "divination left " + unknown() + " unknown types of " + unknown );
 					d.expect( d.env().mode() == EnvMode.WORLD, "the divination list stayed open: " + d.env().mode() );
 				} ).covers( ScrollOfDivination.class );

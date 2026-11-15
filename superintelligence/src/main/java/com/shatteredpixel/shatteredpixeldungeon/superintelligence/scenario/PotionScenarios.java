@@ -45,6 +45,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.potions.exotic.PotionOfSto
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Greatsword;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
+import com.watabou.utils.Random;
 import com.watabou.utils.Reflection;
 
 import java.util.ArrayList;
@@ -55,6 +56,10 @@ import java.util.function.Supplier;
 final class PotionScenarios {
 
 	private PotionScenarios(){}
+
+	private static final long DR_SAMPLE_SEED = 7L;
+
+	private static final int DR_SAMPLES = 400;
 
 	interface Trigger {
 		void fire( Driver d, Class< ? extends Item > type );
@@ -113,8 +118,7 @@ final class PotionScenarios {
 			int hp = rat.HP;
 			return () -> rat.buff( Burning.class ) != null && rat.HP < hp;
 		}).covers());
-		all.add( effect( "potion.EarthenArmor", PotionOfEarthenArmor.class, USE, ( world, kit ) -> {}, 0, "the earthen armour gave the hero no bark",
-				() -> () -> Barkskin.currentLevel( Dungeon.hero ) > 0 ).covers( Barkskin.class ));
+		all.add( earthenArmor() );
 		all.add( effect( "potion.MagicalSight", PotionOfMagicalSight.class, USE, ( world, kit ) -> {}, 0, "the magical sight widened no view", () -> {
 			int seen = seen();
 			return () -> Dungeon.hero.buff( MagicalSight.class ) != null && seen() > seen;
@@ -127,8 +131,10 @@ final class PotionScenarios {
 			int req = sword.STRReq();
 			return () -> sword.STRReq() < req;
 		}).covers());
-		all.add( effect( "potion.Shielding", PotionOfShielding.class, USE, ( world, kit ) -> {}, 0, "the potion raised no barrier",
-				() -> () -> Dungeon.hero.buff( Barrier.class ) != null && Dungeon.hero.shielding() > 0 ).then( d -> {
+		all.add( effect( "potion.Shielding", PotionOfShielding.class, USE, ( world, kit ) -> {}, 0, "the potion raised no barrier", () -> {
+			int shield = Dungeon.hero.shielding();
+			return () -> Dungeon.hero.buff( Barrier.class ) != null && Dungeon.hero.shielding() > shield;
+		}).then( d -> {
 			int shield = Dungeon.hero.shielding();
 			d.expect( d.until( () -> Dungeon.hero.shielding() < shield, 5, () -> d.act( Action.WAIT )), "the barrier never wore down from " + shield );
 		}).covers( Barrier.class ));
@@ -136,7 +142,10 @@ final class PotionScenarios {
 			Mob rat = rat();
 			int hero = Dungeon.hero.pos;
 			return () -> volume( SmokeScreen.class ) > 0 && !rat.fieldOfView[ hero ];
-		}).before( d -> d.act( Action.WAIT )).covers( SmokeScreen.class ));
+		}).before( d -> {
+			d.act( Action.WAIT );
+			d.require( rat().fieldOfView != null && rat().fieldOfView[ Dungeon.hero.pos ], "the rat did not see the hero before the fog" );
+		}).covers( SmokeScreen.class ));
 		all.add( effect( "potion.SnapFreeze", PotionOfSnapFreeze.class, THROW, PotionScenarios::frostTarget, 1, "the snap freeze neither froze nor rooted the rat", () -> {
 			Mob rat = rat();
 			return () -> frozen( rat ) && rat.buff( Roots.class ) != null;
@@ -236,6 +245,27 @@ final class PotionScenarios {
 							"the thrown purity left gas beside the hero" );
 					wearsOff( d, BlobImmunity.class, 25 );
 				} ).covers( PotionOfPurity.class );
+	}
+
+	private static Scenario earthenArmor(){
+		Scenario s = effect( "potion.EarthenArmor", PotionOfEarthenArmor.class, USE, ( world, kit ) -> {}, 0,
+				"the earthen armour raised the hero's mean damage reduction by less than 0.5", () -> {
+			float dr = meanDr();
+			return () -> Barkskin.currentLevel( Dungeon.hero ) > 0 && meanDr() > dr + 0.5f;
+		}).then( d -> wearsOff( d, Barkskin.class, 120 )).covers( Barkskin.class );
+		s.maxSteps = 140;
+		return s;
+	}
+
+	private static float meanDr(){
+		Random.pushGenerator( DR_SAMPLE_SEED );
+		try {
+			int total = 0;
+			for (int i = 0; i < DR_SAMPLES; i++) total += Dungeon.hero.drRoll();
+			return total / (float) DR_SAMPLES;
+		} finally {
+			Random.popGenerator();
+		}
 	}
 
 	private static Scenario stamina(){
