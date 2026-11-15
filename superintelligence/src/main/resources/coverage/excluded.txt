@@ -1,4 +1,5 @@
 actors.blobs.Blob	concrete base, never seeded as itself
+actors.blobs.GooWarn	cosmetic blob no game code seeds since v3.3.4, Goo's pump warning is drawn by GooSprite
 actors.buffs.Buff	concrete base, never attached as itself
 actors.buffs.CounterBuff	concrete base for counting buffs
 actors.buffs.FlavourBuff	concrete base for timed buffs
