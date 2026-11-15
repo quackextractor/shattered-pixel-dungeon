@@ -180,6 +180,22 @@ public class HeadlessGame extends Game {
 	}
 
 
+	public static boolean withQuickSlots( java.util.function.BooleanSupplier press ){
+		if (!(Game.instance instanceof HeadlessGame)) return press.getAsBoolean();
+		com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton[] standIns =
+				new com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton[ com.shatteredpixel.shatteredpixeldungeon.QuickSlot.SIZE ];
+		try {
+			for (int i = 0; i < standIns.length; i++) standIns[ i ] = new com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton( i );
+			return press.getAsBoolean();
+		} finally {
+			com.shatteredpixel.shatteredpixeldungeon.actors.Char target = com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton.lastTarget;
+			for (com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton standIn : standIns) if (standIn != null) standIn.destroy();
+			com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton.reset();
+			com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton.lastTarget = target;
+		}
+	}
+
+
 	public static class HeadlessScene extends Scene {
 		@Override public void create() { }
 	}

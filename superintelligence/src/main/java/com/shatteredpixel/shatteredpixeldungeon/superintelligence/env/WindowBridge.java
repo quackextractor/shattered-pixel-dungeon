@@ -27,9 +27,9 @@ public class WindowBridge {
 	}
 
 	private static final java.util.Set< String > CHOICE_WINDOWS = java.util.Set.of( "WndSadGhost", "WndWandmaker", "WndImpOld",
-			"WndBlacksmith", "WndChooseSubclass", "WndChooseAbility", "WndMetamorphChoose", "WndMetamorphReplace", "WndInfoTalent", "WndAugment", "WndGuess" );
+			"WndBlacksmith", "WndChooseSubclass", "WndChooseAbility", "WndMetamorphChoose", "WndMetamorphReplace", "WndInfoTalent", "WndAugment", "WndGuess", "WndClericSpells" );
 
-	private static final java.util.Set< String > ICON_WINDOWS = java.util.Set.of( "WndGuess" );
+	private static final java.util.Set< String > ICON_WINDOWS = java.util.Set.of( "WndGuess", "WndClericSpells" );
 
 	private static final java.util.ArrayDeque< Window > parents = new java.util.ArrayDeque<>();
 
@@ -118,7 +118,7 @@ public static boolean selectOption( int index ){
 	}
 
 	private static boolean press( com.shatteredpixel.shatteredpixeldungeon.ui.Button button ){
-		return button instanceof TalentButton ? HeadlessGame.pressOffScene( button ) : button.press();
+		return HeadlessGame.withQuickSlots( () -> button instanceof TalentButton ? HeadlessGame.pressOffScene( button ) : button.press() );
 	}
 
 	private static boolean destroyed( Window w ){
