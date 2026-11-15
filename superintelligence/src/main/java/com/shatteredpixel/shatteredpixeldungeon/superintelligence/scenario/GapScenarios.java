@@ -24,7 +24,7 @@ final class GapScenarios {
 	private GapScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( unequip(), cursedUnequip(), cloak(), cloakAlone(), chains(), shopBuy(), throwOnly(), unknownPotionThrow() );
+		return Arrays.asList( unequip(), cursedUnequip(), wornNotDropped(), cloak(), cloakAlone(), chains(), shopBuy(), throwOnly(), unknownPotionThrow() );
 	}
 
 	private static void wornAction( Driver d, Item worn, String what ){
@@ -68,6 +68,25 @@ final class GapScenarios {
 					d.require( d.env().mode() == EnvMode.INVENTORY, "OPEN_INVENTORY reached " + d.env().mode() );
 					d.expect( d.env().slotMask()[ slot ] < 0.5f, "the inventory offers cursed worn armour, whose unequip is refused and spends no turn" );
 					d.cancel();
+				} );
+	}
+
+	private static Scenario wornNotDropped(){
+		return new Scenario( "worn.not-dropped", "worn armour is not offered to DROP or THROW", HeroClass.WARRIOR,
+				( world, kit ) -> world.clearMobs(),
+				d -> {
+					int slot = d.slotOf( Dungeon.hero.belongings.armor.getClass() );
+					d.require( slot >= 0, "the worn armour is in no slot" );
+					for (Action verb : new Action[]{ Action.DROP, Action.THROW }){
+						d.act( verb );
+						d.require( d.env().mode() == EnvMode.SLOT, verb + " reached " + d.env().mode() );
+						float[] mask = d.env().slotMask();
+						d.expect( mask[ slot ] < 0.5f, verb + " offers the worn armour, which the game refuses for free" );
+						d.expect( mask[ com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.cancelSlot( mask.length ) ] > 0.5f,
+								verb + " offers no cancel" );
+						d.cancel();
+						d.act( Action.WAIT );
+					}
 				} );
 	}
 

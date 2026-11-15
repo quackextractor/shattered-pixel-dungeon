@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Scenario `worn.not-dropped`.** `DROP` and `THROW` must not offer worn armour, which the game refuses without spending
+  a turn, and must offer cancel. Nothing guarded the verb masks in `SPDEnv.refreshMasks` before; removing them fails it.
 - **The replay list shows scenario and sweep recordings.** `ReplayCatalog` now also reads `superintelligence/out/scenarios`
   and `superintelligence/out/sweep`, so every recording the suite writes lists under its own group (`scenario`) and can be
   picked from the viewer's list. `replaycheck` requires both directories; removing one fails it.
