@@ -24,7 +24,6 @@ import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Firebloom;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Sorrowmoss;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Sungrass;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.watabou.utils.Reflection;
 
@@ -113,29 +112,10 @@ final class CraftScenarios {
 				},
 				d -> {
 					int crafted = Statistics.itemsCrafted;
-					d.act( Action.ALCHEMY );
-					d.require( d.env().mode() == EnvMode.ALCHEMY, "ALCHEMY entered " + d.env().mode() );
-					int choice = -1;
-					List< com.shatteredpixel.shatteredpixeldungeon.items.Recipe > recipes = d.env().mapper().alchemyChoices();
-					for (int i = 0; i < recipes.size() && choice < 0; i++){
-						if (yields( recipes.get( i ), product )) choice = i;
-					}
-					d.require( choice >= 0, "no offered recipe makes " + product.getSimpleName() + " from " + recipes );
-					d.menu( choice );
+					d.brew( product );
 					d.expect( Statistics.itemsCrafted == crafted + 1, "itemsCrafted moved by " + (Statistics.itemsCrafted - crafted) );
 					d.expect( carries( product ), "no " + product.getSimpleName() + " in the pack after brewing" );
 				} );
-	}
-
-	private static boolean yields( com.shatteredpixel.shatteredpixeldungeon.items.Recipe recipe, Class< ? extends Item > product ){
-		for (java.util.ArrayList< Item > ingredients : com.shatteredpixel.shatteredpixeldungeon.superintelligence.env
-				.AlchemyAction.ingredientSets( Dungeon.hero )){
-			if (!recipe.testIngredients( new java.util.ArrayList<>( ingredients ))) continue;
-			Item out = recipe.sampleOutput( new java.util.ArrayList<>( ingredients ));
-			Class< ? > maker = recipe.getClass().getEnclosingClass();
-			if (product.isInstance( out ) || (maker != null && product.isAssignableFrom( maker ))) return true;
-		}
-		return false;
 	}
 
 	private static boolean carries( Class< ? extends Item > product ){

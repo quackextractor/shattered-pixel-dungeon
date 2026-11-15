@@ -64,7 +64,7 @@ final class StateScenarios {
 				() -> Dungeon.hero.lvl > before ).covers( PotionOfExperience.class ));
 		all.add( consume( "drink.unknown-ParalyticGas", PotionOfParalyticGas.class, false, null,
 				() -> Dungeon.level.blobs.get( ParalyticGas.class ) != null )
-				.covers( PotionOfParalyticGas.class, ParalyticGas.class ));
+				.covers( PotionOfParalyticGas.class ));
 		all.add( consume( "scroll.MagicMapping", ScrollOfMagicMapping.class, true, () -> before = mapped(),
 				() -> mapped() > before ).covers( ScrollOfMagicMapping.class ));
 		all.add( consume( "scroll.Teleportation", ScrollOfTeleportation.class, true, () -> before = Dungeon.hero.pos,

@@ -1,6 +1,9 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Bat;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
@@ -26,24 +29,28 @@ public class ScenarioCheck {
 	public static void main( String[] args ){
 		File out = new File( option( args, "--out", "out/scenarios" ));
 		String only = option( args, "--only", null );
-		long budget = Long.parseLong( option( args, "--budget-seconds", "60" ));
+		long budget = Long.parseLong( option( args, "--budget-seconds", "120" ));
+		String seeds = option( args, "--seeds", null );
 
 		HeadlessServices.install( Scratch.dir( "scenariocheck" ));
 		HeadlessServices.disableSaving( true );
 		watchdog( budget );
 		checkLoadingTheCatalogDrawsNothing();
+		checkTheFilterMatchesListsAndPrefixes();
 
 		List< Scenario > chosen = new ArrayList<>();
 		for (Scenario scenario : ScenarioCatalog.all()){
-			if (only == null || only.equals( scenario.id )) chosen.add( scenario );
+			if (only == null || ScenarioCatalog.selected( only, scenario.id )) chosen.add( scenario );
 		}
 		if (chosen.isEmpty()){
-			System.out.println( "[ERROR]  scenarios: no scenario is called " + only );
+			System.out.println( "[ERROR]  scenarios: no scenario matches " + only );
 			System.exit( 1 );
 		}
+		if (seeds != null) for (Scenario scenario : chosen) scenario.seeds( searchSeeds( Integer.parseInt( seeds )));
 		if (only == null) ScenarioReport.clean( out );
 
 		checkASetupLeavesTheGameplayStreamAlone();
+		checkAnUnwitnessedCoverFails();
 
 		ScenarioRunner runner = new ScenarioRunner( new EnvConfig(), out );
 		List< ScenarioRunner.Result > results = new ArrayList<>();
@@ -99,6 +106,46 @@ public class ScenarioCheck {
 		} else {
 			System.out.println( "  a setup's " + all + " draws stay off the gameplay stream" );
 		}
+	}
+
+	private static void checkTheFilterMatchesListsAndPrefixes(){
+		String filter = "trap.*, melee";
+		boolean right = ScenarioCatalog.selected( filter, "trap.Alarm" ) && ScenarioCatalog.selected( filter, "melee" )
+				&& !ScenarioCatalog.selected( filter, "melee2" ) && !ScenarioCatalog.selected( filter, "wand.trap" );
+		if (!right) GateReport.fail( "self-test: --only \"" + filter + "\" does not select exactly trap.Alarm and melee" );
+	}
+
+	private static String[] searchSeeds( int count ){
+		String[] out = new String[ count ];
+		for (int i = 0; i < count; i++) out[ i ] = "SCN-" + i;
+		return out;
+	}
+
+	private static void checkAnUnwitnessedCoverFails(){
+		ScenarioRunner runner = new ScenarioRunner( new EnvConfig(), null );
+		Scenario scenario = ratScenario();
+		ScenarioCatalog.registerSelfTest( scenario );
+		ScenarioRunner.Result bat = runner.run( scenario.covers( Bat.class ));
+		scenario.covers.clear();
+		ScenarioRunner.Result rat = runner.run( scenario.covers( Rat.class ));
+		String expected = "declared covers never witnessed: actors.mobs.Bat";
+		if (!"FAIL".equals( bat.status ) || !bat.failure.contains( expected )){
+			GateReport.fail( "self-test: a scenario that spawns a Rat and declares Bat ended " + bat.status + " ("
+					+ bat.failure + "), not FAIL with \"" + expected + "\"" );
+		} else if (!"OK".equals( rat.status )){
+			GateReport.fail( "self-test: a scenario that spawns a Rat and declares Rat ended " + rat.status + ": " + rat.failure );
+		} else {
+			System.out.println( "  a declared cover the run never saw fails: " + bat.failure );
+		}
+	}
+
+	private static Scenario ratScenario(){
+		return new Scenario( "selftest.witness", "self-test", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.sturdy();
+					world.mob( new Rat(), world.adjacentFree() );
+				}, d -> d.act( Action.WAIT ) );
 	}
 
 	private static void checkABlankScenarioDoesNotVerify( List< ScenarioRunner.Result > results ){

@@ -166,6 +166,7 @@ actors.mobs.Pylon
 actors.mobs.RotHeart
 actors.mobs.RotLasher
 actors.mobs.Senior
+actors.mobs.Skeleton
 actors.mobs.Slime
 actors.mobs.Snake
 actors.mobs.SpectralNecromancer

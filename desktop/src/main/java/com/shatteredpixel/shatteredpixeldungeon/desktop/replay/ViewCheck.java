@@ -28,6 +28,7 @@ import com.shatteredpixel.shatteredpixeldungeon.desktop.DesktopPlatformSupport;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.InterlevelScene;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario.ScenarioCatalog;
 import com.watabou.noosa.Game;
 
 import java.io.File;
@@ -158,26 +159,10 @@ public class ViewCheck {
 	}
 
 
-	/**
-	 * Plays every recording in a child JVM and reports.
-	 *
-	 * <p>Two phases. The first plays the whole corpus in parallel, as hard as the machine allows; the
-	 * second re-plays whatever diverged, one recording at a time, with nothing else running.
-	 *
-	 * <p>Playback is timing sensitive, and a loaded machine changes the timing. The gate's own note
-	 * has always said so: at several children at once the failing <i>steps</i> are not reproducible,
-	 * and which recordings fail is only reliable. A parallel phase on its own therefore fails for
-	 * reasons that have nothing to do with the recording, and the fix is to let the serial phase
-	 * decide rather than to run the whole corpus serially and wait for it.
-	 *
-	 * <p>So a recording that diverged under load and plays clean on its own is reported as what it
-	 * is - a load artefact - and does not fail the gate. A recording that still diverges on its own
-	 * is a real fault and fails it, and the step it fails at is reproducible because the serial run
-	 * produced it.
-	 */
 	private static File[] recordings( File dir ){
 		return dir.listFiles( ( d, name ) -> (name.endsWith( ".replay" ) || name.endsWith( ".dat" ))
-				&& (onlyRecording == null || name.equals( onlyRecording ) || name.equals( onlyRecording + ".replay" )) );
+				&& (onlyRecording == null || ScenarioCatalog.selected( onlyRecording, name )
+						|| ScenarioCatalog.selected( onlyRecording, name.replaceFirst( "\\.replay$", "" ))) );
 	}
 
 	private static void mark( File file, String playback ){

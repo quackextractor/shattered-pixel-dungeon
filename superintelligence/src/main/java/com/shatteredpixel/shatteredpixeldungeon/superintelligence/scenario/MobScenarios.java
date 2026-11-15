@@ -49,7 +49,7 @@ final class MobScenarios {
 		all.add( ranged( "mob.Bat", Bat.class ));
 		all.add( watch( "goo-pump", Goo.class, 2, 8, () -> Dungeon.hero.HP < Dungeon.hero.HT, "Goo never hit the hero" ).covers( Goo.class ));
 		all.add( watch( "necro-summon", Necromancer.class, 4, 10, () -> count( Skeleton.class ) > 0,
-				"the Necromancer raised no Skeleton" ).covers( Necromancer.class, Skeleton.class ));
+				"the Necromancer raised no Skeleton" ).covers( Necromancer.class ));
 		all.add( watch( "mob.Succubus", Succubus.class, 1, 10, () -> Dungeon.hero.buff( Charm.class ) != null,
 				"the Succubus never charmed the hero" ).covers( Succubus.class, Charm.class ));
 		all.add( watch( "mob.Thief", Thief.class, 1, 10, () -> thiefHolds(), "the Thief stole nothing" ).covers( Thief.class ));

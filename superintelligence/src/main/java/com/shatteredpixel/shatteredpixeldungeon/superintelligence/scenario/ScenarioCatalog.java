@@ -10,6 +10,8 @@ public final class ScenarioCatalog {
 
 	private static final List< Scenario > ALL = new ArrayList<>();
 
+	private static final List< Scenario > SELF_TESTS = new ArrayList<>();
+
 	static {
 		ALL.addAll( CombatScenarios.all() );
 		ALL.addAll( ModeScenarios.all() );
@@ -33,8 +35,21 @@ public final class ScenarioCatalog {
 		return Collections.unmodifiableList( ALL );
 	}
 
+	public static boolean selected( String filter, String id ){
+		for (String token : filter.split( "," )){
+			String t = token.strip();
+			if (t.endsWith( "*" ) ? id.startsWith( t.substring( 0, t.length() - 1 )) : id.equals( t )) return true;
+		}
+		return false;
+	}
+
+	public static void registerSelfTest( Scenario scenario ){
+		SELF_TESTS.add( scenario );
+	}
+
 	public static Scenario find( String id ){
 		for (Scenario scenario : ALL) if (scenario.id.equals( id )) return scenario;
+		for (Scenario scenario : SELF_TESTS) if (scenario.id.equals( id )) return scenario;
 		return WorldSweep.find( id );
 	}
 }

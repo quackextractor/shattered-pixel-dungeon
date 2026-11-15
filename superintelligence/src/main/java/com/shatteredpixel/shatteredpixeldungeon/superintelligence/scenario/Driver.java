@@ -1,7 +1,13 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroSubClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.ArmorAbility;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.Recipe;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.AlchemyAction;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.EpisodeCollector;
@@ -10,7 +16,9 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayRecorder;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BooleanSupplier;
 
 public final class Driver {
@@ -31,6 +39,7 @@ public final class Driver {
 	private final ReplayRecorder recorder;
 	private final List< String > failures = new ArrayList<>();
 	private final List< String > gaps = new ArrayList<>();
+	private final CoverageWitness seen = new CoverageWitness();
 
 	private final int maxSteps;
 
@@ -56,6 +65,14 @@ public final class Driver {
 		return gaps;
 	}
 
+	CoverageWitness seen(){
+		return seen;
+	}
+
+	public void witness( Class< ? > type ){
+		seen.witness( Coverage.key( type ));
+	}
+
 	public void gap( String why ){
 		gaps.add( "step " + steps() + ": " + why );
 	}
@@ -69,9 +86,35 @@ public final class Driver {
 		if (steps() >= maxSteps) throw new Stop( "the script passed " + maxSteps + " steps" );
 		String unreachable = PolicyReach.check( env, action, secondary );
 		if (unreachable != null) gap( unreachable );
+		if (steps() == 0) seen.sample();
+		if (action == Action.MENU_SELECT && env.mode() == EnvMode.ALCHEMY){
+			List< Recipe > recipes = env.mapper().alchemyChoices();
+			if (secondary >= 0 && secondary < recipes.size()) seen.chosen( Coverage.key( recipes.get( secondary ).getClass() ));
+		}
+		Hero hero = Dungeon.hero;
+		Map< Talent, Integer > points = talentPoints( hero );
+		HeroSubClass subclass = hero == null ? null : hero.subClass;
+		ArmorAbility ability = hero == null ? null : hero.armorAbility;
 		recorder.record( action, secondary, env.mode() );
 		float reward = (float) env.step( action, secondary );
 		recorder.afterStep( env.heroPosition(), reward, env.lastStepActed() ? 1 : 0 );
+		chosenDuring( hero, points, subclass, ability );
+		seen.sample();
+	}
+
+	private void chosenDuring( Hero hero, Map< Talent, Integer > points, HeroSubClass subclass, ArmorAbility ability ){
+		if (hero == null) return;
+		talentPoints( hero ).forEach( ( talent, now ) -> {
+			if (now > points.getOrDefault( talent, 0 )) seen.chosen( Coverage.talent( talent ));
+		});
+		if (hero.subClass != subclass) seen.chosen( Coverage.subclass( hero.subClass ));
+		if (hero.armorAbility != ability && hero.armorAbility != null) seen.chosen( Coverage.key( hero.armorAbility.getClass() ));
+	}
+
+	private static Map< Talent, Integer > talentPoints( Hero hero ){
+		Map< Talent, Integer > out = new HashMap<>();
+		if (hero != null) for (Map< Talent, Integer > tier : hero.talents) out.putAll( tier );
+		return out;
 	}
 
 	public void act( Action action ){
@@ -153,6 +196,43 @@ public final class Driver {
 
 	public void menu( int option ){
 		step( Action.MENU_SELECT, option );
+	}
+
+	public void brew( Class< ? extends Item > product ){
+		brewChoice( recipe -> yields( recipe, product ), product.getSimpleName() );
+	}
+
+	public void brewRecipe( Class< ? extends Recipe > type ){
+		brewChoice( recipe -> recipe.getClass() == type, type.getSimpleName() );
+	}
+
+	private void brewChoice( java.util.function.Predicate< Recipe > wanted, String product ){
+		act( Action.ALCHEMY );
+		require( env.mode() == EnvMode.ALCHEMY, "ALCHEMY entered " + env.mode() );
+		int choice = -1;
+		List< Recipe > recipes = env.mapper().alchemyChoices();
+		for (int i = 0; i < recipes.size() && choice < 0; i++){
+			if (wanted.test( recipes.get( i ))) choice = i;
+		}
+		require( choice >= 0, "no offered recipe makes " + product + " from " + recipes );
+		menu( choice );
+	}
+
+	private static boolean yields( Recipe recipe, Class< ? extends Item > product ){
+		for (ArrayList< Item > ingredients : AlchemyAction.ingredientSets( Dungeon.hero )){
+			if (!recipe.testIngredients( new ArrayList<>( ingredients ))) continue;
+			Item out = recipe.sampleOutput( new ArrayList<>( ingredients ));
+			Class< ? > maker = recipe.getClass().getEnclosingClass();
+			if (product.isInstance( out ) || (maker != null && product.isAssignableFrom( maker ))) return true;
+		}
+		return false;
+	}
+
+	public void talent( Talent talent ){
+		act( Action.TALENT );
+		int choice = env.mapper().talentChoices().indexOf( talent );
+		if (choice < 0) throw new Stop( "talent " + talent + " is not offered: " + env.mapper().talentChoices() );
+		menu( choice );
 	}
 
 	public void cancel(){

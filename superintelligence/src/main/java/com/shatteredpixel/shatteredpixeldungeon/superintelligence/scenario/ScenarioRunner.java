@@ -85,6 +85,10 @@ public final class ScenarioRunner {
 		if (stopped != null) fail( result, stopped );
 		else if (!driver.failures().isEmpty()) fail( result, String.join( "; ", driver.failures() ));
 		else result.status = "OK";
+		java.util.List< String > unwitnessed = driver.seen().unwitnessed( scenario.covers );
+		if ("OK".equals( result.status ) && !unwitnessed.isEmpty()){
+			fail( result, "declared covers never witnessed: " + String.join( ", ", unwitnessed ));
+		}
 		ReachExpectations.judge( result, scenario.judgeReach ? driver.gaps() : java.util.List.of(),
 				stopped == null && !driver.failures().isEmpty() );
 
