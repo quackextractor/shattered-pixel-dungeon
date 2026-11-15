@@ -21,6 +21,8 @@ public final class Scenario {
 	public final Script script;
 	public String[] seeds = DEFAULT_SEEDS;
 	public int depth = 0;
+	public int branch = 0;
+	public Runnable prepare = () -> {};
 	public boolean dirtyEnd = false;
 	public boolean judgeReach = true;
 	public int maxSteps = Driver.MAX_STEPS;
@@ -52,6 +54,16 @@ public final class Scenario {
 
 	public Scenario depth( int depth ){
 		this.depth = depth;
+		return this;
+	}
+
+	public Scenario branch( int branch ){
+		this.branch = branch;
+		return this;
+	}
+
+	public Scenario prepare( Runnable before ){
+		this.prepare = before;
 		return this;
 	}
 

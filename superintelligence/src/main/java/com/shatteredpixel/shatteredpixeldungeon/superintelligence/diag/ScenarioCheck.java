@@ -8,6 +8,8 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Projecting;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.RunicBlade;
+import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room;
+import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.SpecialRoom;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
@@ -25,6 +27,7 @@ import com.watabou.utils.RandomTrace;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 public class ScenarioCheck {
@@ -57,6 +60,7 @@ public class ScenarioCheck {
 		checkASetupLeavesTheGameplayStreamAlone();
 		checkAnUnwitnessedCoverFails();
 		checkTheMaskChangesNoHeroState();
+		checkARoomScenarioLeavesNoForcedQueue();
 
 		ScenarioRunner runner = new ScenarioRunner( new EnvConfig(), out );
 		List< ScenarioRunner.Result > results = new ArrayList<>();
@@ -170,6 +174,24 @@ public class ScenarioCheck {
 			GateReport.fail( "self-test: " + result.failure );
 		} else {
 			System.out.println( "  building the action mask with a Projecting reach target keeps the ability trackers" );
+		}
+	}
+
+	private static void checkARoomScenarioLeavesNoForcedQueue(){
+		ScenarioRunner runner = new ScenarioRunner( new EnvConfig(), null );
+		ScenarioRunner.Result room = runner.run( ScenarioCatalog.find( "room.ArmoryRoom" ));
+		ScenarioRunner.Result melee = runner.run( ScenarioCatalog.find( "melee" ));
+		List< Class< ? extends Room > > queue = SpecialRoom.runSpecials;
+		if (new HashSet<>( queue ).size() != queue.size()){
+			GateReport.fail( "self-test: after room.ArmoryRoom and melee, SpecialRoom.runSpecials still holds the forced"
+					+ " queue " + queue + ", so every later floor generates the forced room" );
+		} else if (!"OK".equals( room.status )){
+			GateReport.fail( "self-test: room.ArmoryRoom ended " + room.status + " (" + room.failure + "), so the forced"
+					+ " queue it should leave behind was never built" );
+		} else if (!"OK".equals( melee.status )){
+			GateReport.fail( "self-test: melee after room.ArmoryRoom ended " + melee.status + ": " + melee.failure );
+		} else {
+			System.out.println( "  melee after room.ArmoryRoom verifies on the run's own special-room queue" );
 		}
 	}
 

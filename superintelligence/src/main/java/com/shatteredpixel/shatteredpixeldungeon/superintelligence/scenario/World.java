@@ -7,6 +7,8 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
+import com.shatteredpixel.shatteredpixeldungeon.levels.RegularLevel;
+import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room;
 import com.shatteredpixel.shatteredpixeldungeon.levels.traps.Trap;
 import com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
@@ -89,6 +91,13 @@ public final class World {
 			level().mobs.remove( mob );
 			if (mob.sprite != null) mob.sprite.killAndErase();
 		}
+	}
+
+	public < T extends Room > T room( Class< T > type ){
+		if (level() instanceof RegularLevel){
+			for (Room room : ((RegularLevel) level()).rooms()) if (type.isInstance( room )) return type.cast( room );
+		}
+		throw new NoFixture( "no " + type.getSimpleName() + " on depth " + Dungeon.depth );
 	}
 
 	public < T extends Mob > T find( Class< T > type ){

@@ -28,13 +28,14 @@ public final class ScenarioSetup {
 		return new Hook() {
 			@Override public boolean jump(){
 				if (landed()) return false;
+				scenario.prepare.run();
 				com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.clearPendingCellListener();
 				return Dungeon.level.activateTransition( Dungeon.hero, new LevelTransition( Dungeon.level, Dungeon.hero.pos,
-						LevelTransition.Type.REGULAR_EXIT, scenario.depth, 0, LevelTransition.Type.REGULAR_ENTRANCE ));
+						LevelTransition.Type.REGULAR_EXIT, scenario.depth, scenario.branch, LevelTransition.Type.REGULAR_ENTRANCE ));
 			}
 
 			@Override public boolean landed(){
-				return scenario.depth <= 0 || (Dungeon.depth == scenario.depth && Dungeon.hero != null);
+				return scenario.depth <= 0 || (Dungeon.depth == scenario.depth && Dungeon.branch == scenario.branch && Dungeon.hero != null);
 			}
 
 			@Override public void build(){
