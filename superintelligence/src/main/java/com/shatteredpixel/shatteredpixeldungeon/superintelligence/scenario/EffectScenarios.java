@@ -33,13 +33,13 @@ final class EffectScenarios {
 		all.add( expires( "buff.Paralysis", Paralysis.class ));
 		all.add( expires( "buff.Blindness", Blindness.class ));
 		all.add( expires( "buff.Vertigo", Vertigo.class ));
-		all.add( rooted() );
-		all.add( hurts( "buff.Burning", ( world, kit ) -> kit.buff( Burning.class ).reignite( kit.hero() )));
-		all.add( hurts( "buff.Poison", ( world, kit ) -> kit.buff( Poison.class ).set( 6 )));
-		all.add( web() );
+		all.add( rooted().covers( Roots.class ));
+		all.add( hurts( "buff.Burning", ( world, kit ) -> kit.buff( Burning.class ).reignite( kit.hero() )).covers( Burning.class ));
+		all.add( hurts( "buff.Poison", ( world, kit ) -> kit.buff( Poison.class ).set( 6 )).covers( Poison.class ));
+		all.add( web().covers( Web.class, Roots.class ));
 		for (Class< ? extends Blob > blob : List.of( Fire.class, ToxicGas.class, ParalyticGas.class, ConfusionGas.class,
 				Electricity.class, Freezing.class )){
-			all.add( hurts( "blob." + blob.getSimpleName(), ( world, kit ) -> world.blob( blob, world.hero(), 100 )));
+			all.add( hurts( "blob." + blob.getSimpleName(), ( world, kit ) -> world.blob( blob, world.hero(), 100 )).covers( blob ));
 		}
 		return all;
 	}
@@ -55,7 +55,7 @@ final class EffectScenarios {
 					d.waitFor( () -> Dungeon.hero.buff( type ) == null, 6 );
 					d.expect( Dungeon.hero.buff( type ) == null, type.getSimpleName() + " outlasted 6 waits" );
 					d.expect( Actor.now() > clock, "waiting under " + type.getSimpleName() + " spent no time" );
-				} );
+				} ).covers( type );
 	}
 
 	private static Scenario rooted(){

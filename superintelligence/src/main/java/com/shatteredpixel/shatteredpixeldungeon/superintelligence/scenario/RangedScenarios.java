@@ -41,8 +41,10 @@ final class RangedScenarios {
 
 	static List< Scenario > all(){
 		List< Scenario > all = new ArrayList<>();
-		all.add( shoot( "bow", HeroClass.HUNTRESS, SpiritBow.class, null ));
-		all.add( shoot( "staff", HeroClass.MAGE, MagesStaff.class, null ));
+		all.add( shoot( "bow", HeroClass.HUNTRESS, SpiritBow.class, null )
+				.covers( SpiritBow.class ).covers( Coverage.heroClass( HeroClass.HUNTRESS )));
+		all.add( shoot( "staff", HeroClass.MAGE, MagesStaff.class, null )
+				.covers( MagesStaff.class ).covers( Coverage.heroClass( HeroClass.MAGE )));
 		all.add( thrown( "thrown.ThrowingKnife", ThrowingKnife.class ));
 		all.add( thrown( "thrown.Dart", Dart.class ));
 		all.add( thrown( "thrown.ThrowingStone", ThrowingStone.class ));
@@ -53,10 +55,10 @@ final class RangedScenarios {
 				WandOfWarding.class, WandOfCorruption.class );
 		for (Class< ? extends Wand > wand : wands){
 			all.add( shoot( "wand." + wand.getSimpleName().replace( "WandOf", "" ), HeroClass.WARRIOR, wand,
-					() -> Reflection.newInstance( wand )));
+					() -> Reflection.newInstance( wand )).covers( wand ));
 		}
-		all.add( potionThrow() );
-		all.add( knockback() );
+		all.add( potionThrow().covers( PotionOfLiquidFlame.class, Fire.class ));
+		all.add( knockback().covers( WandOfBlastWave.class ));
 		return all;
 	}
 
@@ -115,15 +117,11 @@ final class RangedScenarios {
 							+ d.env().mode() );
 					d.aimNearest();
 					d.expect( pack.quantity() == quantity - 1, "a throw left " + pack.quantity() + " of " + quantity );
-					boolean landed = false;
-					for (int cell : com.watabou.utils.PathFinder.NEIGHBOURS9){
-						landed |= Dungeon.level.heaps.get( pos + cell ) != null;
-					}
-					d.expect( affected( rat, hp, pos ) || landed, "the " + type.getSimpleName() + " neither hit nor landed by the rat" );
+					d.expect( affected( rat, hp, pos ), "the " + type.getSimpleName() + " missed the rat" );
 					if (type == ParalyticDart.class && rat.HP < hp){
 						d.expect( rat.buff( Paralysis.class ) != null, "a paralytic dart hit and did not paralyse" );
 					}
-				} );
+				} ).covers( type );
 	}
 
 	private static Scenario knockback(){

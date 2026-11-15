@@ -31,7 +31,9 @@ final class TrapScenarios {
 		List< Class< ? extends Trap > > traps = List.of( WornDartTrap.class, PoisonDartTrap.class, BurningTrap.class,
 				ToxicTrap.class, TeleportationTrap.class, SummoningTrap.class, AlarmTrap.class, GrippingTrap.class,
 				DisintegrationTrap.class, RockfallTrap.class, PitfallTrap.class );
-		for (Class< ? extends Trap > trap : traps) all.add( stepOn( trap ));
+		for (Class< ? extends Trap > trap : traps){
+			all.add( trap == GrippingTrap.class ? stepOn( trap ).covers( trap, Cripple.class ) : stepOn( trap ).covers( trap ));
+		}
 		all.add( search() );
 		return all;
 	}

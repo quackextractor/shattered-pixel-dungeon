@@ -24,7 +24,9 @@ final class GapScenarios {
 	private GapScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( unequip(), cursedUnequip(), wornNotDropped(), cloak(), cloakAlone(), chains(), shopBuy(), throwOnly(), unknownPotionThrow() );
+		return Arrays.asList( unequip(), cursedUnequip(), wornNotDropped(),
+				cloak().covers( CloakOfShadows.class ).covers( Coverage.heroClass( HeroClass.ROGUE )), cloakAlone(),
+				chains().covers( EtherealChains.class ), shopBuy().covers( Shopkeeper.class ), throwOnly(), unknownPotionThrow() );
 	}
 
 	private static void wornAction( Driver d, Item worn, String what ){

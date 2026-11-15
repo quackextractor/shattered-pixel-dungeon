@@ -21,11 +21,11 @@ final class NpcScenarios {
 
 	static List< Scenario > all(){
 		return Arrays.asList(
-				quest( "npc.Ghost", Ghost.class, 4, Ghost.Quest::given ),
-				quest( "npc.Wandmaker", Wandmaker.class, 9, Wandmaker.Quest::given ),
-				quest( "npc.Blacksmith", Blacksmith.class, 14, Blacksmith.Quest::given ),
-				quest( "npc.Imp", Imp.class, 19, Imp.Quest::given ),
-				ghostReward(), subclass() );
+				quest( "npc.Ghost", Ghost.class, 4, Ghost.Quest::given ).covers( Ghost.class ),
+				quest( "npc.Wandmaker", Wandmaker.class, 9, Wandmaker.Quest::given ).covers( Wandmaker.class ),
+				quest( "npc.Blacksmith", Blacksmith.class, 14, Blacksmith.Quest::given ).covers( Blacksmith.class ),
+				quest( "npc.Imp", Imp.class, 19, Imp.Quest::given ).covers( Imp.class ),
+				ghostReward(), subclass().covers( com.shatteredpixel.shatteredpixeldungeon.items.TengusMask.class ));
 	}
 
 	private static Scenario ghostReward(){

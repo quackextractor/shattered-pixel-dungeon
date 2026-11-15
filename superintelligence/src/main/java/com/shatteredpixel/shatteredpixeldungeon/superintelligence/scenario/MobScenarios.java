@@ -47,14 +47,14 @@ final class MobScenarios {
 		all.add( ranged( "zap.Spinner", Spinner.class ));
 		all.add( ranged( "eye-beam", Eye.class ));
 		all.add( ranged( "mob.Bat", Bat.class ));
-		all.add( watch( "goo-pump", Goo.class, 2, 8, () -> Dungeon.hero.HP < Dungeon.hero.HT, "Goo never hit the hero" ));
+		all.add( watch( "goo-pump", Goo.class, 2, 8, () -> Dungeon.hero.HP < Dungeon.hero.HT, "Goo never hit the hero" ).covers( Goo.class ));
 		all.add( watch( "necro-summon", Necromancer.class, 4, 10, () -> count( Skeleton.class ) > 0,
-				"the Necromancer raised no Skeleton" ));
+				"the Necromancer raised no Skeleton" ).covers( Necromancer.class, Skeleton.class ));
 		all.add( watch( "mob.Succubus", Succubus.class, 1, 10, () -> Dungeon.hero.buff( Charm.class ) != null,
-				"the Succubus never charmed the hero" ));
-		all.add( watch( "mob.Thief", Thief.class, 1, 10, () -> thiefHolds(), "the Thief stole nothing" ));
-		all.add( swarmSplit() );
-		all.add( mirrorImage() );
+				"the Succubus never charmed the hero" ).covers( Succubus.class, Charm.class ));
+		all.add( watch( "mob.Thief", Thief.class, 1, 10, () -> thiefHolds(), "the Thief stole nothing" ).covers( Thief.class ));
+		all.add( swarmSplit().covers( Swarm.class ));
+		all.add( mirrorImage().covers( ScrollOfMirrorImage.class, MirrorImage.class ));
 		return all;
 	}
 
@@ -71,7 +71,7 @@ final class MobScenarios {
 
 	private static Scenario ranged( String id, Class< ? extends Mob > type ){
 		return watch( id, type, 4, 8, () -> Dungeon.hero.HP < Dungeon.hero.HT || !Dungeon.hero.buffs().isEmpty()
-				&& debuffed(), "the mob did nothing to the hero in 8 turns" );
+				&& debuffed(), "the mob did nothing to the hero in 8 turns" ).covers( type );
 	}
 
 	private static boolean debuffed(){

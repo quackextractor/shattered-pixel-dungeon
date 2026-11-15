@@ -24,6 +24,7 @@ public final class Scenario {
 	public boolean dirtyEnd = false;
 	public boolean judgeReach = true;
 	public int maxSteps = Driver.MAX_STEPS;
+	public final java.util.Set< String > covers = new java.util.LinkedHashSet<>();
 
 	public Scenario( String id, String mechanic, HeroClass hero, Setup setup, Script script ){
 		this.id = id;
@@ -51,6 +52,16 @@ public final class Scenario {
 
 	public Scenario depth( int depth ){
 		this.depth = depth;
+		return this;
+	}
+
+	public Scenario covers( Class< ? >... types ){
+		for (Class< ? > type : types) covers.add( Coverage.key( type ));
+		return this;
+	}
+
+	public Scenario covers( String... keys ){
+		java.util.Collections.addAll( covers, keys );
 		return this;
 	}
 }

@@ -25,13 +25,13 @@ final class WorldScenarios {
 		all.add( door() );
 		all.add( secretDoor() );
 		all.add( searchStaleView() );
-		all.add( lockedDoor() );
+		all.add( lockedDoor().covers( IronKey.class ));
 		all.add( lockedDoorByMove() );
 		all.add( chest( Heap.Type.CHEST, null ));
-		all.add( chest( Heap.Type.LOCKED_CHEST, () -> new GoldenKey( Dungeon.depth )));
-		all.add( chest( Heap.Type.CRYSTAL_CHEST, () -> new CrystalKey( Dungeon.depth )));
+		all.add( chest( Heap.Type.LOCKED_CHEST, () -> new GoldenKey( Dungeon.depth )).covers( GoldenKey.class ));
+		all.add( chest( Heap.Type.CRYSTAL_CHEST, () -> new CrystalKey( Dungeon.depth )).covers( CrystalKey.class ));
 		all.add( chest( Heap.Type.SKELETON, null ));
-		all.add( mimic() );
+		all.add( mimic().covers( Mimic.class ));
 		all.add( travelItem() );
 		return all;
 	}

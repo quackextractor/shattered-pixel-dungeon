@@ -21,7 +21,8 @@ final class ConditionScenarios {
 	private ConditionScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( levitation(), invisibility(), slow(), charm(), ankh() );
+		return Arrays.asList( levitation().covers( Levitation.class ), invisibility().covers( Invisibility.class ),
+				slow().covers( Slow.class ), charm().covers( Charm.class ), ankh().covers( Ankh.class ));
 	}
 
 	private static Scenario levitation(){

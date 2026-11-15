@@ -1,5 +1,6 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Corruption;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.ToxicGas;
@@ -26,20 +27,22 @@ final class CreatureScenarios {
 
 	static List< Scenario > all(){
 		List< Scenario > all = new ArrayList<>();
-		all.add( bruteRage() );
+		all.add( bruteRage().covers( Brute.class ));
 		all.add( MobScenarios.watch( "mob.Ripper", RipperDemon.class, 4, 10, () -> Dungeon.hero.HP < Dungeon.hero.HT,
-				"the Ripper never reached the hero from 4 cells" ));
+				"the Ripper never reached the hero from 4 cells" ).covers( RipperDemon.class ));
 		all.add( MobScenarios.watch( "mob.Golem", Golem.class, 4, 12, () -> Dungeon.hero.HP < Dungeon.hero.HT,
-				"the Golem never reached the hero from 4 cells" ));
+				"the Golem never reached the hero from 4 cells" ).covers( Golem.class ));
 		all.add( MobScenarios.watch( "mob.DM200", DM200.class, 4, 10, () -> Dungeon.level.blobs.get( ToxicGas.class ) != null
-				|| Dungeon.hero.HP < Dungeon.hero.HT, "the DM-200 neither vented nor hit" ));
-		all.add( statue() );
-		all.add( ghoulRevives() );
+				|| Dungeon.hero.HP < Dungeon.hero.HT, "the DM-200 neither vented nor hit" ).covers( DM200.class ));
+		all.add( statue().covers( Statue.class ));
+		all.add( ghoulRevives().covers( Ghoul.class ));
 		all.add( ally( "ally.LivingEarth", WandOfLivingEarth::new, WandOfLivingEarth.class, 1000, true,
-				() -> MobScenarios.count( WandOfLivingEarth.EarthGuardian.class ) > 0, "no Earth Guardian formed" ));
-		all.add( ally( "ally.Corruption", WandOfCorruption::new, WandOfCorruption.class, 1, true, CreatureScenarios::ratAllied, "the rat was not corrupted" ));
+				() -> MobScenarios.count( WandOfLivingEarth.EarthGuardian.class ) > 0, "no Earth Guardian formed" )
+				.covers( WandOfLivingEarth.EarthGuardian.class ));
+		all.add( ally( "ally.Corruption", WandOfCorruption::new, WandOfCorruption.class, 1, true, CreatureScenarios::ratAllied, "the rat was not corrupted" )
+				.covers( Corruption.class ));
 		all.add( ally( "ally.Ward", WandOfWarding::new, WandOfWarding.class, 8, false,
-				() -> MobScenarios.count( WandOfWarding.Ward.class ) > 0, "no Ward was placed" ));
+				() -> MobScenarios.count( WandOfWarding.Ward.class ) > 0, "no Ward was placed" ).covers( WandOfWarding.Ward.class ));
 		return all;
 	}
 

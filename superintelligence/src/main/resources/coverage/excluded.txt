@@ -1,0 +1,18 @@
+actors.blobs.Blob	concrete base, never seeded as itself
+actors.buffs.Buff	concrete base, never attached as itself
+actors.buffs.CounterBuff	concrete base for counting buffs
+actors.buffs.FlavourBuff	concrete base for timed buffs
+actors.buffs.Sleep	immunity marker, only named in Char.isImmune sets, never attached
+actors.mobs.DelayedRockFall	concrete base, only its subclasses GnollGeomancer$GnollRockFall and DM300$FallingRockBuff are attached
+actors.mobs.npcs.DirectableAlly	concrete base of directable allies
+items.Item	concrete base
+items.armor.Armor	concrete base of worn armour
+items.artifacts.Artifact	concrete base of artifacts
+items.bags.Bag	concrete base of bags
+items.potions.Potion	concrete base of potions
+items.potions.exotic.ExoticPotion	concrete base of exotic potions
+items.rings.Ring	concrete base of rings
+items.weapon.melee.MeleeWeapon	concrete base of melee weapons
+levels.DeadEndLevel	generated only for a depth or branch the game never sends a hero to
+plants.Plant$Seed	concrete base of seeds
+plants.Plant$Seed$PlaceHolder	inventory filter placeholder, never an item

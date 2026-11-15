@@ -14,7 +14,7 @@ final class CombatScenarios {
 	private CombatScenarios(){}
 
 	static List< Scenario > all(){
-		return Arrays.asList( melee(), guardChain() );
+		return Arrays.asList( melee().covers( Coverage.heroClass( HeroClass.WARRIOR )), guardChain().covers( Guard.class ));
 	}
 
 	private static Scenario melee(){

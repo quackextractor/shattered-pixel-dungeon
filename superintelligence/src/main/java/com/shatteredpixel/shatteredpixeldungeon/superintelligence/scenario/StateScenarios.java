@@ -1,5 +1,6 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Healing;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.ParalyticGas;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Amok;
@@ -49,31 +50,38 @@ final class StateScenarios {
 	static List< Scenario > all(){
 		List< Scenario > all = new ArrayList<>();
 		all.add( consume( "drink.Healing", PotionOfHealing.class, true, () -> before = Dungeon.hero.HP,
-				() -> Dungeon.hero.HP > before ));
+				() -> Dungeon.hero.HP > before ).covers( PotionOfHealing.class, Healing.class ));
 		all.add( consume( "drink.Strength", PotionOfStrength.class, true, () -> before = Dungeon.hero.STR,
-				() -> Dungeon.hero.STR == before + 1 ));
-		all.add( consume( "drink.Haste", PotionOfHaste.class, true, null, () -> hero( Haste.class )));
-		all.add( consume( "drink.Invisibility", PotionOfInvisibility.class, true, null, () -> hero( Invisibility.class )));
-		all.add( consume( "drink.Levitation", PotionOfLevitation.class, true, null, () -> hero( Levitation.class )));
-		all.add( consume( "drink.MindVision", PotionOfMindVision.class, true, null, () -> hero( MindVision.class )));
+				() -> Dungeon.hero.STR == before + 1 ).covers( PotionOfStrength.class ));
+		all.add( consume( "drink.Haste", PotionOfHaste.class, true, null, () -> hero( Haste.class )).covers( PotionOfHaste.class, Haste.class ));
+		all.add( consume( "drink.Invisibility", PotionOfInvisibility.class, true, null, () -> hero( Invisibility.class ))
+				.covers( PotionOfInvisibility.class, Invisibility.class ));
+		all.add( consume( "drink.Levitation", PotionOfLevitation.class, true, null, () -> hero( Levitation.class ))
+				.covers( PotionOfLevitation.class, Levitation.class ));
+		all.add( consume( "drink.MindVision", PotionOfMindVision.class, true, null, () -> hero( MindVision.class ))
+				.covers( PotionOfMindVision.class, MindVision.class ));
 		all.add( consume( "drink.Experience", PotionOfExperience.class, true, () -> before = Dungeon.hero.lvl,
-				() -> Dungeon.hero.lvl > before ));
+				() -> Dungeon.hero.lvl > before ).covers( PotionOfExperience.class ));
 		all.add( consume( "drink.unknown-ParalyticGas", PotionOfParalyticGas.class, false, null,
-				() -> Dungeon.level.blobs.get( ParalyticGas.class ) != null ));
+				() -> Dungeon.level.blobs.get( ParalyticGas.class ) != null )
+				.covers( PotionOfParalyticGas.class, ParalyticGas.class ));
 		all.add( consume( "scroll.MagicMapping", ScrollOfMagicMapping.class, true, () -> before = mapped(),
-				() -> mapped() > before ));
+				() -> mapped() > before ).covers( ScrollOfMagicMapping.class ));
 		all.add( consume( "scroll.Teleportation", ScrollOfTeleportation.class, true, () -> before = Dungeon.hero.pos,
-				() -> Dungeon.hero.pos != before ));
-		all.add( consume( "scroll.Terror", ScrollOfTerror.class, true, null, () -> rat( Terror.class )));
-		all.add( consume( "scroll.Lullaby", ScrollOfLullaby.class, true, null, () -> rat( Drowsy.class )));
-		all.add( consume( "scroll.Recharging", ScrollOfRecharging.class, true, null, () -> hero( Recharging.class )));
-		all.add( consume( "scroll.Rage", ScrollOfRage.class, true, null, () -> rat( Amok.class )));
-		all.add( eat() );
+				() -> Dungeon.hero.pos != before ).covers( ScrollOfTeleportation.class ));
+		all.add( consume( "scroll.Terror", ScrollOfTerror.class, true, null, () -> rat( Terror.class ))
+				.covers( ScrollOfTerror.class, Terror.class ));
+		all.add( consume( "scroll.Lullaby", ScrollOfLullaby.class, true, null, () -> rat( Drowsy.class ))
+				.covers( ScrollOfLullaby.class, Drowsy.class ));
+		all.add( consume( "scroll.Recharging", ScrollOfRecharging.class, true, null, () -> hero( Recharging.class ))
+				.covers( ScrollOfRecharging.class, Recharging.class ));
+		all.add( consume( "scroll.Rage", ScrollOfRage.class, true, null, () -> rat( Amok.class )).covers( ScrollOfRage.class, Amok.class ));
+		all.add( eat().covers( Food.class, Hunger.class ));
 		all.add( starve() );
-		all.add( equip() );
-		all.add( equipCursed() );
+		all.add( equip().covers( LeatherArmor.class ));
+		all.add( equipCursed().covers( Sword.class ));
 		all.add( talent() );
-		all.add( levelUp() );
+		all.add( levelUp().covers( Rat.class ));
 		all.add( death() );
 		return all;
 	}

@@ -23,15 +23,15 @@ final class FeatureScenarios {
 
 	static List< Scenario > all(){
 		List< Scenario > all = new ArrayList<>();
-		all.add( well( "well.Health", WaterOfHealth.class ));
-		all.add( well( "well.Awareness", WaterOfAwareness.class ));
+		all.add( well( "well.Health", WaterOfHealth.class ).covers( WaterOfHealth.class ));
+		all.add( well( "well.Awareness", WaterOfAwareness.class ).covers( WaterOfAwareness.class, Awareness.class ));
 		all.add( chasm() );
 		all.add( chasmThenMove() );
 		all.add( searchAfterFall() );
 		all.add( grass() );
-		all.add( plant( "plant.Sungrass", Sungrass.Seed::new ));
-		all.add( plant( "plant.Firebloom", Firebloom.Seed::new ));
-		all.add( plant( "plant.Sorrowmoss", Sorrowmoss.Seed::new ));
+		all.add( plant( "plant.Sungrass", Sungrass.Seed::new ).covers( Sungrass.class ));
+		all.add( plant( "plant.Firebloom", Firebloom.Seed::new ).covers( Firebloom.class ));
+		all.add( plant( "plant.Sorrowmoss", Sorrowmoss.Seed::new ).covers( Sorrowmoss.class ));
 		return all;
 	}
 

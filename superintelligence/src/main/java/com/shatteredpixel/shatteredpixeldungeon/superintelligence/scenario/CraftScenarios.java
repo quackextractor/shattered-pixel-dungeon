@@ -40,20 +40,24 @@ final class CraftScenarios {
 	static List< Scenario > all(){
 		List< Scenario > all = new ArrayList<>();
 		all.add( picker( "picker.Upgrade", ScrollOfUpgrade.class, null, false, ClothArmor.class,
-				item -> item.level() == 1, "the armour is not +1" ));
+				item -> item.level() == 1, "the armour is not +1" ).covers( ScrollOfUpgrade.class, ClothArmor.class ));
 		all.add( picker( "picker.Identify", ScrollOfIdentify.class, RingOfAccuracy::new, true, RingOfAccuracy.class,
-				Item::isIdentified, "the ring is not identified" ));
+				Item::isIdentified, "the ring is not identified" )
+				.covers( ScrollOfIdentify.class, RingOfAccuracy.class ));
 		all.add( picker( "picker.RemoveCurse", ScrollOfRemoveCurse.class, CraftScenarios::cursedDagger, true, Dagger.class,
-				item -> !item.cursed, "the dagger is still cursed" ));
+				item -> !item.cursed, "the dagger is still cursed" )
+				.covers( ScrollOfRemoveCurse.class, Dagger.class ));
 		all.add( picker( "picker.Transmutation", ScrollOfTransmutation.class, Dagger::new, false, Dagger.class,
-				item -> !Dungeon.hero.belongings.contains( item ), "the dagger is still carried" ));
+				item -> !Dungeon.hero.belongings.contains( item ), "the dagger is still carried" ).covers( ScrollOfTransmutation.class ));
 		all.add( picker( "picker.Enchantment", ScrollOfEnchantment.class, Dagger::new, false, Dagger.class,
-				item -> ((Dagger) item).enchantment != null, "the dagger has no enchantment" ));
+				item -> ((Dagger) item).enchantment != null, "the dagger has no enchantment" ).covers( ScrollOfEnchantment.class ));
 		all.add( pickerCancel() );
-		all.add( brew( "brew.seeds", Potion.class, Sungrass.Seed::new, Firebloom.Seed::new, Sorrowmoss.Seed::new ));
-		all.add( brew( "brew.exotic-potion", ExoticPotion.class, PotionOfHealing::new ));
-		all.add( brew( "brew.exotic-scroll", ExoticScroll.class, ScrollOfIdentify::new ));
-		all.add( brew( "brew.meat-pie", MeatPie.class, Pasty::new, Food::new, MysteryMeat::new ));
+		all.add( brew( "brew.seeds", Potion.class, Sungrass.Seed::new, Firebloom.Seed::new, Sorrowmoss.Seed::new )
+				.covers( Potion.SeedToPotion.class ));
+		all.add( brew( "brew.exotic-potion", ExoticPotion.class, PotionOfHealing::new ).covers( ExoticPotion.PotionToExotic.class ));
+		all.add( brew( "brew.exotic-scroll", ExoticScroll.class, ScrollOfIdentify::new ).covers( ExoticScroll.ScrollToExotic.class ));
+		all.add( brew( "brew.meat-pie", MeatPie.class, Pasty::new, Food::new, MysteryMeat::new )
+				.covers( MeatPie.Recipe.class, MeatPie.class, Pasty.class, MysteryMeat.class ));
 		return all;
 	}
 
