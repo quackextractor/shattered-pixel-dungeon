@@ -8,6 +8,7 @@ Every open item from `issues.md` and the sections below, in working order: fidel
 because a long run is only worth reading if its recordings play. Each ships as its own commit with a `CHANGELOG.md`
 entry and leaves this list, or moves to `REJECTED.md`.
 
+- [ ] **Sweep world falls back into its jumped floor** (`issues.md` 50): `sweep.duelist.d22.1` diverges in the viewer; extend the viewer world trace past a scenario's depth jump, then diff.
 - [ ] **Inference latency** (plan 2 C, P1 b): fuse launches, LSTM state resident per slot.
 - [ ] **Update leftovers** (P2): im2col/col2im, packed kernels, fused LSTM, slice sum.
 - [ ] **Env CPU** (P3): structural only now (packed observation, travel masks per state version, incremental reward); point fixes measured as noise.
