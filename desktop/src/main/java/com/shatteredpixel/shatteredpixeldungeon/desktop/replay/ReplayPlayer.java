@@ -660,7 +660,8 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 
 	private void finishHeroAnimation(){
 		Hero hero = Dungeon.hero;
-		if (hero != null && hero.isAlive() && hero.sprite != null && !Actor.waitingOnCallback()) hero.sprite.finishAnimation();
+		if (hero != null && hero.isAlive() && hero.sprite != null
+				&& (!Actor.waitingOnCallback() || hero.sprite.callbackPending())) hero.sprite.finishAnimation();
 	}
 
 	private boolean heroShotInFlight(){

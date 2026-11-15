@@ -270,6 +270,10 @@ public class CharSprite extends MovieClip implements Tweener.Listener, MovieClip
 		operate( cell, null );
 	}
 	
+	public synchronized boolean callbackPending() {
+		return animCallback != null;
+	}
+
 	public synchronized void operate( int cell, Callback callback ) {
 		animCallback = callback;
 		turnTo( ch.pos, cell );

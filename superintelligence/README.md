@@ -725,7 +725,7 @@ rather than behaviour-changing when a renderer is present:
 - `Random.reseedBase(long)` - seeds the base generator in place, so a recording can be replayed in a
   second process.
 - `RandomTrace`, `Actor.currentActor()`, `Mob.currentEnemy()/enemySeen()/alerted()`,
-  `MovieClip.animationInFlight()`, `GameScene.answerableWindow()`, `PRandom.element()` - getters and
+  `MovieClip.animationInFlight()`, `CharSprite.callbackPending()`, `GameScene.answerableWindow()`, `PRandom.element()` - getters and
   observation-only additions.
 - `Actor.all`, `Actor.chars`, `Level.mobs`, `Level.blobs` and the tie-breaks that consume them are
   insertion-ordered, so turn order is a function of the run rather than of identity hash codes.

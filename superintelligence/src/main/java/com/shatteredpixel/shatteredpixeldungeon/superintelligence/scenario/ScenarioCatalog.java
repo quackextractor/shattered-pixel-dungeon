@@ -39,6 +39,8 @@ public final class ScenarioCatalog {
 		ALL.addAll( FoodScenarios.all() );
 		ALL.addAll( ArmourScenarios.all() );
 		ALL.addAll( RingScenarios.all() );
+		ALL.addAll( MeleeScenarios.all() );
+		ALL.addAll( WeaponAbilityScenarios.all() );
 	}
 
 	public static List< Scenario > all(){
