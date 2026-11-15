@@ -35,6 +35,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( ScrollScenarios.all() );
 		ALL.addAll( StoneScenarios.all() );
 		ALL.addAll( BombScenarios.all() );
+		ALL.addAll( MissileScenarios.all() );
 	}
 
 	public static List< Scenario > all(){

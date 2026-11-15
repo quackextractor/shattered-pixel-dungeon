@@ -11,6 +11,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Missile and dart coverage (`MissileScenarios`, prefixes `missile.`, `dart.`, 24 scenarios).**
+  - **Keys covered (27):** 13 missiles (Bolas, FishingSpear, ForceCube, HeavyBoomerang, Javelin, Kunai,
+    Shuriken, ThrowingClub, ThrowingHammer, ThrowingSpear, ThrowingSpike, Tomahawk, Trident), 11 tipped
+    darts (Adrenaline, Blinding, Chilling, Cleansing, Displacing, Healing, Holy, Incendiary, Poison, Rot,
+    Shocking), and the buffs PinCushion, Adrenaline and Bless. Coverage goes from 287 to 314 of 968.
+  - **Fixture:** each missile is thrown at a paralysed 100-HP rat at range 3. The healing, holy and
+    adrenaline darts are thrown at an adjacent MirrorImage ally.
+  - **Observables:** the effect is compared with a `RangedScenarios.Capture` (HP, position and buff set)
+    taken just before the throw:
+    - Bolas: Cripple. Tomahawk: Bleeding. Every sticky missile: PinCushion.
+    - HeavyBoomerang: back in the pack within 4 WAITs. ForceCube: both rats hurt.
+    - Cleansing: the rat's Haste is gone. Displacing: the rat moves more than 2 cells.
+    - Shocking: HP loss above the dart's own maximum.
+    - Healing: the ally gains HP. Holy: Bless, then it expires. Adrenaline: `speed()` rises, then the
+      buff expires.
+  - **`RangedScenarios.thrown`** now takes the hit predicate. A miss that only leaves a heap fails.
+    `thrown.ParalyticDart` now requires Paralysis.
+  - **Mutation:** with the Cripple removed from `Bolas.proc`:
+    `[ERROR] missile.Bolas  FAIL  13 steps, 36 ms  the Bolas missed the rat or had no effect`.
+  - **Bless and PinCushion measured against captures (fix round 1):**
+    - Bless: a probe rat's hit count on the blessed image, sampled 400 times under a pushed
+      generator, must fall.
+    - PinCushion: it must hold exactly the thrown missile, with quantity 1.
+    - Red lines:
+      `[ERROR] dart.HolyDart  FAIL  38 steps, 60 ms  the holy dart never blessed the image`
+      (Bless `defRoll` term removed);
+      `[ERROR] missile.Javelin  FAIL  13 steps, 37 ms  the Javelin missed the rat or had no effect`
+      (`PinCushion.stick` stores nothing).
 - Scenario family `BombScenarios` (prefix `bomb.`, 13 scenarios) covers every bomb and the honeypot: `items.bombs.Bomb`, `ArcaneBomb`, `Firebomb`, `FlashBangBomb`, `FrostBomb`, `HolyBomb`, `Noisemaker`, `RegrowthBomb`, `ShrapnelBomb`, `SmokeBomb`, `WoollyBomb`, `Bomb$EnhanceBomb` (brewed ArcaneBomb from Bomb + GooBlob), `items.Honeypot`, `actors.mobs.Bee` (the honeypot's bee stings a paralysed rat) and `actors.blobs.Regrowth` (volume, new grass and Roots on the rat). Bombs are lit with USE and aim (`AC_LIGHTTHROW`); the env's THROW leaves the fuse unlit. FlashBang is checked for Paralysis (the engine's effect, not Blindness), the Noisemaker for waking a far sleeping rat (beckon sets WANDERING), and HolyBomb against a Skeleton armoured with Barkskin 1000 so only the armour-piercing holy damage can hurt it. Coverage 287 of 968. Mutations: FlashBang Paralysis skipped gives `[ERROR] bomb.FlashBangBomb  FAIL  12 steps, 31 ms  the flash-bang never stunned the rat`; HolyDamage, Noisemaker beckon, Arcane damage and the Regrowth seed skipped turn `bomb.HolyBomb`, `bomb.Noisemaker`, `bomb.ArcaneBomb` and `bomb.RegrowthBomb` red. The Bee cover also requires the hero to wound the bee after its sting; with bees taking no damage: [ERROR] bomb.Honeypot  FAIL  30 steps, 61 ms  the hero never hurt the bee from 12 HP in 20 steps.
 - Scenario family `StoneScenarios` (`stone.*`, 13 scenarios) covers every runestone (Aggression, Augmentation, Blast, Blink,
   Clairvoyance, DeepSleep, DetectMagic, Enchantment, Fear, Flock, Intuition, Shock), `Scroll$ScrollToStone`, `MagicalSleep` and

@@ -1,10 +1,13 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Fire;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Paralysis;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfLiquidFlame;
@@ -28,11 +31,15 @@ import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.ThrowingKn
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.ThrowingStone;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.darts.Dart;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.darts.ParalyticDart;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.watabou.utils.Reflection;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 
 final class RangedScenarios {
@@ -45,10 +52,10 @@ final class RangedScenarios {
 				.covers( SpiritBow.class ).covers( Coverage.heroClass( HeroClass.HUNTRESS )));
 		all.add( shoot( "staff", HeroClass.MAGE, MagesStaff.class, null )
 				.covers( MagesStaff.class ).covers( Coverage.heroClass( HeroClass.MAGE )));
-		all.add( thrown( "thrown.ThrowingKnife", ThrowingKnife.class ));
-		all.add( thrown( "thrown.Dart", Dart.class ));
-		all.add( thrown( "thrown.ThrowingStone", ThrowingStone.class ));
-		all.add( thrown( "thrown.ParalyticDart", ParalyticDart.class ));
+		all.add( thrown( "thrown.ThrowingKnife", ThrowingKnife.class, ( rat, before ) -> before.struck( rat )));
+		all.add( thrown( "thrown.Dart", Dart.class, ( rat, before ) -> before.struck( rat )));
+		all.add( thrown( "thrown.ThrowingStone", ThrowingStone.class, ( rat, before ) -> before.struck( rat )));
+		all.add( thrown( "thrown.ParalyticDart", ParalyticDart.class, ( rat, before ) -> before.gained( rat, Paralysis.class )));
 		List< Class< ? extends Wand > > wands = List.of( WandOfMagicMissile.class, WandOfFireblast.class, WandOfFrost.class,
 				WandOfLightning.class, WandOfDisintegration.class, WandOfCorrosion.class, WandOfBlastWave.class,
 				WandOfLivingEarth.class, WandOfPrismaticLight.class, WandOfRegrowth.class, WandOfTransfusion.class,
@@ -70,7 +77,7 @@ final class RangedScenarios {
 
 	private static boolean affected( Rat rat, int hp, int pos ){
 		return !rat.isAlive() || rat.HP < hp || rat.pos != pos || !rat.buffs().isEmpty()
-				|| rat.alignment != com.shatteredpixel.shatteredpixeldungeon.actors.Char.Alignment.ENEMY;
+				|| rat.alignment != Char.Alignment.ENEMY;
 	}
 
 	private static Scenario shoot( String id, HeroClass hero, Class< ? extends Item > type, Supplier< ? extends Item > give ){
@@ -99,28 +106,62 @@ final class RangedScenarios {
 				} );
 	}
 
-	private static Scenario thrown( String id, Class< ? extends Item > type ){
+	static final class Capture {
+
+		final int hp;
+		final int pos;
+		final Set< Class< ? extends Buff > > buffs = new HashSet<>();
+
+		Capture( Char ch ){
+			hp = ch.HP;
+			pos = ch.pos;
+			for (Buff buff : ch.buffs()) buffs.add( buff.getClass() );
+		}
+
+		boolean gained( Char ch, Class< ? extends Buff > type ){
+			return ch.buff( type ) != null && !buffs.contains( type );
+		}
+
+		boolean hurt( Char ch ){
+			return !ch.isAlive() || ch.HP < hp;
+		}
+
+		boolean struck( Char ch ){
+			if (hurt( ch )) return true;
+			for (Buff buff : ch.buffs()) if (!buffs.contains( buff.getClass() )) return true;
+			return false;
+		}
+	}
+
+	static final int GIVEN = 3;
+
+	static final int HIT_WAITS = 4;
+
+	static Scenario thrown( String id, Class< ? extends Item > type, BiPredicate< Mob, Capture > hit ){
+		return thrown( id, type, ( world, kit ) -> {}, hit );
+	}
+
+	static Scenario thrown( String id, Class< ? extends Item > type, Scenario.Setup arena, BiPredicate< Mob, Capture > hit ){
 		return new Scenario( id, "throw " + type.getSimpleName() + " at an enemy", HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();
 					kit.sturdy();
-					kit.give( Reflection.newInstance( type ).quantity( 3 ));
+					kit.give( Reflection.newInstance( type ).quantity( GIVEN ));
 					target( world, 3 );
+					arena.build( world, kit );
 				},
 				d -> {
 					Rat rat = d.world().find( Rat.class );
 					Item pack = Dungeon.hero.belongings.getItem( type );
 					int quantity = pack.quantity();
-					int hp = rat.HP, pos = rat.pos;
+					Capture before = new Capture( rat );
 					d.use( type );
 					d.require( d.env().mode() == EnvMode.TARGETING, type.getSimpleName() + " did not ask for a target: "
 							+ d.env().mode() );
 					d.aimNearest();
 					d.expect( pack.quantity() == quantity - 1, "a throw left " + pack.quantity() + " of " + quantity );
-					d.expect( affected( rat, hp, pos ), "the " + type.getSimpleName() + " missed the rat" );
-					if (type == ParalyticDart.class && rat.HP < hp){
-						d.expect( rat.buff( Paralysis.class ) != null, "a paralytic dart hit and did not paralyse" );
-					}
+					d.expect( d.until( () -> hit.test( rat, before ), HIT_WAITS, () -> d.act( Action.WAIT )),
+							"the " + type.getSimpleName() + " missed the rat or had no effect" );
 				} ).covers( type );
 	}
 
