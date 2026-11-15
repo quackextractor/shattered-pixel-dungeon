@@ -238,17 +238,6 @@ items.remains.BrokenStaff
 items.remains.CloakScrap
 items.remains.SealShard
 items.remains.TornPage
-items.rings.RingOfArcana
-items.rings.RingOfElements
-items.rings.RingOfEnergy
-items.rings.RingOfEvasion
-items.rings.RingOfForce
-items.rings.RingOfFuror
-items.rings.RingOfHaste
-items.rings.RingOfMight
-items.rings.RingOfSharpshooting
-items.rings.RingOfTenacity
-items.rings.RingOfWealth
 items.spells.Alchemize
 items.spells.Alchemize$Recipe
 items.spells.BeaconOfReturning
