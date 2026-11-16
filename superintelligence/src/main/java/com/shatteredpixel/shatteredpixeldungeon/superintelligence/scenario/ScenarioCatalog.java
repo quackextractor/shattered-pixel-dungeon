@@ -52,6 +52,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( BuffScenarios.all() );
 		ALL.addAll( BrewScenarios.all() );
 		ALL.addAll( PrisonScenarios.all() );
+		ALL.addAll( SpellScenarios.all() );
 		ALL.addAll( CaveScenarios.all() );
 		ALL.addAll( CityScenarios.all() );
 		ALL.addAll( VaultScenarios.all() );
