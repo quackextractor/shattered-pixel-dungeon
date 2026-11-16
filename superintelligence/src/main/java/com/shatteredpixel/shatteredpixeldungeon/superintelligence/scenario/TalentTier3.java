@@ -87,7 +87,10 @@ final class TalentTier3 {
 		all.add( of( Talent.CLEAVE, HeroClass.WARRIOR, ( world, kit ) -> {
 			kit.sturdy();
 			weakenedRat( world, world.adjacentFree() );
-		}, d -> d.move( rat().pos ), () -> () -> comboTime() >= 20, "the kill left no extended combo" ));
+		}, d -> d.move( rat().pos ), () -> {
+			int base = comboTime();
+			return () -> comboTime() > base;
+		}, "the kill left no extended combo" ));
 		all.add( of( Talent.LETHAL_DEFENSE, HeroClass.WARRIOR, ( world, kit ) -> {
 			kit.sturdy();
 			for (int i = 0; i < 5; i++) weakenedRat( world, world.adjacentFree() );
