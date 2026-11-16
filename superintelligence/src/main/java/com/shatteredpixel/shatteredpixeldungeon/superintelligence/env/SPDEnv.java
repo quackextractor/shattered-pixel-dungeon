@@ -141,6 +141,10 @@ if (mode == EnvMode.WORLD){
 				mode = EnvMode.SLOT;
 				if (WindowBridge.open()) mode = EnvMode.MENU;
 				acted = true;
+			} else if (action == Action.INDICATOR ){
+				if (WindowBridge.open()) mode = EnvMode.MENU;
+				else if (com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.aimPending()) mode = EnvMode.TARGETING;
+				acted = true;
 			}
 		} else if (mode == EnvMode.MENU){
 			acted = mapper.applySecondary( mode, action, slot );

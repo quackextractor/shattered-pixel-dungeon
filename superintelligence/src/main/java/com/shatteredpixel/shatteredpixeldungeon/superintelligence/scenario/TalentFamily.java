@@ -191,4 +191,11 @@ final class TalentFamily {
 		bundle.put( key, value );
 		thing.restoreFromBundle( bundle );
 	}
+
+	static void prime( Bundlable thing, String key, float value ){
+		Bundle bundle = new Bundle();
+		thing.storeInBundle( bundle );
+		bundle.put( key, value );
+		thing.restoreFromBundle( bundle );
+	}
 }

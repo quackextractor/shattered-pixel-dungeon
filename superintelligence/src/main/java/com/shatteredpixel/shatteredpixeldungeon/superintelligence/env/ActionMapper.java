@@ -225,6 +225,9 @@ public class ActionMapper {
 				case TALENT:
 					mask[a.index] = TalentPicker.spendableCount( hero() ) > 0 ? 1f : 0f;
 					break;
+				case INDICATOR:
+					mask[a.index] = com.shatteredpixel.shatteredpixeldungeon.ui.ActionIndicator.action != null ? 1f : 0f;
+					break;
 				case ALCHEMY:
 					mask[a.index] = (config.allowAlchemy && !alchemyChoices().isEmpty()) ? 1f : 0f;
 					break;
@@ -340,6 +343,12 @@ public class ActionMapper {
 			case TALENT:
 			case ALCHEMY:
 
+				return true;
+
+			case INDICATOR:
+
+				if (com.shatteredpixel.shatteredpixeldungeon.ui.ActionIndicator.action == null) return false;
+				com.shatteredpixel.shatteredpixeldungeon.ui.ActionIndicator.action.doAction();
 				return true;
 
 			case CANCEL:

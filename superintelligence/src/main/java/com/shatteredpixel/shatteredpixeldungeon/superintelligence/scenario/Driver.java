@@ -235,6 +235,10 @@ public final class Driver {
 		menu( choice );
 	}
 
+	public void indicator(){
+		act( Action.INDICATOR );
+	}
+
 	public void cancel(){
 		boolean slotHead = EpisodeCollector.headFor( env ) == com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy.HEAD_SLOT;
 		step( Action.CANCEL, slotHead ? ActionMapper.cancelSlot( env.slotMask().length ) : 0 );

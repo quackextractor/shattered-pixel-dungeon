@@ -46,6 +46,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( TalentTier2.all() );
 		ALL.addAll( TalentTier2Gear.all() );
 		ALL.addAll( TalentTier2Sense.all() );
+		ALL.addAll( TalentTier3.all() );
 		ALL.addAll( ClericScenarios.all() );
 		ALL.addAll( RoomScenarios.all() );
 		ALL.addAll( SecretRoomScenarios.all() );
