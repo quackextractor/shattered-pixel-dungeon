@@ -17,7 +17,7 @@ final class SpellProbes {
 
 	private static final long SEED = 7L;
 
-	private static final class Dummy extends Char {
+	static final class Dummy extends Char {
 
 		Dummy( Alignment side, int cell ){
 			alignment = side;

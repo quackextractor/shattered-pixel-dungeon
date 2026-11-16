@@ -165,7 +165,7 @@ final class FoodScenarios {
 	}
 
 	@SafeVarargs
-	private static Scenario.Setup pot( Supplier< Item >... ingredients ){
+	static Scenario.Setup pot( Supplier< Item >... ingredients ){
 		return ( world, kit ) -> {
 			kit.emptyPack().energy( 20 );
 			for (Supplier< Item > ingredient : ingredients) kit.give( ingredient.get() );
@@ -173,7 +173,7 @@ final class FoodScenarios {
 		};
 	}
 
-	private static void brewed( Driver d, Class< ? extends Recipe > recipe, Class< ? extends Item > product, int quantity ){
+	static void brewed( Driver d, Class< ? extends Recipe > recipe, Class< ? extends Item > product, int quantity ){
 		int crafted = Statistics.itemsCrafted;
 		d.brewRecipe( recipe );
 		d.require( Statistics.itemsCrafted == crafted + 1, "itemsCrafted moved by " + (Statistics.itemsCrafted - crafted) );

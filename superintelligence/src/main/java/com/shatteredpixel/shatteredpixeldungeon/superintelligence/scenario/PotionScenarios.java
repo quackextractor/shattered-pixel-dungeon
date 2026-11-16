@@ -321,7 +321,7 @@ final class PotionScenarios {
 		return ( world, kit ) -> Buff.affect( target( world, hp ), Paralysis.class, 100f );
 	}
 
-	private static Scenario.Setup gasTarget(){
+	static Scenario.Setup gasTarget(){
 		return ( world, kit ) -> {
 			kit.buff( BlobImmunity.class, 100f );
 			held( 100 ).build( world, kit );
