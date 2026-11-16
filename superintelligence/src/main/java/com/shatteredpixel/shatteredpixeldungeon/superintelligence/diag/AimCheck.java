@@ -46,7 +46,7 @@ public class AimCheck {
 		checkAWandZapSpendsACharge();
 		checkTheTeacherShoots();
 		checkEveryWandFires();
-		checkACatalystIsNeverBrewed();
+		checkACatalystIsBrewable();
 		checkAnEmptyStaffIsNotAimed();
 		checkALongWardZapHasABolt();
 		checkEveryItemCanBeUsed();
@@ -224,15 +224,28 @@ public class AimCheck {
 		if (env.mode() == EnvMode.TARGETING) GateReport.fail( "equipping a staff from the pack asks for a target, and the next step throws the staff at the enemy" );
 	}
 
-	private static void checkACatalystIsNeverBrewed(){
+	private static void checkACatalystIsBrewable(){
 		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
 		Dungeon.energy = 50;
 		new com.shatteredpixel.shatteredpixeldungeon.items.trinkets.TrinketCatalyst().collect();
-		for (com.shatteredpixel.shatteredpixeldungeon.items.Recipe recipe : com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.AlchemyAction.recipes( Dungeon.hero )){
-			if (recipe instanceof com.shatteredpixel.shatteredpixeldungeon.items.trinkets.TrinketCatalyst.Recipe){
-				GateReport.fail( "a Trinket Catalyst is offered as a recipe, and brewing it opens a window on a scene that does not exist headless" );
-			}
+		java.util.List< com.shatteredpixel.shatteredpixeldungeon.items.Recipe > offered =
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.AlchemyAction.recipes( Dungeon.hero );
+		int index = -1;
+		for (int i = 0; i < offered.size(); i++){
+			if (offered.get( i ) instanceof com.shatteredpixel.shatteredpixeldungeon.items.trinkets.TrinketCatalyst.Recipe) index = i;
 		}
+		if (index < 0){
+			Dungeon.energy = 0;
+			GateReport.fail( "the trinket catalyst is not offered as a recipe" );
+			return;
+		}
+		if (!com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.AlchemyAction.craft( Dungeon.hero, index )){
+			GateReport.fail( "brewing the trinket catalyst headless returned false" );
+		}
+		if (!com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.open()){
+			GateReport.fail( "brewing the trinket catalyst headless opened no window to answer" );
+		}
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.close();
 		Dungeon.energy = 0;
 	}
 

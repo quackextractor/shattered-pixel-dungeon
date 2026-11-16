@@ -28,9 +28,11 @@ public class WindowBridge {
 
 	private static final java.util.Set< String > CHOICE_WINDOWS = java.util.Set.of( "WndSadGhost", "WndWandmaker", "WndImpOld",
 			"WndBlacksmith", "WndChooseSubclass", "WndChooseAbility", "WndMetamorphChoose", "WndMetamorphReplace", "WndInfoTalent", "WndAugment", "WndGuess",
-			"WndClericSpells", "Trinity" );
+			"WndClericSpells", "Trinity", "WndTrinket" );
 
 	private static final java.util.Set< String > ICON_WINDOWS = java.util.Set.of( "WndGuess", "WndClericSpells" );
+
+	private static final java.util.Set< String > OFF_SCENE_WINDOWS = java.util.Set.of( "WndTrinket" );
 
 	private static final java.util.ArrayDeque< Window > parents = new java.util.ArrayDeque<>();
 
@@ -109,7 +111,7 @@ public static boolean selectOption( int index ){
 		if (w instanceof WndOptions) return ((WndOptions) w).selectOption( index );
 		java.util.List< com.shatteredpixel.shatteredpixeldungeon.ui.Button > buttons = buttons( w );
 		boolean parked = w != null && w == GameScene.headlessWindow();
-		if (index < 0 || index >= buttons.size() || !press( buttons.get( index ))) return false;
+		if (index < 0 || index >= buttons.size() || !press( w, buttons.get( index ))) return false;
 		Window shown = GameScene.headlessWindow();
 		if (parked && shown != null && shown != w && !destroyed( w )){
 			holding.add( w );
@@ -118,8 +120,9 @@ public static boolean selectOption( int index ){
 		return true;
 	}
 
-	private static boolean press( com.shatteredpixel.shatteredpixeldungeon.ui.Button button ){
-		return HeadlessGame.withQuickSlots( () -> button instanceof TalentButton ? HeadlessGame.pressOffScene( button ) : button.press() );
+	private static boolean press( Window w, com.shatteredpixel.shatteredpixeldungeon.ui.Button button ){
+		boolean offScene = button instanceof TalentButton || named( w, OFF_SCENE_WINDOWS );
+		return HeadlessGame.withQuickSlots( () -> offScene ? HeadlessGame.pressOffScene( button ) : button.press());
 	}
 
 	private static boolean destroyed( Window w ){

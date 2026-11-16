@@ -9,6 +9,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.Recipe;
 import com.shatteredpixel.shatteredpixeldungeon.items.food.MeatPie;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -89,7 +90,6 @@ public final class AlchemyAction {
 
 		for (ArrayList< Item > ingredients : ingredientSets( hero )){
 			for (Recipe recipe : Recipe.findRecipes( new ArrayList<>( ingredients ))){
-				if (recipe instanceof com.shatteredpixel.shatteredpixeldungeon.items.trinkets.TrinketCatalyst.Recipe) continue;
 				if (recipe.cost( new ArrayList<>( ingredients )) > Dungeon.energy ) continue;
 				if (!out.contains( recipe )) out.add( recipe );
 			}
@@ -116,10 +116,13 @@ public final class AlchemyAction {
 			if (cost > Dungeon.energy ) continue;
 			Dungeon.energy -= cost;
 
-			Item result = recipe.brew( ingredients );
-			if (result == null) return false;
+			Item result = HeadlessGame.withParkedWindows( () -> recipe.brew( ingredients ));
 			for (Item item : ingredients){
 				if (item.quantity() <= 0) item.detachAll( hero.belongings.backpack );
+			}
+			if (result == null){
+				hero.next();
+				return true;
 			}
 
 			int quantity = result.quantity();

@@ -158,7 +158,12 @@ public class HeadlessGame extends Game {
 
 
 	public static boolean pressOffScene( com.shatteredpixel.shatteredpixeldungeon.ui.Button button ){
-		if (!(Game.instance instanceof HeadlessGame)) return button.press();
+		return withParkedWindows( button::press );
+	}
+
+
+	public static < T > T withParkedWindows( java.util.function.Supplier< T > action ){
+		if (!(Game.instance instanceof HeadlessGame)) return action.get();
 		HeadlessGame game = (HeadlessGame) Game.instance;
 		java.util.List< com.watabou.noosa.Gizmo > shown = new java.util.ArrayList<>();
 		Scene was = game.scene;
@@ -170,7 +175,7 @@ public class HeadlessGame extends Game {
 			}
 		};
 		try {
-			return button.press();
+			return action.get();
 		} finally {
 			game.scene = was;
 			for (com.watabou.noosa.Gizmo g : shown){
