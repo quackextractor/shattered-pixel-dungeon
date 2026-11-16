@@ -50,7 +50,7 @@ final class TrinketScenarios {
 
 	private static final int STEPS = 120;
 
-	private static final int GAS_STEPS = 240;
+	private static final int GAS_STEPS = 300;
 
 	private static final int GAS_WAIT = 210;
 
@@ -70,7 +70,7 @@ final class TrinketScenarios {
 		all.add( carried( MossyClump.class, 1, () -> MossyClump.overrideNormalLevelChance()));
 		all.add( carried( ParchmentScrap.class, 1, () -> ParchmentScrap.enchantChanceMultiplier()));
 		all.add( carried( PetrifiedSeed.class, 1, () -> PetrifiedSeed.grassLootMultiplier()));
-		all.add( carried( RatSkull.class, 1, () -> RatSkull.exoticChanceMultiplier()));
+		all.add( carried( RatSkull.class, 1, () -> RatSkull.exoticChanceMultiplier(), 5.0 ));
 		all.add( carried( SaltCube.class, -1, () -> SaltCube.hungerGainMultiplier()));
 		all.add( shardOfOblivion() );
 		all.add( carried( ThirteenLeafClover.class, 1, () -> ThirteenLeafClover.alterHeroDamageChance()));
@@ -83,10 +83,19 @@ final class TrinketScenarios {
 	}
 
 	private static Scenario carried( Class< ? extends Trinket > type, int sign, DoubleSupplier getter ){
-		return carried( type, sign, getter, ( world, kit ) -> {}, d -> {});
+		return carried( type, sign, getter, Double.NaN, ( world, kit ) -> {}, d -> {});
+	}
+
+	private static Scenario carried( Class< ? extends Trinket > type, int sign, DoubleSupplier getter, double expectedAfter ){
+		return carried( type, sign, getter, expectedAfter, ( world, kit ) -> {}, d -> {});
 	}
 
 	private static Scenario carried( Class< ? extends Trinket > type, int sign, DoubleSupplier getter,
+			Scenario.Setup fixture, Scenario.Script after ){
+		return carried( type, sign, getter, Double.NaN, fixture, after );
+	}
+
+	private static Scenario carried( Class< ? extends Trinket > type, int sign, DoubleSupplier getter, double expectedAfter,
 			Scenario.Setup fixture, Scenario.Script after ){
 		String name = type.getSimpleName();
 		Scenario s = new Scenario( "trinket." + name, "pick up a +" + LEVEL + " " + name + " from the floor", HeroClass.WARRIOR,
@@ -99,16 +108,22 @@ final class TrinketScenarios {
 					fixture.build( world, kit );
 				},
 				d -> {
-					d.require( Dungeon.hero.belongings.getItem( type ) == null, "the hero already carried a " + name );
+					d.fixture( Dungeon.hero.belongings.getItem( type ) == null, "the hero already carried a " + name );
 					double before = getter.getAsDouble();
 					int cell = heapOf( type );
-					d.require( cell >= 0, "no " + name + " heap beside the hero" );
+					d.fixture( cell >= 0, "no " + name + " heap beside the hero" );
 					d.move( cell );
 					if (Dungeon.hero.pos != cell) d.move( cell );
 					d.require( Dungeon.hero.belongings.getItem( type ) != null, "the hero did not pick up the " + name
 							+ " at " + cell + " from " + Dungeon.hero.pos );
-					d.expect( sign * (getter.getAsDouble() - before) > 0, "the carried +" + LEVEL + " " + name
-							+ " left its getter at " + getter.getAsDouble() + " from " + before );
+					double got = getter.getAsDouble();
+					if (Double.isNaN( expectedAfter )){
+						d.expect( sign * (got - before) > 0, "the carried +" + LEVEL + " " + name
+								+ " left its getter at " + got + " from " + before );
+					} else {
+						d.expect( got == expectedAfter, "the carried +" + LEVEL + " " + name
+								+ " left its getter at " + got + " from " + before + ", expected " + expectedAfter );
+					}
 					after.run( d );
 				} ).covers( type );
 		s.maxSteps = STEPS;
@@ -135,7 +150,7 @@ final class TrinketScenarios {
 		Rat rat = world.mob( new Rat(), farCell());
 		rat.HP = rat.HT = 1000;
 		Buff.affect( rat, Paralysis.class, 5000f );
-		if (TargetHealthIndicator.instance == null) TargetHealthIndicator.instance = new TargetHealthIndicator();
+		if (TargetHealthIndicator.instance == null) new TargetHealthIndicator();
 		TargetHealthIndicator.instance.target( rat );
 	}
 
@@ -146,22 +161,30 @@ final class TrinketScenarios {
 		PathFinder.buildDistanceMap( hero, open );
 		for (int cell = 0; cell < Dungeon.level.length(); cell++){
 			if (PathFinder.distance[ cell ] < FAR || PathFinder.distance[ cell ] == Integer.MAX_VALUE) continue;
-			if (new World().free( cell )) return cell;
+			if (freeCell( cell )) return cell;
 		}
 		throw new NoFixture( "no free cell " + FAR + " steps from the hero" );
 	}
 
 	private static void censerGas( Driver d ){
 		Rat rat = d.world().find( Rat.class );
-		boolean seen = d.until( () -> Dungeon.level.heroFOV[ rat.pos ], 40, () -> d.walkTo( rat.pos, 1 ));
-		d.require( seen, "the hero never came within sight of the rat at " + rat.pos + " from " + Dungeon.hero.pos );
-		d.expect( d.until( () -> Dungeon.hero.buff( ChaoticCenser.CenserGasTracker.class ) != null, 10,
-				() -> d.act( Action.WAIT )), "the carried censer armed no gas tracker" );
-		boolean appeared = d.until( TrinketScenarios::anyGas, GAS_WAIT, () -> d.act( Action.WAIT ));
-		TargetHealthIndicator.instance.target( null );
-		TargetHealthIndicator.instance = null;
-		d.expect( appeared, "the censer spewed no gas in " + GAS_WAIT + " turns of watching the rat at " + rat.pos );
+		try {
+			boolean seen = d.until( () -> Dungeon.level.heroFOV[ rat.pos ], 40, () -> d.walkTo( rat.pos, 1 ));
+			d.require( seen, "the hero never came within sight of the rat at " + rat.pos + " from " + Dungeon.hero.pos );
+			d.expect( d.until( () -> Dungeon.hero.buff( ChaoticCenser.CenserGasTracker.class ) != null, 10,
+					() -> d.act( Action.WAIT )), "the carried censer armed no gas tracker" );
+			java.util.Map< Class< ? extends Blob >, Integer > beforeGas = new java.util.LinkedHashMap<>();
+			for (java.util.Map.Entry< Class< ? extends Blob >, Blob > entry : Dungeon.level.blobs.entrySet()){
+				beforeGas.put( entry.getKey(), entry.getValue().volume );
+			}
+			boolean appeared = d.until( () -> gasAppeared( beforeGas ), GAS_WAIT, () -> d.act( Action.WAIT ));
+			d.expect( appeared, "the censer spewed no gas in " + GAS_WAIT + " turns of watching the rat at " + rat.pos );
+		} finally {
+			TargetHealthIndicator.forgetInstance();
+		}
 	}
+
+	private static boolean stealthyBeforePickup;
 
 	private static Scenario mimicTooth(){
 		return carried( MimicTooth.class, 1, () -> MimicTooth.mimicChanceMultiplier(), TrinketScenarios::stealthyMimic,
@@ -174,13 +197,17 @@ final class TrinketScenarios {
 		Mimic mimic = Mimic.spawnAt( world.adjacentFreeStraight(), new Sword());
 		if (!mimic.stealthy()) throw new NoFixture( "the mimic was not stealthy while the tooth was carried" );
 		tooth.detach( kit.hero().belongings.backpack );
+		stealthyBeforePickup = MimicTooth.stealthyMimics();
 		world.mob( mimic, mimic.pos );
 	}
 
 	private static void revealed( Driver d ){
 		Mimic mimic = d.world().find( Mimic.class );
+		d.require( mimic != null, "the stealthy mimic was not on the level" );
 		d.require( mimic.stealthy(), "the mimic was not stealthy while the tooth was carried" );
 		d.require( mimic.alignment == Char.Alignment.NEUTRAL, "the mimic was already revealed" );
+		d.require( MimicTooth.stealthyMimics() != stealthyBeforePickup,
+				"the carried tooth did not change mimic stealthiness" );
 		d.expect( d.until( () -> mimic.alignment == Char.Alignment.ENEMY, 6, () -> d.move( mimic.pos )),
 				"six steps onto the stealthy mimic left it unrevealed" );
 	}
@@ -225,12 +252,15 @@ final class TrinketScenarios {
 					world.terrain( world.adjacentFree(), Terrain.ALCHEMY );
 				},
 				d -> {
-					int before = Dungeon.hero.belongings.getItem( RatSkull.class ).buffedLvl();
+					int levelBefore = Dungeon.hero.belongings.getItem( RatSkull.class ).buffedLvl();
+					int craftedBefore = Statistics.itemsCrafted;
 					d.brewRecipe( Trinket.UpgradeTrinket.class );
 					RatSkull raised = Dungeon.hero.belongings.getItem( RatSkull.class );
 					d.require( raised != null, "the upgrade lost the trinket from the pack" );
-					d.expect( raised.buffedLvl() == before + 1, "the upgrade left the trinket at +" + raised.buffedLvl()
-							+ " from +" + before );
+					d.expect( raised.buffedLvl() == levelBefore + 1, "the upgrade left the trinket at +" + raised.buffedLvl()
+							+ " from +" + levelBefore );
+					d.expect( Statistics.itemsCrafted == craftedBefore + 1, "the upgrade moved itemsCrafted by "
+							+ (Statistics.itemsCrafted - craftedBefore) );
 				} ).covers( Trinket.UpgradeTrinket.class );
 	}
 
@@ -239,8 +269,20 @@ final class TrinketScenarios {
 		return null;
 	}
 
-	private static boolean anyGas(){
-		for (Blob blob : Dungeon.level.blobs.values()) if (blob.volume > 0) return true;
+	private static boolean freeCell( int cell ){
+		com.shatteredpixel.shatteredpixeldungeon.levels.Level level = Dungeon.level;
+		return cell >= 0 && cell < level.length() && level.insideMap( cell ) && level.passable[ cell ]
+				&& !level.solid[ cell ] && !level.pit[ cell ]
+				&& com.shatteredpixel.shatteredpixeldungeon.actors.Actor.findChar( cell ) == null
+				&& level.heaps.get( cell ) == null && level.traps.get( cell ) == null
+				&& level.plants.get( cell ) == null && level.getTransition( cell ) == null;
+	}
+
+	private static boolean gasAppeared( java.util.Map< Class< ? extends Blob >, Integer > before ){
+		for (java.util.Map.Entry< Class< ? extends Blob >, Blob > entry : Dungeon.level.blobs.entrySet()){
+			int previous = before.getOrDefault( entry.getKey(), 0 );
+			if (entry.getValue().volume > previous && entry.getValue().volume > 0) return true;
+		}
 		return false;
 	}
 }

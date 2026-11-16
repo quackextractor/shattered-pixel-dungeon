@@ -1206,6 +1206,7 @@ awaitingSettle = true;
 			System.err.println( "[replay] " + frameReport() );
 			System.err.println( "[replay] " + schedulerReport() );
 			forgetRemains();
+		com.shatteredpixel.shatteredpixeldungeon.ui.TargetHealthIndicator.forgetInstance();
 		flushRngTrace();
 		flushWorldSnapshot();
 		flushDrawSites( ".all" );

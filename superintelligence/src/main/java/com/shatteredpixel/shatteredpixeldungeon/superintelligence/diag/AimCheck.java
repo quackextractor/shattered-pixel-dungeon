@@ -241,9 +241,13 @@ public class AimCheck {
 		}
 		if (!com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.AlchemyAction.craft( Dungeon.hero, index )){
 			GateReport.fail( "brewing the trinket catalyst headless returned false" );
+			Dungeon.energy = 0;
+			return;
 		}
 		if (!com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.open()){
 			GateReport.fail( "brewing the trinket catalyst headless opened no window to answer" );
+			Dungeon.energy = 0;
+			return;
 		}
 		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.close();
 		Dungeon.energy = 0;

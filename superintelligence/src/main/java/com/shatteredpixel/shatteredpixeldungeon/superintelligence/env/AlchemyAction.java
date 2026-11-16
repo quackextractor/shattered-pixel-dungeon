@@ -121,12 +121,20 @@ public final class AlchemyAction {
 				if (item.quantity() <= 0) item.detachAll( hero.belongings.backpack );
 			}
 			if (result == null){
+				if (!com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge.open()){
+					hero.next();
+					return false;
+				}
 				hero.next();
 				return true;
 			}
 
 			int quantity = result.quantity();
-			if (!result.collect()) Dungeon.level.drop( result, hero.pos );
+			if (!result.collect()){
+				Dungeon.level.drop( result, hero.pos );
+				hero.next();
+				return false;
+			}
 			Statistics.itemsCrafted++;
 			result.quantity( quantity );
 

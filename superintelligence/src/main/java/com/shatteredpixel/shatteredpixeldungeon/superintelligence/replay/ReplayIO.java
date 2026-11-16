@@ -354,6 +354,7 @@ out.write( "reward_profile=" + replay.rewardProfile.key() );
 
 	public static Verification verify( Replay replay, SPDEnv env, StepObserver observer ){
 		Verification result = new Verification();
+		try {
 
 		HeroClass heroClass;
 		try {
@@ -491,5 +492,8 @@ boolean heroAlive = Dungeon.hero.isAlive();
 		result.depth = env.depth();
 		result.turns = env.turnsTotal();
 		return result;
+		} finally {
+			com.shatteredpixel.shatteredpixeldungeon.ui.TargetHealthIndicator.forgetInstance();
+		}
 	}
 }

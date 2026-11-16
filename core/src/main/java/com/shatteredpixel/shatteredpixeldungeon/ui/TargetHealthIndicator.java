@@ -28,6 +28,13 @@ public class TargetHealthIndicator extends HealthBar {
 	
 	public static TargetHealthIndicator instance;
 	
+	public static void forgetInstance(){
+		if (instance != null){
+			instance.target( null );
+		}
+		instance = null;
+	}
+	
 	private Char target;
 	
 	public TargetHealthIndicator() {
