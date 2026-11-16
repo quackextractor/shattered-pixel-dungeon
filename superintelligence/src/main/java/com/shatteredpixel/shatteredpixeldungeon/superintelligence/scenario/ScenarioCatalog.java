@@ -46,6 +46,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( ClericScenarios.all() );
 		ALL.addAll( RoomScenarios.all() );
 		ALL.addAll( SecretRoomScenarios.all() );
+		ALL.addAll( BuffScenarios.all() );
 	}
 
 	public static List< Scenario > all(){
