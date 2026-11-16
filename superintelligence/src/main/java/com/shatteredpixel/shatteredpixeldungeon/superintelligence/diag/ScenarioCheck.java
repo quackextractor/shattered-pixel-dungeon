@@ -8,7 +8,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Projecting;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.RunicBlade;
-import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room;
+import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretRoom;
 import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.SpecialRoom;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
@@ -29,6 +29,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class ScenarioCheck {
 
@@ -60,7 +61,8 @@ public class ScenarioCheck {
 		checkASetupLeavesTheGameplayStreamAlone();
 		checkAnUnwitnessedCoverFails();
 		checkTheMaskChangesNoHeroState();
-		checkARoomScenarioLeavesNoForcedQueue();
+		checkAForcedRoomLeavesNoForcedQueue( "room.ArmoryRoom", "SpecialRoom.runSpecials", () -> SpecialRoom.runSpecials );
+		checkAForcedRoomLeavesNoForcedQueue( "secret.SecretWellRoom", "SecretRoom.runSecrets", () -> SecretRoom.runSecrets );
 
 		ScenarioRunner runner = new ScenarioRunner( new EnvConfig(), out );
 		List< ScenarioRunner.Result > results = new ArrayList<>();
@@ -177,21 +179,21 @@ public class ScenarioCheck {
 		}
 	}
 
-	private static void checkARoomScenarioLeavesNoForcedQueue(){
+	private static void checkAForcedRoomLeavesNoForcedQueue( String id, String name, Supplier< List< ? > > queue ){
 		ScenarioRunner runner = new ScenarioRunner( new EnvConfig(), null );
-		ScenarioRunner.Result room = runner.run( ScenarioCatalog.find( "room.ArmoryRoom" ));
+		ScenarioRunner.Result room = runner.run( ScenarioCatalog.find( id ));
 		ScenarioRunner.Result melee = runner.run( ScenarioCatalog.find( "melee" ));
-		List< Class< ? extends Room > > queue = SpecialRoom.runSpecials;
-		if (new HashSet<>( queue ).size() != queue.size()){
-			GateReport.fail( "self-test: after room.ArmoryRoom and melee, SpecialRoom.runSpecials still holds the forced"
-					+ " queue " + queue + ", so every later floor generates the forced room" );
+		List< ? > left = queue.get();
+		if (new HashSet<>( left ).size() != left.size()){
+			GateReport.fail( "self-test: after " + id + " and melee, " + name + " still holds the forced queue " + left
+					+ ", so every later floor generates the forced room" );
 		} else if (!"OK".equals( room.status )){
-			GateReport.fail( "self-test: room.ArmoryRoom ended " + room.status + " (" + room.failure + "), so the forced"
+			GateReport.fail( "self-test: " + id + " ended " + room.status + " (" + room.failure + "), so the forced"
 					+ " queue it should leave behind was never built" );
 		} else if (!"OK".equals( melee.status )){
-			GateReport.fail( "self-test: melee after room.ArmoryRoom ended " + melee.status + ": " + melee.failure );
+			GateReport.fail( "self-test: melee after " + id + " ended " + melee.status + ": " + melee.failure );
 		} else {
-			System.out.println( "  melee after room.ArmoryRoom verifies on the run's own special-room queue" );
+			System.out.println( "  melee after " + id + " verifies on the run's own " + name + " queue" );
 		}
 	}
 

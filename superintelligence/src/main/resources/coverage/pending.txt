@@ -104,7 +104,6 @@ actors.mobs.YogFist$RottingFist
 actors.mobs.YogFist$RustedFist
 actors.mobs.YogFist$SoiledFist
 actors.mobs.npcs.ImpShopkeeper
-actors.mobs.npcs.RatKing
 actors.mobs.npcs.VaultLaser
 actors.mobs.npcs.VaultMirror
 actors.mobs.npcs.VaultSentry
@@ -293,19 +292,6 @@ levels.rooms.quest.vault.treasure.VaultLaserTreasureRoom
 levels.rooms.quest.vault.treasure.VaultManyScansRoom
 levels.rooms.quest.vault.treasure.VaultMultipleEnemyTreasureRoom
 levels.rooms.quest.vault.treasure.VaultSingleEnemyTreasureRoom
-levels.rooms.secret.RatKingRoom
-levels.rooms.secret.SecretArtilleryRoom
-levels.rooms.secret.SecretChestChasmRoom
-levels.rooms.secret.SecretGardenRoom
-levels.rooms.secret.SecretHoardRoom
-levels.rooms.secret.SecretHoneypotRoom
-levels.rooms.secret.SecretLaboratoryRoom
-levels.rooms.secret.SecretLarderRoom
-levels.rooms.secret.SecretLibraryRoom
-levels.rooms.secret.SecretMazeRoom
-levels.rooms.secret.SecretRunestoneRoom
-levels.rooms.secret.SecretSummoningRoom
-levels.rooms.secret.SecretWellRoom
 levels.rooms.special.ShopRoom
 subclass:ASSASSIN
 subclass:BATTLEMAGE
