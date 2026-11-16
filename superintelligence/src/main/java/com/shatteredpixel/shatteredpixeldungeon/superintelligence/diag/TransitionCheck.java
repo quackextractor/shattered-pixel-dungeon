@@ -23,7 +23,9 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Re
 
 public class TransitionCheck {
 
-	private static final int CHECKS = 15;
+	private static final int CHECKS = 16;
+
+	private static final long RNG_SEED = 0x5EC2E7L;
 
 	static final String SEED = "TRANSITION";
 
@@ -54,6 +56,7 @@ public class TransitionCheck {
 		checkAVisitedFloorIsTheSameFloor();
 		checkAStaleTargetDoesNotCrossAFloor();
 		checkAnItemThatFellDownAChasmIsWaitingBelow();
+		checkTheSecretHintRespectsItsGuardsAndItsRng();
 
 		if (failures.isEmpty()){
 			System.out.println( "[OK]     floor transitions: " + CHECKS + " checks passed" );
@@ -65,6 +68,106 @@ public class TransitionCheck {
 		}
 	}
 
+
+	private static void checkTheSecretHintRespectsItsGuardsAndItsRng(){
+		freshRun();
+		List< String > seen = new ArrayList<>();
+		com.watabou.utils.Signal.Listener< String > listener = text -> {
+			if (text != null && text.contains( secretHintText() )) seen.add( text );
+			return true;
+		};
+		com.shatteredpixel.shatteredpixeldungeon.utils.GLog.update.add( listener );
+		try {
+			int baseline = drawAfter( RNG_SEED, null );
+			expectNoHint( baseline, seen, "with no ROGUES_FORESIGHT" );
+
+			grantForesight( 3 );
+			int branch = Dungeon.branch;
+			Dungeon.branch = 1;
+			try {
+				expectNoHint( baseline, seen, "on a branch floor" );
+			} finally {
+				Dungeon.branch = branch;
+			}
+
+			clearSecretRooms();
+			expectNoHint( baseline, seen, "with every secret on the floor still hidden" );
+
+			forceSecretRoom();
+			forceSecretRoom();
+			seen.clear();
+			int drawn = drawAfter( RNG_SEED, TransitionCheck::hint );
+			if (drawn != baseline){
+				fail( "the secret hint drew from the gameplay generator: next draw " + drawn
+						+ ", the same seed without the call gives " + baseline );
+			}
+			if (seen.isEmpty()){
+				fail( "the hint stayed silent with three foresight points and two secrets already found" );
+			}
+		} finally {
+			com.shatteredpixel.shatteredpixeldungeon.utils.GLog.update.remove( listener );
+		}
+	}
+
+	private static void expectNoHint( int baseline, List< String > seen, String when ){
+		seen.clear();
+		int drawn = drawAfter( RNG_SEED, TransitionCheck::hint );
+		if (drawn != baseline){
+			fail( "the secret hint drew from the gameplay generator " + when + ": next draw " + drawn
+					+ ", the same seed without the call gives " + baseline );
+		}
+		if (!seen.isEmpty()){
+			fail( "the secret hint fired " + when + ": " + seen );
+		}
+	}
+
+	private static void hint(){
+		com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.LevelPipeline.secretHint();
+	}
+
+	private static int drawAfter( long seed, Runnable between ){
+		com.watabou.utils.Random.pushGenerator( seed );
+		try {
+			if (between != null) between.run();
+			return com.watabou.utils.Random.Int( 1_000_000 );
+		} finally {
+			com.watabou.utils.Random.popGenerator();
+		}
+	}
+
+	private static void forceSecretRoom(){
+		regularRooms().add( new com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretLibraryRoom() );
+	}
+
+	private static void clearSecretRooms(){
+		regularRooms().removeIf( r -> r instanceof com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretRoom );
+	}
+
+	private static java.util.ArrayList< com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room > regularRooms(){
+		try {
+			java.lang.reflect.Field rooms = com.shatteredpixel.shatteredpixeldungeon.levels.RegularLevel.class
+					.getDeclaredField( "rooms" );
+			rooms.setAccessible( true );
+			@SuppressWarnings("unchecked")
+			java.util.ArrayList< com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room > list =
+					(java.util.ArrayList< com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room >) rooms.get( Dungeon.level );
+			return list;
+		} catch (ReflectiveOperationException e){
+			throw new IllegalStateException( "RegularLevel.rooms is unreadable", e );
+		}
+	}
+
+	private static void grantForesight( int points ){
+		java.util.ArrayList< java.util.LinkedHashMap< com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent, Integer > > talents
+				= Dungeon.hero.talents;
+		while (talents.size() <= 1) talents.add( new java.util.LinkedHashMap<>() );
+		talents.get( 1 ).put( com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent.ROGUES_FORESIGHT, points );
+	}
+
+	private static String secretHintText(){
+		return com.shatteredpixel.shatteredpixeldungeon.messages.Messages.get(
+				com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.class, "secret_hint" );
+	}
 
 	private static void checkAStaleTargetDoesNotCrossAFloor(){
 		SPDEnv env = freshRun();

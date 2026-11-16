@@ -131,8 +131,14 @@ public class AimCheck {
 			return;
 		}
 		env.reset( SEEDS[ 0 ], HeroClass.WARRIOR );
-		for (int i = NEAREST; i < ActionMapper.TARGET_COUNT; i++){
+		for (int i = NEAREST; i < ActionMapper.SELF_TARGET_ALIAS; i++){
 			if (env.targetMask()[ i ] > 0.5f) GateReport.fail( "target " + i + " is offered with no enemy in view" );
+		}
+		if (env.targetMask()[ ActionMapper.SELF_TARGET_ALIAS ] < 0.5f
+				|| env.mapper().targetCell( ActionMapper.SELF_TARGET_ALIAS ) != Dungeon.hero.pos){
+			GateReport.fail( "the last enemy seat " + ActionMapper.SELF_TARGET_ALIAS
+					+ " doubles as the self-target alias when no fourth enemy fills it, and must point at the"
+					+ " hero's own cell now" );
 		}
 	}
 

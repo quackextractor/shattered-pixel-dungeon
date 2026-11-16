@@ -42,6 +42,7 @@ public static void clearPendingUseItem(){
 		if (item == null) return false;
 		if (action == Action.DROP) return drop( hero, item );
 		if (action == Action.THROW) return throwItem( hero, item );
+		if (action == Action.ITEM_ALT) return alt( hero, item );
 		return use( hero, item, allowEquipping );
 	}
 
@@ -117,6 +118,38 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 
 	public static boolean throwable( Hero hero, Item item ){
 		return item != null && !item.isEquipped( hero ) && item.actions( hero ).contains( Item.AC_THROW );
+	}
+
+	public static boolean anyAlt( Hero hero, java.util.List< Item > items ){
+		for (Item item : items) if (item != null && altAction( hero, item ) != null) return true;
+		return false;
+	}
+
+	public static boolean alt( Hero hero, Item item ){
+		if (item == null) return false;
+		String action = altAction( hero, item );
+		if (action == null) return false;
+		GameScene.clearPendingCellListener();
+		item.setCurrent( hero );
+		item.execute( hero, action );
+		if (GameScene.aimPending() || (item.usesTargeting && !(item instanceof MagesStaff))){
+			pendingUseItem = item;
+			return true;
+		}
+		hero.next();
+		return false;
+	}
+
+	private static String altAction( Hero hero, Item item ){
+		if (item == null) return null;
+		String primary = resolveAction( hero, item );
+		for (String candidate : item.actions( hero )){
+			if (candidate.equals( Item.AC_DROP ) || candidate.equals( Item.AC_THROW )) continue;
+			if (candidate.equals( EquipableItem.AC_EQUIP ) || candidate.equals( EquipableItem.AC_UNEQUIP )) continue;
+			if (candidate.equals( Potion.AC_CHOOSE ) || candidate.equals( primary )) continue;
+			return candidate;
+		}
+		return null;
 	}
 
 	static boolean anyThrowable( Hero hero, java.util.List< Item > items ){

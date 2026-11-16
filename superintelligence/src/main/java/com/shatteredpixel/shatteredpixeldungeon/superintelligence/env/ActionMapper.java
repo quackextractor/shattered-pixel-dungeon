@@ -33,6 +33,8 @@ public class ActionMapper {
 
 	public static final int TARGET_COUNT = ADJACENT_COUNT + ENEMY_TARGETS;
 
+	public static final int SELF_TARGET_ALIAS = TARGET_COUNT - 1;
+
 	public static Action aimAction( int target ){
 		return target == 0 ? Action.CANCEL : Action.USE;
 	}
@@ -163,6 +165,7 @@ public class ActionMapper {
 			if (hasUsableItem()) mask[Action.USE.index] = 1f;
 			if (hasDroppableItem()) mask[Action.DROP.index] = 1f;
 			if (SlotAction.anyThrowable( hero(), slots )) mask[Action.THROW.index] = 1f;
+			if (SlotAction.anyAlt( hero(), slots )) mask[Action.ITEM_ALT.index] = 1f;
 			return;
 		}
 
@@ -208,6 +211,9 @@ public class ActionMapper {
 					break;
 				case THROW:
 					mask[a.index] = SlotAction.anyThrowable( hero(), slots ) ? 1f : 0f;
+					break;
+				case ITEM_ALT:
+					mask[a.index] = SlotAction.anyAlt( hero(), slots ) ? 1f : 0f;
 					break;
 				case INTERACT:
 					mask[a.index] = interactable ? 1f : 0f;
@@ -325,6 +331,7 @@ public class ActionMapper {
 			case USE:
 			case DROP:
 			case THROW:
+			case ITEM_ALT:
 
 				SlotAction.clearPendingUseItem();
 				return false;

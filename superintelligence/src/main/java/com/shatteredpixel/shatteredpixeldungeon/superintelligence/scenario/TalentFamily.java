@@ -1,13 +1,22 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Barrier;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroSubClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.ArmorAbility;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.Ratmogrify;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.ClericSpell;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat;
+import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.HolyTome;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.Food;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MeleeWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.watabou.utils.Bundlable;
 import com.watabou.utils.Bundle;
 
@@ -108,6 +117,66 @@ final class TalentFamily {
 
 	static void unmask( Driver d, Action action ){
 		if (d.env().actionMask()[ action.index ] < 0.5f) d.act( Action.WAIT );
+	}
+
+	static Hero hero(){
+		return Dungeon.hero;
+	}
+
+	static Rat rat(){
+		return new World().find( Rat.class );
+	}
+
+	static boolean has( Class< ? extends Buff > type ){
+		return hero().buff( type ) != null;
+	}
+
+	static int barrier(){
+		Barrier barrier = hero().buff( Barrier.class );
+		return barrier == null ? 0 : barrier.shielding();
+	}
+
+	static BooleanSupplier barrierGrew(){
+		int before = barrier();
+		return () -> barrier() > before;
+	}
+
+	static void use( Driver d, Class< ? extends Item > type ){
+		unmask( d, Action.USE );
+		d.use( type );
+	}
+
+	static void eat( Driver d ){
+		use( d, Food.class );
+	}
+
+	static void aim( Driver d, Class< ? extends Item > type ){
+		use( d, type );
+		d.require( d.env().mode() == EnvMode.TARGETING, type.getSimpleName() + " did not ask for a target: " + d.env().mode() );
+		d.aimNearest();
+	}
+
+	static void cast( Driver d, ClericSpell spell ){
+		use( d, HolyTome.class );
+		int option = 0;
+		boolean found = false;
+		for (int tier = 1; tier <= 3 && !found; tier++){
+			List< ClericSpell > spells = ClericSpell.getSpellList( hero(), tier );
+			int index = spells.indexOf( spell );
+			if (index >= 0){
+				option += index;
+				found = true;
+			} else {
+				option += spells.size();
+			}
+		}
+		d.require( found, spell.name() + " is not offered by the tome" );
+		d.menu( 1 + option );
+	}
+
+	static int charges(){
+		MeleeWeapon.Charger charger = hero().buff( MeleeWeapon.Charger.class );
+		return charger == null ? 0 : charger.charges;
 	}
 
 	static float saved( Bundlable thing, String key ){

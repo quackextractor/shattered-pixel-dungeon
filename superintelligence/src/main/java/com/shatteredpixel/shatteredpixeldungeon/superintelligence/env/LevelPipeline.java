@@ -247,6 +247,7 @@ public class LevelPipeline {
 		if (result == Transition.DESCEND) ghostGreetsNewFloor();
 		dropStaleTarget();
 		PathFinder.setMapSize( level.width(), level.height() );
+		secretHint();
 
 		clearSwitchRequest();
 
@@ -269,6 +270,7 @@ public class LevelPipeline {
 		placeDroppedItems();
 		dropStaleTarget();
 		PathFinder.setMapSize( level.width(), level.height() );
+		secretHint();
 
 		clearSwitchRequest();
 		return result;
@@ -292,6 +294,7 @@ public class LevelPipeline {
 		ghostGreetsNewFloor();
 		dropStaleTarget();
 		PathFinder.setMapSize( level.width(), level.height() );
+		secretHint();
 
 		clearSwitchRequest();
 	}
@@ -330,6 +333,27 @@ public class LevelPipeline {
 		com.shatteredpixel.shatteredpixeldungeon.actors.Char target = com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton.lastTarget;
 		if (target != null && !com.shatteredpixel.shatteredpixeldungeon.actors.Actor.chars().contains( target )){
 			com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton.lastTarget = null;
+		}
+	}
+
+	public static void secretHint(){
+		if (Dungeon.hero == null || !Dungeon.hero.hasTalent( com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent.ROGUES_FORESIGHT )) return;
+		if (!(Dungeon.level instanceof com.shatteredpixel.shatteredpixeldungeon.levels.RegularLevel) || Dungeon.branch != 0) return;
+		int reqSecrets = Dungeon.level.feeling == Level.Feeling.SECRETS ? 2 : 1;
+		for (com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room r
+				: ((com.shatteredpixel.shatteredpixeldungeon.levels.RegularLevel) Dungeon.level).rooms()){
+			if (r instanceof com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretRoom) reqSecrets--;
+		}
+		com.watabou.utils.Random.pushGenerator( Dungeon.seedCurDepth() + 1 );
+		try {
+			if (reqSecrets <= 0 && com.watabou.utils.Random.Int( 4 )
+					< 2 + Dungeon.hero.pointsInTalent( com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent.ROGUES_FORESIGHT )){
+				com.shatteredpixel.shatteredpixeldungeon.utils.GLog.p(
+						com.shatteredpixel.shatteredpixeldungeon.messages.Messages.get(
+								com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.class, "secret_hint" ));
+			}
+		} finally {
+			com.watabou.utils.Random.popGenerator();
 		}
 	}
 

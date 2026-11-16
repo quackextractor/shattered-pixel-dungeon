@@ -50,6 +50,7 @@ final class Surroundings {
 		}
 		cells.sort( java.util.Comparator.< Integer >comparingInt( c -> Dungeon.level.distance( hero, c ) ).thenComparingInt( c -> c ) );
 		int k = index - TARGET_COUNT;
+		if (index == ActionMapper.SELF_TARGET_ALIAS && k >= cells.size()) return hero;
 		return k < cells.size() ? cells.get( k ) : -1;
 	}
 

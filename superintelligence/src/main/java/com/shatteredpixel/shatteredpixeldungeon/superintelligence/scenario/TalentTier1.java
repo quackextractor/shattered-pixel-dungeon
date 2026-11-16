@@ -238,11 +238,11 @@ final class TalentTier1 {
 	}
 
 	private static Hero hero(){
-		return Dungeon.hero;
+		return TalentFamily.hero();
 	}
 
 	private static Rat rat(){
-		return new World().find( Rat.class );
+		return TalentFamily.rat();
 	}
 
 	private static void rat( World world, int cell ){
@@ -257,39 +257,31 @@ final class TalentTier1 {
 	}
 
 	private static void use( Driver d, Class< ? extends Item > type ){
-		TalentFamily.unmask( d, Action.USE );
-		d.use( type );
+		TalentFamily.use( d, type );
 	}
 
 	private static void eat( Driver d ){
-		use( d, Food.class );
+		TalentFamily.eat( d );
 	}
 
 	private static void aim( Driver d, Class< ? extends Item > type ){
-		use( d, type );
-		d.require( d.env().mode() == EnvMode.TARGETING, type.getSimpleName() + " did not ask for a target: " + d.env().mode() );
-		d.aimNearest();
+		TalentFamily.aim( d, type );
 	}
 
 	private static void cast( Driver d, ClericSpell spell ){
-		use( d, HolyTome.class );
-		int option = ClericSpell.getSpellList( hero(), 1 ).indexOf( spell );
-		d.require( option >= 0, spell.name() + " is not offered by the tome" );
-		d.menu( 1 + option );
+		TalentFamily.cast( d, spell );
 	}
 
 	private static boolean has( Class< ? extends Buff > type ){
-		return hero().buff( type ) != null;
+		return TalentFamily.has( type );
 	}
 
 	private static int barrier(){
-		Barrier barrier = hero().buff( Barrier.class );
-		return barrier == null ? 0 : barrier.shielding();
+		return TalentFamily.barrier();
 	}
 
 	private static BooleanSupplier barrierGrew(){
-		int before = barrier();
-		return () -> barrier() > before;
+		return TalentFamily.barrierGrew();
 	}
 
 	private static float counted( Class< ? extends CounterBuff > type ){

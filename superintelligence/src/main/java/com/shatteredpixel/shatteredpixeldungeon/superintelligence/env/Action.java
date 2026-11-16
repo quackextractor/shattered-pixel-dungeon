@@ -64,7 +64,10 @@ public enum Action {
 	ITEM ( Kind.MACRO, 0, 0 ),
 
 
-	THROW ( Kind.ITEM, 0, 0 );
+	THROW ( Kind.ITEM, 0, 0 ),
+
+
+	ITEM_ALT ( Kind.ITEM, 0, 0 );
 
 	public enum Kind {
 
