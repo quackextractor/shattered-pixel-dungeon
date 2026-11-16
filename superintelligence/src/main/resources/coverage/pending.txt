@@ -41,15 +41,7 @@ actors.hero.abilities.warrior.HeroicLeap
 actors.hero.abilities.warrior.Shockwave
 actors.mobs.Acidic
 actors.mobs.DemonSpawner
-actors.mobs.DwarfKing
-actors.mobs.DwarfKing$DKGhoul
-actors.mobs.DwarfKing$DKGolem
-actors.mobs.DwarfKing$DKMonk
-actors.mobs.DwarfKing$DKWarlock
 actors.mobs.Elemental$AllyNewBornElemental
-actors.mobs.Elemental$ChaosElemental
-actors.mobs.Monk
-actors.mobs.Senior
 actors.mobs.YogDzewa
 actors.mobs.YogDzewa$Larva
 actors.mobs.YogDzewa$YogEye
@@ -61,7 +53,6 @@ actors.mobs.YogFist$DarkFist
 actors.mobs.YogFist$RottingFist
 actors.mobs.YogFist$RustedFist
 actors.mobs.YogFist$SoiledFist
-actors.mobs.npcs.ImpShopkeeper
 actors.mobs.npcs.VaultLaser
 actors.mobs.npcs.VaultMirror
 actors.mobs.npcs.VaultSentry
@@ -111,7 +102,6 @@ items.bags.PotionBandolier
 items.bags.ScrollHolder
 items.bags.VelvetPouch
 items.potions.PotionOfToxicGas
-items.quest.DwarfToken
 items.quest.EscapeCrystal
 items.quest.ImpStatue
 items.quest.VaultBeacon
@@ -170,14 +160,11 @@ items.wands.WandOfRegrowth$Lotus
 items.wands.WandOfRegrowth$Seedpod
 items.wands.WandOfRegrowth$Seedpod$Seed
 items.wands.WandOfWarding$Ward$WardSentry
-levels.CityBossLevel
-levels.CityLevel
 levels.HallsBossLevel
 levels.HallsLevel
 levels.LastLevel
 levels.LastShopLevel
 levels.VaultLevel
-levels.rooms.quest.AmbitiousImpRoom
 levels.rooms.quest.vault.VaultAlternatingFireRoom
 levels.rooms.quest.vault.VaultCircleRoom
 levels.rooms.quest.vault.VaultCrossRoom

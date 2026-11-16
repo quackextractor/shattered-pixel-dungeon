@@ -50,6 +50,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( BrewScenarios.all() );
 		ALL.addAll( PrisonScenarios.all() );
 		ALL.addAll( CaveScenarios.all() );
+		ALL.addAll( CityScenarios.all() );
 	}
 
 	public static List< Scenario > all(){
