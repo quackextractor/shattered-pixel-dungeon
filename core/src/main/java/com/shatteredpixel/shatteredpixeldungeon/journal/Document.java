@@ -140,6 +140,7 @@ public enum Document {
 	}
 
 	public boolean readPage( int pageIdx ) {
+		if (pageIdx < 0 || pageIdx >= pagesStates.size()) return false;
 		return readPage( pagesStates.keySet().toArray(new String[0])[pageIdx] );
 	}
 
