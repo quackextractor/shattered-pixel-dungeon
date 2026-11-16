@@ -32,6 +32,20 @@ final class ModeScenarios {
 			k.give( new Sungrass.Seed().quantity( 3 ));
 		}, d -> d.act( Action.ALCHEMY )));
 		all.add( cancel( "MENU", ( w, k ) -> k.give( new LeatherArmor() ), d -> d.use( LeatherArmor.class )));
+		all.add( cancel( "TALENT", "on-stairs", ( w, k ) -> k.level( 2 ), d -> {
+			d.require( Dungeon.level.getTransition( Dungeon.hero.pos ) != null, "the hero is not standing on stairs" );
+			d.act( Action.TALENT );
+		} ).depth( 3 ));
+		all.add( cancel( "TALENT", "on-heap", ( w, k ) -> {
+			k.level( 2 );
+			w.drop( new Food(), w.hero() );
+		}, d -> d.act( Action.TALENT )));
+		all.add( cancel( "ALCHEMY", "on-heap", ( w, k ) -> {
+			w.terrain( w.adjacentFree(), Terrain.ALCHEMY );
+			k.energy( 20 );
+			k.give( new Sungrass.Seed().quantity( 3 ));
+			w.drop( new Food(), w.hero() );
+		}, d -> d.act( Action.ALCHEMY )));
 		all.add( dropPickup() );
 		all.add( aimCancel() );
 		all.add( aimEmpty() );
@@ -41,18 +55,30 @@ final class ModeScenarios {
 	}
 
 	private static Scenario cancel( String mode, Scenario.Setup extra, Scenario.Script enter ){
-		return new Scenario( "cancel." + mode, "leave " + mode + " without acting", HeroClass.WARRIOR,
+		return cancel( mode, null, extra, enter );
+	}
+
+	private static Scenario cancel( String mode, String where, Scenario.Setup extra, Scenario.Script enter ){
+		return new Scenario( "cancel." + mode + (where == null ? "" : "." + where), "leave " + mode + " without acting", HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();
 					extra.build( world, kit );
 				},
 				d -> {
+					int depth = Dungeon.depth;
+					int pos = Dungeon.hero.pos;
+					Heap heap = Dungeon.level.heaps.get( pos );
+					int size = heap == null ? 0 : heap.size();
 					enter.run( d );
 					d.require( d.env().mode().name().equals( mode ), "entering " + mode + " left the env in " + d.env().mode() );
 					float clock = Actor.now();
 					d.cancel();
 					d.expect( d.env().mode() == EnvMode.WORLD, "CANCEL in " + mode + " left " + d.env().mode() );
 					d.expect( Actor.now() == clock, "CANCEL in " + mode + " spent " + (Actor.now() - clock) + " turns" );
+					d.expect( Dungeon.depth == depth && Dungeon.hero.pos == pos, "entering " + mode + " moved the hero from depth "
+							+ depth + " cell " + pos + " to depth " + Dungeon.depth + " cell " + Dungeon.hero.pos );
+					Heap now = Dungeon.level.heaps.get( pos );
+					d.expect( now == heap && (now == null ? 0 : now.size()) == size, "entering " + mode + " disturbed the heap under the hero" );
 				} );
 	}
 

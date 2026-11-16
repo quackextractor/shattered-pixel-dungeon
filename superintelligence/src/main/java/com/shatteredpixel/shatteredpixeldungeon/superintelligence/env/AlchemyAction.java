@@ -12,7 +12,9 @@ import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class AlchemyAction {
 
@@ -55,13 +57,35 @@ public final class AlchemyAction {
 			for (int copies = 2; copies <= MAX_INPUTS && copies <= item.quantity(); copies++) sets.add( new ArrayList<>( Collections.nCopies( copies, item )));
 		}
 
+		Set< List< Item > > offered = new HashSet<>( sets );
+		for (int size = 1; size <= MAX_INPUTS; size++) addCombinations( everything, 0, size, new ArrayList<>(), sets, offered );
+
 		return sets;
+	}
+
+	private static void addCombinations( List< Item > items, int from, int size, ArrayList< Item > chosen,
+			List< ArrayList< Item > > sets, Set< List< Item > > offered ){
+		if (chosen.size() == size){
+			ArrayList< Item > set = new ArrayList<>( chosen );
+			if (offered.add( set )) sets.add( set );
+			return;
+		}
+		for (int i = from; i < items.size(); i++){
+			Item item = items.get( i );
+			if (Collections.frequency( chosen, item ) >= slotsFor( item )) continue;
+			chosen.add( item );
+			addCombinations( items, i, size, chosen, sets, offered );
+			chosen.remove( chosen.size() - 1 );
+		}
+	}
+
+	private static int slotsFor( Item item ){
+		return item instanceof LiquidMetal || item instanceof MissileWeapon ? 1 : item.quantity();
 	}
 
 
 	public static List< Recipe > recipes( Hero hero ){
 		List< Recipe > out = new ArrayList<>();
-		if (Dungeon.energy <= 0f) return out;
 
 		for (ArrayList< Item > ingredients : ingredientSets( hero )){
 			for (Recipe recipe : Recipe.findRecipes( new ArrayList<>( ingredients ))){
@@ -89,7 +113,7 @@ public final class AlchemyAction {
 			if (!Recipe.findRecipes( new ArrayList<>( ingredients )).contains( recipe )) continue;
 
 			int cost = recipe.cost( new ArrayList<>( ingredients ));
-			if (cost > Dungeon.energy ) return false;
+			if (cost > Dungeon.energy ) continue;
 			Dungeon.energy -= cost;
 
 			Item result = recipe.brew( ingredients );

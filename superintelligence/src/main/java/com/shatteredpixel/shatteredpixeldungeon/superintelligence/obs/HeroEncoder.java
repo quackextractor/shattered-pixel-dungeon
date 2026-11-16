@@ -9,6 +9,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Chill;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Doom;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.MonkEnergy;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Poison;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
@@ -71,7 +72,7 @@ public class HeroEncoder {
 		}
 
 		if (hero.belongings.weapon() instanceof Weapon
-				&& !RingOfForce.fightingUnarmed( hero )){
+				&& !fightingUnarmed( hero )){
 			Weapon weapon = (Weapon) hero.belongings.weapon();
 			dr += weaponDefense( weapon, hero );
 			int strReq = weapon.levelKnown ? weapon.STRReq() : weapon.STRReq( 0 );
@@ -81,6 +82,12 @@ public class HeroEncoder {
 		}
 
 		return Math.max( 0, dr );
+	}
+
+	private static boolean fightingUnarmed( Hero hero ){
+		RingOfForce.BrawlersStance stance = hero.buff( RingOfForce.BrawlersStance.class );
+		if (stance == null || !stance.active || hero.buff( RingOfForce.Force.class ) != null) return RingOfForce.fightingUnarmed( hero );
+		return hero.belongings.attackingWeapon() == null || hero.buff( MonkEnergy.MonkAbility.UnarmedAbilityTracker.class ) != null;
 	}
 
 	private static int weaponDefense( Weapon weapon, Hero hero ){

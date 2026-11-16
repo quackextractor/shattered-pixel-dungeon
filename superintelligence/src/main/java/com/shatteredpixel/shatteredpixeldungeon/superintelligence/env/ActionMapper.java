@@ -330,6 +330,8 @@ public class ActionMapper {
 				return false;
 
 			case OPEN_INVENTORY:
+			case TALENT:
+			case ALCHEMY:
 
 				return true;
 

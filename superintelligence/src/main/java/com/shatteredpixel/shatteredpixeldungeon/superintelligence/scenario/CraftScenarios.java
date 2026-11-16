@@ -13,7 +13,10 @@ import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.exotic.ExoticPotion;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfAccuracy;
+import com.shatteredpixel.shatteredpixeldungeon.items.stones.Runestone;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfIdentify;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfRage;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfRemoveCurse;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTransmutation;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade;
@@ -22,6 +25,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.exotic.ScrollOfEnc
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Dagger;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Firebloom;
+import com.shatteredpixel.shatteredpixeldungeon.plants.Plant;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Sorrowmoss;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Sungrass;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
@@ -57,6 +61,8 @@ final class CraftScenarios {
 		all.add( brew( "brew.exotic-scroll", ExoticScroll.class, ScrollOfIdentify::new ).covers( ExoticScroll.ScrollToExotic.class ));
 		all.add( brew( "brew.meat-pie", MeatPie.class, Pasty::new, Food::new, MysteryMeat::new )
 				.covers( MeatPie.Recipe.class, MeatPie.class, Pasty.class, MysteryMeat.class ));
+		all.add( seedsBesidePotion() );
+		all.add( brewWith( "brew.no-energy", Runestone.class, 0, ScrollOfRage::new ).covers( Scroll.ScrollToStone.class ));
 		return all;
 	}
 
@@ -103,10 +109,41 @@ final class CraftScenarios {
 
 	@SafeVarargs
 	static Scenario brew( String id, Class< ? extends Item > product, Supplier< Item >... ingredients ){
-		return new Scenario( id, "brew " + product.getSimpleName() + " at a pot", HeroClass.WARRIOR,
+		return brewWith( id, product, 20, ingredients );
+	}
+
+	private static Scenario seedsBesidePotion(){
+		return new Scenario( "brew.seeds-beside-potion", "brew three seeds while a potion is carried", HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();
 					kit.emptyPack().energy( 20 );
+					kit.give( new PotionOfHealing() );
+					kit.give( new Sungrass.Seed() );
+					kit.give( new Firebloom.Seed() );
+					kit.give( new Sorrowmoss.Seed() );
+					world.terrain( world.adjacentFree(), Terrain.ALCHEMY );
+				},
+				d -> {
+					int crafted = Statistics.itemsCrafted;
+					int seeds = seeds();
+					d.brewRecipe( Potion.SeedToPotion.class );
+					d.expect( Statistics.itemsCrafted == crafted + 1, "itemsCrafted moved by " + (Statistics.itemsCrafted - crafted) );
+					d.expect( seeds() == seeds - 3, "brewing used " + (seeds - seeds()) + " seeds, not 3" );
+				} ).covers( Potion.SeedToPotion.class );
+	}
+
+	private static int seeds(){
+		int seeds = 0;
+		for (Item item : Dungeon.hero.belongings.backpack) if (item instanceof Plant.Seed) seeds += item.quantity();
+		return seeds;
+	}
+
+	@SafeVarargs
+	private static Scenario brewWith( String id, Class< ? extends Item > product, int energy, Supplier< Item >... ingredients ){
+		return new Scenario( id, "brew " + product.getSimpleName() + " at a pot", HeroClass.WARRIOR,
+				( world, kit ) -> {
+					world.clearMobs();
+					kit.emptyPack().energy( energy );
 					for (Supplier< Item > ingredient : ingredients) kit.give( ingredient.get() );
 					world.terrain( world.adjacentFree(), Terrain.ALCHEMY );
 				},

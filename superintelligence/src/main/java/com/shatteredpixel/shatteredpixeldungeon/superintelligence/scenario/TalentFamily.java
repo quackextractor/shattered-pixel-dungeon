@@ -51,9 +51,6 @@ final class TalentFamily {
 					probe.setup.build( world, kit );
 				},
 				d -> {
-					if (Dungeon.level.getTransition( Dungeon.hero.pos ) != null || Dungeon.level.heaps.get( Dungeon.hero.pos ) != null){
-						d.move( d.world().adjacentFree() );
-					}
 					BooleanSupplier effect = probe.effect.get();
 					d.require( !effect.getAsBoolean(), "the " + talent.name() + " effect held before the talent was chosen" );
 					d.talent( talent );

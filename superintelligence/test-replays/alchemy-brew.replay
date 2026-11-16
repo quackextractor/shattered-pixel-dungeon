@@ -4,7 +4,7 @@ seed=KST-MZZ-GGB
 hero=WARRIOR
 challenges=0
 generation=1435
-score=11982.336243438733
+score=12169.251933245558
 depth=5
 turns=1325
 turn_limit=1500
@@ -1272,142 +1272,142 @@ TRAVEL_EXPLORE 0 WORLD 954 2071.6982421875  15 0.0 PotionOfFrost:1,PotionOfParal
 USE 3 WORLD 954 -0.08309003710746765  15 0.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5604 -904652272527445907 1
 USE 2 SLOT 954 -0.08309003710746765 Waterskin:1@2 15 0.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5604 -904652272527445907 1
 REST 3 WORLD 954 -0.5830900073051453  15 1.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5604 -904652272527445907 1
-TALENT 0 WORLD 359 -1.0  15 0.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5612 3777605061070652634 1
-MENU_SELECT 2 TALENT 359 320.19970703125  15 0.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5612 3777605061070652634 1
-REST 0 WORLD 359 -1.0  15 1.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5612 3777605061070652634 1
-USE 2 WORLD 359 -0.5  15 1.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5612 3777605061070652634 1
-USE 1 SLOT 359 0.0 Waterskin:1@2 15 1.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5612 3777605061070652634 1
-CANCEL 0 TARGETING 359 -0.5  15 1.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5612 3777605061070652634 1
-TRAVEL_EXPLORE 0 WORLD 322 -1.384839653968811  15 2.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-USE 0 WORLD 322 -0.48396503925323486  15 2.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-USE 3 SLOT 322 0.0 Waterskin:1@2 15 2.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-CANCEL 0 TARGETING 322 -0.48396503925323486  15 2.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-REST 3 WORLD 322 -0.9839650392532349  15 3.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-USE 0 WORLD 322 -0.48396503925323486  15 3.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-USE 3 SLOT 322 0.0 Waterskin:1@2 15 3.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-CANCEL 0 TARGETING 322 -0.48396503925323486  15 3.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-REST 3 WORLD 322 -0.9839650392532349  15 4.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-USE 0 WORLD 322 -0.48396503925323486  15 4.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-USE 3 SLOT 322 0.0 Waterskin:1@2 15 4.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-CANCEL 0 TARGETING 322 -0.48396503925323486  15 4.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-REST 9 WORLD 322 -0.9839650392532349  15 5.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-USE 0 WORLD 322 -0.48396503925323486  15 5.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-USE 9 SLOT 322 0.0 Waterskin:1@2 15 5.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-CANCEL 0 TARGETING 322 -0.48396503925323486  15 5.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5613 737532714132000494 1
-TRAVEL_EXPLORE 0 WORLD 285 -2.5714285373687744  15 6.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5614 -4597372607110872798 1
-REST 0 WORLD 285 -0.9679300785064697  15 7.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5614 -4597372607110872798 1
-REST 0 WORLD 285 -0.9679300785064697  15 8.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5614 -4597372607110872798 1
-REST 0 WORLD 285 -0.9679300785064697  15 9.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5614 -4597372607110872798 1
-TRAVEL_EXPLORE 9 WORLD 248 -1.3527697324752808  15 10.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5616 -4038871350406637277 1
-USE 1 WORLD 248 -0.4518950879573822  15 10.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5616 -4038871350406637277 1
-USE 3 SLOT 248 0.0 Waterskin:1@2 15 10.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5616 -4038871350406637277 1
-USE 9 TARGETING 248 -1.3527697324752808  15 11.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5619 9151370486675124835 1
-USE 0 WORLD 248 -0.4518950879573822  15 11.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5619 9151370486675124835 1
-USE 2 SLOT 248 -0.4518950879573822 Waterskin:1@2 15 11.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5619 9151370486675124835 1
-TRAVEL_EXPLORE 0 WORLD 211 -0.4948979914188385  15 12.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5621 2065702591526711285 1
-USE 1 WORLD 211 -0.43586012721061707  15 12.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5621 2065702591526711285 1
-USE 2 SLOT 211 -0.43586012721061707 Waterskin:1@2 15 12.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5621 2065702591526711285 1
-MOVE_SW 1 WORLD 211 -41.37586212158203  14 13.440001 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5666 9213721217071526507 1
-USE 1 WORLD 211 -0.43586012721061707  14 13.440001 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5666 9213721217071526507 1
-USE 3 SLOT 211 -122.33673095703125 Waterskin:1@2 11 15.440001 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5686 -1056350594880796049 1
-MOVE_SW 1 WORLD 211 -114.37586212158203  9 49.88 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5716 146597750150783760 1
-MOVE_W 3 WORLD 211 -1.3758587837219238  9 51.32 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5744 1477708692051341800 1
-MOVE_SW 2 WORLD 211 38.88652420043945  7 52.76 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5773 -1484750169887410063 1
-MOVE_W 3 WORLD 211 -1.1134743690490723  4 54.199997 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5803 -6874070490683862879 1
-TRAVEL_EXPLORE 4 WORLD 248 0.6516033411026001  4 55.199997 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5804 -4101162491099298565 1
-TRAVEL_ITEM 1 WORLD 210 -2.737609386444092  4 57.199997 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5805 4377279480747634810 1
-TRAVEL_EXPLORE 2 WORLD 248 0.6516033411026001  4 58.199997 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5806 -8444487406637069832 1
-TALENT 4 WORLD 248 -0.4518950879573822  4 58.199997 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5806 -8444487406637069832 1
-MENU_SELECT 2 TALENT 248 320.247802734375  4 58.199997 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5806 -8444487406637069832 1
-TRAVEL_EXPLORE 2 WORLD 285 0.635568380355835  4 59.199997 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5807 -3431965630841640 1
-REST 2 WORLD 285 -0.9679300785064697  4 60.199997 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5807 -3431965630841640 1
-TRAVEL_EXPLORE 4 WORLD 322 0.6195334196090698  4 61.199997 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5808 1304841479133956936 1
-TRAVEL_EXPLORE 1 WORLD 954 -1.0  4 0.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5815 5649292360615016917 1
-REST 4 WORLD 954 -0.5830900073051453  4 1.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5815 5649292360615016917 1
-TRAVEL_EXPLORE 2 WORLD 924 0.6596212983131409  4 2.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5816 8938927450631391257 1
-REST 4 WORLD 924 -0.5830900073051453  4 3.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5816 8938927450631391257 1
-REST 4 WORLD 924 -0.5830900073051453  4 4.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5816 8938927450631391257 1
-REST 1 WORLD 924 -0.5830900073051453  4 5.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5816 8938927450631391257 1
-REST 4 WORLD 924 -0.5830900073051453  4 6.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5816 8938927450631391257 1
-REST 2 WORLD 924 -0.5830900073051453  4 7.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5816 8938927450631391257 1
-REST 2 WORLD 924 -0.5830900073051453  4 8.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5816 8938927450631391257 1
-TRAVEL_EXPLORE 1 WORLD 893 2.4876091480255127  4 9.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5818 2129004884734039257 1
-TRAVEL_EXPLORE 2 WORLD 892 -39.244171142578125  3 10.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5820 1030961305715689857 1
-REST 3 WORLD 892 -0.6472314596176147  3 11.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5820 1030961305715689857 1
-REST 2 WORLD 892 -0.6472314596176147  3 12.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5820 1030961305715689857 1
-REST 2 WORLD 892 -0.6472314596176147  3 13.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5820 1030961305715689857 1
-REST 2 WORLD 892 -0.6472314596176147  3 14.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5820 1030961305715689857 1
-MOVE_W 2 WORLD 891 -0.8316333889961243  3 15.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5821 -3876095552091907781 1
-REST 2 WORLD 891 -0.6311960816383362  3 16.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5821 -3876095552091907781 1
-MOVE_E 2 WORLD 892 0.9562669992446899  3 17.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5822 6402137821651019901 1
-REST 3 WORLD 892 -0.6472314596176147  3 18.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5822 6402137821651019901 1
-REST 4 WORLD 892 -0.6472314596176147  3 19.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5822 6402137821651019901 1
-REST 2 WORLD 892 -0.6472314596176147  3 20.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5822 6402137821651019901 1
-MOVE_SW 2 WORLD 921 -1.0320707559585571  3 21.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5823 -1451661158838014025 1
-REST 0 WORLD 921 -0.6311960816383362  3 22.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5823 -1451661158838014025 1
-TRAVEL_EXPLORE 4 WORLD 891 -0.6311960816383362  3 23.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5824 -4246116414179475283 1
-REST 2 WORLD 891 -0.6311960816383362  3 24.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5824 -4246116414179475283 1
-REST 4 WORLD 891 -0.6311960816383362  3 25.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5824 -4246116414179475283 1
-REST 0 WORLD 891 -0.6311960816383362  3 26.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5824 -4246116414179475283 1
-TRAVEL_EXPLORE 1 WORLD 860 2.359328269958496  3 27.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5825 -7058786235513271053 1
-REST 1 WORLD 860 -0.6472314596176147  3 28.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5825 -7058786235513271053 1
-REST 1 WORLD 860 -0.6472314596176147  3 29.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5825 -7058786235513271053 1
-REST 2 WORLD 860 -0.6472314596176147  3 30.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5825 -7058786235513271053 1
-REST 4 WORLD 860 -0.6472314596176147  3 31.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5825 -7058786235513271053 1
-MOVE_SW 2 WORLD 889 2.142855405807495  3 32.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5826 -4954876280252590307 1
-MOVE_NE 4 WORLD 860 -2.25072979927063  3 33.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 4 WORLD 860 -0.6472314596176147  3 34.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 0 WORLD 860 -40.64723205566406  2 35.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 0 WORLD 860 -0.6472314596176147  2 36.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 1 WORLD 860 -0.6472314596176147  2 37.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 5 WORLD 860 -0.6472314596176147  2 38.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 0 WORLD 860 -0.6472314596176147  2 39.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 0 WORLD 860 -0.6472314596176147  2 40.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 2 WORLD 860 -0.6472314596176147  2 41.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 2 WORLD 860 -0.6472314596176147  2 42.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 1 WORLD 860 -0.6472314596176147  2 43.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 4 WORLD 860 -0.6472314596176147  2 44.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-REST 2 WORLD 860 -0.6472314596176147  2 45.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5827 6056064362076535519 1
-MOVE_W 2 WORLD 859 2.142855405807495  2 46.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5828 -3778677375033149423 1
-MOVE_W 8 WORLD 858 2.1268231868743896  2 47.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5829 8434693757285817107 1
-REST 2 WORLD 858 -0.6792990565299988  2 48.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5829 8434693757285817107 1
-REST 5 WORLD 858 -0.6792990565299988  2 49.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5829 8434693757285817107 1
-REST 4 WORLD 858 -0.6792990565299988  2 50.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5829 8434693757285817107 1
-MOVE_W 1 WORLD 857 2.190962791442871  2 51.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5830 -8672431437662759079 1
-REST 1 WORLD 857 -0.6953344345092773  2 52.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5830 -8672431437662759079 1
-REST 1 WORLD 857 -0.6953344345092773  2 53.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5830 -8672431437662759079 1
-MOVE_SW 3 WORLD 886 2.094752550125122  2 54.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5831 -1164196986592921168 1
-REST 4 WORLD 886 -0.7113698124885559  2 55.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5831 -1164196986592921168 1
-TRAVEL_EXPLORE 1 WORLD 885 2.198979616165161  2 56.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5832 212521521736623488 1
-TRAVEL_EXPLORE 1 WORLD 914 -0.5510199666023254  2 57.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5833 8597312204908650749 1
-TRAVEL_EXPLORE 2 WORLD 884 2.0787172317504883  2 58.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5834 9209361490689904709 1
-REST 0 WORLD 884 -0.7274051308631897  2 59.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5834 9209361490689904709 1
-REST 1 WORLD 884 -40.7274055480957  1 60.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5834 9209361490689904709 1
-REST 5 WORLD 884 -0.7274051308631897  1 61.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5834 9209361490689904709 1
-REST 3 WORLD 884 -0.7274051308631897  1 62.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5834 9209361490689904709 1
-REST 2 WORLD 884 -0.7274051308631897  1 63.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5834 9209361490689904709 1
-TRAVEL_EXPLORE 1 WORLD 854 2.0626819133758545  1 64.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5835 -3236679383378511428 1
-MOVE_W 1 WORLD 853 0.45918336510658264  1 65.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5836 5679644471822524133 1
-REST 1 WORLD 853 -0.7434405088424683  1 66.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5836 5679644471822524133 1
-REST 1 WORLD 853 -0.7434405088424683  1 67.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5836 5679644471822524133 1
-TRAVEL_EXPLORE 1 WORLD 823 2.40743350982666  1 68.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5837 -478823524309371129 1
-REST 7 WORLD 823 -0.759475827217102  1 69.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5837 -478823524309371129 1
-REST 2 WORLD 823 -0.759475827217102  1 70.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5837 -478823524309371129 1
-MOVE_N 4 WORLD 793 2.110785961151123  1 71.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5838 -3546423582381239579 1
-TRAVEL_EXPLORE 2 WORLD 762 2.0546648502349854  1 72.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5839 -3275776615499201157 1
-TRAVEL_EXPLORE 4 WORLD 732 4.243439674377441  1 73.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5841 1289537410961032337 1
-TRAVEL_EXPLORE 0 WORLD 701 2.82434344291687  1 74.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5843 4861012267834045061 1
-TRAVEL_EXPLORE 6 WORLD 700 1.7820693254470825  1 75.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5845 7369992698288688855 1
-REST 1 WORLD 700 -0.8236157298088074  1 76.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5846 2735471939984094837 1
-MOVE_NE 2 WORLD 671 2.287172555923462  1 77.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5847 6411117512501940980 1
-MOVE_S 7 WORLD 701 -2.427114248275757  1 78.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5848 -3606159504274673056 1
-MOVE_SE 2 WORLD 732 -2.411078929901123  1 79.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5849 3784632883527159172 1
-MOVE_S 2 WORLD 762 -2.39504337310791  1 80.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5850 1368746970362715271 1
-WAIT 1 WORLD 762 -0.791545033454895  1 81.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5850 1368746970362715271 1
-WAIT 0 WORLD 762 -0.7514575719833374  1 82.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5850 1368746970362715271 1
-MOVE_N 2 WORLD 762 -1.231547474861145  1 83.44 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5856 -8017518796240848139 1
-MOVE_SE 1 WORLD 793 -2.37900972366333  1 84.44 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5857 -817678313275275377 1
-MOVE_S 6 WORLD 823 -2.3629744052886963  1 85.44 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5858 4138605322703161690 1
-MOVE_N 5 WORLD 793 0.8279872536659241  1 86.44 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5860 322783672193347848 1
-MOVE_S 4 WORLD 823 -2.3629744052886963  1 87.44 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5861 -6399141028711653272 1
-MOVE_N 2 WORLD 823 -3908.0  0 0.0 Seed:4,Sickle:1,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 -1 0 1
+TALENT 0 WORLD 954 -0.08309003710746765  15 1.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5604 -904652272527445907 1
+MENU_SELECT 2 TALENT 954 320.6166076660156  15 1.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5604 -904652272527445907 1
+REST 0 WORLD 954 -0.5830900073051453  15 2.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5604 -904652272527445907 1
+USE 2 WORLD 954 -0.08309003710746765  15 2.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5604 -904652272527445907 1
+USE 1 SLOT 954 0.0 Waterskin:1@2 15 2.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5604 -904652272527445907 1
+CANCEL 0 TARGETING 954 -0.08309003710746765  15 2.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5604 -904652272527445907 1
+TRAVEL_EXPLORE 0 WORLD 924 0.6596212983131409  15 3.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+USE 0 WORLD 924 -0.08309003710746765  15 3.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+USE 3 SLOT 924 0.0 Waterskin:1@2 15 3.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+CANCEL 0 TARGETING 924 -0.08309003710746765  15 3.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+REST 3 WORLD 924 -0.5830900073051453  15 4.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+USE 0 WORLD 924 -0.08309003710746765  15 4.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+USE 3 SLOT 924 0.0 Waterskin:1@2 15 4.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+CANCEL 0 TARGETING 924 -0.08309003710746765  15 4.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+REST 3 WORLD 924 -0.5830900073051453  15 5.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+USE 0 WORLD 924 -0.08309003710746765  15 5.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+USE 3 SLOT 924 0.0 Waterskin:1@2 15 5.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+CANCEL 0 TARGETING 924 -0.08309003710746765  15 5.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+REST 9 WORLD 924 -0.5830900073051453  15 6.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+USE 0 WORLD 924 -0.08309003710746765  15 6.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+USE 9 SLOT 924 0.0 Waterskin:1@2 15 6.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+CANCEL 0 TARGETING 924 -0.08309003710746765  15 6.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5605 8000470854435634071 1
+TRAVEL_EXPLORE 0 WORLD 893 2.4876091480255127  15 7.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5607 -4786578071780219651 1
+REST 0 WORLD 893 -0.5991253852844238  15 8.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5607 -4786578071780219651 1
+REST 0 WORLD 893 -0.5991253852844238  15 9.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5607 -4786578071780219651 1
+REST 0 WORLD 893 -0.5991253852844238  15 10.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5607 -4786578071780219651 1
+TRAVEL_EXPLORE 9 WORLD 892 0.7558296918869019  15 11.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5609 -8002307133173751949 1
+USE 1 WORLD 892 -0.14723144471645355  15 11.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5609 -8002307133173751949 1
+USE 3 SLOT 892 0.0 Waterskin:1@2 15 11.0 PotionOfFrost:1,PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5609 -8002307133173751949 1
+USE 9 TARGETING 892 -1.048106074333191  15 12.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5610 -2181773050515897467 1
+USE 0 WORLD 892 -0.14723144471645355  15 12.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5610 -2181773050515897467 1
+USE 2 SLOT 892 -0.14723144471645355 Waterskin:1@2 15 12.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5610 -2181773050515897467 1
+TRAVEL_EXPLORE 0 WORLD 892 -0.14723144471645355  15 12.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5610 -2181773050515897467 0
+USE 1 WORLD 892 -0.14723144471645355  15 12.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5610 -2181773050515897467 1
+USE 2 SLOT 892 -0.14723144471645355 Waterskin:1@2 15 12.0 PotionOfParalyticGas:1,Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5610 -2181773050515897467 1
+MOVE_SW 1 WORLD 921 -120.99476623535156  13 53.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5620 4879681291886351900 1
+USE 1 WORLD 921 -0.13119608163833618  13 53.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5620 4879681291886351900 1
+USE 3 SLOT 921 -0.13119608163833618 Waterskin:1@2 13 53.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5620 4879681291886351900 1
+MOVE_SW 1 WORLD 950 2.1989784240722656  13 54.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5621 -4681974791584510834 1
+MOVE_W 3 WORLD 949 0.5553923845291138  13 55.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5622 -6043977290055055764 1
+MOVE_SW 2 WORLD 949 -0.14723144471645355  13 55.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5622 -6043977290055055764 1
+MOVE_W 3 WORLD 949 -0.14723144471645355  13 55.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5622 -6043977290055055764 1
+TRAVEL_EXPLORE 4 WORLD 979 -1.0320707559585571  13 56.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5623 8534599127547367448 1
+TRAVEL_ITEM 1 WORLD 979 -0.13119608163833618  13 56.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5623 8534599127547367448 0
+TRAVEL_EXPLORE 2 WORLD 1008 -0.3345484733581543  13 57.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5624 -7830388480487739776 1
+TALENT 4 WORLD 1008 -0.11516073346138  13 57.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5624 -7830388480487739776 1
+MENU_SELECT 2 TALENT 1008 320.58453369140625  13 57.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5624 -7830388480487739776 1
+TRAVEL_EXPLORE 2 WORLD 1007 2.174926280975342  13 58.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5625 -7163128324619989824 1
+REST 2 WORLD 1007 -0.6311960816383362  13 59.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5625 -7163128324619989824 1
+TRAVEL_EXPLORE 4 WORLD 1006 2.158890962600708  13 60.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5626 -3405952501094772698 1
+TRAVEL_EXPLORE 1 WORLD 1005 2.343292713165283  13 61.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5627 -1952928620441445735 1
+REST 4 WORLD 1005 -0.6632667779922485  13 62.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5627 -1952928620441445735 1
+TRAVEL_EXPLORE 2 WORLD 974 2.28717303276062  13 63.924793 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5628 -1706905127791237950 1
+REST 4 WORLD 974 -0.6792990565299988  13 64.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5628 -1706905127791237950 1
+REST 4 WORLD 974 -0.6792990565299988  13 65.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5628 -1706905127791237950 1
+REST 1 WORLD 974 -0.6792990565299988  13 66.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5628 -1706905127791237950 1
+REST 4 WORLD 974 -0.6792990565299988  13 67.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5628 -1706905127791237950 1
+REST 2 WORLD 974 -0.6792990565299988  13 68.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5628 -1706905127791237950 1
+REST 2 WORLD 974 -0.6792990565299988  13 69.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5628 -1706905127791237950 1
+TRAVEL_EXPLORE 1 WORLD 1004 -1.0641413927078247  13 70.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5629 8272169973856092784 1
+TRAVEL_EXPLORE 2 WORLD 1033 -1.0080186128616333  13 71.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5632 -4715510746208457062 1
+REST 3 WORLD 1033 -0.6472314596176147  13 72.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5632 -4715510746208457062 1
+REST 2 WORLD 1033 -40.64723205566406  12 73.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5632 -4715510746208457062 1
+REST 2 WORLD 1033 -0.6472314596176147  12 74.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5632 -4715510746208457062 1
+REST 2 WORLD 1033 -0.6472314596176147  12 75.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5632 -4715510746208457062 1
+MOVE_W 2 WORLD 1033 -0.14723144471645355  12 75.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5632 -4715510746208457062 1
+REST 2 WORLD 1033 -0.6472314596176147  12 76.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5632 -4715510746208457062 1
+MOVE_E 2 WORLD 1034 0.5553923845291138  12 77.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5633 -7049769577763834961 1
+REST 3 WORLD 1034 -0.6472314596176147  12 78.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5633 -7049769577763834961 1
+REST 4 WORLD 1034 -0.6472314596176147  12 79.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5633 -7049769577763834961 1
+REST 2 WORLD 1034 -0.6472314596176147  12 80.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5633 -7049769577763834961 1
+MOVE_SW 2 WORLD 1034 -0.14723144471645355  12 80.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5633 -7049769577763834961 1
+REST 0 WORLD 1034 -0.6472314596176147  12 81.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5633 -7049769577763834961 1
+TRAVEL_EXPLORE 4 WORLD 1004 0.9402316808700562  12 82.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5634 3781945529220589274 1
+REST 2 WORLD 1004 -0.6632667779922485  12 83.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5634 3781945529220589274 1
+REST 4 WORLD 1004 -0.6632667779922485  12 84.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5634 3781945529220589274 1
+REST 0 WORLD 1004 -0.6632667779922485  12 85.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5634 3781945529220589274 1
+TRAVEL_EXPLORE 1 WORLD 974 0.9241994023323059  12 86.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5635 -7997476635851928421 1
+REST 1 WORLD 974 -0.6792990565299988  12 87.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5635 -7997476635851928421 1
+REST 1 WORLD 974 -0.6792990565299988  12 88.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5635 -7997476635851928421 1
+REST 2 WORLD 974 -0.6792990565299988  12 89.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5635 -7997476635851928421 1
+REST 4 WORLD 974 -0.6792990565299988  12 90.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5635 -7997476635851928421 1
+MOVE_SW 2 WORLD 1003 -1.0641413927078247  12 91.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5636 7143610881993446829 1
+MOVE_NE 4 WORLD 974 0.9241994023323059  12 92.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 4 WORLD 974 -0.6792990565299988  12 93.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 0 WORLD 974 -0.6792990565299988  12 94.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 0 WORLD 974 -0.6792990565299988  12 95.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 1 WORLD 974 -0.6792990565299988  12 96.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 5 WORLD 974 -0.6792990565299988  12 97.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 0 WORLD 974 -40.679298400878906  11 98.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 0 WORLD 974 -0.6792990565299988  11 99.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 2 WORLD 974 -0.6792990565299988  11 100.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 2 WORLD 974 -0.6792990565299988  11 101.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 1 WORLD 974 -0.6792990565299988  11 102.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 4 WORLD 974 -0.6792990565299988  11 103.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+REST 2 WORLD 974 -0.6792990565299988  11 104.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5637 1158062869142475444 1
+MOVE_W 2 WORLD 973 0.5233247876167297  11 105.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5638 5739999086989154460 1
+MOVE_W 8 WORLD 973 -0.17929908633232117  11 105.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5638 5739999086989154460 1
+REST 2 WORLD 973 -0.6792990565299988  11 106.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5638 5739999086989154460 1
+REST 5 WORLD 973 -0.6792990565299988  11 107.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5638 5739999086989154460 1
+REST 4 WORLD 973 -0.6792990565299988  11 108.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5638 5739999086989154460 1
+MOVE_W 1 WORLD 973 -0.17929908633232117  11 108.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5638 5739999086989154460 1
+REST 1 WORLD 973 -0.6792990565299988  11 109.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5638 5739999086989154460 1
+REST 1 WORLD 973 -0.6792990565299988  11 110.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5638 5739999086989154460 1
+MOVE_SW 3 WORLD 973 -0.17929908633232117  11 110.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5638 5739999086989154460 1
+REST 4 WORLD 973 -0.6792990565299988  11 111.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5638 5739999086989154460 1
+TRAVEL_EXPLORE 1 WORLD 943 2.110787868499756  11 112.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5639 -305405567639573484 1
+TRAVEL_EXPLORE 1 WORLD 913 2.094752550125122  11 113.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5640 5158074781067964046 1
+TRAVEL_EXPLORE 2 WORLD 883 2.0787172317504883  11 114.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5641 3846563515135875896 1
+REST 0 WORLD 883 -0.7274051308631897  11 115.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5641 3846563515135875896 1
+REST 1 WORLD 883 -0.7274051308631897  11 116.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5641 3846563515135875896 1
+REST 5 WORLD 883 -0.7274051308631897  11 117.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5641 3846563515135875896 1
+REST 3 WORLD 883 -0.7274051308631897  11 118.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5641 3846563515135875896 1
+REST 2 WORLD 883 -0.7274051308631897  11 119.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5641 3846563515135875896 1
+TRAVEL_EXPLORE 1 WORLD 853 2.0626819133758545  11 120.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5642 7423068812701481157 1
+MOVE_W 1 WORLD 853 -0.24344049394130707  11 120.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5642 7423068812701481157 1
+REST 1 WORLD 853 -0.7434405088424683  11 121.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5642 7423068812701481157 1
+REST 1 WORLD 853 -0.7434405088424683  11 122.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5642 7423068812701481157 1
+TRAVEL_EXPLORE 1 WORLD 823 -37.592567443847656  10 123.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5643 -9180216051124881702 1
+REST 7 WORLD 823 -0.759475827217102  10 124.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5643 -9180216051124881702 1
+REST 2 WORLD 823 -0.759475827217102  10 125.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5643 -9180216051124881702 1
+MOVE_N 4 WORLD 793 2.110785961151123  10 126.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5644 1391415336911180814 1
+TRAVEL_EXPLORE 2 WORLD 762 2.0546648502349854  10 127.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5645 -1196779817177670326 1
+TRAVEL_EXPLORE 4 WORLD 732 4.243439674377441  10 128.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5647 -3614296873321645373 1
+TRAVEL_EXPLORE 0 WORLD 701 2.82434344291687  10 129.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5649 4019576333200891762 1
+TRAVEL_EXPLORE 6 WORLD 700 1.7820693254470825  10 130.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5651 3975995345147146078 1
+REST 1 WORLD 700 -0.8236157298088074  10 131.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5652 7295898233793371906 1
+MOVE_NE 2 WORLD 671 2.287172555923462  10 132.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5654 -6486083242870281658 1
+MOVE_S 7 WORLD 701 -2.427114248275757  10 133.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5655 1815500877611710848 1
+MOVE_SE 2 WORLD 732 -2.411078929901123  10 134.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5656 492434625841276460 1
+MOVE_S 2 WORLD 762 -2.39504337310791  10 135.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5657 8969671951856114882 1
+WAIT 1 WORLD 762 -0.791545033454895  10 136.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5657 8969671951856114882 1
+WAIT 0 WORLD 762 -0.791545033454895  10 137.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5657 8969671951856114882 1
+MOVE_N 2 WORLD 732 0.7959181070327759  10 138.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5671 3871736328078814077 1
+MOVE_SE 1 WORLD 763 -1.1924196481704712  10 139.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5672 -9037578009951368159 1
+MOVE_S 6 WORLD 793 -2.37900972366333  10 140.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5673 4337102949075041575 1
+MOVE_N 5 WORLD 763 0.8119534254074097  10 141.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5675 1095234858238635814 1
+MOVE_S 4 WORLD 793 -2.37900972366333  10 142.92479 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 5676 -844952238445972420 1
+MOVE_N 2 WORLD 763 -3864.0  0 0.0 Seed:4,ThrowingSpear:1,VelvetPouch(Seed+Seed+Seed+Seed):1,Waterskin:1,WornShortsword:1 -1 0 1

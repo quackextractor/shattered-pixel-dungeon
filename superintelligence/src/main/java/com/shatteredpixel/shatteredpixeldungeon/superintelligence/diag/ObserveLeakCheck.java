@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.KindOfWeapon;
@@ -10,6 +11,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfFrost;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfMindVision;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfToxicGas;
+import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfForce;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfLullaby;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfMirrorImage;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTerror;
@@ -62,6 +64,20 @@ final class ObserveLeakCheck {
 		}
 		hero.STR -= 10;
 		hero.belongings.weapon = worn;
+	}
+
+	static void checkEncodingKeepsABrawlersStance(){
+		Hero hero = Dungeon.hero;
+		if (hero.buff( RingOfForce.Force.class ) != null || hero.belongings.attackingWeapon() == null){
+			ObserveCheck.fail( "the stance fixture needs a weapon and no ring of force" );
+			return;
+		}
+		RingOfForce.BrawlersStance stance = Buff.affect( hero, RingOfForce.BrawlersStance.class );
+		stance.active = true;
+		HeroEncoder.encode( hero, new float[ HeroEncoder.FEATURES ] );
+		boolean kept = stance.active;
+		stance.detach();
+		if (!kept) ObserveCheck.fail( "encoding the hero ended an active brawler's stance worn without a ring of force" );
 	}
 
 	private static void hideAnUnknownLevel( Hero hero ){

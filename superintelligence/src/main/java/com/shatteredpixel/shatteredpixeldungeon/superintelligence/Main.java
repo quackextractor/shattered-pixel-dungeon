@@ -61,6 +61,7 @@ public class Main {
 		switch (command) {
 		case "rollout":  RunCommand.main( rest );  break;
 		case "verify":    VerifyCommand.main( rest );    break;
+		case "rerecord":  com.shatteredpixel.shatteredpixeldungeon.superintelligence.cli.RerecordCommand.main( rest ); break;
 		case "evaluate":  EvalCommand.main( rest );      break;
 		case "rngtrace": RngTraceCommand.main( rest ); break;
 		case "gradcheck": System.exit( Cli.gradcheck( rest ) ); break;
@@ -135,6 +136,7 @@ public class Main {
 		System.out.println();
 		System.out.println( "  rollout [options]        play one run headlessly and report it" );
 		System.out.println( "  verify <file> [options]  re-run a saved run and confirm it reproduces" );
+		System.out.println( "  rerecord <file> --save <out>  play a run's actions through this build and record it afresh" );
 		System.out.println( "  modecheck                fail if an action mode cannot be reached" );
 		System.out.println( "  restartcheck             fail if a restart does not rebuild the same first floor" );
 		System.out.println( "  updatecost               measure what a PPO update costs, and project it" );

@@ -56,6 +56,7 @@ public class ObserveCheck {
 		check( ObserveCheck::checkAWandShownOnASlotSpendsNoGameplayDraw );
 		check( ObserveLeakCheck::checkInventoryShowsOnlyWhatThePlayerSees );
 		check( ObserveLeakCheck::checkHeroFeaturesHideAnUnknownLevel );
+		check( ObserveLeakCheck::checkEncodingKeepsABrawlersStance );
 		check( () -> ObserveLeakCheck.checkAnUnseenFloorEncodesToNothing( encoder ) );
 		check( () -> ObserveLeakCheck.checkTheWindowIsCentredOnTheHero( encoder ) );
 		check( ObserveCheck::checkTheExitBeaconSurvivesTheWindowEdge );
