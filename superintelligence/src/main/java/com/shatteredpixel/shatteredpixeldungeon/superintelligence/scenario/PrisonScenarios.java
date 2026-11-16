@@ -264,7 +264,7 @@ final class PrisonScenarios {
 				} ).depth( 10 );
 	}
 
-	private static void chase( Driver d, Mob mob, java.util.function.BooleanSupplier done, int max ){
+	static void chase( Driver d, Mob mob, java.util.function.BooleanSupplier done, int max ){
 		d.until( done, max, () -> {
 			if (Dungeon.level.adjacent( Dungeon.hero.pos, mob.pos )){
 				d.move( mob.pos );
@@ -283,7 +283,7 @@ final class PrisonScenarios {
 		return -1;
 	}
 
-	private static Heap heapOf( Class< ? extends Item > type ){
+	static Heap heapOf( Class< ? extends Item > type ){
 		for (Heap heap : Dungeon.level.heaps.valueList()) for (Item item : heap.items) if (type.isInstance( item )) return heap;
 		return null;
 	}

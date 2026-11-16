@@ -10,6 +10,8 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.NPC;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfForce;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.RunicBlade;
+import com.shatteredpixel.shatteredpixeldungeon.items.quest.Pickaxe;
+import com.shatteredpixel.shatteredpixeldungeon.levels.MiningLevel;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 
 final class Surroundings {
@@ -174,7 +176,17 @@ final class Surroundings {
 		for (int t : LOCKED_DOOR_TERRAINS) if (terrain == t) return true;
 		if (Dungeon.hero.rooted) return false;
 		if (Dungeon.level.heaps.get( cell ) != null) return true;
+		if (mineable( terrain )) return true;
 		return Dungeon.level.passable[ cell ] || Dungeon.level.avoid[ cell ];
+	}
+
+	private static boolean mineable( int terrain ){
+		if (!(Dungeon.level instanceof MiningLevel)) return false;
+		if (Dungeon.hero.belongings.getItem( Pickaxe.class ) == null) return false;
+		return terrain == Terrain.WALL
+				|| terrain == Terrain.WALL_DECO
+				|| terrain == Terrain.MINE_CRYSTAL
+				|| terrain == Terrain.MINE_BOULDER;
 	}
 
 	static boolean adjacentMob(){
