@@ -32,7 +32,26 @@ public class RunState {
 
 		com.shatteredpixel.shatteredpixeldungeon.utils.Holiday.pin( com.shatteredpixel.shatteredpixeldungeon.utils.Holiday.NONE );
 
+		resetVaultSolveItems();
+
 		forgetPreviousRemains();
+	}
+
+	private static void resetVaultSolveItems(){
+		resetSolveItems( "T2SolveItems" );
+		resetSolveItems( "T3SolveItems" );
+	}
+
+	private static void resetSolveItems( String name ){
+		try {
+			java.lang.reflect.Field field = com.shatteredpixel.shatteredpixeldungeon.levels.VaultLevel.class.getDeclaredField( name );
+			field.setAccessible( true );
+			field.set( null, new Class< ? >[]{
+					com.shatteredpixel.shatteredpixeldungeon.items.stones.StoneOfBlink.class,
+					com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfInvisibility.class } );
+		} catch (ReflectiveOperationException ignored){
+
+		}
 	}
 
 	private static final String BONES_FILE = "bones.dat";
