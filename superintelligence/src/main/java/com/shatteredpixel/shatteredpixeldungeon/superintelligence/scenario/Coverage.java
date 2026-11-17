@@ -95,7 +95,8 @@ public final class Coverage {
 	}
 
 	public static SortedSet< String > extra(){
-		return new TreeSet<>( List.of( "items.wands.CursedWand" ));
+		return new TreeSet<>( List.of( "items.wands.CursedWand",
+				"actors.hero.abilities.duelist.Feint$AfterImage" ));
 	}
 
 	public static SortedSet< String > universe(){

@@ -3,9 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
-import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.Ratmogrify;
-import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
-import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Skeleton;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.ArmorAbility;
 import com.shatteredpixel.shatteredpixeldungeon.items.KingsCrown;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.ClassArmor;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.ClericArmor;
@@ -15,7 +13,6 @@ import com.shatteredpixel.shatteredpixeldungeon.items.armor.LeatherArmor;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.MageArmor;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.RogueArmor;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.WarriorArmor;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 
 import java.util.ArrayList;
@@ -33,36 +30,9 @@ final class AbilityScenarios {
 		all.add(crown(HeroClass.HUNTRESS, HuntressArmor.class));
 		all.add(crown(HeroClass.DUELIST, DuelistArmor.class));
 		all.add(crown(HeroClass.CLERIC, ClericArmor.class));
-		all.add(ratmogrify());
+		all.addAll(AbilitySummonScenarios.all());
 		all.addAll(AbilityUseScenarios.all());
 		return all;
-	}
-
-	private static Scenario ratmogrify(){
-		return new Scenario("armor-ability.Ratmogrify", "use Ratmogrify on a rat", HeroClass.WARRIOR,
-				(world, kit) -> {
-					world.clearMobs();
-					kit.sturdy();
-					kit.strength(18);
-					WarriorArmor armor = new WarriorArmor();
-					armor.charge = 100;
-					kit.hero().belongings.armor = armor;
-					kit.ability(new Ratmogrify());
-					new com.shatteredpixel.shatteredpixeldungeon.ui.TargetHealthIndicator();
-					Skeleton rat = world.hunting(new Skeleton(), world.adjacentFree());
-					rat.HP = rat.HT = 100;
-				},
-				d -> {
-					float before = AbilityUseScenarios.charge();
-					Skeleton rat = d.world().find(Skeleton.class);
-					d.use(WarriorArmor.class);
-					d.require(d.env().mode() == EnvMode.TARGETING, "Ratmogrify opened " + d.env().mode());
-					d.step(Action.USE, d.direction(rat.pos));
-					d.expect(AbilityUseScenarios.charge() < before, "Ratmogrify left charge at " + AbilityUseScenarios.charge() + " from " + before);
-					boolean hasTransmog = false;
-					for (Mob m : Dungeon.level.mobs) if (m instanceof Ratmogrify.TransmogRat) hasTransmog = true;
-					d.expect(hasTransmog, "Ratmogrify spawned no TransmogRat");
-				}).covers(Ratmogrify.class, Ratmogrify.TransmogRat.class);
 	}
 
 	private static Scenario crown(HeroClass heroClass, Class<? extends ClassArmor> armorClass){
@@ -74,12 +44,19 @@ final class AbilityScenarios {
 					kit.give(new KingsCrown());
 				},
 				d -> {
+					ArmorAbility before = Dungeon.hero.armorAbility;
 					d.use(KingsCrown.class);
 					d.require(d.env().mode() == EnvMode.MENU, "the crown opened " + d.env().mode());
 					d.menu(0);
 					d.require(d.env().mode() == EnvMode.MENU, "the ability choice opened " + d.env().mode());
 					d.menu(0);
-					d.expect(Dungeon.hero.armorAbility != null, "the crown gave no ability");
+					ArmorAbility after = Dungeon.hero.armorAbility;
+					d.expect(after != null && after != before, "the crown left the ability at " + after);
+					boolean offered = false;
+					for (ArmorAbility ability : heroClass.armorAbilities()){
+						if (after != null && ability.getClass() == after.getClass()) offered = true;
+					}
+					d.expect(offered, "the crown gave " + after + " to " + heroClass);
 					d.expect(armorClass.isInstance(Dungeon.hero.belongings.armor()), "the crown left " + Dungeon.hero.belongings.armor());
 				}).covers(armorClass, KingsCrown.class);
 	}

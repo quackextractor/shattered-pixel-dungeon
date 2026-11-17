@@ -1,25 +1,19 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
-import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
-import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.ArmorAbility;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.cleric.AscendedForm;
-import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.cleric.PowerOfMany;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.cleric.Trinity;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.duelist.Challenge;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.duelist.ElementalStrike;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.duelist.Feint;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.huntress.NaturesPower;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.huntress.SpectralBlades;
-import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.huntress.SpiritHawk;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.mage.ElementalBlast;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.mage.WarpBeacon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.mage.WildMagic;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.rogue.DeathMark;
-import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.rogue.ShadowClone;
-import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.rogue.SmokeBomb;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.warrior.Endure;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.warrior.HeroicLeap;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.warrior.Shockwave;
@@ -35,7 +29,6 @@ import com.shatteredpixel.shatteredpixeldungeon.items.armor.WarriorArmor;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Blazing;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Longsword;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MagesStaff;
-import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.Shuriken;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfMagicMissile;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.BodyForm;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
@@ -53,7 +46,7 @@ final class AbilityUseScenarios {
 		return armor == null ? 0f : armor.charge;
 	}
 
-	private static int count(Class<? extends Mob> type){
+	static int count(Class<? extends Mob> type){
 		int n = 0;
 		for (Mob m : Dungeon.level.mobs) if (type.isInstance(m)) n++;
 		return n;
@@ -62,20 +55,16 @@ final class AbilityUseScenarios {
 	static List<Scenario> all(){
 		List<Scenario> all = new ArrayList<>();
 		all.add(ascendedForm());
-		all.add(powerOfMany());
 		all.add(trinity());
 		all.add(challenge());
 		all.add(elementalStrike());
 		all.add(feint());
 		all.add(naturesPower());
 		all.add(spectralBlades());
-		all.add(spiritHawk());
 		all.add(elementalBlast());
 		all.add(warpBeacon());
 		all.add(wildMagic());
 		all.add(deathMark());
-		all.add(shadowClone());
-		all.add(smokeBomb());
 		all.add(endure());
 		all.add(heroicLeap());
 		all.add(shockwave());
@@ -101,27 +90,6 @@ final class AbilityUseScenarios {
 				}).covers(AscendedForm.class);
 	}
 
-	private static Scenario powerOfMany(){
-		return new Scenario("armor-ability.PowerOfMany", "use PowerOfMany", HeroClass.CLERIC,
-				(world, kit) -> {
-					world.clearMobs();
-					kit.sturdy();
-					ClericArmor armor = new ClericArmor();
-					armor.charge = 100;
-					kit.hero().belongings.armor = armor;
-					kit.ability(new PowerOfMany());
-				},
-				d -> {
-					float before = charge();
-					int cell = d.world().adjacentFree();
-					d.use(ClericArmor.class);
-					if (d.env().mode() == EnvMode.TARGETING) d.step(Action.USE, d.direction(cell));
-					d.expect(charge() < before, "PowerOfMany left charge at " + charge() + " from " + before);
-					boolean hasLightAlly = false;
-					for (Mob m : Dungeon.level.mobs) if (m instanceof PowerOfMany.LightAlly) hasLightAlly = true;
-					d.expect(hasLightAlly, "PowerOfMany spawned no LightAlly");
-				}).covers(PowerOfMany.class, PowerOfMany.LightAlly.class);
-	}
 
 	private static Scenario trinity(){
 		return new Scenario("armor-ability.Trinity", "use Trinity through its window", HeroClass.CLERIC,
@@ -215,15 +183,21 @@ final class AbilityUseScenarios {
 					kit.hero().belongings.armor = armor;
 					kit.ability(new Feint());
 					new com.shatteredpixel.shatteredpixeldungeon.ui.TargetHealthIndicator();
-					world.mob(new Feint.AfterImage(), world.adjacentFree());
+					Rat rat = world.hunting(new Rat(), world.adjacentFree());
+					rat.HP = rat.HT = 100;
 				},
 				d -> {
-					float before = charge();
+					d.require(count(Feint.AfterImage.class) == 0, "an AfterImage existed before Feint");
+					Rat rat = d.world().find(Rat.class);
+					d.require(rat.buff(Feint.AfterImage.FeintConfusion.class) == null, "the rat was already confused");
+					int before = Dungeon.hero.pos;
 					int cell = d.world().adjacentFree();
 					d.use(DuelistArmor.class);
 					d.require(d.env().mode() == EnvMode.TARGETING, "Feint opened " + d.env().mode());
 					d.step(Action.USE, d.direction(cell));
-					d.expect(charge() < before, "Feint left charge at " + charge() + " from " + before);
+					d.expect(Dungeon.hero.pos == cell, "Feint left the hero at " + Dungeon.hero.pos + " from " + before);
+					d.expect(rat.buff(Feint.AfterImage.FeintConfusion.class) != null, "no mob was drawn onto Feint's AfterImage");
+					d.witness(Feint.AfterImage.class);
 				}).covers(Feint.class, Feint.AfterImage.class);
 	}
 
@@ -260,31 +234,13 @@ final class AbilityUseScenarios {
 					rat.HP = rat.HT = 100;
 				},
 				d -> {
-					float before = charge();
 					Rat rat = d.world().find(Rat.class);
+					int ratHp = rat.HP;
 					d.use(HuntressArmor.class);
 					d.require(d.env().mode() == EnvMode.TARGETING, "SpectralBlades opened " + d.env().mode());
 					d.step(Action.USE, d.direction(rat.pos));
-					d.expect(charge() < before, "SpectralBlades left charge at " + charge() + " from " + before);
+					d.expect(!rat.isAlive() || rat.HP < ratHp, "SpectralBlades left the rat at " + rat.HP);
 				}).covers(SpectralBlades.class);
-	}
-
-	private static Scenario spiritHawk(){
-		return new Scenario("armor-ability.SpiritHawk", "use SpiritHawk", HeroClass.HUNTRESS,
-				(world, kit) -> {
-					world.clearMobs();
-					kit.sturdy();
-					HuntressArmor armor = new HuntressArmor();
-					armor.charge = 100;
-					kit.hero().belongings.armor = armor;
-					kit.ability(new SpiritHawk());
-				},
-				d -> {
-					float before = charge();
-					d.use(HuntressArmor.class);
-					d.expect(charge() < before, "SpiritHawk left charge at " + charge() + " from " + before);
-					d.expect(count(SpiritHawk.HawkAlly.class) > 0, "SpiritHawk spawned no HawkAlly");
-				}).covers(SpiritHawk.class, SpiritHawk.HawkAlly.class);
 	}
 
 	private static Scenario elementalBlast(){
@@ -298,11 +254,14 @@ final class AbilityUseScenarios {
 					kit.hero().belongings.armor = armor;
 					kit.ability(new ElementalBlast());
 					kit.hero().belongings.weapon = new MagesStaff(new WandOfMagicMissile());
+					Rat rat = world.hunting(new Rat(), world.adjacentFree());
+					rat.HP = rat.HT = 100;
 				},
 				d -> {
-					float before = charge();
+					Rat rat = d.world().find(Rat.class);
+					int ratHp = rat.HP;
 					d.use(MageArmor.class);
-					d.expect(charge() < before, "ElementalBlast left charge at " + charge() + " from " + before);
+					d.expect(!rat.isAlive() || rat.HP < ratHp, "ElementalBlast left the rat at " + rat.HP);
 				}).covers(ElementalBlast.class);
 	}
 
@@ -338,12 +297,12 @@ final class AbilityUseScenarios {
 					rat.HP = rat.HT = 100;
 				},
 				d -> {
-					float before = charge();
 					Rat rat = d.world().find(Rat.class);
+					int ratHp = rat.HP;
 					d.use(MageArmor.class);
 					d.require(d.env().mode() == EnvMode.TARGETING, "WildMagic opened " + d.env().mode());
 					d.step(Action.USE, d.direction(rat.pos));
-					d.expect(charge() < before, "WildMagic left charge at " + charge() + " from " + before);
+					d.expect(!rat.isAlive() || rat.HP < ratHp, "WildMagic left the rat at " + rat.HP);
 				}).covers(WildMagic.class);
 	}
 
@@ -372,46 +331,6 @@ final class AbilityUseScenarios {
 				}).covers(DeathMark.class);
 	}
 
-	private static Scenario shadowClone(){
-		return new Scenario("armor-ability.ShadowClone", "use ShadowClone", HeroClass.ROGUE,
-				(world, kit) -> {
-					world.clearMobs();
-					kit.sturdy();
-					RogueArmor armor = new RogueArmor();
-					armor.charge = 100;
-					kit.hero().belongings.armor = armor;
-					kit.ability(new ShadowClone());
-				},
-				d -> {
-					float before = charge();
-					d.use(RogueArmor.class);
-					d.expect(charge() < before, "ShadowClone left charge at " + charge() + " from " + before);
-					d.expect(count(ShadowClone.ShadowAlly.class) > 0, "ShadowClone spawned no ShadowAlly");
-				}).covers(ShadowClone.class, ShadowClone.ShadowAlly.class);
-	}
-
-	private static Scenario smokeBomb(){
-		return new Scenario("armor-ability.SmokeBomb", "use SmokeBomb", HeroClass.ROGUE,
-				(world, kit) -> {
-					world.clearMobs();
-					kit.sturdy();
-					RogueArmor armor = new RogueArmor();
-					armor.charge = 100;
-					kit.hero().belongings.armor = armor;
-					kit.ability(new SmokeBomb());
-					kit.talent(Talent.BODY_REPLACEMENT, 1);
-				},
-				d -> {
-					float before = charge();
-					int cell = d.world().adjacentFree();
-					d.use(RogueArmor.class);
-					d.require(d.env().mode() == EnvMode.TARGETING, "SmokeBomb opened " + d.env().mode());
-					d.step(Action.USE, d.direction(cell));
-					d.expect(charge() < before, "SmokeBomb left charge at " + charge() + " from " + before);
-					d.expect(count(SmokeBomb.NinjaLog.class) > 0, "SmokeBomb spawned no NinjaLog");
-				}).covers(SmokeBomb.class, SmokeBomb.NinjaLog.class);
-	}
-
 	private static Scenario endure(){
 		return new Scenario("armor-ability.Endure", "use Endure", HeroClass.WARRIOR,
 				(world, kit) -> {
@@ -421,12 +340,21 @@ final class AbilityUseScenarios {
 					armor.charge = 100;
 					kit.hero().belongings.armor = armor;
 					kit.ability(new Endure());
+					Rat rat = world.hunting(new Rat(), world.adjacentFree());
+					rat.HP = rat.HT = 100;
 				},
 				d -> {
 					d.require(Dungeon.hero.buff(Endure.EndureTracker.class) == null, "EndureTracker existed before Endure");
-					float before = charge();
+					Rat rat = d.world().find(Rat.class);
+					int heroHp = Dungeon.hero.HP;
 					d.use(WarriorArmor.class);
-					d.expect(charge() < before, "Endure left charge at " + charge() + " from " + before);
+					Endure.EndureTracker tracker = Dungeon.hero.buff(Endure.EndureTracker.class);
+					d.expect(tracker != null, "Endure gave no EndureTracker");
+					d.expect(Dungeon.hero.HP < heroHp, "the rat never hit the hero, so nothing was endured");
+					d.expect(tracker != null && tracker.damageBonus > 0, "Endure stored no damage to pay back");
+					boolean ended = d.until(() -> Dungeon.hero.buff(Endure.EndureTracker.class) == null,
+							4, () -> d.move(rat.pos));
+					d.expect(ended, "EndureTracker never ended");
 				}).covers(Endure.class);
 	}
 
@@ -440,14 +368,25 @@ final class AbilityUseScenarios {
 					armor.charge = 100;
 					kit.hero().belongings.armor = armor;
 					kit.ability(new HeroicLeap());
+					kit.talent(Talent.BODY_SLAM, 1);
+					Rat rat = world.hunting(new Rat(), world.adjacentFree());
+					rat.HP = rat.HT = 100;
 				},
 				d -> {
-					float before = charge();
-					int cell = d.world().adjacentFree();
+					Rat rat = d.world().find(Rat.class);
+					int ratHp = rat.HP;
+					int before = Dungeon.hero.pos;
+					int cell = -1;
+					for (int offset : com.watabou.utils.PathFinder.NEIGHBOURS8){
+						int c = before + offset;
+						if (d.world().free(c) && Dungeon.level.adjacent(c, rat.pos)) cell = c;
+					}
+					d.require(cell >= 0, "no free landing cell beside the rat");
 					d.use(WarriorArmor.class);
 					d.require(d.env().mode() == EnvMode.TARGETING, "HeroicLeap opened " + d.env().mode());
 					d.step(Action.USE, d.direction(cell));
-					d.expect(charge() < before, "HeroicLeap left charge at " + charge() + " from " + before);
+					d.expect(Dungeon.hero.pos == cell, "HeroicLeap left the hero at " + Dungeon.hero.pos + " from " + before);
+					d.expect(!rat.isAlive() || rat.HP < ratHp, "HeroicLeap's landing left the rat at " + rat.HP);
 				}).covers(HeroicLeap.class);
 	}
 
