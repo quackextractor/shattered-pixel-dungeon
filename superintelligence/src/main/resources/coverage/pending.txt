@@ -1,5 +1,4 @@
 actors.buffs.AscensionChallenge
-actors.buffs.TimeStasis
 actors.mobs.Acidic
 actors.mobs.DemonSpawner
 actors.mobs.YogDzewa
@@ -14,19 +13,7 @@ actors.mobs.YogFist$RottingFist
 actors.mobs.YogFist$RustedFist
 actors.mobs.YogFist$SoiledFist
 items.Amulet
-items.artifacts.AlchemistsToolkit
-items.artifacts.CapeOfThorns
-items.artifacts.ChaliceOfBlood
-items.artifacts.DriedRose
-items.artifacts.DriedRose$GhostHero
-items.artifacts.HornOfPlenty
-items.artifacts.LloydsBeacon
-items.artifacts.MasterThievesArmband
-items.artifacts.SandalsOfNature
-items.artifacts.SkeletonKey
 items.artifacts.TalismanOfForesight
-items.artifacts.TimekeepersHourglass
-items.artifacts.UnstableSpellbook
 items.potions.PotionOfToxicGas
 items.quest.ImpStatue
 levels.HallsBossLevel
@@ -98,3 +85,4 @@ talent:SWIFT_SPIRIT
 talent:TELEFRAG
 talent:WILD_MOMENTUM
 talent:WILD_POWER
+items.artifacts.TalismanOfForesight

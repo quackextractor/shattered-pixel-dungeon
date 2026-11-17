@@ -305,7 +305,7 @@ public class ActionMapper {
 
 	public List<com.shatteredpixel.shatteredpixeldungeon.items.Recipe> alchemyChoices(){
 		if (!config.allowAlchemy) return java.util.List.of();
-		if (AlchemyAction.adjacentPot( hero(), ActionMapper.TARGET_COUNT ) < 0) return java.util.List.of();
+		if (!AlchemyAction.brewing( hero() )) return java.util.List.of();
 		return AlchemyAction.recipes( hero() );
 	}
 
@@ -393,7 +393,7 @@ public class ActionMapper {
 
 			case ALCHEMY:
 				if (action != Action.MENU_SELECT) return false;
-				if (!AlchemyAction.adjacent( hero(), AlchemyAction.adjacentPot( hero(), TARGET_COUNT ))) {
+				if (!AlchemyAction.brewing( hero() )) {
 					return false;
 				}
 				boolean meatPie = AlchemyAction.isMeatPie(

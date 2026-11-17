@@ -451,7 +451,9 @@ public float[] actionMask(){ return actionMask; }
 				com.shatteredpixel.shatteredpixeldungeon.items.Item item = mapper.slot( i );
 				if (item == null) continue;
 				boolean allowed = slotUse ? !SlotAction.stuckOn( Dungeon.hero, item, config.allowEquipping )
-						: slotVerb == Action.THROW ? SlotAction.throwable( Dungeon.hero, item ) : !item.isEquipped( Dungeon.hero );
+						: slotVerb == Action.THROW ? SlotAction.throwable( Dungeon.hero, item )
+						: slotVerb == Action.ITEM_MENU ? SlotAction.anyMenu( Dungeon.hero, java.util.List.of( item ))
+						: !item.isEquipped( Dungeon.hero );
 				if (!allowed) slotMask[ i ] = 0f;
 			}
 		}

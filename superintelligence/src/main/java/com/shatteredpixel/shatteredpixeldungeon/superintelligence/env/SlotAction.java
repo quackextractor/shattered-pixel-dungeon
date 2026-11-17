@@ -123,7 +123,7 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 
 	public static boolean menu( Hero hero, Item item ){
 		if (item == null) return false;
-		if (menuVerbs( hero, item ).size() < 2) return false;
+		if (menuVerbs( hero, item ).isEmpty()) return false;
 		GameScene.clearPendingCellListener();
 		item.setCurrent( hero );
 		GameScene.show( new WndUseItem( null, item ));
@@ -131,7 +131,7 @@ public static boolean isBareEquipToggle( Hero hero, Item item, boolean allowEqui
 	}
 
 	public static boolean anyMenu( Hero hero, java.util.List< Item > items ){
-		for (Item item : items) if (item != null && menuVerbs( hero, item ).size() >= 2) return true;
+		for (Item item : items) if (item != null && !menuVerbs( hero, item ).isEmpty()) return true;
 		return false;
 	}
 

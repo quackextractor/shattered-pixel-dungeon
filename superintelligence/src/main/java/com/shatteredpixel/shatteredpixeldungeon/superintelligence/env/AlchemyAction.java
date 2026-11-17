@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.LiquidMetal;
 import com.shatteredpixel.shatteredpixeldungeon.items.Recipe;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.AlchemistsToolkit;
 import com.shatteredpixel.shatteredpixeldungeon.items.food.MeatPie;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
@@ -34,6 +35,14 @@ public final class AlchemyAction {
 			if (Dungeon.level.map[ cell ] == Terrain.ALCHEMY ) return cell;
 		}
 		return -1;
+	}
+
+
+	public static boolean brewing( Hero hero ){
+		if (hero == null || hero.belongings == null) return false;
+		if (adjacentPot( hero, ActionMapper.TARGET_COUNT ) >= 0) return true;
+		AlchemistsToolkit toolkit = hero.belongings.getItem( AlchemistsToolkit.class );
+		return toolkit != null && toolkit.isEquipped( hero ) && !toolkit.cursed && toolkit.isWarm();
 	}
 
 
@@ -144,10 +153,5 @@ public final class AlchemyAction {
 		return false;
 	}
 
-
-	static boolean adjacent( Hero hero, int cell ){
-		return Dungeon.level != null && cell >= 0 && cell < Dungeon.level.length()
-				&& Dungeon.level.adjacent( hero.pos, cell );
-	}
 
 }

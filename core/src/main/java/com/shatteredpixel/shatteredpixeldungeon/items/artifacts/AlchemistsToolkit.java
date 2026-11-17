@@ -173,6 +173,10 @@ public class AlchemistsToolkit extends Artifact {
 		return charge;
 	}
 
+	public boolean isWarm(){
+		return warmUpDelay <= 0;
+	}
+
 	public int consumeEnergy(int amount){
 		int result = amount - charge;
 		charge = Math.max(0, charge - amount);
