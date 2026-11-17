@@ -74,4 +74,46 @@ final class TalentTier4 {
 			setup.build(world, kit);
 		}, trigger, effect, failure)).depth(8);
 	}
+
+	static java.util.function.Supplier< java.util.function.BooleanSupplier > chosen( Talent talent ){
+		return () -> () -> Dungeon.hero.pointsInTalent( talent ) == 1;
+	}
+
+	static int cellAtDistance( World world, int from, int distance ){
+		for (int cell = 0; cell < world.level().length(); cell++){
+			if (!world.free( cell )) continue;
+			if (Dungeon.level.trueDistance( from, cell ) != distance) continue;
+			return cell;
+		}
+		throw new NoFixture( "no free cell " + distance + " from " + from );
+	}
+
+	static float mean( java.util.function.IntSupplier roll ){
+		com.watabou.utils.Random.pushGenerator( 0x3403F1L );
+		try {
+			long total = 0;
+			for (int i = 0; i < 200; i++) total += roll.getAsInt();
+			return total / 200f;
+		} finally {
+			com.watabou.utils.Random.popGenerator();
+		}
+	}
+
+	static void quietly( Runnable action ){
+		com.watabou.utils.Random.pushGenerator( 0x3404F2L );
+		try {
+			action.run();
+		} finally {
+			com.watabou.utils.Random.popGenerator();
+		}
+	}
+
+	static void aimSecond( Driver d, int which ){
+		TalentFamily.unmask( d, Action.USE );
+		d.step( Action.USE, com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.ActionMapper.ADJACENT_COUNT + which );
+	}
+
+	static boolean spell( Hero hero, com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.ClericSpell spell ){
+		return com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.ClericSpell.getSpellList( hero, 4 ).contains( spell );
+	}
 }
