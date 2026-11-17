@@ -305,6 +305,10 @@ public class CharSprite extends MovieClip implements Tweener.Listener, MovieClip
 		jump( from, to, distance * 2, distance * 0.1f, callback );
 	}
 
+	public boolean isJumping(){
+		return jumpTweener != null;
+	}
+
 	public void jump( int from, int to, float height, float duration,  Callback callback ) {
 		jumpCallback = callback;
 

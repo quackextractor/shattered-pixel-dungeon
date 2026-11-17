@@ -28,7 +28,7 @@ public class WindowBridge {
 
 	private static final java.util.Set< String > CHOICE_WINDOWS = java.util.Set.of( "WndSadGhost", "WndWandmaker", "WndImpOld",
 			"WndBlacksmith", "WndChooseSubclass", "WndChooseAbility", "WndMetamorphChoose", "WndMetamorphReplace", "WndInfoTalent", "WndAugment", "WndGuess",
-			"WndClericSpells", "Trinity", "WndTrinket", "WndAlchemizeItem", "WndCombo", "WndUseItem", "WndResurrect", "WndMonkAbilities" );
+			"WndClericSpells", "Trinity", "WndUseTrinity", "WndItemConfirm", "WndTrinket", "WndAlchemizeItem", "WndCombo", "WndUseItem", "WndResurrect", "WndMonkAbilities" );
 
 	private static final java.util.Set< String > ICON_WINDOWS = java.util.Set.of( "WndGuess", "WndClericSpells" );
 

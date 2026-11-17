@@ -1080,6 +1080,13 @@ awaitingSettle = true;
 
 	private void settle(){
 		if (Dungeon.hero == null) return;
+		if (Dungeon.hero.sprite instanceof com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite
+				&& ((com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite) Dungeon.hero.sprite).isJumping()
+				&& renderWaitFrames < MAX_PARKED_FRAMES){
+			renderWaitFrames++;
+			awaitingSettle = true;
+			return;
+		}
 		if (RenderQueue.gamePending() && !com.watabou.noosa.Game.switchingScene() && renderWaitFrames < MAX_PARKED_FRAMES){
 			renderWaitFrames++;
 			awaitingSettle = true;
