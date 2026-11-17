@@ -235,7 +235,7 @@ private static double differenceFloor( double center, double eps ){
 
 		float original = param[ index ];
 
-		double eps = 1e-3;
+		double eps = 1e-2;
 		double center = loss();
 		double numeric = central( param, index, original, eps );
 		double analytic = grad[ index ];
