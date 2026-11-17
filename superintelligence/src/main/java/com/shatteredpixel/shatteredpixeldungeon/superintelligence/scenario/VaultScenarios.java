@@ -1,6 +1,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Burning;
@@ -21,6 +22,8 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.quest.vault.VaultSke
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.quest.DwarfToken;
 import com.shatteredpixel.shatteredpixeldungeon.items.quest.EscapeCrystal;
+import com.shatteredpixel.shatteredpixeldungeon.items.quest.ImpStatue;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing;
 import com.shatteredpixel.shatteredpixeldungeon.items.quest.VaultBeacon;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
@@ -66,6 +69,7 @@ final class VaultScenarios {
 				"the shock vault elemental never shocked the hero", DEEP_DEPTH ));
 		all.add( boss() );
 		all.add( escape() );
+		all.add( statue() );
 		all.add( beacon() );
 		return all;
 	}
@@ -164,6 +168,44 @@ final class VaultScenarios {
 							+ Dungeon.level.getClass().getSimpleName() );
 					d.expect( Dungeon.branch == 0, "the escape crystal left the hero on branch " + Dungeon.branch );
 				} ).depth( 17 ).branch( 1 ).prepare( quest() ).covers( EscapeCrystal.class, VaultLevel.class );
+	}
+
+	private static Scenario statue(){
+		return new Scenario( "vault.ImpStatue", "leaving the vault with the imp statue scores 4000",
+				HeroClass.WARRIOR,
+				( world, kit ) -> {
+					kit.sturdy();
+					EscapeCrystal crystal = new EscapeCrystal();
+					crystal.storeHeroBelongings( Dungeon.hero );
+					kit.give( crystal );
+					kit.give( new ImpStatue() );
+					kit.give( new DwarfToken() );
+					kit.give( new PotionOfHealing() );
+				},
+				d -> {
+					d.fixture( Dungeon.level instanceof VaultLevel, "the jump landed on a "
+							+ Dungeon.level.getClass().getSimpleName() );
+					int before = Statistics.questScores[3];
+					d.use( EscapeCrystal.class );
+					d.require( d.env().mode() == EnvMode.MENU, "using the escape crystal asked nothing: " + d.env().mode() );
+					d.require( WindowBridge.optionCount() >= 2, "the escape crystal offered "
+							+ WindowBridge.optionCount() + " options" );
+					d.menu( 0 );
+					d.require( d.env().mode() == EnvMode.INVENTORY, "confirming the escape crystal offered "
+							+ d.env().mode() );
+					d.pick( PotionOfHealing.class );
+					d.require( d.env().mode() == EnvMode.MENU, "offering a kept item asked nothing: " + d.env().mode() );
+					d.require( WindowBridge.optionCount() >= 2, "the kept item window offered "
+							+ WindowBridge.optionCount() + " options" );
+					d.menu( 0 );
+					d.until( () -> Dungeon.branch == 0 || !(Dungeon.level instanceof VaultLevel), 8,
+							() -> d.act( Action.WAIT ));
+					d.expect( !(Dungeon.level instanceof VaultLevel), "confirming the escape crystal left the hero on a "
+							+ Dungeon.level.getClass().getSimpleName() );
+					d.expect( Dungeon.branch == 0, "the escape crystal left the hero on branch " + Dungeon.branch );
+					d.expect( Statistics.questScores[3] == before + 4000, "leaving with the imp statue scored "
+							+ Statistics.questScores[3] + ", not " + before + " + 4000" );
+				} ).depth( 17 ).branch( 1 ).prepare( quest() ).covers( ImpStatue.class );
 	}
 
 	private static Scenario beacon(){

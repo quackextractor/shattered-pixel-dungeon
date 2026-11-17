@@ -1,4 +1,3 @@
 items.artifacts.TalismanOfForesight
-items.quest.ImpStatue
 actors.mobs.YogFist$BurningFist
 actors.mobs.YogFist$SoiledFist

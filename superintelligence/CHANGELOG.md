@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Imp statue (`vault.ImpStatue`, `VaultScenarios`): leaving the vault through the escape crystal while carrying the statue scores a full 4000, measured as `Statistics.questScores[3]` rising by exactly 4000 against a capture taken before the use. The crystal asks which item to keep, so the drive answers that window and then the leave window. Mutation: disabling the statue check in `EscapeCrystal` turns the scenario red. Coverage 963 of 966.
 - Toxic gas potion scenario (`potion.ToxicGas`, `PotionScenarios`): the potion is thrown at a paralysed rat and the run requires `ToxicGas` blob volume above 0 plus the rat's HP below its pre-throw capture, against a capture taken before the throw. Completes the potion family (coverage 962 of 966, 4 pending). Red line: seeding the blob with 0 volume instead of 1000 fails `the toxic gas never poisoned the rat`.
 
 ### Fixed
