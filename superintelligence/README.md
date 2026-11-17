@@ -748,3 +748,5 @@ The last one is not cosmetic bookkeeping. **Four presentation draws on the gamep
 viewer 16 generator values per run that a headless run never spent**, which is why a recording could
 verify exactly headlessly and diverge in the viewer. See `ENGINE-CHANGES.md` for the full inventory,
 what each change cost, and what is still unfixed.
+
+Action space: appended `ITEM_MENU` and `INDICATOR` (after `THROW`); `ITEM_ALT` deleted.

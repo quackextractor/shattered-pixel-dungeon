@@ -136,7 +136,7 @@ if (mode == EnvMode.WORLD){
 				mode = EnvMode.ALCHEMY;
 				acted = true;
 			} else if (action == Action.USE || action == Action.DROP || action == Action.THROW
-					|| action == Action.ITEM_ALT ){
+					|| action == Action.ITEM_MENU ){
 				slotVerb = action;
 				mode = EnvMode.SLOT;
 				if (WindowBridge.open()) mode = EnvMode.MENU;
@@ -163,8 +163,8 @@ if (mode == EnvMode.WORLD){
 			boolean needsTarget = false;
 			if (action == Action.THROW){
 				needsTarget = SlotAction.throwItem( Dungeon.hero, mapper.slot( slot ));
-			} else if (action == Action.ITEM_ALT){
-				needsTarget = SlotAction.alt( Dungeon.hero, mapper.slot( slot ));
+			} else if (action == Action.ITEM_MENU){
+				needsTarget = SlotAction.menu( Dungeon.hero, mapper.slot( slot ));
 			} else if (action == Action.USE){
 				com.shatteredpixel.shatteredpixeldungeon.items.Item item = mapper.slot( slot );
 				if (item != null){

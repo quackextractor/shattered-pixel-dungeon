@@ -71,8 +71,7 @@ final class TalentTier2Gear {
 			kit.give( staff );
 			kit.give( new WandOfFrost() );
 		}, d -> {
-			d.act( Action.ITEM_ALT );
-			d.step( Action.ITEM_ALT, d.slotOf( MagesStaff.class ));
+			d.itemMenu( MagesStaff.class, MagesStaff.AC_IMBUE );
 			d.step( Action.USE, d.slotOf( WandOfFrost.class ));
 			d.menu( 0 );
 		}, () -> () -> TalentFamily.has( Talent.WandPreservationCounter.class )

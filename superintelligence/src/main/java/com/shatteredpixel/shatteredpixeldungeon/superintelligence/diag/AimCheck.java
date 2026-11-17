@@ -140,6 +140,12 @@ public class AimCheck {
 					+ " doubles as the self-target alias when no fourth enemy fills it, and must point at the"
 					+ " hero's own cell now" );
 		}
+		if (env.targetMask()[ ActionMapper.SELF_TARGET ] < 0.5f
+				|| env.mapper().targetCell( ActionMapper.SELF_TARGET ) != Dungeon.hero.pos
+				|| ActionMapper.aimAction( ActionMapper.SELF_TARGET ) != Action.USE){
+			GateReport.fail( "the appended self-target seat " + ActionMapper.SELF_TARGET
+					+ " must point at the hero's own cell and fire" );
+		}
 	}
 
 	private static void checkAStoneFliesAtRange(){

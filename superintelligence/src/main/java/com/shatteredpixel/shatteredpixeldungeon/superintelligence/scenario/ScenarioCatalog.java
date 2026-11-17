@@ -60,6 +60,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( VaultScenarios.all() );
 		ALL.addAll( TrinketScenarios.all() );
 		ALL.addAll( VaultRoomScenarios.all() );
+		ALL.addAll( ItemScenarios.all() );
 	}
 
 	public static List< Scenario > all(){

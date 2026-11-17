@@ -629,3 +629,5 @@ them are a no-op when a renderer is present, and each is listed with its reason 
   scene test, which altered alchemy and resurrection in a game that is not this module's.
   `Levitation.detach` (press the landing cell) and `HighGrass.trample` (re-observe after trampling in
   view) take the same term; the second was the cause of `ZRD-CVK-QYT`'s divergence at step 627.
+
+Action space: appended `ITEM_MENU` and `INDICATOR` (after `THROW`); `ITEM_ALT` deleted.

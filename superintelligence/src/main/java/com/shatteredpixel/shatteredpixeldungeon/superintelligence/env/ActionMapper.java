@@ -31,9 +31,11 @@ public class ActionMapper {
 
 	public static final int ENEMY_TARGETS = 4;
 
-	public static final int TARGET_COUNT = ADJACENT_COUNT + ENEMY_TARGETS;
+	public static final int TARGET_COUNT = ADJACENT_COUNT + ENEMY_TARGETS + 1;
 
-	public static final int SELF_TARGET_ALIAS = TARGET_COUNT - 1;
+	public static final int SELF_TARGET_ALIAS = ADJACENT_COUNT + ENEMY_TARGETS - 1;
+
+	public static final int SELF_TARGET = ADJACENT_COUNT + ENEMY_TARGETS;
 
 	public static Action aimAction( int target ){
 		return target == 0 ? Action.CANCEL : Action.USE;
@@ -165,7 +167,7 @@ public class ActionMapper {
 			if (hasUsableItem()) mask[Action.USE.index] = 1f;
 			if (hasDroppableItem()) mask[Action.DROP.index] = 1f;
 			if (SlotAction.anyThrowable( hero(), slots )) mask[Action.THROW.index] = 1f;
-			if (SlotAction.anyAlt( hero(), slots )) mask[Action.ITEM_ALT.index] = 1f;
+			if (SlotAction.anyMenu( hero(), slots )) mask[Action.ITEM_MENU.index] = 1f;
 			return;
 		}
 
@@ -212,8 +214,8 @@ public class ActionMapper {
 				case THROW:
 					mask[a.index] = SlotAction.anyThrowable( hero(), slots ) ? 1f : 0f;
 					break;
-				case ITEM_ALT:
-					mask[a.index] = SlotAction.anyAlt( hero(), slots ) ? 1f : 0f;
+				case ITEM_MENU:
+					mask[a.index] = SlotAction.anyMenu( hero(), slots ) ? 1f : 0f;
 					break;
 				case INTERACT:
 					mask[a.index] = interactable ? 1f : 0f;
@@ -257,6 +259,7 @@ public class ActionMapper {
 	public boolean targetMask( int index ){
 		if (index < 0 || index >= TARGET_COUNT) return false;
 		if (index == 0) return true;
+		if (index == SELF_TARGET) return true;
 		if (index >= ADJACENT_COUNT) return Surroundings.enemyTarget( index ) >= 0;
 		return Surroundings.insideMap( Surroundings.targetCell( index ) );
 	}
@@ -334,7 +337,7 @@ public class ActionMapper {
 			case USE:
 			case DROP:
 			case THROW:
-			case ITEM_ALT:
+			case ITEM_MENU:
 
 				SlotAction.clearPendingUseItem();
 				return false;

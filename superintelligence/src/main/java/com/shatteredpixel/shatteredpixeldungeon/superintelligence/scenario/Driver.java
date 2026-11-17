@@ -239,6 +239,18 @@ public final class Driver {
 		act( Action.INDICATOR );
 	}
 
+	public void itemMenu( Class< ? extends Item > type, String verb ){
+		act( Action.ITEM_MENU );
+		int slot = slotOf( type );
+		if (slot < 0) throw new Stop( "no " + type.getSimpleName() + " in the slot list" );
+		step( Action.ITEM_MENU, slot );
+		Item item = env.mapper().slot( slot );
+		if (item == null) throw new Stop( "no " + type.getSimpleName() + " in the slot list" );
+		int index = item.actions( Dungeon.hero ).indexOf( verb );
+		if (index < 0) throw new Stop( verb + " is not an action of " + type.getSimpleName() );
+		menu( index );
+	}
+
 	public void cancel(){
 		boolean slotHead = EpisodeCollector.headFor( env ) == com.shatteredpixel.shatteredpixeldungeon.superintelligence.rl.Policy.HEAD_SLOT;
 		step( Action.CANCEL, slotHead ? ActionMapper.cancelSlot( env.slotMask().length ) : 0 );

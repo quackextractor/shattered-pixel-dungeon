@@ -17,3 +17,4 @@ items.weapon.melee.MeleeWeapon	concrete base of melee weapons
 levels.DeadEndLevel	generated only for a depth or branch the game never sends a hero to
 plants.Plant$Seed	concrete base of seeds
 plants.Plant$Seed$PlaceHolder	inventory filter placeholder, never an item
+items.wands.WandOfWarding$Ward$WardSentry	dead code in this version: Ward.toSentry() is never called by the game

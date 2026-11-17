@@ -67,8 +67,10 @@ public enum Action {
 	THROW ( Kind.ITEM, 0, 0 ),
 
 
-	ITEM_ALT ( Kind.ITEM, 0, 0 ),
-	INDICATOR ( Kind.MENU, 0, 0 );
+	INDICATOR ( Kind.MENU, 0, 0 ),
+
+
+	ITEM_MENU ( Kind.ITEM, 0, 0 );
 
 	public enum Kind {
 
