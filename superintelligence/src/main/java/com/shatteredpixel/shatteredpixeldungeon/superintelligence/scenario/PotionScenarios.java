@@ -30,6 +30,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfFrost;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfParalyticGas;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfPurity;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfToxicGas;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.exotic.PotionOfCleansing;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.exotic.PotionOfCorrosiveGas;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.exotic.PotionOfDivineInspiration;
@@ -98,6 +99,11 @@ final class PotionScenarios {
 			Mob rat = rat();
 			int hp = rat.HP;
 			return () -> volume( CorrosiveGas.class ) > 0 && rat.buff( Corrosion.class ) != null && rat.HP < hp;
+		}).covers());
+		all.add( effect( "potion.ToxicGas", PotionOfToxicGas.class, THROW, gasTarget(), 3, "the toxic gas never poisoned the rat", () -> {
+			Mob rat = rat();
+			int hp = rat.HP;
+			return () -> volume( ToxicGas.class ) > 0 && rat.HP < hp;
 		}).covers());
 		all.add( effect( "potion.ParalyticGas", PotionOfParalyticGas.class, THROW, ( world, kit ) -> {
 			kit.buff( BlobImmunity.class, 100f );

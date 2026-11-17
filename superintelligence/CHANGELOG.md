@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Toxic gas potion scenario (`potion.ToxicGas`, `PotionScenarios`): the potion is thrown at a paralysed rat and the run requires `ToxicGas` blob volume above 0 plus the rat's HP below its pre-throw capture, against a capture taken before the throw. Completes the potion family (coverage 962 of 966, 4 pending). Red line: seeding the blob with 0 volume instead of 1000 fails `the toxic gas never poisoned the rat`.
+
 ### Fixed
 - Observation encoding no longer ends a brawler's stance. `HeroEncoder` called `RingOfForce.fightingUnarmed`, which clears an active stance when no ring of force is worn, so the trainer mutated state the viewer never touches. `observecheck` grew a 33rd check: with an active stance and no ring of force, encoding leaves it active (red against the old call: `encoding the hero ended an active brawler's stance worn without a ring of force`).
 - `TALENT` and `ALCHEMY` no longer act on the hero's own cell. Both returned through the path that clicks the hero's cell, so opening the talent window on stairs took them and opening alchemy picked up a heap. They now return from the side-effect-free branch. `cancel.TALENT.on-stairs`, `cancel.TALENT.on-heap` and `cancel.ALCHEMY.on-heap` assert depth, position and heap unchanged (red without the fix: depth 3 to depth 2, and `entering TALENT disturbed the heap under the hero`). `test-replays/alchemy-brew.replay` was recorded with the old behaviour and is re-recorded for the real game; `:superintelligence:rerecord <file> --save <out>` is the new command that produced it.

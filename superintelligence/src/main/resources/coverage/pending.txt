@@ -1,5 +1,4 @@
 items.artifacts.TalismanOfForesight
-items.potions.PotionOfToxicGas
 items.quest.ImpStatue
 actors.mobs.YogFist$BurningFist
 actors.mobs.YogFist$SoiledFist
