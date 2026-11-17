@@ -4,21 +4,19 @@ State as of 2026-11-17, end of the long session. Written so an agent with no pri
 
 ## 1. Where this stands
 
-- **Master** `90c1cdcac`: clean.
-- **Coverage:** `coveragecheck` reports **962 of 966 covered, 4 pending, 21 excluded**.
+- **Master** `26d843f49`: clean.
+- **Coverage:** `coveragecheck` reports **964 of 966 covered, 2 pending, 21 excluded**.
 - **Gates:** full `:desktop:viewcheck` passed (6m58s), `verifyall` passed, `paritycheck` 32 recordings exact.
 - Merged: every plan task from 1 to 34 except Task 35, plus F1, the `Document.readPage` fix, the `ShopRoom.ChooseBag` fix (issue 51 closed), the `GradientCheck` step fix and Task S.
 
-## 2. The five pending keys, and why
+## 2. The two pending keys, and why
 
 | Key | Why it is pending | What would close it |
 | --- | --- | --- |
 | `actors.mobs.YogFist$BurningFist` | Its deferred zap completes after the rest of `act()` in the rendered path, so its recording diverges (`hp 966 vs 969`) | A replay-stage deferral in `HeadlessSprite`/`ReplayPlayer` so the zap lands at the same point; or accept as a documented divergence |
 | `actors.mobs.YogFist$SoiledFist` | Same mechanism, `rng baseFingerprint` at step 1 | Same |
-| `items.artifacts.TalismanOfForesight` | Its scry maps cells; the action space can only aim at adjacent cells, which `Dungeon.observe` already maps, so its unique effect is unreachable | A far-target seat in the action space (a Task 19 follow-up), or its passive warning as an observable |
-| `items.quest.ImpStatue` | Ruled pending: it has no action and every property it exposes is a constant | Vault-score coverage in Task 30's style |
 
-Task 35 cannot run to completion (it deletes `pending.txt`) until those five are resolved or formally excluded. Do not delete `pending.txt` before then.
+Task 35 cannot run to completion (it deletes `pending.txt`) until those two are resolved. Do not delete `pending.txt` before then.
 
 ## 3. Rulings that shaped the tree
 
