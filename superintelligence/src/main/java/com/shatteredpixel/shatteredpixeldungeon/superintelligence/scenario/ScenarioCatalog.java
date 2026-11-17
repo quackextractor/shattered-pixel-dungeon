@@ -49,6 +49,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( TalentTier3.all() );
 		ALL.addAll( ClericScenarios.all() );
 		ALL.addAll( RoomScenarios.all() );
+		ALL.addAll( ShopRoomScenarios.all() );
 		ALL.addAll( SecretRoomScenarios.all() );
 		ALL.addAll( BuffScenarios.all() );
 		ALL.addAll( BrewScenarios.all() );

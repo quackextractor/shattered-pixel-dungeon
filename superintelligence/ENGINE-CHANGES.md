@@ -96,6 +96,13 @@ time ties on iteration order, which meant *who moved first* varied.
   `CursingTrap` / `VaultLevel` / `Hero` used `Collections.shuffle`, which ignores the seeded generator
   entirely. Insertion-ordered, or switched to `Random.shuffle`. One was missed - `Mob.holdAllies` -
   and is proposed and applied uncommitted; see section 7.
+- `ShopRoom.ChooseBag` filled a `HashMap<Bag, Integer>` keyed on bags with no `hashCode`, so iteration
+  followed identity hashes and a tie between two bags resolved by whichever happened to be first. A shop
+  floor (6, 11, 16, 21) stocked `PotionBandolier` in the recording and `MagicalHolster` in the replay:
+  `trap.Guardian` diverged at depth 11 on `world_end` heaps. Now a `LinkedHashMap`, so insertion order
+  decides and both processes stock the same bag. This is engine logic, approved by the user on
+  2026-11-16 for `issues.md` 51; it is the fix that lets a scenario land on a shop floor at all, and
+  `paritycheck` and the committed corpus playback hold it.
 
 ## 4. Presentation draws moved to `PRandom`
 

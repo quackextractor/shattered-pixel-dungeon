@@ -62,7 +62,7 @@ import com.watabou.utils.Point;
 import com.watabou.utils.Random;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 public class ShopRoom extends SpecialRoom {
 
@@ -360,8 +360,7 @@ public class ShopRoom extends SpecialRoom {
 
 	protected static Bag ChooseBag(Belongings pack){
 
-		//generate a hashmap of all valid bags.
-		HashMap<Bag, Integer> bags = new HashMap<>();
+		LinkedHashMap<Bag, Integer> bags = new LinkedHashMap<>();
 		if (!Dungeon.LimitedDrops.VELVET_POUCH.dropped()) bags.put(new VelvetPouch(), 1);
 		if (!Dungeon.LimitedDrops.SCROLL_HOLDER.dropped()) bags.put(new ScrollHolder(), 0);
 		if (!Dungeon.LimitedDrops.POTION_BANDOLIER.dropped()) bags.put(new PotionBandolier(), 0);

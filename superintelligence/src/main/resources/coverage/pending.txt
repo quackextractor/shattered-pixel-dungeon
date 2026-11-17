@@ -99,7 +99,6 @@ levels.HallsBossLevel
 levels.HallsLevel
 levels.LastLevel
 levels.LastShopLevel
-levels.rooms.special.ShopRoom
 subclass:ASSASSIN
 subclass:BATTLEMAGE
 subclass:BERSERKER
