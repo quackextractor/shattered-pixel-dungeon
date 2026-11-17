@@ -26,7 +26,7 @@ import java.util.function.Predicate;
 
 public class AimCheck {
 
-	private static final int CHECKS = 13;
+	private static final int CHECKS = 14;
 	private static final int NEAREST = 9;
 	private static final String[] SEEDS = { "AIM-A", "AIM-B", "AIM-C", "AIM-D", "AIM-E", "AIM-F", "AIM-G", "AIM-H" };
 
@@ -40,6 +40,7 @@ public class AimCheck {
 		checkAnAimCanBeResolvedThroughTheMask();
 		checkAnEnemyAtRangeCanBeNamed();
 		checkNoEnemyMeansNoEnemyTarget();
+		checkTheFarSeatAimsPastTheNeighbours();
 		checkAStoneFliesAtRange();
 		checkABowShotHits();
 		checkAStaffZapHits();
@@ -146,6 +147,47 @@ public class AimCheck {
 			GateReport.fail( "the appended self-target seat " + ActionMapper.SELF_TARGET
 					+ " must point at the hero's own cell and fire" );
 		}
+	}
+
+	private static void checkTheFarSeatAimsPastTheNeighbours(){
+		if (ActionMapper.TARGET_COUNT <= ActionMapper.FAR_TARGET){
+			GateReport.fail( "no far-target seat exists past the self seat" );
+			return;
+		}
+		for (String seed : SEEDS){
+			env.reset( seed, HeroClass.WARRIOR );
+			int cell = env.mapper().targetCell( ActionMapper.FAR_TARGET );
+			if (cell == Dungeon.hero.pos) continue;
+			if (env.targetMask()[ ActionMapper.FAR_TARGET ] > 0.5f){
+				GateReport.fail( "the far seat is offered while no action asks for a target" );
+				return;
+			}
+			if (!aim( slotOf( i -> i instanceof ThrowingStone ) )){
+				GateReport.fail( "a stone did not ask for a target" );
+				return;
+			}
+			if (env.targetMask()[ ActionMapper.FAR_TARGET ] < 0.5f){
+				GateReport.fail( "the far seat stays masked while a policy aims" );
+				return;
+			}
+			if (env.mapper().targetCell( ActionMapper.FAR_TARGET ) != cell){
+				GateReport.fail( "the far seat changed its cell between world and targeting" );
+			}
+			int distance = Dungeon.level.distance( Dungeon.hero.pos, cell );
+			if (distance < 3 || distance > 5){
+				GateReport.fail( "the far seat names cell " + cell + ", " + distance + " tiles from the hero" );
+			}
+			if (!Dungeon.level.passable[ cell ] || com.shatteredpixel.shatteredpixeldungeon.actors.Actor.findChar( cell ) != null
+					|| new Ballistica( Dungeon.hero.pos, cell, Ballistica.PROJECTILE ).collisionPos != cell){
+				GateReport.fail( "the far seat names cell " + cell + ", which is not free or has no clear line" );
+			}
+			env.step( Action.USE, ActionMapper.FAR_TARGET );
+			if (env.mode() != EnvMode.WORLD){
+				GateReport.fail( "aiming the stone at the far seat left the run in " + env.mode() );
+			}
+			return;
+		}
+		GateReport.fail( "no seed of " + SEEDS.length + " offered a free cell 3 to 5 tiles from the hero in a clear line" );
 	}
 
 	private static void checkAStoneFliesAtRange(){

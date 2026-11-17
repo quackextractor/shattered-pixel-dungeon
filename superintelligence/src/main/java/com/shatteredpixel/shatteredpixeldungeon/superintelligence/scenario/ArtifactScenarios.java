@@ -300,7 +300,7 @@ final class ArtifactScenarios {
 	}
 
 	private static Scenario talisman(){
-		return new Scenario( "artifact.TalismanOfForesight", "scry a dark corner into the map", HeroClass.WARRIOR,
+		return new Scenario( "artifact.TalismanOfForesight", "scry a far cell outside the hero's surroundings onto the map", HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();
 					kit.sturdy();
@@ -309,14 +309,19 @@ final class ArtifactScenarios {
 				},
 				d -> {
 					equip( d, TalismanOfForesight.class );
-					int cell = d.world().adjacentFree();
-					darken( cell );
-					int mapped = mapped();
+					int cell = d.env().mapper().targetCell( ActionMapper.FAR_TARGET );
+					d.fixture( cell != Dungeon.hero.pos && !Dungeon.level.adjacent( Dungeon.hero.pos, cell )
+							&& Dungeon.level.passable[ cell ], "no free cell 3 to 5 tiles from the hero in a clear line" );
 					d.use( TalismanOfForesight.class );
 					d.require( d.env().mode() == EnvMode.TARGETING, "the scry asked for no cell: " + d.env().mode() );
-					d.step( Action.USE, d.direction( cell ));
-					d.expect( mapped() > mapped, "the scry mapped no cell: " + mapped() + " of " + mapped );
-				} ).covers( new Class<?>[0] );
+					d.require( d.env().targetMask()[ ActionMapper.FAR_TARGET ] > 0.5f,
+							"the far seat is masked while the scry aims" );
+					darken( cell );
+					d.require( !Dungeon.level.mapped[ cell ] && !Dungeon.level.visited[ cell ],
+							"the fixture left cell " + cell + " on the map before the scry" );
+					d.step( Action.USE, ActionMapper.FAR_TARGET );
+					d.expect( Dungeon.level.mapped[ cell ], "the scry left cell " + cell + " unmapped" );
+				} ).covers( TalismanOfForesight.class );
 	}
 
 	private static Scenario hourglass(){
@@ -449,13 +454,5 @@ final class ArtifactScenarios {
 		}
 		Dungeon.level.mapped[ cell ] = false;
 		Dungeon.level.visited[ cell ] = false;
-	}
-
-	private static int mapped(){
-		int cells = 0;
-		for (int cell = 0; cell < Dungeon.level.length(); cell++){
-			if (Dungeon.level.mapped[ cell ] || Dungeon.level.visited[ cell ]) cells++;
-		}
-		return cells;
 	}
 }

@@ -31,11 +31,13 @@ public class ActionMapper {
 
 	public static final int ENEMY_TARGETS = 4;
 
-	public static final int TARGET_COUNT = ADJACENT_COUNT + ENEMY_TARGETS + 1;
+	public static final int TARGET_COUNT = ADJACENT_COUNT + ENEMY_TARGETS + 2;
 
 	public static final int SELF_TARGET_ALIAS = ADJACENT_COUNT + ENEMY_TARGETS - 1;
 
 	public static final int SELF_TARGET = ADJACENT_COUNT + ENEMY_TARGETS;
+
+	public static final int FAR_TARGET = SELF_TARGET + 1;
 
 	public static Action aimAction( int target ){
 		return target == 0 ? Action.CANCEL : Action.USE;
@@ -256,10 +258,11 @@ public class ActionMapper {
 	}
 
 
-	public boolean targetMask( int index ){
+	public boolean targetMask( EnvMode mode, int index ){
 		if (index < 0 || index >= TARGET_COUNT) return false;
 		if (index == 0) return true;
 		if (index == SELF_TARGET) return true;
+		if (index == FAR_TARGET) return mode == EnvMode.TARGETING && Surroundings.farTargetCell() >= 0;
 		if (index >= ADJACENT_COUNT) return Surroundings.enemyTarget( index ) >= 0;
 		return Surroundings.insideMap( Surroundings.targetCell( index ) );
 	}

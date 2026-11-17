@@ -13,6 +13,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.RunicBlade;
 import com.shatteredpixel.shatteredpixeldungeon.items.quest.Pickaxe;
 import com.shatteredpixel.shatteredpixeldungeon.levels.MiningLevel;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
+import com.shatteredpixel.shatteredpixeldungeon.mechanics.Ballistica;
 
 final class Surroundings {
 
@@ -34,11 +35,28 @@ final class Surroundings {
 	static int targetCell( int index ){
 		if (index < 0) index = 0;
 		if (index >= TARGET_COUNT){
+			if (index == ActionMapper.FAR_TARGET){
+				int far = farTargetCell();
+				return far >= 0 ? far : Dungeon.hero.pos;
+			}
 			int enemy = enemyTarget( index );
 			return enemy >= 0 ? enemy : Dungeon.hero.pos;
 		}
 		int[] o = ActionMapper.TARGET_OFFSETS[ index ];
 		return offsetCell( o[0], o[1] );
+	}
+
+	static int farTargetCell(){
+		Hero hero = Dungeon.hero;
+		for (int cell = 0; cell < Dungeon.level.length(); cell++){
+			if (!insideMap( cell ) || !Dungeon.level.passable[ cell ]
+					|| Actor.findChar( cell ) != null) continue;
+			int distance = Dungeon.level.distance( hero.pos, cell );
+			if (distance < 3 || distance > 5) continue;
+			if (new Ballistica( hero.pos, cell, Ballistica.PROJECTILE ).collisionPos != cell) continue;
+			return cell;
+		}
+		return -1;
 	}
 
 	static int enemyTarget( int index ){

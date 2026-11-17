@@ -442,7 +442,7 @@ public float[] actionMask(){ return actionMask; }
 		mapper.actionMask( mode, actionMask );
 		mapper.slotMask( mode, slotMask );
 		for (int i = 0; i < targetMask.length; i++){
-			targetMask[ i ] = mapper.targetMask( i ) ? 1f : 0f;
+			targetMask[ i ] = mapper.targetMask( mode, i ) ? 1f : 0f;
 		}
 		if (mode != EnvMode.WORLD && mode != EnvMode.TARGETING) slotMask[ ActionMapper.cancelSlot( slotMask.length ) ] = actionMask[ Action.CANCEL.index ];
 		boolean slotUse = mode == EnvMode.INVENTORY || (mode == EnvMode.SLOT && slotVerb == Action.USE);
