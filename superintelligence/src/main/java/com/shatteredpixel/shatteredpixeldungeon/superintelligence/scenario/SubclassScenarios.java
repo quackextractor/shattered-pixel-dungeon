@@ -2,6 +2,7 @@ package com.shatteredpixel.shatteredpixeldungeon.superintelligence.scenario;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Barkskin;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Barrier;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Berserk;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Combo;
@@ -24,6 +25,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat;
 import com.shatteredpixel.shatteredpixeldungeon.items.KindOfWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.items.TengusMask;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.HolyTome;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfInvisibility;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfCorrosion;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfMagicMissile;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.SpiritBow;
@@ -53,20 +55,30 @@ final class SubclassScenarios {
 	static List< Scenario > all(){
 		List< Scenario > all = new ArrayList<>();
 
-		all.add( new Scenario( "subclass.BERSERKER", "berserker rage fills and shields on the indicator", HeroClass.WARRIOR,
+		all.add( new Scenario( "subclass.BERSERKER", "berserker rage fills from hits and shields on the indicator", HeroClass.WARRIOR,
 				( world, kit ) -> {
-					kit.sturdy().level( 10 );
+					world.clearMobs();
+					kit.level( 10 ).health( 2, 4 ).strength( 20 );
 					kit.give( new TengusMask() );
-					kit.buff( Berserk.class ).damage( 100000 );
+					Buff.affect( kit.hero(), Barrier.class ).setShield( 200 );
+					Rat rat = world.hunting( new Rat(), world.adjacentFree() );
+					rat.defenseSkill = 0;
 				},
 				d -> {
+					d.require( Dungeon.hero.buff( Berserk.class ) == null, "the berserker had rage before choosing" );
 					choose( d, 0, HeroSubClass.BERSERKER );
-					int before = Dungeon.hero.shielding();
+					boolean filled = d.until( () -> {
+						Berserk berserk = Dungeon.hero.buff( Berserk.class );
+						return berserk != null && TalentFamily.saved( berserk, "power" ) >= 1f;
+					}, 60, () -> d.act( Action.WAIT ));
+					Berserk berserk = Dungeon.hero.buff( Berserk.class );
+					d.require( filled && berserk != null, "sixty rat hits at low HP filled no berserker rage" );
+					int shield = Dungeon.hero.shielding();
 					d.indicator();
-					d.expect( Dungeon.hero.shielding() > before, "the berserk indicator raised no shield" );
+					d.expect( Dungeon.hero.shielding() > shield, "the full rage indicator raised no shield" );
 				} ).covers( Berserk.class ).covers( "subclass:BERSERKER" ) );
 
-		all.add( new Scenario( "subclass.GLADIATOR", "gladiator combo builds and its finisher spends it", HeroClass.WARRIOR,
+		all.add( new Scenario( "subclass.GLADIATOR", "gladiator combo builds and its clobber lands", HeroClass.WARRIOR,
 				( world, kit ) -> {
 					world.clearMobs();
 					kit.sturdy().level( 10 ).strength( 20 );
@@ -92,7 +104,7 @@ final class SubclassScenarios {
 					d.require( d.env().mode() == EnvMode.TARGETING, "the clobber asked for no target: " + d.env().mode() );
 					d.aimNearest();
 					d.waitFor( () -> combo.getComboCount() != count, 6 );
-					d.expect( combo.getComboCount() != count, "the clobber finisher spent no combo" );
+					d.expect( combo.getComboCount() != count, "the clobber finisher counted no hit" );
 				} ).covers( Combo.class ).covers( "subclass:GLADIATOR" ) );
 
 		all.add( new Scenario( "subclass.BATTLEMAGE", "battlemage staff melee procs its wand", HeroClass.MAGE,
@@ -149,15 +161,12 @@ final class SubclassScenarios {
 					d.expect( Dungeon.hero.HP > hp, "hitting the marked rat healed no hero" );
 				} ).covers( SoulMark.class ).covers( "subclass:WARLOCK" ) );
 
-		all.add( new Scenario( "subclass.ASSASSIN", "assassin blinks to the preparation target", HeroClass.ROGUE,
+		all.add( new Scenario( "subclass.ASSASSIN", "assassin invisibility prepares and blinks to its target", HeroClass.ROGUE,
 				( world, kit ) -> {
 					world.clearMobs();
 					kit.sturdy().level( 10 ).strength( 20 );
 					kit.give( new TengusMask() );
-					kit.hero().invisible = 20;
-					Preparation preparation = kit.buff( Preparation.class );
-					TalentFamily.prime( preparation, "turnsInvis", 9 );
-					ActionIndicator.setAction( preparation );
+					kit.give( new PotionOfInvisibility() );
 					Rat rat = world.mob( new Rat(), world.cellAtRange( 3, true ));
 					rat.HP = rat.HT = 1;
 					rat.defenseSkill = 0;
@@ -166,13 +175,19 @@ final class SubclassScenarios {
 				d -> {
 					choose( d, 0, HeroSubClass.ASSASSIN );
 					Rat rat = d.world().find( Rat.class );
+					d.require( Dungeon.hero.buff( Preparation.class ) == null, "the assassin prepared before turning invisible" );
+					d.use( PotionOfInvisibility.class );
 					Preparation preparation = Dungeon.hero.buff( Preparation.class );
-					d.require( preparation != null, "choosing assassin while invisible attached no preparation" );
+					d.require( preparation != null, "drinking invisibility as an assassin prepared nothing" );
+					d.require( d.until( () -> preparation.attackLevel() >= 2, 6, () -> d.act( Action.WAIT )),
+							"six invisible turns left the preparation too short to blink" );
+					int before = Dungeon.hero.pos;
+					int hp = rat.HP;
 					d.indicator();
 					d.require( d.env().mode() == EnvMode.TARGETING, "the preparation indicator opened " + d.env().mode() );
-					int hp = rat.HP;
 					d.aimNearest();
 					d.waitFor( () -> !rat.isAlive() || rat.HP < hp, 6 );
+					d.expect( Dungeon.hero.pos != before, "the preparation strike did not blink the assassin" );
 					d.expect( !rat.isAlive() || rat.HP < hp, "the blink-strike hurt no rat" );
 				} ).covers( Preparation.class ).covers( "subclass:ASSASSIN" ) );
 
@@ -256,23 +271,29 @@ final class SubclassScenarios {
 					d.expect( Dungeon.hero.belongings.secondWep == before, "the swap kept no weapon in reserve" );
 				} ).covers( "subclass:CHAMPION" ) );
 
-		all.add( new Scenario( "subclass.MONK", "monk focus spends energy", HeroClass.DUELIST,
+		all.add( new Scenario( "subclass.MONK", "monk kills fill energy and focus spends it", HeroClass.DUELIST,
 				( world, kit ) -> {
-					kit.sturdy().level( 10 );
+					world.clearMobs();
+					kit.sturdy().level( 10 ).strength( 20 );
 					kit.give( new TengusMask() );
-					MonkEnergy energy = kit.buff( MonkEnergy.class );
-					energy.energy = 5;
-					ActionIndicator.setAction( energy );
+					for (int i = 0; i < 2; i++){
+						Rat rat = world.hunting( new Rat(), world.adjacentFree() );
+						rat.HP = rat.HT = 1;
+						rat.defenseSkill = 0;
+					}
 				},
 				d -> {
 					choose( d, 1, HeroSubClass.MONK );
+					d.require( Dungeon.hero.buff( MonkEnergy.class ) == null, "the monk had energy before a kill" );
+					d.move( d.world().find( Rat.class ).pos );
 					MonkEnergy energy = Dungeon.hero.buff( MonkEnergy.class );
-					d.require( energy != null, "no monk energy" );
+					d.require( energy != null && energy.energy > 0, "killing a rat as a monk added no energy" );
+					d.move( d.world().find( Rat.class ).pos );
 					float before = energy.energy;
 					d.indicator();
 					d.require( d.env().mode() == EnvMode.MENU && WindowBridge.describe().startsWith( "WndMonkAbilities(" ),
 							"the monk indicator opened " + d.env().mode() + " " + WindowBridge.describe() );
-					d.menu( 1 );
+					d.menu( monkOption( energy, MonkEnergy.MonkAbility.Focus.class ));
 					d.expect( energy.energy < before, "focus spent no energy" );
 					d.expect( Dungeon.hero.buff( MonkEnergy.MonkAbility.Focus.FocusBuff.class ) != null,
 							"focus granted nothing" );
@@ -345,6 +366,16 @@ final class SubclassScenarios {
 
 	private static HolyTome tome(){
 		return (HolyTome) Dungeon.hero.belongings.artifact;
+	}
+
+	private static int monkOption( MonkEnergy energy, Class< ? extends MonkEnergy.MonkAbility > type ){
+		int option = 0;
+		for (MonkEnergy.MonkAbility ability : MonkEnergy.MonkAbility.abilities){
+			if (!ability.usable( energy )) continue;
+			if (type.isInstance( ability )) return option;
+			option++;
+		}
+		throw new Driver.Stop( type.getSimpleName() + " is not offered by the monk" );
 	}
 
 	private static int spellOption( Class< ? extends ClericSpell > type ){
