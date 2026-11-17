@@ -69,6 +69,19 @@ public final class RngTraceCommand {
 					+ " draw sites to " + options.rngTraceSites );
 		}
 
+		if (options.rngTraceOrder != null){
+			try {
+				com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.RngOrderLog
+						.writeCurrent( options.rngTraceOrder.toString() );
+			} catch (IOException e){
+				System.err.println( "[ERROR] cannot write the ordered draw log to "
+						+ options.rngTraceOrder + " (" + e.getClass().getSimpleName() + ")" );
+				System.exit( 1 );
+				return;
+			}
+			System.out.println( "wrote the ordered draw log to " + options.rngTraceOrder );
+		}
+
 		com.watabou.utils.RandomTrace.attribute( false );
 		com.watabou.utils.RandomTrace.disable();
 

@@ -65,6 +65,7 @@ public final class ScenarioCatalog {
 		ALL.addAll( VaultRoomScenarios.all() );
 		ALL.addAll( ItemScenarios.all() );
 		ALL.addAll( ArtifactScenarios.all() );
+		ALL.addAll( HallsScenarios.all() );
 	}
 
 	public static List< Scenario > all(){

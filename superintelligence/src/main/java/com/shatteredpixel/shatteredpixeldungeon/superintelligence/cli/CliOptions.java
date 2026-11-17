@@ -22,6 +22,7 @@ public class CliOptions {
 	public Path rngTraceOut;
 	public Path rngTraceGolden;
 	public Path rngTraceSites;
+	public Path rngTraceOrder;
 
 	public static CliOptions parse( String[] args ){
 		try {
@@ -89,6 +90,9 @@ public class CliOptions {
 					break;
 				case "--rng-trace-golden":
 					o.rngTraceGolden = resolve( new File( value( args, i++ ) )).toPath();
+					break;
+				case "--rng-trace-order":
+					o.rngTraceOrder = resolve( new File( value( args, i++ ) )).toPath();
 					break;
 				case "--persist-saves":
 					o.persistSaves = true;
