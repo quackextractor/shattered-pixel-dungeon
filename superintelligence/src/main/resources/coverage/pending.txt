@@ -2,3 +2,5 @@ items.artifacts.TalismanOfForesight
 items.potions.PotionOfToxicGas
 items.quest.ImpStatue
 items.artifacts.TalismanOfForesight
+actors.mobs.YogFist$BurningFist
+actors.mobs.YogFist$SoiledFist

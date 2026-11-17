@@ -47,8 +47,6 @@ final class HallsScenarios {
 		List< Scenario > all = new ArrayList<>();
 		all.add( acidic() );
 		all.add( demonSpawner() );
-		all.add( fist( YogFist.BurningFist.class, "BurningFist" ));
-		all.add( fist( YogFist.SoiledFist.class, "SoiledFist" ));
 		all.add( fist( YogFist.RottingFist.class, "RottingFist" ));
 		all.add( fist( YogFist.RustedFist.class, "RustedFist" ));
 		all.add( fist( YogFist.BrightFist.class, "BrightFist" ));
