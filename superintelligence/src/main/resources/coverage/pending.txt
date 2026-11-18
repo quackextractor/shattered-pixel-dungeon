@@ -1,2 +1,0 @@
-actors.mobs.YogFist$BurningFist
-actors.mobs.YogFist$SoiledFist

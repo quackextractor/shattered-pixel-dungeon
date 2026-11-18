@@ -51,6 +51,8 @@ final class HallsScenarios {
 		all.add( fist( YogFist.RustedFist.class, "RustedFist" ));
 		all.add( fist( YogFist.BrightFist.class, "BrightFist" ));
 		all.add( fist( YogFist.DarkFist.class, "DarkFist" ));
+		all.add( fist( YogFist.BurningFist.class, "BurningFist" ).seeds( "SCN-0" ));
+		all.add( fist( YogFist.SoiledFist.class, "SoiledFist" ).seeds( "SCN-2" ));
 		all.add( yogMinions() );
 		all.add( descend() );
 		all.add( amulet().covers( Amulet.class, LastLevel.class ));

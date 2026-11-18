@@ -16,6 +16,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessSprite;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -56,7 +57,7 @@ public class MobSpriteCheck {
 			GameScene.add( target, 0f );
 			com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfBlastWave.throwChar( target,
 					new Ballistica( first, last, Ballistica.MAGIC_BOLT ), 2, false, false, target );
-			for (int i = 0; i < 20 && target.pos == first; i++) Actor.headlessStep();
+			for (int i = 0; i < 20 && target.pos == first; i++) HeadlessSprite.stepScheduler();
 
 			if (target.pos != last){
 				fail( "a knockback left its target at " + target.pos + ", wanted " + last + ". Pushing resolves"
