@@ -15,7 +15,7 @@ entry and leaves this list, or moves to `REJECTED.md`.
 - [ ] **GPU stall under normal use** (`issues.md` 41): an hours-long run with the new diagnostics; 30 minutes on 2026-11-15 did not stall.
 - [ ] **Policy below its teacher** (`issues.md` 20): 2.780 against a 3.106 teacher on one seed set (2026-11-15, `evaluate teacher`).
 - [ ] **Survive floors 2-4, beat Goo** (`issues.md` 20): the goal; the sections below are its history.
-- [ ] **Full mechanic coverage** (plan superintelligence/plans/2026-11-15-mechanic-coverage.md): covered 966 of 966; the ratchet (`pending.txt`) is still to be removed (Task 35).
+- [x] **Full mechanic coverage** (plan superintelligence/plans/2026-11-15-mechanic-coverage.md): covered 966 of 966, 21 excluded; the ratchet is gone and `coveragecheck` fails on any uncovered key.
 
 ## Notes
 

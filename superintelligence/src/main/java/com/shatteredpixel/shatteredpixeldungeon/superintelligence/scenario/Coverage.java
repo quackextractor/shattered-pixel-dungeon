@@ -116,10 +116,6 @@ public final class Coverage {
 		return out;
 	}
 
-	public static SortedSet< String > pending(){
-		return new TreeSet<>( resource( "pending.txt" ));
-	}
-
 	public static SortedSet< String > denominator(){
 		SortedSet< String > out = universe();
 		out.removeAll( excluded().keySet() );
@@ -132,16 +128,9 @@ public final class Coverage {
 		return out;
 	}
 
-	public static SortedSet< String > missing( Set< String > denominator, Set< String > declared, Set< String > pending ){
+	public static SortedSet< String > missing( Set< String > denominator, Set< String > declared ){
 		SortedSet< String > out = new TreeSet<>( denominator );
 		out.removeAll( declared );
-		out.removeAll( pending );
-		return out;
-	}
-
-	public static SortedSet< String > stillPending( Set< String > declared, Set< String > pending ){
-		SortedSet< String > out = new TreeSet<>( declared );
-		out.retainAll( pending );
 		return out;
 	}
 

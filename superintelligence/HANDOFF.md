@@ -1,22 +1,22 @@
 # Handoff: full game-mechanic coverage by scenarios
 
-State as of 2026-11-17, end of the long session. Written so an agent with no prior context can resume.
+State as of 2026-11-18. The plan `superintelligence/plans/2026-11-15-mechanic-coverage.md` is complete, Task 35 included.
 
 ## 1. Where this stands
 
-- **Master** `26d843f49`: clean.
-- **Coverage:** `coveragecheck` reports **964 of 966 covered, 2 pending, 21 excluded**.
-- **Gates:** full `:desktop:viewcheck` passed (6m58s), `verifyall` passed, `paritycheck` 32 recordings exact.
-- Merged: every plan task from 1 to 34 except Task 35, plus F1, the `Document.readPage` fix, the `ShopRoom.ChooseBag` fix (issue 51 closed), the `GradientCheck` step fix and Task S.
+- **Coverage:** `coveragecheck` reports **966 of 966 covered, 21 excluded**. There is no ratchet: `coverage/pending.txt` is deleted and any denominator key no scenario declares fails the gate as `uncovered: <key>`.
+- **Gates on the closing tree:** full `scenariocheck` 889 scenarios (9.1 s), full `:desktop:scenarioview` 889 of 889 clean in the real viewer (312.8 s at 20 children), `:desktop:viewcheck` 37 of 37 clean (417.3 s at 20 children), `paritycheck` 32 recordings exact, `verifyall` green in the pre-commit hook.
+- Evidence: `superintelligence/out/evidence/mechanic-coverage/` (`scenarioview-full.log`, `task-35-*.log`, `fist/`).
 
-## 2. The two pending keys, and why
+## 2. How the last two keys closed
 
-| Key | Why it is pending | What would close it |
-| --- | --- | --- |
-| `actors.mobs.YogFist$BurningFist` | Its deferred zap completes after the rest of `act()` in the rendered path, so its recording diverges (`hp 966 vs 969`) | A replay-stage deferral in `HeadlessSprite`/`ReplayPlayer` so the zap lands at the same point; or accept as a documented divergence |
-| `actors.mobs.YogFist$SoiledFist` | Same mechanism, `rng baseFingerprint` at step 1 | Same |
+`actors.mobs.YogFist$BurningFist` and `actors.mobs.YogFist$SoiledFist` diverged in the viewer because `HeadlessSprite` completed a fist's `attack` and `zap` inline, inside `act()`. The rendered game runs the completion as an animation callback after `act()` returns, and those two fists draw RNG after `super.act()`.
 
-Task 35 cannot run to completion (it deletes `pending.txt`) until those two are resolved. Do not delete `pending.txt` before then.
+- `HeadlessSprite.stepScheduler()` wraps `Actor.headlessStep()` and runs a fist's parked completion straight after that actor's `act()`. `LevelPipeline.runToHeroReady`, `ReplayPlayer.driveToHeroReady` and `mobspritecheck` step through it. Any new caller of `Actor.headlessStep()` must use it too, or a fist's completion never runs.
+- The zap alone was not enough: the melee slam had the same fault and showed up as an HP divergence at step 3 once the zap was fixed.
+- Under the corrected draw order the default seed gave the level-1 hero no damaging hit in 20 swings, so the two scenarios are pinned to `SCN-0` and `SCN-2` (seed search with the family's `expect` temporarily a `fixture`).
+- The other 887 scenario recordings are byte-identical before and after (`fist/replays-before.sha1`, `fist/replays-after.sha1`).
+- Scope limit, deliberate: the deferral applies to `YogFist` only. `Monk`, `RipperDemon`, `Spinner` and `VaultBossElemental` also run code after `super.act()`; their recordings play clean in the viewer today, so they were left alone to keep every existing recording bit-identical. A future mob that draws after `super.act()` and diverges in `scenarioview` is this same fault.
 
 ## 3. Rulings that shaped the tree
 
@@ -24,23 +24,16 @@ Task 35 cannot run to completion (it deletes `pending.txt`) until those two are 
 - `LastShopLevel` is **excluded**: `Dungeon.newLevel` has no case for it.
 - `GradientCheck` uses `eps = 1e-2`: at `1e-3` most parameters sat in the noise band and a near-zero bias failed on measurement error.
 - Engine logic committed with the user's approval: `ShopRoom.ChooseBag` `LinkedHashMap`, `Document.readPage` guard, plus observation-only getters (`Dungeon.observationDistance`, `MagesStaff.wand`, `CharSprite.isJumping`).
+- `coveragecheck` prints `covered, <n> excluded` with no `pending` figure, as the plan's Task 35 specifies; the figure has nothing left to count.
 
 ## 4. Process notes learned the hard way
 
-- Subagent model order (from the global rules): `opencode-go/deepseek-v4.1-flash`, then `opencode-go/glm-5.3-flash-free`, then tier-2 models. **Probe before use**; a dead endpoint auto-retries for hours. Beam free tier exhausts and stalls silently.
-- Agents sometimes write stray files into the main checkout (`ItemScenarios.java`, `SubclassScenarios.java`, `WandOfWarding.java` were found there). Check `git status` before every merge.
-- A killed pre-commit run leaves `.git/worktrees/<wt>/pre-commit-unstaged.patch` and `pre-commit-unstaged`; delete both before committing again.
-- Merge conflicts cluster in `ScenarioCatalog.java`, `coverage/pending.txt`, `CHANGELOG.md`, `TODO.md`. Resolution rule: keep every registration, remove exactly the task's keys, re-measure coverage after the merge, never trust a branch's figure.
+- `scenarioview` stamps `playback=ok` into the recordings it plays, so hash `out/scenarios` straight after `scenariocheck`, not after a viewer run, when comparing recordings.
+- `ScenarioRunner` moves to the next seed only on `NoFixture`, never on a failed `expect`; `--seeds N` therefore cannot search past a failing seed without a `fixture` check.
+- A killed pre-commit run leaves `.git/pre-commit-unstaged.patch` and `.git/pre-commit-unstaged/`; delete both before committing again.
+- Agents sometimes write stray files into the main checkout. Check `git status` before every merge.
 - Coverage figures are branch-local. Re-run `coveragecheck` on the merged tree and use its number in TODO and CHANGELOG.
 
-## 5. Reading order for a new agent
+## 5. What is left
 
-1. `CLAUDE.md` and `superintelligence/AGENTS.md` (binding).
-2. `superintelligence/plans/2026-11-15-mechanic-coverage.md` (the plan; Task 35 is the close-out).
-3. `superintelligence/testing-guide.md` (gates).
-4. `.superpowers/sdd/2026-11-15-mechanic-coverage/progress.md` (the ledger, every ruling).
-5. This file.
-
-## 6. If asked to finish
-
-The shortest path to 966: the blast-radius-style far-target seat for the talisman, then the replay-stage zap deferral for the two fists. Each is a small, self-contained change with an obvious red mutation. Then Task 35: delete `pending.txt`, drop the ratchet from `Coverage`/`CoverageCheck`, run the full `scenarioview`, `viewcheck` and `verifyall`.
+Nothing in this plan. Open items unrelated to it are in `TODO.md` and `issues.md`. Old agent worktrees and branches under `.claude/worktrees/` are merged or abandoned and can be removed.

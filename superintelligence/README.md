@@ -337,6 +337,7 @@ something.
 
 | Area | State |
 | --- | --- |
+| Mechanic coverage | Every mechanic in the coverage denominator (966 keys, 21 excluded with a reason) is covered by a scenario that passes `scenariocheck` and plays clean in the real viewer; `coveragecheck` fails on any uncovered key. |
 | Headless engine (renderer bypassed, single-threaded scheduler) | Verified, reproducible across processes |
 | Level pipeline, floor transitions, chasm falls | Verified - descending and ascending, in both directions, with the hero's landing act (`transitioncheck`, 13 cases). **A floor the hero returns to is loaded, not rebuilt** - the pipeline holds allies, saves the floor it leaves and loads any floor it already generated, as `InterlevelScene` does, and the replay viewer keeps floors the same way. **A chasm fall was being dropped entirely** - it is the one transition that carries no `LevelTransition`, and `handleTransition` tested for one first, so `Transition.FALL` and `handleFall()` were unreachable and a hero put into a chasm stayed where he was. **And the agent could not choose to fall at all**: the game's own "jump?" prompt gated its answer on a clock only a rendered frame loop advances, and the environment threw the answer away. `fallcheck` is a gate, 7 cases, and `dialogcheck` is a gate, 4 more |
 | Action space, action masking, menus, targeting | Verified |

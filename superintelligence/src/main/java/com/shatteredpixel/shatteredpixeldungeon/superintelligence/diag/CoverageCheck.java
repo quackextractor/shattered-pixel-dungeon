@@ -26,20 +26,16 @@ public class CoverageCheck {
 		checkTheScanKeepsWhatItShould();
 		checkTheEnumsAreAllThere();
 		checkMissingNamesTheUndeclared();
-		checkStillPendingNamesTheDeclared();
 
-		SortedSet< String > pending = Coverage.pending();
 		SortedMap< String, String > excluded = Coverage.excluded();
 		SortedSet< String > universe = Coverage.universe();
 
-		for (String key : Coverage.missing( denominator, declared, pending )) GateReport.fail( "uncovered: " + key );
-		for (String key : Coverage.stillPending( declared, pending )) GateReport.fail( stillPendingLine( key ));
+		for (String key : Coverage.missing( denominator, declared )) GateReport.fail( "uncovered: " + key );
 		SortedSet< String > named = new TreeSet<>( declared );
-		named.addAll( pending );
 		named.addAll( excluded.keySet() );
 		for (String key : named) if (!universe.contains( key )) GateReport.fail( "unknown key: " + key );
 		for (String key : excluded.keySet()){
-			if (declared.contains( key ) || pending.contains( key )) GateReport.fail( "excluded and declared: " + key );
+			if (declared.contains( key )) GateReport.fail( "excluded and declared: " + key );
 		}
 		for (Scenario scenario : scenarios){
 			if (scenario.covers.isEmpty()) continue;
@@ -57,12 +53,8 @@ public class CoverageCheck {
 		SortedSet< String > covered = new TreeSet<>( declared );
 		covered.retainAll( denominator );
 		System.out.println( "[OK]     coverage: " + covered.size() + " of " + denominator.size() + " covered, "
-				+ pending.size() + " pending, " + excluded.size() + " excluded" );
+				+ excluded.size() + " excluded" );
 		System.exit( 0 );
-	}
-
-	private static String stillPendingLine( String key ){
-		return "covered and still pending, remove it from pending.txt: " + key;
 	}
 
 	private static void checkTheScanKeepsWhatItShould(){
@@ -98,22 +90,11 @@ public class CoverageCheck {
 
 	private static void checkMissingNamesTheUndeclared(){
 		Set< String > missing = Coverage.missing( Set.of( "actors.mobs.Rat", "actors.mobs.Bat" ),
-				Set.of( "actors.mobs.Bat" ), Set.of() );
+				Set.of( "actors.mobs.Bat" ));
 		if (!missing.equals( Set.of( "actors.mobs.Rat" ))){
 			GateReport.fail( "self-test: missing() over {Rat, Bat} with Bat declared returned " + missing + ", not [actors.mobs.Rat]" );
 		} else {
 			System.out.println( "  missing() names the undeclared key and only it" );
-		}
-	}
-
-	private static void checkStillPendingNamesTheDeclared(){
-		SortedSet< String > still = Coverage.stillPending( Set.of( "actors.mobs.Bat" ), Set.of( "actors.mobs.Bat" ));
-		String line = still.isEmpty() ? "" : stillPendingLine( still.first() );
-		if (!still.equals( Set.of( "actors.mobs.Bat" ))
-				|| !line.equals( "covered and still pending, remove it from pending.txt: actors.mobs.Bat" )){
-			GateReport.fail( "self-test: stillPending() with Bat declared and pending returned " + still );
-		} else {
-			System.out.println( "  stillPending() names a declared key left in pending.txt: " + line );
 		}
 	}
 }
