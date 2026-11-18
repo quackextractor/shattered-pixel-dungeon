@@ -7,7 +7,7 @@ State as of 2026-11-18. The plan `superintelligence/plans/2026-11-15-mechanic-co
 - **Coverage:** `coveragecheck` reports **966 of 966 covered, 21 excluded**. There is no ratchet: `coverage/pending.txt` is deleted and any denominator key no scenario declares fails the gate as `uncovered: <key>`.
 - **Gates on the closing tree:** full `scenariocheck` 889 scenarios (9.1 s), full `:desktop:scenarioview` 889 of 889 clean in the real viewer (312.8 s at 20 children), `:desktop:viewcheck` 37 of 37 clean (417.3 s at 20 children), `paritycheck` 32 recordings exact, `verifyall` green in the pre-commit hook.
 - Evidence: `superintelligence/out/evidence/mechanic-coverage/` (`scenarioview-full.log`, `task-35-*.log`, `fist/`).
-- Follow-ups of 2026-11-18 (plan `superintelligence/plans/2026-11-18-coverage-followups.md`, evidence `out/evidence/followups/`): the deferral covers every mob, `mobspritecheck` 19 cases and `playbackcheck` 29 refuse a step that bypasses `HeadlessScheduler`, full `scenarioview` 889 of 889 (318.2 s), `viewcheck` 37 of 37 (417.8 s), `paritycheck` 32 exact, `./gradlew test -x :android:test` exit 0 (every `:test` is `NO-SOURCE`).
+- Follow-ups of 2026-11-18 (plan `superintelligence/plans/2026-11-18-coverage-followups.md`, evidence `out/evidence/followups/`): the deferral covers every mob, `mobspritecheck` 19 cases and `playbackcheck` 29 refuse a step that bypasses `HeadlessScheduler`, full `scenarioview` 889 of 889 (318.2 s), `viewcheck` 37 of 37 (417.8 s), `paritycheck` 32 exact. `./gradlew test` is not a check in this project (`AGENTS.md`, Validation).
 
 ## 2. How the last two keys closed
 

@@ -12,8 +12,8 @@ Edit this file, not `instructions.md`. `STATUS.md` records which of these have a
 
 ## Validation
 
-- Run `./gradlew test` after every code change.
-- New logic needs unit tests; new external interfaces need integration tests.
+- The gates are the tests. No module has a unit-test source set, so `./gradlew test` checks nothing beyond compilation, which every gate run already does, and it fails at configuration without an Android SDK. Do not use it as a check.
+- New logic needs a gate case or a scenario that fails when the logic is removed. A new external interface (CLI flag, replay field, wire format, action) needs a case that drives it end to end.
 - **Do not run `verifyall` before committing.** `hooks/pre-commit` runs it and refuses the commit if it fails, so running it first duplicates the same ~30s twice and changes nothing. Same for `viewcheck`: it is not in the hook, so run it when the change touches the viewer, the replay format, or anything a recording records — not before every commit.
 - Run the *individual* gate you changed, though, and watch it fail when you break what it guards. A green gate you have not seen go red is a gate you have not tested.
 

@@ -134,3 +134,15 @@ in the source carries such a label. What the code *does* do is the opposite habi
 **why** a line exists, at length, in the project's established style. That was the pre-existing
 convention in every file read before any edit, and it is what makes the next bug findable. Read as a
 prohibition on task-tracking markers rather than on explanatory comments, which is how it was applied.
+
+## Validation — `./gradlew test` dropped as a check (2026-11-18)
+
+`AGENTS.md` asked for `./gradlew test` after every code change and for unit and integration tests, wording
+carried over from the generic template in `instructions.md`. Neither held here. No module has a
+`src/test` source set, so every `:test` task reports `NO-SOURCE` and the run proves only that the code
+compiles, which every gate already proves because each gate takes its classpath from
+`sourceSets.main.runtimeClasspath` and recompiles first. On a machine without an Android SDK the bare
+command does not even get that far: it stops at configuration with `SDK location not found` for
+`:android:testDebugUnitTest`. Making it run would have meant a conditional `:android` include in the root
+`settings.gradle` to buy a compile check nobody needs, so the rule was replaced instead: the gates are the
+tests, and new logic needs a gate case or scenario that fails without it.
