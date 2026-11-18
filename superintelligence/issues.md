@@ -51,13 +51,3 @@ diagnostics now log the next stall. A stall under normal use remains a trainer b
 
 2026-11-15: 30 minutes with apps open (100 generations, then 685 resumed, 48 x 2 in-process) ran with no stall at 21-25K turns/s;
 `out/evidence/post-review.log`, `post-review2.log`. One run past the 20-minute mark is not proof; an hours-long run is still owed.
-
-## 51. Shop bag choice is not reproducible - CLOSED (2026-11-17)
-
-`ShopRoom.ChooseBag` fills a `HashMap<Bag, Integer>` and takes the first bag with the highest count. `Bag` has no `hashCode`, so
-iteration follows identity hashes and a tie (for instance Potion Bandolier against Magical Holster) resolves differently in
-the recording and its replay. Seen 2026-11-15 as `trap.Guardian` at depth 11 diverging on `world_end` heaps (a shop offering
-`PotionBandolier` recorded, `MagicalHolster` replayed); a `LinkedHashMap` makes it verify, patch in
-`out/evidence/mechanic-coverage/shoproom-choosebag.patch`. Engine logic, committed 2026-11-17 with the user's approval (Task S). Any recording that generates a shop
-floor (6, 11, 16, 21) with tied bag counts can diverge; `trap.Guardian` now runs at depth 12. The room task covering
-`ShopRoom` needs a ruling.
