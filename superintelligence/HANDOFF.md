@@ -7,16 +7,17 @@ State as of 2026-11-18. The plan `superintelligence/plans/2026-11-15-mechanic-co
 - **Coverage:** `coveragecheck` reports **966 of 966 covered, 21 excluded**. There is no ratchet: `coverage/pending.txt` is deleted and any denominator key no scenario declares fails the gate as `uncovered: <key>`.
 - **Gates on the closing tree:** full `scenariocheck` 889 scenarios (9.1 s), full `:desktop:scenarioview` 889 of 889 clean in the real viewer (312.8 s at 20 children), `:desktop:viewcheck` 37 of 37 clean (417.3 s at 20 children), `paritycheck` 32 recordings exact, `verifyall` green in the pre-commit hook.
 - Evidence: `superintelligence/out/evidence/mechanic-coverage/` (`scenarioview-full.log`, `task-35-*.log`, `fist/`).
+- Follow-ups of 2026-11-18 (plan `superintelligence/plans/2026-11-18-coverage-followups.md`, evidence `out/evidence/followups/`): the deferral covers every mob, `mobspritecheck` 19 cases and `playbackcheck` 29 refuse a step that bypasses `HeadlessScheduler`, full `scenarioview` 889 of 889 (318.2 s), `viewcheck` 37 of 37 (417.8 s), `paritycheck` 32 exact, `./gradlew test -x :android:test` exit 0 (every `:test` is `NO-SOURCE`).
 
 ## 2. How the last two keys closed
 
 `actors.mobs.YogFist$BurningFist` and `actors.mobs.YogFist$SoiledFist` diverged in the viewer because `HeadlessSprite` completed a fist's `attack` and `zap` inline, inside `act()`. The rendered game runs the completion as an animation callback after `act()` returns, and those two fists draw RNG after `super.act()`.
 
-- `HeadlessSprite.stepScheduler()` wraps `Actor.headlessStep()` and runs a fist's parked completion straight after that actor's `act()`. `LevelPipeline.runToHeroReady`, `ReplayPlayer.driveToHeroReady` and `mobspritecheck` step through it. Any new caller of `Actor.headlessStep()` must use it too, or a fist's completion never runs.
+- `HeadlessScheduler.step()` wraps `Actor.headlessStep()` and runs the acting mob's parked `attack` or `zap` completion straight after its `act()`, for every mob (first fists only, generalised on 2026-11-18). `LevelPipeline.runToHeroReady`, `ReplayPlayer.driveToHeroReady` and `mobspritecheck` step through it. The state lives outside `HeadlessSprite.java` because that file is the text template for 21 generated stand-in sprites, so a static field there exists once per generated class.
 - The zap alone was not enough: the melee slam had the same fault and showed up as an HP divergence at step 3 once the zap was fixed.
 - Under the corrected draw order the default seed gave the level-1 hero no damaging hit in 20 swings, so the two scenarios are pinned to `SCN-0` and `SCN-2` (seed search with the family's `expect` temporarily a `fixture`).
 - The other 887 scenario recordings are byte-identical before and after (`fist/replays-before.sha1`, `fist/replays-after.sha1`).
-- Scope limit, deliberate: the deferral applies to `YogFist` only. `Monk`, `RipperDemon`, `Spinner` and `VaultBossElemental` also run code after `super.act()`; their recordings play clean in the viewer today, so they were left alone to keep every existing recording bit-identical. A future mob that draws after `super.act()` and diverges in `scenarioview` is this same fault.
+- The hero's own `attack` and `operate` completions still run inline; `ReplayPlayer.finishHeroAnimation` matches that on the viewer side. Generalising the deferral changed none of the 889 scenario recordings.
 
 ## 3. Rulings that shaped the tree
 
@@ -36,4 +37,6 @@ State as of 2026-11-18. The plan `superintelligence/plans/2026-11-15-mechanic-co
 
 ## 5. What is left
 
-Nothing in this plan. Open items unrelated to it are in `TODO.md` and `issues.md`. Old agent worktrees and branches under `.claude/worktrees/` are merged or abandoned and can be removed.
+Nothing in this plan. Open items unrelated to it are in `TODO.md` and `issues.md`.
+
+The 18 agent worktrees and 37 `worktree-agent-*` branches were removed on 2026-11-18. Every branch is in `out/evidence/followups/agent-branches.bundle` (`git fetch <bundle> <branch>:<branch>` restores one; names and SHAs in `agent-branches.txt`), and the three worktrees with uncommitted work left `agent-*.patch` files and `agent-*-untracked/` copies beside it. `out/` is gitignored, so the bundle is local to this machine.

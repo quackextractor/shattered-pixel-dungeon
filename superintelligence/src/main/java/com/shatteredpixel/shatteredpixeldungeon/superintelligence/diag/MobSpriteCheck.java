@@ -16,7 +16,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessSprite;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessScheduler;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -26,7 +26,7 @@ import static com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.Ga
 
 public class MobSpriteCheck {
 
-	private static final int CHECKS = 7 + SpriteCastCases.CHECKS;
+	private static final int CHECKS = 8 + SpriteCastCases.CHECKS + ActOrderCases.CHECKS;
 
 	public static void main( String[] args ){
 		checkMirrorImageIsUsable();
@@ -37,6 +37,8 @@ public class MobSpriteCheck {
 		checkAKnockbackMovesItsTarget();
 		checkAGuardPullsItsTarget();
 		SpriteCastCases.run();
+		ActOrderCases.run();
+		checkEveryStepGoesThroughTheHeadlessScheduler();
 
 		System.exit( GateReport.report( "item-created mobs", CHECKS ));
 	}
@@ -57,7 +59,7 @@ public class MobSpriteCheck {
 			GameScene.add( target, 0f );
 			com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfBlastWave.throwChar( target,
 					new Ballistica( first, last, Ballistica.MAGIC_BOLT ), 2, false, false, target );
-			for (int i = 0; i < 20 && target.pos == first; i++) HeadlessSprite.stepScheduler();
+			for (int i = 0; i < 20 && target.pos == first; i++) HeadlessScheduler.step();
 
 			if (target.pos != last){
 				fail( "a knockback left its target at " + target.pos + ", wanted " + last + ". Pushing resolves"
@@ -206,13 +208,7 @@ public class MobSpriteCheck {
 
 	private static void checkARangedZapCompletesItsTurn(){
 		SPDEnv env = freshRun( "MOBSPROUT-D" );
-		int hero = Dungeon.hero.pos;
-		int cell = -1;
-		for (int c = 0; c < Dungeon.level.length() && cell < 0; c++){
-			if (Dungeon.level.passable[ c ] && Dungeon.level.heroFOV[ c ] && Actor.findChar( c ) == null
-					&& !Dungeon.level.adjacent( c, hero ) && Dungeon.level.distance( c, hero ) <= 4
-					&& new Ballistica( c, hero, Ballistica.MAGIC_BOLT ).collisionPos == hero) cell = c;
-		}
+		int cell = cellWithBoltLine();
 		if (cell < 0){
 			fail( "no cell within 4 of the hero has a clear bolt line, so the ranged zap was never reached." );
 			return;
@@ -299,6 +295,26 @@ public class MobSpriteCheck {
 			if (mob instanceof MirrorImage) images.add( (MirrorImage) mob );
 		}
 		return images;
+	}
+
+	private static void checkEveryStepGoesThroughTheHeadlessScheduler(){
+		java.util.List< String > callers = SchedulerStepScan.directCallers( HeadlessScheduler.class );
+		if (!callers.isEmpty()){
+			fail( "these classes call Actor.headlessStep() directly instead of HeadlessScheduler.step(), so a mob's"
+					+ " parked attack or bolt is never landed on their steps: " + String.join( ", ", callers ));
+			return;
+		}
+		System.out.println( "  every scheduler step in the trainer goes through HeadlessScheduler" );
+	}
+
+	static int cellWithBoltLine(){
+		int hero = Dungeon.hero.pos;
+		for (int c = 0; c < Dungeon.level.length(); c++){
+			if (Dungeon.level.passable[ c ] && Dungeon.level.heroFOV[ c ] && Actor.findChar( c ) == null
+					&& !Dungeon.level.adjacent( c, hero ) && Dungeon.level.distance( c, hero ) <= 4
+					&& new Ballistica( c, hero, Ballistica.MAGIC_BOLT ).collisionPos == hero) return c;
+		}
+		return -1;
 	}
 
 	static SPDEnv freshRun( String seed ){

@@ -10,7 +10,7 @@ import com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessGame;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessServices;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessSprite;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessScheduler;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessSprites;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessStandIn;
 import com.shatteredpixel.shatteredpixeldungeon.utils.DungeonSeed;
@@ -157,7 +157,7 @@ public class LevelPipeline {
 				return Outcome.TRANSITION;
 			}
 
-			boolean wantsMore = HeadlessSprite.stepScheduler();
+			boolean wantsMore = HeadlessScheduler.step();
 
 			if (Dungeon.hero == null || !Dungeon.hero.isAlive()){
 				return Outcome.HERO_DEAD;

@@ -1,11 +1,9 @@
 package com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless;
 
-import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DM100;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Eye;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Spinner;
-import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.YogFist;
 import com.shatteredpixel.shatteredpixeldungeon.effects.Chains;
 import com.shatteredpixel.shatteredpixeldungeon.effects.MagicMissile;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
@@ -92,8 +90,8 @@ public class HeadlessSprite extends CharSprite implements HeadlessStandIn {
 
 	@Override
 	public void attack( int cell ){
-		if (ch instanceof YogFist) completionAwaitingActEnd = ch::onAttackComplete;
-		else attack( cell, null );
+		Char attacker = ch;
+		if (attacker != null) HeadlessScheduler.afterAct( attacker, attacker::onAttackComplete );
 	}
 
 	@Override
@@ -123,25 +121,15 @@ public class HeadlessSprite extends CharSprite implements HeadlessStandIn {
 	@Override
 	public void zap( int cell ){
 		zap( cell, null );
+		Char zapper = ch;
+		if (zapper != null) HeadlessScheduler.afterAct( zapper, () -> landZap( zapper ) );
+	}
+
+	private static void landZap( Char ch ){
 		if (ch instanceof Spinner) ((Spinner) ch).shootWeb();
 		else if (ch instanceof Eye){ ((Eye) ch).deathGaze(); ch.next(); }
 		else if (ch instanceof DM100) ch.next();
-		else if (ch instanceof YogFist) completionAwaitingActEnd = ((YogFist) ch)::onZapComplete;
-		else if (ch != null) completeZap( ch );
-	}
-
-	private static Runnable completionAwaitingActEnd;
-
-	public static boolean stepScheduler(){
-		completionAwaitingActEnd = null;
-		boolean wantsMore = Actor.headlessStep();
-		if (completionAwaitingActEnd == null) return wantsMore;
-		while (completionAwaitingActEnd != null){
-			Runnable completion = completionAwaitingActEnd;
-			completionAwaitingActEnd = null;
-			completion.run();
-		}
-		return Actor.currentActor() != null;
+		else completeZap( ch );
 	}
 
 	private static void completeZap( Char ch ){

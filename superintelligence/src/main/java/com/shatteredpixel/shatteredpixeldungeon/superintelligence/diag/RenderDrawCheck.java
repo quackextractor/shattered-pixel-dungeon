@@ -94,7 +94,7 @@ public class RenderDrawCheck {
 		}
 	}
 	interface ClassVisitor { void visit( String name, byte[] bytes ) throws IOException; }
-	private static void forEachClass( Class< ? > anchor, ClassVisitor visitor ){
+	static void forEachClass( Class< ? > anchor, ClassVisitor visitor ){
 		try {
 			Path root = Path.of( anchor.getProtectionDomain().getCodeSource().getLocation().toURI() );
 			if (Files.isDirectory( root )){

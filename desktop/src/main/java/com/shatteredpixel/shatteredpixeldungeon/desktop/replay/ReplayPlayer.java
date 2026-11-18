@@ -38,7 +38,7 @@ import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvMode;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SlotAction;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Travel;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.WindowBridge;
-import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessSprite;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.headless.HeadlessScheduler;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Quickslots;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.Replay;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.replay.ReplayIO;
@@ -821,7 +821,7 @@ System.err.println( "[replay] wrote " + com.watabou.utils.RandomTrace.sites().si
 			if (parkedFrames > 0 && heroIsReady()) return readyOnceMobsLand();
 			parkedFrames = 0;
 			countSchedulerCall( before );
-			boolean wantsMore = HeadlessSprite.stepScheduler();
+			boolean wantsMore = HeadlessScheduler.step();
 			finishHeroAnimation();
 
 			if (Dungeon.hero.curAction == null && Dungeon.hero.ready && Dungeon.hero.paralysed == 0){

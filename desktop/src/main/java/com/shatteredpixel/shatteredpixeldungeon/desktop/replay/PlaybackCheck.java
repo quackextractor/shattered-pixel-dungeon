@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.desktop.replay;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
+import com.shatteredpixel.shatteredpixeldungeon.superintelligence.diag.SchedulerStepScan;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.Action;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.EnvConfig;
 import com.shatteredpixel.shatteredpixeldungeon.superintelligence.env.SPDEnv;
@@ -63,7 +64,7 @@ import java.util.List;
  */
 public class PlaybackCheck {
 
-	private static final int CHECKS = 28;
+	private static final int CHECKS = 29;
 
 	private static final String SEED = "PLAYBACKCHECK-A";
 
@@ -136,6 +137,7 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		check( PlaybackCheck::checkPlaybackSpeedIsNotCapped );
 		check( PlaybackCheck::checkAnUnknownHeroClassIsRefused );
 		check( PlaybackCheck::checkAnUnknownScenarioIsRefused );
+		check( PlaybackCheck::checkTheViewerStepsThroughTheHeadlessScheduler );
 
 		report( "headless playback", CHECKS );
 	}
@@ -164,6 +166,15 @@ check( () -> checkADeathRunActuallyActsOnItsLastStep() );
 		if ( ReplayLauncher.startRun( replay ) ){
 			fail( "the viewer started a recording of hero BARBARIAN; it must refuse rather than play"
 					+ " another class's run against this one's actions" );
+		}
+	}
+
+	private static void checkTheViewerStepsThroughTheHeadlessScheduler(){
+		List< String > callers = SchedulerStepScan.directCallers( ReplayPlayer.class );
+		if (!callers.isEmpty()){
+			fail( "these viewer classes call Actor.headlessStep() directly instead of HeadlessScheduler.step(), so"
+					+ " headless playback lands a mob's attack or bolt in a different order from the trainer: "
+					+ String.join( ", ", callers ));
 		}
 	}
 
